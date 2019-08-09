@@ -1,10 +1,10 @@
 print-type-size type: `E`: 32 bytes, alignment: 16 bytes
 print-type-size     discriminant: 4 bytes
-print-type-size     variant `A`: 4 bytes
-print-type-size         field `.0`: 4 bytes
 print-type-size     variant `B`: 28 bytes
 print-type-size         padding: 12 bytes
 print-type-size         field `.0`: 16 bytes, alignment: 16 bytes
+print-type-size     variant `A`: 4 bytes
+print-type-size         field `.0`: 4 bytes
 print-type-size type: `S`: 32 bytes, alignment: 16 bytes
 print-type-size     field `.c`: 16 bytes
 print-type-size     field `.a`: 4 bytes

@@ -1,0 +1,38 @@
+error: unreachable pattern
+  --> $DIR/patterns_same_crate.rs:53:9
+   |
+LL |         Some(_x) => (),
+   |         ^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/patterns_same_crate.rs:1:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/patterns_same_crate.rs:58:9
+   |
+LL |         Some(_x) => (),
+   |         ^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/patterns_same_crate.rs:62:15
+   |
+LL |     while let PartiallyInhabitedVariants::Struct { x } = partially_inhabited_variant() {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/patterns_same_crate.rs:66:15
+   |
+LL |     while let Some(_x) = uninhabited_struct() {
+   |               ^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/patterns_same_crate.rs:69:15
+   |
+LL |     while let Some(_x) = uninhabited_tuple_struct() {
+   |               ^^^^^^^^
+
+error: aborting due to 5 previous errors
+

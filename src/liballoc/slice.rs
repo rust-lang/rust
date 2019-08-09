@@ -123,12 +123,12 @@ pub use core::slice::{RChunks, RChunksMut, RChunksExact, RChunksExactMut};
 ////////////////////////////////////////////////////////////////////////////////
 
 // HACK(japaric) needed for the implementation of `vec!` macro during testing
-// NB see the hack module in this file for more details
+// N.B., see the `hack` module in this file for more details.
 #[cfg(test)]
 pub use hack::into_vec;
 
 // HACK(japaric) needed for the implementation of `Vec::clone` during testing
-// NB see the hack module in this file for more details
+// N.B., see the `hack` module in this file for more details.
 #[cfg(test)]
 pub use hack::to_vec;
 
@@ -137,17 +137,16 @@ pub use hack::to_vec;
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
 mod hack {
-    use core::mem;
-
     use crate::boxed::Box;
     use crate::vec::Vec;
     #[cfg(test)]
     use crate::string::ToString;
 
-    pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
+    pub fn into_vec<T>(b: Box<[T]>) -> Vec<T> {
         unsafe {
-            let xs = Vec::from_raw_parts(b.as_mut_ptr(), b.len(), b.len());
-            mem::forget(b);
+            let len = b.len();
+            let b = Box::into_raw(b);
+            let xs = Vec::from_raw_parts(b as *mut T, len, len);
             xs
         }
     }
@@ -376,7 +375,7 @@ impl<T> [T] {
     pub fn to_vec(&self) -> Vec<T>
         where T: Clone
     {
-        // NB see hack module in this file
+        // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self)
     }
 
@@ -397,7 +396,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn into_vec(self: Box<Self>) -> Vec<T> {
-        // NB see hack module in this file
+        // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
     }
 
@@ -485,6 +484,57 @@ impl<T> [T] {
         }
         buf
     }
+
+    /// Flattens a slice of `T` into a single value `Self::Output`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(["hello", "world"].concat(), "helloworld");
+    /// assert_eq!([[1, 2], [3, 4]].concat(), [1, 2, 3, 4]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn concat<Item: ?Sized>(&self) -> <Self as Concat<Item>>::Output
+        where Self: Concat<Item>
+    {
+        Concat::concat(self)
+    }
+
+    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
+    /// given separator between each.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!(["hello", "world"].join(" "), "hello world");
+    /// assert_eq!([[1, 2], [3, 4]].join(&0), [1, 2, 0, 3, 4]);
+    /// assert_eq!([[1, 2], [3, 4]].join(&[0, 0][..]), [1, 2, 0, 0, 3, 4]);
+    /// ```
+    #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
+    pub fn join<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
+        where Self: Join<Separator>
+    {
+        Join::join(self, sep)
+    }
+
+    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
+    /// given separator between each.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![allow(deprecated)]
+    /// assert_eq!(["hello", "world"].connect(" "), "hello world");
+    /// assert_eq!([[1, 2], [3, 4]].connect(&0), [1, 2, 0, 3, 4]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
+    pub fn connect<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
+        where Self: Join<Separator>
+    {
+        Join::join(self, sep)
+    }
+
 }
 
 #[lang = "slice_u8_alloc"]
@@ -528,75 +578,84 @@ impl [u8] {
 ////////////////////////////////////////////////////////////////////////////////
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
-/// An extension trait for concatenating slices
+
+/// Helper trait for [`[T]::concat`](../../std/primitive.slice.html#method.concat).
 ///
-/// While this trait is unstable, the methods are stable. `SliceConcatExt` is
-/// included in the [standard library prelude], so you can use [`join()`] and
-/// [`concat()`] as if they existed on `[T]` itself.
+/// Note: the `Item` type parameter is not used in this trait,
+/// but it allows impls to be more generic.
+/// Without it, we get this error:
 ///
-/// [standard library prelude]: ../../std/prelude/index.html
-/// [`join()`]: #tymethod.join
-/// [`concat()`]: #tymethod.concat
-pub trait SliceConcatExt<T: ?Sized> {
-    #[unstable(feature = "slice_concat_ext",
-               reason = "trait should not have to exist",
-               issue = "27747")]
+/// ```error
+/// error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predica
+///    --> src/liballoc/slice.rs:608:6
+///     |
+/// 608 | impl<T: Clone, V: Borrow<[T]>> Concat for [V] {
+///     |      ^ unconstrained type parameter
+/// ```
+///
+/// This is because there could exist `V` types with multiple `Borrow<[_]>` impls,
+/// such that multiple `T` types would apply:
+///
+/// ```
+/// # #[allow(dead_code)]
+/// pub struct Foo(Vec<u32>, Vec<String>);
+///
+/// impl std::borrow::Borrow<[u32]> for Foo {
+///     fn borrow(&self) -> &[u32] { &self.0 }
+/// }
+///
+/// impl std::borrow::Borrow<[String]> for Foo {
+///     fn borrow(&self) -> &[String] { &self.1 }
+/// }
+/// ```
+#[unstable(feature = "slice_concat_trait", issue = "27747")]
+pub trait Concat<Item: ?Sized> {
+    #[unstable(feature = "slice_concat_trait", issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 
-    /// Flattens a slice of `T` into a single value `Self::Output`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(["hello", "world"].concat(), "helloworld");
-    /// assert_eq!([[1, 2], [3, 4]].concat(), [1, 2, 3, 4]);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn concat(&self) -> Self::Output;
-
-    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
-    /// given separator between each.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// assert_eq!(["hello", "world"].join(" "), "hello world");
-    /// assert_eq!([[1, 2], [3, 4]].join(&0), [1, 2, 0, 3, 4]);
-    /// ```
-    #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
-    fn join(&self, sep: &T) -> Self::Output;
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
-    fn connect(&self, sep: &T) -> Self::Output;
+    /// Implementation of [`[T]::concat`](../../std/primitive.slice.html#method.concat)
+    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    fn concat(slice: &Self) -> Self::Output;
 }
 
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
-impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
+/// Helper trait for [`[T]::join`](../../std/primitive.slice.html#method.join)
+#[unstable(feature = "slice_concat_trait", issue = "27747")]
+pub trait Join<Separator> {
+    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    /// The resulting type after concatenation
+    type Output;
+
+    /// Implementation of [`[T]::join`](../../std/primitive.slice.html#method.join)
+    #[unstable(feature = "slice_concat_trait", issue = "27747")]
+    fn join(slice: &Self, sep: Separator) -> Self::Output;
+}
+
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     type Output = Vec<T>;
 
-    fn concat(&self) -> Vec<T> {
-        let size = self.iter().map(|slice| slice.borrow().len()).sum();
+    fn concat(slice: &Self) -> Vec<T> {
+        let size = slice.iter().map(|slice| slice.borrow().len()).sum();
         let mut result = Vec::with_capacity(size);
-        for v in self {
+        for v in slice {
             result.extend_from_slice(v.borrow())
         }
         result
     }
+}
 
-    fn join(&self, sep: &T) -> Vec<T> {
-        let mut iter = self.iter();
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
+    type Output = Vec<T>;
+
+    fn join(slice: &Self, sep: &T) -> Vec<T> {
+        let mut iter = slice.iter();
         let first = match iter.next() {
             Some(first) => first,
             None => return vec![],
         };
-        let size = self.iter().map(|slice| slice.borrow().len()).sum::<usize>() + self.len() - 1;
+        let size = slice.iter().map(|v| v.borrow().len()).sum::<usize>() + slice.len() - 1;
         let mut result = Vec::with_capacity(size);
         result.extend_from_slice(first.borrow());
 
@@ -606,9 +665,28 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
         }
         result
     }
+}
 
-    fn connect(&self, sep: &T) -> Vec<T> {
-        self.join(sep)
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
+    type Output = Vec<T>;
+
+    fn join(slice: &Self, sep: &[T]) -> Vec<T> {
+        let mut iter = slice.iter();
+        let first = match iter.next() {
+            Some(first) => first,
+            None => return vec![],
+        };
+        let size = slice.iter().map(|v| v.borrow().len()).sum::<usize>() +
+            sep.len() * (slice.len() - 1);
+        let mut result = Vec::with_capacity(size);
+        result.extend_from_slice(first.borrow());
+
+        for v in iter {
+            result.extend_from_slice(sep);
+            result.extend_from_slice(v.borrow())
+        }
+        result
     }
 }
 

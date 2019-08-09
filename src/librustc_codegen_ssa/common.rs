@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case)]
 
-use rustc::ty::{self, Ty, TyCtxt};
-use syntax_pos::{DUMMY_SP, Span};
+use rustc::ty::{Ty, TyCtxt};
+use syntax_pos::Span;
 
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
@@ -10,18 +10,6 @@ use crate::traits::*;
 
 use rustc::hir;
 use crate::traits::BuilderMethods;
-
-pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.needs_drop(tcx, ty::ParamEnv::reveal_all())
-}
-
-pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all())
-}
-
-pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
-}
 
 pub enum IntPredicate {
     IntEQ,
@@ -134,11 +122,7 @@ mod temp_stable_hash_impls {
     }
 }
 
-pub fn langcall(tcx: TyCtxt<'_, '_, '_>,
-                span: Option<Span>,
-                msg: &str,
-                li: LangItem)
-                -> DefId {
+pub fn langcall(tcx: TyCtxt<'_>, span: Option<Span>, msg: &str, li: LangItem) -> DefId {
     tcx.lang_items().require(li).unwrap_or_else(|s| {
         let msg = format!("{} {}", msg, s);
         match span {
@@ -153,10 +137,10 @@ pub fn langcall(tcx: TyCtxt<'_, '_, '_>,
 // all shifts). For 32- and 64-bit types, this matches the semantics
 // of Java. (See related discussion on #1877 and #10183.)
 
-pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn build_unchecked_lshift<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs: Bx::Value,
-    rhs: Bx::Value
+    rhs: Bx::Value,
 ) -> Bx::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shl, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
@@ -164,11 +148,11 @@ pub fn build_unchecked_lshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx.shl(lhs, rhs)
 }
 
-pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn build_unchecked_rshift<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     lhs_t: Ty<'tcx>,
     lhs: Bx::Value,
-    rhs: Bx::Value
+    rhs: Bx::Value,
 ) -> Bx::Value {
     let rhs = base::cast_shift_expr_rhs(bx, hir::BinOpKind::Shr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
@@ -181,20 +165,20 @@ pub fn build_unchecked_rshift<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-fn shift_mask_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+fn shift_mask_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    rhs: Bx::Value
+    rhs: Bx::Value,
 ) -> Bx::Value {
     let rhs_llty = bx.val_ty(rhs);
     let shift_val = shift_mask_val(bx, rhs_llty, rhs_llty, false);
     bx.and(rhs, shift_val)
 }
 
-pub fn shift_mask_val<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     llty: Bx::Type,
     mask_llty: Bx::Type,
-    invert: bool
+    invert: bool,
 ) -> Bx::Value {
     let kind = bx.type_kind(llty);
     match kind {

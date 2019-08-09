@@ -1,0 +1,129 @@
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:17:18
+   |
+LL |     foo::<usize>(x_f64);
+   |                  ^^^^^ expected usize, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:18:18
+   |
+LL |     foo::<usize>(x_f32);
+   |                  ^^^^^ expected usize, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:19:18
+   |
+LL |     foo::<isize>(x_f64);
+   |                  ^^^^^ expected isize, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:20:18
+   |
+LL |     foo::<isize>(x_f32);
+   |                  ^^^^^ expected isize, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:21:16
+   |
+LL |     foo::<u64>(x_f64);
+   |                ^^^^^ expected u64, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:22:16
+   |
+LL |     foo::<u64>(x_f32);
+   |                ^^^^^ expected u64, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:23:16
+   |
+LL |     foo::<i64>(x_f64);
+   |                ^^^^^ expected i64, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:24:16
+   |
+LL |     foo::<i64>(x_f32);
+   |                ^^^^^ expected i64, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:25:16
+   |
+LL |     foo::<u32>(x_f64);
+   |                ^^^^^ expected u32, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:26:16
+   |
+LL |     foo::<u32>(x_f32);
+   |                ^^^^^ expected u32, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:27:16
+   |
+LL |     foo::<i32>(x_f64);
+   |                ^^^^^ expected i32, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:28:16
+   |
+LL |     foo::<i32>(x_f32);
+   |                ^^^^^ expected i32, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:29:16
+   |
+LL |     foo::<u16>(x_f64);
+   |                ^^^^^ expected u16, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:30:16
+   |
+LL |     foo::<u16>(x_f32);
+   |                ^^^^^ expected u16, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:31:16
+   |
+LL |     foo::<i16>(x_f64);
+   |                ^^^^^ expected i16, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:32:16
+   |
+LL |     foo::<i16>(x_f32);
+   |                ^^^^^ expected i16, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:33:15
+   |
+LL |     foo::<u8>(x_f64);
+   |               ^^^^^ expected u8, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:34:15
+   |
+LL |     foo::<u8>(x_f32);
+   |               ^^^^^ expected u8, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:35:15
+   |
+LL |     foo::<i8>(x_f64);
+   |               ^^^^^ expected i8, found f64
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:36:15
+   |
+LL |     foo::<i8>(x_f32);
+   |               ^^^^^ expected i8, found f32
+
+error[E0308]: mismatched types
+  --> $DIR/numeric-cast-without-suggestion.rs:37:16
+   |
+LL |     foo::<f32>(x_f64);
+   |                ^^^^^ expected f32, found f64
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

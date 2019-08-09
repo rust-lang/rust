@@ -18,7 +18,7 @@ exit 1
 }
 
 cd /
-curl -fL https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portable.tar.gz | \
+curl -fL https://mozilla-games.s3.amazonaws.com/emscripten/releases/emsdk-portable.tar.gz | \
     tar -xz
 
 cd /emsdk-portable

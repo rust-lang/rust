@@ -7,7 +7,7 @@ fn foo<'_> //~ ERROR cannot be used here
 trait Meh<'a> {}
 impl<'a> Meh<'a> for u8 {}
 
-fn meh() -> Box<for<'_> Meh<'_>> //~ ERROR cannot be used here
+fn meh() -> Box<dyn for<'_> Meh<'_>> //~ ERROR cannot be used here
 //~^ ERROR missing lifetime specifier
 {
   Box::new(5u8)

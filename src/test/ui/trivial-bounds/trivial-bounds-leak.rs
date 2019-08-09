@@ -29,4 +29,3 @@ fn foo() {
 fn generic_function<T: Foo>(t: T) {}
 
 fn main() {}
-

@@ -1,12 +1,12 @@
 error[E0458]: unknown kind: `wonderful_unicorn`
-  --> $DIR/E0458.rs:1:1
+  --> $DIR/E0458.rs:1:8
    |
 LL | #[link(kind = "wonderful_unicorn")] extern {}
-   | ^^^^^^^--------------------------^^
+   | -------^^^^^^^^^^^^^^^^^^^^^^^^^^--
    |        |
    |        unknown kind
 
-error[E0459]: #[link(...)] specified without `name = "foo"`
+error[E0459]: `#[link(...)]` specified without `name = "foo"`
   --> $DIR/E0458.rs:1:1
    |
 LL | #[link(kind = "wonderful_unicorn")] extern {}
@@ -14,5 +14,5 @@ LL | #[link(kind = "wonderful_unicorn")] extern {}
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0458, E0459.
+Some errors have detailed explanations: E0458, E0459.
 For more information about an error, try `rustc --explain E0458`.

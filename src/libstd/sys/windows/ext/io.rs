@@ -83,6 +83,27 @@ impl AsRawHandle for io::Stderr {
     }
 }
 
+#[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
+impl<'a> AsRawHandle for io::StdinLock<'a> {
+    fn as_raw_handle(&self) -> RawHandle {
+        unsafe { c::GetStdHandle(c::STD_INPUT_HANDLE) as RawHandle }
+    }
+}
+
+#[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
+impl<'a> AsRawHandle for io::StdoutLock<'a> {
+    fn as_raw_handle(&self) -> RawHandle {
+        unsafe { c::GetStdHandle(c::STD_OUTPUT_HANDLE) as RawHandle }
+    }
+}
+
+#[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
+impl<'a> AsRawHandle for io::StderrLock<'a> {
+    fn as_raw_handle(&self) -> RawHandle {
+        unsafe { c::GetStdHandle(c::STD_ERROR_HANDLE) as RawHandle }
+    }
+}
+
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawHandle for fs::File {
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {

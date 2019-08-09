@@ -5,8 +5,8 @@ impl Drop for S {
 
 fn move_in_match() {
     match S("foo".to_string()) {
-        S(_s) => {}
         //~^ ERROR cannot move out of type `S`, which implements the `Drop` trait
+        S(_s) => {}
     }
 }
 

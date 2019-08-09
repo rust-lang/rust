@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/issue-19163.rs:9:14
    |
 LL |     mywrite!(&v, "Hello world");

@@ -1,37 +1,50 @@
-use fmt;
+use crate::fmt;
 
-struct PadAdapter<'a> {
-    buf: &'a mut (dyn fmt::Write + 'a),
+struct PadAdapter<'buf, 'state> {
+    buf: &'buf mut (dyn fmt::Write + 'buf),
+    state: &'state mut PadAdapterState,
+}
+
+struct PadAdapterState {
     on_newline: bool,
 }
 
-impl<'a> PadAdapter<'a> {
-    fn wrap<'b, 'c: 'a+'b>(fmt: &'c mut fmt::Formatter, slot: &'b mut Option<Self>)
-                        -> fmt::Formatter<'b> {
+impl Default for PadAdapterState {
+    fn default() -> Self {
+        PadAdapterState {
+            on_newline: true,
+        }
+    }
+}
+
+impl<'buf, 'state> PadAdapter<'buf, 'state> {
+    fn wrap<'slot, 'fmt: 'buf+'slot>(fmt: &'fmt mut fmt::Formatter<'_>,
+                                     slot: &'slot mut Option<Self>,
+                                     state: &'state mut PadAdapterState) -> fmt::Formatter<'slot> {
         fmt.wrap_buf(move |buf| {
             *slot = Some(PadAdapter {
                 buf,
-                on_newline: false,
+                state,
             });
             slot.as_mut().unwrap()
         })
     }
 }
 
-impl fmt::Write for PadAdapter<'_> {
+impl fmt::Write for PadAdapter<'_, '_> {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
         while !s.is_empty() {
-            if self.on_newline {
+            if self.state.on_newline {
                 self.buf.write_str("    ")?;
             }
 
             let split = match s.find('\n') {
                 Some(pos) => {
-                    self.on_newline = true;
+                    self.state.on_newline = true;
                     pos + 1
                 }
                 None => {
-                    self.on_newline = false;
+                    self.state.on_newline = false;
                     s.len()
                 }
             };
@@ -128,22 +141,22 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut DebugStruct<'a, 'b> {
         self.result = self.result.and_then(|_| {
-            let prefix = if self.has_fields {
-                ","
-            } else {
-                " {"
-            };
-
             if self.is_pretty() {
+                if !self.has_fields {
+                    self.fmt.write_str(" {\n")?;
+                }
                 let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(prefix)?;
-                writer.write_str("\n")?;
+                let mut state = Default::default();
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
                 writer.write_str(name)?;
                 writer.write_str(": ")?;
-                value.fmt(&mut writer)
+                value.fmt(&mut writer)?;
+                writer.write_str(",\n")
             } else {
-                write!(self.fmt, "{} {}: ", prefix, name)?;
+                let prefix = if self.has_fields { ", " } else { " { " };
+                self.fmt.write_str(prefix)?;
+                self.fmt.write_str(name)?;
+                self.fmt.write_str(": ")?;
                 value.fmt(self.fmt)
             }
         });
@@ -184,7 +197,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() {
-                    self.fmt.write_str("\n}")
+                    self.fmt.write_str("}")
                 } else {
                     self.fmt.write_str(" }")
                 }
@@ -275,21 +288,18 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, value: &dyn fmt::Debug) -> &mut DebugTuple<'a, 'b> {
         self.result = self.result.and_then(|_| {
-            let (prefix, space) = if self.fields > 0 {
-                (",", " ")
-            } else {
-                ("(", "")
-            };
-
             if self.is_pretty() {
+                if self.fields == 0 {
+                    self.fmt.write_str("(\n")?;
+                }
                 let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(prefix)?;
-                writer.write_str("\n")?;
-                value.fmt(&mut writer)
+                let mut state = Default::default();
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
+                value.fmt(&mut writer)?;
+                writer.write_str(",\n")
             } else {
+                let prefix = if self.fields == 0 { "(" } else { ", " };
                 self.fmt.write_str(prefix)?;
-                self.fmt.write_str(space)?;
                 value.fmt(self.fmt)
             }
         });
@@ -326,10 +336,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     pub fn finish(&mut self) -> fmt::Result {
         if self.fields > 0 {
             self.result = self.result.and_then(|_| {
-                if self.is_pretty() {
-                    self.fmt.write_str("\n")?;
-                }
-                if self.fields == 1 && self.empty_name {
+                if self.fields == 1 && self.empty_name && !self.is_pretty() {
                     self.fmt.write_str(",")?;
                 }
                 self.fmt.write_str(")")
@@ -353,14 +360,14 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     fn entry(&mut self, entry: &dyn fmt::Debug) {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
+                if !self.has_fields {
+                    self.fmt.write_str("\n")?;
+                }
                 let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(if self.has_fields {
-                    ",\n"
-                } else {
-                    "\n"
-                })?;
-                entry.fmt(&mut writer)
+                let mut state = Default::default();
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
+                entry.fmt(&mut writer)?;
+                writer.write_str(",\n")
             } else {
                 if self.has_fields {
                     self.fmt.write_str(", ")?
@@ -370,15 +377,6 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
         });
 
         self.has_fields = true;
-    }
-
-    pub fn finish(&mut self) {
-        let prefix = if self.is_pretty() && self.has_fields {
-            "\n"
-        } else {
-            ""
-        };
-        self.result = self.result.and_then(|_| self.fmt.write_str(prefix));
     }
 
     fn is_pretty(&self) -> bool {
@@ -421,7 +419,7 @@ pub struct DebugSet<'a, 'b: 'a> {
 }
 
 pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
-    let result = write!(fmt, "{{");
+    let result = fmt.write_str("{");
     DebugSet {
         inner: DebugInner {
             fmt,
@@ -519,7 +517,6 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.inner.finish();
         self.inner.result.and_then(|_| self.inner.fmt.write_str("}"))
     }
 }
@@ -559,7 +556,7 @@ pub struct DebugList<'a, 'b: 'a> {
 }
 
 pub fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 'b> {
-    let result = write!(fmt, "[");
+    let result = fmt.write_str("[");
     DebugList {
         inner: DebugInner {
             fmt,
@@ -657,7 +654,6 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.inner.finish();
         self.inner.result.and_then(|_| self.inner.fmt.write_str("]"))
     }
 }
@@ -696,14 +692,19 @@ pub struct DebugMap<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
     result: fmt::Result,
     has_fields: bool,
+    has_key: bool,
+    // The state of newlines is tracked between keys and values
+    state: PadAdapterState,
 }
 
 pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
-    let result = write!(fmt, "{{");
+    let result = fmt.write_str("{");
     DebugMap {
         fmt,
         result,
         has_fields: false,
+        has_key: false,
+        state: Default::default(),
     }
 }
 
@@ -732,26 +733,123 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn entry(&mut self, key: &dyn fmt::Debug, value: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
+        self.key(key).value(value)
+    }
+
+    /// Adds the key part of a new entry to the map output.
+    ///
+    /// This method, together with `value`, is an alternative to `entry` that
+    /// can be used when the complete entry isn't known upfront. Prefer the `entry`
+    /// method when it's possible to use.
+    ///
+    /// # Panics
+    ///
+    /// `key` must be called before `value` and each call to `key` must be followed
+    /// by a corresponding call to `value`. Otherwise this method will panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(debug_map_key_value)]
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_map()
+    ///            .key(&"whole").value(&self.0) // We add the "whole" entry.
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    /// );
+    /// ```
+    #[unstable(feature = "debug_map_key_value",
+               reason = "recently added",
+               issue = "62482")]
+    pub fn key(&mut self, key: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
+        assert!(!self.has_key, "attempted to begin a new map entry \
+                                without completing the previous one");
+
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
+                if !self.has_fields {
+                    self.fmt.write_str("\n")?;
+                }
                 let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(if self.has_fields {
-                    ",\n"
-                } else {
-                    "\n"
-                })?;
+                self.state = Default::default();
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut self.state);
                 key.fmt(&mut writer)?;
                 writer.write_str(": ")?;
-                value.fmt(&mut writer)
             } else {
                 if self.has_fields {
                     self.fmt.write_str(", ")?
                 }
                 key.fmt(self.fmt)?;
                 self.fmt.write_str(": ")?;
-                value.fmt(self.fmt)
             }
+
+            self.has_key = true;
+            Ok(())
+        });
+
+        self
+    }
+
+    /// Adds the value part of a new entry to the map output.
+    ///
+    /// This method, together with `key`, is an alternative to `entry` that
+    /// can be used when the complete entry isn't known upfront. Prefer the `entry`
+    /// method when it's possible to use.
+    ///
+    /// # Panics
+    ///
+    /// `key` must be called before `value` and each call to `key` must be followed
+    /// by a corresponding call to `value`. Otherwise this method will panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(debug_map_key_value)]
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt.debug_map()
+    ///            .key(&"whole").value(&self.0) // We add the "whole" entry.
+    ///            .finish()
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)])),
+    ///     "{\"whole\": [(\"A\", 10), (\"B\", 11)]}",
+    /// );
+    /// ```
+    #[unstable(feature = "debug_map_key_value",
+               reason = "recently added",
+               issue = "62482")]
+    pub fn value(&mut self, value: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
+        assert!(self.has_key, "attempted to format a map value before its key");
+
+        self.result = self.result.and_then(|_| {
+            if self.is_pretty() {
+                let mut slot = None;
+                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut self.state);
+                value.fmt(&mut writer)?;
+                writer.write_str(",\n")?;
+            } else {
+                value.fmt(self.fmt)?;
+            }
+
+            self.has_key = false;
+            Ok(())
         });
 
         self.has_fields = true;
@@ -796,6 +894,11 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 
     /// Finishes output and returns any error encountered.
     ///
+    /// # Panics
+    ///
+    /// `key` must be called before `value` and each call to `key` must be followed
+    /// by a corresponding call to `value`. Otherwise this method will panic.
+    ///
     /// # Examples
     ///
     /// ```
@@ -818,12 +921,9 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        let prefix = if self.is_pretty() && self.has_fields {
-            "\n"
-        } else {
-            ""
-        };
-        self.result.and_then(|_| write!(self.fmt, "{}}}", prefix))
+        assert!(!self.has_key, "attempted to finish a map with a partial entry");
+
+        self.result.and_then(|_| self.fmt.write_str("}"))
     }
 
     fn is_pretty(&self) -> bool {

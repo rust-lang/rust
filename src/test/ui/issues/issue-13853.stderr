@@ -30,5 +30,5 @@ LL |     iterate(graph);
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0308, E0599.
+Some errors have detailed explanations: E0308, E0599.
 For more information about an error, try `rustc --explain E0308`.

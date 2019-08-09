@@ -1,6 +1,4 @@
 // issue #21405
-// ignore-tidy-linelength
-
 struct Foo;
 
 fn foo<F>(f: F) where F: FnMut(Foo) {}

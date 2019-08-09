@@ -31,8 +31,6 @@
 //! platform-specific cfgs are allowed. Not sure yet how to deal with
 //! this in the long term.
 
-use std::fs::File;
-use std::io::Read;
 use std::path::Path;
 use std::iter::Iterator;
 
@@ -42,6 +40,10 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/libpanic_abort",
     "src/libpanic_unwind",
     "src/libunwind",
+    // black_box implementation is LLVM-version specific and it uses
+    // target_os to tell targets with different LLVM-versions appart
+    // (e.g. `wasm32-unknown-emscripten` vs `wasm32-unknown-unknown`):
+    "src/libcore/hint.rs",
     "src/libstd/sys/", // Platform-specific code for std lives here.
                        // This has the trailing slash so that sys_common is not excepted.
     "src/libstd/os", // Platform-specific public interfaces
@@ -54,8 +56,10 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/libstd/f64.rs",
     // Integration test for platform-specific run-time feature detection:
     "src/libstd/tests/run-time-detect.rs" ,
+    "src/libstd/net/test.rs",
     "src/libstd/sys_common/mod.rs",
     "src/libstd/sys_common/net.rs",
+    "src/libstd/sys_common/backtrace.rs",
     "src/libterm", // Not sure how to make this crate portable, but test crate needs it.
     "src/libtest", // Probably should defer to unstable `std::sys` APIs.
     "src/libstd/sync/mpsc", // some tests are only run on non-emscripten
@@ -81,29 +85,26 @@ const EXCEPTION_PATHS: &[&str] = &[
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
-    let mut contents = String::new();
     // Sanity check that the complex parsing here works.
     let mut saw_target_arch = false;
     let mut saw_cfg_bang = false;
-    super::walk(path, &mut super::filter_dirs, &mut |file| {
+    super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
+        let file = entry.path();
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") { return }
 
         let is_exception_path = EXCEPTION_PATHS.iter().any(|s| filestr.contains(&**s));
         if is_exception_path { return }
 
-        check_cfgs(&mut contents, &file, bad, &mut saw_target_arch, &mut saw_cfg_bang);
+        check_cfgs(contents, &file, bad, &mut saw_target_arch, &mut saw_cfg_bang);
     });
 
     assert!(saw_target_arch);
     assert!(saw_cfg_bang);
 }
 
-fn check_cfgs(contents: &mut String, file: &Path,
+fn check_cfgs(contents: &str, file: &Path,
               bad: &mut bool, saw_target_arch: &mut bool, saw_cfg_bang: &mut bool) {
-    contents.truncate(0);
-    t!(t!(File::open(file), file).read_to_string(contents));
-
     // For now it's ok to have platform-specific code after 'mod tests'.
     let mod_tests_idx = find_test_mod(contents);
     let contents = &contents[..mod_tests_idx];
@@ -198,7 +199,7 @@ fn parse_cfgs<'a>(contents: &'a str) -> Vec<(usize, &'a str)> {
         succeeds_non_ident && preceeds_whitespace_and_paren
     });
 
-    cfgs.map(|i| {
+    cfgs.flat_map(|i| {
         let mut depth = 0;
         let contents_from = &contents[i..];
         for (j, byte) in contents_from.bytes().enumerate() {
@@ -209,13 +210,15 @@ fn parse_cfgs<'a>(contents: &'a str) -> Vec<(usize, &'a str)> {
                 b')' => {
                     depth -= 1;
                     if depth == 0 {
-                        return (i, &contents_from[..=j]);
+                        return Some((i, &contents_from[..=j]));
                     }
                 }
                 _ => { }
             }
         }
 
-        unreachable!()
+        // if the parentheses are unbalanced just ignore this cfg -- it'll be caught when attempting
+        // to run the compiler, and there's no real reason to lint it separately here
+        None
     }).collect()
 }

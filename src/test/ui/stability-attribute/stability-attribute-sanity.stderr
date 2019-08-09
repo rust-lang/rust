@@ -102,5 +102,4 @@ LL | fn deprecated_without_unstable_or_stable() { }
 
 error: aborting due to 17 previous errors
 
-Some errors occurred: E0539, E0540, E0541, E0542, E0544, E0546, E0547, E0549, E0553.
-For more information about an error, try `rustc --explain E0539`.
+For more information about this error, try `rustc --explain E0541`.

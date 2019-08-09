@@ -1,0 +1,8 @@
+error[E0632]: cannot provide explicit type parameters when `impl Trait` is used in argument position.
+  --> $DIR/universal-turbofish-in-method-issue-50950.rs:14:9
+   |
+LL |     evt.handle_event::<TestEvent, fn(TestEvent)>(|_evt| {
+   |         ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -4,8 +4,8 @@ error[E0191]: the value of the associated type `Bar` (from the trait `Trait`) mu
 LL |     type Bar;
    |     --------- `Bar` defined here
 ...
-LL | type Foo = Trait;
-   |            ^^^^^ associated type `Bar` must be specified
+LL | type Foo = dyn Trait;
+   |            ^^^^^^^^^ associated type `Bar` must be specified
 
 error: aborting due to previous error
 

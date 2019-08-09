@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // if `X` were used instead of `x`, `X - 10` would result in a lint.
 // This file should never produce a lint, no matter how the const

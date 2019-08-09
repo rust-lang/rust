@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/underscore-lifetime-elison-mismatch.rs:1:42
+   |
+LL | fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); }
+   |                    -           -         ^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |                    |           |
+   |                    |           let's call the lifetime of this reference `'1`
+   |                    let's call the lifetime of this reference `'2`
+
+error: aborting due to previous error
+

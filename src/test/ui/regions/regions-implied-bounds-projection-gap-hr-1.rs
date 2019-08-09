@@ -18,7 +18,7 @@ trait Trait2<'a, 'b> {
 // this argument `t` is not automatically considered well-formed,
 // since for it to be WF, we would need to know that `'y: 'x`, but we
 // do not infer that.
-fn callee<'x, 'y, T>(t: &'x for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
+fn callee<'x, 'y, T>(t: &'x dyn for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
     //~^ ERROR reference has a longer lifetime than the data it references
 {
 }

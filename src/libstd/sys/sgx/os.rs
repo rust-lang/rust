@@ -37,7 +37,7 @@ pub fn chdir(_: &path::Path) -> io::Result<()> {
 
 pub struct SplitPaths<'a>(&'a Void);
 
-pub fn split_paths(_unparsed: &OsStr) -> SplitPaths {
+pub fn split_paths(_unparsed: &OsStr) -> SplitPaths<'_> {
     panic!("unsupported")
 }
 
@@ -58,7 +58,7 @@ pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
 }
 
 impl fmt::Display for JoinPathsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "not supported in SGX yet".fmt(f)
     }
 }
@@ -73,7 +73,11 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
+#[cfg_attr(test, linkage = "available_externally")]
+#[export_name = "_ZN16__rust_internals3std3sys3sgx2os3ENVE"]
 static ENV: AtomicUsize = AtomicUsize::new(0);
+#[cfg_attr(test, linkage = "available_externally")]
+#[export_name = "_ZN16__rust_internals3std3sys3sgx2os8ENV_INITE"]
 static ENV_INIT: Once = Once::new();
 type EnvStore = Mutex<HashMap<OsString, OsString>>;
 

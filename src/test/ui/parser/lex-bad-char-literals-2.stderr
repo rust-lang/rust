@@ -3,6 +3,10 @@ error: character literal may only contain one codepoint
    |
 LL |     'nope'
    |     ^^^^^^
+help: if you meant to write a `str` literal, use double quotes
+   |
+LL |     "nope"
+   |     ^^^^^^
 
 error[E0601]: `main` function not found in crate `lex_bad_char_literals_2`
    |

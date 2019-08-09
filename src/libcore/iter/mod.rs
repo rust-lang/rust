@@ -101,7 +101,7 @@
 //!     type Item = usize;
 //!
 //!     // next() is the only required method
-//!     fn next(&mut self) -> Option<usize> {
+//!     fn next(&mut self) -> Option<Self::Item> {
 //!         // Increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!
@@ -139,6 +139,11 @@
 //! Calling `next()` this way gets repetitive. Rust has a construct which can
 //! call `next()` on your iterator, until it reaches `None`. Let's go over that
 //! next.
+//!
+//! Also note that `Iterator` provides a default implementation of methods such as `nth` and `fold`
+//! which call `next` internally. However, it is also possible to write a custom implementation of
+//! methods like `nth` and `fold` if an iterator can compute them more efficiently without calling
+//! `next`.
 //!
 //! # for Loops and IntoIterator
 //!
@@ -306,7 +311,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use ops::Try;
+use crate::ops::Try;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
@@ -352,10 +357,10 @@ pub use self::adapters::Cloned;
 pub use self::adapters::StepBy;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
-#[unstable(feature = "iter_copied", issue = "57127")]
+#[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::adapters::Copied;
 
-pub(crate) use self::adapters::TrustedRandomAccess;
+pub(crate) use self::adapters::{TrustedRandomAccess, process_results};
 
 mod range;
 mod sources;

@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `Struct: Trait<isize>` is not satisfied
-  --> $DIR/trait-coercion-generic-bad.rs:16:32
+  --> $DIR/trait-coercion-generic-bad.rs:16:36
    |
-LL |     let s: Box<Trait<isize>> = Box::new(Struct { person: "Fred" });
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<isize>` is not implemented for `Struct`
+LL |     let s: Box<dyn Trait<isize>> = Box::new(Struct { person: "Fred" });
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<isize>` is not implemented for `Struct`
    |
    = help: the following implementations were found:
              <Struct as Trait<&'static str>>

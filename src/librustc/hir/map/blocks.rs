@@ -15,7 +15,7 @@ use crate::hir as ast;
 use crate::hir::map;
 use crate::hir::{Expr, FnDecl, Node};
 use crate::hir::intravisit::FnKind;
-use syntax::ast::{Attribute, Ident, NodeId};
+use syntax::ast::{Attribute, Ident};
 use syntax_pos::Span;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
@@ -83,7 +83,7 @@ impl<'a> Code<'a> {
     }
 
     /// Attempts to construct a Code from presumed FnLike or Expr node input.
-    pub fn from_node(map: &map::Map<'a>, id: NodeId) -> Option<Code<'a>> {
+    pub fn from_node(map: &map::Map<'a>, id: ast::HirId) -> Option<Code<'a>> {
         match map.get(id) {
             map::Node::Block(_) => {
                 //  Use the parent, hopefully an expression node.
@@ -175,27 +175,15 @@ impl<'a> FnLikeNode<'a> {
     }
 
     pub fn constness(self) -> ast::Constness {
-        match self.kind() {
-            FnKind::ItemFn(_, _, header, ..) => header.constness,
-            FnKind::Method(_, m, ..) => m.header.constness,
-            _ => ast::Constness::NotConst
-        }
+        self.kind().header().map_or(ast::Constness::NotConst, |header| header.constness)
     }
 
     pub fn asyncness(self) -> ast::IsAsync {
-        match self.kind() {
-            FnKind::ItemFn(_, _, header, ..) => header.asyncness,
-            FnKind::Method(_, m, ..) => m.header.asyncness,
-            _ => ast::IsAsync::NotAsync
-        }
+        self.kind().header().map_or(ast::IsAsync::NotAsync, |header| header.asyncness)
     }
 
     pub fn unsafety(self) -> ast::Unsafety {
-        match self.kind() {
-            FnKind::ItemFn(_, _, header, ..) => header.unsafety,
-            FnKind::Method(_, m, ..) => m.header.unsafety,
-            _ => ast::Unsafety::Normal
-        }
+        self.kind().header().map_or(ast::Unsafety::Normal, |header| header.unsafety)
     }
 
     pub fn kind(self) -> FnKind<'a> {

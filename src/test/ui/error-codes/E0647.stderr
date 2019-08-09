@@ -1,8 +1,8 @@
 error[E0647]: start function is not allowed to have a `where` clause
-  --> $DIR/E0647.rs:7:56
+  --> $DIR/E0647.rs:7:50
    |
 LL | fn start(_: isize, _: *const *const u8) -> isize where (): Copy {
-   |                                                        ^^^^^^^^ start function cannot have a `where` clause
+   |                                                  ^^^^^^^^^^^^^^ start function cannot have a `where` clause
 
 error: aborting due to previous error
 

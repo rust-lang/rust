@@ -4,8 +4,6 @@
 //
 // run-pass
 
-#![feature(nll)]
-
 pub trait Parser {
     type Input;
 

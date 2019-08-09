@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::io::{self, IoVec, IoVecMut};
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
 use crate::time::Duration;
 use crate::sys::{unsupported, Void};
@@ -40,7 +40,7 @@ impl TcpStream {
         match self.0 {}
     }
 
-    pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         match self.0 {}
     }
 
@@ -48,7 +48,7 @@ impl TcpStream {
         match self.0 {}
     }
 
-    pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
         match self.0 {}
     }
 
@@ -94,7 +94,7 @@ impl TcpStream {
 }
 
 impl fmt::Debug for TcpStream {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {}
     }
 }
@@ -144,7 +144,7 @@ impl TcpListener {
 }
 
 impl fmt::Debug for TcpListener {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {}
     }
 }
@@ -154,6 +154,10 @@ pub struct UdpSocket(Void);
 impl UdpSocket {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
         unsupported()
+    }
+
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        match self.0 {}
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
@@ -278,7 +282,7 @@ impl UdpSocket {
 }
 
 impl fmt::Debug for UdpSocket {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {}
     }
 }

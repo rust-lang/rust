@@ -39,4 +39,3 @@ fn main() {
     let len = this.len();
     let len = my.len();
 }
-

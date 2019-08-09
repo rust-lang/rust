@@ -1,0 +1,26 @@
+warning: skipping const checks
+  --> $DIR/mutable_references.rs:30:10
+   |
+LL |         *MEH.x.get() = 99;
+   |          ^^^^^
+
+warning: skipping const checks
+  --> $DIR/mutable_references.rs:30:9
+   |
+LL |         *MEH.x.get() = 99;
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: skipping const checks
+  --> $DIR/mutable_references.rs:33:5
+   |
+LL |     *OH_YES = 99;
+   |     ^^^^^^^^^^^^
+
+error[E0594]: cannot assign to `*OH_YES`, as `OH_YES` is an immutable static item
+  --> $DIR/mutable_references.rs:33:5
+   |
+LL |     *OH_YES = 99;
+   |     ^^^^^^^^^^^^ cannot assign
+
+error: aborting due to previous error
+

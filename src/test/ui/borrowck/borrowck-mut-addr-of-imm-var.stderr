@@ -1,10 +1,10 @@
-error[E0596]: cannot borrow immutable local variable `x` as mutable
-  --> $DIR/borrowck-mut-addr-of-imm-var.rs:3:30
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/borrowck-mut-addr-of-imm-var.rs:3:25
    |
 LL |     let x: isize = 3;
-   |         - help: make this binding mutable: `mut x`
+   |         - help: consider changing this to be mutable: `mut x`
 LL |     let y: &mut isize = &mut x;
-   |                              ^ cannot borrow mutably
+   |                         ^^^^^^ cannot borrow as mutable
 
 error: aborting due to previous error
 

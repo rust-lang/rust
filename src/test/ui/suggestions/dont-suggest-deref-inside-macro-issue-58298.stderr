@@ -1,0 +1,18 @@
+error[E0308]: mismatched types
+  --> $DIR/dont-suggest-deref-inside-macro-issue-58298.rs:11:5
+   |
+LL | /     intrinsic_match! {
+LL | |         "abc"
+LL | |     };
+   | |      ^
+   | |      |
+   | |______expected &str, found struct `std::string::String`
+   |        in this macro invocation
+   |
+   = note: expected type `&str`
+              found type `std::string::String`
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

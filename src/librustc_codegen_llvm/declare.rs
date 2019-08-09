@@ -13,13 +13,13 @@
 
 use crate::llvm;
 use crate::llvm::AttributePlace::Function;
-use crate::abi::{FnType, FnTypeExt};
+use crate::abi::{FnType, FnTypeLlvmExt};
 use crate::attributes;
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::value::Value;
 use rustc::ty::{self, PolyFnSig};
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{FnTypeExt, LayoutOf};
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
@@ -107,7 +107,7 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
         }
 
-        fty.apply_attrs_llfn(llfn);
+        fty.apply_attrs_llfn(self, llfn);
 
         llfn
     }

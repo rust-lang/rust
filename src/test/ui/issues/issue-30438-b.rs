@@ -11,7 +11,7 @@ impl <'a> Index<usize> for Test<'a> {
     type Output = Test<'a>;
     fn index(&self, _: usize) -> &Self::Output {
         &Test { s: &self.s}
-        //~^ ERROR: borrowed value does not live long enough
+        //~^ ERROR: cannot return reference to temporary value
     }
 }
 

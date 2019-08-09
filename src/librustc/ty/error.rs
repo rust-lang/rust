@@ -44,6 +44,8 @@ pub enum TypeError<'tcx> {
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
+
+    ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -71,6 +73,19 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
         }
 
+        let br_string = |br: ty::BoundRegion| {
+            match br {
+                ty::BrNamed(_, name) => format!(" {}", name),
+                _ => String::new(),
+            }
+        };
+
+        macro_rules! pluralise {
+            ($x:expr) => {
+                if $x != 1 { "s" } else { "" }
+            };
+        }
+
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
@@ -85,17 +100,21 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.found)
             }
             Mutability => write!(f, "types differ in mutability"),
-            FixedArraySize(values) => {
-                write!(f, "expected an array with a fixed size of {} elements, \
-                           found one with {} elements",
-                       values.expected,
-                       values.found)
-            }
             TupleSize(values) => {
-                write!(f, "expected a tuple with {} elements, \
-                           found one with {} elements",
+                write!(f, "expected a tuple with {} element{}, \
+                           found one with {} element{}",
                        values.expected,
-                       values.found)
+                       pluralise!(values.expected),
+                       values.found,
+                       pluralise!(values.found))
+            }
+            FixedArraySize(values) => {
+                write!(f, "expected an array with a fixed size of {} element{}, \
+                           found one with {} element{}",
+                       values.expected,
+                       pluralise!(values.expected),
+                       values.found,
+                       pluralise!(values.found))
             }
             ArgCount => {
                 write!(f, "incorrect number of function parameters")
@@ -105,15 +124,13 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
             RegionsInsufficientlyPolymorphic(br, _) => {
                 write!(f,
-                       "expected bound lifetime parameter{}{}, found concrete lifetime",
-                       if br.is_named() { " " } else { "" },
-                       br)
+                       "expected bound lifetime parameter{}, found concrete lifetime",
+                       br_string(br))
             }
             RegionsOverlyPolymorphic(br, _) => {
                 write!(f,
-                       "expected concrete lifetime, found bound lifetime parameter{}{}",
-                       if br.is_named() { " " } else { "" },
-                       br)
+                       "expected concrete lifetime, found bound lifetime parameter{}",
+                       br_string(br))
             }
             RegionsPlaceholderMismatch => {
                 write!(f, "one type is more general than the other")
@@ -125,9 +142,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             Traits(values) => ty::tls::with(|tcx| {
                 report_maybe_different(f,
                                        &format!("trait `{}`",
-                                                tcx.item_path_str(values.expected)),
+                                                tcx.def_path_str(values.expected)),
                                        &format!("trait `{}`",
-                                                tcx.item_path_str(values.found)))
+                                                tcx.def_path_str(values.found)))
             }),
             IntMismatch(ref values) => {
                 write!(f, "expected `{:?}`, found `{:?}`",
@@ -146,37 +163,41 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
             ProjectionMismatched(ref values) => ty::tls::with(|tcx| {
                 write!(f, "expected {}, found {}",
-                       tcx.item_path_str(values.expected),
-                       tcx.item_path_str(values.found))
+                       tcx.def_path_str(values.expected),
+                       tcx.def_path_str(values.found))
             }),
             ProjectionBoundsLength(ref values) => {
-                write!(f, "expected {} associated type bindings, found {}",
+                write!(f, "expected {} associated type binding{}, found {}",
                        values.expected,
+                       pluralise!(values.expected),
                        values.found)
             },
             ExistentialMismatch(ref values) => {
                 report_maybe_different(f, &format!("trait `{}`", values.expected),
                                        &format!("trait `{}`", values.found))
             }
+            ConstMismatch(ref values) => {
+                write!(f, "expected `{}`, found `{}`", values.expected, values.found)
+            }
         }
     }
 }
 
-impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
-    pub fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> Cow<'static, str> {
+impl<'tcx> ty::TyS<'tcx> {
+    pub fn sort_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match self.sty {
             ty::Bool | ty::Char | ty::Int(_) |
             ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => self.to_string().into(),
             ty::Tuple(ref tys) if tys.is_empty() => self.to_string().into(),
 
-            ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)).into(),
-            ty::Foreign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)).into(),
-            ty::Array(_, n) => match n {
-                ty::LazyConst::Evaluated(n) => match n.assert_usize(tcx) {
+            ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
+            ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
+            ty::Array(_, n) => {
+                let n = tcx.lift_to_global(&n).unwrap();
+                match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                     Some(n) => format!("array of {} elements", n).into(),
                     None => "array".into(),
-                },
-                ty::LazyConst::Unevaluated(..) => "array".into(),
+                }
             }
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "*-ptr".into(),
@@ -185,7 +206,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
                 let tymut_string = tymut.to_string();
                 if tymut_string == "_" ||         //unknown type name,
                    tymut_string.len() > 10 ||     //name longer than saying "reference",
-                   region.to_string() != ""       //... or a complex type
+                   region.to_string() != "'_"     //... or a complex type
                 {
                     format!("{}reference", match mutbl {
                         hir::Mutability::MutMutable => "mutable ",
@@ -199,7 +220,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) => {
                 if let Some(principal) = inner.principal() {
-                    format!("trait {}", tcx.item_path_str(principal.def_id())).into()
+                    format!("trait {}", tcx.def_path_str(principal.def_id())).into()
                 } else {
                     "trait".into()
                 }
@@ -231,7 +252,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn note_and_explain_type_err(self,
                                      db: &mut DiagnosticBuilder<'_>,
                                      err: &TypeError<'tcx>,

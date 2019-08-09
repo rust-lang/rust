@@ -1,5 +1,6 @@
 pub mod printf {
     use super::strcursor::StrCursor as Cur;
+    use syntax_pos::InnerSpan;
 
     /// Represents a single `printf`-style substitution.
     #[derive(Clone, PartialEq, Debug)]
@@ -18,7 +19,7 @@ pub mod printf {
             }
         }
 
-        pub fn position(&self) -> Option<(usize, usize)> {
+        pub fn position(&self) -> Option<InnerSpan> {
             match *self {
                 Substitution::Format(ref fmt) => Some(fmt.position),
                 _ => None,
@@ -28,7 +29,7 @@ pub mod printf {
         pub fn set_position(&mut self, start: usize, end: usize) {
             match self {
                 Substitution::Format(ref mut fmt) => {
-                    fmt.position = (start, end);
+                    fmt.position = InnerSpan::new(start, end);
                 }
                 _ => {}
             }
@@ -65,7 +66,7 @@ pub mod printf {
         /// Type of parameter being converted.
         pub type_: &'a str,
         /// Byte offset for the start and end of this formatting directive.
-        pub position: (usize, usize),
+        pub position: InnerSpan,
     }
 
     impl Format<'_> {
@@ -263,10 +264,10 @@ pub mod printf {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str) -> Substitutions<'_> {
+    pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
         Substitutions {
             s,
-            pos: 0,
+            pos: start_pos,
         }
     }
 
@@ -282,9 +283,9 @@ pub mod printf {
             let (mut sub, tail) = parse_next_substitution(self.s)?;
             self.s = tail;
             match sub {
-                Substitution::Format(_) => if let Some((start, end)) = sub.position() {
-                    sub.set_position(start + self.pos, end + self.pos);
-                    self.pos += end;
+                Substitution::Format(_) => if let Some(inner_span) = sub.position() {
+                    sub.set_position(inner_span.start + self.pos, inner_span.end + self.pos);
+                    self.pos += inner_span.end;
                 }
                 Substitution::Escape => self.pos += 2,
             }
@@ -373,7 +374,7 @@ pub mod printf {
                     precision: None,
                     length: None,
                     type_: at.slice_between(next).unwrap(),
-                    position: (start.at, next.at),
+                    position: InnerSpan::new(start.at, next.at),
                 }),
                 next.slice_after()
             ));
@@ -560,7 +561,7 @@ pub mod printf {
         drop(next);
 
         end = at;
-        let position = (start.at, end.at);
+        let position = InnerSpan::new(start.at, end.at);
 
         let f = Format {
             span: start.slice_between(end).unwrap(),
@@ -604,163 +605,12 @@ pub mod printf {
     }
 
     #[cfg(test)]
-    mod tests {
-        use super::{
-            Format as F,
-            Num as N,
-            Substitution as S,
-            iter_subs,
-            parse_next_substitution as pns,
-        };
-
-        macro_rules! assert_eq_pnsat {
-            ($lhs:expr, $rhs:expr) => {
-                assert_eq!(
-                    pns($lhs).and_then(|(s, _)| s.translate()),
-                    $rhs.map(<String as From<&str>>::from)
-                )
-            };
-        }
-
-        #[test]
-        fn test_escape() {
-            assert_eq!(pns("has no escapes"), None);
-            assert_eq!(pns("has no escapes, either %"), None);
-            assert_eq!(pns("*so* has a %% escape"), Some((S::Escape," escape")));
-            assert_eq!(pns("%% leading escape"), Some((S::Escape, " leading escape")));
-            assert_eq!(pns("trailing escape %%"), Some((S::Escape, "")));
-        }
-
-        #[test]
-        fn test_parse() {
-            macro_rules! assert_pns_eq_sub {
-                ($in_:expr, {
-                    $param:expr, $flags:expr,
-                    $width:expr, $prec:expr, $len:expr, $type_:expr,
-                    $pos:expr,
-                }) => {
-                    assert_eq!(
-                        pns(concat!($in_, "!")),
-                        Some((
-                            S::Format(F {
-                                span: $in_,
-                                parameter: $param,
-                                flags: $flags,
-                                width: $width,
-                                precision: $prec,
-                                length: $len,
-                                type_: $type_,
-                                position: $pos,
-                            }),
-                            "!"
-                        ))
-                    )
-                };
-            }
-
-            assert_pns_eq_sub!("%!",
-                { None, "", None, None, None, "!", (0, 2), });
-            assert_pns_eq_sub!("%c",
-                { None, "", None, None, None, "c", (0, 2), });
-            assert_pns_eq_sub!("%s",
-                { None, "", None, None, None, "s", (0, 2), });
-            assert_pns_eq_sub!("%06d",
-                { None, "0", Some(N::Num(6)), None, None, "d", (0, 4), });
-            assert_pns_eq_sub!("%4.2f",
-                { None, "", Some(N::Num(4)), Some(N::Num(2)), None, "f", (0, 5), });
-            assert_pns_eq_sub!("%#x",
-                { None, "#", None, None, None, "x", (0, 3), });
-            assert_pns_eq_sub!("%-10s",
-                { None, "-", Some(N::Num(10)), None, None, "s", (0, 5), });
-            assert_pns_eq_sub!("%*s",
-                { None, "", Some(N::Next), None, None, "s", (0, 3), });
-            assert_pns_eq_sub!("%-10.*s",
-                { None, "-", Some(N::Num(10)), Some(N::Next), None, "s", (0, 7), });
-            assert_pns_eq_sub!("%-*.*s",
-                { None, "-", Some(N::Next), Some(N::Next), None, "s", (0, 6), });
-            assert_pns_eq_sub!("%.6i",
-                { None, "", None, Some(N::Num(6)), None, "i", (0, 4), });
-            assert_pns_eq_sub!("%+i",
-                { None, "+", None, None, None, "i", (0, 3), });
-            assert_pns_eq_sub!("%08X",
-                { None, "0", Some(N::Num(8)), None, None, "X", (0, 4), });
-            assert_pns_eq_sub!("%lu",
-                { None, "", None, None, Some("l"), "u", (0, 3), });
-            assert_pns_eq_sub!("%Iu",
-                { None, "", None, None, Some("I"), "u", (0, 3), });
-            assert_pns_eq_sub!("%I32u",
-                { None, "", None, None, Some("I32"), "u", (0, 5), });
-            assert_pns_eq_sub!("%I64u",
-                { None, "", None, None, Some("I64"), "u", (0, 5), });
-            assert_pns_eq_sub!("%'d",
-                { None, "'", None, None, None, "d", (0, 3), });
-            assert_pns_eq_sub!("%10s",
-                { None, "", Some(N::Num(10)), None, None, "s", (0, 4), });
-            assert_pns_eq_sub!("%-10.10s",
-                { None, "-", Some(N::Num(10)), Some(N::Num(10)), None, "s", (0, 8), });
-            assert_pns_eq_sub!("%1$d",
-                { Some(1), "", None, None, None, "d", (0, 4), });
-            assert_pns_eq_sub!("%2$.*3$d",
-                { Some(2), "", None, Some(N::Arg(3)), None, "d", (0, 8), });
-            assert_pns_eq_sub!("%1$*2$.*3$d",
-                { Some(1), "", Some(N::Arg(2)), Some(N::Arg(3)), None, "d", (0, 11), });
-            assert_pns_eq_sub!("%-8ld",
-                { None, "-", Some(N::Num(8)), None, Some("l"), "d", (0, 5), });
-        }
-
-        #[test]
-        fn test_iter() {
-            let s = "The %d'th word %% is: `%.*s` %!\n";
-            let subs: Vec<_> = iter_subs(s).map(|sub| sub.translate()).collect();
-            assert_eq!(
-                subs.iter().map(|ms| ms.as_ref().map(|s| &s[..])).collect::<Vec<_>>(),
-                vec![Some("{}"), None, Some("{:.*}"), None]
-            );
-        }
-
-        /// Checks that the translations are what we expect.
-        #[test]
-        fn test_translation() {
-            assert_eq_pnsat!("%c", Some("{}"));
-            assert_eq_pnsat!("%d", Some("{}"));
-            assert_eq_pnsat!("%u", Some("{}"));
-            assert_eq_pnsat!("%x", Some("{:x}"));
-            assert_eq_pnsat!("%X", Some("{:X}"));
-            assert_eq_pnsat!("%e", Some("{:e}"));
-            assert_eq_pnsat!("%E", Some("{:E}"));
-            assert_eq_pnsat!("%f", Some("{}"));
-            assert_eq_pnsat!("%g", Some("{:e}"));
-            assert_eq_pnsat!("%G", Some("{:E}"));
-            assert_eq_pnsat!("%s", Some("{}"));
-            assert_eq_pnsat!("%p", Some("{:p}"));
-
-            assert_eq_pnsat!("%06d",        Some("{:06}"));
-            assert_eq_pnsat!("%4.2f",       Some("{:4.2}"));
-            assert_eq_pnsat!("%#x",         Some("{:#x}"));
-            assert_eq_pnsat!("%-10s",       Some("{:<10}"));
-            assert_eq_pnsat!("%*s",         None);
-            assert_eq_pnsat!("%-10.*s",     Some("{:<10.*}"));
-            assert_eq_pnsat!("%-*.*s",      None);
-            assert_eq_pnsat!("%.6i",        Some("{:06}"));
-            assert_eq_pnsat!("%+i",         Some("{:+}"));
-            assert_eq_pnsat!("%08X",        Some("{:08X}"));
-            assert_eq_pnsat!("%lu",         Some("{}"));
-            assert_eq_pnsat!("%Iu",         Some("{}"));
-            assert_eq_pnsat!("%I32u",       Some("{}"));
-            assert_eq_pnsat!("%I64u",       Some("{}"));
-            assert_eq_pnsat!("%'d",         None);
-            assert_eq_pnsat!("%10s",        Some("{:>10}"));
-            assert_eq_pnsat!("%-10.10s",    Some("{:<10.10}"));
-            assert_eq_pnsat!("%1$d",        Some("{0}"));
-            assert_eq_pnsat!("%2$.*3$d",    Some("{1:02$}"));
-            assert_eq_pnsat!("%1$*2$.*3$s", Some("{0:>1$.2$}"));
-            assert_eq_pnsat!("%-8ld",       Some("{:<8}"));
-        }
-    }
+    mod tests;
 }
 
 pub mod shell {
     use super::strcursor::StrCursor as Cur;
+    use syntax_pos::InnerSpan;
 
     #[derive(Clone, PartialEq, Debug)]
     pub enum Substitution<'a> {
@@ -778,11 +628,11 @@ pub mod shell {
             }
         }
 
-        pub fn position(&self) -> Option<(usize, usize)> {
+        pub fn position(&self) -> Option<InnerSpan> {
             match self {
                 Substitution::Ordinal(_, pos) |
                 Substitution::Name(_, pos) |
-                Substitution::Escape(pos) => Some(*pos),
+                Substitution::Escape(pos) => Some(InnerSpan::new(pos.0, pos.1)),
             }
         }
 
@@ -804,10 +654,10 @@ pub mod shell {
     }
 
     /// Returns an iterator over all substitutions in a given string.
-    pub fn iter_subs(s: &str) -> Substitutions<'_> {
+    pub fn iter_subs(s: &str, start_pos: usize) -> Substitutions<'_> {
         Substitutions {
             s,
-            pos: 0,
+            pos: start_pos,
         }
     }
 
@@ -823,7 +673,7 @@ pub mod shell {
             match parse_next_substitution(self.s) {
                 Some((mut sub, tail)) => {
                     self.s = tail;
-                    if let Some((start, end)) = sub.position() {
+                    if let Some(InnerSpan { start, end }) = sub.position() {
                         sub.set_position(start + self.pos, end + self.pos);
                         self.pos += end;
                     }
@@ -897,68 +747,7 @@ pub mod shell {
     }
 
     #[cfg(test)]
-    mod tests {
-        use super::{
-            Substitution as S,
-            parse_next_substitution as pns,
-        };
-
-        macro_rules! assert_eq_pnsat {
-            ($lhs:expr, $rhs:expr) => {
-                assert_eq!(
-                    pns($lhs).and_then(|(f, _)| f.translate()),
-                    $rhs.map(<String as From<&str>>::from)
-                )
-            };
-        }
-
-        #[test]
-        fn test_escape() {
-            assert_eq!(pns("has no escapes"), None);
-            assert_eq!(pns("has no escapes, either $"), None);
-            assert_eq!(pns("*so* has a $$ escape"), Some((S::Escape((11, 13)), " escape")));
-            assert_eq!(pns("$$ leading escape"), Some((S::Escape((0, 2)), " leading escape")));
-            assert_eq!(pns("trailing escape $$"), Some((S::Escape((16, 18)), "")));
-        }
-
-        #[test]
-        fn test_parse() {
-            macro_rules! assert_pns_eq_sub {
-                ($in_:expr, $kind:ident($arg:expr, $pos:expr)) => {
-                    assert_eq!(pns(concat!($in_, "!")), Some((S::$kind($arg.into(), $pos), "!")))
-                };
-            }
-
-            assert_pns_eq_sub!("$0", Ordinal(0, (0, 2)));
-            assert_pns_eq_sub!("$1", Ordinal(1, (0, 2)));
-            assert_pns_eq_sub!("$9", Ordinal(9, (0, 2)));
-            assert_pns_eq_sub!("$N", Name("N", (0, 2)));
-            assert_pns_eq_sub!("$NAME", Name("NAME", (0, 5)));
-        }
-
-        #[test]
-        fn test_iter() {
-            use super::iter_subs;
-            let s = "The $0'th word $$ is: `$WORD` $!\n";
-            let subs: Vec<_> = iter_subs(s).map(|sub| sub.translate()).collect();
-            assert_eq!(
-                subs.iter().map(|ms| ms.as_ref().map(|s| &s[..])).collect::<Vec<_>>(),
-                vec![Some("{0}"), None, Some("{WORD}")]
-            );
-        }
-
-        #[test]
-        fn test_translation() {
-            assert_eq_pnsat!("$0", Some("{0}"));
-            assert_eq_pnsat!("$9", Some("{9}"));
-            assert_eq_pnsat!("$1", Some("{1}"));
-            assert_eq_pnsat!("$10", Some("{1}"));
-            assert_eq_pnsat!("$stuff", Some("{stuff}"));
-            assert_eq_pnsat!("$NAME", Some("{NAME}"));
-            assert_eq_pnsat!("$PREFIX/bin", Some("{PREFIX}"));
-        }
-
-    }
+    mod tests;
 }
 
 mod strcursor {

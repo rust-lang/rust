@@ -33,8 +33,11 @@ pub struct Flags {
     pub rustc_error_format: Option<String>,
     pub dry_run: bool,
 
-    // true => deny
-    pub warnings: Option<bool>,
+    // This overrides the deny-warnings configuation option,
+    // which passes -Dwarnings to the compiler invocations.
+    //
+    // true => deny, false => allow
+    pub deny_warnings: Option<bool>,
 }
 
 pub enum Subcommand {
@@ -42,6 +45,12 @@ pub enum Subcommand {
         paths: Vec<PathBuf>,
     },
     Check {
+        paths: Vec<PathBuf>,
+    },
+    Clippy {
+        paths: Vec<PathBuf>,
+    },
+    Fix {
         paths: Vec<PathBuf>,
     },
     Doc {
@@ -52,10 +61,12 @@ pub enum Subcommand {
         /// Whether to automatically update stderr/stdout files
         bless: bool,
         compare_mode: Option<String>,
+        pass: Option<String>,
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
         doc_tests: DocTests,
+        rustfix_coverage: bool,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -89,6 +100,8 @@ Usage: x.py <subcommand> [options] [<paths>...]
 Subcommands:
     build       Compile either the compiler or libraries
     check       Compile either the compiler or libraries, using cargo check
+    clippy      Run clippy
+    fix         Run cargo fix
     test        Build and run some test suites
     bench       Build and run some benchmarks
     doc         Build documentation
@@ -145,6 +158,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
         let subcommand = args.iter().find(|&s| {
             (s == "build")
                 || (s == "check")
+                || (s == "clippy")
+                || (s == "fix")
                 || (s == "test")
                 || (s == "bench")
                 || (s == "doc")
@@ -187,6 +202,18 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`"
                     "compare-mode",
                     "mode describing what file the actual ui output will be compared to",
                     "COMPARE MODE",
+                );
+                opts.optopt(
+                    "",
+                    "pass",
+                    "force {check,build,run}-pass tests to this mode.",
+                    "check | build | run"
+                );
+                opts.optflag(
+                    "",
+                    "rustfix-coverage",
+                    "enable this to generate a Rustfix coverage file, which is saved in \
+                        `/<build_base>/rustfix_missing_coverage.txt`",
                 );
             }
             "bench" => {
@@ -274,6 +301,28 @@ Arguments:
     the compiler.",
                 );
             }
+            "clippy" => {
+                subcommand_help.push_str(
+                    "\n
+Arguments:
+    This subcommand accepts a number of paths to directories to the crates
+    and/or artifacts to run clippy against. For example:
+
+        ./x.py clippy src/libcore
+        ./x.py clippy src/libcore src/libproc_macro",
+                );
+            }
+            "fix" => {
+                subcommand_help.push_str(
+                    "\n
+Arguments:
+    This subcommand accepts a number of paths to directories to the crates
+    and/or artifacts to run `cargo fix` against. For example:
+
+        ./x.py fix src/libcore
+        ./x.py fix src/libcore src/libproc_macro",
+                );
+            }
             "test" => {
                 subcommand_help.push_str(
                     "\n
@@ -281,7 +330,7 @@ Arguments:
     This subcommand accepts a number of paths to directories to tests that
     should be compiled and run. For example:
 
-        ./x.py test src/test/run-pass
+        ./x.py test src/test/ui
         ./x.py test src/libstd --test-args hash_map
         ./x.py test src/libstd --stage 0 --no-doc
         ./x.py test src/test/ui --bless
@@ -356,13 +405,17 @@ Arguments:
         let cmd = match subcommand.as_str() {
             "build" => Subcommand::Build { paths },
             "check" => Subcommand::Check { paths },
+            "clippy" => Subcommand::Clippy { paths },
+            "fix" => Subcommand::Fix { paths },
             "test" => Subcommand::Test {
                 paths,
                 bless: matches.opt_present("bless"),
                 compare_mode: matches.opt_str("compare-mode"),
+                pass: matches.opt_str("pass"),
                 test_args: matches.opt_strs("test-args"),
                 rustc_args: matches.opt_strs("rustc-args"),
                 fail_fast: !matches.opt_present("no-fail-fast"),
+                rustfix_coverage: matches.opt_present("rustfix-coverage"),
                 doc_tests: if matches.opt_present("doc") {
                     DocTests::Only
                 } else if matches.opt_present("no-doc") {
@@ -418,7 +471,7 @@ Arguments:
                 .into_iter()
                 .map(|p| p.into())
                 .collect::<Vec<_>>(),
-            warnings: matches.opt_str("warnings").map(|v| v == "deny"),
+            deny_warnings: parse_deny_warnings(&matches),
         }
     }
 }
@@ -467,11 +520,27 @@ impl Subcommand {
         }
     }
 
+    pub fn rustfix_coverage(&self) -> bool {
+        match *self {
+            Subcommand::Test { rustfix_coverage, .. } => rustfix_coverage,
+            _ => false,
+        }
+    }
+
     pub fn compare_mode(&self) -> Option<&str> {
         match *self {
             Subcommand::Test {
                 ref compare_mode, ..
             } => compare_mode.as_ref().map(|s| &s[..]),
+            _ => None,
+        }
+    }
+
+    pub fn pass(&self) -> Option<&str> {
+        match *self {
+            Subcommand::Test {
+                ref pass, ..
+            } => pass.as_ref().map(|s| &s[..]),
             _ => None,
         }
     }
@@ -482,4 +551,19 @@ fn split(s: &[String]) -> Vec<String> {
         .flat_map(|s| s.split(','))
         .map(|s| s.to_string())
         .collect()
+}
+
+fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {
+    match matches.opt_str("warnings").as_ref().map(|v| v.as_str()) {
+        Some("deny") => Some(true),
+        Some("allow") => Some(false),
+        Some(value) => {
+            eprintln!(
+                r#"invalid value for --warnings: {:?}, expected "allow" or "deny""#,
+                value,
+                );
+            process::exit(1);
+        },
+        None => None,
+    }
 }

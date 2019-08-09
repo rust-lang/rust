@@ -1,4 +1,3 @@
-
 // revisions:rpass1 rpass2 rpass3
 
 // See issue #57692.

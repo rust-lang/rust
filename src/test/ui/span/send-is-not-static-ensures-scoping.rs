@@ -1,5 +1,5 @@
 struct Guard<'a> {
-    f: Box<Fn() + Send + 'a>,
+    f: Box<dyn Fn() + Send + 'a>,
 }
 
 fn scoped<'a, F: Fn() + Send + 'a>(f: F) -> Guard<'a> {

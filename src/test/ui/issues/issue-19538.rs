@@ -14,7 +14,7 @@ impl Bar for Thing { }
 
 fn main() {
     let mut thing = Thing;
-    let test: &mut Bar = &mut thing;
+    let test: &mut dyn Bar = &mut thing;
     //~^ ERROR E0038
     //~| ERROR E0038
 }

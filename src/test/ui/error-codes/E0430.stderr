@@ -10,15 +10,13 @@ error[E0252]: the name `fmt` is defined multiple times
   --> $DIR/E0430.rs:1:22
    |
 LL | use std::fmt::{self, self};
-   |                ------^^^^
-   |                |   | |
-   |                |   | `fmt` reimported here
-   |                |   help: remove unnecessary import
+   |                ----  ^^^^ `fmt` reimported here
+   |                |
    |                previous import of the module `fmt` here
    |
    = note: `fmt` must be defined only once in the type namespace of this module
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0252, E0430.
+Some errors have detailed explanations: E0252, E0430.
 For more information about an error, try `rustc --explain E0252`.

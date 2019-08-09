@@ -8,7 +8,7 @@ LL | |         a.matches(f)
 LL | |     }
    | |_____^
    |
-   = note: consider adding a `#![type_length_limit="40000000"]` attribute to your crate
+   = note: consider adding a `#![type_length_limit="26214380"]` attribute to your crate
 
 error: aborting due to previous error
 

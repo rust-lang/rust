@@ -1,0 +1,13 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:20:5
+   |
+LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
+   |                             -           - `b` is a reference that is only valid in the function body
+   |                             |
+   |                             `a` is declared here, outside of the function body
+LL |     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
+LL |     f.method(b);
+   |     ^^^^^^^^^^^ `b` escapes the function body here
+
+error: aborting due to previous error
+

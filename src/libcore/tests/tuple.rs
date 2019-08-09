@@ -1,4 +1,5 @@
 use std::cmp::Ordering::{Equal, Less, Greater};
+use std::f64::NAN;
 
 #[test]
 fn test_clone() {
@@ -8,18 +9,18 @@ fn test_clone() {
 }
 
 #[test]
-fn test_tuple_cmp() {
+fn test_partial_eq() {
     let (small, big) = ((1, 2, 3), (3, 2, 1));
-
-    let nan = 0.0f64/0.0;
-
-    // PartialEq
     assert_eq!(small, small);
     assert_eq!(big, big);
-    assert!(small != big);
-    assert!(big != small);
+    assert_ne!(small, big);
+    assert_ne!(big, small);
+}
 
-    // PartialOrd
+#[test]
+fn test_partial_ord() {
+    let (small, big) = ((1, 2, 3), (3, 2, 1));
+
     assert!(small < big);
     assert!(!(small < small));
     assert!(!(big < small));
@@ -33,18 +34,21 @@ fn test_tuple_cmp() {
     assert!(big >= small);
     assert!(big >= big);
 
-    assert!(!((1.0f64, 2.0f64) < (nan, 3.0)));
-    assert!(!((1.0f64, 2.0f64) <= (nan, 3.0)));
-    assert!(!((1.0f64, 2.0f64) > (nan, 3.0)));
-    assert!(!((1.0f64, 2.0f64) >= (nan, 3.0)));
-    assert!(((1.0f64, 2.0f64) < (2.0, nan)));
-    assert!(!((2.0f64, 2.0f64) < (2.0, nan)));
+    assert!(!((1.0f64, 2.0f64) < (NAN, 3.0)));
+    assert!(!((1.0f64, 2.0f64) <= (NAN, 3.0)));
+    assert!(!((1.0f64, 2.0f64) > (NAN, 3.0)));
+    assert!(!((1.0f64, 2.0f64) >= (NAN, 3.0)));
+    assert!(((1.0f64, 2.0f64) < (2.0, NAN)));
+    assert!(!((2.0f64, 2.0f64) < (2.0, NAN)));
+}
 
-    // Ord
-    assert!(small.cmp(&small) == Equal);
-    assert!(big.cmp(&big) == Equal);
-    assert!(small.cmp(&big) == Less);
-    assert!(big.cmp(&small) == Greater);
+#[test]
+fn test_ord() {
+    let (small, big) = ((1, 2, 3), (3, 2, 1));
+    assert_eq!(small.cmp(&small), Equal);
+    assert_eq!(big.cmp(&big), Equal);
+    assert_eq!(small.cmp(&big), Less);
+    assert_eq!(big.cmp(&small), Greater);
 }
 
 #[test]

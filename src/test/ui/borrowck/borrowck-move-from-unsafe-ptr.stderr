@@ -1,11 +1,11 @@
-error[E0507]: cannot move out of dereference of raw pointer
+error[E0507]: cannot move out of `*x` which is behind a raw pointer
   --> $DIR/borrowck-move-from-unsafe-ptr.rs:2:13
    |
 LL |     let y = *x;
    |             ^^
    |             |
-   |             cannot move out of dereference of raw pointer
-   |             help: consider using a reference instead: `&*x`
+   |             move occurs because `*x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |             help: consider borrowing here: `&*x`
 
 error: aborting due to previous error
 

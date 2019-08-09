@@ -1,5 +1,5 @@
-use crate::parse::token::{Token, BinOpToken};
-use crate::symbol::keywords;
+use crate::parse::token::{self, Token, BinOpToken};
+use crate::symbol::kw;
 use crate::ast::{self, BinOpKind};
 
 /// Associative operator with precedence.
@@ -45,8 +45,6 @@ pub enum AssocOp {
     GreaterEqual,
     /// `=`
     Assign,
-    /// `<-`
-    ObsoleteInPlace,
     /// `?=` where ? is one of the BinOpToken
     AssignOp(BinOpToken),
     /// `as`
@@ -73,34 +71,33 @@ impl AssocOp {
     /// Creates a new AssocOP from a token
     pub fn from_token(t: &Token) -> Option<AssocOp> {
         use AssocOp::*;
-        match *t {
-            Token::BinOpEq(k) => Some(AssignOp(k)),
-            Token::LArrow => Some(ObsoleteInPlace),
-            Token::Eq => Some(Assign),
-            Token::BinOp(BinOpToken::Star) => Some(Multiply),
-            Token::BinOp(BinOpToken::Slash) => Some(Divide),
-            Token::BinOp(BinOpToken::Percent) => Some(Modulus),
-            Token::BinOp(BinOpToken::Plus) => Some(Add),
-            Token::BinOp(BinOpToken::Minus) => Some(Subtract),
-            Token::BinOp(BinOpToken::Shl) => Some(ShiftLeft),
-            Token::BinOp(BinOpToken::Shr) => Some(ShiftRight),
-            Token::BinOp(BinOpToken::And) => Some(BitAnd),
-            Token::BinOp(BinOpToken::Caret) => Some(BitXor),
-            Token::BinOp(BinOpToken::Or) => Some(BitOr),
-            Token::Lt => Some(Less),
-            Token::Le => Some(LessEqual),
-            Token::Ge => Some(GreaterEqual),
-            Token::Gt => Some(Greater),
-            Token::EqEq => Some(Equal),
-            Token::Ne => Some(NotEqual),
-            Token::AndAnd => Some(LAnd),
-            Token::OrOr => Some(LOr),
-            Token::DotDot => Some(DotDot),
-            Token::DotDotEq => Some(DotDotEq),
+        match t.kind {
+            token::BinOpEq(k) => Some(AssignOp(k)),
+            token::Eq => Some(Assign),
+            token::BinOp(BinOpToken::Star) => Some(Multiply),
+            token::BinOp(BinOpToken::Slash) => Some(Divide),
+            token::BinOp(BinOpToken::Percent) => Some(Modulus),
+            token::BinOp(BinOpToken::Plus) => Some(Add),
+            token::BinOp(BinOpToken::Minus) => Some(Subtract),
+            token::BinOp(BinOpToken::Shl) => Some(ShiftLeft),
+            token::BinOp(BinOpToken::Shr) => Some(ShiftRight),
+            token::BinOp(BinOpToken::And) => Some(BitAnd),
+            token::BinOp(BinOpToken::Caret) => Some(BitXor),
+            token::BinOp(BinOpToken::Or) => Some(BitOr),
+            token::Lt => Some(Less),
+            token::Le => Some(LessEqual),
+            token::Ge => Some(GreaterEqual),
+            token::Gt => Some(Greater),
+            token::EqEq => Some(Equal),
+            token::Ne => Some(NotEqual),
+            token::AndAnd => Some(LAnd),
+            token::OrOr => Some(LOr),
+            token::DotDot => Some(DotDot),
+            token::DotDotEq => Some(DotDotEq),
             // DotDotDot is no longer supported, but we need some way to display the error
-            Token::DotDotDot => Some(DotDotEq),
-            Token::Colon => Some(Colon),
-            _ if t.is_keyword(keywords::As) => Some(As),
+            token::DotDotDot => Some(DotDotEq),
+            token::Colon => Some(Colon),
+            _ if t.is_keyword(kw::As) => Some(As),
             _ => None
         }
     }
@@ -145,7 +142,6 @@ impl AssocOp {
             LAnd => 6,
             LOr => 5,
             DotDot | DotDotEq => 4,
-            ObsoleteInPlace => 3,
             Assign | AssignOp(_) => 2,
         }
     }
@@ -155,7 +151,7 @@ impl AssocOp {
         use AssocOp::*;
         // NOTE: it is a bug to have an operators that has same precedence but different fixities!
         match *self {
-            ObsoleteInPlace | Assign | AssignOp(_) => Fixity::Right,
+            Assign | AssignOp(_) => Fixity::Right,
             As | Multiply | Divide | Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd |
             BitXor | BitOr | Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual |
             LAnd | LOr | Colon => Fixity::Left,
@@ -167,7 +163,7 @@ impl AssocOp {
         use AssocOp::*;
         match *self {
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => true,
-            ObsoleteInPlace | Assign | AssignOp(_) | As | Multiply | Divide | Modulus | Add |
+            Assign | AssignOp(_) | As | Multiply | Divide | Modulus | Add |
             Subtract | ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd | LOr |
             DotDot | DotDotEq | Colon => false
         }
@@ -176,7 +172,7 @@ impl AssocOp {
     pub fn is_assign_like(&self) -> bool {
         use AssocOp::*;
         match *self {
-            Assign | AssignOp(_) | ObsoleteInPlace => true,
+            Assign | AssignOp(_) => true,
             Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual | As | Multiply | Divide |
             Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd | BitXor | BitOr | LAnd |
             LOr | DotDot | DotDotEq | Colon => false
@@ -204,7 +200,32 @@ impl AssocOp {
             BitOr => Some(BinOpKind::BitOr),
             LAnd => Some(BinOpKind::And),
             LOr => Some(BinOpKind::Or),
-            ObsoleteInPlace | Assign | AssignOp(_) | As | DotDot | DotDotEq | Colon => None
+            Assign | AssignOp(_) | As | DotDot | DotDotEq | Colon => None
+        }
+    }
+
+    /// This operator could be used to follow a block unambiguously.
+    ///
+    /// This is used for error recovery at the moment, providing a suggestion to wrap blocks with
+    /// parentheses while having a high degree of confidence on the correctness of the suggestion.
+    pub fn can_continue_expr_unambiguously(&self) -> bool {
+        use AssocOp::*;
+        match self {
+            BitXor | // `{ 42 } ^ 3`
+            Assign | // `{ 42 } = { 42 }`
+            Divide | // `{ 42 } / 42`
+            Modulus | // `{ 42 } % 2`
+            ShiftRight | // `{ 42 } >> 2`
+            LessEqual | // `{ 42 } <= 3`
+            Greater | // `{ 42 } > 3`
+            GreaterEqual | // `{ 42 } >= 3`
+            AssignOp(_) | // `{ 42 } +=`
+            LAnd | // `{ 42 } &&foo`
+            As | // `{ 42 } as usize`
+            // Equal | // `{ 42 } == { 42 }`    Accepting these here would regress incorrect
+            // NotEqual | // `{ 42 } != { 42 }  struct literals parser recovery.
+            Colon => true, // `{ 42 }: usize`
+            _ => false,
         }
     }
 }
@@ -213,7 +234,7 @@ pub const PREC_RESET: i8 = -100;
 pub const PREC_CLOSURE: i8 = -40;
 pub const PREC_JUMP: i8 = -30;
 pub const PREC_RANGE: i8 = -10;
-// The range 2 ... 14 is reserved for AssocOp binary operator precedences.
+// The range 2..=14 is reserved for AssocOp binary operator precedences.
 pub const PREC_PREFIX: i8 = 50;
 pub const PREC_POSTFIX: i8 = 60;
 pub const PREC_PAREN: i8 = 99;
@@ -231,7 +252,6 @@ pub enum ExprPrecedence {
 
     Binary(BinOpKind),
 
-    ObsoleteInPlace,
     Cast,
     Type,
 
@@ -240,6 +260,7 @@ pub enum ExprPrecedence {
 
     Box,
     AddrOf,
+    Let,
     Unary,
 
     Call,
@@ -257,9 +278,7 @@ pub enum ExprPrecedence {
     Path,
     Paren,
     If,
-    IfLet,
     While,
-    WhileLet,
     ForLoop,
     Loop,
     Match,
@@ -267,6 +286,7 @@ pub enum ExprPrecedence {
     TryBlock,
     Struct,
     Async,
+    Await,
     Err,
 }
 
@@ -288,7 +308,6 @@ impl ExprPrecedence {
 
             // Binop-like expr kinds, handled by `AssocOp`.
             ExprPrecedence::Binary(op) => AssocOp::from_ast_binop(op).precedence() as i8,
-            ExprPrecedence::ObsoleteInPlace => AssocOp::ObsoleteInPlace.precedence() as i8,
             ExprPrecedence::Cast => AssocOp::As.precedence() as i8,
             ExprPrecedence::Type => AssocOp::Colon.precedence() as i8,
 
@@ -298,9 +317,15 @@ impl ExprPrecedence {
             // Unary, prefix
             ExprPrecedence::Box |
             ExprPrecedence::AddrOf |
+            // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
+            // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
+            // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
+            // but we need to print `(let _ = a) < b` as-is with parens.
+            ExprPrecedence::Let |
             ExprPrecedence::Unary => PREC_PREFIX,
 
             // Unary, postfix
+            ExprPrecedence::Await |
             ExprPrecedence::Call |
             ExprPrecedence::MethodCall |
             ExprPrecedence::Field |
@@ -317,9 +342,7 @@ impl ExprPrecedence {
             ExprPrecedence::Path |
             ExprPrecedence::Paren |
             ExprPrecedence::If |
-            ExprPrecedence::IfLet |
             ExprPrecedence::While |
-            ExprPrecedence::WhileLet |
             ExprPrecedence::ForLoop |
             ExprPrecedence::Loop |
             ExprPrecedence::Match |
@@ -332,6 +355,19 @@ impl ExprPrecedence {
     }
 }
 
+/// In `let p = e`, operators with precedence `<=` this one requires parenthesis in `e`.
+crate fn prec_let_scrutinee_needs_par() -> usize {
+    AssocOp::LAnd.precedence()
+}
+
+/// Suppose we have `let _ = e` and the `order` of `e`.
+/// Is the `order` such that `e` in `let _ = e` needs parenthesis when it is on the RHS?
+///
+/// Conversely, suppose that we have `(let _ = a) OP b` and `order` is that of `OP`.
+/// Can we print this as `let _ = a OP b`?
+crate fn needs_par_as_let_scrutinee(order: i8) -> bool {
+    order <= prec_let_scrutinee_needs_par() as i8
+}
 
 /// Expressions that syntactically contain an "exterior" struct literal i.e., not surrounded by any
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
@@ -346,6 +382,7 @@ pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
             // X { y: 1 } + X { y: 2 }
             contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
         }
+        ast::ExprKind::Await(ref x) |
         ast::ExprKind::Unary(_, ref x) |
         ast::ExprKind::Cast(ref x, _) |
         ast::ExprKind::Type(ref x, _) |

@@ -1,15 +1,5 @@
-error[E0382]: use of moved value: `x` (Ast)
-  --> $DIR/moves-based-on-type-tuple.rs:6:13
-   |
-LL |     box (x, x)
-   |          -  ^ value used here after move
-   |          |
-   |          value moved here
-   |
-   = note: move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
-
-error[E0382]: use of moved value: `x` (Mir)
-  --> $DIR/moves-based-on-type-tuple.rs:6:13
+error[E0382]: use of moved value: `x`
+  --> $DIR/moves-based-on-type-tuple.rs:4:13
    |
 LL | fn dup(x: Box<isize>) -> Box<(Box<isize>,Box<isize>)> {
    |        - move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
@@ -18,6 +8,6 @@ LL |     box (x, x)
    |          |
    |          value moved here
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0382`.

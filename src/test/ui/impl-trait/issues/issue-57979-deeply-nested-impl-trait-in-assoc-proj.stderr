@@ -1,0 +1,29 @@
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/issue-57979-deeply-nested-impl-trait-in-assoc-proj.rs:18:59
+   |
+LL |     pub fn demo(_: impl Quux<Assoc=super::Deeper<impl Foo<impl Bar>>>) { }
+   |                                                  ---------^^^^^^^^-
+   |                                                  |        |
+   |                                                  |        nested `impl Trait` here
+   |                                                  outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/issue-57979-deeply-nested-impl-trait-in-assoc-proj.rs:28:59
+   |
+LL |     pub fn demo(_: impl Quux<Assoc=super::Deeper<impl Foo<impl Bar>>>) { }
+   |                                                  ---------^^^^^^^^-
+   |                                                  |        |
+   |                                                  |        nested `impl Trait` here
+   |                                                  outer `impl Trait`
+
+error[E0666]: nested `impl Trait` is not allowed
+  --> $DIR/issue-57979-deeply-nested-impl-trait-in-assoc-proj.rs:38:59
+   |
+LL |     pub fn demo(_: impl Quux<Assoc=super::Deeper<impl Foo<impl Bar>>>) { }
+   |                                                  ---------^^^^^^^^-
+   |                                                  |        |
+   |                                                  |        nested `impl Trait` here
+   |                                                  outer `impl Trait`
+
+error: aborting due to 3 previous errors
+

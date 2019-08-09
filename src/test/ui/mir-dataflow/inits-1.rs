@@ -1,6 +1,5 @@
 // General test of maybe_inits state computed by MIR dataflow.
 
-#![feature(nll)]
 #![feature(core_intrinsics, rustc_attrs)]
 
 use std::intrinsics::rustc_peek;

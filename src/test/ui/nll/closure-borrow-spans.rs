@@ -1,7 +1,5 @@
 // check that existing borrows due to a closure capture give a special note
 
-#![feature(nll)]
-
 fn move_while_borrowed(x: String) {
     let f = || x.len();
     let y = x; //~ ERROR

@@ -5,7 +5,7 @@ LL |     A::A { fob } => { println!("{}", fob); }
    |            ^^^
    |            |
    |            variant `A::A` does not have this field
-   |            help: did you mean: `foo`
+   |            help: a field with a similar name exists: `foo`
 
 error: aborting due to previous error
 

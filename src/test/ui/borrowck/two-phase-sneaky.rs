@@ -1,4 +1,4 @@
-// cmpile-flags: -Z borrowck=mir -Z two-phase-borrows
+// cmpile-flags: -Z borrowck=mir
 
 // This is the first counter-example from Niko's blog post
 // smallcultfollowing.com/babysteps/blog/2017/03/01/nested-method-calls-via-two-phase-borrowing/

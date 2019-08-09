@@ -15,7 +15,8 @@ pub fn hashmap_random_keys() -> (u64, u64) {
           not(target_os = "ios"),
           not(target_os = "openbsd"),
           not(target_os = "freebsd"),
-          not(target_os = "fuchsia")))]
+          not(target_os = "fuchsia"),
+          not(target_os = "redox")))]
 mod imp {
     use crate::fs::File;
     use crate::io::Read;
@@ -47,7 +48,12 @@ mod imp {
                 let err = errno() as libc::c_int;
                 if err == libc::EINTR {
                     continue;
-                } else if err == libc::ENOSYS {
+                } else if err == libc::ENOSYS || err == libc::EPERM {
+                    // Fall back to reading /dev/urandom if `getrandom` is not
+                    // supported on the current kernel.
+                    //
+                    // Also fall back in case it is disabled by something like
+                    // seccomp or inside of virtual machines.
                     GETRANDOM_UNAVAILABLE.store(true, Ordering::Relaxed);
                     return false;
                 } else if err == libc::EAGAIN {
@@ -99,6 +105,13 @@ mod imp {
     }
 }
 
+// On iOS and MacOS `SecRandomCopyBytes` calls `CCRandomCopyBytes` with
+// `kCCRandomDefault`. `CCRandomCopyBytes` manages a CSPRNG which is seeded
+// from `/dev/random` and which runs on its own thread accessed via GCD.
+// This seems needlessly heavyweight for the purposes of generating two u64s
+// once per thread in `hashmap_random_keys`. Therefore `SecRandomCopyBytes` is
+// only used on iOS where direct access to `/dev/urandom` is blocked by the
+// sandbox.
 #[cfg(target_os = "ios")]
 mod imp {
     use crate::io;
@@ -160,5 +173,17 @@ mod imp {
 
     pub fn fill_bytes(v: &mut [u8]) {
         unsafe { zx_cprng_draw(v.as_mut_ptr(), v.len()) }
+    }
+}
+
+#[cfg(target_os = "redox")]
+mod imp {
+    use crate::fs::File;
+    use crate::io::Read;
+
+    pub fn fill_bytes(v: &mut [u8]) {
+        // Open rand:, read from it, and close it again.
+        let mut file = File::open("rand:").expect("failed to open rand:");
+        file.read_exact(v).expect("failed to read rand:")
     }
 }

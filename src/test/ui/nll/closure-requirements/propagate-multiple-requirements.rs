@@ -1,8 +1,6 @@
 // Test that we propagate *all* requirements to the caller, not just the first
 // one.
 
-#![feature(nll)]
-
 fn once<S, T, U, F: FnOnce(S, T) -> U>(f: F, s: S, t: T) -> U {
     f(s, t)
 }

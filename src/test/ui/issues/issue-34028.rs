@@ -1,5 +1,4 @@
-// compile-pass
-// skip-codegen
+// check-pass
 
 macro_rules! m {
     () => { #[cfg(any())] fn f() {} }
@@ -7,6 +6,5 @@ macro_rules! m {
 
 trait T {}
 impl T for () { m!(); }
-
 
 fn main() {}

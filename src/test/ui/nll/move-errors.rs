@@ -1,6 +1,3 @@
-#![allow(unused)]
-#![feature(nll)]
-
 struct A(String);
 struct C(D);
 

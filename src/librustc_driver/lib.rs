@@ -16,40 +16,11 @@
 
 #![recursion_limit="256"]
 
-extern crate arena;
 pub extern crate getopts;
-extern crate graphviz;
-extern crate env_logger;
 #[cfg(unix)]
 extern crate libc;
-extern crate rustc_rayon as rayon;
-extern crate rustc;
-extern crate rustc_allocator;
-extern crate rustc_target;
-extern crate rustc_borrowck;
-extern crate rustc_data_structures;
-extern crate rustc_errors as errors;
-extern crate rustc_passes;
-extern crate rustc_lint;
-extern crate rustc_plugin;
-extern crate rustc_privacy;
-extern crate rustc_incremental;
-extern crate rustc_metadata;
-extern crate rustc_mir;
-extern crate rustc_resolve;
-extern crate rustc_save_analysis;
-extern crate rustc_traits;
-extern crate rustc_codegen_utils;
-extern crate rustc_typeck;
-extern crate rustc_interface;
-extern crate scoped_tls;
-extern crate serialize;
-extern crate smallvec;
 #[macro_use]
 extern crate log;
-extern crate syntax;
-extern crate syntax_ext;
-extern crate syntax_pos;
 
 use pretty::{PpMode, UserIdentifiedItem};
 
@@ -63,7 +34,8 @@ use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::util::common::{time, ErrorReported, install_panic_hook};
+use rustc::util::common::{ErrorReported, install_panic_hook, print_time_passes_entry};
+use rustc::util::common::{set_time_depth, time};
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -71,7 +43,7 @@ use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
 
-use serialize::json::ToJson;
+use rustc_serialize::json::ToJson;
 
 use std::borrow::Cow;
 use std::cmp::max;
@@ -79,27 +51,26 @@ use std::default::Default;
 use std::env;
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
+use std::mem;
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
-use std::mem;
+use std::time::Instant;
 
 use syntax::ast;
 use syntax::source_map::FileLoader;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult};
+use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
-
-#[cfg(test)]
-mod test;
 
 pub mod pretty;
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
 
-/// Exit status code used for compilation failures and  invalid flags.
+/// Exit status code used for compilation failures and invalid flags.
 pub const EXIT_FAILURE: i32 = 1;
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
@@ -131,19 +102,38 @@ pub fn abort_on_err<T>(result: Result<T, ErrorReported>, sess: &Session) -> T {
 pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
-    /// Called after parsing and returns true to continue execution
-    fn after_parsing(&mut self, _compiler: &interface::Compiler) -> bool {
-        true
+    /// Called after parsing. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_parsing(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
     }
-    /// Called after analysis and returns true to continue execution
-    fn after_analysis(&mut self, _compiler: &interface::Compiler) -> bool {
-        true
+    /// Called after expansion. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_expansion(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
+    }
+    /// Called after analysis. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_analysis(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
     }
 }
 
 pub struct DefaultCallbacks;
 
 impl Callbacks for DefaultCallbacks {}
+
+#[derive(Default)]
+pub struct TimePassesCallbacks {
+    time_passes: bool,
+}
+
+impl Callbacks for TimePassesCallbacks {
+    fn config(&mut self, config: &mut interface::Config) {
+        self.time_passes =
+            config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time;
+    }
+}
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
@@ -308,7 +298,7 @@ pub fn run_compiler(
             }
         }
 
-        if !callbacks.after_parsing(compiler) {
+        if callbacks.after_parsing(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 
@@ -323,6 +313,11 @@ pub fn run_compiler(
         // Lint plugins are registered; now we can process command line flags.
         if sess.opts.describe_lints {
             describe_lints(&sess, &sess.lint_store.borrow(), true);
+            return sess.compile_status();
+        }
+
+        compiler.expansion()?;
+        if callbacks.after_expansion(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 
@@ -369,7 +364,7 @@ pub fn run_compiler(
 
         compiler.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
-        if !callbacks.after_analysis(compiler) {
+        if callbacks.after_analysis(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 
@@ -683,7 +678,7 @@ impl RustcDefaultCalls {
 
                     let mut cfgs = sess.parse_sess.config.iter().filter_map(|&(name, ref value)| {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
-                            ident: ast::Path::from_ident(ast::Ident::with_empty_ctxt(name)),
+                            path: ast::Path::from_ident(ast::Ident::with_empty_ctxt(name)),
                             node: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });
@@ -698,7 +693,7 @@ impl RustcDefaultCalls {
                         // through to build scripts.
                         let value = value.as_ref().map(|s| s.as_str());
                         let value = value.as_ref().map(|s| s.as_ref());
-                        if name != "target_feature" || value != Some("crt-static") {
+                        if name != sym::target_feature || value != Some("crt-static") {
                             if !allow_unstable_cfg && gated_cfg.is_some() {
                                 return None
                             }
@@ -773,7 +768,7 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     }
     let message = "Usage: rustc [OPTIONS] INPUT";
     let nightly_help = if nightly_options::is_nightly_build() {
-        "\n    -Z help             Print internal options for debugging rustc"
+        "\n    -Z help             Print unstable compiler options"
     } else {
         ""
     };
@@ -921,7 +916,7 @@ Available lint options:
 }
 
 fn describe_debug_flags() {
-    println!("\nAvailable debug options:\n");
+    println!("\nAvailable options:\n");
     print_flag_list("-Z", config::DB_OPTIONS);
 }
 
@@ -1192,11 +1187,13 @@ pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, Erro
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// log crate version
 pub fn init_rustc_env_logger() {
-    env_logger::init();
+    env_logger::init_from_env("RUSTC_LOG");
 }
 
 pub fn main() {
+    let start = Instant::now();
     init_rustc_env_logger();
+    let mut callbacks = TimePassesCallbacks::default();
     let result = report_ices_to_stderr_if_any(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
@@ -1204,10 +1201,14 @@ pub fn main() {
                             &format!("Argument {} is not valid Unicode: {:?}", i, arg))
             }))
             .collect::<Vec<_>>();
-        run_compiler(&args, &mut DefaultCallbacks, None, None)
+        run_compiler(&args, &mut callbacks, None, None)
     }).and_then(|result| result);
-    process::exit(match result {
+    let exit_code = match result {
         Ok(_) => EXIT_SUCCESS,
         Err(_) => EXIT_FAILURE,
-    });
+    };
+    // The extra `\t` is necessary to align this label with the others.
+    set_time_depth(0);
+    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
+    process::exit(exit_code);
 }

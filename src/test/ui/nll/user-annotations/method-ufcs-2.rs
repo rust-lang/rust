@@ -1,8 +1,6 @@
 // Unit test for the "user substitutions" that are annotated on each
 // node.
 
-#![feature(nll)]
-
 trait Bazoom<T>: Sized {
     fn method<U>(self, arg: T, arg2: U) { }
 }

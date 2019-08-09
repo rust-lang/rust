@@ -1,0 +1,25 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/return-without-lifetime.rs:2:16
+   |
+LL | struct Foo<'a>(&usize);
+   |                ^ help: consider using the named lifetime: `&'a`
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/return-without-lifetime.rs:5:34
+   |
+LL | fn func1<'a>(_arg: &'a Thing) -> &() { unimplemented!() }
+   |                                  ^ help: consider using the named lifetime: `&'a`
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of `_arg`'s 2 lifetimes it is borrowed from
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/return-without-lifetime.rs:7:35
+   |
+LL | fn func2<'a>(_arg: &Thing<'a>) -> &() { unimplemented!() }
+   |                                   ^ help: consider using the named lifetime: `&'a`
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say which one of `_arg`'s 2 lifetimes it is borrowed from
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

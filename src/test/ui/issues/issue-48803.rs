@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn flatten<'a, 'b, T>(x: &'a &'b T) -> &'a T {
     x
 }

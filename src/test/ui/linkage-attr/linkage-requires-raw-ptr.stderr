@@ -1,0 +1,8 @@
+error: must have type `*const T` or `*mut T` due to `#[linkage]` attribute
+  --> $DIR/auxiliary/def_illtyped_external.rs:5:1
+   |
+LL | pub static EXTERN: u32 = 0;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,7 +1,7 @@
 pub trait AbstractRenderer {}
 
 fn _create_render(_: &()) ->
-    AbstractRenderer
+    dyn AbstractRenderer
 //~^ ERROR the size for values of type
 {
     match 0 {

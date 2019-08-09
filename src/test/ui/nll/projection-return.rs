@@ -1,5 +1,5 @@
 // compile-flags:-Zborrowck=mir
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(rustc_attrs)]
 
@@ -16,4 +16,3 @@ fn foo() -> <() as Foo>::Bar {
 }
 
 fn main() { }
-

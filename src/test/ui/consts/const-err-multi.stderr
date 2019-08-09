@@ -1,8 +1,8 @@
 error: any use of this value will cause an error
-  --> $DIR/const-err-multi.rs:3:1
+  --> $DIR/const-err-multi.rs:3:19
    |
 LL | pub const A: i8 = -std::i8::MIN;
-   | ^^^^^^^^^^^^^^^^^^-------------^
+   | ------------------^^^^^^^^^^^^^-
    |                   |
    |                   attempt to negate with overflow
    |
@@ -13,26 +13,26 @@ LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-multi.rs:5:1
+  --> $DIR/const-err-multi.rs:5:19
    |
 LL | pub const B: i8 = A;
-   | ^^^^^^^^^^^^^^^^^^-^
+   | ------------------^-
    |                   |
    |                   referenced constant has errors
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-multi.rs:7:1
+  --> $DIR/const-err-multi.rs:7:19
    |
 LL | pub const C: u8 = A as u8;
-   | ^^^^^^^^^^^^^^^^^^-------^
+   | ------------------^^^^^^^-
    |                   |
    |                   referenced constant has errors
 
 error: any use of this value will cause an error
-  --> $DIR/const-err-multi.rs:9:1
+  --> $DIR/const-err-multi.rs:9:19
    |
 LL | pub const D: i8 = 50 - A;
-   | ^^^^^^^^^^^^^^^^^^------^
+   | ------------------^^^^^^-
    |                   |
    |                   referenced constant has errors
 

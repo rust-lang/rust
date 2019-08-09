@@ -14,8 +14,8 @@ impl Instant {
         Instant(usercalls::insecure_time())
     }
 
-    pub fn sub_instant(&self, other: &Instant) -> Duration {
-        self.0 - other.0
+    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
+        self.0.checked_sub(other.0)
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {

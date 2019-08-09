@@ -1,6 +1,3 @@
-#![feature(nll)]
-#![allow(warnings)]
-
 fn foo(_: impl FnOnce(&u32) -> &u32) {
 }
 

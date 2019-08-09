@@ -2,10 +2,10 @@
 
 // Ensure that invoking a closure counts as a unique immutable borrow
 
-type Fn<'a> = Box<FnMut() + 'a>;
+type Fn<'a> = Box<dyn FnMut() + 'a>;
 
 struct Test<'a> {
-    f: Box<FnMut() + 'a>
+    f: Box<dyn FnMut() + 'a>
 }
 
 fn call<F>(mut f: F) where F: FnMut(Fn) {
@@ -23,7 +23,7 @@ fn test1() {
 
 fn test2<F>(f: &F) where F: FnMut() {
     (*f)();
-    //~^ ERROR cannot borrow immutable borrowed content `*f` as mutable
+    //~^ ERROR cannot borrow `*f` as mutable, as it is behind a `&` reference
 }
 
 fn test3<F>(f: &mut F) where F: FnMut() {
@@ -32,7 +32,7 @@ fn test3<F>(f: &mut F) where F: FnMut() {
 
 fn test4(f: &Test) {
     f.f.call_mut(())
-    //~^ ERROR: cannot borrow `Box` content `*f.f` of immutable binding as mutable
+    //~^ ERROR: cannot borrow `f.f` as mutable, as it is behind a `&` reference
 }
 
 fn test5(f: &mut Test) {
@@ -47,15 +47,15 @@ fn test6() {
 }
 
 fn test7() {
-    fn foo<F>(_: F) where F: FnMut(Box<FnMut(isize)>, isize) {}
+    fn foo<F>(_: F) where F: FnMut(Box<dyn FnMut(isize)>, isize) {}
     let s = String::new();  // Capture to make f !Copy
-    let mut f = move |g: Box<FnMut(isize)>, b: isize| {
+    let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
         let _ = s.len();
     };
     f(Box::new(|a| {
+        //~^ ERROR cannot move out of `f` because it is borrowed
         foo(f);
-        //~^ ERROR cannot move `f` into closure because it is borrowed
-        //~| ERROR cannot move out of captured outer variable in an `FnMut` closure
+        //~^ ERROR cannot move out of `f`, a captured variable in an `FnMut` closure
     }), 3);
 }
 

@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 /*
  * We don't infer `T: 'static` outlives relationships by default.
  * Instead an additional feature gate `infer_static_outlives_requirements`
@@ -14,4 +12,3 @@ struct Bar<T: 'static> {
 }
 
 fn main() {}
-

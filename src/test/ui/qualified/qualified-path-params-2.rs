@@ -16,7 +16,7 @@ impl S {
 }
 
 type A = <S as Tr>::A::f<u8>;
-//~^ ERROR type arguments are not allowed on this entity
+//~^ ERROR type arguments are not allowed for this type
 //~| ERROR ambiguous associated type
 
 fn main() {}

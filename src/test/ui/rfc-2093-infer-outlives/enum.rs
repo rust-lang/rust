@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(rustc_attrs)]
 
 // Needs an explicit where clause stating outlives condition. (RFC 2093)

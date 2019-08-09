@@ -32,7 +32,6 @@ fn main() {
     foo.data.push(Concrete(0, Cell::new(None)));
 
     foo.data[0].1.set(Some(&foo.data[1]));
-    //~^ ERROR `foo.data` does not live long enough
+    //~^ ERROR borrow may still be in use when destructor runs
     foo.data[1].1.set(Some(&foo.data[0]));
-    //~^ ERROR `foo.data` does not live long enough
 }

@@ -26,5 +26,4 @@ LL |             continue;
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0695, E0696.
-For more information about an error, try `rustc --explain E0695`.
+For more information about this error, try `rustc --explain E0695`.

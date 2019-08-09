@@ -1,5 +1,5 @@
 #![allow(unused_macros)]
 
-macro m() {} //~ ERROR `macro` is experimental (see issue #39412)
+macro m() {} //~ ERROR `macro` is experimental
 
 fn main() {}

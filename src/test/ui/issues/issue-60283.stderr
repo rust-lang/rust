@@ -1,0 +1,34 @@
+error[E0631]: type mismatch in function arguments
+  --> $DIR/issue-60283.rs:14:5
+   |
+LL |     foo((), drop)
+   |     ^^^
+   |     |
+   |     expected signature of `for<'a> fn(<() as Trait<'a>>::Item) -> _`
+   |     found signature of `fn(_) -> _`
+   |
+note: required by `foo`
+  --> $DIR/issue-60283.rs:9:1
+   |
+LL | / pub fn foo<T, F>(_: T, _: F)
+LL | | where T: for<'a> Trait<'a>,
+LL | |       F: for<'a> FnMut(<T as Trait<'a>>::Item) {}
+   | |_________________________________________________^
+
+error[E0271]: type mismatch resolving `for<'a> <fn(_) {std::mem::drop::<_>} as std::ops::FnOnce<(<() as Trait<'a>>::Item,)>>::Output == ()`
+  --> $DIR/issue-60283.rs:14:5
+   |
+LL |     foo((), drop)
+   |     ^^^ expected bound lifetime parameter 'a, found concrete lifetime
+   |
+note: required by `foo`
+  --> $DIR/issue-60283.rs:9:1
+   |
+LL | / pub fn foo<T, F>(_: T, _: F)
+LL | | where T: for<'a> Trait<'a>,
+LL | |       F: for<'a> FnMut(<T as Trait<'a>>::Item) {}
+   | |_________________________________________________^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

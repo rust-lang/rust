@@ -1,0 +1,26 @@
+error: lifetime may not live long enough
+  --> $DIR/static-return-lifetime-infered.rs:6:35
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> {
+   |                         -         ^^^^^^^^^^^^^^^^^^^^^^^ opaque type requires that `'1` must outlive `'static`
+   |                         |
+   |                         let's call the lifetime of this reference `'1`
+help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a constraint
+   |
+LL |     fn iter_values_anon(&self) -> impl Iterator<Item=u32> + '_ {
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/static-return-lifetime-infered.rs:10:37
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> {
+   |                    --               ^^^^^^^^^^^^^^^^^^^^^^^ opaque type requires that `'a` must outlive `'static`
+   |                    |
+   |                    lifetime `'a` defined here
+help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a constraint
+   |
+LL |     fn iter_values<'a>(&'a self) -> impl Iterator<Item=u32> + 'a {
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

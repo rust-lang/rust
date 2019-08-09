@@ -8,4 +8,4 @@ all:
 	mkdir -p $(TMPDIR)/outdir
 	$(RUSTC) foo.rs -o $(TMPDIR)/outdir/$(NAME)
 	ln -nsf outdir/$(NAME) $(TMPDIR)
-	RUST_LOG=rustc_metadata::loader $(RUSTC) bar.rs
+	RUSTC_LOG=rustc_metadata::loader $(RUSTC) bar.rs

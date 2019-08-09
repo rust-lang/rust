@@ -11,7 +11,8 @@ fn main() {
     let mut x = A;
     call_it(|| {
         call_it(|| x.gen());
-        call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
-        //~^ ERROR cannot borrow data mutably in a captured outer
+        call_it(|| x.gen_mut());
+        //~^ ERROR cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
+        //~| ERROR cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
     });
 }

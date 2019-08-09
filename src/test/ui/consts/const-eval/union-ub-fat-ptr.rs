@@ -59,7 +59,7 @@ union DynTransmute {
     repr: DynRepr,
     repr2: DynRepr2,
     bad: BadDynRepr,
-    rust: &'static Trait,
+    rust: &'static dyn Trait,
 }
 
 trait Trait {}
@@ -94,17 +94,17 @@ const C3: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &
 //~^ ERROR it is undefined behavior to use this value
 
 // bad trait object
-const D: &Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
+const D: &dyn Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
-const E: &Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
+const E: &dyn Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
-const F: &Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
+const F: &dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
 //~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the trait object
-const G: &Trait = &unsafe { BoolTransmute { val: 3 }.bl };
+const G: &dyn Trait = &unsafe { BoolTransmute { val: 3 }.bl };
 //~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the slice

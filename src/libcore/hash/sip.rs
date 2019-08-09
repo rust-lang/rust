@@ -2,10 +2,10 @@
 
 #![allow(deprecated)] // the types in this module are deprecated
 
-use marker::PhantomData;
-use ptr;
-use cmp;
-use mem;
+use crate::marker::PhantomData;
+use crate::ptr;
+use crate::cmp;
+use crate::mem;
 
 /// An implementation of SipHash 1-3.
 ///
@@ -269,7 +269,7 @@ impl<S: Sip> super::Hasher for Hasher<S> {
     #[inline]
     fn write_usize(&mut self, i: usize) {
         let bytes = unsafe {
-            ::slice::from_raw_parts(&i as *const usize as *const u8, mem::size_of::<usize>())
+            crate::slice::from_raw_parts(&i as *const usize as *const u8, mem::size_of::<usize>())
         };
         self.short_write(bytes);
     }

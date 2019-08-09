@@ -1,9 +1,0 @@
-error[E0507]: cannot move out of an `Rc`
-  --> $DIR/borrowck-move-out-of-overloaded-auto-deref.rs:7:14
-   |
-LL |     let _x = Rc::new(vec![1, 2]).into_iter();
-   |              ^^^^^^^^^^^^^^^^^^^ cannot move out of an `Rc`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0507`.

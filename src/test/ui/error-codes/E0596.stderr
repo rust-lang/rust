@@ -1,0 +1,11 @@
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/E0596.rs:3:13
+   |
+LL |     let x = 1;
+   |         - help: consider changing this to be mutable: `mut x`
+LL |     let y = &mut x;
+   |             ^^^^^^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

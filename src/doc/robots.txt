@@ -1,0 +1,27 @@
+# NB: This file is not automatically deployed. After changes, it needs to be uploaded manually to doc.rust-lang.org
+User-agent: *
+Disallow: /0.3/
+Disallow: /0.4/
+Disallow: /0.5/
+Disallow: /0.6/
+Disallow: /0.7/
+Disallow: /0.8/
+Disallow: /0.9/
+Disallow: /0.10/
+Disallow: /0.11.0/
+Disallow: /0.12.0/
+Disallow: /1.0.0-alpha/
+Disallow: /1.0.0-alpha.2/
+Disallow: /1.0.0-beta/
+Disallow: /1.0.0-beta.2/
+Disallow: /1.0.0-beta.3/
+Disallow: /1.0.0-beta.4/
+Disallow: /1.0.0-beta.5/
+Disallow: /book/first-edition/
+Disallow: /book/second-edition/
+Disallow: /stable/book/first-edition/
+Disallow: /stable/book/second-edition/
+Disallow: /beta/book/first-edition/
+Disallow: /beta/book/second-edition/
+Disallow: /nightly/book/first-edition/
+Disallow: /nightly/book/second-edition/

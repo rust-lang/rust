@@ -1,20 +1,20 @@
 pub fn f(
     /// Comment
-    //~^ ERROR documentation comments cannot be applied to method arguments
+    //~^ ERROR documentation comments cannot be applied to function parameters
     //~| NOTE doc comments are not allowed here
+    //~| ERROR attributes on function parameters are unstable
+    //~| NOTE https://github.com/rust-lang/rust/issues/60406
     id: u8,
     /// Other
-    //~^ ERROR documentation comments cannot be applied to method arguments
+    //~^ ERROR documentation comments cannot be applied to function parameters
     //~| NOTE doc comments are not allowed here
+    //~| ERROR attributes on function parameters are unstable
+    //~| NOTE https://github.com/rust-lang/rust/issues/60406
     a: u8,
 ) {}
 
-fn foo(#[allow(dead_code)] id: i32) {}
-//~^ ERROR attributes cannot be applied to method arguments
-//~| NOTE attributes are not allowed here
-
 fn bar(id: #[allow(dead_code)] i32) {}
-//~^ ERROR attributes cannot be applied to a method argument's type
+//~^ ERROR attributes cannot be applied to a function parameter's type
 //~| NOTE attributes are not allowed here
 
 fn main() {
@@ -25,10 +25,6 @@ fn main() {
     //~| NOTE expected
     //~| ERROR mismatched types
     //~| NOTE expected u8, found reference
-    //~| NOTE expected
-    foo("");
-    //~^ ERROR mismatched types
-    //~| NOTE expected i32, found reference
     //~| NOTE expected
     bar("");
     //~^ ERROR mismatched types

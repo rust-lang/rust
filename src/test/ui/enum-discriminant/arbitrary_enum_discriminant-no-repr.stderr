@@ -1,0 +1,14 @@
+error[E0732]: `#[repr(inttype)]` must be specified
+  --> $DIR/arbitrary_enum_discriminant-no-repr.rs:4:1
+   |
+LL | / enum Enum {
+LL | |
+LL | |   Unit = 1,
+LL | |   Tuple() = 2,
+LL | |   Struct{} = 3,
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0732`.

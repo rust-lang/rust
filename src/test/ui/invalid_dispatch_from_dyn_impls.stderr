@@ -1,4 +1,4 @@
-error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, `PhantomData` fields, and nothing else
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
   --> $DIR/invalid_dispatch_from_dyn_impls.rs:10:1
    |
 LL | / impl<T, U> DispatchFromDyn<WrapperWithExtraField<U>> for WrapperWithExtraField<T>
@@ -36,6 +36,17 @@ LL | |     T: Unsize<U>,
 LL | | {}
    | |__^
 
-error: aborting due to 4 previous errors
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment, and nothing else
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:46:1
+   |
+LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<OverAligned<U>> for OverAligned<T>
+LL | |     where
+LL | |         T: Unsize<U>,
+LL | | {}
+   | |__^
+   |
+   = note: extra field `1` of type `OverAlignedZst` is not allowed
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0378`.

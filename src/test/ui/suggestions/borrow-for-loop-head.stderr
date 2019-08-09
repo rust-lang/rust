@@ -1,0 +1,24 @@
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/borrow-for-loop-head.rs:4:18
+   |
+LL |     for i in &a {
+   |              -- borrow of `a` occurs here
+LL |         for j in a {
+   |                  ^ move out of `a` occurs here
+
+error[E0382]: use of moved value: `a`
+  --> $DIR/borrow-for-loop-head.rs:4:18
+   |
+LL |     let a = vec![1, 2, 3];
+   |         - move occurs because `a` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
+LL |     for i in &a {
+LL |         for j in a {
+   |                  ^
+   |                  |
+   |                  value moved here, in previous iteration of loop
+   |                  help: consider borrowing to avoid moving into the for loop: `&a`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

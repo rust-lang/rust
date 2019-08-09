@@ -24,7 +24,7 @@ fn angle2<T>() where for<'a> T: Foo<Item=&'a i32> {
 }
 
 #[cfg(angle)]
-fn angle3(_: &for<'a> Foo<Item=&'a i32>) {
+fn angle3(_: &dyn for<'a> Foo<Item=&'a i32>) {
     //[angle]~^ ERROR binding for associated type `Item` references lifetime `'a`
 }
 
@@ -44,7 +44,7 @@ fn paren2<T>() where for<'a> T: Fn() -> &'a i32 {
 }
 
 #[cfg(paren)]
-fn paren3(_: &for<'a> Fn() -> &'a i32) {
+fn paren3(_: &dyn for<'a> Fn() -> &'a i32) {
     //[paren]~^ ERROR binding for associated type `Output` references lifetime `'a`
 }
 

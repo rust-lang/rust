@@ -1,3 +1,5 @@
+#![cfg_attr(test, allow(unused))] // RT initialization logic is not compiled for test
+
 use core::sync::atomic::{AtomicUsize, Ordering};
 use crate::io::Write;
 
@@ -12,8 +14,10 @@ pub mod tls;
 #[macro_use]
 pub mod usercalls;
 
+#[cfg(not(test))]
 global_asm!(include_str!("entry.S"));
 
+#[cfg(not(test))]
 #[no_mangle]
 unsafe extern "C" fn tcs_init(secondary: bool) {
     // Be very careful when changing this code: it runs before the binary has been
@@ -25,7 +29,7 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
     static RELOC_STATE: AtomicUsize = AtomicUsize::new(UNINIT);
 
     if secondary && RELOC_STATE.load(Ordering::Relaxed) != DONE {
-        panic::panic_msg("Entered secondary TCS before main TCS!")
+        rtabort!("Entered secondary TCS before main TCS!")
     }
 
     // Try to atomically swap UNINIT with BUSY. The returned state can be:
@@ -48,6 +52,7 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
 // FIXME: this item should only exist if this is linked into an executable
 // (main function exists). If this is a library, the crate author should be
 // able to specify this
+#[cfg(not(test))]
 #[no_mangle]
 extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> (u64, u64) {
     // FIXME: how to support TLS in library mode?
@@ -64,9 +69,9 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
         }
 
         // check entry is being called according to ABI
-        assert_eq!(p3, 0);
-        assert_eq!(p4, 0);
-        assert_eq!(p5, 0);
+        rtassert!(p3 == 0);
+        rtassert!(p4 == 0);
+        rtassert!(p5 == 0);
 
         unsafe {
             // The actual types of these arguments are `p1: *const Arg, p2:
@@ -86,4 +91,10 @@ pub(super) fn exit_with_code(code: isize) -> ! {
         }
     }
     usercalls::exit(code != 0);
+}
+
+#[cfg(not(test))]
+#[no_mangle]
+extern "C" fn abort_reentry() -> ! {
+    usercalls::exit(false)
 }

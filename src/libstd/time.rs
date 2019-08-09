@@ -212,7 +212,7 @@ impl Instant {
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: Instant) -> Duration {
-        self.0.sub_instant(&earlier.0)
+        self.0.checked_sub_instant(&earlier.0).expect("supplied instant is later than self")
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -233,11 +233,7 @@ impl Instant {
     /// ```
     #[unstable(feature = "checked_duration_since", issue = "58402")]
     pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
-        if self >= &earlier {
-            Some(self.0.sub_instant(&earlier.0))
-        } else {
-            None
-        }
+        self.0.checked_sub_instant(&earlier.0)
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -353,7 +349,7 @@ impl Sub<Instant> for Instant {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Debug for Instant {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -400,6 +396,7 @@ impl SystemTime {
     /// This function may fail because measurements taken earlier are not
     /// guaranteed to always be before later measurements (due to anomalies such
     /// as the system clock being adjusted either forwards or backwards).
+    /// [`Instant`] can be used to measure elapsed time without this risk of failure.
     ///
     /// If successful, [`Ok`]`(`[`Duration`]`)` is returned where the duration represents
     /// the amount of time elapsed from the specified measurement to this one.
@@ -410,6 +407,7 @@ impl SystemTime {
     /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Instant`]: ../../std/time/struct.Instant.html
     ///
     /// # Examples
     ///
@@ -418,7 +416,7 @@ impl SystemTime {
     ///
     /// let sys_time = SystemTime::now();
     /// let difference = sys_time.duration_since(sys_time)
-    ///                          .expect("SystemTime::duration_since failed");
+    ///                          .expect("Clock may have gone backwards");
     /// println!("{:?}", difference);
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
@@ -427,7 +425,8 @@ impl SystemTime {
         self.0.sub_time(&earlier.0).map_err(SystemTimeError)
     }
 
-    /// Returns the amount of time elapsed since this system time was created.
+    /// Returns the difference between the clock time when this
+    /// system time was created, and the current clock time.
     ///
     /// This function may fail as the underlying system clock is susceptible to
     /// drift and updates (e.g., the system clock could go backwards), so this
@@ -435,12 +434,15 @@ impl SystemTime {
     /// returned where the duration represents the amount of time elapsed from
     /// this time measurement to the current time.
     ///
+    /// To measure elapsed time reliably, use [`Instant`] instead.
+    ///
     /// Returns an [`Err`] if `self` is later than the current system time, and
     /// the error contains how far from the current system time `self` is.
     ///
     /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+    /// [`Instant`]: ../../std/time/struct.Instant.html
     ///
     /// # Examples
     ///
@@ -517,7 +519,7 @@ impl SubAssign<Duration> for SystemTime {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Debug for SystemTime {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -585,7 +587,7 @@ impl Error for SystemTimeError {
 
 #[stable(feature = "time2", since = "1.8.0")]
 impl fmt::Display for SystemTimeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "second time provided was later than self")
     }
 }
@@ -664,20 +666,23 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn instant_duration_panic() {
+    fn instant_duration_since_panic() {
         let a = Instant::now();
         (a - Duration::new(1, 0)).duration_since(a);
     }
 
     #[test]
-    fn checked_instant_duration_nopanic() {
-        let a = Instant::now();
-        let ret = (a - Duration::new(1, 0)).checked_duration_since(a);
-        assert_eq!(ret, None);
+    fn instant_checked_duration_since_nopanic() {
+        let now = Instant::now();
+        let earlier = now - Duration::new(1, 0);
+        let later = now + Duration::new(1, 0);
+        assert_eq!(earlier.checked_duration_since(now), None);
+        assert_eq!(later.checked_duration_since(now), Some(Duration::new(1, 0)));
+        assert_eq!(now.checked_duration_since(now), Some(Duration::new(0, 0)));
     }
 
     #[test]
-    fn saturating_instant_duration_nopanic() {
+    fn instant_saturating_duration_since_nopanic() {
         let a = Instant::now();
         let ret = (a - Duration::new(1, 0)).saturating_duration_since(a);
         assert_eq!(ret, Duration::new(0,0));
@@ -712,13 +717,6 @@ mod tests {
         assert_almost_eq!(a - second + second, a);
         assert_almost_eq!(a.checked_sub(second).unwrap().checked_add(second).unwrap(), a);
 
-        // A difference of 80 and 800 years cannot fit inside a 32-bit time_t
-        if !(cfg!(unix) && crate::mem::size_of::<libc::time_t>() <= 4) {
-            let eighty_years = second * 60 * 60 * 24 * 365 * 80;
-            assert_almost_eq!(a - eighty_years + eighty_years, a);
-            assert_almost_eq!(a - (eighty_years * 10) + (eighty_years * 10), a);
-        }
-
         let one_second_from_epoch = UNIX_EPOCH + Duration::new(1, 0);
         let one_second_from_epoch2 = UNIX_EPOCH + Duration::new(0, 500_000_000)
             + Duration::new(0, 500_000_000);
@@ -747,8 +745,8 @@ mod tests {
     #[test]
     fn since_epoch() {
         let ts = SystemTime::now();
-        let a = ts.duration_since(UNIX_EPOCH).unwrap();
-        let b = ts.duration_since(UNIX_EPOCH - Duration::new(1, 0)).unwrap();
+        let a = ts.duration_since(UNIX_EPOCH + Duration::new(1, 0)).unwrap();
+        let b = ts.duration_since(UNIX_EPOCH).unwrap();
         assert!(b > a);
         assert_eq!(b - a, Duration::new(1, 0));
 

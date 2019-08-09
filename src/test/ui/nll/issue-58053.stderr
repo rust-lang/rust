@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-58053.rs:7:33
+  --> $DIR/issue-58053.rs:6:33
    |
 LL |     let f = |x: &i32| -> &i32 { x };
    |                 -        ----   ^ returning this value requires that `'1` must outlive `'2`
@@ -8,7 +8,7 @@ LL |     let f = |x: &i32| -> &i32 { x };
    |                 let's call the lifetime of this reference `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/issue-58053.rs:11:25
+  --> $DIR/issue-58053.rs:10:25
    |
 LL |     let g = |x: &i32| { x };
    |                 -   -   ^ returning this value requires that `'1` must outlive `'2`

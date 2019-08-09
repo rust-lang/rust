@@ -13,7 +13,7 @@ LL | #![deny(illegal_floating_point_literal_pattern)]
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-6804.rs:17:10
+  --> $DIR/issue-6804.rs:19:10
    |
 LL |         [NAN, _] => {},
    |          ^^^
@@ -21,5 +21,14 @@ LL |         [NAN, _] => {},
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
-error: aborting due to 2 previous errors
+error: floating-point types cannot be used in patterns
+  --> $DIR/issue-6804.rs:11:9
+   |
+LL |         NAN => {},
+   |         ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: aborting due to 3 previous errors
 

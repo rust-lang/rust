@@ -1,3 +1,12 @@
+//! The current rustc diagnostics emitter.
+//!
+//! An `Emitter` takes care of generating the output from a `DiagnosticBuilder` struct.
+//!
+//! There are various `Emitter` implementations that generate different output formats such as
+//! JSON and human readable output.
+//!
+//! The output types are defined in `librustc::session::config::ErrorOutputType`.
+
 use Destination::*;
 
 use syntax_pos::{SourceFile, Span, MultiSpan};
@@ -6,6 +15,7 @@ use crate::{
     Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic,
     SuggestionStyle, SourceMapperDyn, DiagnosticId,
 };
+use crate::Level::Error;
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use crate::styled_buffer::StyledBuffer;
 
@@ -15,15 +25,49 @@ use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::cmp::{min, Reverse};
-use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter};
+use std::path::Path;
+use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter, Ansi};
 use termcolor::{WriteColor, Color, Buffer};
+
+/// Describes the way the content of the `rendered` field of the json output is generated
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HumanReadableErrorType {
+    Default(ColorConfig),
+    AnnotateSnippet(ColorConfig),
+    Short(ColorConfig),
+}
+
+impl HumanReadableErrorType {
+    /// Returns a (`short`, `color`) tuple
+    pub fn unzip(self) -> (bool, ColorConfig) {
+        match self {
+            HumanReadableErrorType::Default(cc) => (false, cc),
+            HumanReadableErrorType::Short(cc) => (true, cc),
+            HumanReadableErrorType::AnnotateSnippet(cc) => (false, cc),
+        }
+    }
+    pub fn new_emitter(
+        self,
+        dst: Box<dyn Write + Send>,
+        source_map: Option<Lrc<SourceMapperDyn>>,
+        teach: bool,
+    ) -> EmitterWriter {
+        let (short, color_config) = self.unzip();
+        EmitterWriter::new(dst, source_map, short, teach, color_config.suggests_using_colors())
+    }
+}
 
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>);
+    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>);
+
+    /// Emit a notification that an artifact has been output.
+    /// This is currently only supported for the JSON format,
+    /// other formats can, and will, simply ignore it.
+    fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
 
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
@@ -32,7 +76,7 @@ pub trait Emitter {
 }
 
 impl Emitter for EmitterWriter {
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
         let mut suggestions: &[_] = &[];
@@ -72,6 +116,7 @@ impl Emitter for EmitterWriter {
 
         self.fix_multispans_in_std_macros(&mut primary_span,
                                           &mut children,
+                                          &db.level,
                                           db.handler.flags.external_macro_backtrace);
 
         self.emit_messages_default(&db.level,
@@ -102,8 +147,8 @@ pub enum ColorConfig {
 }
 
 impl ColorConfig {
-    fn to_color_choice(&self) -> ColorChoice {
-        match *self {
+    fn to_color_choice(self) -> ColorChoice {
+        match self {
             ColorConfig::Always => {
                 if atty::is(atty::Stream::Stderr) {
                     ColorChoice::Always
@@ -118,8 +163,17 @@ impl ColorConfig {
             ColorConfig::Auto => ColorChoice::Never,
         }
     }
+    fn suggests_using_colors(self) -> bool {
+        match self {
+            | ColorConfig::Always
+            | ColorConfig::Auto
+            => true,
+            ColorConfig::Never => false,
+        }
+    }
 }
 
+/// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
 pub struct EmitterWriter {
     dst: Destination,
     sm: Option<Lrc<SourceMapperDyn>>,
@@ -128,9 +182,10 @@ pub struct EmitterWriter {
     ui_testing: bool,
 }
 
-struct FileWithAnnotatedLines {
-    file: Lrc<SourceFile>,
-    lines: Vec<Line>,
+#[derive(Debug)]
+pub struct FileWithAnnotatedLines {
+    pub file: Lrc<SourceFile>,
+    pub lines: Vec<Line>,
     multiline_depth: usize,
 }
 
@@ -150,13 +205,15 @@ impl EmitterWriter {
         }
     }
 
-    pub fn new(dst: Box<dyn Write + Send>,
-               source_map: Option<Lrc<SourceMapperDyn>>,
-               short_message: bool,
-               teach: bool)
-               -> EmitterWriter {
+    pub fn new(
+        dst: Box<dyn Write + Send>,
+        source_map: Option<Lrc<SourceMapperDyn>>,
+        short_message: bool,
+        teach: bool,
+        colored: bool,
+    ) -> EmitterWriter {
         EmitterWriter {
-            dst: Raw(dst),
+            dst: Raw(dst, colored),
             sm: source_map,
             short_message,
             teach,
@@ -175,136 +232,6 @@ impl EmitterWriter {
         } else {
             line_num.to_string()
         }
-    }
-
-    fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
-        fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
-                                  file: Lrc<SourceFile>,
-                                  line_index: usize,
-                                  ann: Annotation) {
-
-            for slot in file_vec.iter_mut() {
-                // Look through each of our files for the one we're adding to
-                if slot.file.name == file.name {
-                    // See if we already have a line for it
-                    for line_slot in &mut slot.lines {
-                        if line_slot.line_index == line_index {
-                            line_slot.annotations.push(ann);
-                            return;
-                        }
-                    }
-                    // We don't have a line yet, create one
-                    slot.lines.push(Line {
-                        line_index,
-                        annotations: vec![ann],
-                    });
-                    slot.lines.sort();
-                    return;
-                }
-            }
-            // This is the first time we're seeing the file
-            file_vec.push(FileWithAnnotatedLines {
-                file,
-                lines: vec![Line {
-                                line_index,
-                                annotations: vec![ann],
-                            }],
-                multiline_depth: 0,
-            });
-        }
-
-        let mut output = vec![];
-        let mut multiline_annotations = vec![];
-
-        if let Some(ref sm) = self.sm {
-            for span_label in msp.span_labels() {
-                if span_label.span.is_dummy() {
-                    continue;
-                }
-
-                let lo = sm.lookup_char_pos(span_label.span.lo());
-                let mut hi = sm.lookup_char_pos(span_label.span.hi());
-
-                // Watch out for "empty spans". If we get a span like 6..6, we
-                // want to just display a `^` at 6, so convert that to
-                // 6..7. This is degenerate input, but it's best to degrade
-                // gracefully -- and the parser likes to supply a span like
-                // that for EOF, in particular.
-                if lo.col_display == hi.col_display && lo.line == hi.line {
-                    hi.col_display += 1;
-                }
-
-                let ann_type = if lo.line != hi.line {
-                    let ml = MultilineAnnotation {
-                        depth: 1,
-                        line_start: lo.line,
-                        line_end: hi.line,
-                        start_col: lo.col_display,
-                        end_col: hi.col_display,
-                        is_primary: span_label.is_primary,
-                        label: span_label.label.clone(),
-                    };
-                    multiline_annotations.push((lo.file.clone(), ml.clone()));
-                    AnnotationType::Multiline(ml)
-                } else {
-                    AnnotationType::Singleline
-                };
-                let ann = Annotation {
-                    start_col: lo.col_display,
-                    end_col: hi.col_display,
-                    is_primary: span_label.is_primary,
-                    label: span_label.label.clone(),
-                    annotation_type: ann_type,
-                };
-
-                if !ann.is_multiline() {
-                    add_annotation_to_file(&mut output,
-                                           lo.file,
-                                           lo.line,
-                                           ann);
-                }
-            }
-        }
-
-        // Find overlapping multiline annotations, put them at different depths
-        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, ml.line_end));
-        for item in multiline_annotations.clone() {
-            let ann = item.1;
-            for item in multiline_annotations.iter_mut() {
-                let ref mut a = item.1;
-                // Move all other multiline annotations overlapping with this one
-                // one level to the right.
-                if &ann != a &&
-                    num_overlap(ann.line_start, ann.line_end, a.line_start, a.line_end, true)
-                {
-                    a.increase_depth();
-                } else {
-                    break;
-                }
-            }
-        }
-
-        let mut max_depth = 0;  // max overlapping multiline spans
-        for (file, ann) in multiline_annotations {
-            if ann.depth > max_depth {
-                max_depth = ann.depth;
-            }
-            add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
-            let middle = min(ann.line_start + 4, ann.line_end);
-            for line in ann.line_start + 1..middle {
-                add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-            }
-            if middle < ann.line_end - 1 {
-                for line in ann.line_end - 1..ann.line_end {
-                    add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-                }
-            }
-            add_annotation_to_file(&mut output, file, ann.line_end, ann.as_end());
-        }
-        for file_vec in output.iter_mut() {
-            file_vec.multiline_depth = max_depth;
-        }
-        output
     }
 
     fn render_source_line(&self,
@@ -477,6 +404,15 @@ impl EmitterWriter {
                     && j > i                      // multiline lines).
                     && p == 0  // We're currently on the first line, move the label one line down
                 {
+                    // If we're overlapping with an un-labelled annotation with the same span
+                    // we can just merge them in the output
+                    if next.start_col == annotation.start_col
+                    && next.end_col == annotation.end_col
+                    && !next.has_label()
+                    {
+                        continue;
+                    }
+
                     // This annotation needs a new line in the output.
                     p += 1;
                     break;
@@ -787,39 +723,37 @@ impl EmitterWriter {
                 for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
                     // Only show macro locations that are local
                     // and display them like a span_note
-                    if let Some(def_site) = trace.def_site_span {
-                        if def_site.is_dummy() {
-                            continue;
-                        }
-                        if always_backtrace {
-                            new_labels.push((def_site,
-                                             format!("in this expansion of `{}`{}",
-                                                     trace.macro_decl_name,
-                                                     if backtrace_len > 2 {
-                                                         // if backtrace_len == 1 it'll be pointed
-                                                         // at by "in this macro invocation"
-                                                         format!(" (#{})", i + 1)
-                                                     } else {
-                                                         String::new()
-                                                     })));
-                        }
-                        // Check to make sure we're not in any <*macros>
-                        if !sm.span_to_filename(def_site).is_macros() &&
-                           !trace.macro_decl_name.starts_with("desugaring of ") &&
-                           !trace.macro_decl_name.starts_with("#[") ||
-                           always_backtrace {
-                            new_labels.push((trace.call_site,
-                                             format!("in this macro invocation{}",
-                                                     if backtrace_len > 2 && always_backtrace {
-                                                         // only specify order when the macro
-                                                         // backtrace is multiple levels deep
-                                                         format!(" (#{})", i + 1)
-                                                     } else {
-                                                         String::new()
-                                                     })));
-                            if !always_backtrace {
-                                break;
-                            }
+                    if trace.def_site_span.is_dummy() {
+                        continue;
+                    }
+                    if always_backtrace {
+                        new_labels.push((trace.def_site_span,
+                                            format!("in this expansion of `{}`{}",
+                                                    trace.macro_decl_name,
+                                                    if backtrace_len > 2 {
+                                                        // if backtrace_len == 1 it'll be pointed
+                                                        // at by "in this macro invocation"
+                                                        format!(" (#{})", i + 1)
+                                                    } else {
+                                                        String::new()
+                                                    })));
+                    }
+                    // Check to make sure we're not in any <*macros>
+                    if !sm.span_to_filename(trace.def_site_span).is_macros() &&
+                        !trace.macro_decl_name.starts_with("desugaring of ") &&
+                        !trace.macro_decl_name.starts_with("#[") ||
+                        always_backtrace {
+                        new_labels.push((trace.call_site,
+                                            format!("in this macro invocation{}",
+                                                    if backtrace_len > 2 && always_backtrace {
+                                                        // only specify order when the macro
+                                                        // backtrace is multiple levels deep
+                                                        format!(" (#{})", i + 1)
+                                                    } else {
+                                                        String::new()
+                                                    })));
+                        if !always_backtrace {
+                            break;
                         }
                     }
                 }
@@ -856,18 +790,27 @@ impl EmitterWriter {
     fn fix_multispans_in_std_macros(&mut self,
                                     span: &mut MultiSpan,
                                     children: &mut Vec<SubDiagnostic>,
+                                    level: &Level,
                                     backtrace: bool) {
         let mut spans_updated = self.fix_multispan_in_std_macros(span, backtrace);
         for child in children.iter_mut() {
             spans_updated |= self.fix_multispan_in_std_macros(&mut child.span, backtrace);
         }
+        let msg = if level == &Error {
+            "this error originates in a macro outside of the current crate \
+             (in Nightly builds, run with -Z external-macro-backtrace \
+              for more info)".to_string()
+        } else {
+            "this warning originates in a macro outside of the current crate \
+             (in Nightly builds, run with -Z external-macro-backtrace \
+              for more info)".to_string()
+        };
+
         if spans_updated {
             children.push(SubDiagnostic {
                 level: Level::Note,
                 message: vec![
-                    ("this error originates in a macro outside of the current crate \
-                      (in Nightly builds, run with -Z external-macro-backtrace \
-                       for more info)".to_string(),
+                    (msg,
                      Style::NoStyle),
                 ],
                 span: MultiSpan::new(),
@@ -998,9 +941,7 @@ impl EmitterWriter {
             }
         }
 
-        // Preprocess all the annotations so that they are grouped by file and by line number
-        // This helps us quickly iterate over the whole message (including secondary file spans)
-        let mut annotated_files = self.preprocess_annotations(msp);
+        let mut annotated_files = FileWithAnnotatedLines::collect_annotations(msp, &self.sm);
 
         // Make sure our primary file comes first
         let (primary_lo, sm) = if let (Some(sm), Some(ref primary_span)) =
@@ -1396,7 +1337,7 @@ impl EmitterWriter {
         }
 
         let mut dst = self.dst.writable();
-        match write!(dst, "\n") {
+        match writeln!(dst) {
             Err(e) => panic!("failed to emit error: {}", e),
             _ => {
                 match dst.flush() {
@@ -1405,6 +1346,176 @@ impl EmitterWriter {
                 }
             }
         }
+    }
+}
+
+impl FileWithAnnotatedLines {
+    /// Preprocess all the annotations so that they are grouped by file and by line number
+    /// This helps us quickly iterate over the whole message (including secondary file spans)
+    pub fn collect_annotations(
+        msp: &MultiSpan,
+        source_map: &Option<Lrc<SourceMapperDyn>>
+    ) -> Vec<FileWithAnnotatedLines> {
+        fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
+                                  file: Lrc<SourceFile>,
+                                  line_index: usize,
+                                  ann: Annotation) {
+
+            for slot in file_vec.iter_mut() {
+                // Look through each of our files for the one we're adding to
+                if slot.file.name == file.name {
+                    // See if we already have a line for it
+                    for line_slot in &mut slot.lines {
+                        if line_slot.line_index == line_index {
+                            line_slot.annotations.push(ann);
+                            return;
+                        }
+                    }
+                    // We don't have a line yet, create one
+                    slot.lines.push(Line {
+                        line_index,
+                        annotations: vec![ann],
+                    });
+                    slot.lines.sort();
+                    return;
+                }
+            }
+            // This is the first time we're seeing the file
+            file_vec.push(FileWithAnnotatedLines {
+                file,
+                lines: vec![Line {
+                                line_index,
+                                annotations: vec![ann],
+                            }],
+                multiline_depth: 0,
+            });
+        }
+
+        let mut output = vec![];
+        let mut multiline_annotations = vec![];
+
+        if let Some(ref sm) = source_map {
+            for span_label in msp.span_labels() {
+                if span_label.span.is_dummy() {
+                    continue;
+                }
+
+                let lo = sm.lookup_char_pos(span_label.span.lo());
+                let mut hi = sm.lookup_char_pos(span_label.span.hi());
+
+                // Watch out for "empty spans". If we get a span like 6..6, we
+                // want to just display a `^` at 6, so convert that to
+                // 6..7. This is degenerate input, but it's best to degrade
+                // gracefully -- and the parser likes to supply a span like
+                // that for EOF, in particular.
+
+                if lo.col_display == hi.col_display && lo.line == hi.line {
+                    hi.col_display += 1;
+                }
+
+                let ann_type = if lo.line != hi.line {
+                    let ml = MultilineAnnotation {
+                        depth: 1,
+                        line_start: lo.line,
+                        line_end: hi.line,
+                        start_col: lo.col_display,
+                        end_col: hi.col_display,
+                        is_primary: span_label.is_primary,
+                        label: span_label.label.clone(),
+                        overlaps_exactly: false,
+                    };
+                    multiline_annotations.push((lo.file.clone(), ml.clone()));
+                    AnnotationType::Multiline(ml)
+                } else {
+                    AnnotationType::Singleline
+                };
+                let ann = Annotation {
+                    start_col: lo.col_display,
+                    end_col: hi.col_display,
+                    is_primary: span_label.is_primary,
+                    label: span_label.label.clone(),
+                    annotation_type: ann_type,
+                };
+
+                if !ann.is_multiline() {
+                    add_annotation_to_file(&mut output, lo.file, lo.line, ann);
+                }
+            }
+        }
+
+        // Find overlapping multiline annotations, put them at different depths
+        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, ml.line_end));
+        for item in multiline_annotations.clone() {
+            let ann = item.1;
+            for item in multiline_annotations.iter_mut() {
+                let ref mut a = item.1;
+                // Move all other multiline annotations overlapping with this one
+                // one level to the right.
+                if !(ann.same_span(a)) &&
+                    num_overlap(ann.line_start, ann.line_end, a.line_start, a.line_end, true)
+                {
+                    a.increase_depth();
+                } else if ann.same_span(a) && &ann != a {
+                    a.overlaps_exactly = true;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        let mut max_depth = 0;  // max overlapping multiline spans
+        for (file, ann) in multiline_annotations {
+            if ann.depth > max_depth {
+                max_depth = ann.depth;
+            }
+            let mut end_ann = ann.as_end();
+            if !ann.overlaps_exactly {
+                // avoid output like
+                //
+                //  |        foo(
+                //  |   _____^
+                //  |  |_____|
+                //  | ||         bar,
+                //  | ||     );
+                //  | ||      ^
+                //  | ||______|
+                //  |  |______foo
+                //  |         baz
+                //
+                // and instead get
+                //
+                //  |       foo(
+                //  |  _____^
+                //  | |         bar,
+                //  | |     );
+                //  | |      ^
+                //  | |      |
+                //  | |______foo
+                //  |        baz
+                add_annotation_to_file(&mut output, file.clone(), ann.line_start, ann.as_start());
+                // 4 is the minimum vertical length of a multiline span when presented: two lines
+                // of code and two lines of underline. This is not true for the special case where
+                // the beginning doesn't have an underline, but the current logic seems to be
+                // working correctly.
+                let middle = min(ann.line_start + 4, ann.line_end);
+                for line in ann.line_start + 1..middle {
+                    // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
+                    add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
+                }
+                if middle < ann.line_end - 1 {
+                    for line in ann.line_end - 1..ann.line_end {
+                        add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
+                    }
+                }
+            } else {
+                end_ann.annotation_type = AnnotationType::Singleline;
+            }
+            add_annotation_to_file(&mut output, file, ann.line_end, end_ann);
+        }
+        for file_vec in output.iter_mut() {
+            file_vec.multiline_depth = max_depth;
+        }
+        output
     }
 }
 
@@ -1485,7 +1596,7 @@ fn emit_to_destination(rendered_buffer: &[Vec<StyledString>],
             dst.reset()?;
         }
         if !short_message && (!lvl.is_failure_note() || pos != rendered_buffer.len() - 1) {
-            write!(dst, "\n")?;
+            writeln!(dst)?;
         }
     }
     dst.flush()?;
@@ -1495,13 +1606,15 @@ fn emit_to_destination(rendered_buffer: &[Vec<StyledString>],
 pub enum Destination {
     Terminal(StandardStream),
     Buffered(BufferWriter),
-    Raw(Box<dyn Write + Send>),
+    // The bool denotes whether we should be emitting ansi color codes or not
+    Raw(Box<(dyn Write + Send)>, bool),
 }
 
 pub enum WritableDst<'a> {
     Terminal(&'a mut StandardStream),
     Buffered(&'a mut BufferWriter, Buffer),
-    Raw(&'a mut Box<dyn Write + Send>),
+    Raw(&'a mut (dyn Write + Send)),
+    ColoredRaw(Ansi<&'a mut (dyn Write + Send)>),
 }
 
 impl Destination {
@@ -1520,14 +1633,15 @@ impl Destination {
         }
     }
 
-    fn writable<'a>(&'a mut self) -> WritableDst<'a> {
+    fn writable(&mut self) -> WritableDst<'_> {
         match *self {
             Destination::Terminal(ref mut t) => WritableDst::Terminal(t),
             Destination::Buffered(ref mut t) => {
                 let buf = t.buffer();
                 WritableDst::Buffered(t, buf)
             }
-            Destination::Raw(ref mut t) => WritableDst::Raw(t),
+            Destination::Raw(ref mut t, false) => WritableDst::Raw(t),
+            Destination::Raw(ref mut t, true) => WritableDst::ColoredRaw(Ansi::new(t)),
         }
     }
 }
@@ -1547,7 +1661,7 @@ impl<'a> WritableDst<'a> {
                 }
             }
             Style::Quotation => {}
-            Style::OldSchoolNoteText | Style::MainHeaderMsg => {
+            Style::MainHeaderMsg => {
                 spec.set_bold(true);
                 if cfg!(windows) {
                     spec.set_intense(true)
@@ -1585,6 +1699,7 @@ impl<'a> WritableDst<'a> {
         match *self {
             WritableDst::Terminal(ref mut t) => t.set_color(color),
             WritableDst::Buffered(_, ref mut t) => t.set_color(color),
+            WritableDst::ColoredRaw(ref mut t) => t.set_color(color),
             WritableDst::Raw(_) => Ok(())
         }
     }
@@ -1593,6 +1708,7 @@ impl<'a> WritableDst<'a> {
         match *self {
             WritableDst::Terminal(ref mut t) => t.reset(),
             WritableDst::Buffered(_, ref mut t) => t.reset(),
+            WritableDst::ColoredRaw(ref mut t) => t.reset(),
             WritableDst::Raw(_) => Ok(()),
         }
     }
@@ -1604,6 +1720,7 @@ impl<'a> Write for WritableDst<'a> {
             WritableDst::Terminal(ref mut t) => t.write(bytes),
             WritableDst::Buffered(_, ref mut buf) => buf.write(bytes),
             WritableDst::Raw(ref mut w) => w.write(bytes),
+            WritableDst::ColoredRaw(ref mut t) => t.write(bytes),
         }
     }
 
@@ -1612,6 +1729,7 @@ impl<'a> Write for WritableDst<'a> {
             WritableDst::Terminal(ref mut t) => t.flush(),
             WritableDst::Buffered(_, ref mut buf) => buf.flush(),
             WritableDst::Raw(ref mut w) => w.flush(),
+            WritableDst::ColoredRaw(ref mut w) => w.flush(),
         }
     }
 }

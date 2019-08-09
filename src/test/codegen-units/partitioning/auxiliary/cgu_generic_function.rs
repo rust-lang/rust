@@ -24,4 +24,3 @@ pub fn exported_but_not_generic(x: i32) -> i64 {
 fn not_exported_and_not_generic(x: u32) -> u64 {
     x as u64
 }
-

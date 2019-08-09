@@ -1,0 +1,18 @@
+error[E0594]: cannot assign to `counter`, as it is a captured variable in a `Fn` closure
+  --> $DIR/unboxed-closures-mutated-upvar-from-fn-closure.rs:11:9
+   |
+LL |         counter += 1;
+   |         ^^^^^^^^^^^^ cannot assign
+   |
+help: consider changing this to accept closures that implement `FnMut`
+  --> $DIR/unboxed-closures-mutated-upvar-from-fn-closure.rs:10:10
+   |
+LL |       call(|| {
+   |  __________^
+LL | |         counter += 1;
+LL | |
+LL | |     });
+   | |_____^
+
+error: aborting due to previous error
+

@@ -1,18 +1,14 @@
-use crate::monomorphize::Instance;
-use rustc::hir;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::mir::interpret::ConstValue;
+use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::mir::mono::MonoItem;
 use rustc::session::config::OptLevel;
-use rustc::ty::{self, Ty, TyCtxt, Const, ClosureSubsts, GeneratorSubsts, LazyConst, ParamConst};
-use rustc::ty::subst::{SubstsRef, InternalSubsts};
-use syntax::ast;
+use rustc::ty::{self, TyCtxt, Instance};
+use rustc::ty::subst::InternalSubsts;
+use rustc::ty::print::obsolete::DefPathBasedNames;
 use syntax::attr::InlineAttr;
-use std::fmt::{self, Write};
-use std::iter;
+use std::fmt;
 use rustc::mir::mono::Linkage;
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::InternedString;
 use syntax::source_map::Span;
-pub use rustc::mir::mono::MonoItem;
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
@@ -39,7 +35,7 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
+pub trait MonoItemExt<'tcx>: fmt::Debug {
     fn as_mono_item(&self) -> &MonoItem<'tcx>;
 
     fn is_generic_fn(&self) -> bool {
@@ -52,23 +48,21 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         }
     }
 
-    fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
+    fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> ty::SymbolName {
         match *self.as_mono_item() {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => {
                 tcx.symbol_name(Instance::mono(tcx, def_id))
             }
             MonoItem::GlobalAsm(hir_id) => {
-                let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
+                let def_id = tcx.hir().local_def_id(hir_id);
                 ty::SymbolName {
-                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_interned_str()
+                    name: InternedString::intern(&format!("global_asm_{:?}", def_id))
                 }
             }
         }
     }
-    fn instantiation_mode(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                          -> InstantiationMode {
+    fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
         let inline_in_all_cgus =
             tcx.sess.opts.debugging_opts.inline_in_all_cgus.unwrap_or_else(|| {
                 tcx.sess.opts.optimize != OptLevel::No
@@ -112,7 +106,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         }
     }
 
-    fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Linkage> {
+    fn explicit_linkage(&self, tcx: TyCtxt<'tcx>) -> Option<Linkage> {
         let def_id = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => instance.def_id(),
             MonoItem::Static(def_id) => def_id,
@@ -148,7 +142,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     /// Similarly, if a vtable method has such a signature, and therefore can't
     /// be used, we can just not emit it and have a placeholder (a null pointer,
     /// which will never be accessed) in its place.
-    fn is_instantiable(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+    fn is_instantiable(&self, tcx: TyCtxt<'tcx>) -> bool {
         debug!("is_instantiable({:?})", self);
         let (def_id, substs) = match *self.as_mono_item() {
             MonoItem::Fn(ref instance) => (instance.def_id(), instance.substs),
@@ -160,7 +154,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         tcx.substitute_normalize_and_test_predicates((def_id, &substs))
     }
 
-    fn to_string(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, debug: bool) -> String {
+    fn to_string(&self, tcx: TyCtxt<'tcx>, debug: bool) -> String {
         return match *self.as_mono_item() {
             MonoItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance, debug)
@@ -174,11 +168,12 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             }
         };
 
-        fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        prefix: &str,
-                                        instance: Instance<'tcx>,
-                                        debug: bool)
-                                        -> String {
+        fn to_string_internal<'a, 'tcx>(
+            tcx: TyCtxt<'tcx>,
+            prefix: &str,
+            instance: Instance<'tcx>,
+            debug: bool,
+        ) -> String {
             let mut result = String::with_capacity(32);
             result.push_str(prefix);
             let printer = DefPathBasedNames::new(tcx, false, false);
@@ -187,7 +182,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         }
     }
 
-    fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+    fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self.as_mono_item() {
             MonoItem::Fn(Instance { def, .. }) => {
                 tcx.hir().as_local_hir_id(def.def_id())
@@ -198,292 +193,12 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             MonoItem::GlobalAsm(hir_id) => {
                 Some(hir_id)
             }
-        }.map(|hir_id| tcx.hir().span_by_hir_id(hir_id))
+        }.map(|hir_id| tcx.hir().span(hir_id))
     }
 }
 
-impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
+impl MonoItemExt<'tcx> for MonoItem<'tcx> {
     fn as_mono_item(&self) -> &MonoItem<'tcx> {
         self
-    }
-}
-
-//=-----------------------------------------------------------------------------
-// MonoItem String Keys
-//=-----------------------------------------------------------------------------
-
-// The code below allows for producing a unique string key for a mono item.
-// These keys are used by the handwritten auto-tests, so they need to be
-// predictable and human-readable.
-//
-// Note: A lot of this could looks very similar to what's already in the
-//       ppaux module. It would be good to refactor things so we only have one
-//       parameterizable implementation for printing types.
-
-/// Same as `unique_type_name()` but with the result pushed onto the given
-/// `output` parameter.
-pub struct DefPathBasedNames<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    omit_disambiguators: bool,
-    omit_local_crate_name: bool,
-}
-
-impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               omit_disambiguators: bool,
-               omit_local_crate_name: bool)
-               -> Self {
-        DefPathBasedNames {
-            tcx,
-            omit_disambiguators,
-            omit_local_crate_name,
-        }
-    }
-
-    // Pushes the type name of the specified type to the provided string.
-    // If 'debug' is true, printing normally unprintable types is allowed
-    // (e.g. ty::GeneratorWitness). This parameter should only be set when
-    // this method is being used for logging purposes (e.g. with debug! or info!)
-    // When being used for codegen purposes, 'debug' should be set to 'false'
-    // in order to catch unexpected types that should never end up in a type name
-    pub fn push_type_name(&self, t: Ty<'tcx>, output: &mut String, debug: bool) {
-        match t.sty {
-            ty::Bool              => output.push_str("bool"),
-            ty::Char              => output.push_str("char"),
-            ty::Str               => output.push_str("str"),
-            ty::Never             => output.push_str("!"),
-            ty::Int(ast::IntTy::Isize)    => output.push_str("isize"),
-            ty::Int(ast::IntTy::I8)    => output.push_str("i8"),
-            ty::Int(ast::IntTy::I16)   => output.push_str("i16"),
-            ty::Int(ast::IntTy::I32)   => output.push_str("i32"),
-            ty::Int(ast::IntTy::I64)   => output.push_str("i64"),
-            ty::Int(ast::IntTy::I128)   => output.push_str("i128"),
-            ty::Uint(ast::UintTy::Usize)   => output.push_str("usize"),
-            ty::Uint(ast::UintTy::U8)   => output.push_str("u8"),
-            ty::Uint(ast::UintTy::U16)  => output.push_str("u16"),
-            ty::Uint(ast::UintTy::U32)  => output.push_str("u32"),
-            ty::Uint(ast::UintTy::U64)  => output.push_str("u64"),
-            ty::Uint(ast::UintTy::U128)  => output.push_str("u128"),
-            ty::Float(ast::FloatTy::F32) => output.push_str("f32"),
-            ty::Float(ast::FloatTy::F64) => output.push_str("f64"),
-            ty::Adt(adt_def, substs) => {
-                self.push_def_path(adt_def.did, output);
-                self.push_generic_params(substs, iter::empty(), output, debug);
-            },
-            ty::Tuple(component_types) => {
-                output.push('(');
-                for &component_type in component_types {
-                    self.push_type_name(component_type, output, debug);
-                    output.push_str(", ");
-                }
-                if !component_types.is_empty() {
-                    output.pop();
-                    output.pop();
-                }
-                output.push(')');
-            },
-            ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
-                output.push('*');
-                match mutbl {
-                    hir::MutImmutable => output.push_str("const "),
-                    hir::MutMutable => output.push_str("mut "),
-                }
-
-                self.push_type_name(inner_type, output, debug);
-            },
-            ty::Ref(_, inner_type, mutbl) => {
-                output.push('&');
-                if mutbl == hir::MutMutable {
-                    output.push_str("mut ");
-                }
-
-                self.push_type_name(inner_type, output, debug);
-            },
-            ty::Array(inner_type, len) => {
-                output.push('[');
-                self.push_type_name(inner_type, output, debug);
-                write!(output, "; {}", len.unwrap_usize(self.tcx)).unwrap();
-                output.push(']');
-            },
-            ty::Slice(inner_type) => {
-                output.push('[');
-                self.push_type_name(inner_type, output, debug);
-                output.push(']');
-            },
-            ty::Dynamic(ref trait_data, ..) => {
-                if let Some(principal) = trait_data.principal() {
-                    self.push_def_path(principal.def_id(), output);
-                    self.push_generic_params(
-                        principal.skip_binder().substs,
-                        trait_data.projection_bounds(),
-                        output,
-                        debug
-                    );
-                } else {
-                    output.push_str("dyn '_");
-                }
-            },
-            ty::Foreign(did) => self.push_def_path(did, output),
-            ty::FnDef(..) |
-            ty::FnPtr(_) => {
-                let sig = t.fn_sig(self.tcx);
-                if sig.unsafety() == hir::Unsafety::Unsafe {
-                    output.push_str("unsafe ");
-                }
-
-                let abi = sig.abi();
-                if abi != ::rustc_target::spec::abi::Abi::Rust {
-                    output.push_str("extern \"");
-                    output.push_str(abi.name());
-                    output.push_str("\" ");
-                }
-
-                output.push_str("fn(");
-
-                let sig = self.tcx.normalize_erasing_late_bound_regions(
-                    ty::ParamEnv::reveal_all(),
-                    &sig,
-                );
-
-                if !sig.inputs().is_empty() {
-                    for &parameter_type in sig.inputs() {
-                        self.push_type_name(parameter_type, output, debug);
-                        output.push_str(", ");
-                    }
-                    output.pop();
-                    output.pop();
-                }
-
-                if sig.c_variadic {
-                    if !sig.inputs().is_empty() {
-                        output.push_str(", ...");
-                    } else {
-                        output.push_str("...");
-                    }
-                }
-
-                output.push(')');
-
-                if !sig.output().is_unit() {
-                    output.push_str(" -> ");
-                    self.push_type_name(sig.output(), output, debug);
-                }
-            },
-            ty::Generator(def_id, GeneratorSubsts { ref substs }, _) |
-            ty::Closure(def_id, ClosureSubsts { ref substs }) => {
-                self.push_def_path(def_id, output);
-                let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
-                let substs = substs.truncate_to(self.tcx, generics);
-                self.push_generic_params(substs, iter::empty(), output, debug);
-            }
-            ty::Error |
-            ty::Bound(..) |
-            ty::Infer(_) |
-            ty::Placeholder(..) |
-            ty::UnnormalizedProjection(..) |
-            ty::Projection(..) |
-            ty::Param(_) |
-            ty::GeneratorWitness(_) |
-            ty::Opaque(..) => {
-                if debug {
-                    output.push_str(&format!("`{:?}`", t));
-                } else {
-                    bug!("DefPathBasedNames: Trying to create type name for \
-                                         unexpected type: {:?}", t);
-                }
-            }
-        }
-    }
-
-    // FIXME(const_generics): handle debug printing.
-    pub fn push_const_name(&self, c: &LazyConst<'tcx>, output: &mut String, debug: bool) {
-        match c {
-            LazyConst::Unevaluated(..) => output.push_str("_: _"),
-            LazyConst::Evaluated(Const { ty, val }) => {
-                match val {
-                    ConstValue::Infer(..) => output.push_str("_"),
-                    ConstValue::Param(ParamConst { name, .. }) => {
-                        write!(output, "{}", name).unwrap();
-                    }
-                    _ => write!(output, "{:?}", c).unwrap(),
-                }
-                output.push_str(": ");
-                self.push_type_name(ty, output, debug);
-            }
-        }
-    }
-
-    pub fn push_def_path(&self,
-                         def_id: DefId,
-                         output: &mut String) {
-        let def_path = self.tcx.def_path(def_id);
-
-        // some_crate::
-        if !(self.omit_local_crate_name && def_id.is_local()) {
-            output.push_str(&self.tcx.crate_name(def_path.krate).as_str());
-            output.push_str("::");
-        }
-
-        // foo::bar::ItemName::
-        for part in self.tcx.def_path(def_id).data {
-            if self.omit_disambiguators {
-                write!(output, "{}::", part.data.as_interned_str()).unwrap();
-            } else {
-                write!(output, "{}[{}]::",
-                       part.data.as_interned_str(),
-                       part.disambiguator).unwrap();
-            }
-        }
-
-        // remove final "::"
-        output.pop();
-        output.pop();
-    }
-
-    fn push_generic_params<I>(
-        &self,
-        substs: SubstsRef<'tcx>,
-        projections: I,
-        output: &mut String,
-        debug: bool,
-    ) where I: Iterator<Item=ty::PolyExistentialProjection<'tcx>> {
-        let mut projections = projections.peekable();
-        if substs.non_erasable_generics().next().is_none() && projections.peek().is_none() {
-            return;
-        }
-
-        output.push('<');
-
-        for type_parameter in substs.types() {
-            self.push_type_name(type_parameter, output, debug);
-            output.push_str(", ");
-        }
-
-        for projection in projections {
-            let projection = projection.skip_binder();
-            let name = &self.tcx.associated_item(projection.item_def_id).ident.as_str();
-            output.push_str(name);
-            output.push_str("=");
-            self.push_type_name(projection.ty, output, debug);
-            output.push_str(", ");
-        }
-
-        for const_parameter in substs.consts() {
-            self.push_const_name(const_parameter, output, debug);
-            output.push_str(", ");
-        }
-
-        output.pop();
-        output.pop();
-
-        output.push('>');
-    }
-
-    pub fn push_instance_as_string(&self,
-                                   instance: Instance<'tcx>,
-                                   output: &mut String,
-                                   debug: bool) {
-        self.push_def_path(instance.def_id(), output);
-        self.push_generic_params(instance.substs, iter::empty(), output, debug);
     }
 }

@@ -1,6 +1,7 @@
 //! Used by `rustc` when compiling a plugin crate.
 
 use syntax::attr;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
@@ -15,8 +16,7 @@ struct RegistrarFinder {
 impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemKind::Fn(..) = item.node {
-            if attr::contains_name(&item.attrs,
-                                   "plugin_registrar") {
+            if attr::contains_name(&item.attrs, sym::plugin_registrar) {
                 self.registrars.push((item.hir_id, item.span));
             }
         }
@@ -30,14 +30,11 @@ impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
 }
 
 /// Finds the function marked with `#[plugin_registrar]`, if any.
-pub fn find_plugin_registrar<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Option<DefId> {
+pub fn find_plugin_registrar(tcx: TyCtxt<'_>) -> Option<DefId> {
     tcx.plugin_registrar_fn(LOCAL_CRATE)
 }
 
-fn plugin_registrar_fn<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
-    cnum: CrateNum,
-) -> Option<DefId> {
+fn plugin_registrar_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<DefId> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let mut finder = RegistrarFinder { registrars: Vec::new() };
@@ -47,7 +44,7 @@ fn plugin_registrar_fn<'tcx>(
         0 => None,
         1 => {
             let (hir_id, _) = finder.registrars.pop().unwrap();
-            Some(tcx.hir().local_def_id_from_hir_id(hir_id))
+            Some(tcx.hir().local_def_id(hir_id))
         },
         _ => {
             let diagnostic = tcx.sess.diagnostic();

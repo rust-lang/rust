@@ -5,9 +5,11 @@ LL |         $this.width.unwrap()
    |         ^^^^^^^^^^^ use of borrowed `*self`
 ...
 LL |         let r = &mut *self;
-   |                      ----- borrow of `*self` occurs here
+   |                 ---------- borrow of `*self` occurs here
 LL |         r.get_size(width!(self))
-   |                    ------------ in this macro invocation
+   |           -------- ------------ in this macro invocation
+   |           |
+   |           borrow later used by call
 
 error: aborting due to previous error
 

@@ -24,32 +24,22 @@ pub(super) trait DecodeMut<'a, 's, S>: Sized {
 }
 
 macro_rules! rpc_encode_decode {
-    (uleb128 $ty:ty) => {
+    (le $ty:ty) => {
         impl<S> Encode<S> for $ty {
-            fn encode(mut self, w: &mut Writer, s: &mut S) {
-                let mut byte = 0x80;
-                while byte & 0x80 != 0 {
-                    byte = (self & 0x7f) as u8;
-                    self >>= 7;
-                    if self != 0 {
-                        byte |= 0x80;
-                    }
-                    byte.encode(w, s);
-                }
+            fn encode(self, w: &mut Writer, _: &mut S) {
+                w.write_all(&self.to_le_bytes()).unwrap();
             }
         }
 
         impl<S> DecodeMut<'_, '_, S> for $ty {
-            fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
-                let mut byte = 0x80;
-                let mut v = 0;
-                let mut shift = 0;
-                while byte & 0x80 != 0 {
-                    byte = u8::decode(r, s);
-                    v |= ((byte & 0x7f) as Self) << shift;
-                    shift += 7;
-                }
-                v
+            fn decode(r: &mut Reader<'_>, _: &mut S) -> Self {
+                const N: usize = ::std::mem::size_of::<$ty>();
+
+                let mut bytes = [0; N];
+                bytes.copy_from_slice(&r[..N]);
+                *r = &r[N..];
+
+                Self::from_le_bytes(bytes)
             }
         }
     };
@@ -69,7 +59,7 @@ macro_rules! rpc_encode_decode {
         }
     };
     (enum $name:ident $(<$($T:ident),+>)? { $($variant:ident $(($field:ident))*),* $(,)? }) => {
-        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)* {
+        impl<S, $($($T: Encode<S>),+)?> Encode<S> for $name $(<$($T),+>)? {
             fn encode(self, w: &mut Writer, s: &mut S) {
                 // HACK(eddyb): `Tag` enum duplicated between the
                 // two impls as there's no other place to stash it.
@@ -89,8 +79,8 @@ macro_rules! rpc_encode_decode {
             }
         }
 
-        impl<S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)*> DecodeMut<'a, '_, S>
-            for $name $(<$($T),+>)*
+        impl<S, $($($T: for<'s> DecodeMut<'a, 's, S>),+)?> DecodeMut<'a, '_, S>
+            for $name $(<$($T),+>)?
         {
             fn decode(r: &mut Reader<'a>, s: &mut S) -> Self {
                 // HACK(eddyb): `Tag` enum duplicated between the
@@ -136,8 +126,8 @@ impl<S> DecodeMut<'_, '_, S> for u8 {
     }
 }
 
-rpc_encode_decode!(uleb128 u32);
-rpc_encode_decode!(uleb128 usize);
+rpc_encode_decode!(le u32);
+rpc_encode_decode!(le usize);
 
 impl<S> Encode<S> for bool {
     fn encode(self, w: &mut Writer, s: &mut S) {

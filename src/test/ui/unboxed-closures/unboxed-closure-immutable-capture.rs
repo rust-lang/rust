@@ -11,9 +11,7 @@ fn main() {
     move || x = 1; //~ ERROR cannot assign
     move || set(&mut x); //~ ERROR cannot borrow
     || x = 1; //~ ERROR cannot assign
-    // FIXME: this should be `cannot borrow` (issue #18330)
-    || set(&mut x); //~ ERROR cannot assign
+    || set(&mut x); //~ ERROR cannot borrow
     || x = 1; //~ ERROR cannot assign
-    // FIXME: this should be `cannot borrow` (issue #18330)
-    || set(&mut x); //~ ERROR cannot assign
+    || set(&mut x); //~ ERROR cannot borrow
 }

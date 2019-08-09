@@ -215,7 +215,7 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn lock(&self) -> LockResult<MutexGuard<T>> {
+    pub fn lock(&self) -> LockResult<MutexGuard<'_, T>> {
         unsafe {
             self.inner.raw_lock();
             MutexGuard::new(self)
@@ -258,7 +258,7 @@ impl<T: ?Sized> Mutex<T> {
     /// assert_eq!(*mutex.lock().unwrap(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn try_lock(&self) -> TryLockResult<MutexGuard<T>> {
+    pub fn try_lock(&self) -> TryLockResult<MutexGuard<'_, T>> {
         unsafe {
             if self.inner.try_lock() {
                 Ok(MutexGuard::new(self)?)
@@ -376,6 +376,8 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Mutex<T> {
 impl<T> From<T> for Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     /// This is equivalent to [`Mutex::new`].
+    ///
+    /// [`Mutex::new`]: ../../std/sync/struct.Mutex.html#method.new
     fn from(t: T) -> Self {
         Mutex::new(t)
     }
@@ -391,7 +393,7 @@ impl<T: ?Sized + Default> Default for Mutex<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.try_lock() {
             Ok(guard) => f.debug_struct("Mutex").field("data", &&*guard).finish(),
             Err(TryLockError::Poisoned(err)) => {
@@ -400,7 +402,9 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
             Err(TryLockError::WouldBlock) => {
                 struct LockedPlaceholder;
                 impl fmt::Debug for LockedPlaceholder {
-                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { f.write_str("<locked>") }
+                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        f.write_str("<locked>")
+                    }
                 }
 
                 f.debug_struct("Mutex").field("data", &LockedPlaceholder).finish()
@@ -449,14 +453,14 @@ impl<T: ?Sized> Drop for MutexGuard<'_, T> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
     }
 }

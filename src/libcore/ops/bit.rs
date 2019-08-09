@@ -17,7 +17,7 @@
 /// impl Not for Answer {
 ///     type Output = Answer;
 ///
-///     fn not(self) -> Answer {
+///     fn not(self) -> Self::Output {
 ///         match self {
 ///             Answer::Yes => Answer::No,
 ///             Answer::No => Answer::Yes
@@ -59,7 +59,7 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise AND operator `&`.
 ///
-/// Note that `RHS` is `Self` by default, but this is not mandatory.
+/// Note that `Rhs` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///
@@ -75,7 +75,7 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     type Output = Self;
 ///
 ///     // rhs is the "right-hand side" of the expression `a & b`
-///     fn bitand(self, rhs: Self) -> Self {
+///     fn bitand(self, rhs: Self) -> Self::Output {
 ///         Scalar(self.0 & rhs.0)
 ///     }
 /// }
@@ -97,7 +97,7 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitAnd for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitand(self, BooleanVector(rhs): Self) -> Self {
+///     fn bitand(self, BooleanVector(rhs): Self) -> Self::Output {
 ///         let BooleanVector(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
 ///         BooleanVector(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x && *y).collect())
@@ -112,9 +112,9 @@ not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[lang = "bitand"]
 #[doc(alias = "&")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="no implementation for `{Self} & {RHS}`",
-                         label="no implementation for `{Self} & {RHS}`")]
-pub trait BitAnd<RHS=Self> {
+#[rustc_on_unimplemented(message="no implementation for `{Self} & {Rhs}`",
+                         label="no implementation for `{Self} & {Rhs}`")]
+pub trait BitAnd<Rhs=Self> {
     /// The resulting type after applying the `&` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -122,7 +122,7 @@ pub trait BitAnd<RHS=Self> {
     /// Performs the `&` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn bitand(self, rhs: RHS) -> Self::Output;
+    fn bitand(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! bitand_impl {
@@ -143,7 +143,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise OR operator `|`.
 ///
-/// Note that `RHS` is `Self` by default, but this is not mandatory.
+/// Note that `Rhs` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///
@@ -181,7 +181,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitOr for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitor(self, BooleanVector(rhs): Self) -> Self {
+///     fn bitor(self, BooleanVector(rhs): Self) -> Self::Output {
 ///         let BooleanVector(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
 ///         BooleanVector(lhs.iter().zip(rhs.iter()).map(|(x, y)| *x || *y).collect())
@@ -196,9 +196,9 @@ bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[lang = "bitor"]
 #[doc(alias = "|")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="no implementation for `{Self} | {RHS}`",
-                         label="no implementation for `{Self} | {RHS}`")]
-pub trait BitOr<RHS=Self> {
+#[rustc_on_unimplemented(message="no implementation for `{Self} | {Rhs}`",
+                         label="no implementation for `{Self} | {Rhs}`")]
+pub trait BitOr<Rhs=Self> {
     /// The resulting type after applying the `|` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -206,7 +206,7 @@ pub trait BitOr<RHS=Self> {
     /// Performs the `|` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn bitor(self, rhs: RHS) -> Self::Output;
+    fn bitor(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! bitor_impl {
@@ -227,7 +227,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 /// The bitwise XOR operator `^`.
 ///
-/// Note that `RHS` is `Self` by default, but this is not mandatory.
+/// Note that `Rhs` is `Self` by default, but this is not mandatory.
 ///
 /// # Examples
 ///
@@ -243,7 +243,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 ///     type Output = Self;
 ///
 ///     // rhs is the "right-hand side" of the expression `a ^ b`
-///     fn bitxor(self, rhs: Self) -> Self {
+///     fn bitxor(self, rhs: Self) -> Self::Output {
 ///         Scalar(self.0 ^ rhs.0)
 ///     }
 /// }
@@ -265,7 +265,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl BitXor for BooleanVector {
 ///     type Output = Self;
 ///
-///     fn bitxor(self, BooleanVector(rhs): Self) -> Self {
+///     fn bitxor(self, BooleanVector(rhs): Self) -> Self::Output {
 ///         let BooleanVector(lhs) = self;
 ///         assert_eq!(lhs.len(), rhs.len());
 ///         BooleanVector(lhs.iter()
@@ -283,9 +283,9 @@ bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[lang = "bitxor"]
 #[doc(alias = "^")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="no implementation for `{Self} ^ {RHS}`",
-                         label="no implementation for `{Self} ^ {RHS}`")]
-pub trait BitXor<RHS=Self> {
+#[rustc_on_unimplemented(message="no implementation for `{Self} ^ {Rhs}`",
+                         label="no implementation for `{Self} ^ {Rhs}`")]
+pub trait BitXor<Rhs=Self> {
     /// The resulting type after applying the `^` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -293,7 +293,7 @@ pub trait BitXor<RHS=Self> {
     /// Performs the `^` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn bitxor(self, rhs: RHS) -> Self::Output;
+    fn bitxor(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! bitxor_impl {
@@ -355,7 +355,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 /// impl<T: Clone> Shl<usize> for SpinVector<T> {
 ///     type Output = Self;
 ///
-///     fn shl(self, rhs: usize) -> SpinVector<T> {
+///     fn shl(self, rhs: usize) -> Self::Output {
 ///         // Rotate the vector by `rhs` places.
 ///         let (a, b) = self.vec.split_at(rhs);
 ///         let mut spun_vector: Vec<T> = vec![];
@@ -371,9 +371,9 @@ bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 #[lang = "shl"]
 #[doc(alias = "<<")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="no implementation for `{Self} << {RHS}`",
-                         label="no implementation for `{Self} << {RHS}`")]
-pub trait Shl<RHS=Self> {
+#[rustc_on_unimplemented(message="no implementation for `{Self} << {Rhs}`",
+                         label="no implementation for `{Self} << {Rhs}`")]
+pub trait Shl<Rhs=Self> {
     /// The resulting type after applying the `<<` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -381,7 +381,7 @@ pub trait Shl<RHS=Self> {
     /// Performs the `<<` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn shl(self, rhs: RHS) -> Self::Output;
+    fn shl(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! shl_impl {
@@ -464,7 +464,7 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 /// impl<T: Clone> Shr<usize> for SpinVector<T> {
 ///     type Output = Self;
 ///
-///     fn shr(self, rhs: usize) -> SpinVector<T> {
+///     fn shr(self, rhs: usize) -> Self::Output {
 ///         // Rotate the vector by `rhs` places.
 ///         let (a, b) = self.vec.split_at(self.vec.len() - rhs);
 ///         let mut spun_vector: Vec<T> = vec![];
@@ -480,9 +480,9 @@ shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 #[lang = "shr"]
 #[doc(alias = ">>")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(message="no implementation for `{Self} >> {RHS}`",
-                         label="no implementation for `{Self} >> {RHS}`")]
-pub trait Shr<RHS=Self> {
+#[rustc_on_unimplemented(message="no implementation for `{Self} >> {Rhs}`",
+                         label="no implementation for `{Self} >> {Rhs}`")]
+pub trait Shr<Rhs=Self> {
     /// The resulting type after applying the `>>` operator.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
@@ -490,7 +490,7 @@ pub trait Shr<RHS=Self> {
     /// Performs the `>>` operation.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn shr(self, rhs: RHS) -> Self::Output;
+    fn shr(self, rhs: Rhs) -> Self::Output;
 }
 
 macro_rules! shr_impl {

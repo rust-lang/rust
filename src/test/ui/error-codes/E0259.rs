@@ -1,5 +1,4 @@
-#![feature(alloc, rustc_private)]
-#![allow(unused_extern_crates)]
+#![feature(rustc_private)]
 
 extern crate alloc;
 

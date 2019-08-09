@@ -13,6 +13,14 @@ pub use core::num::Wrapping;
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
+#[stable(feature = "signed_nonzero", since = "1.34.0")]
+pub use core::num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize};
+
+#[unstable(feature = "int_error_matching",
+           reason = "it can be useful to match errors when making error messages \
+                     for integer parsing",
+           issue = "22639")]
+pub use core::num::IntErrorKind;
 
 #[cfg(test)] use crate::fmt;
 #[cfg(test)] use crate::ops::{Add, Sub, Mul, Div, Rem};

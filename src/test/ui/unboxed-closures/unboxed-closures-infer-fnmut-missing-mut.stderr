@@ -1,10 +1,10 @@
-error[E0596]: cannot borrow immutable local variable `tick` as mutable
+error[E0596]: cannot borrow `tick` as mutable, as it is not declared as mutable
   --> $DIR/unboxed-closures-infer-fnmut-missing-mut.rs:7:5
    |
 LL |     let tick = || counter += 1;
-   |         ---- help: make this binding mutable: `mut tick`
+   |         ---- help: consider changing this to be mutable: `mut tick`
 LL |     tick();
-   |     ^^^^ cannot borrow mutably
+   |     ^^^^ cannot borrow as mutable
 
 error: aborting due to previous error
 

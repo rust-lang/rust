@@ -1,7 +1,4 @@
-use crate::alloc::{self, Layout};
 use crate::num::NonZeroUsize;
-use crate::slice;
-use crate::str;
 
 use super::waitqueue::{
     try_lock_or_false, NotifiedTcs, SpinMutex, SpinMutexGuard, WaitQueue, WaitVariable,
@@ -90,8 +87,8 @@ impl RWLock {
     #[inline]
     unsafe fn __read_unlock(
         &self,
-        mut rguard: SpinMutexGuard<WaitVariable<Option<NonZeroUsize>>>,
-        wguard: SpinMutexGuard<WaitVariable<bool>>,
+        mut rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZeroUsize>>>,
+        wguard: SpinMutexGuard<'_, WaitVariable<bool>>,
     ) {
         *rguard.lock_var_mut() = NonZeroUsize::new(rguard.lock_var().unwrap().get() - 1);
         if rguard.lock_var().is_some() {
@@ -102,7 +99,7 @@ impl RWLock {
                 *wguard.lock_var_mut() = true;
             } else {
                 // No writers were waiting, the lock is released
-                assert!(rguard.queue_empty());
+                rtassert!(rguard.queue_empty());
             }
         }
     }
@@ -117,8 +114,8 @@ impl RWLock {
     #[inline]
     unsafe fn __write_unlock(
         &self,
-        rguard: SpinMutexGuard<WaitVariable<Option<NonZeroUsize>>>,
-        wguard: SpinMutexGuard<WaitVariable<bool>>,
+        rguard: SpinMutexGuard<'_, WaitVariable<Option<NonZeroUsize>>>,
+        wguard: SpinMutexGuard<'_, WaitVariable<bool>>,
     ) {
         if let Err(mut wguard) = WaitQueue::notify_one(wguard) {
             // No writers waiting, release the write lock
@@ -147,6 +144,7 @@ impl RWLock {
 
     // only used by __rust_rwlock_unlock below
     #[inline]
+    #[cfg_attr(test, allow(dead_code))]
     unsafe fn unlock(&self) {
         let rguard = self.readers.lock();
         let wguard = self.writer.lock();
@@ -161,9 +159,12 @@ impl RWLock {
     pub unsafe fn destroy(&self) {}
 }
 
+// The following functions are needed by libunwind. These symbols are named
+// in pre-link args for the target specification, so keep that in sync.
+#[cfg(not(test))]
 const EINVAL: i32 = 22;
 
-// used by libunwind port
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
@@ -173,6 +174,7 @@ pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
     return 0;
 }
 
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
@@ -181,6 +183,7 @@ pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
     (*p).write();
     return 0;
 }
+#[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
     if p.is_null() {
@@ -190,46 +193,15 @@ pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
     return 0;
 }
 
-// the following functions are also used by the libunwind port. They're
-// included here to make sure parallel codegen and LTO don't mess things up.
-#[no_mangle]
-pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
-    if s < 0 {
-        return;
-    }
-    let buf = slice::from_raw_parts(m as *const u8, s as _);
-    if let Ok(s) = str::from_utf8(&buf[..buf.iter().position(|&b| b == 0).unwrap_or(buf.len())]) {
-        eprint!("{}", s);
-    }
-}
-
-#[no_mangle]
-// NB. used by both libunwind and libpanic_abort
-pub unsafe extern "C" fn __rust_abort() {
-    crate::sys::abort_internal();
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn __rust_c_alloc(size: usize, align: usize) -> *mut u8 {
-    alloc::alloc(Layout::from_size_align_unchecked(size, align))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usize) {
-    alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align))
-}
-
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use core::array::FixedSizeArray;
-    use crate::mem::MaybeUninit;
-    use crate::{mem, ptr};
+    use crate::mem::{self, MaybeUninit};
 
-    // The below test verifies that the bytes of initialized RWLock are the ones
-    // we use in libunwind.
-    // If they change we need to update src/UnwindRustSgx.h in libunwind.
+    // Verify that the bytes of initialized RWLock are the same as in
+    // libunwind. If they change, `src/UnwindRustSgx.h` in libunwind needs to
+    // be changed too.
     #[test]
     fn test_c_rwlock_initializer() {
         const RWLOCK_INIT: &[u8] = &[
@@ -251,11 +223,28 @@ mod tests {
             0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
         ];
 
-        let mut init = MaybeUninit::<RWLock>::zeroed();
-        init.set(RWLock::new());
-        assert_eq!(
-            mem::transmute::<_, [u8; 128]>(init.into_inner()).as_slice(),
-            RWLOCK_INIT
-        );
+        #[inline(never)]
+        fn zero_stack() {
+            test::black_box(MaybeUninit::<[RWLock; 16]>::zeroed());
+        }
+
+        #[inline(never)]
+        unsafe fn rwlock_new(init: &mut MaybeUninit<RWLock>) {
+            init.write(RWLock::new());
+        }
+
+        unsafe {
+            // try hard to make sure that the padding/unused bytes in RWLock
+            // get initialized as 0. If the assertion below fails, that might
+            // just be an issue with the test code and not with the value of
+            // RWLOCK_INIT.
+            zero_stack();
+            let mut init = MaybeUninit::<RWLock>::zeroed();
+            rwlock_new(&mut init);
+            assert_eq!(
+                mem::transmute::<_, [u8; 128]>(init.assume_init()).as_slice(),
+                RWLOCK_INIT
+            )
+        };
     }
 }

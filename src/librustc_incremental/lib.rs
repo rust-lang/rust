@@ -2,17 +2,13 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(specialization)]
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-
 #[macro_use] extern crate rustc;
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
-
 #[macro_use] extern crate log;
 
 mod assert_dep_graph;

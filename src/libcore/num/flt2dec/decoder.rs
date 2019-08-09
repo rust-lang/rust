@@ -1,8 +1,8 @@
 //! Decodes a floating-point value into individual parts and error ranges.
 
-use {f32, f64};
-use num::FpCategory;
-use num::dec2flt::rawfp::RawFloat;
+use crate::{f32, f64};
+use crate::num::FpCategory;
+use crate::num::dec2flt::rawfp::RawFloat;
 
 /// Decoded unsigned finite value, such that:
 ///
@@ -10,7 +10,7 @@ use num::dec2flt::rawfp::RawFloat;
 ///
 /// - Any number from `(mant - minus) * 2^exp` to `(mant + plus) * 2^exp` will
 ///   round to the original value. The range is inclusive only when
-///   `inclusive` is true.
+///   `inclusive` is `true`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Decoded {
     /// The scaled mantissa.
@@ -86,4 +86,3 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
     };
     (sign < 0, decoded)
 }
-

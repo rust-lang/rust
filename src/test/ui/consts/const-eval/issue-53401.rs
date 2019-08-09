@@ -1,6 +1,6 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
-pub const STATIC_TRAIT: &Test = &();
+pub const STATIC_TRAIT: &dyn Test = &();
 
 fn main() {}
 

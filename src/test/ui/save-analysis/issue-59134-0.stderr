@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `bogus` in this scope
+  --> $DIR/issue-59134-0.rs:8:27
+   |
+LL |         const FLAG: u32 = bogus.field;
+   |                           ^^^^^ not found in this scope
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

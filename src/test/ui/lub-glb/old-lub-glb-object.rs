@@ -4,8 +4,8 @@
 trait Foo<T, U> { }
 
 fn foo(
-    x: &for<'a, 'b> Foo<&'a u8, &'b u8>,
-    y: &for<'a> Foo<&'a u8, &'a u8>,
+    x: &dyn for<'a, 'b> Foo<&'a u8, &'b u8>,
+    y: &dyn for<'a> Foo<&'a u8, &'a u8>,
 ) {
     let z = match 22 {
         0 => x,
@@ -14,12 +14,12 @@ fn foo(
 }
 
 fn bar(
-    x: &for<'a, 'b> Foo<&'a u8, &'b u8>,
-    y: &for<'a> Foo<&'a u8, &'a u8>,
+    x: &dyn for<'a, 'b> Foo<&'a u8, &'b u8>,
+    y: &dyn for<'a> Foo<&'a u8, &'a u8>,
 ) {
     // Accepted with explicit case:
     let z = match 22 {
-        0 => x as &for<'a> Foo<&'a u8, &'a u8>,
+        0 => x as &dyn for<'a> Foo<&'a u8, &'a u8>,
         _ => y,
     };
 }

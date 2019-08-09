@@ -146,6 +146,10 @@ img {
 	max-width: 100%;
 }
 
+li {
+	position: relative;
+}
+
 .source .content {
 	margin-top: 50px;
 	max-width: none;
@@ -182,10 +186,23 @@ nav.sub {
 	display: none !important;
 }
 
-.sidebar img {
+.logo-container {
+	height: 100px;
+	width: 100px;
+	position: relative;
 	margin: 20px auto;
 	display: block;
 	margin-top: 10px;
+}
+
+.logo-container > img {
+	max-width: 100px;
+	max-height: 100px;
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	display: block;
 }
 
 .sidebar .location {
@@ -345,7 +362,7 @@ nav.sub {
 	margin: 0;
 }
 .docblock-short code {
-	white-space: nowrap;
+	white-space: pre-wrap;
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
@@ -622,6 +639,7 @@ a {
 	margin-top: 5px;
 	padding: 6px;
 	padding-right: 19px;
+	flex: none;
 	border: 0;
 	border-right: 0;
 	border-radius: 4px 0 0 4px;
@@ -658,18 +676,18 @@ a {
 	transition: border-color 300ms ease;
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
-	width: calc(100% - 32px);
+	width: 100%;
 }
 
 #crate-search + .search-input {
 	border-radius: 0 1px 1px 0;
+	width: calc(100% - 32px);
 }
 
 .search-input:focus {
 	border-radius: 2px;
 	border: 0;
 	outline: 0;
-	box-shadow: 0 0 8px #078dd8;
 }
 
 .search-results .desc {
@@ -914,7 +932,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	height: 12px;
 }
 
-span.since {
+.out-of-band > span.since {
 	position: initial;
 	font-size: 20px;
 	margin-right: 5px;
@@ -998,129 +1016,6 @@ span.since {
 	opacity: 1;
 }
 
-/* Media Queries */
-
-@media (max-width: 700px) {
-	body {
-		padding-top: 0px;
-	}
-
-	.rustdoc > .sidebar {
-		height: 45px;
-		min-height: 40px;
-		margin: 0;
-		margin-left: -15px;
-		padding: 0 15px;
-		position: static;
-		z-index: 11;
-	}
-
-	.sidebar > .location {
-		float: right;
-		margin: 0px;
-		margin-top: 2px;
-		padding: 3px 10px 1px 10px;
-		min-height: 39px;
-		background: inherit;
-		text-align: left;
-		font-size: 24px;
-	}
-
-	.sidebar .location:empty {
-		padding: 0;
-	}
-
-	.sidebar img {
-		width: 35px;
-		margin-top: 5px;
-		margin-bottom: 5px;
-		float: left;
-		margin-left: 50px;
-	}
-
-	.sidebar-menu {
-		position: fixed;
-		z-index: 10;
-		font-size: 2rem;
-		cursor: pointer;
-		width: 45px;
-		left: 0;
-		text-align: center;
-		display: block;
-		border-bottom: 1px solid;
-		border-right: 1px solid;
-		height: 45px;
-	}
-
-	.sidebar-elems {
-		position: fixed;
-		z-index: 1;
-		left: 0;
-		top: 45px;
-		bottom: 0;
-		overflow-y: auto;
-		border-right: 1px solid;
-		display: none;
-	}
-
-	.sidebar > .block.version {
-		border-bottom: none;
-		margin-top: 12px;
-	}
-
-	nav.sub {
-		width: calc(100% - 32px);
-		float: right;
-	}
-
-	.content {
-		margin-left: 0px;
-	}
-
-	#main {
-		margin-top: 45px;
-		padding: 0;
-	}
-
-	.content .in-band {
-		width: 100%;
-	}
-
-	.content h4 > .out-of-band {
-		position: inherit;
-	}
-
-	.toggle-wrapper > .collapse-toggle {
-		left: 0px;
-	}
-
-	.toggle-wrapper {
-		height: 1.5em;
-	}
-
-	#search {
-		margin-left: 0;
-	}
-
-	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
-		display: flex;
-	}
-
-	.anchor {
-		display: none !important;
-	}
-
-	h1.fqn {
-		overflow: initial;
-	}
-}
-
-@media print {
-	nav.sub, .content .out-of-band, .collapse-toggle {
-		display: none;
-	}
-}
-
 .information {
 	position: absolute;
 	left: -20px;
@@ -1195,7 +1090,7 @@ pre.rust {
 	border-top: 2px solid;
 }
 
-#titles > div:not(:last-child):not(.selected) {
+#titles > div:not(:last-child) {
 	margin-right: 1px;
 	width: calc(33.3% - 1px);
 }
@@ -1228,7 +1123,220 @@ h4 > .important-traits {
 	margin: 5px 0;
 }
 
+#sidebar-toggle {
+	position: fixed;
+	top: 30px;
+	left: 300px;
+	z-index: 10;
+	padding: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 3px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: left .5s;
+	font-size: 1.2em;
+	border: 1px solid;
+	border-left: 0;
+}
+#source-sidebar {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 300px;
+	z-index: 1;
+	overflow: auto;
+	transition: left .5s;
+	border-right: 1px solid;
+}
+#source-sidebar > .title {
+	font-size: 1.5em;
+	text-align: center;
+	border-bottom: 1px solid;
+	margin-bottom: 6px;
+}
+
+.theme-picker {
+	position: absolute;
+	left: 211px;
+	top: 19px;
+}
+
+.theme-picker button {
+	outline: none;
+}
+
+#settings-menu {
+	position: absolute;
+	right: 0;
+	top: 10px;
+	outline: none;
+}
+
+#theme-picker, #settings-menu {
+	padding: 4px;
+	width: 27px;
+	height: 29px;
+	border: 1px solid;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+#theme-choices {
+	display: none;
+	position: absolute;
+	left: 0;
+	top: 28px;
+	border: 1px solid;
+	border-radius: 3px;
+	z-index: 1;
+	cursor: pointer;
+}
+
+#theme-choices > button {
+	border: none;
+	width: 100%;
+	padding: 4px;
+	text-align: center;
+	background: rgba(0,0,0,0);
+}
+
+#theme-choices > button:not(:first-child) {
+	border-top: 1px solid;
+}
+
+/* Media Queries */
+
 @media (max-width: 700px) {
+	body {
+		padding-top: 0px;
+	}
+
+	.rustdoc > .sidebar {
+		height: 45px;
+		min-height: 40px;
+		margin: 0;
+		margin-left: -15px;
+		padding: 0 15px;
+		position: static;
+		z-index: 11;
+	}
+
+	.sidebar > .location {
+		float: right;
+		margin: 0px;
+		margin-top: 2px;
+		padding: 3px 10px 1px 10px;
+		min-height: 39px;
+		background: inherit;
+		text-align: left;
+		font-size: 24px;
+	}
+
+	.sidebar .location:empty {
+		padding: 0;
+	}
+
+	.sidebar .logo-container {
+		width: 35px;
+		height: 35px;
+		margin-top: 5px;
+		margin-bottom: 5px;
+		float: left;
+		margin-left: 50px;
+	}
+
+	.sidebar .logo-container > img {
+		max-width: 35px;
+		max-height: 35px;
+	}
+
+	.sidebar-menu {
+		position: fixed;
+		z-index: 10;
+		font-size: 2rem;
+		cursor: pointer;
+		width: 45px;
+		left: 0;
+		text-align: center;
+		display: block;
+		border-bottom: 1px solid;
+		border-right: 1px solid;
+		height: 45px;
+	}
+
+	.rustdoc.source > .sidebar > .sidebar-menu {
+		display: none;
+	}
+
+	.sidebar-elems {
+		position: fixed;
+		z-index: 1;
+		left: 0;
+		top: 45px;
+		bottom: 0;
+		overflow-y: auto;
+		border-right: 1px solid;
+		display: none;
+	}
+
+	.sidebar > .block.version {
+		border-bottom: none;
+		margin-top: 12px;
+	}
+
+	nav.sub {
+		width: calc(100% - 32px);
+		float: right;
+	}
+
+	.content {
+		margin-left: 0px;
+	}
+
+	#main {
+		margin-top: 45px;
+		padding: 0;
+	}
+
+	.content .in-band {
+		width: 100%;
+	}
+
+	.content h4 > .out-of-band {
+		position: inherit;
+	}
+
+	.toggle-wrapper > .collapse-toggle {
+		left: 0px;
+	}
+
+	.toggle-wrapper {
+		height: 1.5em;
+	}
+
+	#search {
+		margin-left: 0;
+	}
+
+	.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+		display: flex;
+	}
+
+	.anchor {
+		display: none !important;
+	}
+
+	h1.fqn {
+		overflow: initial;
+	}
+
+	.theme-picker {
+		left: 10px;
+		top: 54px;
+		z-index: 1;
+	}
+
 	h4 > .important-traits {
 		position: absolute;
 		left: -22px;
@@ -1303,8 +1411,29 @@ h4 > .important-traits {
 	#all-types {
 		margin: 10px;
 	}
+
+	#sidebar-toggle {
+		top: 100px;
+		width: 30px;
+		font-size: 1.5rem;
+		text-align: center;
+		padding: 0;
+	}
+
+	#source-sidebar {
+		z-index: 11;
+	}
+
+	#main > .line-numbers {
+		margin-top: 0;
+	}
 }
 
+@media print {
+	nav.sub, .content .out-of-band, .collapse-toggle {
+		display: none;
+	}
+}
 
 @media (max-width: 416px) {
 	#titles {
@@ -1404,63 +1533,6 @@ kbd {
 	cursor: default;
 }
 
-.theme-picker {
-	position: absolute;
-	left: 211px;
-	top: 19px;
-}
-
-.theme-picker button {
-	outline: none;
-}
-
-#settings-menu {
-	position: absolute;
-	right: 0;
-	top: 10px;
-	outline: none;
-}
-
-#theme-picker, #settings-menu {
-	padding: 4px;
-	width: 27px;
-	height: 29px;
-	border: 1px solid;
-	border-radius: 3px;
-	cursor: pointer;
-}
-
-#theme-choices {
-	display: none;
-	position: absolute;
-	left: 0;
-	top: 28px;
-	border: 1px solid;
-	border-radius: 3px;
-	z-index: 1;
-	cursor: pointer;
-}
-
-#theme-choices > button {
-	border: none;
-	width: 100%;
-	padding: 4px;
-	text-align: center;
-	background: rgba(0,0,0,0);
-}
-
-#theme-choices > button:not(:first-child) {
-	border-top: 1px solid;
-}
-
-@media (max-width: 700px) {
-	.theme-picker {
-		left: 10px;
-		top: 54px;
-		z-index: 1;
-	}
-}
-
 .hidden-by-impl-hider,
 .hidden-by-usual-hider {
 	/* important because of conflicting rule for small screens */
@@ -1512,39 +1584,6 @@ kbd {
 	margin-bottom: 1em;
 }
 
-#sidebar-toggle {
-	position: fixed;
-	top: 30px;
-	left: 300px;
-	z-index: 10;
-	padding: 3px;
-	border-top-right-radius: 3px;
-	border-bottom-right-radius: 3px;
-	cursor: pointer;
-	font-weight: bold;
-	transition: left .5s;
-	font-size: 1.2em;
-	border: 1px solid;
-	border-left: 0;
-}
-#source-sidebar {
-	position: fixed;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	width: 300px;
-	z-index: 1;
-	overflow: auto;
-	transition: left .5s;
-	border-right: 1px solid;
-}
-#source-sidebar > .title {
-	font-size: 1.5em;
-	text-align: center;
-	border-bottom: 1px solid;
-	margin-bottom: 6px;
-}
-
 div.children {
 	padding-left: 27px;
 	display: none;
@@ -1576,4 +1615,18 @@ div.name.expand::before {
 	transform: rotate(90deg);
 	left: -15px;
 	top: 2px;
+}
+
+/* This part is to fix the "Expand attributes" part in the type declaration. */
+.type-decl > pre > .toggle-wrapper.toggle-attributes.top-attr {
+	margin-left: 0 !important;
+}
+.type-decl > pre > .docblock.attributes.top-attr {
+	margin-left: 1.8em !important;
+}
+.type-decl > pre > .toggle-attributes {
+	margin-left: 2.2em;
+}
+.type-decl > pre > .docblock.attributes {
+	margin-left: 4em;
 }

@@ -1,4 +1,4 @@
-use crate::io;
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::sys::Void;
 
 pub struct AnonPipe(Void);
@@ -8,7 +8,15 @@ impl AnonPipe {
         match self.0 {}
     }
 
+    pub fn read_vectored(&self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        match self.0 {}
+    }
+
     pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
+        match self.0 {}
+    }
+
+    pub fn write_vectored(&self, _bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         match self.0 {}
     }
 

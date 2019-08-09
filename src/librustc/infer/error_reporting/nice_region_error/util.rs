@@ -3,7 +3,7 @@
 
 use crate::hir;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use crate::ty::{self, Region, Ty};
+use crate::ty::{self, DefIdTree, Region, Ty};
 use crate::hir::def_id::DefId;
 use syntax_pos::Span;
 
@@ -24,7 +24,7 @@ pub(super) struct AnonymousArgInfo<'tcx> {
     pub is_first: bool,
 }
 
-impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     // This method walks the Type of the function body arguments using
     // `fold_regions()` function and returns the
     // &hir::Arg of the function argument corresponding to the anonymous
@@ -43,19 +43,19 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ) -> Option<AnonymousArgInfo<'_>> {
         let (id, bound_region) = match *anon_region {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
-            ty::ReEarlyBound(ref ebr) => (
-                self.tcx().parent_def_id(ebr.def_id).unwrap(),
+            ty::ReEarlyBound(ebr) => (
+                self.tcx().parent(ebr.def_id).unwrap(),
                 ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
             ),
             _ => return None, // not a free region
         };
 
         let hir = &self.tcx().hir();
-        if let Some(node_id) = hir.as_local_node_id(id) {
-            if let Some(body_id) = hir.maybe_body_owned_by(node_id) {
+        if let Some(hir_id) = hir.as_local_hir_id(id) {
+            if let Some(body_id) = hir.maybe_body_owned_by(hir_id) {
                 let body = hir.body(body_id);
                 let owner_id = hir.body_owner(body_id);
-                let fn_decl = hir.fn_decl(owner_id).unwrap();
+                let fn_decl = hir.fn_decl_by_hir_id(owner_id).unwrap();
                 if let Some(tables) = self.tables {
                     body.arguments
                         .iter()
@@ -63,7 +63,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
                         .filter_map(|(index, arg)| {
                             // May return None; sometimes the tables are not yet populated.
                             let ty_hir_id = fn_decl.inputs[index].hir_id;
-                            let arg_ty_span = hir.span(hir.hir_to_node_id(ty_hir_id));
+                            let arg_ty_span = hir.span(ty_hir_id);
                             let ty = tables.node_type_opt(arg.hir_id)?;
                             let mut found_anon_region = false;
                             let new_arg_ty = self.tcx().fold_regions(&ty, &mut false, |r, _| {

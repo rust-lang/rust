@@ -27,14 +27,15 @@ use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
 use std::collections::BTreeSet;
 use syntax::ast;
+use syntax::symbol::{Symbol, sym};
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
                  ATTR_EXPECTED_CGU_REUSE};
 
-const MODULE: &str = "module";
-const CFG: &str = "cfg";
-const KIND: &str = "kind";
+const MODULE: Symbol = sym::module;
+const CFG: Symbol = sym::cfg;
+const KIND: Symbol = sym::kind;
 
-pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn assert_module_sources(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
             return;
@@ -58,12 +59,12 @@ pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     })
 }
 
-struct AssertModuleSource<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct AssertModuleSource<'tcx> {
+    tcx: TyCtxt<'tcx>,
     available_cgus: BTreeSet<String>,
 }
 
-impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
+impl AssertModuleSource<'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
         let (expected_reuse, comp_kind) = if attr.check_name(ATTR_PARTITION_REUSED) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)
@@ -146,14 +147,14 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
                                                         comp_kind);
     }
 
-    fn field(&self, attr: &ast::Attribute, name: &str) -> ast::Name {
+    fn field(&self, attr: &ast::Attribute, name: Symbol) -> ast::Name {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(name) {
                 if let Some(value) = item.value_str() {
                     return value;
                 } else {
                     self.tcx.sess.span_fatal(
-                        item.span,
+                        item.span(),
                         &format!("associated value expected for `{}`", name));
                 }
             }

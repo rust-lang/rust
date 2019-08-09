@@ -1,0 +1,33 @@
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/regions-static-bound.rs:9:5
+   |
+LL |     t
+   |     ^
+   |
+   = note: ...the reference is valid for the static lifetime...
+note: ...but the borrowed content is only valid for the lifetime 'a as defined on the function body at 8:24
+  --> $DIR/regions-static-bound.rs:8:24
+   |
+LL | fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
+   |                        ^^
+
+error[E0621]: explicit lifetime required in the type of `u`
+  --> $DIR/regions-static-bound.rs:14:5
+   |
+LL | fn error(u: &(), v: &()) {
+   |             --- help: add explicit lifetime `'static` to the type of `u`: `&'static ()`
+LL |     static_id(&u);
+   |     ^^^^^^^^^ lifetime `'static` required
+
+error[E0621]: explicit lifetime required in the type of `v`
+  --> $DIR/regions-static-bound.rs:16:5
+   |
+LL | fn error(u: &(), v: &()) {
+   |                     --- help: add explicit lifetime `'static` to the type of `v`: `&'static ()`
+...
+LL |     static_id_indirect(&v);
+   |     ^^^^^^^^^^^^^^^^^^ lifetime `'static` required
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0621`.

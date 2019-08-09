@@ -1,5 +1,5 @@
 trait I {}
-type K = I;
+type K = dyn I;
 impl K for isize {} //~ ERROR expected trait, found type alias `K`
 
 use ImportError; //~ ERROR unresolved import `ImportError` [E0432]

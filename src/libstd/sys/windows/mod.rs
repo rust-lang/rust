@@ -14,13 +14,9 @@ pub use self::rand::hashmap_random_keys;
 
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 pub mod c;
 pub mod cmath;
 pub mod condvar;
-#[cfg(feature = "backtrace")]
-pub mod dynamic_lib;
 pub mod env;
 pub mod ext;
 pub mod fast_thread_local;
@@ -37,11 +33,20 @@ pub mod pipe;
 pub mod process;
 pub mod rand;
 pub mod rwlock;
-pub mod stack_overflow;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-pub mod stdio;
+cfg_if::cfg_if! {
+    if #[cfg(not(target_vendor = "uwp"))] {
+        pub mod stdio;
+        pub mod stack_overflow;
+    } else {
+        pub mod stdio_uwp;
+        pub mod stack_overflow_uwp;
+        pub use self::stdio_uwp as stdio;
+        pub use self::stack_overflow_uwp as stack_overflow;
+    }
+}
 
 #[cfg(not(test))]
 pub fn init() {
@@ -199,7 +204,7 @@ fn wide_char_to_multi_byte(code_page: u32,
     }
 }
 
-pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
+pub fn truncate_utf16_at_nul(v: &[u16]) -> &[u16] {
     match v.iter().position(|c| *c == 0) {
         // don't include the 0
         Some(i) => &v[..i],

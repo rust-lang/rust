@@ -1,4 +1,8 @@
-use queries::Queries;
+use crate::queries::Queries;
+use crate::util;
+use crate::profile;
+pub use crate::passes::BoxedResolver;
+
 use rustc::lint;
 use rustc::session::config::{self, Input};
 use rustc::session::{DiagnosticOutput, Session};
@@ -8,17 +12,12 @@ use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_metadata::cstore::CStore;
-use std::collections::HashSet;
-use std::io::Write;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
 use syntax;
 use syntax::source_map::{FileLoader, SourceMap};
-use util;
-use profile;
-
-pub use passes::BoxedResolver;
+use syntax_pos::edition;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
@@ -112,7 +111,9 @@ where
         crate_name: config.crate_name,
     };
 
-    let _sess_abort_error = OnDrop(|| compiler.sess.diagnostic().print_error_count());
+    let _sess_abort_error = OnDrop(|| {
+        compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());
+    });
 
     if compiler.sess.profile_queries() {
         profile::begin(&compiler.sess);
@@ -124,10 +125,6 @@ where
         profile::dump(&compiler.sess, "profile_queries".to_string())
     }
 
-    if compiler.sess.opts.debugging_opts.self_profile {
-        compiler.sess.profiler(|p| p.dump_raw_events(&compiler.sess.opts));
-    }
-
     r
 }
 
@@ -136,20 +133,19 @@ where
     F: FnOnce(&Compiler) -> R + Send,
     R: Send,
 {
-    syntax::with_globals(move || {
-        let stderr = config.stderr.take();
-        util::spawn_thread_pool(
-            config.opts.debugging_opts.threads,
-            &stderr,
-            || run_compiler_in_existing_thread_pool(config, f),
-        )
-    })
+    let stderr = config.stderr.take();
+    util::spawn_thread_pool(
+        config.opts.edition,
+        config.opts.debugging_opts.threads,
+        &stderr,
+        || run_compiler_in_existing_thread_pool(config, f),
+    )
 }
 
-pub fn default_thread_pool<F, R>(f: F) -> R
+pub fn default_thread_pool<F, R>(edition: edition::Edition, f: F) -> R
 where
     F: FnOnce() -> R + Send,
     R: Send,
 {
-    util::spawn_thread_pool(None, &None, f)
+    util::spawn_thread_pool(edition, None, &None, f)
 }

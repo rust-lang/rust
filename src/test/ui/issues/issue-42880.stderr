@@ -2,7 +2,7 @@ error[E0599]: no associated item named `String` found for type `std::string::Str
   --> $DIR/issue-42880.rs:4:22
    |
 LL |     let f = |&Value::String(_)| ();
-   |               -------^^^^^^--- associated item not found in `std::string::String`
+   |                      ^^^^^^ associated item not found in `std::string::String`
 
 error: aborting due to previous error
 

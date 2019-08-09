@@ -38,23 +38,20 @@ struct CallSite<'tcx> {
 }
 
 impl MirPass for Inline {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            Inliner { tcx, source }.run_pass(mir);
+            Inliner { tcx, source }.run_pass(body);
         }
     }
 }
 
-struct Inliner<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct Inliner<'tcx> {
+    tcx: TyCtxt<'tcx>,
     source: MirSource<'tcx>,
 }
 
-impl<'a, 'tcx> Inliner<'a, 'tcx> {
-    fn run_pass(&self, caller_mir: &mut Mir<'tcx>) {
+impl Inliner<'tcx> {
+    fn run_pass(&self, caller_body: &mut Body<'tcx>) {
         // Keep a queue of callsites to try inlining on. We take
         // advantage of the fact that queries detect cycles here to
         // allow us to try and fetch the fully optimized MIR of a
@@ -73,13 +70,13 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // Only do inlining into fn bodies.
         let id = self.tcx.hir().as_local_hir_id(self.source.def_id()).unwrap();
-        if self.tcx.hir().body_owner_kind_by_hir_id(id).is_fn_or_closure()
+        if self.tcx.hir().body_owner_kind(id).is_fn_or_closure()
             && self.source.promoted.is_none()
         {
-            for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated() {
+            for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated() {
                 if let Some(callsite) = self.get_valid_function_call(bb,
                                                                     bb_data,
-                                                                    caller_mir,
+                                                                    caller_body,
                                                                     param_env) {
                     callsites.push_back(callsite);
                 }
@@ -103,7 +100,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let self_node_id = self.tcx.hir().as_local_node_id(self.source.def_id()).unwrap();
                 let callee_node_id = self.tcx.hir().as_local_node_id(callsite.callee);
 
-                let callee_mir = if let Some(callee_node_id) = callee_node_id {
+                let callee_body = if let Some(callee_node_id) = callee_node_id {
                     // Avoid a cycle here by only using `optimized_mir` only if we have
                     // a lower node id than the callee. This ensures that the callee will
                     // not inline us. This trick only works without incremental compilation.
@@ -120,29 +117,29 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     self.tcx.optimized_mir(callsite.callee)
                 };
 
-                let callee_mir = if self.consider_optimizing(callsite, callee_mir) {
+                let callee_body = if self.consider_optimizing(callsite, callee_body) {
                     self.tcx.subst_and_normalize_erasing_regions(
                         &callsite.substs,
                         param_env,
-                        callee_mir,
+                        callee_body,
                     )
                 } else {
                     continue;
                 };
 
-                let start = caller_mir.basic_blocks().len();
-                debug!("attempting to inline callsite {:?} - mir={:?}", callsite, callee_mir);
-                if !self.inline_call(callsite, caller_mir, callee_mir) {
+                let start = caller_body.basic_blocks().len();
+                debug!("attempting to inline callsite {:?} - body={:?}", callsite, callee_body);
+                if !self.inline_call(callsite, caller_body, callee_body) {
                     debug!("attempting to inline callsite {:?} - failure", callsite);
                     continue;
                 }
                 debug!("attempting to inline callsite {:?} - success", callsite);
 
                 // Add callsites from inlined function
-                for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated().skip(start) {
+                for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated().skip(start) {
                     if let Some(new_callsite) = self.get_valid_function_call(bb,
                                                                              bb_data,
-                                                                             caller_mir,
+                                                                             caller_body,
                                                                              param_env) {
                         // Don't inline the same function multiple times.
                         if callsite.callee != new_callsite.callee {
@@ -162,16 +159,16 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // Simplify if we inlined anything.
         if changed {
-            debug!("Running simplify cfg on {:?}", self.source);
-            CfgSimplifier::new(caller_mir).simplify();
-            remove_dead_blocks(caller_mir);
+            debug!("running simplify cfg on {:?}", self.source);
+            CfgSimplifier::new(caller_body).simplify();
+            remove_dead_blocks(caller_body);
         }
     }
 
     fn get_valid_function_call(&self,
                                bb: BasicBlock,
                                bb_data: &BasicBlockData<'tcx>,
-                               caller_mir: &Mir<'tcx>,
+                               caller_body: &Body<'tcx>,
                                param_env: ParamEnv<'tcx>,
     ) -> Option<CallSite<'tcx>> {
         // Don't inline calls that are in cleanup blocks.
@@ -180,7 +177,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func: ref op, .. } = terminator.kind {
-            if let ty::FnDef(callee_def_id, substs) = op.ty(caller_mir, self.tcx).sty {
+            if let ty::FnDef(callee_def_id, substs) = op.ty(caller_body, self.tcx).sty {
                 let instance = Instance::resolve(self.tcx,
                                                  param_env,
                                                  callee_def_id,
@@ -204,41 +201,34 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
     fn consider_optimizing(&self,
                            callsite: CallSite<'tcx>,
-                           callee_mir: &Mir<'tcx>)
+                           callee_body: &Body<'tcx>)
                            -> bool
     {
         debug!("consider_optimizing({:?})", callsite);
-        self.should_inline(callsite, callee_mir)
+        self.should_inline(callsite, callee_body)
             && self.tcx.consider_optimizing(|| format!("Inline {:?} into {:?}",
-                                                       callee_mir.span,
+                                                       callee_body.span,
                                                        callsite))
     }
 
     fn should_inline(&self,
                      callsite: CallSite<'tcx>,
-                     callee_mir: &Mir<'tcx>)
+                     callee_body: &Body<'tcx>)
                      -> bool
     {
         debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
-        // Don't inline closures that have captures
+        // Don't inline closures that have capture debuginfo
         // FIXME: Handle closures better
-        if callee_mir.upvar_decls.len() > 0 {
-            debug!("    upvar decls present - not inlining");
+        if callee_body.__upvar_debuginfo_codegen_only_do_not_use.len() > 0 {
+            debug!("    upvar debuginfo present - not inlining");
             return false;
         }
 
         // Cannot inline generators which haven't been transformed yet
-        if callee_mir.yield_ty.is_some() {
+        if callee_body.yield_ty.is_some() {
             debug!("    yield ty present - not inlining");
-            return false;
-        }
-
-        // Do not inline {u,i}128 lang items, codegen const eval depends
-        // on detecting calls to these lang items and intercepting them
-        if tcx.is_binop_lang_item(callsite.callee).is_some() {
-            debug!("    not inlining 128bit integer lang item");
             return false;
         }
 
@@ -250,7 +240,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             // need to check for first.
             attr::InlineAttr::Always => true,
             attr::InlineAttr::Never => {
-                debug!("#[inline(never)] present - not inlining");
+                debug!("`#[inline(never)]` present - not inlining");
                 return false
             }
             attr::InlineAttr::Hint => true,
@@ -281,7 +271,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // Give a bonus functions with a small number of blocks,
         // We normally have two or three blocks for even
         // very small functions.
-        if callee_mir.basic_blocks().len() <= 3 {
+        if callee_body.basic_blocks().len() <= 3 {
             threshold += threshold / 4;
         }
         debug!("    final inline threshold = {}", threshold);
@@ -296,10 +286,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // Traverse the MIR manually so we can account for the effects of
         // inlining on the CFG.
         let mut work_list = vec![START_BLOCK];
-        let mut visited = BitSet::new_empty(callee_mir.basic_blocks().len());
+        let mut visited = BitSet::new_empty(callee_body.basic_blocks().len());
         while let Some(bb) = work_list.pop() {
             if !visited.insert(bb.index()) { continue; }
-            let blk = &callee_mir.basic_blocks()[bb];
+            let blk = &callee_body.basic_blocks()[bb];
 
             for stmt in &blk.statements {
                 // Don't count StorageLive/StorageDead in the inlining cost.
@@ -319,8 +309,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     work_list.push(target);
                     // If the location doesn't actually need dropping, treat it like
                     // a regular goto.
-                    let ty = location.ty(callee_mir, tcx).subst(tcx, callsite.substs);
-                    let ty = ty.to_ty(tcx);
+                    let ty = location.ty(callee_body, tcx).subst(tcx, callsite.substs).ty;
                     if ty.needs_drop(tcx, param_env) {
                         cost += CALL_PENALTY;
                         if let Some(unwind) = unwind {
@@ -367,8 +356,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         let ptr_size = tcx.data_layout.pointer_size.bytes();
 
-        for v in callee_mir.vars_and_temps_iter() {
-            let v = &callee_mir.local_decls[v];
+        for v in callee_body.vars_and_temps_iter() {
+            let v = &callee_body.local_decls[v];
             let ty = v.ty.subst(tcx, callsite.substs);
             // Cost of the var is the size in machine-words, if we know
             // it.
@@ -395,44 +384,44 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
     fn inline_call(&self,
                    callsite: CallSite<'tcx>,
-                   caller_mir: &mut Mir<'tcx>,
-                   mut callee_mir: Mir<'tcx>) -> bool {
-        let terminator = caller_mir[callsite.bb].terminator.take().unwrap();
+                   caller_body: &mut Body<'tcx>,
+                   mut callee_body: Body<'tcx>) -> bool {
+        let terminator = caller_body[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
             TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
-                debug!("Inlined {:?} into {:?}", callsite.callee, self.source);
+                debug!("inlined {:?} into {:?}", callsite.callee, self.source);
 
-                let mut local_map = IndexVec::with_capacity(callee_mir.local_decls.len());
-                let mut scope_map = IndexVec::with_capacity(callee_mir.source_scopes.len());
-                let mut promoted_map = IndexVec::with_capacity(callee_mir.promoted.len());
+                let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
+                let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
+                let mut promoted_map = IndexVec::with_capacity(callee_body.promoted.len());
 
-                for mut scope in callee_mir.source_scopes.iter().cloned() {
+                for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
                         scope.parent_scope = Some(callsite.location.scope);
-                        scope.span = callee_mir.span;
+                        scope.span = callee_body.span;
                     }
 
                     scope.span = callsite.location.span;
 
-                    let idx = caller_mir.source_scopes.push(scope);
+                    let idx = caller_body.source_scopes.push(scope);
                     scope_map.push(idx);
                 }
 
-                for loc in callee_mir.vars_and_temps_iter() {
-                    let mut local = callee_mir.local_decls[loc].clone();
+                for loc in callee_body.vars_and_temps_iter() {
+                    let mut local = callee_body.local_decls[loc].clone();
 
                     local.source_info.scope =
                         scope_map[local.source_info.scope];
                     local.source_info.span = callsite.location.span;
                     local.visibility_scope = scope_map[local.visibility_scope];
 
-                    let idx = caller_mir.local_decls.push(local);
+                    let idx = caller_body.local_decls.push(local);
                     local_map.push(idx);
                 }
 
                 promoted_map.extend(
-                    callee_mir.promoted.iter().cloned().map(|p| caller_mir.promoted.push(p))
+                    callee_body.promoted.iter().cloned().map(|p| caller_body.promoted.push(p))
                 );
 
                 // If the call is something like `a[*i] = f(i)`, where
@@ -441,40 +430,43 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // writes to `i`. To prevent this we need to create a temporary
                 // borrow of the place and pass the destination as `*temp` instead.
                 fn dest_needs_borrow(place: &Place<'_>) -> bool {
-                    match *place {
-                        Place::Projection(ref p) => {
-                            match p.elem {
+                    place.iterate(|place_base, place_projection| {
+                        for proj in place_projection {
+                            match proj.elem {
                                 ProjectionElem::Deref |
-                                ProjectionElem::Index(_) => true,
-                                _ => dest_needs_borrow(&p.base)
+                                ProjectionElem::Index(_) => return true,
+                                _ => {}
                             }
                         }
-                        // Static variables need a borrow because the callee
-                        // might modify the same static.
-                        Place::Base(PlaceBase::Static(_)) => true,
-                        _ => false
-                    }
+
+                        match place_base {
+                            // Static variables need a borrow because the callee
+                            // might modify the same static.
+                            PlaceBase::Static(_) => true,
+                            _ => false
+                        }
+                    })
                 }
 
                 let dest = if dest_needs_borrow(&destination.0) {
-                    debug!("Creating temp for return destination");
+                    debug!("creating temp for return destination");
                     let dest = Rvalue::Ref(
-                        self.tcx.types.re_erased,
+                        self.tcx.lifetimes.re_erased,
                         BorrowKind::Mut { allow_two_phase_borrow: false },
                         destination.0);
 
-                    let ty = dest.ty(caller_mir, self.tcx);
+                    let ty = dest.ty(caller_body, self.tcx);
 
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
-                    let tmp = caller_mir.local_decls.push(temp);
-                    let tmp = Place::Base(PlaceBase::Local(tmp));
+                    let tmp = caller_body.local_decls.push(temp);
+                    let tmp = Place::from(tmp);
 
                     let stmt = Statement {
                         source_info: callsite.location,
                         kind: StatementKind::Assign(tmp.clone(), box dest)
                     };
-                    caller_mir[callsite.bb]
+                    caller_body[callsite.bb]
                         .statements.push(stmt);
                     tmp.deref()
                 } else {
@@ -484,9 +476,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let return_block = destination.1;
 
                 // Copy the arguments if needed.
-                let args: Vec<_> = self.make_call_args(args, &callsite, caller_mir);
+                let args: Vec<_> = self.make_call_args(args, &callsite, caller_body);
 
-                let bb_len = caller_mir.basic_blocks().len();
+                let bb_len = caller_body.basic_blocks().len();
                 let mut integrator = Integrator {
                     block_idx: bb_len,
                     args: &args,
@@ -501,9 +493,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 };
 
 
-                for (bb, mut block) in callee_mir.basic_blocks_mut().drain_enumerated(..) {
+                for (bb, mut block) in callee_body.basic_blocks_mut().drain_enumerated(..) {
                     integrator.visit_basic_block_data(bb, &mut block);
-                    caller_mir.basic_blocks_mut().push(block);
+                    caller_body.basic_blocks_mut().push(block);
                 }
 
                 let terminator = Terminator {
@@ -511,12 +503,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) }
                 };
 
-                caller_mir[callsite.bb].terminator = Some(terminator);
+                caller_body[callsite.bb].terminator = Some(terminator);
 
                 true
             }
             kind => {
-                caller_mir[callsite.bb].terminator = Some(Terminator {
+                caller_body[callsite.bb].terminator = Some(Terminator {
                     source_info: terminator.source_info,
                     kind,
                 });
@@ -529,7 +521,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         &self,
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
-        caller_mir: &mut Mir<'tcx>,
+        caller_body: &mut Body<'tcx>,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -558,12 +550,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if tcx.is_closure(callsite.callee) {
             let mut args = args.into_iter();
-            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
-            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_mir);
+            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
+            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             assert!(args.next().is_none());
 
-            let tuple = Place::Base(PlaceBase::Local(tuple));
-            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
+            let tuple = Place::from(tuple);
+            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.sty {
                 s
             } else {
                 bug!("Closure arguments are not passed as a tuple");
@@ -576,16 +568,19 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let tuple_tmp_args =
                 tuple_tys.iter().enumerate().map(|(i, ty)| {
                     // This is e.g., `tuple_tmp.0` in our example above.
-                    let tuple_field = Operand::Move(tuple.clone().field(Field::new(i), ty));
+                    let tuple_field = Operand::Move(tuple.clone().field(
+                        Field::new(i),
+                        ty.expect_ty(),
+                    ));
 
                     // Spill to a local to make e.g., `tmp0`.
-                    self.create_temp_if_necessary(tuple_field, callsite, caller_mir)
+                    self.create_temp_if_necessary(tuple_field, callsite, caller_body)
                 });
 
             closure_ref_arg.chain(tuple_tmp_args).collect()
         } else {
             args.into_iter()
-                .map(|a| self.create_temp_if_necessary(a, callsite, caller_mir))
+                .map(|a| self.create_temp_if_necessary(a, callsite, caller_body))
                 .collect()
         }
     }
@@ -596,39 +591,44 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         &self,
         arg: Operand<'tcx>,
         callsite: &CallSite<'tcx>,
-        caller_mir: &mut Mir<'tcx>,
+        caller_body: &mut Body<'tcx>,
     ) -> Local {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(Place::Base(PlaceBase::Local(local))) = arg {
-            if caller_mir.local_kind(local) == LocalKind::Temp {
+        if let Operand::Move(Place {
+            base: PlaceBase::Local(local),
+            projection: None,
+        }) = arg {
+            if caller_body.local_kind(local) == LocalKind::Temp {
                 // Reuse the operand if it's a temporary already
                 return local;
             }
         }
 
-        debug!("Creating temp for argument {:?}", arg);
+        debug!("creating temp for argument {:?}", arg);
         // Otherwise, create a temporary for the arg
         let arg = Rvalue::Use(arg);
 
-        let ty = arg.ty(caller_mir, self.tcx);
+        let ty = arg.ty(caller_body, self.tcx);
 
         let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
-        let arg_tmp = caller_mir.local_decls.push(arg_tmp);
+        let arg_tmp = caller_body.local_decls.push(arg_tmp);
 
         let stmt = Statement {
             source_info: callsite.location,
-            kind: StatementKind::Assign(Place::Base(PlaceBase::Local(arg_tmp)), box arg),
+            kind: StatementKind::Assign(Place::from(arg_tmp), box arg),
         };
-        caller_mir[callsite.bb].statements.push(stmt);
+        caller_body[callsite.bb].statements.push(stmt);
         arg_tmp
     }
 }
 
-fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          param_env: ty::ParamEnv<'tcx>,
-                          ty: Ty<'tcx>) -> Option<u64> {
+fn type_size_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
@@ -638,8 +638,8 @@ fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
  * Integrates blocks from the callee function into the calling function.
  * Updates block indices, references to locals and other control flow
  * stuff.
- */
-struct Integrator<'a, 'tcx: 'a> {
+*/
+struct Integrator<'a, 'tcx> {
     block_idx: usize,
     args: &'a [Local],
     local_map: IndexVec<Local, Local>,
@@ -655,7 +655,7 @@ struct Integrator<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
     fn update_target(&self, tgt: BasicBlock) -> BasicBlock {
         let new = BasicBlock::new(tgt.index() + self.block_idx);
-        debug!("Updating target `{:?}`, new: `{:?}`", tgt, new);
+        debug!("updating target `{:?}`, new: `{:?}`", tgt, new);
         new
     }
 }
@@ -663,11 +663,14 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
 impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _ctxt: PlaceContext<'tcx>,
+                   _ctxt: PlaceContext,
                    _location: Location) {
         if *local == RETURN_PLACE {
             match self.destination {
-                Place::Base(PlaceBase::Local(l)) => {
+                Place {
+                    base: PlaceBase::Local(l),
+                    projection: None,
+                } => {
                     *local = l;
                     return;
                 },
@@ -684,20 +687,29 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn visit_place(&mut self,
                     place: &mut Place<'tcx>,
-                    _ctxt: PlaceContext<'tcx>,
+                    _ctxt: PlaceContext,
                     _location: Location) {
 
         match place {
-            Place::Base(PlaceBase::Local(RETURN_PLACE)) => {
+            Place {
+                base: PlaceBase::Local(RETURN_PLACE),
+                projection: None,
+            } => {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
             },
-            Place::Base(PlaceBase::Promoted(ref mut promoted)) => {
-                if let Some(p) = self.promoted_map.get(promoted.0).cloned() {
-                    promoted.0 = p;
+            Place {
+                base: PlaceBase::Static(box Static {
+                    kind: StaticKind::Promoted(promoted),
+                    ..
+                }),
+                projection: None,
+            } => {
+                if let Some(p) = self.promoted_map.get(*promoted).cloned() {
+                    *promoted = p;
                 }
             },
-            _ => self.super_place(place, _ctxt, _location),
+            _ => self.super_place(place, _ctxt, _location)
         }
     }
 
@@ -722,9 +734,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self, block: BasicBlock,
+    fn visit_terminator_kind(&mut self,
                              kind: &mut TerminatorKind<'tcx>, loc: Location) {
-        self.super_terminator_kind(block, kind, loc);
+        self.super_terminator_kind(kind, loc);
 
         match *kind {
             TerminatorKind::GeneratorDrop |
@@ -780,11 +792,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             }
             TerminatorKind::Abort => { }
             TerminatorKind::Unreachable => { }
-            TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_targets } => {
+            TerminatorKind::FalseEdges { ref mut real_target, ref mut imaginary_target } => {
                 *real_target = self.update_target(*real_target);
-                for target in imaginary_targets {
-                    *target = self.update_target(*target);
-                }
+                *imaginary_target = self.update_target(*imaginary_target);
             }
             TerminatorKind::FalseUnwind { real_target: _ , unwind: _ } =>
                 // see the ordering of passes in the optimized_mir query.

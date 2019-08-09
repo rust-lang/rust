@@ -103,21 +103,11 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![deny(rust_2018_idioms)]
-#![deny(warnings)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
+
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-
-#[macro_use]
-extern crate build_helper;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate lazy_static;
-
-#[cfg(test)]
-#[macro_use]
-extern crate pretty_assertions;
 
 use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
@@ -134,10 +124,12 @@ use std::os::unix::fs::symlink as symlink_file;
 #[cfg(windows)]
 use std::os::windows::fs::symlink_file;
 
-use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
+use build_helper::{
+    mtime, output, run, run_suppressed, t, try_run, try_run_suppressed,
+};
 use filetime::FileTime;
 
-use crate::util::{exe, libdir, OutputFolder, CiEnv};
+use crate::util::{exe, libdir, CiEnv};
 
 mod cc_detect;
 mod channel;
@@ -190,6 +182,7 @@ const LLVM_TOOLS: &[&str] = &[
     "llvm-readobj", // used to get information from ELFs/objects that the other tools don't provide
     "llvm-size", // used to prints the size of the linker sections of a program
     "llvm-strip", // used to discard symbols from binary files to reduce their size
+    "llvm-ar" // used for creating and modifying archive files
 ];
 
 /// A structure representing a Rust compiler.
@@ -205,11 +198,11 @@ pub struct Compiler {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub enum DocTests {
-    // Default, run normal tests and doc tests.
+    /// Run normal tests and doc tests (default).
     Yes,
-    // Do not run any doc tests.
+    /// Do not run any doc tests.
     No,
-    // Only run doc tests.
+    /// Only run doc tests.
     Only,
 }
 
@@ -229,10 +222,10 @@ pub enum GitRepo {
 /// methods specifically on this structure itself (to make it easier to
 /// organize).
 pub struct Build {
-    // User-specified configuration via config.toml
+    /// User-specified configuration from `config.toml`.
     config: Config,
 
-    // Derived properties from the above two configurations
+    // Properties derived from the above configuration
     src: PathBuf,
     out: PathBuf,
     rust_info: channel::GitInfo,
@@ -241,17 +234,19 @@ pub struct Build {
     clippy_info: channel::GitInfo,
     miri_info: channel::GitInfo,
     rustfmt_info: channel::GitInfo,
+    in_tree_llvm_info: channel::GitInfo,
+    emscripten_llvm_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
     doc_tests: DocTests,
     verbosity: usize,
 
-    // Targets for which to build.
+    // Targets for which to build
     build: Interned<String>,
     hosts: Vec<Interned<String>>,
     targets: Vec<Interned<String>>,
 
-    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents.
+    // Stage 0 (downloaded) compiler and cargo or their local rust equivalents
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
 
@@ -261,7 +256,7 @@ pub struct Build {
     cxx: HashMap<Interned<String>, cc::Tool>,
     ar: HashMap<Interned<String>, PathBuf>,
     ranlib: HashMap<Interned<String>, PathBuf>,
-    // Misc
+    // Miscellaneous
     crates: HashMap<Interned<String>, Crate>,
     is_sudo: bool,
     ci_env: CiEnv,
@@ -276,14 +271,9 @@ pub struct Build {
 #[derive(Debug)]
 struct Crate {
     name: Interned<String>,
-    version: String,
     deps: HashSet<Interned<String>>,
     id: String,
     path: PathBuf,
-    doc_step: String,
-    build_step: String,
-    test_step: String,
-    bench_step: String,
 }
 
 impl Crate {
@@ -357,12 +347,18 @@ impl Build {
             }
             None => false,
         };
-        let rust_info = channel::GitInfo::new(&config, &src);
-        let cargo_info = channel::GitInfo::new(&config, &src.join("src/tools/cargo"));
-        let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
-        let clippy_info = channel::GitInfo::new(&config, &src.join("src/tools/clippy"));
-        let miri_info = channel::GitInfo::new(&config, &src.join("src/tools/miri"));
-        let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
+
+        let ignore_git = config.ignore_git;
+        let rust_info = channel::GitInfo::new(ignore_git, &src);
+        let cargo_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/cargo"));
+        let rls_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rls"));
+        let clippy_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/clippy"));
+        let miri_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/miri"));
+        let rustfmt_info = channel::GitInfo::new(ignore_git, &src.join("src/tools/rustfmt"));
+
+        // we always try to use git for LLVM builds
+        let in_tree_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-project"));
+        let emscripten_llvm_info = channel::GitInfo::new(false, &src.join("src/llvm-emscripten"));
 
         let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
@@ -386,6 +382,8 @@ impl Build {
             clippy_info,
             miri_info,
             rustfmt_info,
+            in_tree_llvm_info,
+            emscripten_llvm_info,
             cc: HashMap::new(),
             cxx: HashMap::new(),
             ar: HashMap::new(),
@@ -495,6 +493,9 @@ impl Build {
     fn std_features(&self) -> String {
         let mut features = "panic-unwind".to_string();
 
+        if self.config.llvm_libunwind {
+            features.push_str(" llvm-libunwind");
+        }
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
@@ -539,9 +540,7 @@ impl Build {
             Mode::Rustc => "-rustc",
             Mode::Codegen => "-codegen",
             Mode::ToolBootstrap => "-bootstrap-tools",
-            Mode::ToolStd => "-tools",
-            Mode::ToolTest => "-tools",
-            Mode::ToolRustc => "-tools",
+            Mode::ToolStd | Mode::ToolTest | Mode::ToolRustc => "-tools",
         };
         self.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
@@ -681,7 +680,7 @@ impl Build {
     fn run(&self, cmd: &mut Command) {
         if self.config.dry_run { return; }
         self.verbose(&format!("running: {:?}", cmd));
-        run_silent(cmd)
+        run(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -697,7 +696,7 @@ impl Build {
     fn try_run(&self, cmd: &mut Command) -> bool {
         if self.config.dry_run { return true; }
         self.verbose(&format!("running: {:?}", cmd));
-        try_run_silent(cmd)
+        try_run(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -716,6 +715,17 @@ impl Build {
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
         if self.is_verbose() {
+            println!("{}", msg);
+        }
+    }
+
+    pub fn is_verbose_than(&self, level: usize) -> bool {
+        self.verbosity > level
+    }
+
+    /// Prints a message if this build is configured in more verbose mode than `level`.
+    fn verbose_than(&self, level: usize, msg: &str) {
+        if self.is_verbose_than(level) {
             println!("{}", msg);
         }
     }
@@ -840,6 +850,13 @@ impl Build {
         self.config.target_config.get(&target)
             .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
+            .map(|p| &**p)
+    }
+
+    /// Returns the sysroot for the wasi target, if defined
+    fn wasi_root(&self, target: Interned<String>) -> Option<&Path> {
+        self.config.target_config.get(&target)
+            .and_then(|t| t.wasi_root.as_ref())
             .map(|p| &**p)
     }
 
@@ -1017,7 +1034,7 @@ impl Build {
     }
 
     fn llvm_tools_package_vers(&self) -> String {
-        self.package_vers(&self.rust_version())
+        self.package_vers(channel::CFG_RELEASE_NUM)
     }
 
     fn llvm_tools_vers(&self) -> String {
@@ -1025,7 +1042,7 @@ impl Build {
     }
 
     fn lldb_package_vers(&self) -> String {
-        self.package_vers(&self.rust_version())
+        self.package_vers(channel::CFG_RELEASE_NUM)
     }
 
     fn lldb_vers(&self) -> String {
@@ -1074,27 +1091,12 @@ impl Build {
         }
     }
 
-    /// Fold the output of the commands after this method into a group. The fold
-    /// ends when the returned object is dropped. Folding can only be used in
-    /// the Travis CI environment.
-    pub fn fold_output<D, F>(&self, name: F) -> Option<OutputFolder>
-        where D: Into<String>, F: FnOnce() -> D
-    {
-        if !self.config.dry_run && self.ci_env == CiEnv::Travis {
-            Some(OutputFolder::new(name().into()))
-        } else {
-            None
-        }
-    }
-
     /// Updates the actual toolstate of a tool.
     ///
     /// The toolstates are saved to the file specified by the key
     /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
-        use std::io::{Seek, SeekFrom};
-
         if let Some(ref path) = self.config.save_toolstates {
             let mut file = t!(fs::OpenOptions::new()
                 .create(true)
@@ -1152,6 +1154,7 @@ impl Build {
     /// Copies a file from `src` to `dst`
     pub fn copy(&self, src: &Path, dst: &Path) {
         if self.config.dry_run { return; }
+        self.verbose_than(1, &format!("Copy {:?} to {:?}", src, dst));
         let _ = fs::remove_file(&dst);
         let metadata = t!(src.symlink_metadata());
         if metadata.file_type().is_symlink() {
@@ -1192,8 +1195,7 @@ impl Build {
     /// when this function is called.
     pub fn cp_r(&self, src: &Path, dst: &Path) {
         if self.config.dry_run { return; }
-        for f in t!(fs::read_dir(src)) {
-            let f = t!(f);
+        for f in self.read_dir(src) {
             let path = f.path();
             let name = path.file_name().unwrap();
             let dst = dst.join(name);
@@ -1245,6 +1247,7 @@ impl Build {
     fn install(&self, src: &Path, dstdir: &Path, perms: u32) {
         if self.config.dry_run { return; }
         let dst = dstdir.join(src.file_name().unwrap());
+        self.verbose_than(1, &format!("Install {:?} to {:?}", src, dst));
         t!(fs::create_dir_all(dstdir));
         drop(fs::remove_file(&dst));
         {
@@ -1308,7 +1311,7 @@ fn chmod(path: &Path, perms: u32) {
 fn chmod(_path: &Path, _perms: u32) {}
 
 
-impl<'a> Compiler {
+impl Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {
         self.stage = stage;
         self

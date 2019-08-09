@@ -1,4 +1,8 @@
 -include ../tools.mk
+
+# ignore-musl
+# Objects are reproducible but their path is not.
+
 all:  \
 	smoke \
 	debug \

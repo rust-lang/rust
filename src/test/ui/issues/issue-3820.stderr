@@ -1,8 +1,10 @@
 error[E0369]: binary operation `*` cannot be applied to type `Thing`
-  --> $DIR/issue-3820.rs:14:13
+  --> $DIR/issue-3820.rs:14:15
    |
 LL |     let w = u * 3;
-   |             ^^^^^
+   |             - ^ - {integer}
+   |             |
+   |             Thing
    |
    = note: an implementation of `std::ops::Mul` might be missing for `Thing`
 

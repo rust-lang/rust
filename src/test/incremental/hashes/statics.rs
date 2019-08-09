@@ -5,7 +5,7 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
@@ -74,7 +74,7 @@ static STATIC_THREAD_LOCAL: u8 = 0;
 static STATIC_CHANGE_TYPE_1: i16 = 0;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody,type_of")]
 #[rustc_clean(cfg="cfail3")]
 static STATIC_CHANGE_TYPE_1: u64 = 0;
 
@@ -84,7 +84,7 @@ static STATIC_CHANGE_TYPE_1: u64 = 0;
 static STATIC_CHANGE_TYPE_2: Option<i8> = None;
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody,type_of")]
 #[rustc_clean(cfg="cfail3")]
 static STATIC_CHANGE_TYPE_2: Option<u16> = None;
 
@@ -144,11 +144,11 @@ mod static_change_type_indirectly {
     #[cfg(not(cfail1))]
     use super::ReferencedType2 as Type;
 
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,type_of")]
     #[rustc_clean(cfg="cfail3")]
     static STATIC_CHANGE_TYPE_INDIRECTLY_1: Type = Type;
 
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,TypeOfItem")]
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,type_of")]
     #[rustc_clean(cfg="cfail3")]
     static STATIC_CHANGE_TYPE_INDIRECTLY_2: Option<Type> = None;
 }

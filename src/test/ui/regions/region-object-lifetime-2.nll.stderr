@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/region-object-lifetime-2.rs:10:5
+   |
+LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a dyn Foo) -> &'b () {
+   |                                          -- -- lifetime `'b` defined here
+   |                                          |
+   |                                          lifetime `'a` defined here
+LL |     x.borrowed()
+   |     ^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

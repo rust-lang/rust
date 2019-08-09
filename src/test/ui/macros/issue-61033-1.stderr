@@ -1,0 +1,8 @@
+error: this must repeat at least once
+  --> $DIR/issue-61033-1.rs:4:34
+   |
+LL |     ($x:ident, $($tt:tt)*) => { $($tt)+ }
+   |                                  ^^^^^
+
+error: aborting due to previous error
+

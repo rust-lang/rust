@@ -20,64 +20,62 @@ fn main() {
 // START rustc.main.SimplifyCfg-initial.after.mir
 //    bb0: {
 //        ...
-//        switchInt(move _4) -> [false: bb7, otherwise: bb8];
+//        switchInt(move _6) -> [false: bb6, otherwise: bb5];
 //    }
 //    bb1: {
-//        falseEdges -> [real: bb12, imaginary: bb2];
+//        falseEdges -> [real: bb9, imaginary: bb2];
 //    }
 //    bb2: {
-//        falseEdges -> [real: bb13, imaginary: bb3];
+//        falseEdges -> [real: bb12, imaginary: bb3];
 //    }
 //    bb3: {
-//        falseEdges -> [real: bb14, imaginary: bb4];
+//        falseEdges -> [real: bb13, imaginary: bb4];
 //    }
 //    bb4: {
-//        falseEdges -> [real: bb15, imaginary: bb5];
+//        _3 = const 3i32;
+//        goto -> bb14;
 //    }
 //    bb5: {
-//        unreachable;
+//        _7 = Lt(_1, const 10i32);
+//        switchInt(move _7) -> [false: bb6, otherwise: bb1];
 //    }
 //    bb6: {
-//        falseEdges -> [real: bb4, imaginary: bb2];
+//        _4 = Le(const 10i32, _1);
+//        switchInt(move _4) -> [false: bb8, otherwise: bb7];
 //    }
 //    bb7: {
-//        _6 = Le(const 10i32, _1);
-//        switchInt(move _6) -> [false: bb9, otherwise: bb10];
+//        _5 = Le(_1, const 20i32);
+//        switchInt(move _5) -> [false: bb8, otherwise: bb2];
 //    }
 //    bb8: {
-//        _5 = Lt(_1, const 10i32);
-//        switchInt(move _5) -> [false: bb7, otherwise: bb1];
-//    }
-//    bb9: {
 //        switchInt(_1) -> [-1i32: bb3, otherwise: bb4];
 //    }
+//    bb9: {
+//        _8 = &shallow _1;
+//        StorageLive(_9);
+//        _9 = _2;
+//        switchInt(move _9) -> [false: bb11, otherwise: bb10];
+//    }
 //    bb10: {
-//        _7 = Le(_1, const 20i32);
-//        switchInt(move _7) -> [false: bb9, otherwise: bb2];
+//        StorageDead(_9);
+//        FakeRead(ForMatchGuard, _8);
+//        _3 = const 0i32;
+//        goto -> bb14;
 //    }
 //    bb11: {
-//        _3 = const 0i32;
-//        goto -> bb16;
+//        StorageDead(_9);
+//        falseEdges -> [real: bb4, imaginary: bb2];
 //    }
 //    bb12: {
-//        StorageLive(_8);
-//        _8 = _2;
-//        switchInt(move _8) -> [false: bb6, otherwise: bb11];
+//        _3 = const 1i32;
+//        goto -> bb14;
 //    }
 //    bb13: {
-//        _3 = const 1i32;
-//        goto -> bb16;
+//        _3 = const 2i32;
+//        goto -> bb14;
 //    }
 //    bb14: {
-//        _3 = const 2i32;
-//        goto -> bb16;
-//    }
-//    bb15: {
-//        _3 = const 3i32;
-//        goto -> bb16;
-//    }
-//    bb16: {
-//        StorageDead(_8);
+//        StorageDead(_3);
 //        _0 = ();
 //        StorageDead(_2);
 //        StorageDead(_1);

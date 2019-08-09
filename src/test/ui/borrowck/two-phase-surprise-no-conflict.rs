@@ -5,15 +5,6 @@
 // that we decided it warranted its own unit test, and pnkfelix
 // decided to use that test as an opportunity to illustrate the cases.
 
-// revisions: ast no2pb nll
-//[ast]compile-flags: -Z borrowck=ast
-//[no2pb]compile-flags: -Z borrowck=mir
-//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows
-
-// (Since we are manually toggling NLL variations on and off, don't
-// bother with compare-mode=nll)
-// ignore-compare-mode-nll
-
 #[derive(Copy, Clone)]
 struct BodyId;
 enum Expr { Closure(BodyId), Others }
@@ -28,9 +19,7 @@ impl <'a> SpanlessHash<'a> {
     fn demo(&mut self) {
         let _mut_borrow = &mut *self;
         let _access = self.cx;
-        //[ast]~^ ERROR cannot use `self.cx` because it was mutably borrowed [E0503]
-        //[no2pb]~^^ ERROR cannot use `self.cx` because it was mutably borrowed [E0503]
-        //[nll]~^^^ ERROR cannot use `self.cx` because it was mutably borrowed [E0503]
+        //~^ ERROR cannot use `self.cx` because it was mutably borrowed [E0503]
         _mut_borrow;
     }
 
@@ -52,7 +41,6 @@ impl <'a> SpanlessHash<'a> {
                 // nothing in the activation for `self.hash_expr(..)`
                 // can interfere with that immutable borrow.
                 self.hash_expr(&self.cx.body(eid).value);
-                //[no2pb]~^ ERROR cannot borrow `*self.cx`
             },
             _ => {}
         }
@@ -67,9 +55,7 @@ impl <'a> SpanlessHash<'a> {
                 // eventual activation of the `self` mutable borrow
                 // for `self.hash_expr(..)`
                 self.hash_expr(&self.cx_mut.body(eid).value);
-                //[ast]~^ ERROR cannot borrow `*self.cx_mut`
-                //[no2pb]~^^ ERROR cannot borrow `*self.cx_mut`
-                //[nll]~^^^ ERROR cannot borrow `*self`
+                //~^ ERROR cannot borrow `*self`
             },
             _ => {}
         }
@@ -119,44 +105,28 @@ fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
     // cannot (according to its type) keep them alive.
     let reg = mk_reg();
     reg.register_static(Box::new(TrivialPass::new(&reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
     let reg = mk_reg();
     reg.register_bound(Box::new(TrivialPass::new(&reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
     let reg = mk_reg();
     reg.register_univ(Box::new(TrivialPass::new(&reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
     let reg = mk_reg();
     reg.register_ref(&TrivialPass::new(&reg.sess_mut));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
 
     // These are not okay: the inner mutable borrows immediately
     // conflict with the outer borrow/reservation, even with support
     // for two-phase borrows.
     let reg = mk_reg();
     reg.register_static(Box::new(TrivialPass::new(&mut reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `reg.sess_mut`
+    //~^ ERROR cannot borrow `reg.sess_mut`
     let reg = mk_reg();
     reg.register_bound(Box::new(TrivialPass::new_mut(&mut reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `reg.sess_mut`
+    //~^ ERROR cannot borrow `reg.sess_mut`
     let reg = mk_reg();
     reg.register_univ(Box::new(TrivialPass::new_mut(&mut reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `reg.sess_mut`
+    //~^ ERROR cannot borrow `reg.sess_mut`
     let reg = mk_reg();
     reg.register_ref(&TrivialPass::new_mut(&mut reg.sess_mut));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `reg.sess_mut`
+    //~^ ERROR cannot borrow `reg.sess_mut`
 
     // These are not okay: the inner borrows may reach the actual
     // method invocation, because `CapturePass::new` might (according
@@ -166,19 +136,13 @@ fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
     // that will fail to get past lifetime inference.)
     let reg = mk_reg();
     reg.register_bound(Box::new(CapturePass::new(&reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `*reg` as mutable
+    //~^ ERROR cannot borrow `*reg` as mutable
     let reg = mk_reg();
     reg.register_univ(Box::new(CapturePass::new(&reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `*reg` as mutable
+    //~^ ERROR cannot borrow `*reg` as mutable
     let reg = mk_reg();
     reg.register_ref(&CapturePass::new(&reg.sess_mut));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `*reg` as mutable
+    //~^ ERROR cannot borrow `*reg` as mutable
 
     // These are not okay: the inner mutable borrows immediately
     // conflict with the outer borrow/reservation, even with support
@@ -188,22 +152,16 @@ fn register_plugins<'a>(mk_reg: impl Fn() -> &'a mut Registry<'a>) {
     // that will fail to get past lifetime inference.)
     let reg = mk_reg();
     reg.register_bound(Box::new(CapturePass::new_mut(&mut reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `reg.sess_mut` as mutable more than once at a time
-    //[nll]~^^^^ ERROR cannot borrow `*reg` as mutable more than once at a time
+    //~^ ERROR cannot borrow `reg.sess_mut` as mutable more than once at a time
+    //~^^ ERROR cannot borrow `*reg` as mutable more than once at a time
     let reg = mk_reg();
     reg.register_univ(Box::new(CapturePass::new_mut(&mut reg.sess_mut)));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `reg.sess_mut` as mutable more than once at a time
-    //[nll]~^^^^ ERROR cannot borrow `*reg` as mutable more than once at a time
+    //~^ ERROR cannot borrow `reg.sess_mut` as mutable more than once at a time
+    //~^^ ERROR cannot borrow `*reg` as mutable more than once at a time
     let reg = mk_reg();
     reg.register_ref(&CapturePass::new_mut(&mut reg.sess_mut));
-    //[ast]~^ ERROR cannot borrow `reg.sess_mut`
-    //[no2pb]~^^ ERROR cannot borrow `reg.sess_mut`
-    //[nll]~^^^ ERROR cannot borrow `reg.sess_mut` as mutable more than once at a time
-    //[nll]~^^^^ ERROR cannot borrow `*reg` as mutable more than once at a time
+    //~^ ERROR cannot borrow `reg.sess_mut` as mutable more than once at a time
+    //~^^ ERROR cannot borrow `*reg` as mutable more than once at a time
 }
 
 fn main() { }

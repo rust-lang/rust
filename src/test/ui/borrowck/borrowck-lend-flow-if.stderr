@@ -1,14 +1,13 @@
-error[E0502]: cannot borrow `*v` as mutable because `v` is also borrowed as immutable
-  --> $DIR/borrowck-lend-flow-if.rs:29:21
+error[E0502]: cannot borrow `*v` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-lend-flow-if.rs:29:16
    |
 LL |         _w = &v;
-   |               - immutable borrow occurs here
+   |              -- immutable borrow occurs here
 LL |     }
 LL |     borrow_mut(&mut *v);
-   |                     ^^ mutable borrow occurs here
+   |                ^^^^^^^ mutable borrow occurs here
 LL |     _w.use_ref();
-LL | }
-   | - immutable borrow ends here
+   |     -- immutable borrow later used here
 
 error: aborting due to previous error
 

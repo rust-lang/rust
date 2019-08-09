@@ -19,5 +19,4 @@ LL | fn copy<T: Magic>(x: T) -> (T, T) { (x, x) }
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0277, E0568.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

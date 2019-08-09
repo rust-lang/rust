@@ -1,5 +1,4 @@
 #![allow(warnings)]
-#![feature(nll)]
 
 fn main() {
     let x = 22_u32;

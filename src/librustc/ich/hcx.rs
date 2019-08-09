@@ -9,7 +9,6 @@ use crate::session::Session;
 
 use std::cmp::Ord;
 use std::hash as std_hash;
-use std::collections::HashMap;
 use std::cell::RefCell;
 
 use syntax::ast;
@@ -29,7 +28,7 @@ use smallvec::SmallVec;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
     debug_assert!(ich::IGNORED_ATTRIBUTES.len() > 0);
-    ich::IGNORED_ATTRIBUTES.iter().map(|&s| Symbol::intern(s)).collect()
+    ich::IGNORED_ATTRIBUTES.iter().map(|&s| s).collect()
 }
 
 /// This is the context state available during incr. comp. hashing. It contains
@@ -62,12 +61,12 @@ pub enum NodeIdHashingMode {
 /// We could also just store a plain reference to the hir::Crate but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
-struct BodyResolver<'gcx>(&'gcx hir::Crate);
+struct BodyResolver<'tcx>(&'tcx hir::Crate);
 
-impl<'gcx> BodyResolver<'gcx> {
+impl<'tcx> BodyResolver<'tcx> {
     // Return a reference to the hir::Body with the given BodyId.
     // DOES NOT DO ANY TRACKING, use carefully.
-    fn body(self, id: hir::BodyId) -> &'gcx hir::Body {
+    fn body(self, id: hir::BodyId) -> &'tcx hir::Body {
         self.0.body(id)
     }
 }
@@ -206,8 +205,8 @@ for &'b mut T {
     }
 }
 
-impl<'a, 'gcx, 'lcx> StableHashingContextProvider<'a> for TyCtxt<'a, 'gcx, 'lcx> {
-    fn get_stable_hashing_context(&self) -> StableHashingContext<'a> {
+impl StableHashingContextProvider<'tcx> for TyCtxt<'tcx> {
+    fn get_stable_hashing_context(&self) -> StableHashingContext<'tcx> {
         (*self).create_stable_hashing_context()
     }
 }
@@ -360,21 +359,21 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             // times, we cache a stable hash of it and hash that instead of
             // recursing every time.
             thread_local! {
-                static CACHE: RefCell<FxHashMap<hygiene::Mark, u64>> = Default::default();
+                static CACHE: RefCell<FxHashMap<hygiene::ExpnId, u64>> = Default::default();
             }
 
             let sub_hash: u64 = CACHE.with(|cache| {
-                let mark = span.ctxt.outer();
+                let expn_id = span.ctxt.outer_expn();
 
-                if let Some(&sub_hash) = cache.borrow().get(&mark) {
+                if let Some(&sub_hash) = cache.borrow().get(&expn_id) {
                     return sub_hash;
                 }
 
                 let mut hasher = StableHasher::new();
-                mark.expn_info().hash_stable(hcx, &mut hasher);
+                expn_id.expn_info().hash_stable(hcx, &mut hasher);
                 let sub_hash: Fingerprint = hasher.finish();
                 let sub_hash = sub_hash.to_smaller_hash();
-                cache.borrow_mut().insert(mark, sub_hash);
+                cache.borrow_mut().insert(expn_id, sub_hash);
                 sub_hash
             });
 
@@ -394,13 +393,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
     }
 }
 
-pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
+pub fn hash_stable_trait_impls<'a, W>(
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher<W>,
     blanket_impls: &[DefId],
-    non_blanket_impls: &HashMap<fast_reject::SimplifiedType, Vec<DefId>, R>)
-    where W: StableHasherResult,
-          R: std_hash::BuildHasher,
+    non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
+) where
+    W: StableHasherResult,
 {
     {
         let mut blanket_impls: SmallVec<[_; 8]> = blanket_impls
@@ -437,4 +436,3 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
         }
     }
 }
-

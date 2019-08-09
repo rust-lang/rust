@@ -1,27 +1,20 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/regions-addr-of-arg.rs:5:31
+  --> $DIR/regions-addr-of-arg.rs:5:30
    |
 LL |     let _p: &'static isize = &a;
-   |                               ^ borrowed value does not live long enough
+   |             --------------   ^^ borrowed value does not live long enough
+   |             |
+   |             type annotation requires that `a` is borrowed for `'static`
 LL | }
-   | - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |  - `a` dropped here while still borrowed
 
-error[E0597]: `a` does not live long enough
-  --> $DIR/regions-addr-of-arg.rs:13:6
+error[E0515]: cannot return reference to function parameter `a`
+  --> $DIR/regions-addr-of-arg.rs:13:5
    |
 LL |     &a
-   |      ^ borrowed value does not live long enough
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 12:8...
-  --> $DIR/regions-addr-of-arg.rs:12:8
-   |
-LL | fn zed<'a>(a: isize) -> &'a isize {
-   |        ^^
+   |     ^^ returns a reference to data owned by the current function
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+Some errors have detailed explanations: E0515, E0597.
+For more information about an error, try `rustc --explain E0515`.

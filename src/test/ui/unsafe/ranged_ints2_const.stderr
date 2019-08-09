@@ -1,18 +1,20 @@
-error[E0723]: mutable references in const fn are unstable (see issue #57563)
+error[E0723]: mutable references in const fn are unstable
   --> $DIR/ranged_ints2_const.rs:11:9
    |
 LL |     let y = &mut x.0;
    |         ^
    |
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
-error[E0723]: mutable references in const fn are unstable (see issue #57563)
+error[E0723]: mutable references in const fn are unstable
   --> $DIR/ranged_ints2_const.rs:18:9
    |
 LL |     let y = unsafe { &mut x.0 };
    |         ^
    |
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0133]: mutation of layout constrained field is unsafe and requires unsafe function or block
   --> $DIR/ranged_ints2_const.rs:11:13
@@ -24,5 +26,5 @@ LL |     let y = &mut x.0;
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0133, E0723.
+Some errors have detailed explanations: E0133, E0723.
 For more information about an error, try `rustc --explain E0133`.

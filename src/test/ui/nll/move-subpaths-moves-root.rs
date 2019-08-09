@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn main() {
     let x = (vec![1, 2, 3], );
     drop(x.0);

@@ -49,17 +49,17 @@ impl Instant {
         Instant { t: Duration::from_secs(0) }
     }
 
-    pub fn sub_instant(&self, other: &Instant) -> Duration {
+    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         // On windows there's a threshold below which we consider two timestamps
         // equivalent due to measurement error. For more details + doc link,
         // check the docs on epsilon.
         let epsilon =
             perf_counter::PerformanceCounterInstant::epsilon();
         if other.t > self.t && other.t - self.t <= epsilon {
-            return Duration::new(0, 0)
+            Some(Duration::new(0, 0))
+        } else {
+            self.t.checked_sub(other.t)
         }
-        self.t.checked_sub(other.t)
-              .expect("specified instant was later than self")
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
@@ -139,7 +139,7 @@ impl Ord for SystemTime {
 }
 
 impl fmt::Debug for SystemTime {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SystemTime")
          .field("intervals", &self.intervals())
          .finish()
@@ -173,7 +173,7 @@ fn intervals2dur(intervals: u64) -> Duration {
 
 mod perf_counter {
     use super::{NANOS_PER_SEC};
-    use crate::sync::Once;
+    use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     use crate::sys_common::mul_div_u64;
     use crate::sys::c;
     use crate::sys::cvt;
@@ -210,13 +210,25 @@ mod perf_counter {
 
     fn frequency() -> c::LARGE_INTEGER {
         static mut FREQUENCY: c::LARGE_INTEGER = 0;
-        static ONCE: Once = Once::new();
+        static STATE: AtomicUsize = AtomicUsize::new(0);
 
         unsafe {
-            ONCE.call_once(|| {
-                cvt(c::QueryPerformanceFrequency(&mut FREQUENCY)).unwrap();
-            });
-            FREQUENCY
+            // If a previous thread has filled in this global state, use that.
+            if STATE.load(SeqCst) == 2 {
+                return FREQUENCY;
+            }
+
+            // ... otherwise learn for ourselves ...
+            let mut frequency = 0;
+            cvt(c::QueryPerformanceFrequency(&mut frequency)).unwrap();
+
+            // ... and attempt to be the one thread that stores it globally for
+            // all other threads
+            if STATE.compare_exchange(0, 1, SeqCst, SeqCst).is_ok() {
+                FREQUENCY = frequency;
+                STATE.store(2, SeqCst);
+            }
+            return frequency;
         }
     }
 

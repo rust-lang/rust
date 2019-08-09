@@ -1,0 +1,47 @@
+error[E0308]: mismatched types
+  --> $DIR/coercions.rs:23:5
+   |
+LL | fn cannot_coerce_empty_enum_to_anything(x: UninhabitedEnum) -> A {
+   |                                                                - expected `A` because of return type
+LL |     x
+   |     ^ expected struct `A`, found enum `uninhabited::UninhabitedEnum`
+   |
+   = note: expected type `A`
+              found type `uninhabited::UninhabitedEnum`
+
+error[E0308]: mismatched types
+  --> $DIR/coercions.rs:27:5
+   |
+LL | fn cannot_coerce_empty_tuple_struct_to_anything(x: UninhabitedTupleStruct) -> A {
+   |                                                                               - expected `A` because of return type
+LL |     x
+   |     ^ expected struct `A`, found struct `uninhabited::UninhabitedTupleStruct`
+   |
+   = note: expected type `A`
+              found type `uninhabited::UninhabitedTupleStruct`
+
+error[E0308]: mismatched types
+  --> $DIR/coercions.rs:31:5
+   |
+LL | fn cannot_coerce_empty_struct_to_anything(x: UninhabitedStruct) -> A {
+   |                                                                    - expected `A` because of return type
+LL |     x
+   |     ^ expected struct `A`, found struct `uninhabited::UninhabitedStruct`
+   |
+   = note: expected type `A`
+              found type `uninhabited::UninhabitedStruct`
+
+error[E0308]: mismatched types
+  --> $DIR/coercions.rs:35:5
+   |
+LL | fn cannot_coerce_enum_with_empty_variants_to_anything(x: UninhabitedVariants) -> A {
+   |                                                                                  - expected `A` because of return type
+LL |     x
+   |     ^ expected struct `A`, found enum `uninhabited::UninhabitedVariants`
+   |
+   = note: expected type `A`
+              found type `uninhabited::UninhabitedVariants`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -3,24 +3,30 @@ error[E0599]: no method named `closure` found for type `&Obj<[closure@$DIR/issue
    |
 LL |     p.closure();
    |       ^^^^^^^ field, not a method
+help: to call the function stored in `closure`, surround the field access with parentheses
    |
-   = help: use `(p.closure)(...)` if you meant to call the function stored in the `closure` field
+LL |     (p.closure)();
+   |     ^         ^
 
 error[E0599]: no method named `fn_ptr` found for type `&&Obj<[closure@$DIR/issue-33784.rs:25:43: 25:48]>` in the current scope
   --> $DIR/issue-33784.rs:29:7
    |
 LL |     q.fn_ptr();
    |       ^^^^^^ field, not a method
+help: to call the function stored in `fn_ptr`, surround the field access with parentheses
    |
-   = help: use `(q.fn_ptr)(...)` if you meant to call the function stored in the `fn_ptr` field
+LL |     (q.fn_ptr)();
+   |     ^        ^
 
 error[E0599]: no method named `c_fn_ptr` found for type `&D` in the current scope
   --> $DIR/issue-33784.rs:32:7
    |
 LL |     s.c_fn_ptr();
    |       ^^^^^^^^ field, not a method
+help: to call the function stored in `c_fn_ptr`, surround the field access with parentheses
    |
-   = help: use `(s.c_fn_ptr)(...)` if you meant to call the function stored in the `c_fn_ptr` field
+LL |     (s.c_fn_ptr)();
+   |     ^          ^
 
 error: aborting due to 3 previous errors
 

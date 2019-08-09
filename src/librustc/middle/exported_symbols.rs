@@ -4,7 +4,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
                                            StableHasherResult};
 use std::cmp;
 use std::mem;
-use crate::ty;
+use crate::ty::{self, TyCtxt};
 use crate::ty::subst::SubstsRef;
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
@@ -38,9 +38,7 @@ pub enum ExportedSymbol<'tcx> {
 }
 
 impl<'tcx> ExportedSymbol<'tcx> {
-    pub fn symbol_name(&self,
-                       tcx: ty::TyCtxt<'_, 'tcx, '_>)
-                       -> ty::SymbolName {
+    pub fn symbol_name(&self, tcx: TyCtxt<'tcx>) -> ty::SymbolName {
         match *self {
             ExportedSymbol::NonGeneric(def_id) => {
                 tcx.symbol_name(ty::Instance::mono(tcx, def_id))
@@ -54,10 +52,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
         }
     }
 
-    pub fn compare_stable(&self,
-                          tcx: ty::TyCtxt<'_, 'tcx, '_>,
-                          other: &ExportedSymbol<'tcx>)
-                          -> cmp::Ordering {
+    pub fn compare_stable(&self, tcx: TyCtxt<'tcx>, other: &ExportedSymbol<'tcx>) -> cmp::Ordering {
         match *self {
             ExportedSymbol::NonGeneric(self_def_id) => match *other {
                 ExportedSymbol::NonGeneric(other_def_id) => {
@@ -92,13 +87,13 @@ impl<'tcx> ExportedSymbol<'tcx> {
     }
 }
 
-pub fn metadata_symbol_name(tcx: ty::TyCtxt<'_, '_, '_>) -> String {
+pub fn metadata_symbol_name(tcx: TyCtxt<'_>) -> String {
     format!("rust_metadata_{}_{}",
             tcx.original_crate_name(LOCAL_CRATE),
             tcx.crate_disambiguator(LOCAL_CRATE).to_fingerprint().to_hex())
 }
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ExportedSymbol<'gcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ExportedSymbol<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {

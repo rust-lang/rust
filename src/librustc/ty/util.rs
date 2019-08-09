@@ -1,13 +1,13 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::hir::def::Def;
+use crate::hir;
+use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 use crate::hir::map::DefPathData;
-use crate::hir::{self, Node};
 use crate::mir::interpret::{sign_extend, truncate};
 use crate::ich::NodeIdHashingMode;
 use crate::traits::{self, ObligationCause};
-use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
+use crate::ty::{self, DefIdTree, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
 use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
@@ -50,10 +50,10 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
 
 impl<'tcx> Discr<'tcx> {
     /// Adds `1` to the value and wraps around if the maximum for the type is reached.
-    pub fn wrap_incr<'a, 'gcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+    pub fn wrap_incr(self, tcx: TyCtxt<'tcx>) -> Self {
         self.checked_add(tcx, 1).0
     }
-    pub fn checked_add<'a, 'gcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, n: u128) -> (Self, bool) {
+    pub fn checked_add(self, tcx: TyCtxt<'tcx>, n: u128) -> (Self, bool) {
         let (int, signed) = match self.ty.sty {
             Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
             Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
@@ -103,14 +103,13 @@ impl<'tcx> Discr<'tcx> {
 }
 
 pub trait IntTypeExt {
-    fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
-    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Discr<'tcx>>)
-                           -> Option<Discr<'tcx>>;
-    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Discr<'tcx>;
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
+    fn disr_incr<'tcx>(&self, tcx: TyCtxt<'tcx>, val: Option<Discr<'tcx>>) -> Option<Discr<'tcx>>;
+    fn initial_discriminant<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Discr<'tcx>;
 }
 
 impl IntTypeExt for attr::IntType {
-    fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             SignedInt(ast::IntTy::I8)       => tcx.types.i8,
             SignedInt(ast::IntTy::I16)      => tcx.types.i16,
@@ -127,18 +126,14 @@ impl IntTypeExt for attr::IntType {
         }
     }
 
-    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Discr<'tcx> {
+    fn initial_discriminant<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Discr<'tcx> {
         Discr {
             val: 0,
             ty: self.to_ty(tcx)
         }
     }
 
-    fn disr_incr<'a, 'tcx>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        val: Option<Discr<'tcx>>,
-    ) -> Option<Discr<'tcx>> {
+    fn disr_incr<'tcx>(&self, tcx: TyCtxt<'tcx>, val: Option<Discr<'tcx>>) -> Option<Discr<'tcx>> {
         if let Some(val) = val {
             assert_eq!(self.to_ty(tcx), val.ty);
             let (new, oflo) = val.checked_add(tcx, 1);
@@ -177,10 +172,11 @@ pub enum Representability {
 }
 
 impl<'tcx> ty::ParamEnv<'tcx> {
-    pub fn can_type_implement_copy<'a>(self,
-                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                       self_type: Ty<'tcx>)
-                                       -> Result<(), CopyImplementationError<'tcx>> {
+    pub fn can_type_implement_copy(
+        self,
+        tcx: TyCtxt<'tcx>,
+        self_type: Ty<'tcx>,
+    ) -> Result<(), CopyImplementationError<'tcx>> {
         // FIXME: (@jroesch) float this code up
         tcx.infer_ctxt().enter(|infcx| {
             let (adt, substs) = match self_type.sty {
@@ -227,7 +223,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Creates a hash of the type `Ty` which will be the same no matter what crate
     /// context it's calculated within. This is used by the `type_id` intrinsic.
     pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
@@ -248,7 +244,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
         if let ty::Adt(def, substs) = ty.sty {
             for field in def.all_fields() {
@@ -261,10 +257,46 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         false
     }
 
-    /// Returns the deeply last field of nested structures, or the same type,
-    /// if not a structure at all. Corresponds to the only possible unsized
-    /// field, and its type can be used to determine unsizing strategy.
-    pub fn struct_tail(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    /// Attempts to returns the deeply last field of nested structures, but
+    /// does not apply any normalization in its search. Returns the same type
+    /// if input `ty` is not a structure at all.
+    pub fn struct_tail_without_normalization(self, ty: Ty<'tcx>) -> Ty<'tcx>
+    {
+        let tcx = self;
+        tcx.struct_tail_with_normalize(ty, |ty| ty)
+    }
+
+    /// Returns the deeply last field of nested structures, or the same type if
+    /// not a structure at all. Corresponds to the only possible unsized field,
+    /// and its type can be used to determine unsizing strategy.
+    ///
+    /// Should only be called if `ty` has no inference variables and does not
+    /// need its lifetimes preserved (e.g. as part of codegen); otherwise
+    /// normalization attempt may cause compiler bugs.
+    pub fn struct_tail_erasing_lifetimes(self,
+                                         ty: Ty<'tcx>,
+                                         param_env: ty::ParamEnv<'tcx>)
+                                         -> Ty<'tcx>
+    {
+        let tcx = self;
+        tcx.struct_tail_with_normalize(ty, |ty| tcx.normalize_erasing_regions(param_env, ty))
+    }
+
+    /// Returns the deeply last field of nested structures, or the same type if
+    /// not a structure at all. Corresponds to the only possible unsized field,
+    /// and its type can be used to determine unsizing strategy.
+    ///
+    /// This is parameterized over the normalization strategy (i.e. how to
+    /// handle `<T as Trait>::Assoc` and `impl Trait`); pass the identity
+    /// function to indicate no normalization should take place.
+    ///
+    /// See also `struct_tail_erasing_lifetimes`, which is suitable for use
+    /// during codegen.
+    pub fn struct_tail_with_normalize(self,
+                                      mut ty: Ty<'tcx>,
+                                      normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>)
+                                      -> Ty<'tcx>
+    {
         loop {
             match ty.sty {
                 ty::Adt(def, substs) => {
@@ -279,9 +311,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                 ty::Tuple(tys) => {
                     if let Some((&last_ty, _)) = tys.split_last() {
-                        ty = last_ty;
+                        ty = last_ty.expect_ty();
                     } else {
                         break;
+                    }
+                }
+
+                ty::Projection(_) | ty::Opaque(..) => {
+                    let normalized = normalize(ty);
+                    if ty == normalized {
+                        return ty;
+                    } else {
+                        ty = normalized;
                     }
                 }
 
@@ -298,10 +339,35 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// structure definitions.
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
-    pub fn struct_lockstep_tails(self,
-                                 source: Ty<'tcx>,
-                                 target: Ty<'tcx>)
-                                 -> (Ty<'tcx>, Ty<'tcx>) {
+    ///
+    /// Should only be called if the types have no inference variables and do
+    /// not need their lifetimes preserved (e.g. as part of codegen); otherwise
+    /// normalization attempt may cause compiler bugs.
+    pub fn struct_lockstep_tails_erasing_lifetimes(self,
+                                                   source: Ty<'tcx>,
+                                                   target: Ty<'tcx>,
+                                                   param_env: ty::ParamEnv<'tcx>)
+                                                   -> (Ty<'tcx>, Ty<'tcx>)
+    {
+        let tcx = self;
+        tcx.struct_lockstep_tails_with_normalize(
+            source, target, |ty| tcx.normalize_erasing_regions(param_env, ty))
+    }
+
+    /// Same as applying struct_tail on `source` and `target`, but only
+    /// keeps going as long as the two types are instances of the same
+    /// structure definitions.
+    /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
+    /// whereas struct_tail produces `T`, and `Trait`, respectively.
+    ///
+    /// See also `struct_lockstep_tails_erasing_lifetimes`, which is suitable for use
+    /// during codegen.
+    pub fn struct_lockstep_tails_with_normalize(self,
+                                                source: Ty<'tcx>,
+                                                target: Ty<'tcx>,
+                                                normalize: impl Fn(Ty<'tcx>) -> Ty<'tcx>)
+                                                -> (Ty<'tcx>, Ty<'tcx>)
+    {
         let (mut a, mut b) = (source, target);
         loop {
             match (&a.sty, &b.sty) {
@@ -317,12 +383,28 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 (&Tuple(a_tys), &Tuple(b_tys))
                         if a_tys.len() == b_tys.len() => {
                     if let Some(a_last) = a_tys.last() {
-                        a = a_last;
-                        b = b_tys.last().unwrap();
+                        a = a_last.expect_ty();
+                        b = b_tys.last().unwrap().expect_ty();
                     } else {
                         break;
                     }
                 },
+                (ty::Projection(_), _) | (ty::Opaque(..), _) |
+                (_, ty::Projection(_)) | (_, ty::Opaque(..)) => {
+                    // If either side is a projection, attempt to
+                    // progress via normalization. (Should be safe to
+                    // apply to both sides as normalization is
+                    // idempotent.)
+                    let a_norm = normalize(a);
+                    let b_norm = normalize(b);
+                    if a == a_norm && b == b_norm {
+                        break;
+                    } else {
+                        a = a_norm;
+                        b = b_norm;
+                    }
+                }
+
                 _ => break,
             }
         }
@@ -438,20 +520,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Some(dtor) => dtor.did
         };
 
-        // RFC 1238: if the destructor method is tagged with the
-        // attribute `unsafe_destructor_blind_to_params`, then the
-        // compiler is being instructed to *assume* that the
-        // destructor will not access borrowed data,
-        // even if such data is otherwise reachable.
-        //
-        // Such access can be in plain sight (e.g., dereferencing
-        // `*foo.0` of `Foo<'a>(&'a u32)`) or indirectly hidden
-        // (e.g., calling `foo.0.clone()` of `Foo<T:Clone>`).
-        if self.has_attr(dtor, "unsafe_destructor_blind_to_params") {
-            debug!("destructor_constraint({:?}) - blind", def.did);
-            return vec![];
-        }
-
         let impl_def_id = self.associated_item(dtor).container.id();
         let impl_generics = self.generics_of(impl_def_id);
 
@@ -497,10 +565,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }) => {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
-                    UnpackedKind::Const(&ty::LazyConst::Evaluated(ty::Const {
+                    UnpackedKind::Const(&ty::Const {
                         val: ConstValue::Param(ref pc),
                         ..
-                    })) => {
+                    }) => {
                         !impl_generics.const_param(pc, self).pure_wrt_drop
                     }
                     UnpackedKind::Lifetime(_) |
@@ -530,30 +598,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
     pub fn is_trait(self, def_id: DefId) -> bool {
-        if let DefPathData::Trait(_) = self.def_key(def_id).disambiguated_data.data {
-            true
-        } else {
-            false
-        }
+        self.def_kind(def_id) == Some(DefKind::Trait)
     }
 
     /// Returns `true` if `def_id` refers to a trait alias (i.e., `trait Foo = ...;`),
     /// and `false` otherwise.
     pub fn is_trait_alias(self, def_id: DefId) -> bool {
-        if let DefPathData::TraitAlias(_) = self.def_key(def_id).disambiguated_data.data {
-            true
-        } else {
-            false
-        }
+        self.def_kind(def_id) == Some(DefKind::TraitAlias)
     }
 
     /// Returns `true` if this `DefId` refers to the implicit constructor for
     /// a tuple struct like `struct Foo(u32)`, and `false` otherwise.
-    pub fn is_struct_constructor(self, def_id: DefId) -> bool {
-        self.def_key(def_id).disambiguated_data.data == DefPathData::StructCtor
+    pub fn is_constructor(self, def_id: DefId) -> bool {
+        self.def_key(def_id).disambiguated_data.data == DefPathData::Ctor
     }
 
-    /// Given the `DefId` of a fn or closure, returns the `DefId` of
+    /// Given the def-ID of a fn or closure, returns the def-ID of
     /// the innermost fn item that the closure is contained within.
     /// This is a significant `DefId` because, when we do
     /// type-checking, we type-check this fn item and all of its
@@ -563,7 +623,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
         while self.is_closure(def_id) {
-            def_id = self.parent_def_id(def_id).unwrap_or_else(|| {
+            def_id = self.parent(def_id).unwrap_or_else(|| {
                 bug!("closure {:?} has no parent", def_id);
             });
         }
@@ -602,7 +662,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> SubstsRef<'tcx> {
         InternalSubsts::for_item(self, item_def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime => self.types.re_erased.into(),
+                GenericParamDefKind::Lifetime => self.lifetimes.re_erased.into(),
                 GenericParamDefKind::Type { .. } => {
                     bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
                 }
@@ -613,34 +673,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Returns `true` if the node pointed to by `def_id` is a static item, and its mutability.
-    pub fn is_static(&self, def_id: DefId) -> Option<hir::Mutability> {
-        if let Some(node) = self.hir().get_if_local(def_id) {
-            match node {
-                Node::Item(&hir::Item {
-                    node: hir::ItemKind::Static(_, mutbl, _), ..
-                }) => Some(mutbl),
-                Node::ForeignItem(&hir::ForeignItem {
-                    node: hir::ForeignItemKind::Static(_, is_mutbl), ..
-                }) =>
-                    Some(if is_mutbl {
-                        hir::Mutability::MutMutable
-                    } else {
-                        hir::Mutability::MutImmutable
-                    }),
-                _ => None
-            }
-        } else {
-            match self.describe_def(def_id) {
-                Some(Def::Static(_, is_mutbl)) =>
-                    Some(if is_mutbl {
-                        hir::Mutability::MutMutable
-                    } else {
-                        hir::Mutability::MutImmutable
-                    }),
-                _ => None
-            }
-        }
+    /// Returns `true` if the node pointed to by `def_id` is a `static` item.
+    pub fn is_static(&self, def_id: DefId) -> bool {
+        self.static_mutability(def_id).is_some()
+    }
+
+    /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
+    pub fn is_mutable_static(&self, def_id: DefId) -> bool {
+        self.static_mutability(def_id) == Some(hir::MutMutable)
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.
@@ -651,7 +691,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         use crate::ty::fold::TypeFolder;
 
-        struct OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+        struct OpaqueTypeExpander<'tcx> {
             // Contains the DefIds of the opaque types that are currently being
             // expanded. When we expand an opaque type we insert the DefId of
             // that type, and when we finish expanding that type we remove the
@@ -659,10 +699,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             seen_opaque_tys: FxHashSet<DefId>,
             primary_def_id: DefId,
             found_recursion: bool,
-            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+            tcx: TyCtxt<'tcx>,
         }
 
-        impl<'a, 'gcx, 'tcx> OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+        impl<'tcx> OpaqueTypeExpander<'tcx> {
             fn expand_opaque_ty(
                 &mut self,
                 def_id: DefId,
@@ -685,8 +725,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpaqueTypeExpander<'a, 'gcx, 'tcx> {
-            fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+        impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
+            fn tcx(&self) -> TyCtxt<'tcx> {
                 self.tcx
             }
 
@@ -714,7 +754,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ty::TyS<'tcx> {
+impl<'tcx> ty::TyS<'tcx> {
     /// Checks whether values of this type `T` are *moved* or *copied*
     /// when referenced -- this amounts to a check for whether `T:
     /// Copy`, but note that we **don't** consider lifetimes when
@@ -722,11 +762,12 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     /// does copies even when the type actually doesn't satisfy the
     /// full requirements for the `Copy` trait (cc #29149) -- this
     /// winds up being reported as an error during NLL borrow check.
-    pub fn is_copy_modulo_regions(&'tcx self,
-                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  param_env: ty::ParamEnv<'tcx>,
-                                  span: Span)
-                                  -> bool {
+    pub fn is_copy_modulo_regions(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+    ) -> bool {
         tcx.at(span).is_copy_raw(param_env.and(self))
     }
 
@@ -736,10 +777,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     /// over-approximation in generic contexts, where one can have
     /// strange rules like `<T as Foo<'static>>::Bar: Sized` that
     /// actually carry lifetime requirements.
-    pub fn is_sized(&'tcx self,
-                    tcx_at: TyCtxtAt<'a, 'tcx, 'tcx>,
-                    param_env: ty::ParamEnv<'tcx>)-> bool
-    {
+    pub fn is_sized(&'tcx self, tcx_at: TyCtxtAt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         tcx_at.is_sized_raw(param_env.and(self))
     }
 
@@ -750,11 +788,12 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     /// optimization as well as the rules around static values. Note
     /// that the `Freeze` trait is not exposed to end users and is
     /// effectively an implementation detail.
-    pub fn is_freeze(&'tcx self,
-                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                     param_env: ty::ParamEnv<'tcx>,
-                     span: Span)-> bool
-    {
+    pub fn is_freeze(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        span: Span,
+    ) -> bool {
         tcx.at(span).is_freeze_raw(param_env.and(self))
     }
 
@@ -765,10 +804,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     /// (Note that this implies that if `ty` has a destructor attached,
     /// then `needs_drop` will definitely return `true` for `ty`.)
     #[inline]
-    pub fn needs_drop(&'tcx self,
-                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                      param_env: ty::ParamEnv<'tcx>)
-                      -> bool {
+    pub fn needs_drop(&'tcx self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         tcx.needs_drop_raw(param_env.and(self)).0
     }
 
@@ -787,11 +823,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self,
-                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            sp: Span)
-                            -> Representability
-    {
+    pub fn is_representable(&'tcx self, tcx: TyCtxt<'tcx>, sp: Span) -> Representability {
         // Iterate until something non-representable is found
         fn fold_repr<It: Iterator<Item=Representability>>(iter: It) -> Representability {
             iter.fold(Representability::Representable, |r1, r2| {
@@ -805,18 +837,24 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             })
         }
 
-        fn are_inner_types_recursive<'a, 'tcx>(
-            tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span,
+        fn are_inner_types_recursive<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            sp: Span,
             seen: &mut Vec<Ty<'tcx>>,
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>)
-            -> Representability
-        {
+            ty: Ty<'tcx>,
+        ) -> Representability {
             match ty.sty {
                 Tuple(ref ts) => {
                     // Find non representable
                     fold_repr(ts.iter().map(|ty| {
-                        is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
+                        is_type_structurally_recursive(
+                            tcx,
+                            sp,
+                            seen,
+                            representable_cache,
+                            ty.expect_ty(),
+                        )
                     }))
                 }
                 // Fixed-length vectors.
@@ -859,13 +897,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
         // Does the type `ty` directly (without indirection through a pointer)
         // contain any types on stack `seen`?
-        fn is_type_structurally_recursive<'a, 'tcx>(
-            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        fn is_type_structurally_recursive<'tcx>(
+            tcx: TyCtxt<'tcx>,
             sp: Span,
             seen: &mut Vec<Ty<'tcx>>,
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>) -> Representability
-        {
+            ty: Ty<'tcx>,
+        ) -> Representability {
             debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
             if let Some(representability) = representable_cache.get(ty) {
                 debug!("is_type_structurally_recursive: {:?} {:?} - (cached) {:?}",
@@ -880,13 +918,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             representability
         }
 
-        fn is_type_structurally_recursive_inner<'a, 'tcx>(
-            tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        fn is_type_structurally_recursive_inner<'tcx>(
+            tcx: TyCtxt<'tcx>,
             sp: Span,
             seen: &mut Vec<Ty<'tcx>>,
             representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
-            ty: Ty<'tcx>) -> Representability
-        {
+            ty: Ty<'tcx>,
+        ) -> Representability {
             match ty.sty {
                 Adt(def, _) => {
                     {
@@ -958,10 +996,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     }
 }
 
-fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                         -> bool
-{
+fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::CopyTraitLangItem);
     tcx.infer_ctxt()
@@ -974,10 +1009,7 @@ fn is_copy_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ))
 }
 
-fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                          -> bool
-{
+fn is_sized_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::SizedTraitLangItem);
     tcx.infer_ctxt()
@@ -990,10 +1022,7 @@ fn is_sized_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ))
 }
 
-fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                           -> bool
-{
+fn is_freeze_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
     let (param_env, ty) = query.into_parts();
     let trait_def_id = tcx.require_lang_item(lang_items::FreezeTraitLangItem);
     tcx.infer_ctxt()
@@ -1009,10 +1038,7 @@ fn is_freeze_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 #[derive(Clone, HashStable)]
 pub struct NeedsDrop(pub bool);
 
-fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
-                            -> NeedsDrop
-{
+fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> NeedsDrop {
     let (param_env, ty) = query.into_parts();
 
     let needs_drop = |ty: Ty<'tcx>| -> bool {
@@ -1069,7 +1095,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // state transformation pass
         ty::Generator(..) => true,
 
-        ty::Tuple(ref tys) => tys.iter().cloned().any(needs_drop),
+        ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).any(needs_drop),
 
         // unions don't have destructors because of the child types,
         // only if they manually implement `Drop` (handled above).

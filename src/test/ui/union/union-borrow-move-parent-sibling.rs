@@ -12,27 +12,27 @@ fn use_borrow<T>(_: &T) {}
 unsafe fn parent_sibling_borrow() {
     let mut u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
     let a = &mut u.x.0;
-    let b = &u.y; //~ ERROR cannot borrow `u.y`
+    let b = &u.y; //~ ERROR cannot borrow `u` (via `u.y`)
     use_borrow(a);
 }
 
 unsafe fn parent_sibling_move() {
     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
     let a = u.x.0;
-    let b = u.y; //~ ERROR use of moved value: `u.y`
+    let b = u.y; //~ ERROR use of moved value: `u`
 }
 
 unsafe fn grandparent_sibling_borrow() {
     let mut u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
     let a = &mut (u.x.0).0;
-    let b = &u.y; //~ ERROR cannot borrow `u.y`
+    let b = &u.y; //~ ERROR cannot borrow `u` (via `u.y`)
     use_borrow(a);
 }
 
 unsafe fn grandparent_sibling_move() {
     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
     let a = (u.x.0).0;
-    let b = u.y; //~ ERROR use of moved value: `u.y`
+    let b = u.y; //~ ERROR use of moved value: `u`
 }
 
 unsafe fn deref_sibling_borrow() {
@@ -45,7 +45,7 @@ unsafe fn deref_sibling_borrow() {
 unsafe fn deref_sibling_move() {
     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
     let a = *u.y;
-    let b = u.x; //~ ERROR use of moved value: `u.x`
+    let b = u.x; //~ ERROR use of moved value: `u`
 }
 
 

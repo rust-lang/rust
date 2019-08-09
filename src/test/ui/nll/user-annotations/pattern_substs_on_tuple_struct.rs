@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct Foo<'a>(&'a u32);
 
 fn in_let() {

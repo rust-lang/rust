@@ -217,6 +217,75 @@ impl<T, S> Decodable for HashSet<T, S>
     }
 }
 
+impl<K, V, S> Encodable for indexmap::IndexMap<K, V, S>
+    where K: Encodable + Hash + Eq,
+          V: Encodable,
+          S: BuildHasher,
+{
+    fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
+        e.emit_map(self.len(), |e| {
+            let mut i = 0;
+            for (key, val) in self {
+                e.emit_map_elt_key(i, |e| key.encode(e))?;
+                e.emit_map_elt_val(i, |e| val.encode(e))?;
+                i += 1;
+            }
+            Ok(())
+        })
+    }
+}
+
+impl<K, V, S> Decodable for indexmap::IndexMap<K, V, S>
+    where K: Decodable + Hash + Eq,
+          V: Decodable,
+          S: BuildHasher + Default,
+{
+    fn decode<D: Decoder>(d: &mut D) -> Result<indexmap::IndexMap<K, V, S>, D::Error> {
+        d.read_map(|d, len| {
+            let state = Default::default();
+            let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
+            for i in 0..len {
+                let key = d.read_map_elt_key(i, |d| Decodable::decode(d))?;
+                let val = d.read_map_elt_val(i, |d| Decodable::decode(d))?;
+                map.insert(key, val);
+            }
+            Ok(map)
+        })
+    }
+}
+
+impl<T, S> Encodable for indexmap::IndexSet<T, S>
+    where T: Encodable + Hash + Eq,
+          S: BuildHasher,
+{
+    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_seq(self.len(), |s| {
+            let mut i = 0;
+            for e in self {
+                s.emit_seq_elt(i, |s| e.encode(s))?;
+                i += 1;
+            }
+            Ok(())
+        })
+    }
+}
+
+impl<T, S> Decodable for indexmap::IndexSet<T, S>
+    where T: Decodable + Hash + Eq,
+          S: BuildHasher + Default,
+{
+    fn decode<D: Decoder>(d: &mut D) -> Result<indexmap::IndexSet<T, S>, D::Error> {
+        d.read_seq(|d, len| {
+            let state = Default::default();
+            let mut set = indexmap::IndexSet::with_capacity_and_hasher(len, state);
+            for i in 0..len {
+                set.insert(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            }
+            Ok(set)
+        })
+    }
+}
+
 impl<T: Encodable> Encodable for Rc<[T]> {
     fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {

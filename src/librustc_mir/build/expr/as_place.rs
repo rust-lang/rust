@@ -4,13 +4,13 @@ use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
+use rustc::mir::interpret::{PanicInfo::BoundsCheck};
 use rustc::mir::*;
 use rustc::ty::{CanonicalUserTypeAnnotation, Variance};
 
 use rustc_data_structures::indexed_vec::Idx;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a place that we can move from etc.
     pub fn as_place<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Place<'tcx>>
     where
@@ -52,7 +52,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 region_scope,
                 lint_level,
                 value,
-            } => this.in_scope((region_scope, source_info), lint_level, block, |this| {
+            } => this.in_scope((region_scope, source_info), lint_level, |this| {
                 if mutability == Mutability::Not {
                     this.as_read_only_place(block, value)
                 } else {
@@ -73,13 +73,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let (usize_ty, bool_ty) = (this.hir.usize_ty(), this.hir.bool_ty());
 
                 let slice = unpack!(block = this.as_place(block, lhs));
-                // region_scope=None so place indexes live forever. They are scalars so they
-                // do not need storage annotations, and they are often copied between
-                // places.
                 // Making this a *fresh* temporary also means we do not have to worry about
                 // the index changing later: Nothing will ever change this temporary.
                 // The "retagging" transformation (for Stacked Borrows) relies on this.
-                let idx = unpack!(block = this.as_temp(block, None, index, Mutability::Mut));
+                let idx = unpack!(block = this.as_temp(
+                    block,
+                    expr.temp_lifetime,
+                    index,
+                    Mutability::Not,
+                ));
 
                 // bounds check:
                 let (len, lt) = (
@@ -98,37 +100,36 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     &lt,
                     Rvalue::BinaryOp(
                         BinOp::Lt,
-                        Operand::Copy(Place::Base(PlaceBase::Local(idx))),
+                        Operand::Copy(Place::from(idx)),
                         Operand::Copy(len.clone()),
                     ),
                 );
 
                 let msg = BoundsCheck {
                     len: Operand::Move(len),
-                    index: Operand::Copy(Place::Base(PlaceBase::Local(idx))),
+                    index: Operand::Copy(Place::from(idx)),
                 };
                 let success = this.assert(block, Operand::Move(lt), true, msg, expr_span);
                 success.and(slice.index(idx))
             }
-            ExprKind::SelfRef => block.and(Place::Base(PlaceBase::Local(Local::new(1)))),
+            ExprKind::SelfRef => block.and(Place::from(Local::new(1))),
             ExprKind::VarRef { id } => {
-                let place = if this.is_bound_var_in_guard(id) && this
-                    .hir
-                    .tcx()
-                    .all_pat_vars_are_implicit_refs_within_guards()
-                {
+                let place = if this.is_bound_var_in_guard(id) {
                     let index = this.var_local_id(id, RefWithinGuard);
-                    Place::Base(PlaceBase::Local(index)).deref()
+                    Place::from(index).deref()
                 } else {
                     let index = this.var_local_id(id, OutsideGuard);
-                    Place::Base(PlaceBase::Local(index))
+                    Place::from(index)
                 };
                 block.and(place)
             }
-            ExprKind::StaticRef { id } => block.and(Place::Base(PlaceBase::Static(Box::new(Static {
-                def_id: id,
-                ty: expr.ty,
-            })))),
+            ExprKind::StaticRef { id } => block.and(Place {
+                base: PlaceBase::Static(Box::new(Static {
+                    ty: expr.ty,
+                    kind: StaticKind::Static(id),
+                })),
+                projection: None,
+            }),
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let place = unpack!(block = this.as_place(block, source));
@@ -172,14 +173,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         Statement {
                             source_info,
                             kind: StatementKind::AscribeUserType(
-                                Place::Base(PlaceBase::Local(temp.clone())),
+                                Place::from(temp.clone()),
                                 Variance::Invariant,
                                 box UserTypeProjection { base: annotation_index, projs: vec![], },
                             ),
                         },
                     );
                 }
-                block.and(Place::Base(PlaceBase::Local(temp)))
+                block.and(Place::from(temp))
             }
 
             ExprKind::Array { .. }
@@ -193,14 +194,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::Cast { .. }
             | ExprKind::Use { .. }
             | ExprKind::NeverToAny { .. }
-            | ExprKind::ReifyFnPointer { .. }
-            | ExprKind::ClosureFnPointer { .. }
-            | ExprKind::UnsafeFnPointer { .. }
-            | ExprKind::MutToConstPointer { .. }
-            | ExprKind::Unsize { .. }
+            | ExprKind::Pointer { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
-            | ExprKind::If { .. }
             | ExprKind::Match { .. }
             | ExprKind::Loop { .. }
             | ExprKind::Block { .. }
@@ -220,7 +216,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 });
                 let temp =
                     unpack!(block = this.as_temp(block, expr.temp_lifetime, expr, mutability));
-                block.and(Place::Base(PlaceBase::Local(temp)))
+                block.and(Place::from(temp))
             }
         }
     }

@@ -1,4 +1,4 @@
-use iter::FromIterator;
+use crate::iter::FromIterator;
 
 /// Collapses all unit items from an iterator into one.
 ///

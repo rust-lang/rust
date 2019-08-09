@@ -64,4 +64,3 @@ fn test_to_exact_exp_str() {
 fn test_to_exact_fixed_str() {
     to_exact_fixed_str_test(format_exact);
 }
-

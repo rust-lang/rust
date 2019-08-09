@@ -1,8 +1,4 @@
-// revisions: migrate nll
-//[migrate]compile-flags: -Z borrowck=migrate
-#![cfg_attr(nll, feature(nll))]
-
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Test that we propagate region relations from closures precisely when there is
 // more than one non-local lower bound.

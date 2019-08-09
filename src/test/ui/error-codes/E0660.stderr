@@ -1,0 +1,14 @@
+error[E0660]: malformed inline assembly
+  --> $DIR/E0660.rs:5:5
+   |
+LL |     asm!("nop" "nop");
+   |     ^^^^^^^^^^^^^^^^^^
+
+error[E0660]: malformed inline assembly
+  --> $DIR/E0660.rs:7:5
+   |
+LL |     asm!("nop" "nop" : "=r"(a));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

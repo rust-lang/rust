@@ -44,7 +44,6 @@ fn test_simple() {
     assert_eq!(d[3], 4);
 }
 
-#[cfg(test)]
 fn test_parameterized<T: Clone + PartialEq + Debug>(a: T, b: T, c: T, d: T) {
     let mut deq = VecDeque::new();
     assert_eq!(deq.len(), 0);
@@ -108,7 +107,6 @@ fn test_index() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_index_out_of_bounds() {
     let mut deq = VecDeque::new();
     for i in 1..4 {

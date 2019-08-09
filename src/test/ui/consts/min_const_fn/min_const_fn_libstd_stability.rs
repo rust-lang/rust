@@ -12,14 +12,14 @@ const fn foo() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // can't call non-min_const_fn
-const fn bar() -> u32 { foo() } //~ ERROR can only call other `min_const_fn`
+const fn bar() -> u32 { foo() } //~ ERROR can only call other `const fn`
 
 #[unstable(feature = "rust1", issue="0")]
 const fn foo2() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // can't call non-min_const_fn
-const fn bar2() -> u32 { foo2() } //~ ERROR can only call other `min_const_fn`
+const fn bar2() -> u32 { foo2() } //~ ERROR can only call other `const fn`
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // conformity is required, even with `const_fn` feature gate
@@ -31,6 +31,6 @@ const fn foo2_gated() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // can't call non-min_const_fn
-const fn bar2_gated() -> u32 { foo2_gated() } //~ ERROR can only call other `min_const_fn`
+const fn bar2_gated() -> u32 { foo2_gated() } //~ ERROR can only call other `const fn`
 
 fn main() {}

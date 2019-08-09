@@ -1,6 +1,6 @@
-use cmp;
-use mem::{self, MaybeUninit};
-use ptr;
+use crate::cmp;
+use crate::mem::{self, MaybeUninit};
+use crate::ptr;
 
 /// Rotation is much faster if it has access to a little bit of memory. This
 /// union provides a RawVec-like interface, but to a fixed-size stack buffer.
@@ -16,7 +16,7 @@ union RawArray<T> {
 }
 
 impl<T> RawArray<T> {
-    fn cap() -> usize {
+    fn capacity() -> usize {
         if mem::size_of::<T>() == 0 {
             usize::max_value()
         } else {
@@ -55,7 +55,7 @@ impl<T> RawArray<T> {
 pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
     loop {
         let delta = cmp::min(left, right);
-        if delta <= RawArray::<T>::cap() {
+        if delta <= RawArray::<T>::capacity() {
             // We will always hit this immediately for ZST.
             break;
         }
@@ -72,7 +72,7 @@ pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
         }
     }
 
-    let mut rawarray = MaybeUninit::<RawArray<T>>::uninitialized();
+    let mut rawarray = MaybeUninit::<RawArray<T>>::uninit();
     let buf = &mut (*rawarray.as_mut_ptr()).typed as *mut [T; 2] as *mut T;
 
     let dim = mid.sub(left).add(right);

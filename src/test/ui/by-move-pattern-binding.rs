@@ -11,9 +11,9 @@ fn f(x: String) {}
 
 fn main() {
     let s = S { x: E::Bar("hello".to_string()) };
-    match &s.x {
+    match &s.x { //~ ERROR cannot move
         &E::Foo => {}
-        &E::Bar(identifier) => f(identifier.clone())  //~ ERROR cannot move
+        &E::Bar(identifier) => f(identifier.clone())
     };
     match &s.x {
         &E::Foo => {}

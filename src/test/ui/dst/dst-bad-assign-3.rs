@@ -28,8 +28,8 @@ impl ToBar for Bar1 {
 
 pub fn main() {
     // Assignment.
-    let f5: &mut Fat<ToBar> = &mut (5, "some str", Bar1 {f :42});
-    let z: Box<ToBar> = Box::new(Bar1 {f: 36});
+    let f5: &mut Fat<dyn ToBar> = &mut (5, "some str", Bar1 {f :42});
+    let z: Box<dyn ToBar> = Box::new(Bar1 {f: 36});
     f5.2 = Bar1 {f: 36};
     //~^ ERROR mismatched types
     //~| expected type `dyn ToBar`

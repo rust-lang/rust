@@ -1,7 +1,5 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // aux-build:promotable_const_fn_lib.rs
-
-#![feature(nll)]
 
 extern crate promotable_const_fn_lib;
 

@@ -1,8 +1,8 @@
 fn main() {
     let msg;
     match Some("Hello".to_string()) {
+        //~^ ERROR temporary value dropped while borrowed
         Some(ref m) => {
-        //~^ ERROR borrowed value does not live long enough
             msg = m;
         },
         None => { panic!() }

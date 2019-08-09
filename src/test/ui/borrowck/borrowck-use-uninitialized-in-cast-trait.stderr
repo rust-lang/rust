@@ -1,0 +1,9 @@
+error[E0381]: borrow of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-use-uninitialized-in-cast-trait.rs:9:13
+   |
+LL |     let y = x as *const dyn Foo;
+   |             ^ use of possibly uninitialized `*x`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.

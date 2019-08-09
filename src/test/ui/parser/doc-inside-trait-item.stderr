@@ -1,0 +1,10 @@
+error[E0584]: found a documentation comment that doesn't document anything
+  --> $DIR/doc-inside-trait-item.rs:3:5
+   |
+LL |     /// empty doc
+   |     ^^^^^^^^^^^^^
+   |
+   = help: doc comments must come before what they document, maybe a comment was intended with `//`?
+
+error: aborting due to previous error
+

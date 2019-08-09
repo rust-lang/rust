@@ -23,7 +23,9 @@ fi
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"
 
-if [ "$TRAVIS" != "true" ] || [ "$TRAVIS_BRANCH" == "auto" ]; then
+branch_name=$(getCIBranch)
+
+if [ ! isCI ] || [ "$branch_name" = "auto" ] || [ "$branch_name" = "try" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
 
@@ -44,10 +46,11 @@ fi
 # FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
 #        either automatically or manually.
 export RUST_RELEASE_CHANNEL=nightly
-if [ "$DEPLOY$DEPLOY_ALT" != "" ]; then
+if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo"
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --debuginfo-level-std=1"
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
@@ -88,28 +91,15 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   rm -rf build
 fi
 
-travis_fold start configure
-travis_time_start
 $SRC/configure $RUST_CONFIGURE_ARGS
-travis_fold end configure
-travis_time_finish
 
-travis_fold start make-prepare
-travis_time_start
 retry make prepare
-travis_fold end make-prepare
-travis_time_finish
 
-travis_fold start check-bootstrap
-travis_time_start
 make check-bootstrap
-travis_fold end check-bootstrap
-travis_time_finish
 
 # Display the CPU and memory information. This helps us know why the CI timing
 # is fluctuating.
-travis_fold start log-system-info
-if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+if isOSX; then
     system_profiler SPHardwareDataType || true
     sysctl hw || true
     ncpus=$(sysctl -n hw.ncpu)
@@ -118,23 +108,18 @@ else
     cat /proc/meminfo || true
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
-travis_fold end log-system-info
 
 if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"
 else
   do_make() {
-    travis_fold start "make-$1"
-    travis_time_start
     echo "make -j $ncpus $1"
     make -j $ncpus $1
     local retval=$?
-    travis_fold end "make-$1"
-    travis_time_finish
     return $retval
   }
 
-  do_make tidy
-  do_make all
   do_make "$RUST_CHECK_TARGET"
 fi
+
+sccache --show-stats || true

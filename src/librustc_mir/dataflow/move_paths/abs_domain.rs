@@ -18,8 +18,7 @@ use rustc::ty::Ty;
 pub struct AbstractOperand;
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct AbstractType;
-pub type AbstractElem<'tcx> =
-    ProjectionElem<'tcx, AbstractOperand, AbstractType>;
+pub type AbstractElem = ProjectionElem<AbstractOperand, AbstractType>;
 
 pub trait Lift {
     type Abstract;
@@ -38,7 +37,7 @@ impl<'tcx> Lift for Ty<'tcx> {
     fn lift(&self) -> Self::Abstract { AbstractType }
 }
 impl<'tcx> Lift for PlaceElem<'tcx> {
-    type Abstract = AbstractElem<'tcx>;
+    type Abstract = AbstractElem;
     fn lift(&self) -> Self::Abstract {
         match *self {
             ProjectionElem::Deref =>
@@ -56,7 +55,7 @@ impl<'tcx> Lift for PlaceElem<'tcx> {
                     from_end,
                 },
             ProjectionElem::Downcast(a, u) =>
-                ProjectionElem::Downcast(a.clone(), u.clone()),
+                ProjectionElem::Downcast(a, u.clone()),
         }
     }
 }

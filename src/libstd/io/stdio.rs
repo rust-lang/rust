@@ -5,7 +5,7 @@ use crate::io::prelude::*;
 use crate::cell::RefCell;
 use crate::fmt;
 use crate::io::lazy::Lazy;
-use crate::io::{self, Initializer, BufReader, LineWriter};
+use crate::io::{self, Initializer, BufReader, LineWriter, IoSlice, IoSliceMut};
 use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
@@ -75,6 +75,10 @@ fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -82,10 +86,20 @@ impl Read for StdinRaw {
 }
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 
@@ -102,6 +116,14 @@ impl<W: io::Write> io::Write for Maybe<W> {
         }
     }
 
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let total = bufs.iter().map(|b| b.len()).sum();
+        match self {
+            Maybe::Real(w) => handle_ebadf(w.write_vectored(bufs), total),
+            Maybe::Fake => Ok(total),
+        }
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
@@ -114,6 +136,13 @@ impl<R: io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
+            Maybe::Fake => Ok(0)
+        }
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        match self {
+            Maybe::Real(r) => handle_ebadf(r.read_vectored(bufs), 0),
             Maybe::Fake => Ok(0)
         }
     }
@@ -255,7 +284,7 @@ impl Stdin {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn lock(&self) -> StdinLock {
+    pub fn lock(&self) -> StdinLock<'_> {
         StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 
@@ -295,7 +324,7 @@ impl Stdin {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Stdin { .. }")
     }
 }
@@ -304,6 +333,9 @@ impl fmt::Debug for Stdin {
 impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
+    }
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.lock().read_vectored(bufs)
     }
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
@@ -325,6 +357,11 @@ impl Read for StdinLock<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.inner.read_vectored(bufs)
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -339,7 +376,7 @@ impl BufRead for StdinLock<'_> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StdinLock<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("StdinLock { .. }")
     }
 }
@@ -405,7 +442,7 @@ pub struct StdoutLock<'a> {
 /// use std::io::{self, Write};
 ///
 /// fn main() -> io::Result<()> {
-///     io::stdout().write(b"hello world")?;
+///     io::stdout().write_all(b"hello world")?;
 ///
 ///     Ok(())
 /// }
@@ -420,7 +457,7 @@ pub struct StdoutLock<'a> {
 ///     let stdout = io::stdout();
 ///     let mut handle = stdout.lock();
 ///
-///     handle.write(b"hello world")?;
+///     handle.write_all(b"hello world")?;
 ///
 ///     Ok(())
 /// }
@@ -460,20 +497,20 @@ impl Stdout {
     ///     let stdout = io::stdout();
     ///     let mut handle = stdout.lock();
     ///
-    ///     handle.write(b"hello world")?;
+    ///     handle.write_all(b"hello world")?;
     ///
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn lock(&self) -> StdoutLock {
+    pub fn lock(&self) -> StdoutLock<'_> {
         StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdout {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Stdout { .. }")
     }
 }
@@ -483,13 +520,16 @@ impl Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
     }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.lock().write_vectored(bufs)
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.lock().flush()
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    fn write_fmt(&mut self, args: fmt::Arguments) -> io::Result<()> {
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
         self.lock().write_fmt(args)
     }
 }
@@ -498,6 +538,9 @@ impl Write for StdoutLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.borrow_mut().write(buf)
     }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.borrow_mut().write_vectored(bufs)
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
     }
@@ -505,7 +548,7 @@ impl Write for StdoutLock<'_> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StdoutLock<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("StdoutLock { .. }")
     }
 }
@@ -558,7 +601,7 @@ pub struct StderrLock<'a> {
 /// use std::io::{self, Write};
 ///
 /// fn main() -> io::Result<()> {
-///     io::stderr().write(b"hello world")?;
+///     io::stderr().write_all(b"hello world")?;
 ///
 ///     Ok(())
 /// }
@@ -573,7 +616,7 @@ pub struct StderrLock<'a> {
 ///     let stderr = io::stderr();
 ///     let mut handle = stderr.lock();
 ///
-///     handle.write(b"hello world")?;
+///     handle.write_all(b"hello world")?;
 ///
 ///     Ok(())
 /// }
@@ -613,20 +656,20 @@ impl Stderr {
     ///     let stderr = io::stderr();
     ///     let mut handle = stderr.lock();
     ///
-    ///     handle.write(b"hello world")?;
+    ///     handle.write_all(b"hello world")?;
     ///
     ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn lock(&self) -> StderrLock {
+    pub fn lock(&self) -> StderrLock<'_> {
         StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stderr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Stderr { .. }")
     }
 }
@@ -636,13 +679,16 @@ impl Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
     }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.lock().write_vectored(bufs)
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.lock().flush()
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    fn write_fmt(&mut self, args: fmt::Arguments) -> io::Result<()> {
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
         self.lock().write_fmt(args)
     }
 }
@@ -651,6 +697,9 @@ impl Write for StderrLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.borrow_mut().write(buf)
     }
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.borrow_mut().write_vectored(bufs)
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
     }
@@ -658,7 +707,7 @@ impl Write for StderrLock<'_> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for StderrLock<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("StderrLock { .. }")
     }
 }
@@ -720,7 +769,7 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 ///
 /// However, if the actual I/O causes an error, this function does panic.
 fn print_to<T>(
-    args: fmt::Arguments,
+    args: fmt::Arguments<'_>,
     local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
     global_s: fn() -> T,
     label: &str,
@@ -749,7 +798,7 @@ where
            issue = "0")]
 #[doc(hidden)]
 #[cfg(not(test))]
-pub fn _print(args: fmt::Arguments) {
+pub fn _print(args: fmt::Arguments<'_>) {
     print_to(args, &LOCAL_STDOUT, stdout, "stdout");
 }
 
@@ -758,7 +807,7 @@ pub fn _print(args: fmt::Arguments) {
            issue = "0")]
 #[doc(hidden)]
 #[cfg(not(test))]
-pub fn _eprint(args: fmt::Arguments) {
+pub fn _eprint(args: fmt::Arguments<'_>) {
     print_to(args, &LOCAL_STDERR, stderr, "stderr");
 }
 
@@ -777,7 +826,7 @@ mod tests {
     }
     #[test]
     fn stdoutlock_unwind_safe() {
-        assert_unwind_safe::<StdoutLock>();
+        assert_unwind_safe::<StdoutLock<'_>>();
         assert_unwind_safe::<StdoutLock<'static>>();
     }
     #[test]
@@ -786,7 +835,7 @@ mod tests {
     }
     #[test]
     fn stderrlock_unwind_safe() {
-        assert_unwind_safe::<StderrLock>();
+        assert_unwind_safe::<StderrLock<'_>>();
         assert_unwind_safe::<StderrLock<'static>>();
     }
 

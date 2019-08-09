@@ -1,0 +1,22 @@
+
+running 1 test
+test $DIR/unparseable-doc-test.rs - foo (line 6) ... FAILED
+
+failures:
+
+---- $DIR/unparseable-doc-test.rs - foo (line 6) stdout ----
+error: unterminated double quote string
+ --> $DIR/unparseable-doc-test.rs:8:1
+  |
+2 | "unterminated
+  | ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/unparseable-doc-test.rs - foo (line 6)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+

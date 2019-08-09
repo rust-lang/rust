@@ -8,7 +8,7 @@ trait Parse {
 
 impl Parse for Parser {
     fn parse(&self) -> Vec<isize> {
-        self.tokens //~ ERROR cannot move out of borrowed content
+        self.tokens //~ ERROR cannot move out
     }
 }
 

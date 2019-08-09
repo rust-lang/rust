@@ -1,12 +1,10 @@
-#![feature(nll)]
-
 // Test that when we have a `<T as MyTrait<'a>>::Output: 'a`
 // relationship in the environment we take advantage of it.  In this
 // case, that means we **don't** have to prove that `T: 'a`.
 //
 // Regression test for #53121.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 trait MyTrait<'a> {
     type Output;

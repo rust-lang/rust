@@ -10,12 +10,15 @@ use core::usize;
 #[doc(inline)]
 pub use core::alloc::*;
 
+#[cfg(test)]
+mod tests;
+
 extern "Rust" {
     // These are the magic symbols to call the global allocator.  rustc generates
     // them from the `#[global_allocator]` attribute if there is one, or uses the
     // default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
     // otherwise.
-    #[allocator]
+    #[rustc_allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_allocator_nounwind]
@@ -37,6 +40,8 @@ extern "Rust" {
 ///
 /// Note: while this type is unstable, the functionality it provides can be
 /// accessed through the [free functions in `alloc`](index.html#functions).
+///
+/// [`Alloc`]: trait.Alloc.html
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
@@ -53,6 +58,10 @@ pub struct Global;
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc`].
+///
+/// [`Global`]: struct.Global.html
+/// [`Alloc`]: trait.Alloc.html
+/// [`GlobalAlloc::alloc`]: trait.GlobalAlloc.html#tymethod.alloc
 ///
 /// # Examples
 ///
@@ -87,6 +96,10 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// # Safety
 ///
 /// See [`GlobalAlloc::dealloc`].
+///
+/// [`Global`]: struct.Global.html
+/// [`Alloc`]: trait.Alloc.html
+/// [`GlobalAlloc::dealloc`]: trait.GlobalAlloc.html#tymethod.dealloc
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
@@ -105,6 +118,10 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 /// # Safety
 ///
 /// See [`GlobalAlloc::realloc`].
+///
+/// [`Global`]: struct.Global.html
+/// [`Alloc`]: trait.Alloc.html
+/// [`GlobalAlloc::realloc`]: trait.GlobalAlloc.html#method.realloc
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[inline]
 pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
@@ -123,6 +140,10 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// # Safety
 ///
 /// See [`GlobalAlloc::alloc_zeroed`].
+///
+/// [`Global`]: struct.Global.html
+/// [`Alloc`]: trait.Alloc.html
+/// [`GlobalAlloc::alloc_zeroed`]: trait.GlobalAlloc.html#method.alloc_zeroed
 ///
 /// # Examples
 ///
@@ -225,36 +246,4 @@ pub fn handle_alloc_error(layout: Layout) -> ! {
         fn oom_impl(layout: Layout) -> !;
     }
     unsafe { oom_impl(layout) }
-}
-
-#[cfg(test)]
-mod tests {
-    extern crate test;
-    use test::Bencher;
-    use crate::boxed::Box;
-    use crate::alloc::{Global, Alloc, Layout, handle_alloc_error};
-
-    #[test]
-    fn allocate_zeroed() {
-        unsafe {
-            let layout = Layout::from_size_align(1024, 1).unwrap();
-            let ptr = Global.alloc_zeroed(layout.clone())
-                .unwrap_or_else(|_| handle_alloc_error(layout));
-
-            let mut i = ptr.cast::<u8>().as_ptr();
-            let end = i.add(layout.size());
-            while i < end {
-                assert_eq!(*i, 0);
-                i = i.offset(1);
-            }
-            Global.dealloc(ptr, layout);
-        }
-    }
-
-    #[bench]
-    fn alloc_owned_small(b: &mut Bencher) {
-        b.iter(|| {
-            let _: Box<_> = box 10;
-        })
-    }
 }

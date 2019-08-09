@@ -1,8 +1,8 @@
 error[E0277]: `<P as Process<'_>>::Item` is not an iterator
-  --> $DIR/issue-22872.rs:20:36
+  --> $DIR/issue-22872.rs:20:40
    |
-LL |     let _: Box<for<'b> Wrap<'b>> = Box::new(Wrapper(process));
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ `<P as Process<'_>>::Item` is not an iterator
+LL |     let _: Box<dyn for<'b> Wrap<'b>> = Box::new(Wrapper(process));
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ `<P as Process<'_>>::Item` is not an iterator
    |
    = help: the trait `std::iter::Iterator` is not implemented for `<P as Process<'_>>::Item`
    = help: consider adding a `where <P as Process<'_>>::Item: std::iter::Iterator` bound

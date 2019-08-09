@@ -17,14 +17,13 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
-#![deny(rust_2018_idioms)]
-
 #![feature(nll)]
 #![feature(staged_api)]
 #![feature(const_fn)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(optin_builtin_traits)]
+#![feature(mem_take)]
 #![feature(non_exhaustive)]
 #![feature(specialization)]
 
@@ -160,9 +159,7 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 impl iter::FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
         let mut builder = bridge::client::TokenStreamBuilder::new();
-        for stream in streams {
-            builder.push(stream.0);
-        }
+        streams.into_iter().for_each(|stream| builder.push(stream.0));
         TokenStream(builder.build())
     }
 }
@@ -331,6 +328,18 @@ impl Span {
     #[unstable(feature = "proc_macro_span", issue = "54725")]
     pub fn eq(&self, other: &Span) -> bool {
         self.0 == other.0
+    }
+
+    /// Returns the source text behind a span. This preserves the original source
+    /// code, including spaces and comments. It only returns a result if the span
+    /// corresponds to real source code.
+    ///
+    /// Note: The observable result of a macro should only rely on the tokens and
+    /// not on this source text. The result of this function is a best effort to
+    /// be used for diagnostics only.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn source_text(&self) -> Option<String> {
+        self.0.source_text()
     }
 
     diagnostic_method!(error, Level::Error);

@@ -28,7 +28,7 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
-use core::borrow::Borrow;
+use core::borrow::{Borrow, BorrowMut};
 use core::str::pattern::{Pattern, Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::ptr;
@@ -37,7 +37,7 @@ use core::unicode::conversions;
 
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
-use crate::slice::{SliceConcatExt, SliceIndex};
+use crate::slice::{Concat, Join, SliceIndex};
 use crate::string::String;
 use crate::vec::Vec;
 
@@ -68,25 +68,28 @@ pub use core::str::pattern;
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
+#[stable(feature = "str_escape", since = "1.34.0")]
+pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
 
-#[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist",
-           issue = "27747")]
-impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
+/// Note: `str` in `Concat<str>` is not meaningful here.
+/// This type parameter of the trait only exists to enable another impl.
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<S: Borrow<str>> Concat<str> for [S] {
     type Output = String;
 
-    fn concat(&self) -> String {
-        self.join("")
+    fn concat(slice: &Self) -> String {
+        Join::join(slice, "")
     }
+}
 
-    fn join(&self, sep: &str) -> String {
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<S: Borrow<str>> Join<&str> for [S] {
+    type Output = String;
+
+    fn join(slice: &Self, sep: &str) -> String {
         unsafe {
-            String::from_utf8_unchecked( join_generic_copy(self, sep.as_bytes()) )
+            String::from_utf8_unchecked( join_generic_copy(slice, sep.as_bytes()) )
         }
-    }
-
-    fn connect(&self, sep: &str) -> String {
-        self.join(sep)
     }
 }
 
@@ -128,7 +131,7 @@ macro_rules! copy_slice_and_advance {
 
 // Optimized join implementation that works for both Vec<T> (T: Copy) and String's inner vec
 // Currently (2018-05-13) there is a bug with type inference and specialization (see issue #36262)
-// For this reason SliceConcatExt<T> is not specialized for T: Copy and SliceConcatExt<str> is the
+// For this reason SliceConcat<T> is not specialized for T: Copy and SliceConcat<str> is the
 // only user of this function. It is left in place for the time when that is fixed.
 //
 // the bounds for String-join are S: Borrow<str> and for Vec-join Borrow<[T]>
@@ -188,6 +191,14 @@ impl Borrow<str> for String {
     }
 }
 
+#[stable(feature = "string_borrow_mut", since = "1.36.0")]
+impl BorrowMut<str> for String {
+    #[inline]
+    fn borrow_mut(&mut self) -> &mut str {
+        &mut self[..]
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for str {
     type Owned = String;
@@ -197,7 +208,7 @@ impl ToOwned for str {
     }
 
     fn clone_into(&self, target: &mut String) {
-        let mut b = mem::replace(target, String::new()).into_bytes();
+        let mut b = mem::take(target).into_bytes();
         self.as_bytes().clone_into(&mut b);
         *target = unsafe { String::from_utf8_unchecked(b) }
     }
@@ -421,6 +432,13 @@ impl str {
     ///
     /// assert_eq!(new_year, new_year.to_uppercase());
     /// ```
+    ///
+    /// One character can become multiple:
+    /// ```
+    /// let s = "tschüß";
+    ///
+    /// assert_eq!("TSCHÜSS", s.to_uppercase());
+    /// ```
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
@@ -571,4 +589,3 @@ impl str {
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     Box::from_raw(Box::into_raw(v) as *mut str)
 }
-

@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-54943.rs:6:13
+   |
+LL | fn boo<'a>() {
+   |        -- lifetime `'a` defined here
+...
+LL |     let x = foo::<&'a u32>();
+   |             ^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+

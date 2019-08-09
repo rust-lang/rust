@@ -20,13 +20,13 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-14254.rs:30:9
    |
 LL |         x;
-   |         ^ help: try: `self.x`
+   |         ^ help: you might have meant to use the available field: `self.x`
 
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/issue-14254.rs:32:9
    |
 LL |         y;
-   |         ^ help: try: `self.y`
+   |         ^ help: you might have meant to use the available field: `self.y`
 
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/issue-14254.rs:34:9
@@ -56,13 +56,13 @@ error[E0425]: cannot find value `x` in this scope
   --> $DIR/issue-14254.rs:47:9
    |
 LL |         x;
-   |         ^ help: try: `self.x`
+   |         ^ help: you might have meant to use the available field: `self.x`
 
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/issue-14254.rs:49:9
    |
 LL |         y;
-   |         ^ help: try: `self.y`
+   |         ^ help: you might have meant to use the available field: `self.y`
 
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/issue-14254.rs:51:9

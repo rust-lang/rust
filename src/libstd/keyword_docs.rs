@@ -1,6 +1,6 @@
 #[doc(keyword = "as")]
 //
-/// The keyword for casting a value to a type.
+/// Cast between types, or rename an import.
 ///
 /// `as` is most commonly used to turn primitive types into other primitive types, but it has other
 /// uses that include turning pointers into addresses, addresses into pointers, and pointers into
@@ -25,14 +25,22 @@
 ///
 /// For more information on what `as` is capable of, see the [Reference]
 ///
-/// [Reference]:
-/// https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
+/// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
 /// [`crate`]: keyword.crate.html
 mod as_keyword { }
 
+#[doc(keyword = "break")]
+//
+/// Exit early from a loop.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod break_keyword { }
+
 #[doc(keyword = "const")]
 //
-/// The keyword for defining constants.
+/// Compile-time constants and deterministic functions.
 ///
 /// Sometimes a certain value is used many times throughout a program, and it can become
 /// inconvenient to copy it over and over. What's more, it's not always possible or desirable to
@@ -80,13 +88,22 @@ mod as_keyword { }
 ///
 /// [pointer]: primitive.pointer.html
 /// [Rust Book]:
-/// https://doc.rust-lang.org/stable/book/2018-edition/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
-/// [Reference]: https://doc.rust-lang.org/reference/items/constant-items.html
+/// ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
+/// [Reference]: ../reference/items/constant-items.html
 mod const_keyword { }
+
+#[doc(keyword = "continue")]
+//
+/// Skip to the next iteration of a loop.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod continue_keyword { }
 
 #[doc(keyword = "crate")]
 //
-/// The `crate` keyword.
+/// A Rust binary or library.
 ///
 /// The primary use of the `crate` keyword is as a part of `extern crate` declarations, which are
 /// used to specify a dependency on a crate external to the one it's declared in. Crates are the
@@ -102,7 +119,7 @@ mod const_keyword { }
 /// The `as` keyword can be used to change what the crate is referred to as in your project. If a
 /// crate name includes a dash, it is implicitly imported with the dashes replaced by underscores.
 ///
-/// `crate` is also used as in conjunction with `pub` to signify that the item it's attached to
+/// `crate` can also be used as in conjunction with `pub` to signify that the item it's attached to
 /// is public only to other members of the same crate it's in.
 ///
 /// ```rust
@@ -114,17 +131,31 @@ mod const_keyword { }
 /// }
 /// ```
 ///
-/// [Reference]: https://doc.rust-lang.org/reference/items/extern-crates.html
+/// `crate` is also used to represent the absolute path of a module, where `crate` refers to the
+/// root of the current crate. For instance, `crate::foo::bar` refers to the name `bar` inside the
+/// module `foo`, from anywhere else in the same crate.
+///
+/// [Reference]: ../reference/items/extern-crates.html
 mod crate_keyword { }
+
+#[doc(keyword = "else")]
+//
+/// What to do when an [`if`] condition does not hold.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [`if`]: keyword.if.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod else_keyword { }
 
 #[doc(keyword = "enum")]
 //
-/// For defining enumerations.
+/// A type that can be any one of several variants.
 ///
 /// Enums in Rust are similar to those of other compiled languages like C, but have important
 /// differences that make them considerably more powerful. What Rust calls enums are more commonly
-/// known as [Algebraic Data Types] if you're coming from a functional programming background. The
-/// important detail is that each enum variant can have data to go along with it.
+/// known as [Algebraic Data Types][ADT] if you're coming from a functional programming background.
+/// The important detail is that each enum variant can have data to go along with it.
 ///
 /// ```rust
 /// # struct Coord;
@@ -167,15 +198,15 @@ mod crate_keyword { }
 ///
 /// For more information, take a look at the [Rust Book] or the [Reference]
 ///
-/// [Algebraic Data Types]: https://en.wikipedia.org/wiki/Algebraic_data_type
+/// [ADT]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [`Option`]: option/enum.Option.html
-/// [Rust Book]: https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html
-/// [Reference]: https://doc.rust-lang.org/reference/items/enumerations.html
+/// [Rust Book]: ../book/ch06-01-defining-an-enum.html
+/// [Reference]: ../reference/items/enumerations.html
 mod enum_keyword { }
 
 #[doc(keyword = "extern")]
 //
-/// For external connections in Rust code.
+/// Link to or import external code.
 ///
 /// The `extern` keyword is used in two places in Rust. One is in conjunction with the [`crate`]
 /// keyword to make your Rust code aware of other Rust crates in your project, i.e., `extern crate
@@ -211,13 +242,23 @@ mod enum_keyword { }
 /// For more information on FFI, check the [Rust book] or the [Reference].
 ///
 /// [Rust book]:
-/// https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
-/// [Reference]: https://doc.rust-lang.org/reference/items/external-blocks.html
+/// ../book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
+/// [Reference]: ../reference/items/external-blocks.html
 mod extern_keyword { }
+
+#[doc(keyword = "false")]
+//
+/// A value of type [`bool`] representing logical **false**.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [`bool`]: primitive.bool.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod false_keyword { }
 
 #[doc(keyword = "fn")]
 //
-/// The keyword for defining functions.
+/// A function or function pointer.
 ///
 /// Functions are the primary way code is executed within Rust. Function blocks, usually just
 /// called functions, can be defined in a variety of different places and be assigned many
@@ -278,19 +319,25 @@ mod extern_keyword { }
 ///
 /// [`impl`]: keyword.impl.html
 /// [`extern`]: keyword.extern.html
-/// [Rust book]: https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
-/// [Reference]: https://doc.rust-lang.org/reference/items/functions.html
+/// [Rust book]: ../book/ch03-03-how-functions-work.html
+/// [Reference]: ../reference/items/functions.html
 mod fn_keyword { }
 
 #[doc(keyword = "for")]
 //
-/// The `for` keyword.
+/// Iteration with [`in`], trait implementation with [`impl`], or [higher-ranked trait bounds]
+/// (`for<'a>`).
 ///
-/// `for` is primarily used in for-in-loops, but it has a few other pieces of syntactic uses such as
-/// `impl Trait for Type` (see [`impl`] for more info on that). for-in-loops, or to be more
-/// precise, iterator loops, are a simple syntactic sugar over an exceedingly common practice
-/// within Rust, which is to loop over an iterator until that iterator returns `None` (or `break`
-/// is called).
+/// The `for` keyword is used in many syntactic locations:
+///
+/// * `for` is used in for-in-loops (see below).
+/// * `for` is used when implementing traits as in `impl Trait for Type` (see [`impl`] for more info
+///   on that).
+/// * `for` is also used for [higher-ranked trait bounds] as in `for<'a> &'a T: PartialEq<i32>`.
+///
+/// for-in-loops, or to be more precise, iterator loops, are a simple syntactic sugar over a common
+/// practice within Rust, which is to loop over an iterator until that iterator returns `None` (or
+/// `break` is called).
 ///
 /// ```rust
 /// for i in 0..5 {
@@ -346,16 +393,18 @@ mod fn_keyword { }
 ///
 /// For more information on for-loops, see the [Rust book] or the [Reference].
 ///
+/// [`in`]: keyword.in.html
 /// [`impl`]: keyword.impl.html
+/// [higher-ranked trait bounds]: ../reference/trait-bounds.html#higher-ranked-trait-bounds
 /// [`IntoIterator`]: iter/trait.IntoIterator.html
 /// [Rust book]:
-/// https://doc.rust-lang.org/book/2018-edition/ch03-05-control-flow.html#looping-through-a-collection-with-for
-/// [Reference]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#iterator-loops
+/// ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+/// [Reference]: ../reference/expressions/loop-expr.html#iterator-loops
 mod for_keyword { }
 
 #[doc(keyword = "if")]
 //
-/// If statements and expressions.
+/// Evaluate a block if a condition holds.
 ///
 /// `if` is a familiar construct to most programmers, and is the main way you'll often do logic in
 /// your code. However, unlike in most languages, `if` blocks can also act as expressions.
@@ -423,14 +472,13 @@ mod for_keyword { }
 ///
 /// For more information on `if` expressions, see the [Rust book] or the [Reference].
 ///
-/// [Rust book]:
-/// https://doc.rust-lang.org/stable/book/2018-edition/ch03-05-control-flow.html#if-expressions
-/// [Reference]: https://doc.rust-lang.org/reference/expressions/if-expr.html
+/// [Rust book]: ../book/ch03-05-control-flow.html#if-expressions
+/// [Reference]: ../reference/expressions/if-expr.html
 mod if_keyword { }
 
 #[doc(keyword = "impl")]
 //
-/// The implementation-defining keyword.
+/// Implement some functionality for a type.
 ///
 /// The `impl` keyword is primarily used to define implementations on types. Inherent
 /// implementations are standalone, while trait implementations are used to implement traits for
@@ -486,15 +534,24 @@ mod if_keyword { }
 ///
 /// For more information on `impl Trait` syntax, see the [Rust book][book2].
 ///
-/// [book1]: https://doc.rust-lang.org/stable/book/2018-edition/ch05-03-method-syntax.html
-/// [Reference]: https://doc.rust-lang.org/reference/items/implementations.html
-/// [book2]:
-/// https://doc.rust-lang.org/stable/book/2018-edition/ch10-02-traits.html#returning-traits
+/// [book1]: ../book/ch05-03-method-syntax.html
+/// [Reference]: ../reference/items/implementations.html
+/// [book2]: ../book/ch10-02-traits.html#returning-types-that-implement-traits
 mod impl_keyword { }
+
+#[doc(keyword = "in")]
+//
+/// Iterate over a series of values with [`for`].
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [`for`]: keyword.for.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod in_keyword { }
 
 #[doc(keyword = "let")]
 //
-/// The variable binding keyword.
+/// Bind a value to a variable.
 ///
 /// The primary use for the `let` keyword is in `let` statements, which are used to introduce a new
 /// set of variables into the current scope, as given by a pattern.
@@ -547,18 +604,73 @@ mod impl_keyword { }
 /// enumerations. `while let` also exists, which runs a loop with a pattern matched value until
 /// that pattern can't be matched.
 ///
-/// For more information on the `let` keyword, see the [Rust book] or the [Reference]
+/// For more information on the `let` keyword, see the [Rust book][book2] or the [Reference]
 ///
-/// [book1]: https://doc.rust-lang.org/stable/book/2018-edition/ch06-02-match.html
+/// [book1]: ../book/ch06-02-match.html
 /// [`if`]: keyword.if.html
-/// [book2]:
-/// https://doc.rust-lang.org/stable/book/2018-edition/ch18-01-all-the-places-for-patterns.html#let-statements
-/// [Reference]: https://doc.rust-lang.org/reference/statements.html#let-statements
+/// [book2]: ../book/ch18-01-all-the-places-for-patterns.html#let-statements
+/// [Reference]: ../reference/statements.html#let-statements
 mod let_keyword { }
+
+#[doc(keyword = "while")]
+//
+/// Loop while a condition is upheld.
+///
+/// A `while` expression is used for predicate loops. The `while` expression runs the conditional
+/// expression before running the loop body, then runs the loop body if the conditional
+/// expression evaluates to `true`, or exits the loop otherwise.
+///
+/// ```rust
+/// let mut counter = 0;
+///
+/// while counter < 10 {
+///     println!("{}", counter);
+///     counter += 1;
+/// }
+/// ```
+///
+/// Like the [`for`] expression, we can use `break` and `continue`. A `while` expression
+/// cannot break with a value and always evaluates to `()` unlike [`loop`].
+///
+/// ```rust
+/// let mut i = 1;
+///
+/// while i < 100 {
+///     i *= 2;
+///     if i == 64 {
+///         break; // Exit when `i` is 64.
+///     }
+/// }
+/// ```
+///
+/// As `if` expressions have their pattern matching variant in `if let`, so too do `while`
+/// expressions with `while let`. The `while let` expression matches the pattern against the
+/// expression, then runs the loop body if pattern matching succeeds, or exits the loop otherwise.
+/// We can use `break` and `continue` in `while let` expressions just like in `while`.
+///
+/// ```rust
+/// let mut counter = Some(0);
+///
+/// while let Some(i) = counter {
+///     if i == 10 {
+///         counter = None;
+///     } else {
+///         println!("{}", i);
+///         counter = Some (i + 1);
+///     }
+/// }
+/// ```
+///
+/// For more information on `while` and loops in general, see the [reference].
+///
+/// [`for`]: keyword.for.html
+/// [`loop`]: keyword.loop.html
+/// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
+mod while_keyword { }
 
 #[doc(keyword = "loop")]
 //
-/// The loop-defining keyword.
+/// Loop indefinitely.
 ///
 /// `loop` is used to define the simplest kind of loop supported in Rust. It runs the code inside
 /// it until the code uses `break` or the program exits.
@@ -598,12 +710,107 @@ mod let_keyword { }
 ///
 /// For more information on `loop` and loops in general, see the [Reference].
 ///
-/// [Reference]: https://doc.rust-lang.org/reference/expressions/loop-expr.html
+/// [Reference]: ../reference/expressions/loop-expr.html
 mod loop_keyword { }
+
+#[doc(keyword = "match")]
+//
+/// Control flow based on pattern matching.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod match_keyword { }
+
+#[doc(keyword = "mod")]
+//
+/// Organize code into [modules].
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [modules]: ../reference/items/modules.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod mod_keyword { }
+
+#[doc(keyword = "move")]
+//
+/// Capture a [closure]'s environment by value.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [closure]: ../book/second-edition/ch13-01-closures.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod move_keyword { }
+
+#[doc(keyword = "mut")]
+//
+/// A mutable binding, reference, or pointer.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod mut_keyword { }
+
+#[doc(keyword = "pub")]
+//
+/// Make an item visible to others.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod pub_keyword { }
+
+#[doc(keyword = "ref")]
+//
+/// Bind by reference during pattern matching.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod ref_keyword { }
+
+#[doc(keyword = "return")]
+//
+/// Return a value from a function.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod return_keyword { }
+
+#[doc(keyword = "self")]
+//
+/// The receiver of a method, or the current module.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod self_keyword { }
+
+#[doc(keyword = "Self")]
+//
+/// The implementing type within a [`trait`] or [`impl`] block, or the current type within a type
+/// definition.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [`impl`]: keyword.impl.html
+/// [`trait`]: keyword.trait.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod self_upper_keyword { }
+
+#[doc(keyword = "static")]
+//
+/// A place that is valid for the duration of a program.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod static_keyword { }
 
 #[doc(keyword = "struct")]
 //
-/// The keyword used to define structs.
+/// A type that is composed of other types.
 ///
 /// Structs in Rust come in three flavors: Structs with named fields, tuple structs, and unit
 /// structs.
@@ -705,6 +912,116 @@ mod loop_keyword { }
 /// [Reference][reference].
 ///
 /// [`PhantomData`]: marker/struct.PhantomData.html
-/// [book]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html
-/// [reference]: https://doc.rust-lang.org/reference/items/structs.html
+/// [book]: ../book/ch05-01-defining-structs.html
+/// [reference]: ../reference/items/structs.html
 mod struct_keyword { }
+
+#[doc(keyword = "super")]
+//
+/// The parent of the current [module].
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [module]: ../reference/items/modules.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod super_keyword { }
+
+#[doc(keyword = "trait")]
+//
+/// A common interface for a class of types.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod trait_keyword { }
+
+#[doc(keyword = "true")]
+//
+/// A value of type [`bool`] representing logical **true**.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [`bool`]: primitive.bool.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod true_keyword { }
+
+#[doc(keyword = "type")]
+//
+/// Define an alias for an existing type.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod type_keyword { }
+
+#[doc(keyword = "unsafe")]
+//
+/// Code or interfaces whose [memory safety] cannot be verified by the type system.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [memory safety]: ../book/ch19-01-unsafe-rust.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod unsafe_keyword { }
+
+#[doc(keyword = "use")]
+//
+/// Import or rename items from other crates or modules.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod use_keyword { }
+
+#[doc(keyword = "where")]
+//
+/// Add constraints that must be upheld to use an item.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod where_keyword { }
+
+// 2018 Edition keywords
+
+#[unstable(feature = "async_await", issue = "50547")]
+#[doc(keyword = "async")]
+//
+/// Return a [`Future`] instead of blocking the current thread.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [`Future`]: ./future/trait.Future.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod async_keyword { }
+
+#[unstable(feature = "async_await", issue = "50547")]
+#[doc(keyword = "await")]
+//
+/// Suspend execution until the result of a [`Future`] is ready.
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [`Future`]: ./future/trait.Future.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod await_keyword { }
+
+#[doc(keyword = "dyn")]
+//
+/// Name the type of a [trait object].
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [trait object]: ../book/ch17-02-trait-objects.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod dyn_keyword { }
+
+#[doc(keyword = "union")]
+//
+/// The [Rust equivalent of a C-style union][union].
+///
+/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+///
+/// [union]: ../reference/items/unions.html
+/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+mod union_keyword { }

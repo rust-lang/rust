@@ -1,11 +1,10 @@
-error: lifetime may not live long enough
-  --> $DIR/issue-54943.rs:9:13
+error[E0477]: the type `&'a u32` does not fulfill the required lifetime
+  --> $DIR/issue-54943.rs:6:13
    |
-LL | fn boo<'a>() {
-   |        -- lifetime `'a` defined here
-...
 LL |     let x = foo::<&'a u32>();
-   |             ^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |             ^^^^^^^^^^^^^^
+   |
+   = note: type must satisfy the static lifetime
 
 error: aborting due to previous error
 

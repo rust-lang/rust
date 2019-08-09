@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
@@ -10,7 +10,7 @@ trait Foo<T> {
 enum Bar<T> { Bla(T) }
 
 struct Baz<'a> {
-    inner: for<'b> Foo<Bar<&'b ()>> + 'a,
+    inner: dyn for<'b> Foo<Bar<&'b ()>> + 'a,
 }
 
 fn main() {}

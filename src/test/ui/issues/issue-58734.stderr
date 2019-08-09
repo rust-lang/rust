@@ -1,0 +1,9 @@
+error[E0599]: no function or associated item named `nonexistent` found for type `dyn Trait` in the current scope
+  --> $DIR/issue-58734.rs:20:12
+   |
+LL |     Trait::nonexistent(());
+   |            ^^^^^^^^^^^ function or associated item not found in `dyn Trait`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

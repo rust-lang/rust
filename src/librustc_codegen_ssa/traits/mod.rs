@@ -27,7 +27,7 @@ mod statics;
 mod type_;
 mod write;
 
-pub use self::abi::{AbiBuilderMethods, AbiMethods};
+pub use self::abi::{AbiBuilderMethods};
 pub use self::asm::{AsmBuilderMethods, AsmMethods};
 pub use self::backend::{Backend, BackendTypes, ExtraBackendMethods};
 pub use self::builder::{BuilderMethods, OverflowOp};
@@ -41,6 +41,9 @@ pub use self::type_::{
     ArgTypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods,
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
+use rustc::ty::layout::{HasParamEnv, HasTyCtxt};
+use rustc_target::spec::{HasTargetSpec};
+
 
 use std::fmt;
 
@@ -54,10 +57,12 @@ pub trait CodegenMethods<'tcx>:
     + ConstMethods<'tcx>
     + StaticMethods
     + DebugInfoMethods<'tcx>
-    + AbiMethods<'tcx>
     + DeclareMethods<'tcx>
-    + AsmMethods<'tcx>
+    + AsmMethods
     + PreDefineMethods<'tcx>
+    + HasParamEnv<'tcx>
+    + HasTyCtxt<'tcx>
+    + HasTargetSpec
 {
 }
 
@@ -68,10 +73,12 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + ConstMethods<'tcx>
         + StaticMethods
         + DebugInfoMethods<'tcx>
-        + AbiMethods<'tcx>
         + DeclareMethods<'tcx>
-        + AsmMethods<'tcx>
+        + AsmMethods
         + PreDefineMethods<'tcx>
+        + HasParamEnv<'tcx>
+        + HasTyCtxt<'tcx>
+        + HasTargetSpec
 {
 }
 

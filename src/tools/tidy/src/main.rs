@@ -4,10 +4,6 @@
 //! etc. This is run by default on `make check` and as part of the auto
 //! builders.
 
-#![deny(rust_2018_idioms)]
-#![deny(warnings)]
-
-extern crate tidy;
 use tidy::*;
 
 use std::process;
@@ -21,15 +17,16 @@ fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
     let mut bad = false;
-    let quiet = args.iter().any(|s| *s == "--quiet");
+    let verbose = args.iter().any(|s| *s == "--verbose");
     bins::check(&path, &mut bad);
     style::check(&path, &mut bad);
     errors::check(&path, &mut bad);
     cargo::check(&path, &mut bad);
-    features::check(&path, &mut bad, quiet);
+    edition::check(&path, &mut bad);
+    let collected = features::check(&path, &mut bad, verbose);
     pal::check(&path, &mut bad);
-    unstable_book::check(&path, &mut bad);
-    libcoretest::check(&path, &mut bad);
+    unstable_book::check(&path, collected, &mut bad);
+    unit_tests::check(&path, &mut bad);
     if !args.iter().any(|s| *s == "--no-vendor") {
         deps::check(&path, &mut bad);
     }

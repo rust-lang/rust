@@ -47,8 +47,8 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 
 // The first pass over the crate simply builds up the set of inferreds.
 
-pub struct TermsContext<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct TermsContext<'a, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
     pub arena: &'a TypedArena<VarianceTerm<'a>>,
 
     // For marker types, UnsafeCell, and other lang items where
@@ -64,9 +64,10 @@ pub struct TermsContext<'a, 'tcx: 'a> {
     pub inferred_terms: Vec<VarianceTermPtr<'a>>,
 }
 
-pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                     arena: &'a mut TypedArena<VarianceTerm<'a>>)
-                                                     -> TermsContext<'a, 'tcx> {
+pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    arena: &'a mut TypedArena<VarianceTerm<'a>>,
+) -> TermsContext<'a, 'tcx> {
     let mut terms_cx = TermsContext {
         tcx,
         arena,
@@ -85,7 +86,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     terms_cx
 }
 
-fn lang_items(tcx: TyCtxt<'_, '_, '_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
+fn lang_items(tcx: TyCtxt<'_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
     let lang_items = tcx.lang_items();
     let all = vec![
         (lang_items.phantom_data(), vec![ty::Covariant]),
@@ -102,7 +103,7 @@ fn lang_items(tcx: TyCtxt<'_, '_, '_>) -> Vec<(hir::HirId, Vec<ty::Variance>)> {
 impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferreds_for_item(&mut self, id: hir::HirId) {
         let tcx = self.tcx;
-        let def_id = tcx.hir().local_def_id_from_hir_id(id);
+        let def_id = tcx.hir().local_def_id(id);
         let count = tcx.generics_of(def_id).count();
 
         if count == 0 {
@@ -119,7 +120,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // for a particular item are assigned continuous indices.
 
         let arena = self.arena;
-        self.inferred_terms.extend((start..start+count).map(|i| {
+        self.inferred_terms.extend((start..(start + count)).map(|i| {
             &*arena.alloc(InferredTerm(InferredIndex(i)))
         }));
     }
@@ -128,7 +129,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         debug!("add_inferreds for item {}",
-               self.tcx.hir().hir_to_string(item.hir_id));
+               self.tcx.hir().node_to_string(item.hir_id));
 
         match item.node {
             hir::ItemKind::Struct(ref struct_def, _) |
@@ -136,7 +137,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
                 self.add_inferreds_for_item(item.hir_id);
 
                 if let hir::VariantData::Tuple(..) = *struct_def {
-                    self.add_inferreds_for_item(struct_def.hir_id());
+                    self.add_inferreds_for_item(struct_def.ctor_hir_id().unwrap());
                 }
             }
 
@@ -145,7 +146,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
 
                 for variant in &enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.node.data {
-                        self.add_inferreds_for_item(variant.node.data.hir_id());
+                        self.add_inferreds_for_item(variant.node.data.ctor_hir_id().unwrap());
                     }
                 }
             }

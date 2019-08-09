@@ -18,5 +18,5 @@ LL |     std::mem::size_of(u16);
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0061, E0412, E0423.
+Some errors have detailed explanations: E0061, E0412, E0423.
 For more information about an error, try `rustc --explain E0061`.

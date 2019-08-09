@@ -5,7 +5,7 @@ macro_rules! unimpl {
 pub mod net {
     #![allow(warnings)]
     use crate::fmt;
-    use crate::io::{self, IoVec, IoVecMut};
+    use crate::io::{self, IoSlice, IoSliceMut};
     use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
     use crate::sys_common::{AsInner, FromInner, IntoInner};
     use crate::sys::fd::FileDesc;
@@ -46,7 +46,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 
@@ -66,7 +66,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
+        pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 
@@ -152,7 +152,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 
@@ -160,7 +160,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
+        pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 
@@ -212,7 +212,7 @@ pub mod net {
     }
 
     impl fmt::Debug for TcpStream {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "No networking support available on L4Re")
         }
     }
@@ -274,7 +274,7 @@ pub mod net {
     }
 
     impl fmt::Debug for TcpListener {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "No networking support available on L4Re.")
         }
     }
@@ -291,6 +291,10 @@ pub mod net {
         pub fn socket(&self) -> &Socket { &self.inner }
 
         pub fn into_socket(self) -> Socket { self.inner }
+
+        pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+            unimpl!();
+        }
 
         pub fn socket_addr(&self) -> io::Result<SocketAddr> {
             unimpl!();
@@ -420,7 +424,7 @@ pub mod net {
     }
 
     impl fmt::Debug for UdpSocket {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "No networking support on L4Re available.")
         }
     }
@@ -463,4 +467,3 @@ pub mod net {
         }
     }
 }
-

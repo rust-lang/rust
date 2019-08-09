@@ -4,14 +4,14 @@ error[E0310]: the parameter type `T` may not live long enough
 LL | struct Foo<T> {
    |            - help: consider adding an explicit lifetime bound `T: 'static`...
 LL |     // needs T: 'static
-LL |     x: Object<&'static T>
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     x: dyn Object<&'static T>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: ...so that the reference type `&'static T` does not outlive the data it points at
   --> $DIR/wf-in-obj-type-static.rs:14:5
    |
-LL |     x: Object<&'static T>
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     x: dyn Object<&'static T>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

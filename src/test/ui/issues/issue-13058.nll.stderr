@@ -1,0 +1,12 @@
+error[E0621]: explicit lifetime required in the type of `cont`
+  --> $DIR/issue-13058.rs:14:21
+   |
+LL | fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
+   |                                                                     -- help: add explicit lifetime `'r` to the type of `cont`: `&'r T`
+LL | {
+LL |     let cont_iter = cont.iter();
+   |                     ^^^^^^^^^^^ lifetime `'r` required
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0621`.

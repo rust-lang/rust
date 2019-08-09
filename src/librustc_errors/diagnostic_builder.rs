@@ -100,6 +100,18 @@ impl<'a> DiagnosticBuilder<'a> {
         self.cancel();
     }
 
+    /// Emit the diagnostic unless `delay` is true,
+    /// in which case the emission will be delayed as a bug.
+    ///
+    /// See `emit` and `delay_as_bug` for details.
+    pub fn emit_unless(&mut self, delay: bool) {
+        if delay {
+            self.delay_as_bug()
+        } else {
+            self.emit()
+        }
+    }
+
     /// Buffers the diagnostic for later emission, unless handler
     /// has disabled such buffering.
     pub fn buffer(mut self, buffered_diagnostics: &mut Vec<Diagnostic>) {
@@ -184,7 +196,7 @@ impl<'a> DiagnosticBuilder<'a> {
                                                   ) -> &mut Self);
     forward!(pub fn warn(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self);
-    forward!(pub fn help(&mut self , msg: &str) -> &mut Self);
+    forward!(pub fn help(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_help<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,
                                                   msg: &str,
@@ -336,7 +348,7 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
-    pub fn new_with_code(handler: &'a Handler,
+    crate fn new_with_code(handler: &'a Handler,
                          level: Level,
                          code: Option<DiagnosticId>,
                          message: &str)
@@ -368,10 +380,13 @@ impl<'a> Debug for DiagnosticBuilder<'a> {
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
         if !panicking() && !self.cancelled() {
-            let mut db = DiagnosticBuilder::new(self.handler,
-                                                Level::Bug,
-                                                "Error constructed but not emitted");
+            let mut db = DiagnosticBuilder::new(
+                self.handler,
+                Level::Bug,
+                "the following error was constructed but not emitted",
+            );
             db.emit();
+            self.emit();
             panic!();
         }
     }

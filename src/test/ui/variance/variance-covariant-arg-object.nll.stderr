@@ -1,0 +1,24 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-covariant-arg-object.rs:15:5
+   |
+LL | fn get_min_from_max<'min, 'max>(v: Box<dyn Get<&'max i32>>)
+   |                     ----  ---- lifetime `'max` defined here
+   |                     |
+   |                     lifetime `'min` defined here
+...
+LL |     v
+   |     ^ returning this value requires that `'min` must outlive `'max`
+
+error: lifetime may not live long enough
+  --> $DIR/variance-covariant-arg-object.rs:22:5
+   |
+LL | fn get_max_from_min<'min, 'max, G>(v: Box<dyn Get<&'min i32>>)
+   |                     ----  ---- lifetime `'max` defined here
+   |                     |
+   |                     lifetime `'min` defined here
+...
+LL |     v
+   |     ^ returning this value requires that `'min` must outlive `'max`
+
+error: aborting due to 2 previous errors
+

@@ -1,21 +1,12 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-30438-b.rs:13:10
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/issue-30438-b.rs:13:9
    |
 LL |         &Test { s: &self.s}
-   |          ^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-LL |
-LL |     }
-   |     - temporary value only lives until here
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the method body at 12:5...
-  --> $DIR/issue-30438-b.rs:12:5
-   |
-LL | /     fn index(&self, _: usize) -> &Self::Output {
-LL | |         &Test { s: &self.s}
-LL | |
-LL | |     }
-   | |_____^
+   |         ^------------------
+   |         ||
+   |         |temporary value created here
+   |         returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

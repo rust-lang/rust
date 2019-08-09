@@ -39,4 +39,13 @@ where
     T: Unsize<U>,
 {} //~^^^ ERROR [E0378]
 
+#[repr(align(64))]
+struct OverAlignedZst;
+struct OverAligned<T: ?Sized>(Box<T>, OverAlignedZst);
+
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<OverAligned<U>> for OverAligned<T>
+    where
+        T: Unsize<U>,
+{} //~^^^ ERROR [E0378]
+
 fn main() {}

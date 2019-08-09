@@ -1,8 +1,8 @@
 error[E0038]: the trait `Expr` cannot be made into an object
   --> $DIR/object-safety-issue-22040.rs:12:23
    |
-LL |     elements: Vec<Box<Expr+ 'x>>,
-   |                       ^^^^^^^^ the trait `Expr` cannot be made into an object
+LL |     elements: Vec<Box<dyn Expr + 'x>>,
+   |                       ^^^^^^^^^^^^^ the trait `Expr` cannot be made into an object
    |
    = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
 

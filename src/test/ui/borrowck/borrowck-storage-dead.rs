@@ -1,5 +1,3 @@
-// compile-flags: -Z borrowck=compare
-
 fn ok() {
     loop {
         let _x = 1;
@@ -15,8 +13,7 @@ fn also_ok() {
 fn fail() {
     loop {
         let x: i32;
-        let _ = x + 1; //~ERROR (Ast) [E0381]
-                       //~^ ERROR (Mir) [E0381]
+        let _ = x + 1; //~ERROR [E0381]
     }
 }
 

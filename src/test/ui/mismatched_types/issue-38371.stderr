@@ -2,21 +2,25 @@ error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:4:8
    |
 LL | fn foo(&foo: Foo) {
-   |        ^^^^ expected struct `Foo`, found reference
+   |        ^^^^------
+   |        |
+   |        expected struct `Foo`, found reference
+   |        help: did you mean `foo`: `&Foo`
    |
    = note: expected type `Foo`
               found type `&_`
-   = help: did you mean `foo: &Foo`?
 
 error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:18:9
    |
 LL | fn agh(&&bar: &u32) {
-   |         ^^^^ expected u32, found reference
+   |         ^^^^
+   |         |
+   |         expected u32, found reference
+   |         help: you can probably remove the explicit borrow: `bar`
    |
    = note: expected type `u32`
               found type `&_`
-   = help: did you mean `bar: &u32`?
 
 error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:21:8
@@ -35,5 +39,5 @@ LL | fn ugh(&[bar]: &u32) {
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0308, E0529.
+Some errors have detailed explanations: E0308, E0529.
 For more information about an error, try `rustc --explain E0308`.

@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
   <Type Name="core::ptr::Unique&lt;*&gt;">
-    <DisplayString>{{ Unique {*pointer.__0} }}</DisplayString>
+    <DisplayString>{{ Unique {pointer} }}</DisplayString>
     <Expand>
-      <Item Name="[ptr]">pointer.__0</Item>
+      <Item Name="[ptr]">pointer</Item>
     </Expand>
   </Type>
   <Type Name="core::ptr::Shared&lt;*&gt;">
-    <DisplayString>{{ Shared {*pointer.__0} }}</DisplayString>
+    <DisplayString>{{ Shared {pointer} }}</DisplayString>
     <Expand>
-      <Item Name="[ptr]">pointer.__0</Item>
+      <Item Name="[ptr]">pointer</Item>
     </Expand>
   </Type>
   <Type Name="core::option::Option&lt;*&gt;">

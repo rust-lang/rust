@@ -11,4 +11,3 @@ struct Restricted {
 mod restricted {}
 
 fn main() {}
-

@@ -3,6 +3,7 @@
 
 use crate::ty::{self, Ty};
 use smallvec::{self, SmallVec};
+use crate::mir::interpret::ConstValue;
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
 // avoid heap allocations.
@@ -55,7 +56,7 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
     }
 }
 
-pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> smallvec::IntoIter<TypeWalkerArray<'tcx>> {
+pub fn walk_shallow(ty: Ty<'_>) -> smallvec::IntoIter<TypeWalkerArray<'_>> {
     let mut stack = SmallVec::new();
     push_subtypes(&mut stack, ty);
     stack.into_iter()
@@ -74,9 +75,10 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::Placeholder(..) | ty::Bound(..) | ty::Foreign(..) => {
         }
         ty::Array(ty, len) => {
-            if let ty::LazyConst::Unevaluated(_, substs) = len {
+            if let ConstValue::Unevaluated(_, substs) = len.val {
                 stack.extend(substs.types().rev());
             }
+            stack.push(len.ty);
             stack.push(ty);
         }
         ty::Slice(ty) => {
@@ -118,7 +120,7 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
             stack.extend(ts.skip_binder().iter().cloned().rev());
         }
         ty::Tuple(ts) => {
-            stack.extend(ts.iter().cloned().rev());
+            stack.extend(ts.iter().map(|k| k.expect_ty()).rev());
         }
         ty::FnDef(_, substs) => {
             stack.extend(substs.types().rev());

@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-close-over-type-parameter-multiple.rs:20:5
+   |
+LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait + 'c> {
+   |                    --    -- lifetime `'c` defined here
+   |                    |
+   |                    lifetime `'a` defined here
+LL |     // A outlives 'a AND 'b...but not 'c.
+LL |     box v as Box<dyn SomeTrait + 'a>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'c`
+
+error: aborting due to previous error
+

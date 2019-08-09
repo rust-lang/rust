@@ -1,7 +1,7 @@
 error: multiple unused formatting arguments
   --> $DIR/format-foreign.rs:2:30
    |
-LL |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
+LL |     println!("%.*3$s %s!\n", "Hello,", "World", 4);
    |              --------------  ^^^^^^^^  ^^^^^^^  ^ argument never used
    |              |               |         |
    |              |               |         argument never used
@@ -11,7 +11,7 @@ LL |     println!("%.*3$s %s!/n", "Hello,", "World", 4);
    = note: printf formatting not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
-LL |     println!("{:.2$} {}!/n", "Hello,", "World", 4);
+LL |     println!("{:.2$} {}!\n", "Hello,", "World", 4);
    |               ^^^^^^ ^^
 
 error: argument never used
@@ -29,7 +29,7 @@ error: multiple unused formatting arguments
    |
 LL |       println!(r###"%.*3$s
    |  ______________-
-LL | |         %s!/n
+LL | |         %s!\n
 LL | | "###, "Hello,", "World", 4);
    | |    -  ^^^^^^^^  ^^^^^^^  ^ argument never used
    | |    |  |         |
@@ -41,7 +41,7 @@ LL | | "###, "Hello,", "World", 4);
 help: format specifiers use curly braces
    |
 LL |     println!(r###"{:.2$}
-LL |         {}!/n
+LL |         {}!\n
    |
 
 error: argument never used

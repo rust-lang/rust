@@ -164,13 +164,13 @@ pub struct ArgsInnerDebug<'a> {
 }
 
 impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.args.parsed_args_list.as_slice().fmt(f)
     }
 }
 
 impl Args {
-    pub fn inner_debug(&self) -> ArgsInnerDebug {
+    pub fn inner_debug(&self) -> ArgsInnerDebug<'_> {
         ArgsInnerDebug {
             args: self
         }

@@ -1,5 +1,5 @@
 struct Invariant<'a> {
-    f: Box<FnOnce() -> *mut &'a isize + 'static>,
+    f: Box<dyn FnOnce() -> *mut &'a isize + 'static>,
 }
 
 fn to_same_lifetime<'r>(b_isize: Invariant<'r>) {

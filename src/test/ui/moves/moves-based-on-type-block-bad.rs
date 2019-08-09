@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
@@ -22,7 +20,6 @@ fn main() {
     loop {
         f(&s, |hellothere| {
             match hellothere.x { //~ ERROR cannot move out
-                                 //~| cannot move out of borrowed content
                 box E::Foo(_) => {}
                 box E::Bar(x) => println!("{}", x.to_string()),
                 box E::Baz => {}

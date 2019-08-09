@@ -1,6 +1,3 @@
-#![feature(alloc)]
-#![allow(unused_extern_crates)]
-
 mod a {
     extern crate alloc;
     use alloc::HashMap;

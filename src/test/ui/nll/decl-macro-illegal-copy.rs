@@ -1,6 +1,5 @@
 // Regression test for #46314
 
-#![feature(nll)]
 #![feature(decl_macro)]
 
 struct NonCopy(String);

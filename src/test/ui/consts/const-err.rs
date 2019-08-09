@@ -13,4 +13,5 @@ const FOO: u8 = [5u8][1];
 fn main() {
     black_box((FOO, FOO));
     //~^ ERROR erroneous constant used
+    //~| ERROR erroneous constant
 }

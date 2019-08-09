@@ -46,4 +46,3 @@ LL | impl<'a,'b> Foo<'b> for &'a i64 {
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0495`.

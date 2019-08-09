@@ -1,0 +1,16 @@
+error[E0597]: `books` does not live long enough
+  --> $DIR/borrowck-escaping-closure-error-2.rs:11:17
+   |
+LL |     Box::new(|| books.push(4))
+   |     ------------^^^^^---------
+   |     |        |  |
+   |     |        |  borrowed value does not live long enough
+   |     |        value captured here
+   |     borrow later used here
+LL |
+LL | }
+   | - `books` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

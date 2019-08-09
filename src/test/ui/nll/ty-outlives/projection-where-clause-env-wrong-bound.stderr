@@ -1,10 +1,15 @@
-error[E0309]: the associated type `<T as MyTrait<'_>>::Output` may not live long enough
-  --> $DIR/projection-where-clause-env-wrong-bound.rs:17:5
+error[E0309]: the associated type `<T as MyTrait<'a>>::Output` may not live long enough
+  --> $DIR/projection-where-clause-env-wrong-bound.rs:15:5
    |
 LL |     bar::<T::Output>()
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: consider adding an explicit lifetime bound `<T as MyTrait<'_>>::Output: 'a`...
+   = help: consider adding an explicit lifetime bound `<T as MyTrait<'a>>::Output: 'a`...
+note: ...so that the type `<T as MyTrait<'a>>::Output` will meet its required lifetime bounds
+  --> $DIR/projection-where-clause-env-wrong-bound.rs:15:5
+   |
+LL |     bar::<T::Output>()
+   |     ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

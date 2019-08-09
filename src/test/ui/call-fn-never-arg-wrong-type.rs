@@ -9,4 +9,3 @@ fn foo(x: !) -> ! {
 fn main() {
     foo("wow"); //~ ERROR mismatched types
 }
-

@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 const FOO: Option<&[[u8; 3]]> = Some(&[*b"foo"]); //~ ERROR temporary value dropped while borrowed
 
 use std::borrow::Cow;

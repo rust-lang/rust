@@ -3,7 +3,7 @@
 trait MyTrait<'a> { }
 
 impl MyTrait for u32 {
-    //~^ ERROR missing lifetime specifier
+    //~^ ERROR implicit elided lifetime not allowed here
 }
 
 fn main() {}

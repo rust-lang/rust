@@ -11,4 +11,3 @@ impl<'a> fmt::Debug for Bar + 'a {
         Ok(())
     }
 }
-

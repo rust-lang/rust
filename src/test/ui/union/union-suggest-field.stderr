@@ -18,5 +18,5 @@ LL |     let y = u.calculate;
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0560, E0609, E0615.
+Some errors have detailed explanations: E0560, E0609, E0615.
 For more information about an error, try `rustc --explain E0560`.

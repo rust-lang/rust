@@ -17,7 +17,7 @@ use rustc::hir::def_id::DefId;
 use hir::Node;
 use rustc::hir::{self, ItemKind};
 
-pub fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_def_id: DefId) {
+pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
         .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)
         .check(tcx.lang_items().copy_trait(), visit_implementation_of_copy)
@@ -26,14 +26,15 @@ pub fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_def_id: DefId) {
             visit_implementation_of_dispatch_from_dyn);
 }
 
-struct Checker<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    trait_def_id: DefId
+struct Checker<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    trait_def_id: DefId,
 }
 
-impl<'a, 'tcx> Checker<'a, 'tcx> {
+impl<'tcx> Checker<'tcx> {
     fn check<F>(&self, trait_def_id: Option<DefId>, mut f: F) -> &Self
-        where F: FnMut(TyCtxt<'a, 'tcx, 'tcx>, DefId)
+    where
+        F: FnMut(TyCtxt<'tcx>, DefId),
     {
         if Some(self.trait_def_id) == trait_def_id {
             for &impl_id in self.tcx.hir().trait_impls(self.trait_def_id) {
@@ -45,13 +46,13 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     }
 }
 
-fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
+fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
     if let ty::Adt(..) = tcx.type_of(impl_did).sty {
         /* do nothing */
     } else {
         // Destructors only work on nominal types.
         if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_did) {
-            if let Some(Node::Item(item)) = tcx.hir().find_by_hir_id(impl_hir_id) {
+            if let Some(Node::Item(item)) = tcx.hir().find(impl_hir_id) {
                 let span = match item.node {
                     ItemKind::Impl(.., ref ty, _) => ty.span,
                     _ => item.span,
@@ -73,7 +74,7 @@ fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     }
 }
 
-fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
+fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let impl_hir_id = if let Some(n) = tcx.hir().as_local_hir_id(impl_did) {
@@ -87,7 +88,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     debug!("visit_implementation_of_copy: self_type={:?} (bound)",
            self_type);
 
-    let span = tcx.hir().span_by_hir_id(impl_hir_id);
+    let span = tcx.hir().span(impl_hir_id);
     let param_env = tcx.param_env(impl_did);
     assert!(!self_type.has_escaping_bound_vars());
 
@@ -97,7 +98,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     match param_env.can_type_implement_copy(tcx, self_type) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
-            let item = tcx.hir().expect_item_by_hir_id(impl_hir_id);
+            let item = tcx.hir().expect_item(impl_hir_id);
             let span = if let ItemKind::Impl(.., Some(ref tr), _, _) = item.node {
                 tr.path.span
             } else {
@@ -114,7 +115,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
             err.emit()
         }
         Err(CopyImplementationError::NotAnAdt) => {
-            let item = tcx.hir().expect_item_by_hir_id(impl_hir_id);
+            let item = tcx.hir().expect_item(impl_hir_id);
             let span = if let ItemKind::Impl(.., ref ty, _) = item.node {
                 ty.span
             } else {
@@ -140,7 +141,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did:
     }
 }
 
-fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_did: DefId) {
+fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'tcx>, impl_did: DefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}",
            impl_did);
 
@@ -153,17 +154,14 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    impl_did: DefId,
-) {
+fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}",
            impl_did);
     if impl_did.is_local() {
         let dispatch_from_dyn_trait = tcx.lang_items().dispatch_from_dyn_trait().unwrap();
 
         let impl_hir_id = tcx.hir().as_local_hir_id(impl_did).unwrap();
-        let span = tcx.hir().span_by_hir_id(impl_hir_id);
+        let span = tcx.hir().span(impl_hir_id);
 
         let source = tcx.type_of(impl_did);
         assert!(!source.has_escaping_bound_vars());
@@ -198,8 +196,8 @@ fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
                     if def_a.is_struct() && def_b.is_struct() =>
                 {
                     if def_a != def_b {
-                        let source_path = tcx.item_path_str(def_a.did);
-                        let target_path = tcx.item_path_str(def_b.did);
+                        let source_path = tcx.def_path_str(def_a.did);
+                        let target_path = tcx.def_path_str(def_b.did);
 
                         create_err(
                             &format!(
@@ -223,19 +221,22 @@ fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
                     let fields = &def_a.non_enum_variant().fields;
 
                     let coerced_fields = fields.iter().filter_map(|field| {
-                        if tcx.type_of(field.did).is_phantom_data() {
-                            // ignore PhantomData fields
-                            return None
-                        }
-
                         let ty_a = field.ty(tcx, substs_a);
                         let ty_b = field.ty(tcx, substs_b);
+
+                        if let Ok(layout) = tcx.layout_of(param_env.and(ty_a)) {
+                            if layout.is_zst() && layout.details.align.abi.bytes() == 1 {
+                                // ignore ZST fields with alignment of 1 byte
+                                return None;
+                            }
+                        }
+
                         if let Ok(ok) = infcx.at(&cause, param_env).eq(ty_a, ty_b) {
                             if ok.obligations.is_empty() {
                                 create_err(
                                     "the trait `DispatchFromDyn` may only be implemented \
                                      for structs containing the field being coerced, \
-                                     `PhantomData` fields, and nothing else"
+                                     ZST fields with 1 byte alignment, and nothing else"
                                 ).note(
                                     &format!(
                                         "extra field `{}` of type `{}` is not allowed",
@@ -321,9 +322,7 @@ fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
     }
 }
 
-pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
-                                     impl_did: DefId)
-                                     -> CoerceUnsizedInfo {
+pub fn coerce_unsized_info<'tcx>(gcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUnsizedInfo {
     debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
     let coerce_unsized_trait = gcx.lang_items().coerce_unsized_trait().unwrap();
 
@@ -344,7 +343,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
            source,
            target);
 
-    let span = gcx.hir().span_by_hir_id(impl_hir_id);
+    let span = gcx.hir().span(impl_hir_id);
     let param_env = gcx.param_env(impl_did);
     assert!(!source.has_escaping_bound_vars());
 
@@ -356,9 +355,9 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     gcx.infer_ctxt().enter(|infcx| {
         let cause = ObligationCause::misc(span, impl_hir_id);
-        let check_mutbl = |mt_a: ty::TypeAndMut<'gcx>,
-                           mt_b: ty::TypeAndMut<'gcx>,
-                           mk_ptr: &dyn Fn(Ty<'gcx>) -> Ty<'gcx>| {
+        let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
+                           mt_b: ty::TypeAndMut<'tcx>,
+                           mk_ptr: &dyn Fn(Ty<'tcx>) -> Ty<'tcx>| {
             if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
                 infcx.report_mismatched_types(&cause,
                                               mk_ptr(mt_b.ty),
@@ -388,8 +387,8 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
             (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b)) if def_a.is_struct() &&
                                                                       def_b.is_struct() => {
                 if def_a != def_b {
-                    let source_path = gcx.item_path_str(def_a.did);
-                    let target_path = gcx.item_path_str(def_b.did);
+                    let source_path = gcx.def_path_str(def_a.did);
+                    let target_path = gcx.def_path_str(def_b.did);
                     span_err!(gcx.sess,
                               span,
                               E0377,
@@ -481,11 +480,11 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                                being coerced, none found");
                     return err_info;
                 } else if diff_fields.len() > 1 {
-                    let item = gcx.hir().expect_item_by_hir_id(impl_hir_id);
+                    let item = gcx.hir().expect_item(impl_hir_id);
                     let span = if let ItemKind::Impl(.., Some(ref t), _, _) = item.node {
                         t.path.span
                     } else {
-                        gcx.hir().span_by_hir_id(impl_hir_id)
+                        gcx.hir().span(impl_hir_id)
                     };
 
                     let mut err = struct_span_err!(gcx.sess,

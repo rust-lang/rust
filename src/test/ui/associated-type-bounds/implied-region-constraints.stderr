@@ -1,0 +1,20 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/implied-region-constraints.rs:19:64
+   |
+LL | fn _bad_st<'a, 'b, T>(x: St<'a, 'b, T>)
+   |                          ------------- this type is declared with multiple lifetimes...
+...
+LL |     let _failure_proves_not_implied_outlives_region_b: &'b T = &x.f0;
+   |                                                                ^^^^^ ...but data with one lifetime flows into the other here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/implied-region-constraints.rs:40:72
+   |
+LL | fn _bad_en7<'a, 'b, T>(x: En7<'a, 'b, T>)
+   |                           -------------- this type is declared with multiple lifetimes...
+...
+LL |             let _failure_proves_not_implied_outlives_region_b: &'b T = &x;
+   |                                                                        ^^ ...but data with one lifetime flows into the other here
+
+error: aborting due to 2 previous errors
+

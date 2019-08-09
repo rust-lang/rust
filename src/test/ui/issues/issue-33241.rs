@@ -1,5 +1,4 @@
-// compile-pass
-// skip-codegen
+// check-pass
 
 use std::fmt;
 
@@ -7,8 +6,7 @@ use std::fmt;
 // an unsized tuple by transmuting a trait object.
 fn any<T>() -> T { unreachable!() }
 
-
 fn main() {
-    let t: &(u8, fmt::Debug) = any();
+    let t: &(u8, dyn fmt::Debug) = any();
     println!("{:?}", &t.1);
 }

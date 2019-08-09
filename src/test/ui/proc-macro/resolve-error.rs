@@ -1,19 +1,15 @@
 // aux-build:derive-foo.rs
 // aux-build:derive-clona.rs
-// aux-build:attr_proc_macro.rs
-// aux-build:bang_proc_macro.rs
-
-#![feature(custom_attribute)]
+// aux-build:test-macros.rs
 
 #[macro_use]
 extern crate derive_foo;
 #[macro_use]
 extern crate derive_clona;
-extern crate attr_proc_macro;
-extern crate bang_proc_macro;
+extern crate test_macros;
 
-use attr_proc_macro::attr_proc_macro;
-use bang_proc_macro::bang_proc_macro;
+use test_macros::empty as bang_proc_macro;
+use test_macros::empty_attr as attr_proc_macro;
 
 macro_rules! FooWithLongNam {
     () => {}
@@ -27,10 +23,12 @@ macro_rules! attr_proc_mac {
 //~^ ERROR cannot find
 struct Foo;
 
-#[attr_proc_macra] // OK, interpreted as a custom attribute
+// Interpreted as a feature gated custom attribute
+#[attr_proc_macra] //~ ERROR cannot find attribute macro `attr_proc_macra` in this scope
 struct Bar;
 
-#[FooWithLongNan]  // OK, interpreted as a custom attribute
+// Interpreted as a feature gated custom attribute
+#[FooWithLongNan] //~ ERROR cannot find attribute macro `FooWithLongNan` in this scope
 struct Asdf;
 
 #[derive(Dlone)]

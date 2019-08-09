@@ -11,6 +11,13 @@ LL | | }
 LL |       let Helper::U(u) = Helper::T(t, []);
    |           ^^^^^^^^^^^^ pattern `T(_, _)` not covered
 
-error: aborting due to previous error
+error[E0381]: use of possibly uninitialized variable: `u`
+  --> $DIR/empty-never-array.rs:12:5
+   |
+LL |     u
+   |     ^ use of possibly uninitialized `u`
 
-For more information about this error, try `rustc --explain E0005`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0005, E0381.
+For more information about an error, try `rustc --explain E0005`.

@@ -15,4 +15,3 @@ pub fn trait_impl_test_function() {
   use stable_symbol_names1::*;
   Bar::generic_method::<Bar>();
 }
-

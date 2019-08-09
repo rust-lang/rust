@@ -2,7 +2,7 @@ error[E0392]: parameter `A` is never used
   --> $DIR/variance-unused-type-param.rs:6:19
    |
 LL | struct SomeStruct<A> { x: u32 }
-   |                   ^ unused type parameter
+   |                   ^ unused parameter
    |
    = help: consider removing `A` or using a marker such as `std::marker::PhantomData`
 
@@ -10,7 +10,7 @@ error[E0392]: parameter `A` is never used
   --> $DIR/variance-unused-type-param.rs:9:15
    |
 LL | enum SomeEnum<A> { Nothing }
-   |               ^ unused type parameter
+   |               ^ unused parameter
    |
    = help: consider removing `A` or using a marker such as `std::marker::PhantomData`
 
@@ -18,7 +18,7 @@ error[E0392]: parameter `T` is never used
   --> $DIR/variance-unused-type-param.rs:13:15
    |
 LL | enum ListCell<T> {
-   |               ^ unused type parameter
+   |               ^ unused parameter
    |
    = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
 

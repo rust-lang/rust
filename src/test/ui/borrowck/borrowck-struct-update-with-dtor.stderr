@@ -1,0 +1,21 @@
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-struct-update-with-dtor.rs:12:15
+   |
+LL |     let _s2 = S{a: 2, ..s0};
+   |               ^^^^^^^^^^^^^
+   |               |
+   |               cannot move out of here
+   |               move occurs because `s0.b` has type `B`, which does not implement the `Copy` trait
+
+error[E0509]: cannot move out of type `T`, which implements the `Drop` trait
+  --> $DIR/borrowck-struct-update-with-dtor.rs:17:15
+   |
+LL |     let _s2 = T{a: 2, ..s0};
+   |               ^^^^^^^^^^^^^
+   |               |
+   |               cannot move out of here
+   |               move occurs because `s0.mv` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0509`.

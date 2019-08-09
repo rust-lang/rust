@@ -1,27 +1,45 @@
-error[E0658]: async fn is unstable (see issue #50547)
-  --> $DIR/feature-gate-async-await.rs:5:1
+error[E0706]: trait fns cannot be declared `async`
+  --> $DIR/feature-gate-async-await.rs:10:5
+   |
+LL |     async fn foo();
+   |     ^^^^^^^^^^^^^^^
+
+error[E0658]: async fn is unstable
+  --> $DIR/feature-gate-async-await.rs:6:5
+   |
+LL |     async fn foo() {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
+   = help: add `#![feature(async_await)]` to the crate attributes to enable
+
+error[E0658]: async fn is unstable
+  --> $DIR/feature-gate-async-await.rs:10:5
+   |
+LL |     async fn foo();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
+   = help: add `#![feature(async_await)]` to the crate attributes to enable
+
+error[E0658]: async fn is unstable
+  --> $DIR/feature-gate-async-await.rs:14:1
    |
 LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(async_await)] to the crate attributes to enable
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
+   = help: add `#![feature(async_await)]` to the crate attributes to enable
 
-error[E0658]: async blocks are unstable (see issue #50547)
-  --> $DIR/feature-gate-async-await.rs:8:13
+error[E0658]: async blocks are unstable
+  --> $DIR/feature-gate-async-await.rs:17:13
    |
 LL |     let _ = async {};
    |             ^^^^^^^^
    |
-   = help: add #![feature(async_await)] to the crate attributes to enable
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
+   = help: add `#![feature(async_await)]` to the crate attributes to enable
 
-error[E0658]: async closures are unstable (see issue #50547)
-  --> $DIR/feature-gate-async-await.rs:9:13
-   |
-LL |     let _ = async || {};
-   |             ^^^^^^^^^^^
-   |
-   = help: add #![feature(async_await)] to the crate attributes to enable
-
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

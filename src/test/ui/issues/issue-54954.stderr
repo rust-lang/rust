@@ -1,0 +1,16 @@
+error[E0379]: trait fns cannot be declared const
+  --> $DIR/issue-54954.rs:7:5
+   |
+LL |     const fn const_val<T: Sized>() -> usize {
+   |     ^^^^^ trait fns cannot be const
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/issue-54954.rs:3:24
+   |
+LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0019, E0379.
+For more information about an error, try `rustc --explain E0019`.

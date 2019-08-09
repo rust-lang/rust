@@ -1,10 +1,11 @@
-error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
+error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:4:5
    |
 LL |     trace_macros!();
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
    |
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error: trace_macros! accepts only `true` or `false`
   --> $DIR/trace_macros-gate.rs:4:5
@@ -12,32 +13,35 @@ error: trace_macros! accepts only `true` or `false`
 LL |     trace_macros!();
    |     ^^^^^^^^^^^^^^^^
 
-error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
+error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:6:5
    |
 LL |     trace_macros!(true);
-   |     ^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
    |
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
-error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
+error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:7:5
    |
 LL |     trace_macros!(false);
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
    |
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
-error[E0658]: `trace_macros` is not stable enough for use and is subject to change (see issue #29598)
+error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:10:26
    |
 LL |         ($x: ident) => { trace_macros!($x) }
-   |                          ^^^^^^^^^^^^^^^^^
+   |                          ^^^^^^^^^^^^
 ...
 LL |     expando!(true);
    |     --------------- in this macro invocation
    |
-   = help: add #![feature(trace_macros)] to the crate attributes to enable
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = help: add `#![feature(trace_macros)]` to the crate attributes to enable
 
 error: aborting due to 5 previous errors
 

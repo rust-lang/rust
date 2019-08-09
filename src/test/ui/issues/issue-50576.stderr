@@ -18,5 +18,5 @@ LL |     Vec::<[u8; break]>::new();
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0268, E0426.
+Some errors have detailed explanations: E0268, E0426.
 For more information about an error, try `rustc --explain E0268`.

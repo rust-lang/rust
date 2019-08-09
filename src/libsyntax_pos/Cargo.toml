@@ -7,10 +7,11 @@ edition = "2018"
 [lib]
 name = "syntax_pos"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../libserialize", package = "serialize" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 arena = { path = "../libarena" }
 scoped-tls = "1.0"

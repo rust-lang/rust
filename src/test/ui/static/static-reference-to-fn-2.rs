@@ -16,19 +16,19 @@ impl<'a> Iterator for StateMachineIter<'a> {
 
 fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
     self_.statefn = &id(state2 as StateMachineFunc);
-    //~^ ERROR borrowed value does not live long enough
+    //~^ ERROR temporary value dropped while borrowed
     return Some("state1");
 }
 
 fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
     self_.statefn = &id(state3 as StateMachineFunc);
-    //~^ ERROR borrowed value does not live long enough
+    //~^ ERROR temporary value dropped while borrowed
     return Some("state2");
 }
 
 fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
     self_.statefn = &id(finished as StateMachineFunc);
-    //~^ ERROR borrowed value does not live long enough
+    //~^ ERROR temporary value dropped while borrowed
     return Some("state3");
 }
 
@@ -38,8 +38,8 @@ fn finished(_: &mut StateMachineIter) -> Option<(&'static str)> {
 
 fn state_iter() -> StateMachineIter<'static> {
     StateMachineIter {
+    //~^ ERROR cannot return value referencing temporary value
         statefn: &id(state1 as StateMachineFunc)
-        //~^ ERROR borrowed value does not live long enough
     }
 }
 

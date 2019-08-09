@@ -4,8 +4,6 @@
 //
 // run-pass
 
-#![feature(nll)]
-
 trait Mirror {
     type Me;
 }

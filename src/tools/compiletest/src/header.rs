@@ -4,10 +4,14 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
-use crate::common::{self, CompareMode, Config, Mode};
-use crate::util;
+use log::*;
 
+use crate::common::{self, CompareMode, Config, Mode, PassMode};
+use crate::util;
 use crate::extract_gdb_version;
+
+#[cfg(test)]
+mod tests;
 
 /// Whether to ignore the test.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -55,9 +59,9 @@ enum ParsedNameDirective {
     NoMatch,
     /// Match.
     Match,
-    /// Mode was DebugInfoBoth and this matched gdb.
+    /// Mode was DebugInfoGdbLldb and this matched gdb.
     MatchGdb,
-    /// Mode was DebugInfoBoth and this matched lldb.
+    /// Mode was DebugInfoGdbLldb and this matched lldb.
     MatchLldb,
 }
 
@@ -79,14 +83,21 @@ impl EarlyProps {
             revisions: vec![],
         };
 
-        if config.mode == common::DebugInfoBoth {
+        if config.mode == common::DebugInfoGdbLldb {
             if config.lldb_python_dir.is_none() {
                 props.ignore = props.ignore.no_lldb();
             }
             if config.gdb_version.is_none() {
                 props.ignore = props.ignore.no_gdb();
             }
+        } else if config.mode == common::DebugInfoCdb {
+            if config.cdb.is_none() {
+                props.ignore = Ignore::Ignore;
+            }
         }
+
+        let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
+        let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
 
         iter_header(testfile, None, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
@@ -116,14 +127,24 @@ impl EarlyProps {
                    config.parse_needs_matching_clang(ln) {
                     props.ignore = Ignore::Ignore;
                 }
+
+                if !rustc_has_profiler_support &&
+                   config.parse_needs_profiler_support(ln) {
+                    props.ignore = Ignore::Ignore;
+                }
+
+                if !rustc_has_sanitizer_support &&
+                   config.parse_needs_sanitizer_support(ln) {
+                    props.ignore = Ignore::Ignore;
+                }
             }
 
-            if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoBoth) &&
+            if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoGdbLldb) &&
                 props.ignore.can_run_gdb() && ignore_gdb(config, ln) {
                 props.ignore = props.ignore.no_gdb();
             }
 
-            if (config.mode == common::DebugInfoLldb || config.mode == common::DebugInfoBoth) &&
+            if (config.mode == common::DebugInfoLldb || config.mode == common::DebugInfoGdbLldb) &&
                 props.ignore.can_run_lldb() && ignore_lldb(config, ln) {
                 props.ignore = props.ignore.no_lldb();
             }
@@ -286,8 +307,15 @@ pub struct TestProps {
     // directory as the test, but for backwards compatibility reasons
     // we also check the auxiliary directory)
     pub aux_builds: Vec<String>,
+    // A list of crates to pass '--extern-private name:PATH' flags for
+    // This should be a subset of 'aux_build'
+    // FIXME: Replace this with a better solution: https://github.com/rust-lang/rust/pull/54020
+    pub extern_private: Vec<String>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
+    // Environment variables to unset prior to compiling.
+    // Variables are unset before applying 'rustc_env'.
+    pub unset_rustc_env: Vec<String>,
     // Environment settings to use during execution
     pub exec_env: Vec<(String, String)>,
     // Lines to check if they appear in the expected debugger output
@@ -303,6 +331,10 @@ pub struct TestProps {
     // For UI tests, allows compiler to generate arbitrary output to stderr
     pub dont_check_compiler_stderr: bool,
     // Don't force a --crate-type=dylib flag on the command line
+    //
+    // Set this for example if you have an auxiliary test file that contains
+    // a proc-macro and needs `#![crate_type = "proc-macro"]`. This ensures
+    // that the aux file is compiled as a `proc-macro` and not as a `dylib`.
     pub no_prefer_dynamic: bool,
     // Run --pretty expanded when running pretty printing tests
     pub pretty_expanded: bool,
@@ -319,22 +351,24 @@ pub struct TestProps {
     // testing harness and used when generating compilation
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
-    // Specifies that a test must actually compile without errors.
-    pub compile_pass: bool,
+    // How far should the test proceed while still passing.
+    pass_mode: Option<PassMode>,
+    // Ignore `--pass` overrides from the command line for this test.
+    ignore_pass: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
-    // The test must be compiled and run successfully. Only used in UI tests for now.
-    pub run_pass: bool,
-    // Skip any codegen step and running the executable. Only for run-pass.
-    pub skip_codegen: bool,
     // Do not pass `-Z ui-testing` to UI tests
     pub disable_ui_testing_normalization: bool,
     // customized normalization rules
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
     pub failure_status: i32,
+    // Whether or not `rustfix` should apply the `CodeSuggestion`s of this test and compile the
+    // resulting Rust code.
     pub run_rustfix: bool,
+    // If true, `rustfix` will only apply `MachineApplicable` suggestions.
     pub rustfix_only_machine_applicable: bool,
+    pub assembly_output: Option<String>,
 }
 
 impl TestProps {
@@ -345,8 +379,10 @@ impl TestProps {
             run_flags: None,
             pp_exact: None,
             aux_builds: vec![],
+            extern_private: vec![],
             revisions: vec![],
             rustc_env: vec![],
+            unset_rustc_env: vec![],
             exec_env: vec![],
             check_lines: vec![],
             build_aux_docs: false,
@@ -360,16 +396,16 @@ impl TestProps {
             pretty_compare_only: false,
             forbid_output: vec![],
             incremental_dir: None,
-            compile_pass: false,
+            pass_mode: None,
+            ignore_pass: false,
             check_test_line_numbers_match: false,
-            run_pass: false,
-            skip_codegen: false,
             disable_ui_testing_normalization: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
             failure_status: -1,
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
+            assembly_output: None,
         }
     }
 
@@ -460,12 +496,20 @@ impl TestProps {
                 self.aux_builds.push(ab);
             }
 
+            if let Some(ep) = config.parse_extern_private(ln) {
+                self.extern_private.push(ep);
+            }
+
             if let Some(ee) = config.parse_env(ln, "exec-env") {
                 self.exec_env.push(ee);
             }
 
             if let Some(ee) = config.parse_env(ln, "rustc-env") {
                 self.rustc_env.push(ee);
+            }
+
+            if let Some(ev) = config.parse_name_value_directive(ln, "unset-rustc-env") {
+                self.unset_rustc_env.push(ev);
             }
 
             if let Some(cl) = config.parse_check_line(ln) {
@@ -480,17 +524,10 @@ impl TestProps {
                 self.check_test_line_numbers_match = config.parse_check_test_line_numbers_match(ln);
             }
 
-            if !self.run_pass {
-                self.run_pass = config.parse_run_pass(ln);
-            }
+            self.update_pass_mode(ln, cfg, config);
 
-            if !self.compile_pass {
-                // run-pass implies must_compile_successfully
-                self.compile_pass = config.parse_compile_pass(ln) || self.run_pass;
-            }
-
-            if !self.skip_codegen {
-                self.skip_codegen = config.parse_skip_codegen(ln);
+            if !self.ignore_pass {
+                self.ignore_pass = config.parse_ignore_pass(ln);
             }
 
             if !self.disable_ui_testing_normalization {
@@ -517,6 +554,10 @@ impl TestProps {
                 self.rustfix_only_machine_applicable =
                     config.parse_rustfix_only_machine_applicable(ln);
             }
+
+            if self.assembly_output.is_none() {
+                self.assembly_output = config.parse_assembly_output(ln);
+            }
         });
 
         if self.failure_status == -1 {
@@ -533,6 +574,47 @@ impl TestProps {
                 }
             }
         }
+    }
+
+    fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
+        let check_no_run = |s| {
+            if config.mode != Mode::Ui && config.mode != Mode::Incremental {
+                panic!("`{}` header is only supported in UI and incremental tests", s);
+            }
+            if config.mode == Mode::Incremental &&
+                !revision.map_or(false, |r| r.starts_with("cfail")) &&
+                !self.revisions.iter().all(|r| r.starts_with("cfail")) {
+                panic!("`{}` header is only supported in `cfail` incremental tests", s);
+            }
+        };
+        let pass_mode = if config.parse_name_directive(ln, "check-pass") {
+            check_no_run("check-pass");
+            Some(PassMode::Check)
+        } else if config.parse_name_directive(ln, "build-pass") {
+            check_no_run("build-pass");
+            Some(PassMode::Build)
+        } else if config.parse_name_directive(ln, "run-pass") {
+            if config.mode != Mode::Ui {
+                panic!("`run-pass` header is only supported in UI tests")
+            }
+            Some(PassMode::Run)
+        } else {
+            None
+        };
+        match (self.pass_mode, pass_mode) {
+            (None, Some(_)) => self.pass_mode = pass_mode,
+            (Some(_), Some(_)) => panic!("multiple `*-pass` headers in a single test"),
+            (_, None) => {}
+        }
+    }
+
+    pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
+        if !self.ignore_pass {
+            if let (mode @ Some(_), Some(_)) = (config.force_pass_mode, self.pass_mode) {
+                return mode;
+            }
+        }
+        self.pass_mode
     }
 }
 
@@ -594,6 +676,11 @@ impl Config {
 
     fn parse_aux_build(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "aux-build")
+            .map(|r| r.trim().to_string())
+    }
+
+    fn parse_extern_private(&self, line: &str) -> Option<String> {
+        self.parse_name_value_directive(line, "extern-private")
     }
 
     fn parse_compile_flags(&self, line: &str) -> Option<String> {
@@ -656,10 +743,6 @@ impl Config {
         }
     }
 
-    fn parse_compile_pass(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "compile-pass")
-    }
-
     fn parse_disable_ui_testing_normalization(&self, line: &str) -> bool {
         self.parse_name_directive(line, "disable-ui-testing-normalization")
     }
@@ -668,12 +751,13 @@ impl Config {
         self.parse_name_directive(line, "check-test-line-numbers-match")
     }
 
-    fn parse_run_pass(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "run-pass")
+    fn parse_ignore_pass(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "ignore-pass")
     }
 
-    fn parse_skip_codegen(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "skip-codegen")
+    fn parse_assembly_output(&self, line: &str) -> Option<String> {
+        self.parse_name_value_directive(line, "assembly-output")
+            .map(|r| r.trim().to_string())
     }
 
     fn parse_env(&self, line: &str, name: &str) -> Option<(String, String)> {
@@ -716,6 +800,14 @@ impl Config {
         self.parse_name_directive(line, "needs-matching-clang")
     }
 
+    fn parse_needs_profiler_support(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "needs-profiler-support")
+    }
+
+    fn parse_needs_sanitizer_support(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "needs-sanitizer-support")
+    }
+
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
     /// or `normalize-stderr-32bit`.
     fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
@@ -741,7 +833,7 @@ impl Config {
                 ParsedNameDirective::Match
             } else {
                 match self.mode {
-                    common::DebugInfoBoth => {
+                    common::DebugInfoGdbLldb => {
                         if name == "gdb" {
                             ParsedNameDirective::MatchGdb
                         } else if name == "lldb" {
@@ -749,6 +841,11 @@ impl Config {
                         } else {
                             ParsedNameDirective::NoMatch
                         }
+                    },
+                    common::DebugInfoCdb => if name == "cdb" {
+                        ParsedNameDirective::Match
+                    } else {
+                        ParsedNameDirective::NoMatch
                     },
                     common::DebugInfoGdb => if name == "gdb" {
                         ParsedNameDirective::Match
@@ -873,30 +970,4 @@ fn parse_normalization_string(line: &mut &str) -> Option<String> {
     let result = line[begin..end].to_owned();
     *line = &line[end + 1..];
     Some(result)
-}
-
-#[test]
-fn test_parse_normalization_string() {
-    let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits)\".";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, Some("something (32 bits)".to_owned()));
-    assert_eq!(s, " -> \"something ($WORD bits)\".");
-
-    // Nothing to normalize (No quotes)
-    let mut s = "normalize-stderr-32bit: something (32 bits) -> something ($WORD bits).";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, None);
-    assert_eq!(s, r#"normalize-stderr-32bit: something (32 bits) -> something ($WORD bits)."#);
-
-    // Nothing to normalize (Only a single quote)
-    let mut s = "normalize-stderr-32bit: \"something (32 bits) -> something ($WORD bits).";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, None);
-    assert_eq!(s, "normalize-stderr-32bit: \"something (32 bits) -> something ($WORD bits).");
-
-    // Nothing to normalize (Three quotes)
-    let mut s = "normalize-stderr-32bit: \"something (32 bits)\" -> \"something ($WORD bits).";
-    let first = parse_normalization_string(&mut s);
-    assert_eq!(first, Some("something (32 bits)".to_owned()));
-    assert_eq!(s, " -> \"something ($WORD bits).");
 }

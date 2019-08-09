@@ -1,7 +1,7 @@
 error: 1 positional argument in format string, but no arguments were given
   --> $DIR/macro-backtrace-println.rs:14:30
    |
-LL |     ($fmt:expr) => (myprint!(concat!($fmt, "/n")));
+LL |     ($fmt:expr) => (myprint!(concat!($fmt, "\n")));
    |                              ^^^^^^^^^^^^^^^^^^^
 ...
 LL |     myprintln!("{}");

@@ -1,45 +1,49 @@
 error[E0033]: type `&dyn T` cannot be dereferenced
   --> $DIR/destructure-trait-ref.rs:26:9
    |
-LL |     let &x = &1isize as &T;
+LL |     let &x = &1isize as &dyn T;
    |         ^^ type `&dyn T` cannot be dereferenced
 
 error[E0033]: type `&dyn T` cannot be dereferenced
   --> $DIR/destructure-trait-ref.rs:27:10
    |
-LL |     let &&x = &(&1isize as &T);
+LL |     let &&x = &(&1isize as &dyn T);
    |          ^^ type `&dyn T` cannot be dereferenced
 
 error[E0033]: type `std::boxed::Box<dyn T>` cannot be dereferenced
   --> $DIR/destructure-trait-ref.rs:28:9
    |
-LL |     let box x = box 1isize as Box<T>;
+LL |     let box x = box 1isize as Box<dyn T>;
    |         ^^^^^ type `std::boxed::Box<dyn T>` cannot be dereferenced
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:31:10
+  --> $DIR/destructure-trait-ref.rs:32:10
    |
-LL |     let &&x = &1isize as &T;
-   |          ^^ expected trait T, found reference
-   |
-   = note: expected type `dyn T`
-              found type `&_`
-   = help: did you mean `x: &dyn T`?
-
-error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:36:11
-   |
-LL |     let &&&x = &(&1isize as &T);
-   |           ^^ expected trait T, found reference
+LL |     let &&x = &1isize as &dyn T;
+   |          ^^
+   |          |
+   |          expected trait T, found reference
+   |          help: you can probably remove the explicit borrow: `x`
    |
    = note: expected type `dyn T`
               found type `&_`
-   = help: did you mean `x: &dyn T`?
 
 error[E0308]: mismatched types
-  --> $DIR/destructure-trait-ref.rs:41:13
+  --> $DIR/destructure-trait-ref.rs:37:11
    |
-LL |     let box box x = box 1isize as Box<T>;
+LL |     let &&&x = &(&1isize as &dyn T);
+   |           ^^
+   |           |
+   |           expected trait T, found reference
+   |           help: you can probably remove the explicit borrow: `x`
+   |
+   = note: expected type `dyn T`
+              found type `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/destructure-trait-ref.rs:42:13
+   |
+LL |     let box box x = box 1isize as Box<dyn T>;
    |             ^^^^^ expected trait T, found struct `std::boxed::Box`
    |
    = note: expected type `dyn T`
@@ -47,5 +51,5 @@ LL |     let box box x = box 1isize as Box<T>;
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0033, E0308.
+Some errors have detailed explanations: E0033, E0308.
 For more information about an error, try `rustc --explain E0033`.

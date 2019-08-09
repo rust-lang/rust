@@ -12,14 +12,14 @@ enum MyEnum {
 
 fn structLifetime<'a>() -> &'a Test {
   let testValue = &id(Test);
-  //~^ ERROR borrowed value does not live long enough
   testValue
+  //~^ ERROR cannot return value referencing temporary value
 }
 
 fn variantLifetime<'a>() -> &'a MyEnum {
   let testValue = &id(MyEnum::Variant1);
-  //~^ ERROR borrowed value does not live long enough
   testValue
+  //~^ ERROR cannot return value referencing temporary value
 }
 
 

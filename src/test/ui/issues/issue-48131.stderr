@@ -1,5 +1,5 @@
 error: unnecessary `unsafe` block
-  --> $DIR/issue-48131.rs:8:9
+  --> $DIR/issue-48131.rs:9:9
    |
 LL |         unsafe { /* unnecessary */ }
    |         ^^^^^^ unnecessary `unsafe` block
@@ -11,7 +11,7 @@ LL | #![deny(unused_unsafe)]
    |         ^^^^^^^^^^^^^
 
 error: unnecessary `unsafe` block
-  --> $DIR/issue-48131.rs:19:13
+  --> $DIR/issue-48131.rs:20:13
    |
 LL |             unsafe { /* unnecessary */ }
    |             ^^^^^^ unnecessary `unsafe` block

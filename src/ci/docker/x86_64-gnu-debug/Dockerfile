@@ -1,4 +1,4 @@
-FROM ubuntu:18.10
+FROM ubuntu:19.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
+  libssl-dev \
+  pkg-config \
   xz-utils \
   lld \
   clang
@@ -31,7 +33,6 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --enable-debug \
       --enable-lld \
-      --enable-lldb \
       --enable-optimize \
       --set llvm.use-linker=lld \
       --set target.x86_64-unknown-linux-gnu.linker=clang \

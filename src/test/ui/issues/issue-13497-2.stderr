@@ -1,18 +1,14 @@
-error[E0597]: `rawLines` does not live long enough
+error[E0515]: cannot return value referencing local variable `rawLines`
   --> $DIR/issue-13497-2.rs:3:5
    |
-LL |     rawLines
-   |     ^^^^^^^^ borrowed value does not live long enough
-LL |         .iter().map(|l| l.trim()).collect()
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 1:24...
-  --> $DIR/issue-13497-2.rs:1:24
-   |
-LL | fn read_lines_borrowed<'a>() -> Vec<&'a str> {
-   |                        ^^
+LL |       rawLines
+   |       ^-------
+   |       |
+   |  _____`rawLines` is borrowed here
+   | |
+LL | |         .iter().map(|l| l.trim()).collect()
+   | |___________________________________________^ returns a value referencing data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

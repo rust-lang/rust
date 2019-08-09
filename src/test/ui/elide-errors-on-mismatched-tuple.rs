@@ -13,6 +13,6 @@ impl A {
 fn main() {
     let (a, b, c) = (A::new(), A::new()); // This tuple is 2 elements, should be three
     //~^ ERROR mismatched types
-    let ts: Vec<&T> = vec![&a, &b, &c];
+    let ts: Vec<&dyn T> = vec![&a, &b, &c];
     // There is no E0277 error above, as `a`, `b` and `c` are `TyErr`
 }

@@ -1,34 +1,34 @@
-error[E0596]: cannot borrow immutable argument `x` as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:29:25
    |
 LL | fn deref_mut1(x: Own<isize>) {
-   |               - help: make this binding mutable: `mut x`
+   |               - help: consider changing this to be mutable: `mut x`
 LL |     let __isize = &mut *x;
-   |                         ^ cannot borrow mutably
+   |                         ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:41:11
    |
 LL | fn deref_extend_mut1<'a>(x: &'a Own<isize>) -> &'a mut isize {
-   |                             -------------- use `&'a mut Own<isize>` here to make mutable
+   |                             -------------- help: consider changing this to be a mutable reference: `&'a mut Own<isize>`
 LL |     &mut **x
-   |           ^^ cannot borrow as mutable
+   |           ^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable argument `x` as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:49:6
    |
 LL | fn assign1<'a>(x: Own<isize>) {
-   |                - help: make this binding mutable: `mut x`
+   |                - help: consider changing this to be mutable: `mut x`
 LL |     *x = 3;
-   |      ^ cannot borrow mutably
+   |      ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:53:6
    |
 LL | fn assign2<'a>(x: &'a Own<isize>) {
-   |                   -------------- use `&'a mut Own<isize>` here to make mutable
+   |                   -------------- help: consider changing this to be a mutable reference: `&'a mut Own<isize>`
 LL |     **x = 3;
-   |      ^^ cannot borrow as mutable
+   |      ^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to 4 previous errors
 

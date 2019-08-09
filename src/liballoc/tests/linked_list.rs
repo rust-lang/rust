@@ -40,12 +40,10 @@ fn test_basic() {
     assert_eq!(n.pop_front(), Some(1));
 }
 
-#[cfg(test)]
 fn generate_test() -> LinkedList<i32> {
     list_from(&[0, 1, 2, 3, 4, 5, 6])
 }
 
-#[cfg(test)]
 fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {
     v.iter().cloned().collect()
 }

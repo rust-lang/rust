@@ -1,8 +1,8 @@
 error[E0038]: the trait `Qiz` cannot be made into an object
   --> $DIR/issue-19380.rs:11:3
    |
-LL |   foos: &'static [&'static (Qiz + 'static)]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Qiz` cannot be made into an object
+LL |   foos: &'static [&'static (dyn Qiz + 'static)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Qiz` cannot be made into an object
    |
    = note: method `qiz` has no receiver
 

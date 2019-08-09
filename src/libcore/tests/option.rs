@@ -1,6 +1,8 @@
 use core::option::*;
 use core::mem;
 use core::clone::Clone;
+use core::array::FixedSizeArray;
+use core::ops::DerefMut;
 
 #[test]
 fn test_get_ptr() {
@@ -69,7 +71,6 @@ fn test_option_dance() {
 }
 
 #[test] #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_option_too_much_dance() {
     struct A;
     let mut y = Some(A);
@@ -130,7 +131,6 @@ fn test_unwrap() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_unwrap_panic1() {
     let x: Option<isize> = None;
     x.unwrap();
@@ -138,7 +138,6 @@ fn test_unwrap_panic1() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_unwrap_panic2() {
     let x: Option<String> = None;
     x.unwrap();
@@ -313,20 +312,38 @@ fn test_try() {
 }
 
 #[test]
-fn test_option_deref() {
+fn test_option_as_deref() {
     // Some: &Option<T: Deref>::Some(T) -> Option<&T::Deref::Target>::Some(&*T)
     let ref_option = &Some(&42);
-    assert_eq!(ref_option.deref(), Some(&42));
+    assert_eq!(ref_option.as_deref(), Some(&42));
 
     let ref_option = &Some(String::from("a result"));
-    assert_eq!(ref_option.deref(), Some("a result"));
+    assert_eq!(ref_option.as_deref(), Some("a result"));
 
     let ref_option = &Some(vec![1, 2, 3, 4, 5]);
-    assert_eq!(ref_option.deref(), Some(&[1, 2, 3, 4, 5][..]));
+    assert_eq!(ref_option.as_deref(), Some([1, 2, 3, 4, 5].as_slice()));
 
     // None: &Option<T: Deref>>::None -> None
     let ref_option: &Option<&i32> = &None;
-    assert_eq!(ref_option.deref(), None);
+    assert_eq!(ref_option.as_deref(), None);
+}
+
+#[test]
+fn test_option_as_deref_mut() {
+    // Some: &mut Option<T: Deref>::Some(T) -> Option<&mut T::Deref::Target>::Some(&mut *T)
+    let mut val = 42;
+    let ref_option = &mut Some(&mut val);
+    assert_eq!(ref_option.as_deref_mut(), Some(&mut 42));
+
+    let ref_option = &mut Some(String::from("a result"));
+    assert_eq!(ref_option.as_deref_mut(), Some(String::from("a result").deref_mut()));
+
+    let ref_option = &mut Some(vec![1, 2, 3, 4, 5]);
+    assert_eq!(ref_option.as_deref_mut(), Some([1, 2, 3, 4, 5].as_mut_slice()));
+
+    // None: &mut Option<T: Deref>>::None -> None
+    let ref_option: &mut Option<&mut i32> = &mut None;
+    assert_eq!(ref_option.as_deref_mut(), None);
 }
 
 #[test]

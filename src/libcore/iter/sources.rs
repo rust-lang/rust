@@ -1,6 +1,6 @@
-use fmt;
-use marker;
-use usize;
+use crate::fmt;
+use crate::marker;
+use crate::usize;
 
 use super::{FusedIterator, TrustedLen};
 
@@ -39,8 +39,7 @@ unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///
-/// The `repeat()` function repeats a single value over and over and over and
-/// over and over and 🔁.
+/// The `repeat()` function repeats a single value over and over again.
 ///
 /// Infinite iterators like `repeat()` are often used with adapters like
 /// [`take`], in order to make them finite.
@@ -128,8 +127,7 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// Creates a new iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure, the repeater, `F: FnMut() -> A`.
 ///
-/// The `repeat_with()` function calls the repeater over and over and over and
-/// over and over and 🔁.
+/// The `repeat_with()` function calls the repeater over and over again.
 ///
 /// Infinite iterators like `repeat_with()` are often used with adapters like
 /// [`take`], in order to make them finite.
@@ -202,7 +200,7 @@ pub struct Empty<T>(marker::PhantomData<T>);
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T> fmt::Debug for Empty<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Empty")
     }
 }
@@ -285,7 +283,7 @@ pub const fn empty<T>() -> Empty<T> {
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
-    inner: ::option::IntoIter<T>
+    inner: crate::option::IntoIter<T>
 }
 
 #[stable(feature = "iter_once", since = "1.2.0")]
@@ -377,8 +375,8 @@ pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
 }
 
-/// An iterator that repeats elements of type `A` endlessly by
-/// applying the provided closure `F: FnMut() -> A`.
+/// An iterator that yields a single element of type `A` by
+/// applying the provided closure `F: FnOnce() -> A`.
 ///
 /// This `struct` is created by the [`once_with`] function.
 /// See its documentation for more.
@@ -560,7 +558,7 @@ impl<T, F> Iterator for FromFn<F>
 
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 impl<F> fmt::Debug for FromFn<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FromFn").finish()
     }
 }
@@ -633,7 +631,7 @@ impl<T, F> FusedIterator for Successors<T, F>
 
 #[stable(feature = "iter_successors", since = "1.34.0")]
 impl<T: fmt::Debug, F> fmt::Debug for Successors<T, F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Successors")
             .field("next", &self.next)
             .finish()

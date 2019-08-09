@@ -6,10 +6,12 @@
 use std::env;
 use std::str;
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::time::{SystemTime, Instant};
+use std::time::Instant;
+
+use build_helper::t;
 
 use crate::config::Config;
 use crate::builder::Builder;
@@ -207,7 +209,7 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
             let h = CreateFileW(path.as_ptr(),
                                 GENERIC_WRITE,
                                 FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                0 as *mut _,
+                                ptr::null_mut(),
                                 OPEN_EXISTING,
                                 FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
                                 ptr::null_mut());
@@ -252,87 +254,21 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
     }
 }
 
-/// An RAII structure that indicates all output until this instance is dropped
-/// is part of the same group.
-///
-/// On Travis CI, these output will be folded by default, together with the
-/// elapsed time in this block. This reduces noise from unnecessary logs,
-/// allowing developers to quickly identify the error.
-///
-/// Travis CI supports folding by printing `travis_fold:start:<name>` and
-/// `travis_fold:end:<name>` around the block. Time elapsed is recognized
-/// similarly with `travis_time:[start|end]:<name>`. These are undocumented, but
-/// can easily be deduced from source code of the [Travis build commands].
-///
-/// [Travis build commands]:
-/// https://github.com/travis-ci/travis-build/blob/f603c0089/lib/travis/build/templates/header.sh
-pub struct OutputFolder {
-    name: String,
-    start_time: SystemTime, // we need SystemTime to get the UNIX timestamp.
-}
-
-impl OutputFolder {
-    /// Creates a new output folder with the given group name.
-    pub fn new(name: String) -> OutputFolder {
-        // "\r" moves the cursor to the beginning of the line, and "\x1b[0K" is
-        // the ANSI escape code to clear from the cursor to end of line.
-        // Travis seems to have trouble when _not_ using "\r\x1b[0K", that will
-        // randomly put lines to the top of the webpage.
-        print!("travis_fold:start:{0}\r\x1b[0Ktravis_time:start:{0}\r\x1b[0K", name);
-        OutputFolder {
-            name,
-            start_time: SystemTime::now(),
-        }
-    }
-}
-
-impl Drop for OutputFolder {
-    fn drop(&mut self) {
-        use std::time::*;
-        use std::u64;
-
-        fn to_nanos(duration: Result<Duration, SystemTimeError>) -> u64 {
-            match duration {
-                Ok(d) => d.as_secs() * 1_000_000_000 + d.subsec_nanos() as u64,
-                Err(_) => u64::MAX,
-            }
-        }
-
-        let end_time = SystemTime::now();
-        let duration = end_time.duration_since(self.start_time);
-        let start = self.start_time.duration_since(UNIX_EPOCH);
-        let finish = end_time.duration_since(UNIX_EPOCH);
-        println!(
-            "travis_fold:end:{0}\r\x1b[0K\n\
-                travis_time:end:{0}:start={1},finish={2},duration={3}\r\x1b[0K",
-            self.name,
-            to_nanos(start),
-            to_nanos(finish),
-            to_nanos(duration)
-        );
-        io::stdout().flush().unwrap();
-    }
-}
-
 /// The CI environment rustbuild is running in. This mainly affects how the logs
 /// are printed.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum CiEnv {
     /// Not a CI environment.
     None,
-    /// The Travis CI environment, for Linux (including Docker) and macOS builds.
-    Travis,
-    /// The AppVeyor environment, for Windows builds.
-    AppVeyor,
+    /// The Azure Pipelines environment, for Linux (including Docker), Windows, and macOS builds.
+    AzurePipelines,
 }
 
 impl CiEnv {
     /// Obtains the current CI environment.
     pub fn current() -> CiEnv {
-        if env::var("TRAVIS").ok().map_or(false, |e| &*e == "true") {
-            CiEnv::Travis
-        } else if env::var("APPVEYOR").ok().map_or(false, |e| &*e == "True") {
-            CiEnv::AppVeyor
+        if env::var("TF_BUILD").ok().map_or(false, |e| &*e == "True") {
+            CiEnv::AzurePipelines
         } else {
             CiEnv::None
         }
@@ -348,5 +284,21 @@ impl CiEnv {
             // compiling through the Makefile. Very strange.
             cmd.env("TERM", "xterm").args(&["--color", "always"]);
         }
+    }
+}
+
+pub fn forcing_clang_based_tests() -> bool {
+    if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
+        match &var.to_string_lossy().to_lowercase()[..] {
+            "1" | "yes" | "on" => true,
+            "0" | "no" | "off" => false,
+            other => {
+                // Let's make sure typos don't go unnoticed
+                panic!("Unrecognized option '{}' set in \
+                        RUSTBUILD_FORCE_CLANG_BASED_TESTS", other)
+            }
+        }
+    } else {
+        false
     }
 }

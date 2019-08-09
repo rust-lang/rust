@@ -1,8 +1,0 @@
-error: user-defined macros may not be named `macro_rules`
-  --> $DIR/user-defined-macro-rules.rs:3:1
-   |
-LL | macro_rules! macro_rules { () => {} }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-

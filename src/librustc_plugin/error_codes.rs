@@ -1,0 +1,9 @@
+use syntax::{register_diagnostics, register_long_diagnostics};
+
+register_long_diagnostics! {
+
+}
+
+register_diagnostics! {
+    E0498  // malformed plugin attribute
+}

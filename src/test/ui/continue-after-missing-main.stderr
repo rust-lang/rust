@@ -1,0 +1,16 @@
+error[E0601]: `main` function not found in crate `continue_after_missing_main`
+   |
+   = note: consider adding a `main` function to `$DIR/continue-after-missing-main.rs`
+
+error[E0623]: lifetime mismatch
+  --> $DIR/continue-after-missing-main.rs:30:56
+   |
+LL |     tableau: Tableau<'data_provider, AdaptedMatrixProvider<'original_data, MP>>,
+   |              ------------------------------------------------------------------ these two types are declared with different lifetimes...
+LL | ) {
+LL |     let _: AdaptedMatrixProvider<'original_data, MP> = tableau.provider().clone_with_extra_bound();
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...but data from `tableau` flows into `tableau` here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

@@ -6,18 +6,18 @@
 
 trait SomeTrait { fn get(&self) -> isize; }
 
-fn make_object1<A:SomeTrait>(v: A) -> Box<SomeTrait+'static> {
-    box v as Box<SomeTrait+'static>
+fn make_object1<A:SomeTrait>(v: A) -> Box<dyn SomeTrait + 'static> {
+    box v as Box<dyn SomeTrait + 'static>
         //~^ ERROR the parameter type `A` may not live long enough
         //~| ERROR the parameter type `A` may not live long enough
 }
 
-fn make_object2<'a,A:SomeTrait+'a>(v: A) -> Box<SomeTrait+'a> {
-    box v as Box<SomeTrait+'a>
+fn make_object2<'a,A:SomeTrait+'a>(v: A) -> Box<dyn SomeTrait + 'a> {
+    box v as Box<dyn SomeTrait + 'a>
 }
 
-fn make_object3<'a,'b,A:SomeTrait+'a>(v: A) -> Box<SomeTrait+'b> {
-    box v as Box<SomeTrait+'b>
+fn make_object3<'a,'b,A:SomeTrait+'a>(v: A) -> Box<dyn SomeTrait + 'b> {
+    box v as Box<dyn SomeTrait + 'b>
         //~^ ERROR the parameter type `A` may not live long enough
         //~| ERROR the parameter type `A` may not live long enough
 }

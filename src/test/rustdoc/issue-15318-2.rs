@@ -9,4 +9,3 @@ pub use issue_15318::ptr;
 //          '//*[@href="primitive.pointer.html"]' \
 //          '*mut T'
 pub fn bar<T>(ptr: *mut T) {}
-

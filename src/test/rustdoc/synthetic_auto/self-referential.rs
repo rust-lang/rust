@@ -27,4 +27,3 @@ impl<T> Pattern for Wrapper<T> {
 // WriteAndThen<P1>  where  <P1 as Pattern>::Value: Send"
 pub struct WriteAndThen<P1>(pub P1::Value,pub <Constrain<P1, Wrapper<P1::Value>> as Pattern>::Value)
     where P1: Pattern;
-

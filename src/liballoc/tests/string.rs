@@ -54,11 +54,11 @@ fn test_from_utf8() {
 #[test]
 fn test_from_utf8_lossy() {
     let xs = b"hello";
-    let ys: Cow<str> = "hello".into_cow();
+    let ys: Cow<'_, str> = "hello".into_cow();
     assert_eq!(String::from_utf8_lossy(xs), ys);
 
     let xs = "ศไทย中华Việt Nam".as_bytes();
-    let ys: Cow<str> = "ศไทย中华Việt Nam".into_cow();
+    let ys: Cow<'_, str> = "ศไทย中华Việt Nam".into_cow();
     assert_eq!(String::from_utf8_lossy(xs), ys);
 
     let xs = b"Hello\xC2 There\xFF Goodbye";
@@ -231,7 +231,6 @@ fn test_split_off_empty() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_split_off_past_end() {
     let orig = "Hello, world!";
     let mut split = String::from(orig);
@@ -240,7 +239,6 @@ fn test_split_off_past_end() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_split_off_mid_char() {
     let mut orig = String::from("山");
     orig.split_off(1);
@@ -289,7 +287,6 @@ fn test_str_truncate_invalid_len() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_str_truncate_split_codepoint() {
     let mut s = String::from("\u{FC}"); // ü
     s.truncate(1);
@@ -324,7 +321,6 @@ fn remove() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn remove_bad() {
     "ศ".to_string().remove(1);
 }
@@ -360,13 +356,11 @@ fn insert() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn insert_bad1() {
     "".to_string().insert(1, 't');
 }
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn insert_bad2() {
     "ệ".to_string().insert(1, 't');
 }
@@ -447,7 +441,6 @@ fn test_replace_range() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_replace_range_char_boundary() {
     let mut s = "Hello, 世界!".to_owned();
     s.replace_range(..8, "");
@@ -464,7 +457,6 @@ fn test_replace_range_inclusive_range() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_replace_range_out_of_bounds() {
     let mut s = String::from("12345");
     s.replace_range(5..6, "789");
@@ -472,7 +464,6 @@ fn test_replace_range_out_of_bounds() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_replace_range_inclusive_out_of_bounds() {
     let mut s = String::from("12345");
     s.replace_range(5..=5, "789");

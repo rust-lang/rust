@@ -1,5 +1,5 @@
 error: associated type bindings must be declared after generic parameters
-  --> $DIR/issue-32214.rs:5:25
+  --> $DIR/issue-32214.rs:3:25
    |
 LL | pub fn test<W, I: Trait<Item=(), W> >() {}
    |                         -------^^^

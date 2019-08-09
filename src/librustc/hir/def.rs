@@ -1,13 +1,24 @@
 use crate::hir::def_id::DefId;
-use crate::util::nodemap::{NodeMap, DefIdMap};
+use crate::util::nodemap::DefIdMap;
 use syntax::ast;
 use syntax::ext::base::MacroKind;
+use syntax::ast::NodeId;
 use syntax_pos::Span;
 use rustc_macros::HashStable;
 use crate::hir;
 use crate::ty;
+use std::fmt::Debug;
 
 use self::Namespace::*;
+
+/// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+pub enum CtorOf {
+    /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit struct.
+    Struct,
+    /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit variant.
+    Variant,
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
 pub enum CtorKind {
@@ -34,86 +45,145 @@ pub enum NonMacroAttrKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
-pub enum Def {
+pub enum DefKind {
     // Type namespace
-    Mod(DefId),
-    Struct(DefId), // `DefId` refers to `NodeId` of the struct itself
-    Union(DefId),
-    Enum(DefId),
-    Variant(DefId),
-    Trait(DefId),
-    /// `existential type Foo: Bar;`
-    Existential(DefId),
+    Mod,
+    /// Refers to the struct itself, `DefKind::Ctor` refers to its constructor if it exists.
+    Struct,
+    Union,
+    Enum,
+    /// Refers to the variant itself, `DefKind::Ctor` refers to its constructor if it exists.
+    Variant,
+    Trait,
+    /// `type Foo = impl Bar;`
+    OpaqueTy,
     /// `type Foo = Bar;`
-    TyAlias(DefId),
-    ForeignTy(DefId),
-    TraitAlias(DefId),
-    AssociatedTy(DefId),
-    /// `existential type Foo: Bar;`
-    AssociatedExistential(DefId),
+    TyAlias,
+    ForeignTy,
+    TraitAlias,
+    AssocTy,
+    /// `type Foo = impl Bar;`
+    AssocOpaqueTy,
+    TyParam,
+
+    // Value namespace
+    Fn,
+    Const,
+    ConstParam,
+    Static,
+    /// Refers to the struct or enum variant's constructor.
+    Ctor(CtorOf, CtorKind),
+    Method,
+    AssocConst,
+
+    // Macro namespace
+    Macro(MacroKind),
+}
+
+impl DefKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            DefKind::Fn => "function",
+            DefKind::Mod => "module",
+            DefKind::Static => "static",
+            DefKind::Enum => "enum",
+            DefKind::Variant => "variant",
+            DefKind::Ctor(CtorOf::Variant, CtorKind::Fn) => "tuple variant",
+            DefKind::Ctor(CtorOf::Variant, CtorKind::Const) => "unit variant",
+            DefKind::Ctor(CtorOf::Variant, CtorKind::Fictive) => "struct variant",
+            DefKind::Struct => "struct",
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) =>
+                bug!("impossible struct constructor"),
+            DefKind::OpaqueTy => "opaque type",
+            DefKind::TyAlias => "type alias",
+            DefKind::TraitAlias => "trait alias",
+            DefKind::AssocTy => "associated type",
+            DefKind::AssocOpaqueTy => "associated opaque type",
+            DefKind::Union => "union",
+            DefKind::Trait => "trait",
+            DefKind::ForeignTy => "foreign type",
+            DefKind::Method => "method",
+            DefKind::Const => "constant",
+            DefKind::AssocConst => "associated constant",
+            DefKind::TyParam => "type parameter",
+            DefKind::ConstParam => "const parameter",
+            DefKind::Macro(macro_kind) => macro_kind.descr(),
+        }
+    }
+
+    /// An English article for the def.
+    pub fn article(&self) -> &'static str {
+        match *self {
+            DefKind::AssocTy
+            | DefKind::AssocConst
+            | DefKind::AssocOpaqueTy
+            | DefKind::Enum
+            | DefKind::OpaqueTy => "an",
+            DefKind::Macro(macro_kind) => macro_kind.article(),
+            _ => "a",
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+pub enum Res<Id = hir::HirId> {
+    Def(DefKind, DefId),
+
+    // Type namespace
     PrimTy(hir::PrimTy),
-    TyParam(DefId),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
-    Fn(DefId),
-    Const(DefId),
-    ConstParam(DefId),
-    Static(DefId, bool /* is_mutbl */),
-    StructCtor(DefId, CtorKind), // `DefId` refers to `NodeId` of the struct's constructor
-    VariantCtor(DefId, CtorKind), // `DefId` refers to the enum variant
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
-    Method(DefId),
-    AssociatedConst(DefId),
-
-    Local(ast::NodeId),
-    Upvar(ast::NodeId,  // `NodeId` of closed over local
-          usize,        // index in the `freevars` list of the closure
-          ast::NodeId), // expr node that creates the closure
-    Label(ast::NodeId),
+    Local(Id),
 
     // Macro namespace
-    Macro(DefId, MacroKind),
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
 
-    // Both namespaces
+    // All namespaces
     Err,
 }
 
-/// The result of resolving a path before lowering to HIR.
-/// `base_def` is definition of resolved part of the
+/// The result of resolving a path before lowering to HIR,
+/// with "module" segments resolved and associated item
+/// segments deferred to type checking.
+/// `base_res` is the resolution of the resolved part of the
 /// path, `unresolved_segments` is the number of unresolved
 /// segments.
 ///
 /// ```text
 /// module::Type::AssocX::AssocY::MethodOrAssocType
 /// ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/// base_def      unresolved_segments = 3
+/// base_res      unresolved_segments = 3
 ///
 /// <T as Trait>::AssocX::AssocY::MethodOrAssocType
 ///       ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
-///       base_def        unresolved_segments = 2
+///       base_res        unresolved_segments = 2
 /// ```
 #[derive(Copy, Clone, Debug)]
-pub struct PathResolution {
-    base_def: Def,
+pub struct PartialRes {
+    base_res: Res<NodeId>,
     unresolved_segments: usize,
 }
 
-impl PathResolution {
-    pub fn new(def: Def) -> Self {
-        PathResolution { base_def: def, unresolved_segments: 0 }
-    }
-
-    pub fn with_unresolved_segments(def: Def, mut unresolved_segments: usize) -> Self {
-        if def == Def::Err { unresolved_segments = 0 }
-        PathResolution { base_def: def, unresolved_segments: unresolved_segments }
+impl PartialRes {
+    #[inline]
+    pub fn new(base_res: Res<NodeId>) -> Self {
+        PartialRes { base_res, unresolved_segments: 0 }
     }
 
     #[inline]
-    pub fn base_def(&self) -> Def {
-        self.base_def
+    pub fn with_unresolved_segments(base_res: Res<NodeId>, mut unresolved_segments: usize) -> Self {
+        if base_res == Res::Err { unresolved_segments = 0 }
+        PartialRes { base_res, unresolved_segments }
+    }
+
+    #[inline]
+    pub fn base_res(&self) -> Res<NodeId> {
+        self.base_res
     }
 
     #[inline]
@@ -199,28 +269,32 @@ impl<T> PerNS<Option<T>> {
     }
 }
 
-/// Definition mapping
-pub type DefMap = NodeMap<PathResolution>;
-
 /// This is the replacement export map. It maps a module to all of the exports
 /// within.
-pub type ExportMap = DefIdMap<Vec<Export>>;
-
-/// Map used to track the `use` statements within a scope, matching it with all the items in every
-/// namespace.
-pub type ImportMap = NodeMap<PerNS<Option<PathResolution>>>;
+pub type ExportMap<Id> = DefIdMap<Vec<Export<Id>>>;
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Export {
+pub struct Export<Id> {
     /// The name of the target.
     pub ident: ast::Ident,
-    /// The definition of the target.
-    pub def: Def,
-    /// The span of the target definition.
+    /// The resolution of the target.
+    pub res: Res<Id>,
+    /// The span of the target.
     pub span: Span,
     /// The visibility of the export.
     /// We include non-`pub` exports for hygienic macros that get used from extern crates.
     pub vis: ty::Visibility,
+}
+
+impl<Id> Export<Id> {
+    pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Export<R> {
+        Export {
+            ident: self.ident,
+            res: self.res.map_id(map),
+            span: self.span,
+            vis: self.vis,
+        }
+    }
 }
 
 impl CtorKind {
@@ -253,98 +327,83 @@ impl NonMacroAttrKind {
     }
 }
 
-impl Def {
+impl<Id> Res<Id> {
     /// Return the `DefId` of this `Def` if it has an id, else panic.
-    pub fn def_id(&self) -> DefId {
+    pub fn def_id(&self) -> DefId
+    where
+        Id: Debug,
+    {
         self.opt_def_id().unwrap_or_else(|| {
-            bug!("attempted .def_id() on invalid def: {:?}", self)
+            bug!("attempted .def_id() on invalid res: {:?}", self)
         })
     }
 
-    /// Return `Some(..)` with the `DefId` of this `Def` if it has a id, else `None`.
+    /// Return `Some(..)` with the `DefId` of this `Res` if it has a id, else `None`.
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
-            Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
-            Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) |
-            Def::TyAlias(id) | Def::TraitAlias(id) |
-            Def::AssociatedTy(id) | Def::TyParam(id) | Def::ConstParam(id) | Def::Struct(id) |
-            Def::StructCtor(id, ..) |
-            Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::Existential(id) | Def::AssociatedExistential(id) | Def::ForeignTy(id) => {
-                Some(id)
-            }
+            Res::Def(_, id) => Some(id),
 
-            Def::Local(..) |
-            Def::Upvar(..) |
-            Def::Label(..)  |
-            Def::PrimTy(..) |
-            Def::SelfTy(..) |
-            Def::SelfCtor(..) |
-            Def::ToolMod |
-            Def::NonMacroAttr(..) |
-            Def::Err => {
+            Res::Local(..) |
+            Res::PrimTy(..) |
+            Res::SelfTy(..) |
+            Res::SelfCtor(..) |
+            Res::ToolMod |
+            Res::NonMacroAttr(..) |
+            Res::Err => {
                 None
             }
         }
     }
 
-    /// Return the `DefId` of this `Def` if it represents a module.
+    /// Return the `DefId` of this `Res` if it represents a module.
     pub fn mod_def_id(&self) -> Option<DefId> {
         match *self {
-            Def::Mod(id) => Some(id),
+            Res::Def(DefKind::Mod, id) => Some(id),
             _ => None,
         }
     }
 
-    /// A human readable name for the def kind ("function", "module", etc.).
-    pub fn kind_name(&self) -> &'static str {
+    /// A human readable name for the res kind ("function", "module", etc.).
+    pub fn descr(&self) -> &'static str {
         match *self {
-            Def::Fn(..) => "function",
-            Def::Mod(..) => "module",
-            Def::Static(..) => "static",
-            Def::Variant(..) => "variant",
-            Def::VariantCtor(.., CtorKind::Fn) => "tuple variant",
-            Def::VariantCtor(.., CtorKind::Const) => "unit variant",
-            Def::VariantCtor(.., CtorKind::Fictive) => "struct variant",
-            Def::Enum(..) => "enum",
-            Def::Existential(..) => "existential type",
-            Def::TyAlias(..) => "type alias",
-            Def::TraitAlias(..) => "trait alias",
-            Def::AssociatedTy(..) => "associated type",
-            Def::AssociatedExistential(..) => "associated existential type",
-            Def::Struct(..) => "struct",
-            Def::StructCtor(.., CtorKind::Fn) => "tuple struct",
-            Def::StructCtor(.., CtorKind::Const) => "unit struct",
-            Def::StructCtor(.., CtorKind::Fictive) => bug!("impossible struct constructor"),
-            Def::SelfCtor(..) => "self constructor",
-            Def::Union(..) => "union",
-            Def::Trait(..) => "trait",
-            Def::ForeignTy(..) => "foreign type",
-            Def::Method(..) => "method",
-            Def::Const(..) => "constant",
-            Def::AssociatedConst(..) => "associated constant",
-            Def::TyParam(..) => "type parameter",
-            Def::ConstParam(..) => "const parameter",
-            Def::PrimTy(..) => "builtin type",
-            Def::Local(..) => "local variable",
-            Def::Upvar(..) => "closure capture",
-            Def::Label(..) => "label",
-            Def::SelfTy(..) => "self type",
-            Def::Macro(.., macro_kind) => macro_kind.descr(),
-            Def::ToolMod => "tool module",
-            Def::NonMacroAttr(attr_kind) => attr_kind.descr(),
-            Def::Err => "unresolved item",
+            Res::Def(kind, _) => kind.descr(),
+            Res::SelfCtor(..) => "self constructor",
+            Res::PrimTy(..) => "builtin type",
+            Res::Local(..) => "local variable",
+            Res::SelfTy(..) => "self type",
+            Res::ToolMod => "tool module",
+            Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
+            Res::Err => "unresolved item",
         }
     }
 
-    /// An English article for the def.
+    /// An English article for the res.
     pub fn article(&self) -> &'static str {
         match *self {
-            Def::AssociatedTy(..) | Def::AssociatedConst(..) | Def::AssociatedExistential(..) |
-            Def::Enum(..) | Def::Existential(..) | Def::Err => "an",
-            Def::Macro(.., macro_kind) => macro_kind.article(),
+            Res::Def(kind, _) => kind.article(),
+            Res::Err => "an",
             _ => "a",
+        }
+    }
+
+    pub fn map_id<R>(self, mut map: impl FnMut(Id) -> R) -> Res<R> {
+        match self {
+            Res::Def(kind, id) => Res::Def(kind, id),
+            Res::SelfCtor(id) => Res::SelfCtor(id),
+            Res::PrimTy(id) => Res::PrimTy(id),
+            Res::Local(id) => Res::Local(map(id)),
+            Res::SelfTy(a, b) => Res::SelfTy(a, b),
+            Res::ToolMod => Res::ToolMod,
+            Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
+            Res::Err => Res::Err,
+        }
+    }
+
+    pub fn macro_kind(self) -> Option<MacroKind> {
+        match self {
+            Res::Def(DefKind::Macro(kind), _) => Some(kind),
+            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
+            _ => None,
         }
     }
 }

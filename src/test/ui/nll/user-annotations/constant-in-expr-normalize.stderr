@@ -1,10 +1,15 @@
-error: lifetime may not live long enough
-  --> $DIR/constant-in-expr-normalize.rs:20:5
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/constant-in-expr-normalize.rs:18:5
+   |
+LL |     <() as Foo<'a>>::C
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: ...the reference is valid for the static lifetime...
+note: ...but the borrowed content is only valid for the lifetime 'a as defined on the function body at 17:8
+  --> $DIR/constant-in-expr-normalize.rs:17:8
    |
 LL | fn foo<'a>(_: &'a u32) -> &'static u32 {
-   |        -- lifetime `'a` defined here
-LL |     <() as Foo<'a>>::C
-   |     ^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+   |        ^^
 
 error: aborting due to previous error
 

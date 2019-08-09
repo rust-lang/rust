@@ -142,13 +142,13 @@ pub trait Clone : Sized {
 #[unstable(feature = "derive_clone_copy",
            reason = "deriving hack, should not be public",
            issue = "0")]
-pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: ::marker::PhantomData<T> }
+pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: crate::marker::PhantomData<T> }
 #[doc(hidden)]
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "derive_clone_copy",
            reason = "deriving hack, should not be public",
            issue = "0")]
-pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: ::marker::PhantomData<T> }
+pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: crate::marker::PhantomData<T> }
 
 /// Implementations of `Clone` for primitive types.
 ///

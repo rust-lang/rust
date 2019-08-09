@@ -1,7 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(nll)]
-
 struct Bar;
 
 impl Bar {

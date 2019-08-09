@@ -130,7 +130,7 @@ pub use alloc_crate::alloc::*;
 /// program opts in to using jemalloc as the global allocator, `System` will
 /// still allocate memory using `malloc` and `HeapAlloc`.
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub struct System;
 
 // The Alloc impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
@@ -173,6 +173,9 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// about the allocation that failed.
 ///
 /// The allocation error hook is a global resource.
+///
+/// [`set_alloc_error_hook`]: fn.set_alloc_error_hook.html
+/// [`take_alloc_error_hook`]: fn.take_alloc_error_hook.html
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn set_alloc_error_hook(hook: fn(Layout)) {
     HOOK.store(hook as *mut (), Ordering::SeqCst);
@@ -183,6 +186,8 @@ pub fn set_alloc_error_hook(hook: fn(Layout)) {
 /// *See also the function [`set_alloc_error_hook`].*
 ///
 /// If no custom hook is registered, the default hook will be returned.
+///
+/// [`set_alloc_error_hook`]: fn.set_alloc_error_hook.html
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn take_alloc_error_hook() -> fn(Layout) {
     let hook = HOOK.swap(ptr::null_mut(), Ordering::SeqCst);

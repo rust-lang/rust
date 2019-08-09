@@ -24,5 +24,5 @@ LL |         = [0; Dim3::dim()];
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0015, E0080.
+Some errors have detailed explanations: E0015, E0080.
 For more information about an error, try `rustc --explain E0015`.

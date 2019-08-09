@@ -1,8 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+## This script publishes the new "current" toolstate in the toolstate repo (not to be
+## confused with publishing the test results, which happens in
+## `src/ci/docker/x86_64-gnu-tools/checktools.sh`).
+## It is set as callback for `src/ci/docker/x86_64-gnu-tools/repo.sh` by the CI scripts
+## when a new commit lands on `master` (i.e., after it passed all checks on `auto`).
+
 import sys
 import re
+import os
 import json
 import datetime
 import collections
@@ -12,16 +19,22 @@ try:
 except ImportError:
     import urllib.request as urllib2
 
-# List of people to ping when the status of a tool changed.
+# List of people to ping when the status of a tool or a book changed.
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch',
-    'rls': '@nrc @Xanewok',
-    'rustfmt': '@nrc @topecongiro',
+    'rls': '@Xanewok',
+    'rustfmt': '@topecongiro',
     'book': '@carols10cents @steveklabnik',
     'nomicon': '@frewsxcv @Gankro',
-    'reference': '@steveklabnik @Havvy @matthewjasper @alercah',
+    'reference': '@steveklabnik @Havvy @matthewjasper @ehuss',
     'rust-by-example': '@steveklabnik @marioidival @projektir',
+    'embedded-book': (
+        '@adamgreig @andre-richter @jamesmunns @korken89 '
+        '@ryankurte @thejpster @therealprof'
+    ),
+    'edition-guide': '@ehuss @Centril @steveklabnik',
+    'rustc-guide': '@mark-i-m @spastorino'
 }
 
 REPOS = {
@@ -33,6 +46,9 @@ REPOS = {
     'nomicon': 'https://github.com/rust-lang-nursery/nomicon',
     'reference': 'https://github.com/rust-lang-nursery/reference',
     'rust-by-example': 'https://github.com/rust-lang/rust-by-example',
+    'embedded-book': 'https://github.com/rust-embedded/book',
+    'edition-guide': 'https://github.com/rust-lang-nursery/edition-guide',
+    'rustc-guide': 'https://github.com/rust-lang/rustc-guide',
 }
 
 
@@ -46,35 +62,51 @@ def read_current_status(current_commit, path):
                 return json.loads(status)
     return {}
 
+def gh_url():
+    return os.environ['TOOLSTATE_ISSUES_API_URL']
+
+def maybe_delink(message):
+    if os.environ.get('TOOLSTATE_SKIP_MENTIONS') is not None:
+        return message.replace("@", "")
+    return message
+
 def issue(
     tool,
+    status,
     maintainers,
     relevant_pr_number,
     relevant_pr_user,
     pr_reviewer,
 ):
     # Open an issue about the toolstate failure.
-    gh_url = 'https://api.github.com/repos/rust-lang/rust/issues'
     assignees = [x.strip() for x in maintainers.split('@') if x != '']
-    assignees.append(relevant_pr_user)
+    if status == 'test-fail':
+        status_description = 'has failing tests'
+    else:
+        status_description = 'no longer builds'
+    request = json.dumps({
+        'body': maybe_delink(textwrap.dedent('''\
+        Hello, this is your friendly neighborhood mergebot.
+        After merging PR {}, I observed that the tool {} {}.
+        A follow-up PR to the repository {} is needed to fix the fallout.
+
+        cc @{}, do you think you would have time to do the follow-up work?
+        If so, that would be great!
+
+        cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
+
+        ''').format(
+            relevant_pr_number, tool, status_description,
+            REPOS.get(tool), relevant_pr_user, pr_reviewer
+        )),
+        'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
+        'assignees': assignees,
+        'labels': ['T-compiler', 'I-nominated'],
+    })
+    print("Creating issue:\n{}".format(request))
     response = urllib2.urlopen(urllib2.Request(
-        gh_url,
-        json.dumps({
-            'body': textwrap.dedent('''\
-            Hello, this is your friendly neighborhood mergebot.
-            After merging PR {}, I observed that the tool {} no longer builds.
-            A follow-up PR to the repository {} is needed to fix the fallout.
-
-            cc @{}, do you think you would have time to do the follow-up work?
-            If so, that would be great!
-
-            cc @{}, the PR reviewer, and @rust-lang/compiler -- nominating for prioritization.
-
-            ''').format(relevant_pr_number, tool, REPOS[tool], relevant_pr_user, pr_reviewer),
-            'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
-            'assignees': assignees,
-            'labels': ['T-compiler', 'I-nominated'],
-        }),
+        gh_url(),
+        request,
         {
             'Authorization': 'token ' + github_token,
             'Content-Type': 'application/json',
@@ -112,13 +144,13 @@ def update_latest(
         for status in latest:
             tool = status['tool']
             changed = False
-            build_failed = False
+            create_issue_for_status = None # set to the status that caused the issue
 
             for os, s in current_status.items():
                 old = status[os]
                 new = s.get(tool, old)
                 status[os] = new
-                if new > old:
+                if new > old: # comparing the strings, but they are ordered appropriately!
                     # things got fixed or at least the status quo improved
                     changed = True
                     message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
@@ -130,22 +162,27 @@ def update_latest(
                         .format(tool, os, old, new)
                     message += '{} (cc {}, @rust-lang/infra).\n' \
                         .format(title, MAINTAINERS.get(tool))
-                    # only create issues for build failures. Other failures can be spurious
-                    if new == 'build-fail':
-                        build_failed = True
+                    # Most tools only create issues for build failures.
+                    # Other failures can be spurious.
+                    if new == 'build-fail' or (tool == 'miri' and new == 'test-fail'):
+                        create_issue_for_status = new
 
-            if build_failed:
+            if create_issue_for_status is not None:
                 try:
                     issue(
-                        tool, MAINTAINERS.get(tool),
+                        tool, create_issue_for_status, MAINTAINERS.get(tool, ''),
                         relevant_pr_number, relevant_pr_user, pr_reviewer,
                     )
-                except IOError as e:
+                except urllib2.HTTPError as e:
                     # network errors will simply end up not creating an issue, but that's better
                     # than failing the entire build job
-                    print("I/O error: {0}".format(e))
+                    print("HTTPError when creating issue for status regression: {0}\n{1}"
+                          .format(e, e.read()))
+                except IOError as e:
+                    print("I/O error when creating issue for status regression: {0}".format(e))
                 except:
-                    print("Unexpected error: {0}".format(sys.exc_info()[0]))
+                    print("Unexpected error when creating issue for status regression: {0}"
+                          .format(sys.exc_info()[0]))
                     raise
 
             if changed:
@@ -209,11 +246,10 @@ if __name__ == '__main__':
         f.write(message)
 
     # Write the toolstate comment on the PR as well.
-    gh_url = 'https://api.github.com/repos/rust-lang/rust/issues/{}/comments' \
-        .format(number)
+    issue_url = gh_url() + '/{}/comments'.format(number)
     response = urllib2.urlopen(urllib2.Request(
-        gh_url,
-        json.dumps({'body': message}),
+        issue_url,
+        json.dumps({'body': maybe_delink(message)}),
         {
             'Authorization': 'token ' + github_token,
             'Content-Type': 'application/json',

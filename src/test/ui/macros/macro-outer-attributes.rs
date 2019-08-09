@@ -1,4 +1,4 @@
-#![feature(custom_attribute)]
+#![feature(rustc_attrs)]
 
 macro_rules! test { ($nm:ident,
                      #[$a:meta],
@@ -13,7 +13,7 @@ test!(b,
       pub fn bar() { });
 
 // test1!(#[bar])
-#[qux]
+#[rustc_dummy]
 fn main() {
     a::bar(); //~ ERROR cannot find function `bar` in module `a`
     b::bar();

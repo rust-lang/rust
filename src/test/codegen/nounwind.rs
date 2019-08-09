@@ -14,4 +14,3 @@ pub fn foo() {
 // CHECK: @bar() unnamed_addr #0
 // CHECK: attributes #0 = { {{.*}}nounwind{{.*}} }
 }
-

@@ -4,7 +4,7 @@ error: mutating transmuted &mut T from &T may cause undefined behavior, consider
 LL |     let _a: &mut u8 = unsafe { transmute(&1u8) };
    |                                ^^^^^^^^^
    |
-   = note: #[deny(mutable_transmutes)] on by default
+   = note: `#[deny(mutable_transmutes)]` on by default
 
 error: aborting due to previous error
 

@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Filesystem manipulation operations.
 //!
 //! This module contains basic methods to manipulate the contents of the local
@@ -9,7 +11,7 @@
 
 use crate::fmt;
 use crate::ffi::OsString;
-use crate::io::{self, SeekFrom, Seek, Read, Initializer, Write};
+use crate::io::{self, SeekFrom, Seek, Read, Initializer, Write, IoSlice, IoSliceMut};
 use crate::path::{Path, PathBuf};
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
@@ -21,7 +23,9 @@ use crate::time::SystemTime;
 /// it was opened with. Files also implement [`Seek`] to alter the logical cursor
 /// that the file contains internally.
 ///
-/// Files are automatically closed when they go out of scope.
+/// Files are automatically closed when they go out of scope.  Errors detected
+/// on closing are ignored by the implementation of `Drop`.  Use the method
+/// [`sync_all`] if these errors must be manually handled.
 ///
 /// # Examples
 ///
@@ -84,6 +88,7 @@ use crate::time::SystemTime;
 /// [`Read`]: ../io/trait.Read.html
 /// [`Write`]: ../io/trait.Write.html
 /// [`BufReader<R>`]: ../io/struct.BufReader.html
+/// [`sync_all`]: struct.File.html#method.sync_all
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
@@ -211,7 +216,7 @@ pub struct DirBuilder {
     recursive: bool,
 }
 
-/// How large a buffer to pre-allocate before reading the entire file.
+/// Indicates how large a buffer to pre-allocate before reading the entire file.
 fn initial_buffer_size(file: &File) -> usize {
     // Allocate one extra byte so the buffer doesn't need to grow before the
     // final `read` call at the end of the file.  Don't worry about `usize`
@@ -391,8 +396,12 @@ impl File {
 
     /// Attempts to sync all OS-internal metadata to disk.
     ///
-    /// This function will attempt to ensure that all in-core data reaches the
+    /// This function will attempt to ensure that all in-memory data reaches the
     /// filesystem before returning.
+    ///
+    /// This can be used to handle errors that would otherwise only be caught
+    /// when the `File` is closed.  Dropping a file will ignore errors in
+    /// synchronizing this in-memory data.
     ///
     /// # Examples
     ///
@@ -459,6 +468,8 @@ impl File {
     /// # Errors
     ///
     /// This function will return an error if the file is not opened for writing.
+    /// Also, std::io::ErrorKind::InvalidInput will be returned if the desired
+    /// length would cause an overflow due to the implementation specifics.
     ///
     /// # Examples
     ///
@@ -597,7 +608,7 @@ impl IntoInner<fs_imp::File> for File {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for File {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
 }
@@ -606,6 +617,10 @@ impl fmt::Debug for File {
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.inner.read_vectored(bufs)
     }
 
     #[inline]
@@ -618,6 +633,11 @@ impl Write for File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.write_vectored(bufs)
+    }
+
     fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -632,6 +652,10 @@ impl Read for &File {
         self.inner.read(buf)
     }
 
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.inner.read_vectored(bufs)
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -642,6 +666,11 @@ impl Write for &File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.write_vectored(bufs)
+    }
+
     fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -876,9 +905,12 @@ impl OpenOptions {
     }
 
     fn _open(&self, path: &Path) -> io::Result<File> {
-        let inner = fs_imp::File::open(path, &self.0)?;
-        Ok(File { inner })
+        fs_imp::File::open(path, &self.0).map(|inner| File { inner })
     }
+}
+
+impl AsInner<fs_imp::OpenOptions> for OpenOptions {
+    fn as_inner(&self) -> &fs_imp::OpenOptions { &self.0 }
 }
 
 impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
@@ -1087,7 +1119,7 @@ impl Metadata {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Metadata {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Metadata")
             .field("file_type", &self.file_type())
             .field("is_dir", &self.is_dir())
@@ -1102,6 +1134,10 @@ impl fmt::Debug for Metadata {
 
 impl AsInner<fs_imp::FileAttr> for Metadata {
     fn as_inner(&self) -> &fs_imp::FileAttr { &self.0 }
+}
+
+impl FromInner<fs_imp::FileAttr> for Metadata {
+    fn from_inner(attr: fs_imp::FileAttr) -> Metadata { Metadata(attr) }
 }
 
 impl Permissions {
@@ -1394,7 +1430,7 @@ impl DirEntry {
 
 #[stable(feature = "dir_entry_debug", since = "1.13.0")]
 impl fmt::Debug for DirEntry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("DirEntry")
             .field(&self.path())
             .finish()
@@ -1581,7 +1617,8 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// `O_CLOEXEC` is set for returned file descriptors.
 /// On Windows, this function currently corresponds to `CopyFileEx`. Alternate
 /// NTFS streams are copied but only the size of the main stream is returned by
-/// this function.
+/// this function. On MacOS, this function corresponds to `fclonefileat` and
+/// `fcopyfile`.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
@@ -1777,6 +1814,8 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///   function.)
 /// * `path` already exists.
 ///
+/// [`create_dir_all`]: fn.create_dir_all.html
+///
 /// # Examples
 ///
 /// ```no_run
@@ -1939,7 +1978,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// use std::path::Path;
 ///
 /// // one possible implementation of walking a directory only visiting files
-/// fn visit_dirs(dir: &Path, cb: &Fn(&DirEntry)) -> io::Result<()> {
+/// fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
 ///     if dir.is_dir() {
 ///         for entry in fs::read_dir(dir)? {
 ///             let entry = entry?;
@@ -2094,7 +2133,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
     }
 }
 
-#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
+#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
 mod tests {
     use crate::io::prelude::*;
 
@@ -2837,6 +2876,26 @@ mod tests {
     }
 
     #[test]
+    fn copy_file_follows_dst_symlink() {
+        let tmp = tmpdir();
+        if !got_symlink_permission(&tmp) { return };
+
+        let in_path = tmp.join("in.txt");
+        let out_path = tmp.join("out.txt");
+        let out_path_symlink = tmp.join("out_symlink.txt");
+
+        check!(fs::write(&in_path, "foo"));
+        check!(fs::write(&out_path, "bar"));
+        check!(symlink_file(&out_path, &out_path_symlink));
+
+        check!(fs::copy(&in_path, &out_path_symlink));
+
+        assert!(check!(out_path_symlink.symlink_metadata()).file_type().is_symlink());
+        assert_eq!(check!(fs::read(&out_path_symlink)), b"foo".to_vec());
+        assert_eq!(check!(fs::read(&out_path)), b"foo".to_vec());
+    }
+
+    #[test]
     fn symlinks_work() {
         let tmpdir = tmpdir();
         if !got_symlink_permission(&tmpdir) { return };
@@ -3259,11 +3318,11 @@ mod tests {
         fs::create_dir_all(&d).unwrap();
         File::create(&f).unwrap();
         if cfg!(not(windows)) {
-            symlink_dir("../d/e", &c).unwrap();
+            symlink_file("../d/e", &c).unwrap();
             symlink_file("../f", &e).unwrap();
         }
         if cfg!(windows) {
-            symlink_dir(r"..\d\e", &c).unwrap();
+            symlink_file(r"..\d\e", &c).unwrap();
             symlink_file(r"..\f", &e).unwrap();
         }
 

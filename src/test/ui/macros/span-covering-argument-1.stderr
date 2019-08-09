@@ -1,10 +1,10 @@
-error[E0596]: cannot borrow immutable local variable `foo` as mutable
-  --> $DIR/span-covering-argument-1.rs:5:19
+error[E0596]: cannot borrow `foo` as mutable, as it is not declared as mutable
+  --> $DIR/span-covering-argument-1.rs:5:14
    |
 LL |             let $s = 0;
-   |                 -- help: make this binding mutable: `mut $s`
+   |                 -- help: consider changing this to be mutable: `mut foo`
 LL |             *&mut $s = 0;
-   |                   ^^ cannot borrow mutably
+   |              ^^^^^^^ cannot borrow as mutable
 ...
 LL |     bad!(foo whatever);
    |     ------------------- in this macro invocation

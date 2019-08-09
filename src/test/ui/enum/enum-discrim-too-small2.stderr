@@ -1,4 +1,4 @@
-error: literal out of range for i8
+error: literal out of range for `i8`
   --> $DIR/enum-discrim-too-small2.rs:8:11
    |
 LL |     Ci8 = 223,
@@ -10,19 +10,19 @@ note: lint level defined here
 LL | #![deny(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: literal out of range for i16
+error: literal out of range for `i16`
   --> $DIR/enum-discrim-too-small2.rs:15:12
    |
 LL |     Ci16 = 55555,
    |            ^^^^^
 
-error: literal out of range for i32
+error: literal out of range for `i32`
   --> $DIR/enum-discrim-too-small2.rs:22:12
    |
 LL |     Ci32 = 3_000_000_000,
    |            ^^^^^^^^^^^^^
 
-error: literal out of range for i64
+error: literal out of range for `i64`
   --> $DIR/enum-discrim-too-small2.rs:29:12
    |
 LL |     Ci64 = 9223372036854775809,

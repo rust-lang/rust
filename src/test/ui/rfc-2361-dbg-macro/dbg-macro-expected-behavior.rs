@@ -1,6 +1,7 @@
 // run-pass
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 // Tests ensuring that `dbg!(expr)` has the expected run-time behavior.
 // as well as some compile time properties we expect.
@@ -33,6 +34,9 @@ fn test() {
     // We can move `b` because it's Copy.
     drop(b);
 
+    // Without parameters works as expected.
+    let _: () = dbg!();
+
     // Test that we can borrow and that successive applications is still identity.
     let a = NoCopy(1337);
     let b: &NoCopy = dbg!(dbg!(&a));
@@ -51,35 +55,59 @@ fn test() {
         7331
     }));
     assert_eq!(foo, 42);
+
+    // Test trailing comma:
+    assert_eq!(("Yeah",), dbg!(("Yeah",)));
+
+    // Test multiple arguments:
+    assert_eq!((1u8, 2u32), dbg!(1,
+                                 2));
+
+    // Test multiple arguments + trailing comma:
+    assert_eq!((1u8, 2u32, "Yeah"), dbg!(1u8, 2u32,
+                                         "Yeah",));
 }
 
 fn validate_stderr(stderr: Vec<String>) {
     assert_eq!(stderr, &[
-        ":21] Unit = Unit",
+        ":22] Unit = Unit",
 
-        ":22] a = Unit",
+        ":23] a = Unit",
 
-        ":28] Point{x: 42, y: 24,} = Point {",
+        ":29] Point{x: 42, y: 24,} = Point {",
         "    x: 42,",
-        "    y: 24",
+        "    y: 24,",
         "}",
 
-        ":29] b = Point {",
+        ":30] b = Point {",
         "    x: 42,",
-        "    y: 24",
+        "    y: 24,",
         "}",
 
-        ":38] &a = NoCopy(",
-        "    1337",
+        ":38]",
+
+        ":42] &a = NoCopy(",
+        "    1337,",
         ")",
 
-        ":38] dbg!(& a) = NoCopy(",
-        "    1337",
+        ":42] dbg!(& a) = NoCopy(",
+        "    1337,",
         ")",
-        ":43] f(&42) = 42",
+        ":47] f(&42) = 42",
 
         "before",
-        ":48] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
+        ":52] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
+
+        ":60] (\"Yeah\",) = (",
+        "    \"Yeah\",",
+        ")",
+
+        ":63] 1 = 1",
+        ":63] 2 = 2",
+
+        ":67] 1u8 = 1",
+        ":67] 2u32 = 2",
+        ":67] \"Yeah\" = \"Yeah\"",
     ]);
 }
 

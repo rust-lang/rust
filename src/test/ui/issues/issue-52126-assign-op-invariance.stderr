@@ -4,10 +4,11 @@ error[E0597]: `line` does not live long enough
 LL |         let v: Vec<&str> = line.split_whitespace().collect();
    |                            ^^^^ borrowed value does not live long enough
 ...
+LL |         acc += cnt2;
+   |         --- borrow later used here
+...
 LL |     }
    |     - `line` dropped here while still borrowed
-LL | }
-   | - borrowed value needs to live until here
 
 error: aborting due to previous error
 

@@ -23,10 +23,10 @@ impl Drop for B {
 }
 
 struct A<'r> {
-    p: &'r (X+'r)
+    p: &'r (dyn X + 'r)
 }
 
-fn make_a(p:&X) -> A {
+fn make_a(p: &dyn X) -> A {
     A{p:p}
 }
 
@@ -34,8 +34,8 @@ fn make_make_a<'a>() -> A<'a> {
     let b: Box<B> = box B {
         i: 1,
     };
-    let bb: &B = &*b; //~ ERROR `*b` does not live long enough
-    make_a(bb)
+    let bb: &B = &*b;
+    make_a(bb) //~ ERROR cannot return value referencing local data `*b`
 }
 
 fn main() {

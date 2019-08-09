@@ -1,4 +1,4 @@
 fn main() {
     let _foo = Vec::new();
-    //~^ ERROR type annotations needed [E0282]
+    //~^ ERROR type annotations needed
 }

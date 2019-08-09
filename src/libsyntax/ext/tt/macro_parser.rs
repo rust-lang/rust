@@ -74,13 +74,13 @@ pub use NamedMatch::*;
 pub use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
-use crate::ast::Ident;
+use crate::ast::{Ident, Name};
 use crate::ext::tt::quoted::{self, TokenTree};
 use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
 use crate::parse::token::{self, DocComment, Nonterminal, Token};
 use crate::print::pprust;
-use crate::symbol::keywords;
+use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream};
 
 use errors::FatalError;
@@ -92,7 +92,6 @@ use rustc_data_structures::sync::Lrc;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has a nonempty body.
 
@@ -156,7 +155,7 @@ type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
 /// all the elements in that `SmallVec` strictly outlive the root stack slot
 /// lifetime. By separating `'tt` from `'root`, we can show that.
 #[derive(Clone)]
-struct MatcherPos<'root, 'tt: 'root> {
+struct MatcherPos<'root, 'tt> {
     /// The token or sequence of tokens that make up the matcher
     top_elts: TokenTreeOrTokenTreeSlice<'tt>,
 
@@ -233,7 +232,7 @@ impl<'root, 'tt> MatcherPos<'root, 'tt> {
 // Therefore, the initial MatcherPos is always allocated on the stack,
 // subsequent ones (of which there aren't that many) are allocated on the heap,
 // and this type is used to encapsulate both cases.
-enum MatcherPosHandle<'root, 'tt: 'root> {
+enum MatcherPosHandle<'root, 'tt> {
     Ref(&'root mut MatcherPos<'root, 'tt>),
     Box(Box<MatcherPos<'root, 'tt>>),
 }
@@ -273,14 +272,14 @@ pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    Failure(syntax_pos::Span, Token, &'static str),
+    Failure(Token, &'static str),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(syntax_pos::Span, String),
 }
 
 /// A `ParseResult` where the `Success` variant contains a mapping of `Ident`s to `NamedMatch`es.
 /// This represents the mapping of metavars to the token trees they bind to.
-pub type NamedParseResult = ParseResult<FxHashMap<Ident, Rc<NamedMatch>>>;
+pub type NamedParseResult = ParseResult<FxHashMap<Ident, NamedMatch>>;
 
 /// Count how many metavars are named in the given matcher `ms`.
 pub fn count_names(ms: &[TokenTree]) -> usize {
@@ -373,7 +372,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
         sess: &ParseSess,
         m: &TokenTree,
         res: &mut I,
-        ret_val: &mut FxHashMap<Ident, Rc<NamedMatch>>,
+        ret_val: &mut FxHashMap<Ident, NamedMatch>,
     ) -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => for next_m in &seq.tts {
@@ -382,7 +381,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
             TokenTree::Delimited(_, ref delim) => for next_m in &delim.tts {
                 n_rec(sess, next_m, res.by_ref(), ret_val)?;
             },
-            TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
+            TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
                 if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
                     return Err((span, "missing fragment specifier".to_string()));
                 }
@@ -390,8 +389,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
             TokenTree::MetaVarDecl(sp, bind_name, _) => {
                 match ret_val.entry(bind_name) {
                     Vacant(spot) => {
-                        // FIXME(simulacrum): Don't construct Rc here
-                        spot.insert(Rc::new(res.next().unwrap()));
+                        spot.insert(res.next().unwrap());
                     }
                     Occupied(..) => {
                         return Err((sp, format!("duplicated bind name: {}", bind_name)))
@@ -417,24 +415,24 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub fn parse_failure_msg(tok: Token) -> String {
-    match tok {
+pub fn parse_failure_msg(tok: &Token) -> String {
+    match tok.kind {
         token::Eof => "unexpected end of macro invocation".to_string(),
         _ => format!(
             "no rules expected the token `{}`",
-            pprust::token_to_string(&tok)
+            pprust::token_to_string(tok)
         ),
     }
 }
 
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
-    if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
-        id1.name == id2.name && is_raw1 == is_raw2
-    } else if let (Some(id1), Some(id2)) = (t1.lifetime(), t2.lifetime()) {
-        id1.name == id2.name
+    if let (Some((ident1, is_raw1)), Some((ident2, is_raw2))) = (t1.ident(), t2.ident()) {
+        ident1.name == ident2.name && is_raw1 == is_raw2
+    } else if let (Some(ident1), Some(ident2)) = (t1.lifetime(), t2.lifetime()) {
+        ident1.name == ident2.name
     } else {
-        *t1 == *t2
+        t1.kind == t2.kind
     }
 }
 
@@ -467,7 +465,6 @@ fn inner_parse_loop<'root, 'tt>(
     eof_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     bb_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     token: &Token,
-    span: syntax_pos::Span,
 ) -> ParseResult<()> {
     // Pop items from `cur_items` until it is empty.
     while let Some(mut item) = cur_items.pop() {
@@ -510,7 +507,7 @@ fn inner_parse_loop<'root, 'tt>(
                     // Add matches from this repetition to the `matches` of `up`
                     for idx in item.match_lo..item.match_hi {
                         let sub = item.matches[idx].clone();
-                        let span = DelimSpan::from_pair(item.sp_open, span);
+                        let span = DelimSpan::from_pair(item.sp_open, token.span);
                         new_pos.push_match(idx, MatchedSeq(sub, span));
                     }
 
@@ -554,9 +551,12 @@ fn inner_parse_loop<'root, 'tt>(
             match item.top_elts.get_tt(idx) {
                 // Need to descend into a sequence
                 TokenTree::Sequence(sp, seq) => {
-                    // Examine the case where there are 0 matches of this sequence
-                    if seq.op == quoted::KleeneOp::ZeroOrMore
-                        || seq.op == quoted::KleeneOp::ZeroOrOne
+                    // Examine the case where there are 0 matches of this sequence. We are
+                    // implicitly disallowing OneOrMore from having 0 matches here. Thus, that will
+                    // result in a "no rules expected token" error by virtue of this matcher not
+                    // working.
+                    if seq.kleene.op == quoted::KleeneOp::ZeroOrMore
+                        || seq.kleene.op == quoted::KleeneOp::ZeroOrOne
                     {
                         let mut new_item = item.clone();
                         new_item.match_cur += seq.num_captures;
@@ -571,7 +571,7 @@ fn inner_parse_loop<'root, 'tt>(
                     cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos {
                         stack: smallvec![],
                         sep: seq.separator.clone(),
-                        seq_op: Some(seq.op),
+                        seq_op: Some(seq.kleene.op),
                         idx: 0,
                         matches,
                         match_lo: item.match_cur,
@@ -584,7 +584,7 @@ fn inner_parse_loop<'root, 'tt>(
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
-                TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
+                TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
                     if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
                         return Error(span, "missing fragment specifier".to_string());
                     }
@@ -595,7 +595,7 @@ fn inner_parse_loop<'root, 'tt>(
                 TokenTree::MetaVarDecl(_, _, id) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
-                    if may_begin_with(&*id.as_str(), token) {
+                    if may_begin_with(token, id.name) {
                         bb_items.push(item);
                     }
                 }
@@ -606,7 +606,8 @@ fn inner_parse_loop<'root, 'tt>(
                 //
                 // At the beginning of the loop, if we reach the end of the delimited submatcher,
                 // we pop the stack to backtrack out of the descent.
-                seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
+                seq @ TokenTree::Delimited(..) |
+                seq @ TokenTree::Token(Token { kind: DocComment(..), .. }) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame {
@@ -618,7 +619,7 @@ fn inner_parse_loop<'root, 'tt>(
                 }
 
                 // We just matched a normal token. We can just advance the parser.
-                TokenTree::Token(_, ref t) if token_name_eq(t, token) => {
+                TokenTree::Token(t) if token_name_eq(&t, token) => {
                     item.idx += 1;
                     next_items.push(item);
                 }
@@ -655,7 +656,14 @@ pub fn parse(
     recurse_into_modules: bool,
 ) -> NamedParseResult {
     // Create a parser that can be used for the "black box" parts.
-    let mut parser = Parser::new(sess, tts, directory, recurse_into_modules, true);
+    let mut parser = Parser::new(
+        sess,
+        tts,
+        directory,
+        recurse_into_modules,
+        true,
+        crate::MACRO_ARGUMENTS,
+    );
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which
     // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
@@ -665,7 +673,7 @@ pub fn parse(
     //
     // This MatcherPos instance is allocated on the stack. All others -- and
     // there are frequently *no* others! -- are allocated on the heap.
-    let mut initial = initial_matcher_pos(ms, parser.span);
+    let mut initial = initial_matcher_pos(ms, parser.token.span);
     let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
     let mut next_items = Vec::new();
 
@@ -687,10 +695,9 @@ pub fn parse(
             &mut eof_items,
             &mut bb_items,
             &parser.token,
-            parser.span,
         ) {
             Success(_) => {}
-            Failure(sp, tok, t) => return Failure(sp, tok, t),
+            Failure(token, msg) => return Failure(token, msg),
             Error(sp, msg) => return Error(sp, msg),
         }
 
@@ -703,7 +710,7 @@ pub fn parse(
 
         // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
         // either the parse is ambiguous (which should never happen) or there is a syntax error.
-        if token_name_eq(&parser.token, &token::Eof) {
+        if parser.token == token::Eof {
             if eof_items.len() == 1 {
                 let matches = eof_items[0]
                     .matches
@@ -712,17 +719,16 @@ pub fn parse(
                 return nameize(sess, ms, matches);
             } else if eof_items.len() > 1 {
                 return Error(
-                    parser.span,
+                    parser.token.span,
                     "ambiguity: multiple successful parses".to_string(),
                 );
             } else {
                 return Failure(
-                    if parser.span.is_dummy() {
-                        parser.span
+                    Token::new(token::Eof, if parser.token.span.is_dummy() {
+                        parser.token.span
                     } else {
-                        sess.source_map().next_point(parser.span)
-                    },
-                    token::Eof,
+                        sess.source_map().next_point(parser.token.span)
+                    }),
                     "missing tokens in macro arguments",
                 );
             }
@@ -745,7 +751,7 @@ pub fn parse(
                 .join(" or ");
 
             return Error(
-                parser.span,
+                parser.token.span,
                 format!(
                     "local ambiguity: multiple parsing options: {}",
                     match next_items.len() {
@@ -760,8 +766,7 @@ pub fn parse(
         // then there is a syntax error.
         else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(
-                parser.span,
-                parser.token.clone(),
+                parser.token.take(),
                 "no rules expected this token in macro call",
             );
         }
@@ -781,7 +786,7 @@ pub fn parse(
                 let match_cur = item.match_cur;
                 item.push_match(
                     match_cur,
-                    MatchedNonterminal(Lrc::new(parse_nt(&mut parser, span, &ident.as_str()))),
+                    MatchedNonterminal(Lrc::new(parse_nt(&mut parser, span, ident.name))),
                 );
                 item.idx += 1;
                 item.match_cur += 1;
@@ -797,10 +802,9 @@ pub fn parse(
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
-    match *token {
-        token::Ident(ident, is_raw) if ident.name != keywords::Underscore.name() =>
-            Some((ident, is_raw)),
+fn get_macro_name(token: &Token) -> Option<(Name, bool)> {
+    match token.kind {
+        token::Ident(name, is_raw) if name != kw::Underscore => Some((name, is_raw)),
         _ => None,
     }
 }
@@ -809,7 +813,7 @@ fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
 ///
 /// Returning `false` is a *stability guarantee* that such a matcher will *never* begin with that
 /// token. Be conservative (return true) if not sure.
-fn may_begin_with(name: &str, token: &Token) -> bool {
+fn may_begin_with(token: &Token, name: Name) -> bool {
     /// Checks whether the non-terminal may contain a single (non-keyword) identifier.
     fn may_be_ident(nt: &token::Nonterminal) -> bool {
         match *nt {
@@ -819,18 +823,20 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
     }
 
     match name {
-        "expr" => token.can_begin_expr(),
-        "ty" => token.can_begin_type(),
-        "ident" => get_macro_ident(token).is_some(),
-        "literal" => token.can_begin_literal_or_bool(),
-        "vis" => match *token {
+        sym::expr => token.can_begin_expr()
+            // This exception is here for backwards compatibility.
+            && !token.is_keyword(kw::Let),
+        sym::ty => token.can_begin_type(),
+        sym::ident => get_macro_name(token).is_some(),
+        sym::literal => token.can_begin_literal_or_bool(),
+        sym::vis => match token.kind {
             // The follow-set of :vis + "priv" keyword + interpolated
-            Token::Comma | Token::Ident(..) | Token::Interpolated(_) => true,
+            token::Comma | token::Ident(..) | token::Interpolated(_) => true,
             _ => token.can_begin_type(),
         },
-        "block" => match *token {
-            Token::OpenDelim(token::Brace) => true,
-            Token::Interpolated(ref nt) => match **nt {
+        sym::block => match token.kind {
+            token::OpenDelim(token::Brace) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtItem(_)
                 | token::NtPat(_)
                 | token::NtTy(_)
@@ -842,39 +848,39 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             },
             _ => false,
         },
-        "path" | "meta" => match *token {
-            Token::ModSep | Token::Ident(..) => true,
-            Token::Interpolated(ref nt) => match **nt {
+        sym::path | sym::meta => match token.kind {
+            token::ModSep | token::Ident(..) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtPath(_) | token::NtMeta(_) => true,
                 _ => may_be_ident(&nt),
             },
             _ => false,
         },
-        "pat" => match *token {
-            Token::Ident(..) |               // box, ref, mut, and other identifiers (can stricten)
-            Token::OpenDelim(token::Paren) |    // tuple pattern
-            Token::OpenDelim(token::Bracket) |  // slice pattern
-            Token::BinOp(token::And) |          // reference
-            Token::BinOp(token::Minus) |        // negative literal
-            Token::AndAnd |                     // double reference
-            Token::Literal(..) |                // literal
-            Token::DotDot |                     // range pattern (future compat)
-            Token::DotDotDot |                  // range pattern (future compat)
-            Token::ModSep |                     // path
-            Token::Lt |                         // path (UFCS constant)
-            Token::BinOp(token::Shl) => true,   // path (double UFCS)
-            Token::Interpolated(ref nt) => may_be_ident(nt),
+        sym::pat => match token.kind {
+            token::Ident(..) |               // box, ref, mut, and other identifiers (can stricten)
+            token::OpenDelim(token::Paren) |    // tuple pattern
+            token::OpenDelim(token::Bracket) |  // slice pattern
+            token::BinOp(token::And) |          // reference
+            token::BinOp(token::Minus) |        // negative literal
+            token::AndAnd |                     // double reference
+            token::Literal(..) |                // literal
+            token::DotDot |                     // range pattern (future compat)
+            token::DotDotDot |                  // range pattern (future compat)
+            token::ModSep |                     // path
+            token::Lt |                         // path (UFCS constant)
+            token::BinOp(token::Shl) => true,   // path (double UFCS)
+            token::Interpolated(ref nt) => may_be_ident(nt),
             _ => false,
         },
-        "lifetime" => match *token {
-            Token::Lifetime(_) => true,
-            Token::Interpolated(ref nt) => match **nt {
+        sym::lifetime => match token.kind {
+            token::Lifetime(_) => true,
+            token::Interpolated(ref nt) => match **nt {
                 token::NtLifetime(_) | token::NtTT(_) => true,
                 _ => false,
             },
             _ => false,
         },
-        _ => match *token {
+        _ => match token.kind {
             token::CloseDelim(_) => false,
             _ => true,
         },
@@ -893,46 +899,46 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
 /// # Returns
 ///
 /// The parsed non-terminal.
-fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
-    if name == "tt" {
+fn parse_nt(p: &mut Parser<'_>, sp: Span, name: Symbol) -> Nonterminal {
+    if name == sym::tt {
         return token::NtTT(p.parse_token_tree());
     }
     // check at the beginning and the parser checks after each bump
     p.process_potential_macro_variable();
     match name {
-        "item" => match panictry!(p.parse_item()) {
+        sym::item => match panictry!(p.parse_item()) {
             Some(i) => token::NtItem(i),
             None => {
                 p.fatal("expected an item keyword").emit();
                 FatalError.raise();
             }
         },
-        "block" => token::NtBlock(panictry!(p.parse_block())),
-        "stmt" => match panictry!(p.parse_stmt()) {
+        sym::block => token::NtBlock(panictry!(p.parse_block())),
+        sym::stmt => match panictry!(p.parse_stmt()) {
             Some(s) => token::NtStmt(s),
             None => {
                 p.fatal("expected a statement").emit();
                 FatalError.raise();
             }
         },
-        "pat" => token::NtPat(panictry!(p.parse_pat(None))),
-        "expr" => token::NtExpr(panictry!(p.parse_expr())),
-        "literal" => token::NtLiteral(panictry!(p.parse_literal_maybe_minus())),
-        "ty" => token::NtTy(panictry!(p.parse_ty())),
+        sym::pat => token::NtPat(panictry!(p.parse_pat(None))),
+        sym::expr => token::NtExpr(panictry!(p.parse_expr())),
+        sym::literal => token::NtLiteral(panictry!(p.parse_literal_maybe_minus())),
+        sym::ty => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
-        "ident" => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
-            let span = p.span;
+        sym::ident => if let Some((name, is_raw)) = get_macro_name(&p.token) {
+            let span = p.token.span;
             p.bump();
-            token::NtIdent(Ident::new(ident.name, span), is_raw)
+            token::NtIdent(Ident::new(name, span), is_raw)
         } else {
             let token_str = pprust::token_to_string(&p.token);
             p.fatal(&format!("expected ident, found {}", &token_str)).emit();
             FatalError.raise()
         }
-        "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
-        "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
-        "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
-        "lifetime" => if p.check_lifetime() {
+        sym::path => token::NtPath(panictry!(p.parse_path(PathStyle::Type))),
+        sym::meta => token::NtMeta(panictry!(p.parse_meta_item())),
+        sym::vis => token::NtVis(panictry!(p.parse_visibility(true))),
+        sym::lifetime => if p.check_lifetime() {
             token::NtLifetime(p.expect_lifetime().ident)
         } else {
             let token_str = pprust::token_to_string(&p.token);

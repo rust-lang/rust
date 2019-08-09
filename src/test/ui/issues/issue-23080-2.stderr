@@ -1,5 +1,5 @@
 error[E0380]: auto traits cannot have methods or associated items
-  --> $DIR/issue-23080-2.rs:7:1
+  --> $DIR/issue-23080-2.rs:5:1
    |
 LL | / unsafe auto trait Trait {
 LL | |
@@ -14,5 +14,5 @@ error[E0275]: overflow evaluating the requirement `<() as Trait>::Output`
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0275, E0380.
+Some errors have detailed explanations: E0275, E0380.
 For more information about an error, try `rustc --explain E0275`.

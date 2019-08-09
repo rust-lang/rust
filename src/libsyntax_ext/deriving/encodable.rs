@@ -85,11 +85,9 @@
 use crate::deriving::{self, pathvec_std};
 use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
-use crate::deriving::warn_if_deprecated;
 
 use syntax::ast::{Expr, ExprKind, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -99,24 +97,7 @@ pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt<'_>,
                                        mitem: &MetaItem,
                                        item: &Annotatable,
                                        push: &mut dyn FnMut(Annotatable)) {
-    expand_deriving_encodable_imp(cx, span, mitem, item, push, "rustc_serialize")
-}
-
-pub fn expand_deriving_encodable(cx: &mut ExtCtxt<'_>,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable)) {
-    warn_if_deprecated(cx, span, "Encodable");
-    expand_deriving_encodable_imp(cx, span, mitem, item, push, "serialize")
-}
-
-fn expand_deriving_encodable_imp(cx: &mut ExtCtxt<'_>,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable),
-                                 krate: &'static str) {
+    let krate = "rustc_serialize";
     let typaram = &*deriving::hygienic_type_parameter(item, "__S");
 
     let trait_def = TraitDef {

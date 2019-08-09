@@ -1,0 +1,15 @@
+error[E0618]: expected function, found `()`
+  --> $DIR/suggest-on-bare-closure-call.rs:2:15
+   |
+LL |     let _ = ||{}();
+   |               ^^--
+   |               |
+   |               call expression requires function
+help: if you meant to create this closure and immediately call it, surround the closure with parenthesis
+   |
+LL |     let _ = (||{})();
+   |             ^    ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0618`.

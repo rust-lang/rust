@@ -1,5 +1,5 @@
 error[E0597]: `local_arr` does not live long enough
-  --> $DIR/propagate-multiple-requirements.rs:17:14
+  --> $DIR/propagate-multiple-requirements.rs:15:14
    |
 LL |     let mut out: &mut &'static [i32] = &mut (&[1] as _);
    |                  ------------------- type annotation requires that `local_arr` is borrowed for `'static`

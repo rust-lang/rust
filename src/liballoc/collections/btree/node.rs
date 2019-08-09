@@ -106,10 +106,10 @@ impl<K, V> LeafNode<K, V> {
         LeafNode {
             // As a general policy, we leave fields uninitialized if they can be, as this should
             // be both slightly faster and easier to track in Valgrind.
-            keys: uninitialized_array![_; CAPACITY],
-            vals: uninitialized_array![_; CAPACITY],
+            keys: uninit_array![_; CAPACITY],
+            vals: uninit_array![_; CAPACITY],
             parent: ptr::null(),
-            parent_idx: MaybeUninit::uninitialized(),
+            parent_idx: MaybeUninit::uninit(),
             len: 0
         }
     }
@@ -129,7 +129,7 @@ unsafe impl Sync for NodeHeader<(), ()> {}
 // ever take a pointer past the first key.
 static EMPTY_ROOT_NODE: NodeHeader<(), ()> = NodeHeader {
     parent: ptr::null(),
-    parent_idx: MaybeUninit::uninitialized(),
+    parent_idx: MaybeUninit::uninit(),
     len: 0,
     keys_start: [],
 };
@@ -159,7 +159,7 @@ impl<K, V> InternalNode<K, V> {
     unsafe fn new() -> Self {
         InternalNode {
             data: LeafNode::new(),
-            edges: uninitialized_array![_; 2*B],
+            edges: uninit_array![_; 2*B],
         }
     }
 }
@@ -261,7 +261,7 @@ impl<K, V> Root<K, V> {
             -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         debug_assert!(!self.is_shared_root());
         let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0].set(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
+        new_node.edges[0].write(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
 
         self.node = BoxedNode::from_internal(new_node);
         self.height += 1;
@@ -394,7 +394,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     /// Temporarily takes out another, immutable reference to the same node.
-    fn reborrow<'a>(&'a self) -> NodeRef<marker::Immut<'a>, K, V, Type> {
+    fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
         NodeRef {
             height: self.height,
             node: self.node,
@@ -737,7 +737,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         unsafe {
             ptr::write(self.keys_mut().get_unchecked_mut(idx), key);
             ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
-            self.as_internal_mut().edges.get_unchecked_mut(idx + 1).set(edge.node);
+            self.as_internal_mut().edges.get_unchecked_mut(idx + 1).write(edge.node);
 
             (*self.as_leaf_mut()).len += 1;
 
@@ -1080,7 +1080,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         let mut child = self.descend();
         unsafe {
             (*child.as_leaf_mut()).parent = ptr;
-            (*child.as_leaf_mut()).parent_idx.set(idx);
+            (*child.as_leaf_mut()).parent_idx.write(idx);
         }
     }
 

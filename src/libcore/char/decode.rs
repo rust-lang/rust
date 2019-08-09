@@ -1,6 +1,7 @@
 //! UTF-8 and UTF-16 decoding iterators
 
-use fmt;
+use crate::fmt;
+
 use super::from_u32_unchecked;
 
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
@@ -127,7 +128,7 @@ impl DecodeUtf16Error {
 
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 impl fmt::Display for DecodeUtf16Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "unpaired surrogate found: {:x}", self.code)
     }
 }

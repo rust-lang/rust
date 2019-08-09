@@ -1,2 +1,2 @@
 #[macro_export]
-macro_rules! my_attr { () => () }
+macro_rules! empty_helper { () => () }

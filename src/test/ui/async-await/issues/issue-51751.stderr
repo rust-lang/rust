@@ -1,0 +1,11 @@
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-51751.rs:11:20
+   |
+LL | fn main() {
+   |    ---- this is not `async`
+LL |     let result = inc(10000);
+LL |     let finished = result.await;
+   |                    ^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+
+error: aborting due to previous error
+

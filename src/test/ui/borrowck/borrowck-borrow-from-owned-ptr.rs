@@ -43,15 +43,17 @@ fn borrow_same_field_twice_imm_imm() {
 fn borrow_both_fields_mut() {
     let mut foo = make_foo();
     let bar1 = &mut foo.bar1;
-    let _bar2 = &mut foo.bar2; //~ ERROR cannot borrow
+    let _bar2 = &mut foo.bar2;
     *bar1;
 }
 
 fn borrow_both_mut_pattern() {
     let mut foo = make_foo();
     match *foo {
-        Foo { bar1: ref mut _bar1, bar2: ref mut _bar2 } => {}
-        //~^ ERROR cannot borrow
+        Foo { bar1: ref mut _bar1, bar2: ref mut _bar2 } => {
+            *_bar1;
+            *_bar2;
+        }
     }
 }
 
@@ -112,8 +114,7 @@ fn borrow_imm_and_base_imm() {
 fn borrow_mut_and_imm() {
     let mut foo = make_foo();
     let bar1 = &mut foo.bar1;
-    let _foo1 = &foo.bar2; //~ ERROR cannot borrow
-    *bar1;
+    let _foo1 = &foo.bar2;
 }
 
 fn borrow_mut_from_imm() {
@@ -125,7 +126,7 @@ fn borrow_mut_from_imm() {
 fn borrow_long_path_both_mut() {
     let mut foo = make_foo();
     let bar1 = &mut foo.bar1.int1;
-    let foo1 = &mut foo.bar2.int2; //~ ERROR cannot borrow
+    let foo1 = &mut foo.bar2.int2;
     *bar1;
     *foo1;
 }

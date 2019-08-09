@@ -1,10 +1,7 @@
 // Regression test for an NLL-related ICE (#53568) -- we failed to
 // resolve inference variables in "custom type-ops".
 //
-// compile-pass
-
-#![feature(nll)]
-#![allow(dead_code)]
+// build-pass (FIXME(62277): could be check-pass?)
 
 trait Future {
     type Item;
@@ -48,4 +45,3 @@ where H: Fn() + Copy
 }
 
 fn main() { }
-

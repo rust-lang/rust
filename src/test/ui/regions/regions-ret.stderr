@@ -1,20 +1,12 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-ret.rs:4:13
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/regions-ret.rs:4:12
    |
 LL |     return &id(3);
-   |             ^^^^^- temporary value only lives until here
-   |             |
-   |             temporary value does not live long enough
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 3:1...
-  --> $DIR/regions-ret.rs:3:1
-   |
-LL | / fn f(_x: &isize) -> &isize {
-LL | |     return &id(3);
-LL | | }
-   | |_^
-   = note: consider using a `let` binding to increase its lifetime
+   |            ^-----
+   |            ||
+   |            |temporary value created here
+   |            returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

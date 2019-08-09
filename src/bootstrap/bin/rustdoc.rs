@@ -2,7 +2,8 @@
 //!
 //! See comments in `src/bootstrap/rustc.rs` for more information.
 
-#![deny(warnings)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
 
 use std::env;
 use std::process::Command;
@@ -35,7 +36,7 @@ fn main() {
         .arg("--cfg")
         .arg("dox")
         .arg("--sysroot")
-        .arg(sysroot)
+        .arg(&sysroot)
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
 
@@ -69,10 +70,27 @@ fn main() {
                .arg("unstable-options");
         }
         cmd.arg("--generate-redirect-pages");
+        has_unstable = true;
+    }
+
+    // Needed to be able to run all rustdoc tests.
+    if let Some(ref x) = env::var_os("RUSTDOC_RESOURCE_SUFFIX") {
+        // This "unstable-options" can be removed when `--resource-suffix` is stabilized
+        if !has_unstable {
+            cmd.arg("-Z")
+               .arg("unstable-options");
+        }
+        cmd.arg("--resource-suffix").arg(x);
     }
 
     if verbose > 1 {
-        eprintln!("rustdoc command: {:?}", cmd);
+        eprintln!(
+            "rustdoc command: {:?}={:?} {:?}",
+            bootstrap::util::dylib_path_var(),
+            env::join_paths(&dylib_path).unwrap(),
+            cmd,
+        );
+        eprintln!("sysroot: {:?}", sysroot);
         eprintln!("libdir: {:?}", libdir);
     }
 

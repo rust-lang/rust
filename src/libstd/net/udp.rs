@@ -180,6 +180,37 @@ impl UdpSocket {
         }
     }
 
+    /// Returns the socket address of the remote peer this socket was connected to.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(udp_peer_addr)]
+    /// use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, UdpSocket};
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// socket.connect("192.168.0.1:41203").expect("couldn't connect to address");
+    /// assert_eq!(socket.peer_addr().unwrap(),
+    ///            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 41203)));
+    /// ```
+    ///
+    /// If the socket isn't connected, it will return a [`NotConnected`] error.
+    ///
+    /// [`NotConnected`]: ../../std/io/enum.ErrorKind.html#variant.NotConnected
+    ///
+    /// ```no_run
+    /// #![feature(udp_peer_addr)]
+    /// use std::net::UdpSocket;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// assert_eq!(socket.peer_addr().unwrap_err().kind(),
+    ///            ::std::io::ErrorKind::NotConnected);
+    /// ```
+    #[unstable(feature = "udp_peer_addr", issue = "59127")]
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        self.0.peer_addr()
+    }
+
     /// Returns the socket address that this socket was created from.
     ///
     /// # Examples
@@ -391,7 +422,7 @@ impl UdpSocket {
     /// Sets the value of the `IP_MULTICAST_LOOP` option for this socket.
     ///
     /// If enabled, multicast packets will be looped back to the local socket.
-    /// Note that this may not have any affect on IPv6 sockets.
+    /// Note that this may not have any effect on IPv6 sockets.
     ///
     /// # Examples
     ///
@@ -433,7 +464,7 @@ impl UdpSocket {
     /// this socket. The default value is 1 which means that multicast packets
     /// don't leave the local network unless explicitly requested.
     ///
-    /// Note that this may not have any affect on IPv6 sockets.
+    /// Note that this may not have any effect on IPv6 sockets.
     ///
     /// # Examples
     ///
@@ -801,12 +832,12 @@ impl IntoInner<net_imp::UdpSocket> for UdpSocket {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for UdpSocket {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
+#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
 mod tests {
     use crate::io::ErrorKind;
     use crate::net::*;
@@ -865,10 +896,20 @@ mod tests {
     }
 
     #[test]
-    fn socket_name_ip4() {
+    fn socket_name() {
         each_ip(&mut |addr, _| {
             let server = t!(UdpSocket::bind(&addr));
             assert_eq!(addr, t!(server.local_addr()));
+        })
+    }
+
+    #[test]
+    fn socket_peer() {
+        each_ip(&mut |addr1, addr2| {
+            let server = t!(UdpSocket::bind(&addr1));
+            assert_eq!(server.peer_addr().unwrap_err().kind(), ErrorKind::NotConnected);
+            t!(server.connect(&addr2));
+            assert_eq!(addr2, t!(server.peer_addr()));
         })
     }
 
@@ -983,9 +1024,9 @@ mod tests {
         assert_eq!(format!("{:?}", udpsock), compare);
     }
 
-    // FIXME: re-enabled bitrig/openbsd/netbsd tests once their socket timeout code
+    // FIXME: re-enabled openbsd/netbsd tests once their socket timeout code
     //        no longer has rounding errors.
-    #[cfg_attr(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"), ignore)]
+    #[cfg_attr(any(target_os = "netbsd", target_os = "openbsd"), ignore)]
     #[test]
     fn timeouts() {
         let addr = next_test_ip4();

@@ -37,11 +37,10 @@ error[E0208]: [o, o]
   --> $DIR/variance-types-bounds.rs:38:1
    |
 LL | / struct TestObject<A, R> {
-LL | |     n: Box<Setter<A>+Send>,
-LL | |     m: Box<Getter<R>+Send>,
+LL | |     n: Box<dyn Setter<A>+Send>,
+LL | |     m: Box<dyn Getter<R>+Send>,
 LL | | }
    | |_^
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0208`.

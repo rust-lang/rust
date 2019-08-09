@@ -8,7 +8,7 @@ use crate::ty::TyCtxt;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
-use syntax_pos::Span;
+use syntax_pos::{Span, sym};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_macros::HashStable;
 use errors::DiagnosticId;
@@ -37,13 +37,13 @@ impl LibFeatures {
     }
 }
 
-pub struct LibFeatureCollector<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct LibFeatureCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
     lib_features: LibFeatures,
 }
 
-impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LibFeatureCollector<'a, 'tcx> {
+impl LibFeatureCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> LibFeatureCollector<'tcx> {
         LibFeatureCollector {
             tcx,
             lib_features: LibFeatures::new(),
@@ -51,12 +51,12 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
     }
 
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
-        let stab_attrs = vec!["stable", "unstable", "rustc_const_unstable"];
+        let stab_attrs = [sym::stable, sym::unstable, sym::rustc_const_unstable];
 
         // Find a stability attribute (i.e., `#[stable (..)]`, `#[unstable (..)]`,
         // `#[rustc_const_unstable (..)]`).
         if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {
-            attr.check_name(stab_attr)
+            attr.check_name(**stab_attr)
         }) {
             let meta_item = attr.meta();
             if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta_item {
@@ -65,9 +65,9 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
                 for meta in metas {
                     if let Some(mi) = meta.meta_item() {
                         // Find the `feature = ".."` meta-item.
-                        match (&*mi.name().as_str(), mi.value_str()) {
-                            ("feature", val) => feature = val,
-                            ("since", val) => since = val,
+                        match (mi.name_or_empty(), mi.value_str()) {
+                            (sym::feature, val) => feature = val,
+                            (sym::since, val) => since = val,
                             _ => {}
                         }
                     }
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
                     // This additional check for stability is to make sure we
                     // don't emit additional, irrelevant errors for malformed
                     // attributes.
-                    if *stab_attr != "stable" || since.is_some() {
+                    if *stab_attr != sym::stable || since.is_some() {
                         return Some((feature, since, attr.span));
                     }
                 }
@@ -130,7 +130,7 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for LibFeatureCollector<'a, 'tcx> {
+impl Visitor<'tcx> for LibFeatureCollector<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
@@ -142,8 +142,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LibFeatureCollector<'a, 'tcx> {
     }
 }
 
-pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LibFeatures {
+pub fn collect(tcx: TyCtxt<'_>) -> LibFeatures {
     let mut collector = LibFeatureCollector::new(tcx);
-    intravisit::walk_crate(&mut collector, tcx.hir().krate());
+    let krate = tcx.hir().krate();
+    for attr in &krate.non_exported_macro_attrs {
+        collector.visit_attribute(attr);
+    }
+    intravisit::walk_crate(&mut collector, krate);
     collector.lib_features
 }

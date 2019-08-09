@@ -4,7 +4,7 @@
 trait TheTrait<'t>: 't { }
 
 struct Foo<'a,'b> {
-    x: Box<TheTrait<'a>+'b> //~ ERROR E0478
+    x: Box<dyn TheTrait<'a>+'b> //~ ERROR E0478
 }
 
 fn main() { }

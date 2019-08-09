@@ -1,8 +1,7 @@
-// ignore-compare-mode-nll
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![allow(const_err)]
 
-// nll successfully compiles this.
 fn main() {
-    let x: &'static _ = &|| { let z = 3; z }; //~ ERROR does not live long enough
+    let x: &'static _ = &|| { let z = 3; z };
 }

@@ -4,10 +4,11 @@
 use rustc::mir::{BasicBlock, Location};
 use rustc_data_structures::bit_set::{BitIter, BitSet, HybridBitSet};
 
-use crate::dataflow::{BitDenotation, BlockSets, DataflowResults};
+use crate::dataflow::{BitDenotation, DataflowResults, GenKillSet};
 use crate::dataflow::move_paths::{HasMoveData, MovePathIndex};
 
 use std::iter;
+use std::borrow::Borrow;
 
 /// A trait for "cartesian products" of multiple FlowAtLocation.
 ///
@@ -60,19 +61,20 @@ pub trait FlowsAtLocation {
 /// (e.g., via `reconstruct_statement_effect` and
 /// `reconstruct_terminator_effect`; don't forget to call
 /// `apply_local_effect`).
-pub struct FlowAtLocation<'tcx, BD>
+pub struct FlowAtLocation<'tcx, BD, DR = DataflowResults<'tcx, BD>>
 where
     BD: BitDenotation<'tcx>,
+    DR: Borrow<DataflowResults<'tcx, BD>>,
 {
-    base_results: DataflowResults<'tcx, BD>,
+    base_results: DR,
     curr_state: BitSet<BD::Idx>,
-    stmt_gen: HybridBitSet<BD::Idx>,
-    stmt_kill: HybridBitSet<BD::Idx>,
+    stmt_trans: GenKillSet<BD::Idx>,
 }
 
-impl<'tcx, BD> FlowAtLocation<'tcx, BD>
+impl<'tcx, BD, DR> FlowAtLocation<'tcx, BD, DR>
 where
     BD: BitDenotation<'tcx>,
+    DR: Borrow<DataflowResults<'tcx, BD>>,
 {
     /// Iterate over each bit set in the current state.
     pub fn each_state_bit<F>(&self, f: F)
@@ -89,25 +91,23 @@ where
     where
         F: FnMut(BD::Idx),
     {
-        self.stmt_gen.iter().for_each(f)
+        self.stmt_trans.gen_set.iter().for_each(f)
     }
 
-    pub fn new(results: DataflowResults<'tcx, BD>) -> Self {
-        let bits_per_block = results.sets().bits_per_block();
+    pub fn new(results: DR) -> Self {
+        let bits_per_block = results.borrow().sets().bits_per_block();
         let curr_state = BitSet::new_empty(bits_per_block);
-        let stmt_gen = HybridBitSet::new_empty(bits_per_block);
-        let stmt_kill = HybridBitSet::new_empty(bits_per_block);
+        let stmt_trans = GenKillSet::from_elem(HybridBitSet::new_empty(bits_per_block));
         FlowAtLocation {
             base_results: results,
-            curr_state: curr_state,
-            stmt_gen: stmt_gen,
-            stmt_kill: stmt_kill,
+            curr_state,
+            stmt_trans,
         }
     }
 
     /// Access the underlying operator.
     pub fn operator(&self) -> &BD {
-        self.base_results.operator()
+        self.base_results.borrow().operator()
     }
 
     pub fn contains(&self, x: BD::Idx) -> bool {
@@ -127,85 +127,69 @@ where
         F: FnOnce(BitIter<'_, BD::Idx>),
     {
         let mut curr_state = self.curr_state.clone();
-        curr_state.union(&self.stmt_gen);
-        curr_state.subtract(&self.stmt_kill);
+        self.stmt_trans.apply(&mut curr_state);
         f(curr_state.iter());
+    }
+
+    /// Returns a bitset of the elements present in the current state.
+    pub fn as_dense(&self) -> &BitSet<BD::Idx> {
+        &self.curr_state
     }
 }
 
-impl<'tcx, BD> FlowsAtLocation for FlowAtLocation<'tcx, BD>
-    where BD: BitDenotation<'tcx>
+impl<'tcx, BD, DR> FlowsAtLocation for FlowAtLocation<'tcx, BD, DR>
+where
+    BD: BitDenotation<'tcx>,
+    DR: Borrow<DataflowResults<'tcx, BD>>,
 {
     fn reset_to_entry_of(&mut self, bb: BasicBlock) {
-        self.curr_state.overwrite(self.base_results.sets().on_entry_set_for(bb.index()));
+        self.curr_state.overwrite(self.base_results.borrow().sets().entry_set_for(bb.index()));
     }
 
     fn reset_to_exit_of(&mut self, bb: BasicBlock) {
         self.reset_to_entry_of(bb);
-        self.curr_state.union(self.base_results.sets().gen_set_for(bb.index()));
-        self.curr_state.subtract(self.base_results.sets().kill_set_for(bb.index()));
+        let trans = self.base_results.borrow().sets().trans_for(bb.index());
+        trans.apply(&mut self.curr_state)
     }
 
     fn reconstruct_statement_effect(&mut self, loc: Location) {
-        self.stmt_gen.clear();
-        self.stmt_kill.clear();
-        {
-            let mut sets = BlockSets {
-                on_entry: &mut self.curr_state,
-                gen_set: &mut self.stmt_gen,
-                kill_set: &mut self.stmt_kill,
-            };
-            self.base_results
-                .operator()
-                .before_statement_effect(&mut sets, loc);
-        }
-        self.apply_local_effect(loc);
-
-        let mut sets = BlockSets {
-            on_entry: &mut self.curr_state,
-            gen_set: &mut self.stmt_gen,
-            kill_set: &mut self.stmt_kill,
-        };
+        self.stmt_trans.clear();
         self.base_results
+            .borrow()
             .operator()
-            .statement_effect(&mut sets, loc);
+            .before_statement_effect(&mut self.stmt_trans, loc);
+        self.stmt_trans.apply(&mut self.curr_state);
+
+        self.base_results
+            .borrow()
+            .operator()
+            .statement_effect(&mut self.stmt_trans, loc);
     }
 
     fn reconstruct_terminator_effect(&mut self, loc: Location) {
-        self.stmt_gen.clear();
-        self.stmt_kill.clear();
-        {
-            let mut sets = BlockSets {
-                on_entry: &mut self.curr_state,
-                gen_set: &mut self.stmt_gen,
-                kill_set: &mut self.stmt_kill,
-            };
-            self.base_results
-                .operator()
-                .before_terminator_effect(&mut sets, loc);
-        }
-        self.apply_local_effect(loc);
-
-        let mut sets = BlockSets {
-            on_entry: &mut self.curr_state,
-            gen_set: &mut self.stmt_gen,
-            kill_set: &mut self.stmt_kill,
-        };
+        self.stmt_trans.clear();
         self.base_results
+            .borrow()
             .operator()
-            .terminator_effect(&mut sets, loc);
+            .before_terminator_effect(&mut self.stmt_trans, loc);
+        self.stmt_trans.apply(&mut self.curr_state);
+
+        self.base_results
+            .borrow()
+            .operator()
+            .terminator_effect(&mut self.stmt_trans, loc);
     }
 
     fn apply_local_effect(&mut self, _loc: Location) {
-        self.curr_state.union(&self.stmt_gen);
-        self.curr_state.subtract(&self.stmt_kill);
+        self.stmt_trans.apply(&mut self.curr_state)
     }
 }
 
 
-impl<'tcx, T> FlowAtLocation<'tcx, T>
+impl<'tcx, T, DR> FlowAtLocation<'tcx, T, DR>
 where
     T: HasMoveData<'tcx> + BitDenotation<'tcx, Idx = MovePathIndex>,
+    DR: Borrow<DataflowResults<'tcx, T>>,
 {
     pub fn has_any_child_of(&self, mpi: T::Idx) -> Option<T::Idx> {
         // We process `mpi` before the loop below, for two reasons:

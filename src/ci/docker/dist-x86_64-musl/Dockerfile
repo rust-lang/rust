@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
   file \
+  wget \
   curl \
   ca-certificates \
   python2.7 \
@@ -18,29 +19,32 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /build/
 
-COPY scripts/musl.sh /build/
+COPY scripts/musl-toolchain.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
-RUN CC=gcc \
-    CFLAGS="-Wa,-mrelax-relocations=no" \
-    CXX=g++ \
-    CXXFLAGS="-Wa,-mrelax-relocations=no" \
-    bash musl.sh x86_64 && rm -rf /build
+RUN CFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
+    CXXFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
+    REPLACE_CC=1 bash musl-toolchain.sh x86_64 && rm -rf build
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+ENV HOSTS=x86_64-unknown-linux-musl
+
 ENV RUST_CONFIGURE_ARGS \
-      --musl-root-x86_64=/musl-x86_64 \
+      --musl-root-x86_64=/usr/local/x86_64-linux-musl \
       --enable-extended \
-      --disable-docs
+      --disable-docs \
+      --set target.x86_64-unknown-linux-musl.crt-static=false \
+      --build $HOSTS
 
 # Newer binutils broke things on some vms/distros (i.e., linking against
 # unknown relocs disabled by the following flag), so we need to go out of our
 # way to produce "super compatible" binaries.
 #
 # See: https://github.com/rust-lang/rust/issues/34978
-ENV CFLAGS_x86_64_unknown_linux_musl=-Wa,-mrelax-relocations=no
+# And: https://github.com/rust-lang/rust/issues/59411
+ENV CFLAGS_x86_64_unknown_linux_musl="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none \
+    -Wl,--compress-debug-sections=none"
 
-ENV SCRIPT \
-      python2.7 ../x.py test --target x86_64-unknown-linux-musl && \
-      python2.7 ../x.py dist --target x86_64-unknown-linux-musl
+# To run native tests replace `dist` below with `test`
+ENV SCRIPT python2.7 ../x.py dist --build $HOSTS

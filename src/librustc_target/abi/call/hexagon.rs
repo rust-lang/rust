@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 use crate::abi::call::{FnType, ArgType};
 
 fn classify_ret_ty<Ty>(ret: &mut ArgType<'_, Ty>) {

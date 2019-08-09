@@ -1,0 +1,13 @@
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/borrowck-unary-move.rs:3:10
+   |
+LL |     let y = &*x;
+   |             --- borrow of `*x` occurs here
+LL |     free(x);
+   |          ^ move out of `x` occurs here
+LL |     *y
+   |     -- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0505`.

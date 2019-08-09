@@ -15,5 +15,5 @@ LL | impl Drop for u32 {}
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0117, E0120.
+Some errors have detailed explanations: E0117, E0120.
 For more information about an error, try `rustc --explain E0117`.

@@ -5,7 +5,7 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
@@ -37,7 +37,7 @@ pub fn add_parameter() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_parameter() {
     let x = 0u32;
@@ -49,14 +49,14 @@ pub fn add_parameter() {
 // Change parameter pattern ----------------------------------------------------
 #[cfg(cfail1)]
 pub fn change_parameter_pattern() {
-    let _ = |x: &u32| x;
+    let _ = |x: (u32,)| x;
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_parameter_pattern() {
-    let _ = |&x: &u32| x;
+    let _ = |(x,): (u32,)| x;
 }
 
 
@@ -84,7 +84,7 @@ pub fn add_type_ascription_to_parameter() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_type_ascription_to_parameter() {
     let closure = |x: u32| x + 1u32;
@@ -101,7 +101,7 @@ pub fn change_parameter_type() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_parameter_type() {
     let closure = |x: u16| (x as u64) + 1;

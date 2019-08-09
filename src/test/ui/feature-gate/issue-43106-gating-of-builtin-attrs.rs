@@ -30,8 +30,10 @@
 // inputs are handled by each, and (2.) to ease searching for related
 // occurrences in the source text.
 
+// check-pass
+
+#![feature(test)]
 #![warn(unused_attributes, unknown_lints)]
-#![allow(stable_features)]
 
 // UNGATED WHITE-LISTED BUILT-IN ATTRIBUTES
 
@@ -70,14 +72,12 @@
 #![link()]
 #![link_name = "1900"]
 #![link_section = "1800"]
-#![no_builtins] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "0300")
-#![no_mangle] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "3500")
 // see issue-43106-gating-of-rustc_deprecated.rs
 #![must_use]
 // see issue-43106-gating-of-stable.rs
 // see issue-43106-gating-of-unstable.rs
 // see issue-43106-gating-of-deprecated.rs
-#![windows_subsystem = "1000"]
+#![windows_subsystem = "windows"]
 
 // UNGATED CRATE-LEVEL BUILT-IN ATTRIBUTES
 
@@ -541,7 +541,7 @@ mod export_name {
     #[export_name = "2200"] impl S { }
 }
 
-// Note that this test has a `skip-codegen`, so it
+// Note that this is a `check-pass` test, so it
 // will never invoke the linker. These are here nonetheless to point
 // out that we allow them at non-crate-level (though I do not know
 // whether they have the same effect here as at crate-level).
@@ -613,17 +613,17 @@ mod must_use {
     #[must_use] impl S { }
 }
 
-#[windows_subsystem = "1000"]
+#[windows_subsystem = "windows"]
 mod windows_subsystem {
-    mod inner { #![windows_subsystem="1000"] }
+    mod inner { #![windows_subsystem="windows"] }
 
-    #[windows_subsystem = "1000"] fn f() { }
+    #[windows_subsystem = "windows"] fn f() { }
 
-    #[windows_subsystem = "1000"] struct S;
+    #[windows_subsystem = "windows"] struct S;
 
-    #[windows_subsystem = "1000"] type T = S;
+    #[windows_subsystem = "windows"] type T = S;
 
-    #[windows_subsystem = "1000"] impl S { }
+    #[windows_subsystem = "windows"] impl S { }
 }
 
 // BROKEN USES OF CRATE-LEVEL BUILT-IN ATTRIBUTES

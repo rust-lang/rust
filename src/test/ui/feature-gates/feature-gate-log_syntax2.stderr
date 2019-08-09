@@ -1,10 +1,11 @@
-error[E0658]: `log_syntax!` is not stable enough for use and is subject to change (see issue #29598)
-  --> $DIR/feature-gate-log_syntax2.rs:4:22
+error[E0658]: use of unstable library feature 'log_syntax': `log_syntax!` is not stable enough for use and is subject to change
+  --> $DIR/feature-gate-log_syntax2.rs:2:22
    |
 LL |     println!("{:?}", log_syntax!());
-   |                      ^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^
    |
-   = help: add #![feature(log_syntax)] to the crate attributes to enable
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
+   = help: add `#![feature(log_syntax)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

@@ -1,15 +1,15 @@
 error[E0597]: `i` does not live long enough
   --> $DIR/regions-steal-closure.rs:14:28
    |
+LL |     let mut cl_box = {
+   |         ---------- borrow later stored here
+LL |         let mut i = 3;
 LL |         box_it(Box::new(|| i += 1))
    |                         -- ^ borrowed value does not live long enough
    |                         |
-   |                         capture occurs here
+   |                         value captured here
 LL |     };
-   |     - borrowed value only lives until here
-LL |     cl_box.cl.call_mut(());
-LL | }
-   | - borrowed value needs to live until here
+   |     - `i` dropped here while still borrowed
 
 error: aborting due to previous error
 

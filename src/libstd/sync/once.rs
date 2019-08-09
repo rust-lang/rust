@@ -115,6 +115,11 @@ pub struct OnceState {
 /// static START: Once = ONCE_INIT;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "1.38.0",
+    reason = "the `new` function is now preferred",
+    suggestion = "Once::new()",
+)]
 pub const ONCE_INIT: Once = Once::new();
 
 // Four states that a Once can be in, encoded into the lower bits of `state` in
@@ -431,7 +436,7 @@ impl Once {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Once {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Once { .. }")
     }
 }

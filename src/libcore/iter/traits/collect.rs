@@ -167,7 +167,7 @@ pub trait FromIterator<A>: Sized {
 /// // and we'll implement IntoIterator
 /// impl IntoIterator for MyCollection {
 ///     type Item = i32;
-///     type IntoIter = ::std::vec::IntoIter<i32>;
+///     type IntoIter = ::std::vec::IntoIter<Self::Item>;
 ///
 ///     fn into_iter(self) -> Self::IntoIter {
 ///         self.0.into_iter()
@@ -196,7 +196,7 @@ pub trait FromIterator<A>: Sized {
 /// ```rust
 /// fn collect_as_strings<T>(collection: T) -> Vec<String>
 ///     where T: IntoIterator,
-///           T::Item : std::fmt::Debug,
+///           T::Item: std::fmt::Debug,
 /// {
 ///     collection
 ///         .into_iter()

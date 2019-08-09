@@ -71,7 +71,8 @@ fn main() {
 
     let mut optional_components =
         vec!["x86", "arm", "aarch64", "amdgpu", "mips", "powerpc",
-             "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx"];
+             "systemz", "jsbackend", "webassembly", "msp430", "sparc", "nvptx",
+             "hexagon"];
 
     let mut version_cmd = Command::new(&llvm_config);
     version_cmd.arg("--version");
@@ -82,27 +83,19 @@ fn main() {
         if let (Some(major), Some(minor)) = (parts.next(), parts.next()) {
             (major, minor)
         } else {
-            (3, 9)
+            (6, 0)
         };
-
-    if major > 3 {
-        optional_components.push("hexagon");
-    }
 
     if major > 6 {
         optional_components.push("riscv");
     }
 
-    // FIXME: surely we don't need all these components, right? Stuff like mcjit
-    //        or interpreter the compiler itself never uses.
     let required_components = &["ipo",
                                 "bitreader",
                                 "bitwriter",
                                 "linker",
                                 "asmparser",
-                                "mcjit",
                                 "lto",
-                                "interpreter",
                                 "instrumentation"];
 
     let components = output(Command::new(&llvm_config).arg("--components"));
@@ -117,6 +110,10 @@ fn main() {
 
     for component in components.iter() {
         println!("cargo:rustc-cfg=llvm_component=\"{}\"", component);
+    }
+
+    if major >= 9 {
+        println!("cargo:rustc-cfg=llvm_has_msp430_asm_parser");
     }
 
     // Link in our own LLVM shims, compiled with the same flags as LLVM
@@ -231,6 +228,21 @@ fn main() {
             println!("cargo:rustc-link-lib={}", &lib[2..]);
         } else if lib.starts_with("-L") {
             println!("cargo:rustc-link-search=native={}", &lib[2..]);
+        }
+    }
+
+    // Some LLVM linker flags (-L and -l) may be needed even when linking
+    // librustc_llvm, for example when using static libc++, we may need to
+    // manually specify the library search path and -ldl -lpthread as link
+    // dependencies.
+    let llvm_linker_flags = env::var_os("LLVM_LINKER_FLAGS");
+    if let Some(s) = llvm_linker_flags {
+        for lib in s.into_string().unwrap().split_whitespace() {
+            if lib.starts_with("-l") {
+                println!("cargo:rustc-link-lib={}", &lib[2..]);
+            } else if lib.starts_with("-L") {
+                println!("cargo:rustc-link-search=native={}", &lib[2..]);
+            }
         }
     }
 

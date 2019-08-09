@@ -65,10 +65,6 @@ IMAGE_BASE:
     /*  The size in bytes of enclacve EH_FRM_HDR section */
     globvar EH_FRM_HDR_SIZE 8
 
-.Lreentry_panic_msg:
-    .asciz "Re-entered aborted enclave!"
-.Lreentry_panic_msg_end:
-
 .org .Lxsave_clear+512
 .Lxsave_header:
     .int 0, 0 /*  XSTATE_BV */
@@ -210,10 +206,8 @@ sgx_entry:
 /*  end sgx_entry */
 
 .Lreentry_panic:
-    lea .Lreentry_panic_msg(%rip),%rdi
-    mov $.Lreentry_panic_msg_end-.Lreentry_panic_msg,%esi
     orq $8,%rsp
-    jmp panic_msg
+    jmp abort_reentry
 
 /*  This *MUST* be called with 6 parameters, otherwise register information */
 /*  might leak! */
@@ -279,10 +273,8 @@ usercall:
 /*
 The following functions need to be defined externally:
 ```
-// Called by entry code when it needs to panic
-extern "C" fn panic_msg(msg: &'static str) -> ! {
-    panic!(msg)
-}
+// Called by entry code on re-entry after exit
+extern "C" fn abort_reentry() -> !;
 
 // Called once when a TCS is first entered
 extern "C" fn tcs_init(secondary: bool);

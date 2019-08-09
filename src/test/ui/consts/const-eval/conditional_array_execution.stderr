@@ -1,8 +1,8 @@
 warning: any use of this value will cause an error
-  --> $DIR/conditional_array_execution.rs:5:1
+  --> $DIR/conditional_array_execution.rs:5:19
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-   | ^^^^^^^^^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ------------------^^^^^---------------------------
    |                   |
    |                   attempt to subtract with overflow
    |

@@ -1,0 +1,8 @@
+error: def-path(<[u8; _] as Foo>::baz)
+  --> $DIR/impl2.rs:9:5
+   |
+LL |     #[rustc_def_path]
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

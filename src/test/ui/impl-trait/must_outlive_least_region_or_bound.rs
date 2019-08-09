@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 fn elided(x: &i32) -> impl Copy { x }
-//~^ ERROR explicit lifetime required in the type of `x` [E0621]
+//~^ ERROR cannot infer an appropriate lifetime
 
 fn explicit<'a>(x: &'a i32) -> impl Copy { x }
 //~^ ERROR cannot infer an appropriate lifetime

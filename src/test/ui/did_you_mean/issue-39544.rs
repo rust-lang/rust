@@ -46,5 +46,5 @@ pub fn with_tuple() {
     let mut y = 0;
     let x = (&y,);
     *x.0 = 1;
-    //~^ ERROR cannot assign to borrowed content `*x.0` of immutable binding
+    //~^ ERROR cannot assign to `*x.0` which is behind a `&` reference
 }

@@ -4,7 +4,7 @@ error[E0502]: cannot borrow `*x` as mutable because it is also borrowed as immut
 LL |     let y = x.borrowed();
    |             - immutable borrow occurs here
 LL |     let z = x.mut_borrowed();
-   |             ^^^^^^^^^^^^^^^^ mutable borrow occurs here
+   |             ^ mutable borrow occurs here
 LL |     y.use_ref();
    |     - immutable borrow later used here
 

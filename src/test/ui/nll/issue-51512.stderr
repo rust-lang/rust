@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `range`
-  --> $DIR/issue-51512.rs:7:13
+  --> $DIR/issue-51512.rs:4:13
    |
 LL |     let range = 0..1;
    |         ----- move occurs because `range` has type `std::ops::Range<i32>`, which does not implement the `Copy` trait

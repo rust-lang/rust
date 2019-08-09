@@ -10,7 +10,6 @@ use rustc::ty::{self, TyCtxt, PolyFnSig};
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
@@ -77,9 +76,15 @@ pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().instrument_mcount() {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
+
+        // The function name varies on platforms.
+        // See test/CodeGen/mcount.c in clang.
+        let mcount_name = CString::new(
+            cx.sess().target.target.options.target_mcount.as_str().as_bytes()).unwrap();
+
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
-            const_cstr!("instrument-function-entry-inlined"), const_cstr!("mcount"));
+            const_cstr!("instrument-function-entry-inlined"), &mcount_name);
     }
 }
 
@@ -97,8 +102,8 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         return
     }
 
-    // probestack doesn't play nice either with pgo-gen.
-    if cx.sess().opts.debugging_opts.pgo_gen.is_some() {
+    // probestack doesn't play nice either with `-C profile-generate`.
+    if cx.sess().opts.cg.profile_generate.enabled() {
         return;
     }
 
@@ -114,6 +119,29 @@ pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         const_cstr!("probe-stack"), const_cstr!("__rust_probestack"));
 }
 
+fn translate_obsolete_target_features(feature: &str) -> &str {
+    const LLVM9_FEATURE_CHANGES: &[(&str, &str)] = &[
+        ("+fp-only-sp", "-fp64"),
+        ("-fp-only-sp", "+fp64"),
+        ("+d16", "-d32"),
+        ("-d16", "+d32"),
+    ];
+    if llvm_util::get_major_version() >= 9 {
+        for &(old, new) in LLVM9_FEATURE_CHANGES {
+            if feature == old {
+                return new;
+            }
+        }
+    } else {
+        for &(old, new) in LLVM9_FEATURE_CHANGES {
+            if feature == new {
+                return old;
+            }
+        }
+    }
+    feature
+}
+
 pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
     const RUSTC_SPECIFIC_FEATURES: &[&str] = &[
         "crt-static",
@@ -124,6 +152,7 @@ pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
     sess.target.target.options.features.split(',')
         .chain(cmdline)
         .filter(|l| !l.is_empty())
+        .map(translate_obsolete_target_features)
 }
 
 pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
@@ -314,13 +343,13 @@ pub fn provide(providers: &mut Providers<'_>) {
         if tcx.sess.opts.actually_rustdoc {
             // rustdoc needs to be able to document functions that use all the features, so
             // whitelist them all
-            Lrc::new(llvm_util::all_known_features()
-                .map(|(a, b)| (a.to_string(), b.map(|s| s.to_string())))
+            tcx.arena.alloc(llvm_util::all_known_features()
+                .map(|(a, b)| (a.to_string(), b))
                 .collect())
         } else {
-            Lrc::new(llvm_util::target_feature_whitelist(tcx.sess)
+            tcx.arena.alloc(llvm_util::target_feature_whitelist(tcx.sess)
                 .iter()
-                .map(|&(a, b)| (a.to_string(), b.map(|s| s.to_string())))
+                .map(|&(a, b)| (a.to_string(), b))
                 .collect())
         }
     };
@@ -358,11 +387,11 @@ pub fn provide_extern(providers: &mut Providers<'_>) {
             }));
         }
 
-        Lrc::new(ret)
+        tcx.arena.alloc(ret)
     };
 }
 
-fn wasm_import_module(tcx: TyCtxt<'_, '_, '_>, id: DefId) -> Option<CString> {
+fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<CString> {
     tcx.wasm_import_module_map(id.krate)
         .get(&id)
         .map(|s| CString::new(&s[..]).unwrap())

@@ -1,13 +1,13 @@
-// Detecting language items.
-//
-// Language items are items that represent concepts intrinsic to the language
-// itself. Examples are:
-//
-// * Traits that specify "kinds"; e.g., "Sync", "Send".
-//
-// * Traits that represent operators; e.g., "Add", "Sub", "Index".
-//
-// * Functions called by the compiler itself.
+//! Detecting language items.
+//!
+//! Language items are items that represent concepts intrinsic to the language
+//! itself. Examples are:
+//!
+//! * Traits that specify "kinds"; e.g., "Sync", "Send".
+//!
+//! * Traits that represent operators; e.g., "Add", "Sub", "Index".
+//!
+//! * Functions called by the compiler itself.
 
 pub use self::LangItem::*;
 
@@ -18,7 +18,7 @@ use crate::middle::weak_lang_items;
 use crate::util::nodemap::FxHashMap;
 
 use syntax::ast;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 use rustc_macros::HashStable;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
@@ -32,6 +32,7 @@ macro_rules! language_item_table {
     ) => {
 
 enum_from_u32! {
+    /// A representation of all the valid language items in Rust.
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
     pub enum LangItem {
         $($variant,)*
@@ -39,6 +40,9 @@ enum_from_u32! {
 }
 
 impl LangItem {
+    /// Returns the `name` in `#[lang = "$name"]`.
+    /// For example, `LangItem::EqTraitLangItem`,
+    /// that is `#[lang = "eq"]` would result in `"eq"`.
     fn name(self) -> &'static str {
         match self {
             $( $variant => $name, )*
@@ -48,28 +52,38 @@ impl LangItem {
 
 #[derive(HashStable)]
 pub struct LanguageItems {
+    /// Mappings from lang items to their possibly found `DefId`s.
+    /// The index corresponds to the order in `LangItem`.
     pub items: Vec<Option<DefId>>,
+    /// Lang items that were not found during collection.
     pub missing: Vec<LangItem>,
 }
 
 impl LanguageItems {
-    pub fn new() -> LanguageItems {
-        fn foo(_: LangItem) -> Option<DefId> { None }
+    /// Construct an empty collection of lang items and no missing ones.
+    pub fn new() -> Self {
+        fn init_none(_: LangItem) -> Option<DefId> { None }
 
-        LanguageItems {
-            items: vec![$(foo($variant)),*],
+        Self {
+            items: vec![$(init_none($variant)),*],
             missing: Vec::new(),
         }
     }
 
+    /// Returns the mappings to the possibly found `DefId`s for each lang item.
     pub fn items(&self) -> &[Option<DefId>] {
         &*self.items
     }
 
+    /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
+    /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
+    /// returns an error message as a string.
     pub fn require(&self, it: LangItem) -> Result<DefId, String> {
         self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
     }
 
+    /// Returns the kind of closure that `id`, which is one of the `Fn*` traits, corresponds to.
+    /// If `id` is not one of the `Fn*` traits, `None` is returned.
     pub fn fn_trait_kind(&self, id: DefId) -> Option<ty::ClosureKind> {
         match Some(id) {
             x if x == self.fn_trait() => Some(ty::ClosureKind::Fn),
@@ -80,6 +94,9 @@ impl LanguageItems {
     }
 
     $(
+        /// Returns the corresponding `DefId` for the lang item
+        #[doc = $name]
+        /// if it exists.
         #[allow(dead_code)]
         pub fn $method(&self) -> Option<DefId> {
             self.items[$variant as usize]
@@ -87,50 +104,47 @@ impl LanguageItems {
     )*
 }
 
-struct LanguageItemCollector<'a, 'tcx: 'a> {
+struct LanguageItemCollector<'tcx> {
     items: LanguageItems,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
+    /// A mapping from the name of the lang item to its order and the form it must be of.
     item_refs: FxHashMap<&'static str, (usize, Target)>,
 }
 
-impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
+impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let Some((value, span)) = extract(&item.attrs) {
             let actual_target = Target::from_item(item);
             match self.item_refs.get(&*value.as_str()).cloned() {
                 // Known lang item with attribute on correct target.
                 Some((item_index, expected_target)) if actual_target == expected_target => {
-                    let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                    let def_id = self.tcx.hir().local_def_id(item.hir_id);
                     self.collect_item(item_index, def_id);
                 },
                 // Known lang item with attribute on incorrect target.
                 Some((_, expected_target)) => {
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.tcx.sess, span, E0718,
                         "`{}` language item must be applied to a {}",
                         value, expected_target,
-                    );
-                    err.span_label(
+                    ).span_label(
                         span,
                         format!(
                             "attribute should be applied to a {}, not a {}",
                             expected_target, actual_target,
                         ),
-                    );
-                    err.emit();
+                    ).emit();
                 },
                 // Unknown lang item.
                 _ => {
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.tcx.sess, span, E0522,
                         "definition of an unknown language item: `{}`",
                         value
-                    );
-                    err.span_label(
+                    ).span_label(
                         span,
                         format!("definition of unknown language item `{}`", value)
-                    );
-                    err.emit();
+                    ).emit();
                 },
             }
         }
@@ -145,8 +159,8 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItemCollector<'a, 'tcx> {
+impl LanguageItemCollector<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> LanguageItemCollector<'tcx> {
         let mut item_refs = FxHashMap::default();
 
         $( item_refs.insert($name, ($variant as usize, $target)); )*
@@ -190,32 +204,39 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 }
 
+/// Extract the first `lang = "$name"` out of a list of attributes.
+/// The attributes `#[panic_handler]` and `#[alloc_error_handler]`
+/// are also extracted out when found.
 pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
-    for attribute in attrs {
-        if attribute.check_name("lang") {
-            if let Some(value) = attribute.value_str() {
-                return Some((value, attribute.span));
-            }
-        } else if attribute.check_name("panic_handler") {
-            return Some((Symbol::intern("panic_impl"), attribute.span))
-        } else if attribute.check_name("alloc_error_handler") {
-            return Some((Symbol::intern("oom"), attribute.span))
-        }
-    }
-
-    None
+    attrs.iter().find_map(|attr| Some(match attr {
+        _ if attr.check_name(sym::lang) => (attr.value_str()?, attr.span),
+        _ if attr.check_name(sym::panic_handler) => (sym::panic_impl, attr.span),
+        _ if attr.check_name(sym::alloc_error_handler) => (sym::oom, attr.span),
+        _ => return None,
+    }))
 }
 
-pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItems {
+/// Traverse and collect all the lang items in all crates.
+pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> LanguageItems {
+    // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx);
+
+    // Collect lang items in other crates.
     for &cnum in tcx.crates().iter() {
         for &(def_id, item_index) in tcx.defined_lang_items(cnum).iter() {
             collector.collect_item(item_index, def_id);
         }
     }
+
+    // Collect lang items in this crate.
     tcx.hir().krate().visit_all_item_likes(&mut collector);
+
+    // Extract out the found lang items.
     let LanguageItemCollector { mut items, .. } = collector;
+
+    // Find all required but not-yet-defined lang items.
     weak_lang_items::check_crate(tcx, &mut items);
+
     items
 }
 
@@ -299,11 +320,13 @@ language_item_table! {
     FnMutTraitLangItem,          "fn_mut",             fn_mut_trait,            Target::Trait;
     FnOnceTraitLangItem,         "fn_once",            fn_once_trait,           Target::Trait;
 
+    FutureTraitLangItem,         "future_trait",       future_trait,            Target::Trait;
     GeneratorStateLangItem,      "generator_state",    gen_state,               Target::Enum;
     GeneratorTraitLangItem,      "generator",          gen_trait,               Target::Trait;
     UnpinTraitLangItem,          "unpin",              unpin_trait,             Target::Trait;
     PinTypeLangItem,             "pin",                pin_type,                Target::Struct;
 
+    // Don't be fooled by the naming here: this lang item denotes `PartialEq`, not `Eq`.
     EqTraitLangItem,             "eq",                 eq_trait,                Target::Trait;
     PartialOrdTraitLangItem,     "partial_ord",        partial_ord_trait,       Target::Trait;
     OrdTraitLangItem,            "ord",                ord_trait,               Target::Trait;
@@ -342,35 +365,9 @@ language_item_table! {
 
     ManuallyDropItem,            "manually_drop",      manually_drop,           Target::Struct;
 
-    DebugTraitLangItem,          "debug_trait",        debug_trait,             Target::Trait;
+    MaybeUninitLangItem,         "maybe_uninit",       maybe_uninit,            Target::Union;
 
-    // A lang item for each of the 128-bit operators we can optionally lower.
-    I128AddFnLangItem,           "i128_add",           i128_add_fn,             Target::Fn;
-    U128AddFnLangItem,           "u128_add",           u128_add_fn,             Target::Fn;
-    I128SubFnLangItem,           "i128_sub",           i128_sub_fn,             Target::Fn;
-    U128SubFnLangItem,           "u128_sub",           u128_sub_fn,             Target::Fn;
-    I128MulFnLangItem,           "i128_mul",           i128_mul_fn,             Target::Fn;
-    U128MulFnLangItem,           "u128_mul",           u128_mul_fn,             Target::Fn;
-    I128DivFnLangItem,           "i128_div",           i128_div_fn,             Target::Fn;
-    U128DivFnLangItem,           "u128_div",           u128_div_fn,             Target::Fn;
-    I128RemFnLangItem,           "i128_rem",           i128_rem_fn,             Target::Fn;
-    U128RemFnLangItem,           "u128_rem",           u128_rem_fn,             Target::Fn;
-    I128ShlFnLangItem,           "i128_shl",           i128_shl_fn,             Target::Fn;
-    U128ShlFnLangItem,           "u128_shl",           u128_shl_fn,             Target::Fn;
-    I128ShrFnLangItem,           "i128_shr",           i128_shr_fn,             Target::Fn;
-    U128ShrFnLangItem,           "u128_shr",           u128_shr_fn,             Target::Fn;
-    // And overflow versions for the operators that are checkable.
-    // While MIR calls these Checked*, they return (T,bool), not Option<T>.
-    I128AddoFnLangItem,          "i128_addo",          i128_addo_fn,            Target::Fn;
-    U128AddoFnLangItem,          "u128_addo",          u128_addo_fn,            Target::Fn;
-    I128SuboFnLangItem,          "i128_subo",          i128_subo_fn,            Target::Fn;
-    U128SuboFnLangItem,          "u128_subo",          u128_subo_fn,            Target::Fn;
-    I128MuloFnLangItem,          "i128_mulo",          i128_mulo_fn,            Target::Fn;
-    U128MuloFnLangItem,          "u128_mulo",          u128_mulo_fn,            Target::Fn;
-    I128ShloFnLangItem,          "i128_shlo",          i128_shlo_fn,            Target::Fn;
-    U128ShloFnLangItem,          "u128_shlo",          u128_shlo_fn,            Target::Fn;
-    I128ShroFnLangItem,          "i128_shro",          i128_shro_fn,            Target::Fn;
-    U128ShroFnLangItem,          "u128_shro",          u128_shro_fn,            Target::Fn;
+    DebugTraitLangItem,          "debug_trait",        debug_trait,             Target::Trait;
 
     // Align offset for stride != 1, must not panic.
     AlignOffsetLangItem,         "align_offset",       align_offset_fn,         Target::Fn;
@@ -381,7 +378,9 @@ language_item_table! {
     Rc,                          "rc",                 rc,                      Target::Struct;
 }
 
-impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
+impl<'tcx> TyCtxt<'tcx> {
+    /// Returns the `DefId` for a given `LangItem`.
+    /// If not found, fatally abort compilation.
     pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {
         self.lang_items().require(lang_item).unwrap_or_else(|msg| {
             self.sess.fatal(&msg)

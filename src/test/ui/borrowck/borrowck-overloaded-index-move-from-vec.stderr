@@ -1,11 +1,11 @@
-error[E0507]: cannot move out of indexed content
+error[E0507]: cannot move out of index of `MyVec<std::boxed::Box<i32>>`
   --> $DIR/borrowck-overloaded-index-move-from-vec.rs:20:15
    |
 LL |     let bad = v[0];
    |               ^^^^
    |               |
-   |               cannot move out of indexed content
-   |               help: consider using a reference instead: `&v[0]`
+   |               move occurs because value has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+   |               help: consider borrowing here: `&v[0]`
 
 error: aborting due to previous error
 

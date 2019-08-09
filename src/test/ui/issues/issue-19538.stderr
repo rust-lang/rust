@@ -1,16 +1,16 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/issue-19538.rs:17:15
    |
-LL |     let test: &mut Bar = &mut thing;
-   |               ^^^^^^^^ the trait `Bar` cannot be made into an object
+LL |     let test: &mut dyn Bar = &mut thing;
+   |               ^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
    |
    = note: method `foo` has generic type parameters
 
 error[E0038]: the trait `Bar` cannot be made into an object
-  --> $DIR/issue-19538.rs:17:26
+  --> $DIR/issue-19538.rs:17:30
    |
-LL |     let test: &mut Bar = &mut thing;
-   |                          ^^^^^^^^^^ the trait `Bar` cannot be made into an object
+LL |     let test: &mut dyn Bar = &mut thing;
+   |                              ^^^^^^^^^^ the trait `Bar` cannot be made into an object
    |
    = note: method `foo` has generic type parameters
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&mut dyn Bar>` for `&mut Thing`

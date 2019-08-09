@@ -38,11 +38,11 @@ fn elision(_: fn() -> &i32) {
 struct Parameterized<'a> { x: &'a str }
 
 #[cfg(ok)]
-fn ok1(_: &for<'a> Fn(&Parameterized<'a>) -> &'a i32) {
+fn ok1(_: &dyn for<'a> Fn(&Parameterized<'a>) -> &'a i32) {
 }
 
 #[cfg(ok)]
-fn ok2(_: &for<'a,'b> Fn<(&'b Parameterized<'a>,), Output=&'a i32>) {
+fn ok2(_: &dyn for<'a,'b> Fn<(&'b Parameterized<'a>,), Output=&'a i32>) {
 }
 
 #[rustc_error]

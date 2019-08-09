@@ -6,20 +6,20 @@ fn touch<A>(_a: &A) {}
 
 fn f00() {
     let x = "hi".to_string();
+    //~^ NOTE move occurs because `x` has type `std::string::String`
     let _y = Foo { f:x };
     //~^ NOTE value moved here
-    touch(&x); //~ ERROR use of moved value: `x`
-    //~^ NOTE value used here after move
-    //~| NOTE move occurs because `x` has type `std::string::String`
+    touch(&x); //~ ERROR borrow of moved value: `x`
+    //~^ NOTE value borrowed here after move
 }
 
 fn f05() {
     let x = "hi".to_string();
+    //~^ NOTE move occurs because `x` has type `std::string::String`
     let _y = Foo { f:(((x))) };
     //~^ NOTE value moved here
-    touch(&x); //~ ERROR use of moved value: `x`
-    //~^ NOTE value used here after move
-    //~| NOTE move occurs because `x` has type `std::string::String`
+    touch(&x); //~ ERROR borrow of moved value: `x`
+    //~^ NOTE value borrowed here after move
 }
 
 fn f10() {

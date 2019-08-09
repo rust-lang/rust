@@ -6,7 +6,7 @@ trait Bar {
     const X: usize;
 }
 
-fn make_bar<T:Bar>(t: &T) -> &Bar {
+fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
     //~^ ERROR E0038
     t
 }

@@ -4,7 +4,7 @@ error[E0658]: the `#[sanitizer_runtime]` attribute is used to identify crates th
 LL | #![sanitizer_runtime]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(sanitizer_runtime)] to the crate attributes to enable
+   = help: add `#![feature(sanitizer_runtime)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

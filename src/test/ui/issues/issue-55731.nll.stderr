@@ -1,0 +1,11 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-55731.rs:48:5
+   |
+LL | /     multi(Map {
+LL | |         i: Cloned(PhantomData),
+LL | |         f: X,
+LL | |     });
+   | |______^
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error[E0632]: cannot provide explicit type parameters when `impl Trait` is used in argument position.
+  --> $DIR/universal-issue-48703.rs:8:5
+   |
+LL |     foo::<String>('a');
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,7 +1,7 @@
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsStr;
-use crate::io;
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::path::Path;
 use crate::ptr;
@@ -37,15 +37,15 @@ pub struct Pipes {
 ///
 /// The ours/theirs pipes are *not* specifically readable or writable. Each
 /// one only supports a read or a write, but which is which depends on the
-/// boolean flag given. If `ours_readable` is true then `ours` is readable where
-/// `theirs` is writable. Conversely if `ours_readable` is false then `ours` is
-/// writable where `theirs` is readable.
+/// boolean flag given. If `ours_readable` is `true`, then `ours` is readable and
+/// `theirs` is writable. Conversely, if `ours_readable` is `false`, then `ours`
+/// is writable and `theirs` is readable.
 ///
 /// Also note that the `ours` pipe is always a handle opened up in overlapped
 /// mode. This means that technically speaking it should only ever be used
 /// with `OVERLAPPED` instances, but also works out ok if it's only ever used
 /// once at a time (which we do indeed guarantee).
-pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
+pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Result<Pipes> {
     // Note that we specifically do *not* use `CreatePipe` here because
     // unfortunately the anonymous pipes returned do not support overlapped
     // operations. Instead, we create a "hopefully unique" name and create a
@@ -137,6 +137,13 @@ pub fn anon_pipe(ours_readable: bool) -> io::Result<Pipes> {
         opts.write(ours_readable);
         opts.read(!ours_readable);
         opts.share_mode(0);
+        let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
+        let mut sa = c::SECURITY_ATTRIBUTES {
+            nLength: size as c::DWORD,
+            lpSecurityDescriptor: ptr::null_mut(),
+            bInheritHandle: their_handle_inheritable as i32,
+        };
+        opts.security_attributes(&mut sa);
         let theirs = File::open(Path::new(&name), &opts)?;
         let theirs = AnonPipe { inner: theirs.into_handle() };
 
@@ -166,8 +173,16 @@ impl AnonPipe {
         self.inner.read(buf)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.inner.read_vectored(bufs)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.write_vectored(bufs)
     }
 }
 
@@ -334,7 +349,7 @@ impl<'a> Drop for AsyncPipe<'a> {
         // If anything here fails, there's not really much we can do, so we leak
         // the buffer/OVERLAPPED pointers to ensure we're at least memory safe.
         if self.pipe.cancel_io().is_err() || self.result().is_err() {
-            let buf = mem::replace(self.dst, Vec::new());
+            let buf = mem::take(self.dst);
             let overlapped = Box::new(unsafe { mem::zeroed() });
             let overlapped = mem::replace(&mut self.overlapped, overlapped);
             mem::forget((buf, overlapped));

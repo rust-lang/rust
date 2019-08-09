@@ -1,15 +1,15 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/unboxed-closure-region.rs:8:12
    |
+LL |     let _f = {
+   |         -- borrow later stored here
+LL |         let x = 0;
 LL |         || x
    |         -- ^ borrowed value does not live long enough
    |         |
-   |         capture occurs here
+   |         value captured here
 LL |     };
-   |     - borrowed value only lives until here
-LL |     _f;
-LL | }
-   | - borrowed value needs to live until here
+   |     - `x` dropped here while still borrowed
 
 error: aborting due to previous error
 

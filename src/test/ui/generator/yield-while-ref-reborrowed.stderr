@@ -2,15 +2,14 @@ error[E0501]: cannot borrow `x` as immutable because previous closure requires u
   --> $DIR/yield-while-ref-reborrowed.rs:36:20
    |
 LL |     let mut b = || {
-   |                 -- closure construction occurs here
+   |                 -- generator construction occurs here
 LL |         let a = &mut *x;
-   |                       - previous borrow occurs due to use of `x` in closure
+   |                       - first borrow occurs due to use of `x` in generator
 ...
 LL |     println!("{}", x);
-   |                    ^ borrow occurs here
+   |                    ^ second borrow occurs here
 LL |     Pin::new(&mut b).resume();
-LL | }
-   | - borrow from closure ends here
+   |              ------ first borrow later used here
 
 error: aborting due to previous error
 

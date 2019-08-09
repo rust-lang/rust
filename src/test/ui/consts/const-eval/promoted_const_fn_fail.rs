@@ -17,7 +17,7 @@ const fn bar() -> u8 {
 }
 
 fn main() {
-    let x: &'static u8 = &(bar() + 1); //~ ERROR does not live long enough
+    let x: &'static u8 = &(bar() + 1); //~ ERROR temporary value dropped while borrowed
     let y = *x;
     unreachable!();
 }

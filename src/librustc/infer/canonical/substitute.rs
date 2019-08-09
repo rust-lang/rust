@@ -14,7 +14,7 @@ use crate::ty::{self, TyCtxt};
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
     /// with the value given in `var_values`.
-    pub fn substitute(&self, tcx: TyCtxt<'_, '_, 'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
+    pub fn substitute(&self, tcx: TyCtxt<'tcx>, var_values: &CanonicalVarValues<'tcx>) -> V
     where
         V: TypeFoldable<'tcx>,
     {
@@ -29,7 +29,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
     /// V, replacing each of the canonical variables.
     pub fn substitute_projected<T>(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         var_values: &CanonicalVarValues<'tcx>,
         projection_fn: impl FnOnce(&V) -> &T,
     ) -> T
@@ -46,7 +46,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
 /// must be values for the set of canonical variables that appear in
 /// `value`.
 pub(super) fn substitute_value<'a, 'tcx, T>(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     var_values: &CanonicalVarValues<'tcx>,
     value: &'a T,
 ) -> T
@@ -70,6 +70,13 @@ where
             }
         };
 
-        tcx.replace_escaping_bound_vars(value, fld_r, fld_t).0
+        let fld_c = |bound_ct: ty::BoundVar, _| {
+            match var_values.var_values[bound_ct].unpack() {
+                UnpackedKind::Const(ct) => ct,
+                c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
+            }
+        };
+
+        tcx.replace_escaping_bound_vars(value, fld_r, fld_t, fld_c).0
     }
 }

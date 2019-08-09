@@ -6,38 +6,38 @@ LL | const fn bar() -> u32 { foo() }
    |
    = help: add `#![feature(foo)]` to the crate attributes to enable
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:18:28
    |
 LL |     let _: &'static u32 = &foo();
-   |                            ^^^^^ temporary value does not live long enough
+   |            ------------    ^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:22:28
    |
 LL |     let _: &'static u32 = &meh();
-   |                            ^^^^^ temporary value does not live long enough
+   |            ------------    ^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:23:26
    |
 LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+   |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 LL |
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

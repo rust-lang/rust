@@ -1,11 +1,11 @@
 //! The various algorithms from the paper.
 
-use cmp::min;
-use cmp::Ordering::{Less, Equal, Greater};
-use num::diy_float::Fp;
-use num::dec2flt::table;
-use num::dec2flt::rawfp::{self, Unpacked, RawFloat, fp_to_float, next_float, prev_float};
-use num::dec2flt::num::{self, Big};
+use crate::cmp::min;
+use crate::cmp::Ordering::{Less, Equal, Greater};
+use crate::num::diy_float::Fp;
+use crate::num::dec2flt::table;
+use crate::num::dec2flt::rawfp::{self, Unpacked, RawFloat, fp_to_float, next_float, prev_float};
+use crate::num::dec2flt::num::{self, Big};
 
 /// Number of significand bits in Fp
 const P: u32 = 64;
@@ -35,7 +35,7 @@ mod fpu_precision {
 // computations are performed in the desired precision.
 #[cfg(all(target_arch="x86", not(target_feature="sse2")))]
 mod fpu_precision {
-    use mem::size_of;
+    use crate::mem::size_of;
 
     /// A structure used to preserve the original value of the FPU control word, so that it can be
     /// restored when the structure is dropped.
@@ -326,7 +326,7 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
     round_by_remainder(v, rem, q, z)
 }
 
-/// Skip over most Algorithm M iterations by checking the bit length.
+/// Skips over most Algorithm M iterations by checking the bit length.
 fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
     // The bit length is an estimate of the base two logarithm, and log(u / v) = log(u) - log(v).
     // The estimate is off by at most 1, but always an under-estimate, so the error on log(u)

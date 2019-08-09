@@ -1,8 +1,8 @@
-error[E0596]: cannot borrow borrowed content `*self.s` of immutable binding as mutable
+error[E0596]: cannot borrow `*self.s` as mutable, as it is behind a `&` reference
   --> $DIR/issue-38147-2.rs:7:9
    |
 LL |     s: &'a String
-   |        ---------- use `&'a mut String` here to make mutable
+   |        ---------- help: consider changing this to be mutable: `&'a mut String`
 ...
 LL |         self.s.push('x');
    |         ^^^^^^ cannot borrow as mutable

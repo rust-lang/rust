@@ -5,8 +5,6 @@
 #![unstable(issue = "0", feature = "windows_c")]
 
 use crate::os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort, c_char};
-#[cfg(target_arch = "x86_64")]
-use crate::os::raw::c_ulonglong;
 use crate::ptr;
 
 use libc::{wchar_t, size_t, c_void};
@@ -33,16 +31,10 @@ pub type WORD = u16;
 pub type CHAR = c_char;
 pub type ULONG_PTR = usize;
 pub type ULONG = c_ulong;
-#[cfg(target_arch = "x86_64")]
-pub type ULONGLONG = u64;
-#[cfg(target_arch = "x86_64")]
-pub type DWORDLONG = ULONGLONG;
 
 pub type LPBOOL = *mut BOOL;
 pub type LPBYTE = *mut BYTE;
-pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
 pub type LPCSTR = *const CHAR;
-pub type LPCVOID = *const c_void;
 pub type LPCWSTR = *const WCHAR;
 pub type LPDWORD = *mut DWORD;
 pub type LPHANDLE = *mut HANDLE;
@@ -108,11 +100,6 @@ pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 pub const FIONBIO: c_ulong = 0x8004667e;
 
-#[cfg(target_arch = "arm")]
-const ARM_MAX_BREAKPOINTS: usize = 8;
-#[cfg(target_arch = "arm")]
-const ARM_MAX_WATCHPOINTS: usize = 1;
-
 #[repr(C)]
 #[derive(Copy)]
 pub struct WIN32_FIND_DATAW {
@@ -132,6 +119,7 @@ impl Clone for WIN32_FIND_DATAW {
 }
 
 pub const WSA_FLAG_OVERLAPPED: DWORD = 0x01;
+pub const WSA_FLAG_NO_HANDLE_INHERIT: DWORD = 0x80;
 
 pub const WSADESCRIPTION_LEN: usize = 256;
 pub const WSASYS_STATUS_LEN: usize = 128;
@@ -141,6 +129,7 @@ pub const INVALID_SOCKET: SOCKET = !0;
 pub const WSAEACCES: c_int = 10013;
 pub const WSAEINVAL: c_int = 10022;
 pub const WSAEWOULDBLOCK: c_int = 10035;
+pub const WSAEPROTOTYPE: c_int = 10041;
 pub const WSAEADDRINUSE: c_int = 10048;
 pub const WSAEADDRNOTAVAIL: c_int = 10049;
 pub const WSAECONNABORTED: c_int = 10053;
@@ -152,7 +141,6 @@ pub const WSAECONNREFUSED: c_int = 10061;
 
 pub const MAX_PROTOCOL_CHAIN: DWORD = 7;
 
-pub const TOKEN_READ: DWORD = 0x20008;
 pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
 pub const FSCTL_GET_REPARSE_POINT: DWORD = 0x900a8;
 pub const IO_REPARSE_TAG_SYMLINK: DWORD = 0xa000000c;
@@ -167,8 +155,6 @@ pub const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE: DWORD = 0x2;
 pub const STD_INPUT_HANDLE: DWORD = -10i32 as DWORD;
 pub const STD_OUTPUT_HANDLE: DWORD = -11i32 as DWORD;
 pub const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
-
-pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
 pub const PROGRESS_CONTINUE: DWORD = 0;
 
@@ -270,26 +256,6 @@ pub const WAIT_OBJECT_0: DWORD = 0x00000000;
 pub const WAIT_TIMEOUT: DWORD = 258;
 pub const WAIT_FAILED: DWORD = 0xFFFFFFFF;
 
-#[cfg(target_env = "msvc")]
-#[cfg(feature = "backtrace")]
-pub const MAX_SYM_NAME: usize = 2000;
-#[cfg(target_arch = "x86")]
-#[cfg(feature = "backtrace")]
-pub const IMAGE_FILE_MACHINE_I386: DWORD = 0x014c;
-#[cfg(target_arch = "x86_64")]
-#[cfg(feature = "backtrace")]
-pub const IMAGE_FILE_MACHINE_AMD64: DWORD = 0x8664;
-#[cfg(target_arch = "aarch64")]
-#[cfg(feature = "backtrace")]
-pub const IMAGE_FILE_MACHINE_ARM64: DWORD = 0xAA64;
-#[cfg(target_arch = "arm")]
-#[cfg(feature = "backtrace")]
-pub const IMAGE_FILE_MACHINE_ARMNT: DWORD = 0x01c4;
-
-pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
-pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
-pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
-
 pub const PIPE_ACCESS_INBOUND: DWORD = 0x00000001;
 pub const PIPE_ACCESS_OUTBOUND: DWORD = 0x00000002;
 pub const FILE_FLAG_FIRST_PIPE_INSTANCE: DWORD = 0x00080000;
@@ -367,20 +333,6 @@ pub struct WIN32_FILE_ATTRIBUTE_DATA {
     pub ftLastWriteTime: FILETIME,
     pub nFileSizeHigh: DWORD,
     pub nFileSizeLow: DWORD,
-}
-
-#[repr(C)]
-pub struct BY_HANDLE_FILE_INFORMATION {
-    pub dwFileAttributes: DWORD,
-    pub ftCreationTime: FILETIME,
-    pub ftLastAccessTime: FILETIME,
-    pub ftLastWriteTime: FILETIME,
-    pub dwVolumeSerialNumber: DWORD,
-    pub nFileSizeHigh: DWORD,
-    pub nFileSizeLow: DWORD,
-    pub nNumberOfLinks: DWORD,
-    pub nFileIndexHigh: DWORD,
-    pub nFileIndexLow: DWORD,
 }
 
 #[repr(C)]
@@ -489,25 +441,6 @@ pub struct REPARSE_MOUNTPOINT_DATA_BUFFER {
 }
 
 #[repr(C)]
-pub struct EXCEPTION_RECORD {
-    pub ExceptionCode: DWORD,
-    pub ExceptionFlags: DWORD,
-    pub ExceptionRecord: *mut EXCEPTION_RECORD,
-    pub ExceptionAddress: LPVOID,
-    pub NumberParameters: DWORD,
-    pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS]
-}
-
-#[repr(C)]
-pub struct EXCEPTION_POINTERS {
-    pub ExceptionRecord: *mut EXCEPTION_RECORD,
-    pub ContextRecord: *mut CONTEXT,
-}
-
-pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
-        fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
-
-#[repr(C)]
 pub struct GUID {
     pub Data1: DWORD,
     pub Data2: WORD,
@@ -581,321 +514,12 @@ pub struct OVERLAPPED {
 }
 
 #[repr(C)]
-#[cfg(target_env = "msvc")]
-#[cfg(feature = "backtrace")]
-pub struct SYMBOL_INFO {
-    pub SizeOfStruct: c_ulong,
-    pub TypeIndex: c_ulong,
-    pub Reserved: [u64; 2],
-    pub Index: c_ulong,
-    pub Size: c_ulong,
-    pub ModBase: u64,
-    pub Flags: c_ulong,
-    pub Value: u64,
-    pub Address: u64,
-    pub Register: c_ulong,
-    pub Scope: c_ulong,
-    pub Tag: c_ulong,
-    pub NameLen: c_ulong,
-    pub MaxNameLen: c_ulong,
-    // note that windows has this as 1, but it basically just means that
-    // the name is inline at the end of the struct. For us, we just bump
-    // the struct size up to MAX_SYM_NAME.
-    pub Name: [c_char; MAX_SYM_NAME],
-}
-
-#[repr(C)]
-#[cfg(target_env = "msvc")]
-#[cfg(feature = "backtrace")]
-pub struct IMAGEHLP_LINE64 {
-    pub SizeOfStruct: u32,
-    pub Key: *const c_void,
-    pub LineNumber: u32,
-    pub Filename: *const c_char,
-    pub Address: u64,
-}
-
-#[repr(C)]
 #[allow(dead_code)] // we only use some variants
 pub enum ADDRESS_MODE {
     AddrMode1616,
     AddrMode1632,
     AddrModeReal,
     AddrModeFlat,
-}
-
-#[repr(C)]
-#[cfg(feature = "backtrace")]
-pub struct ADDRESS64 {
-    pub Offset: u64,
-    pub Segment: u16,
-    pub Mode: ADDRESS_MODE,
-}
-
-#[repr(C)]
-#[cfg(feature = "backtrace")]
-pub struct STACKFRAME_EX {
-    pub AddrPC: ADDRESS64,
-    pub AddrReturn: ADDRESS64,
-    pub AddrFrame: ADDRESS64,
-    pub AddrStack: ADDRESS64,
-    pub AddrBStore: ADDRESS64,
-    pub FuncTableEntry: *mut c_void,
-    pub Params: [u64; 4],
-    pub Far: BOOL,
-    pub Virtual: BOOL,
-    pub Reserved: [u64; 3],
-    pub KdHelp: KDHELP64,
-    pub StackFrameSize: DWORD,
-    pub InlineFrameContext: DWORD,
-}
-
-#[repr(C)]
-#[cfg(feature = "backtrace")]
-pub struct STACKFRAME64 {
-    pub AddrPC: ADDRESS64,
-    pub AddrReturn: ADDRESS64,
-    pub AddrFrame: ADDRESS64,
-    pub AddrStack: ADDRESS64,
-    pub AddrBStore: ADDRESS64,
-    pub FuncTableEntry: *mut c_void,
-    pub Params: [u64; 4],
-    pub Far: BOOL,
-    pub Virtual: BOOL,
-    pub Reserved: [u64; 3],
-    pub KdHelp: KDHELP64,
-}
-
-#[repr(C)]
-#[cfg(feature = "backtrace")]
-pub struct KDHELP64 {
-    pub Thread: u64,
-    pub ThCallbackStack: DWORD,
-    pub ThCallbackBStore: DWORD,
-    pub NextCallback: DWORD,
-    pub FramePointer: DWORD,
-    pub KiCallUserMode: u64,
-    pub KeUserCallbackDispatcher: u64,
-    pub SystemRangeStart: u64,
-    pub KiUserExceptionDispatcher: u64,
-    pub StackBase: u64,
-    pub StackLimit: u64,
-    pub Reserved: [u64; 5],
-}
-
-#[cfg(target_arch = "x86")]
-#[repr(C)]
-pub struct CONTEXT {
-    pub ContextFlags: DWORD,
-    pub Dr0: DWORD,
-    pub Dr1: DWORD,
-    pub Dr2: DWORD,
-    pub Dr3: DWORD,
-    pub Dr6: DWORD,
-    pub Dr7: DWORD,
-    pub FloatSave: FLOATING_SAVE_AREA,
-    pub SegGs: DWORD,
-    pub SegFs: DWORD,
-    pub SegEs: DWORD,
-    pub SegDs: DWORD,
-    pub Edi: DWORD,
-    pub Esi: DWORD,
-    pub Ebx: DWORD,
-    pub Edx: DWORD,
-    pub Ecx: DWORD,
-    pub Eax: DWORD,
-    pub Ebp: DWORD,
-    pub Eip: DWORD,
-    pub SegCs: DWORD,
-    pub EFlags: DWORD,
-    pub Esp: DWORD,
-    pub SegSs: DWORD,
-    pub ExtendedRegisters: [u8; 512],
-}
-
-#[cfg(target_arch = "x86")]
-#[repr(C)]
-pub struct FLOATING_SAVE_AREA {
-    pub ControlWord: DWORD,
-    pub StatusWord: DWORD,
-    pub TagWord: DWORD,
-    pub ErrorOffset: DWORD,
-    pub ErrorSelector: DWORD,
-    pub DataOffset: DWORD,
-    pub DataSelector: DWORD,
-    pub RegisterArea: [u8; 80],
-    pub Cr0NpxState: DWORD,
-}
-
-#[cfg(target_arch = "x86_64")]
-#[repr(C, align(16))]
-pub struct CONTEXT {
-    pub P1Home: DWORDLONG,
-    pub P2Home: DWORDLONG,
-    pub P3Home: DWORDLONG,
-    pub P4Home: DWORDLONG,
-    pub P5Home: DWORDLONG,
-    pub P6Home: DWORDLONG,
-
-    pub ContextFlags: DWORD,
-    pub MxCsr: DWORD,
-
-    pub SegCs: WORD,
-    pub SegDs: WORD,
-    pub SegEs: WORD,
-    pub SegFs: WORD,
-    pub SegGs: WORD,
-    pub SegSs: WORD,
-    pub EFlags: DWORD,
-
-    pub Dr0: DWORDLONG,
-    pub Dr1: DWORDLONG,
-    pub Dr2: DWORDLONG,
-    pub Dr3: DWORDLONG,
-    pub Dr6: DWORDLONG,
-    pub Dr7: DWORDLONG,
-
-    pub Rax: DWORDLONG,
-    pub Rcx: DWORDLONG,
-    pub Rdx: DWORDLONG,
-    pub Rbx: DWORDLONG,
-    pub Rsp: DWORDLONG,
-    pub Rbp: DWORDLONG,
-    pub Rsi: DWORDLONG,
-    pub Rdi: DWORDLONG,
-    pub R8:  DWORDLONG,
-    pub R9:  DWORDLONG,
-    pub R10: DWORDLONG,
-    pub R11: DWORDLONG,
-    pub R12: DWORDLONG,
-    pub R13: DWORDLONG,
-    pub R14: DWORDLONG,
-    pub R15: DWORDLONG,
-
-    pub Rip: DWORDLONG,
-
-    pub FltSave: FLOATING_SAVE_AREA,
-
-    pub VectorRegister: [M128A; 26],
-    pub VectorControl: DWORDLONG,
-
-    pub DebugControl: DWORDLONG,
-    pub LastBranchToRip: DWORDLONG,
-    pub LastBranchFromRip: DWORDLONG,
-    pub LastExceptionToRip: DWORDLONG,
-    pub LastExceptionFromRip: DWORDLONG,
-}
-
-#[cfg(target_arch = "x86_64")]
-#[repr(C, align(16))]
-pub struct M128A {
-    pub Low:  c_ulonglong,
-    pub High: c_longlong
-}
-
-#[cfg(target_arch = "x86_64")]
-#[repr(C, align(16))]
-pub struct FLOATING_SAVE_AREA {
-    _Dummy: [u8; 512] // FIXME: Fill this out
-}
-
-#[cfg(target_arch = "arm")]
-#[repr(C)]
-pub struct CONTEXT {
-    pub ContextFlags: ULONG,
-    pub R0: ULONG,
-    pub R1: ULONG,
-    pub R2: ULONG,
-    pub R3: ULONG,
-    pub R4: ULONG,
-    pub R5: ULONG,
-    pub R6: ULONG,
-    pub R7: ULONG,
-    pub R8: ULONG,
-    pub R9: ULONG,
-    pub R10: ULONG,
-    pub R11: ULONG,
-    pub R12: ULONG,
-    pub Sp: ULONG,
-    pub Lr: ULONG,
-    pub Pc: ULONG,
-    pub Cpsr: ULONG,
-    pub Fpscr: ULONG,
-    pub Padding: ULONG,
-    pub D: [u64; 32],
-    pub Bvr: [ULONG; ARM_MAX_BREAKPOINTS],
-    pub Bcr: [ULONG; ARM_MAX_BREAKPOINTS],
-    pub Wvr: [ULONG; ARM_MAX_WATCHPOINTS],
-    pub Wcr: [ULONG; ARM_MAX_WATCHPOINTS],
-    pub Padding2: [ULONG; 2]
-}
-
-// FIXME(#43348): This structure is used for backtrace only, and a fake
-// definition is provided here only to allow rustdoc to pass type-check. This
-// will not appear in the final documentation. This should be also defined for
-// other architectures supported by Windows such as ARM, and for historical
-// interest, maybe MIPS and PowerPC as well.
-#[cfg(all(rustdoc, not(any(target_arch = "x86_64", target_arch = "x86",
-      target_arch = "aarch64", target_arch = "arm"))))]
-pub enum CONTEXT {}
-
-#[cfg(target_arch = "aarch64")]
-pub const ARM64_MAX_BREAKPOINTS: usize = 8;
-
-#[cfg(target_arch = "aarch64")]
-pub const ARM64_MAX_WATCHPOINTS: usize = 2;
-
-#[cfg(target_arch = "aarch64")]
-#[repr(C)]
-pub struct ARM64_NT_NEON128 {
-    pub D: [f64; 2],
-}
-
-#[cfg(target_arch = "aarch64")]
-#[repr(C, align(16))]
-pub struct CONTEXT {
-    pub ContextFlags: DWORD,
-    pub Cpsr: DWORD,
-    pub X0: u64,
-    pub X1: u64,
-    pub X2: u64,
-    pub X3: u64,
-    pub X4: u64,
-    pub X5: u64,
-    pub X6: u64,
-    pub X7: u64,
-    pub X8: u64,
-    pub X9: u64,
-    pub X10: u64,
-    pub X11: u64,
-    pub X12: u64,
-    pub X13: u64,
-    pub X14: u64,
-    pub X15: u64,
-    pub X16: u64,
-    pub X17: u64,
-    pub X18: u64,
-    pub X19: u64,
-    pub X20: u64,
-    pub X21: u64,
-    pub X22: u64,
-    pub X23: u64,
-    pub X24: u64,
-    pub X25: u64,
-    pub X26: u64,
-    pub X27: u64,
-    pub X28: u64,
-    pub Fp: u64,
-    pub Lr: u64,
-    pub Sp: u64,
-    pub Pc: u64,
-    pub V: [ARM64_NT_NEON128; 32],
-    pub Fpcr: DWORD,
-    pub Fpsr: DWORD,
-    pub Bcr: [DWORD; ARM64_MAX_BREAKPOINTS],
-    pub Bvr: [DWORD; ARM64_MAX_BREAKPOINTS],
-    pub Wcr: [DWORD; ARM64_MAX_WATCHPOINTS],
-    pub Wvr: [DWORD; ARM64_MAX_WATCHPOINTS],
 }
 
 #[repr(C)]
@@ -960,16 +584,6 @@ pub enum EXCEPTION_DISPOSITION {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
-pub struct CONSOLE_READCONSOLE_CONTROL {
-    pub nLength: ULONG,
-    pub nInitialChars: ULONG,
-    pub dwCtrlWakeupMask: ULONG,
-    pub dwControlKeyState: ULONG,
-}
-pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
-
-#[repr(C)]
 #[derive(Copy)]
 pub struct fd_set {
     pub fd_count: c_uint,
@@ -989,6 +603,134 @@ pub struct timeval {
     pub tv_usec: c_long,
 }
 
+// Functions forbidden when targeting UWP
+cfg_if::cfg_if! {
+if #[cfg(not(target_vendor = "uwp"))] {
+    pub const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
+    pub const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
+    pub const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
+
+    #[repr(C)]
+    pub struct EXCEPTION_RECORD {
+        pub ExceptionCode: DWORD,
+        pub ExceptionFlags: DWORD,
+        pub ExceptionRecord: *mut EXCEPTION_RECORD,
+        pub ExceptionAddress: LPVOID,
+        pub NumberParameters: DWORD,
+        pub ExceptionInformation: [LPVOID; EXCEPTION_MAXIMUM_PARAMETERS]
+    }
+
+    pub enum CONTEXT {}
+
+    #[repr(C)]
+    pub struct EXCEPTION_POINTERS {
+        pub ExceptionRecord: *mut EXCEPTION_RECORD,
+        pub ContextRecord: *mut CONTEXT,
+    }
+
+    pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
+            fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
+
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    pub struct CONSOLE_READCONSOLE_CONTROL {
+        pub nLength: ULONG,
+        pub nInitialChars: ULONG,
+        pub dwCtrlWakeupMask: ULONG,
+        pub dwControlKeyState: ULONG,
+    }
+
+    pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
+
+    #[repr(C)]
+    pub struct BY_HANDLE_FILE_INFORMATION {
+        pub dwFileAttributes: DWORD,
+        pub ftCreationTime: FILETIME,
+        pub ftLastAccessTime: FILETIME,
+        pub ftLastWriteTime: FILETIME,
+        pub dwVolumeSerialNumber: DWORD,
+        pub nFileSizeHigh: DWORD,
+        pub nFileSizeLow: DWORD,
+        pub nNumberOfLinks: DWORD,
+        pub nFileIndexHigh: DWORD,
+        pub nFileIndexLow: DWORD,
+    }
+
+    pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
+    pub type LPCVOID = *const c_void;
+
+    pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
+
+    pub const TOKEN_READ: DWORD = 0x20008;
+
+    extern "system" {
+        #[link_name = "SystemFunction036"]
+        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
+
+        pub fn ReadConsoleW(hConsoleInput: HANDLE,
+                            lpBuffer: LPVOID,
+                            nNumberOfCharsToRead: DWORD,
+                            lpNumberOfCharsRead: LPDWORD,
+                            pInputControl: PCONSOLE_READCONSOLE_CONTROL) -> BOOL;
+
+        pub fn WriteConsoleW(hConsoleOutput: HANDLE,
+                             lpBuffer: LPCVOID,
+                             nNumberOfCharsToWrite: DWORD,
+                             lpNumberOfCharsWritten: LPDWORD,
+                             lpReserved: LPVOID) -> BOOL;
+
+        pub fn GetConsoleMode(hConsoleHandle: HANDLE,
+                              lpMode: LPDWORD) -> BOOL;
+        // Allowed but unused by UWP
+        pub fn OpenProcessToken(ProcessHandle: HANDLE,
+                                DesiredAccess: DWORD,
+                                TokenHandle: *mut HANDLE) -> BOOL;
+        pub fn GetUserProfileDirectoryW(hToken: HANDLE,
+                                        lpProfileDir: LPWSTR,
+                                        lpcchSize: *mut DWORD) -> BOOL;
+        pub fn GetFileInformationByHandle(hFile: HANDLE,
+                            lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
+                            -> BOOL;
+        pub fn SetHandleInformation(hObject: HANDLE,
+                                    dwMask: DWORD,
+                                    dwFlags: DWORD) -> BOOL;
+        pub fn AddVectoredExceptionHandler(FirstHandler: ULONG,
+                                           VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
+                                           -> LPVOID;
+        pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
+                               lpTargetFileName: LPCWSTR,
+                               lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
+                               -> BOOL;
+    }
+}
+}
+
+// UWP specific functions & types
+cfg_if::cfg_if! {
+if #[cfg(target_vendor = "uwp")] {
+    pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
+
+    #[repr(C)]
+    pub struct FILE_STANDARD_INFO {
+        pub AllocationSize: LARGE_INTEGER,
+        pub EndOfFile: LARGE_INTEGER,
+        pub NumberOfLink: DWORD,
+        pub DeletePending: BOOLEAN,
+        pub Directory: BOOLEAN,
+    }
+
+    extern "system" {
+        pub fn GetFileInformationByHandleEx(hFile: HANDLE,
+                                            fileInfoClass: FILE_INFO_BY_HANDLE_CLASS,
+                                            lpFileInformation: LPVOID,
+                                            dwBufferSize: DWORD) -> BOOL;
+        pub fn BCryptGenRandom(hAlgorithm: LPVOID, pBuffer: *mut u8,
+                               cbBuffer: ULONG, dwFlags: ULONG) -> LONG;
+    }
+}
+}
+
+// Shared between Desktop & UWP
 extern "system" {
     pub fn WSAStartup(wVersionRequested: WORD,
                       lpWSAData: LPWSADATA) -> c_int;
@@ -1028,34 +770,13 @@ extern "system" {
     pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
     pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 
-    pub fn ReadConsoleW(hConsoleInput: HANDLE,
-                        lpBuffer: LPVOID,
-                        nNumberOfCharsToRead: DWORD,
-                        lpNumberOfCharsRead: LPDWORD,
-                        pInputControl: PCONSOLE_READCONSOLE_CONTROL) -> BOOL;
-
-    pub fn WriteConsoleW(hConsoleOutput: HANDLE,
-                         lpBuffer: LPCVOID,
-                         nNumberOfCharsToWrite: DWORD,
-                         lpNumberOfCharsWritten: LPDWORD,
-                         lpReserved: LPVOID) -> BOOL;
-
-    pub fn GetConsoleMode(hConsoleHandle: HANDLE,
-                          lpMode: LPDWORD) -> BOOL;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
     pub fn SetFileAttributesW(lpFileName: LPCWSTR,
                               dwFileAttributes: DWORD) -> BOOL;
-    pub fn GetFileInformationByHandle(hFile: HANDLE,
-                            lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
-                            -> BOOL;
-
     pub fn SetLastError(dwErrCode: DWORD);
     pub fn GetCommandLineW() -> *mut LPCWSTR;
     pub fn GetTempPathW(nBufferLength: DWORD,
                         lpBuffer: LPCWSTR) -> DWORD;
-    pub fn OpenProcessToken(ProcessHandle: HANDLE,
-                            DesiredAccess: DWORD,
-                            TokenHandle: *mut HANDLE) -> BOOL;
     pub fn GetCurrentProcess() -> HANDLE;
     pub fn GetCurrentThread() -> HANDLE;
     pub fn GetStdHandle(which: DWORD) -> HANDLE;
@@ -1080,21 +801,12 @@ extern "system" {
     pub fn SwitchToThread() -> BOOL;
     pub fn Sleep(dwMilliseconds: DWORD);
     pub fn GetProcessId(handle: HANDLE) -> DWORD;
-    pub fn GetUserProfileDirectoryW(hToken: HANDLE,
-                                    lpProfileDir: LPWSTR,
-                                    lpcchSize: *mut DWORD) -> BOOL;
-    pub fn SetHandleInformation(hObject: HANDLE,
-                                dwMask: DWORD,
-                                dwFlags: DWORD) -> BOOL;
     pub fn CopyFileExW(lpExistingFileName: LPCWSTR,
                        lpNewFileName: LPCWSTR,
                        lpProgressRoutine: LPPROGRESS_ROUTINE,
                        lpData: LPVOID,
                        pbCancel: LPBOOL,
                        dwCopyFlags: DWORD) -> BOOL;
-    pub fn AddVectoredExceptionHandler(FirstHandler: ULONG,
-                                       VectoredHandler: PVECTORED_EXCEPTION_HANDLER)
-                                       -> LPVOID;
     pub fn FormatMessageW(flags: DWORD,
                           lpSrc: LPVOID,
                           msgId: DWORD,
@@ -1191,10 +903,6 @@ extern "system" {
                      lpOverlapped: LPOVERLAPPED)
                      -> BOOL;
     pub fn CloseHandle(hObject: HANDLE) -> BOOL;
-    pub fn CreateHardLinkW(lpSymlinkFileName: LPCWSTR,
-                           lpTargetFileName: LPCWSTR,
-                           lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
-                           -> BOOL;
     pub fn MoveFileExW(lpExistingFileName: LPCWSTR,
                        lpNewFileName: LPCWSTR,
                        dwFlags: DWORD)
@@ -1220,8 +928,6 @@ extern "system" {
     pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW)
                          -> BOOL;
     pub fn FindClose(findFile: HANDLE) -> BOOL;
-    #[cfg(feature = "backtrace")]
-    pub fn RtlCaptureContext(ctx: *mut CONTEXT);
     pub fn getsockopt(s: SOCKET,
                       level: c_int,
                       optname: c_int,
@@ -1252,10 +958,6 @@ extern "system" {
                        res: *mut *mut ADDRINFOA) -> c_int;
     pub fn freeaddrinfo(res: *mut ADDRINFOA);
 
-    #[cfg(feature = "backtrace")]
-    pub fn LoadLibraryW(name: LPCWSTR) -> HMODULE;
-    #[cfg(feature = "backtrace")]
-    pub fn FreeLibrary(handle: HMODULE) -> BOOL;
     pub fn GetProcAddress(handle: HMODULE,
                           name: LPCSTR) -> *mut c_void;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
@@ -1290,8 +992,6 @@ extern "system" {
                   exceptfds: *mut fd_set,
                   timeout: *const timeval) -> c_int;
 
-    #[link_name = "SystemFunction036"]
-    pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
 
     pub fn GetProcessHeap() -> HANDLE;
     pub fn HeapAlloc(hHeap: HANDLE, dwFlags: DWORD, dwBytes: SIZE_T) -> LPVOID;
@@ -1315,6 +1015,7 @@ compat_fn! {
                                      _dwFlags: DWORD) -> DWORD {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
+    #[cfg(not(target_vendor = "uwp"))]
     pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
@@ -1361,34 +1062,3 @@ compat_fn! {
         panic!("rwlocks not available")
     }
 }
-
-#[cfg(all(target_env = "gnu", feature = "backtrace"))]
-mod gnu {
-    use super::*;
-
-    pub const PROCESS_QUERY_INFORMATION: DWORD = 0x0400;
-
-    pub const CP_ACP: UINT = 0;
-
-    pub const WC_NO_BEST_FIT_CHARS: DWORD = 0x00000400;
-
-    extern "system" {
-        pub fn OpenProcess(dwDesiredAccess: DWORD,
-                           bInheritHandle: BOOL,
-                           dwProcessId: DWORD) -> HANDLE;
-    }
-
-    compat_fn! {
-        kernel32:
-
-        pub fn QueryFullProcessImageNameW(_hProcess: HANDLE,
-                                          _dwFlags: DWORD,
-                                          _lpExeName: LPWSTR,
-                                          _lpdwSize: LPDWORD) -> BOOL {
-            SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-        }
-    }
-}
-
-#[cfg(all(target_env = "gnu", feature = "backtrace"))]
-pub use self::gnu::*;

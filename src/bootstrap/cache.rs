@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::cmp::{PartialOrd, Ord, Ordering};
 
+use lazy_static::lazy_static;
+
 use crate::builder::Step;
 
 pub struct Interned<T>(usize, PhantomData<*const T>);
@@ -264,8 +266,10 @@ impl Cache {
                         .expect("invalid type mapped");
         stepcache.get(step).cloned()
     }
+}
 
-    #[cfg(test)]
+#[cfg(test)]
+impl Cache {
     pub fn all<S: Ord + Copy + Step>(&mut self) -> Vec<(S, S::Output)> {
         let cache = self.0.get_mut();
         let type_id = TypeId::of::<S>();
@@ -277,7 +281,6 @@ impl Cache {
         v
     }
 
-    #[cfg(test)]
     pub fn contains<S: Step>(&self) -> bool {
         self.0.borrow().contains_key(&TypeId::of::<S>())
     }

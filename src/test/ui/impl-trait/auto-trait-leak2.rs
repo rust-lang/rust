@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -25,4 +23,3 @@ fn after() -> impl Fn(i32) {
     let p = Rc::new(Cell::new(0));
     move |x| p.set(x)
 }
-

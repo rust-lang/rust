@@ -1,13 +1,3 @@
-// The behavior of AST-borrowck and NLL explcitly differ here due to
-// NLL's increased precision; so we use revisions and do not worry
-// about the --compare-mode=nll on this test.
-
-// revisions: ast nll
-//[ast]compile-flags: -Z borrowck=ast
-//[nll]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
-
-// ignore-compare-mode-nll
-
 // aux-build:dropck_eyepatch_extern_crate.rs
 
 // The point of this test is to illustrate that the `#[may_dangle]`
@@ -19,52 +9,74 @@
 //
 // See also dropck-eyepatch.rs for more information about the general
 // structure of the test.
-#![feature(rustc_attrs)]
 extern crate dropck_eyepatch_extern_crate as other;
 
 use other::{Dt,Dr,Pt,Pr,St,Sr};
 
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     use std::cell::Cell;
-    let c_long;
-    let (c, mut dt, mut dr, mut pt, mut pr, st, sr, c_shortest)
-        : (Cell<_>, Dt<_>, Dr<_>, Pt<_, _>, Pr<_>, St<_>, Sr<_>, Cell<_>);
-    c_long = Cell::new(1);
-    c = Cell::new(1);
-    c_shortest = Cell::new(1);
 
-    // No error: sufficiently long-lived state can be referenced in dtors
-    dt = Dt("dt", &c_long);
-    dr = Dr("dr", &c_long);
+    // We use separate blocks with separate variable to prevent the error
+    // messages from being deduplicated.
 
-    // Error: destructor order imprecisely modelled
-    dt = Dt("dt", &c);
-    //[ast]~^ ERROR `c` does not live long enough
-    dr = Dr("dr", &c);
-    //[ast]~^ ERROR `c` does not live long enough
+    {
+        let c_long;
+        let (mut dt, mut dr): (Dt<_>, Dr<_>);
+        c_long = Cell::new(1);
 
-    // Error: `c_shortest` dies too soon for the references in dtors to be valid.
-    dt = Dt("dt", &c_shortest);
-    //[ast]~^ ERROR `c_shortest` does not live long enough
-    //[nll]~^^ ERROR `c_shortest` does not live long enough
-    dr = Dr("dr", &c_shortest);
-    //[ast]~^ ERROR `c_shortest` does not live long enough
-    // No error: Drop impl asserts .1 (A and &'a _) are not accessed
-    pt = Pt("pt", &c_shortest, &c_long);
-    pr = Pr("pr", &c_shortest, &c_long);
+        // No error: sufficiently long-lived state can be referenced in dtors
+        dt = Dt("dt", &c_long);
+        dr = Dr("dr", &c_long);
+    }
 
-    // Error: Drop impl's assertion does not apply to `B` nor `&'b _`
-    pt = Pt("pt", &c_long, &c_shortest);
-    //[ast]~^ ERROR `c_shortest` does not live long enough
-    pr = Pr("pr", &c_long, &c_shortest);
-    //[ast]~^ ERROR `c_shortest` does not live long enough
+    {
+        let (c, mut dt, mut dr): (Cell<_>, Dt<_>, Dr<_>);
+        c = Cell::new(1);
 
-    // No error: St and Sr have no destructor.
-    st = St("st", &c_shortest);
-    sr = Sr("sr", &c_shortest);
+        // No Error: destructor order precisely modelled
+        dt = Dt("dt", &c);
+        dr = Dr("dr", &c);
+    }
 
-    println!("{:?}", (dt.0, dr.0, pt.0, pr.0, st.0, sr.0));
-    use_imm(sr.1); use_imm(st.1); use_imm(pr.1); use_imm(pt.1); use_imm(dr.1); use_imm(dt.1);
+    {
+        let (mut dt, mut dr, c_shortest): (Dt<_>, Dr<_>, Cell<_>);
+        c_shortest = Cell::new(1);
+
+        // Error: `c_shortest` dies too soon for the references in dtors to be valid.
+        dt = Dt("dt", &c_shortest);
+        //~^ ERROR `c_shortest` does not live long enough
+        dr = Dr("dr", &c_shortest);
+    }
+
+    {
+        let c_long;
+        let (mut pt, mut pr, c_shortest): (Pt<_, _>, Pr<_>, Cell<_>);
+        c_long = Cell::new(1);
+        c_shortest = Cell::new(1);
+
+        // No error: Drop impl asserts .1 (A and &'a _) are not accessed
+        pt = Pt("pt", &c_shortest, &c_long);
+        pr = Pr("pr", &c_shortest, &c_long);
+    }
+
+    {
+        let c_long;
+        let (mut pt, mut pr, c_shortest): (Pt<_, _>, Pr<_>, Cell<_>);
+        c_long = Cell::new(1);
+        c_shortest = Cell::new(1);
+        // Error: Drop impl's assertion does not apply to `B` nor `&'b _`
+        pt = Pt("pt", &c_long, &c_shortest);
+        //~^ ERROR `c_shortest` does not live long enough
+        pr = Pr("pr", &c_long, &c_shortest);
+    }
+
+    {
+        let (st, sr, c_shortest): (St<_>, Sr<_>, Cell<_>);
+        c_shortest = Cell::new(1);
+        // No error: St and Sr have no destructor.
+        st = St("st", &c_shortest);
+        sr = Sr("sr", &c_shortest);
+    }
 }
 
 fn use_imm<T>(_: &T) { }

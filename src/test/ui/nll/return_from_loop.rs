@@ -2,8 +2,6 @@
 // in the type of `p` includes the points after `&v[0]` up to (but not
 // including) the call to `use_x`. The `else` branch is not included.
 
-// compile-flags:-Zborrowck=compare
-
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 
@@ -20,8 +18,7 @@ fn nll_fail() {
     let value = &mut my_struct.field;
     loop {
         my_struct.field.push_str("Hello, world!");
-        //~^ ERROR (Ast) [E0499]
-        //~| ERROR (Mir) [E0499]
+        //~^ ERROR [E0499]
         value.len();
         return;
     }
@@ -33,7 +30,6 @@ fn nll_ok() {
     let value = &mut my_struct.field;
     loop {
         my_struct.field.push_str("Hello, world!");
-        //~^ ERROR (Ast) [E0499]
         return;
     }
 }

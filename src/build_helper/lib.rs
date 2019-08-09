@@ -1,4 +1,5 @@
-#![deny(rust_2018_idioms)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
 
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -44,18 +45,19 @@ pub fn restore_library_path() {
     }
 }
 
-pub fn run(cmd: &mut Command) {
+/// Run the command, printing what we are running.
+pub fn run_verbose(cmd: &mut Command) {
     println!("running: {:?}", cmd);
-    run_silent(cmd);
+    run(cmd);
 }
 
-pub fn run_silent(cmd: &mut Command) {
-    if !try_run_silent(cmd) {
+pub fn run(cmd: &mut Command) {
+    if !try_run(cmd) {
         std::process::exit(1);
     }
 }
 
-pub fn try_run_silent(cmd: &mut Command) -> bool {
+pub fn try_run(cmd: &mut Command) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => fail(&format!(
@@ -113,7 +115,7 @@ pub fn gnu_target(target: &str) -> &str {
 }
 
 pub fn make(host: &str) -> PathBuf {
-    if host.contains("bitrig") || host.contains("dragonfly") || host.contains("freebsd")
+    if host.contains("dragonfly") || host.contains("freebsd")
         || host.contains("netbsd") || host.contains("openbsd")
     {
         PathBuf::from("gmake")
@@ -288,9 +290,9 @@ pub fn sanitizer_lib_boilerplate(sanitizer_name: &str)
     } else {
         format!("static={}", link_name)
     };
-    // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
-    // load our env var set by cargo to find the source code.
-    let dir = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
+    // This env var is provided by rustbuild to tell us where `compiler-rt`
+    // lives.
+    let dir = env::var_os("RUST_COMPILER_RT_ROOT").unwrap();
     let lib = native_lib_boilerplate(
         dir.as_ref(),
         sanitizer_name,

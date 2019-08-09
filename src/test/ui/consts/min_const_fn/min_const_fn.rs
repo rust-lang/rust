@@ -69,8 +69,8 @@ const fn i32_ops3(c: i32, d: i32) -> bool { c != d }
 const fn i32_ops4(c: i32, d: i32) -> i32 { c + d }
 const fn char_cast(u: u8) -> char { u as char }
 const unsafe fn ret_i32_no_unsafe() -> i32 { 42 }
-const unsafe fn ret_null_ptr_no_unsafe<T>() -> *const T { 0 as *const T }
-const unsafe fn ret_null_mut_ptr_no_unsafe<T>() -> *mut T { 0 as *mut T }
+const unsafe fn ret_null_ptr_no_unsafe<T>() -> *const T { core::ptr::null() }
+const unsafe fn ret_null_mut_ptr_no_unsafe<T>() -> *mut T { core::ptr::null_mut() }
 
 // not ok
 const fn foo11<T: std::fmt::Display>(t: T) -> T { t }
@@ -98,13 +98,14 @@ const fn foo30_2(x: *mut u32) -> usize { x as usize }
 const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }
 //~^ ERROR casting pointers to ints is unstable
 const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
-//~^ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
-const fn foo30_5(b: bool) { while b { } } //~ ERROR not stable in const fn
+//~^ ERROR loops and conditional expressions are not stable in const fn
+const fn foo30_5(b: bool) { while b { } }
+//~^ ERROR loops are not allowed in const fn
 const fn foo30_6() -> bool { let x = true; x }
 const fn foo36(a: bool, b: bool) -> bool { a && b }
-//~^ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
+//~^ ERROR loops and conditional expressions are not stable in const fn
 const fn foo37(a: bool, b: bool) -> bool { a || b }
-//~^ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
+//~^ ERROR loops and conditional expressions are not stable in const fn
 const fn inc(x: &mut i32) { *x += 1 }
 //~^ ERROR mutable references in const fn are unstable
 
@@ -135,14 +136,16 @@ const fn no_rpit() -> impl std::fmt::Debug {} //~ ERROR `impl Trait` in const fn
 const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {} //~ ERROR trait bounds other than `Sized`
 const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
 //~^ ERROR trait bounds other than `Sized`
+//~| WARNING cannot return reference to temporary value
+//~| WARNING this error has been downgraded to a warning
+//~| WARNING this warning will become a hard error in the future
 
 const fn no_unsafe() { unsafe {} }
 
-const fn really_no_traits_i_mean_it() { (&() as &std::fmt::Debug, ()).1 }
+const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1 }
 //~^ ERROR trait bounds other than `Sized`
 
 const fn no_fn_ptrs(_x: fn()) {}
 //~^ ERROR function pointers in const fn are unstable
 const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
 //~^ ERROR function pointers in const fn are unstable
-

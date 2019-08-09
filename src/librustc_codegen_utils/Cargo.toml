@@ -7,12 +7,13 @@ edition = "2018"
 [lib]
 name = "rustc_codegen_utils"
 path = "lib.rs"
-crate-type = ["dylib"]
 test = false
 
 [dependencies]
 flate2 = "1.0"
 log = "0.4"
+punycode = "0.4.0"
+rustc-demangle = "0.1.15"
 
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
@@ -20,5 +21,3 @@ rustc = { path = "../librustc" }
 rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_metadata = { path = "../librustc_metadata" }
-rustc_mir = { path = "../librustc_mir" }
-rustc_incremental = { path = "../librustc_incremental" }

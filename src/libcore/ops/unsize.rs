@@ -1,4 +1,4 @@
-use marker::Unsize;
+use crate::marker::Unsize;
 
 /// Trait that indicates that this is a pointer or a wrapper for one,
 /// where unsizing can be performed on the pointee.
@@ -71,7 +71,7 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 
 /// This is used for object safety, to check that a method's receiver type can be dispatched on.
 ///
-/// example impl:
+/// An example implementation of the trait:
 ///
 /// ```
 /// # #![feature(dispatch_from_dyn, unsize)]
@@ -100,4 +100,3 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
-

@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(const_indexing)]
 
 const FOO: [usize; 3] = [1, 2, 3];

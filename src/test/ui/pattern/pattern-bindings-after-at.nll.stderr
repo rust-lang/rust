@@ -1,0 +1,22 @@
+error[E0303]: pattern bindings are not allowed after an `@`
+  --> $DIR/pattern-bindings-after-at.rs:8:31
+   |
+LL |         ref mut z @ &mut Some(ref a) => {
+   |                               ^^^^^ not allowed after `@`
+
+error[E0502]: cannot borrow `_` as immutable because it is also borrowed as mutable
+  --> $DIR/pattern-bindings-after-at.rs:8:31
+   |
+LL |         ref mut z @ &mut Some(ref a) => {
+   |         ----------------------^^^^^-
+   |         |                     |
+   |         |                     immutable borrow occurs here
+   |         mutable borrow occurs here
+...
+LL |             **z = None;
+   |             ---------- mutable borrow later used here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0303, E0502.
+For more information about an error, try `rustc --explain E0303`.

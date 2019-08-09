@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed
+error[E0282]: type annotations needed for `&(_,)`
   --> $DIR/issue-20261.rs:4:11
    |
 LL |     for (ref i,) in [].iter() {

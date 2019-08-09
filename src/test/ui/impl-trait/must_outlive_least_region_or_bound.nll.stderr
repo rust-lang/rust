@@ -1,0 +1,51 @@
+error: lifetime may not live long enough
+  --> $DIR/must_outlive_least_region_or_bound.rs:3:23
+   |
+LL | fn elided(x: &i32) -> impl Copy { x }
+   |              -        ^^^^^^^^^ opaque type requires that `'1` must outlive `'static`
+   |              |
+   |              let's call the lifetime of this reference `'1`
+help: to allow this `impl Trait` to capture borrowed data with lifetime `'1`, add `'_` as a constraint
+   |
+LL | fn elided(x: &i32) -> impl Copy + '_ { x }
+   |                       ^^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/must_outlive_least_region_or_bound.rs:6:32
+   |
+LL | fn explicit<'a>(x: &'a i32) -> impl Copy { x }
+   |             --                 ^^^^^^^^^ opaque type requires that `'a` must outlive `'static`
+   |             |
+   |             lifetime `'a` defined here
+help: to allow this `impl Trait` to capture borrowed data with lifetime `'a`, add `'a` as a constraint
+   |
+LL | fn explicit<'a>(x: &'a i32) -> impl Copy + 'a { x }
+   |                                ^^^^^^^^^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/must_outlive_least_region_or_bound.rs:12:69
+   |
+LL | fn with_bound<'a>(x: &'a i32) -> impl LifetimeTrait<'a> + 'static { x }
+   |               -- lifetime `'a` defined here                         ^ returning this value requires that `'a` must outlive `'static`
+   |
+   = help: consider replacing `'a` with `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/must_outlive_least_region_or_bound.rs:17:61
+   |
+LL | fn move_lifetime_into_fn<'a, 'b>(x: &'a u32, y: &'b u32) -> impl Fn(&'a u32) {
+   |                          --  -- lifetime `'b` defined here  ^^^^^^^^^^^^^^^^ opaque type requires that `'b` must outlive `'a`
+   |                          |
+   |                          lifetime `'a` defined here
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/must_outlive_least_region_or_bound.rs:22:51
+   |
+LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
+   |                                                   ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `T: 'static`...
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

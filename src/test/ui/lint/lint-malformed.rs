@@ -1,4 +1,4 @@
-#![deny = "foo"] //~ ERROR attribute must be of the form
+#![deny = "foo"] //~ ERROR malformed `deny` attribute input
 #![allow(bar = "baz")] //~ ERROR malformed lint attribute
 
 fn main() { }

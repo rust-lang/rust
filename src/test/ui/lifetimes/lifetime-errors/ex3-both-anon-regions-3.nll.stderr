@@ -1,0 +1,22 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-3.rs:2:5
+   |
+LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+   |                     -                   - let's call the lifetime of this reference `'1`
+   |                     |
+   |                     let's call the lifetime of this reference `'2`
+LL |     z.push((x,y));
+   |     ^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-3.rs:2:5
+   |
+LL | fn foo(z: &mut Vec<(&u8,&u8)>, (x, y): (&u8, &u8)) {
+   |                         -                    - let's call the lifetime of this reference `'1`
+   |                         |
+   |                         let's call the lifetime of this reference `'2`
+LL |     z.push((x,y));
+   |     ^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+
+error: aborting due to 2 previous errors
+

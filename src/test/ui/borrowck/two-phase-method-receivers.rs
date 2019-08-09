@@ -1,4 +1,4 @@
-// compile-flags: -Z borrowck=mir -Z two-phase-borrows
+// compile-flags: -Z borrowck=mir
 
 // run-pass
 

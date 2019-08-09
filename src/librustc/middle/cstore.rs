@@ -199,6 +199,7 @@ pub trait CrateStore {
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol;
+    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
@@ -210,9 +211,7 @@ pub trait CrateStore {
     fn crates_untracked(&self) -> Vec<CrateNum>;
 
     // utility functions
-    fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                 -> EncodedMetadata;
+    fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -227,9 +226,7 @@ pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
 // In order to get this left-to-right dependency ordering, we perform a
 // topological sort of all crates putting the leaves at the right-most
 // positions.
-pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
-    -> Vec<(CrateNum, LibSource)>
-{
+pub fn used_crates(tcx: TyCtxt<'_>, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)> {
     let mut libs = tcx.crates()
         .iter()
         .cloned()
@@ -255,8 +252,8 @@ pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
             Some((cnum, path))
         })
         .collect::<Vec<_>>();
-    let mut ordering = tcx.postorder_cnums(LOCAL_CRATE);
-    Lrc::make_mut(&mut ordering).reverse();
+    let mut ordering = tcx.postorder_cnums(LOCAL_CRATE).to_owned();
+    ordering.reverse();
     libs.sort_by_cached_key(|&(a, _)| {
         ordering.iter().position(|x| *x == a)
     });

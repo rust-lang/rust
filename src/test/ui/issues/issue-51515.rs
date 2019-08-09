@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn main() {
     let foo = &16;
     //~^ HELP consider changing this to be a mutable reference

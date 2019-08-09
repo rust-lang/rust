@@ -131,9 +131,9 @@ impl<'ast> Visitor<'ast> for NodeCounter {
         self.count += 1;
         walk_generic_args(self, path_span, generic_args)
     }
-    fn visit_assoc_type_binding(&mut self, type_binding: &TypeBinding) {
+    fn visit_assoc_ty_constraint(&mut self, constraint: &AssocTyConstraint) {
         self.count += 1;
-        walk_assoc_type_binding(self, type_binding)
+        walk_assoc_ty_constraint(self, constraint)
     }
     fn visit_attribute(&mut self, _attr: &Attribute) {
         self.count += 1;

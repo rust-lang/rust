@@ -5,9 +5,7 @@ LL | struct Foo;
    | ----------- function or associated item `bar` not found for this
 ...
 LL |     Foo::bar();
-   |     -----^^^
-   |     |
-   |     function or associated item not found in `Foo`
+   |          ^^^ function or associated item not found in `Foo`
 
 error: aborting due to previous error
 

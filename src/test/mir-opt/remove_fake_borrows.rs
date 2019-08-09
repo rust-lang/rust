@@ -2,8 +2,6 @@
 
 // ignore-wasm32-bare
 
-#![feature(nll)]
-
 fn match_guard(x: Option<&&i32>, c: bool) -> i32 {
     match x {
         Some(0) if c => 0,
@@ -21,49 +19,44 @@ fn main() {
 // bb0: {
 //     FakeRead(ForMatchedPlace, _1);
 //     _3 = discriminant(_1);
-//     switchInt(move _3) -> [1isize: bb5, otherwise: bb2];
+//     switchInt(move _3) -> [1isize: bb3, otherwise: bb2];
 // }
 // bb1: {
-//     goto -> bb7;
+//     goto -> bb4;
 // }
 // bb2: {
-//     goto -> bb8;
+//     _0 = const 1i32;
+//     goto -> bb7;
 // }
 // bb3: {
-//     unreachable;
-// }
-// bb4: {
-//     goto -> bb2;
-// }
-// bb5: {
 //     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
-// bb6: {
-//     _0 = const 0i32;
-//     goto -> bb9;
-// }
-// bb7: {
+// bb4: {
 //     _4 = &shallow _1;
 //     _5 = &shallow ((_1 as Some).0: &'<empty> &'<empty> i32);
 //     _6 = &shallow (*((_1 as Some).0: &'<empty> &'<empty> i32));
 //     _7 = &shallow (*(*((_1 as Some).0: &'<empty> &'<empty> i32)));
 //     StorageLive(_8);
 //     _8 = _2;
+//     switchInt(move _8) -> [false: bb6, otherwise: bb5];
+// }
+// bb5: {
+//     StorageDead(_8);
 //     FakeRead(ForMatchGuard, _4);
 //     FakeRead(ForMatchGuard, _5);
 //     FakeRead(ForMatchGuard, _6);
 //     FakeRead(ForMatchGuard, _7);
-//     switchInt(move _8) -> [false: bb4, otherwise: bb6];
+//     _0 = const 0i32;
+//     goto -> bb7;
 // }
-// bb8: {
-//     _0 = const 1i32;
-//     goto -> bb9;
-// }
-// bb9: {
+// bb6: {
 //     StorageDead(_8);
+//     goto -> bb2;
+// }
+// bb7: {
 //     return;
 // }
-// bb10: {
+// bb8 (cleanup): {
 //     resume;
 // }
 // END rustc.match_guard.CleanupNonCodegenStatements.before.mir
@@ -72,49 +65,44 @@ fn main() {
 // bb0: {
 //     nop;
 //     _3 = discriminant(_1);
-//     switchInt(move _3) -> [1isize: bb5, otherwise: bb2];
+//     switchInt(move _3) -> [1isize: bb3, otherwise: bb2];
 // }
 // bb1: {
-//     goto -> bb7;
+//     goto -> bb4;
 // }
 // bb2: {
-//     goto -> bb8;
+//     _0 = const 1i32;
+//     goto -> bb7;
 // }
 // bb3: {
-//     unreachable;
-// }
-// bb4: {
-//     goto -> bb2;
-// }
-// bb5: {
 //     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
-// bb6: {
-//     _0 = const 0i32;
-//     goto -> bb9;
-// }
-// bb7: {
+// bb4: {
 //     nop;
 //     nop;
 //     nop;
 //     nop;
 //     StorageLive(_8);
 //     _8 = _2;
-//     nop;
-//     nop;
-//     nop;
-//     nop;
-//     switchInt(move _8) -> [false: bb4, otherwise: bb6];
+//     switchInt(move _8) -> [false: bb6, otherwise: bb5];
 // }
-// bb8: {
-//     _0 = const 1i32;
-//     goto -> bb9;
-// }
-// bb9: {
+// bb5: {
 //     StorageDead(_8);
+//     nop;
+//     nop;
+//     nop;
+//     nop;
+//     _0 = const 0i32;
+//     goto -> bb7;
+// }
+// bb6: {
+//     StorageDead(_8);
+//     goto -> bb2;
+// }
+// bb7: {
 //     return;
 // }
-// bb10: {
+// bb8 (cleanup): {
 //     resume;
 // }
 // END rustc.match_guard.CleanupNonCodegenStatements.after.mir

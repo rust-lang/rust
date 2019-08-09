@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 note: type defined here
   --> $DIR/issue-14309.rs:4:1
    |
@@ -24,7 +24,7 @@ error: `extern` block uses type `A` which is not FFI-safe: this struct has unspe
 LL |     fn bar(x: B);
    |               ^
    |
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 note: type defined here
   --> $DIR/issue-14309.rs:4:1
    |
@@ -39,7 +39,7 @@ error: `extern` block uses type `A` which is not FFI-safe: this struct has unspe
 LL |     fn qux(x: A2);
    |               ^^
    |
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 note: type defined here
   --> $DIR/issue-14309.rs:4:1
    |
@@ -54,7 +54,7 @@ error: `extern` block uses type `A` which is not FFI-safe: this struct has unspe
 LL |     fn quux(x: B2);
    |                ^^
    |
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 note: type defined here
   --> $DIR/issue-14309.rs:4:1
    |
@@ -69,7 +69,7 @@ error: `extern` block uses type `A` which is not FFI-safe: this struct has unspe
 LL |     fn fred(x: D);
    |                ^
    |
-   = help: consider adding a #[repr(C)] or #[repr(transparent)] attribute to this struct
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
 note: type defined here
   --> $DIR/issue-14309.rs:4:1
    |

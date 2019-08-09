@@ -1,12 +1,7 @@
-#![deny(rust_2018_idioms)]
 #![feature(nll)]
 #![feature(static_nobundle)]
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-
-// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
-#[allow(unused_extern_crates)]
-extern crate rustc_cratesio_shim;
 
 // NOTE: This crate only exists to allow linking on mingw targets.
 
@@ -80,6 +75,8 @@ pub fn initialize_available_targets() {
                  LLVMInitializeMSP430Target,
                  LLVMInitializeMSP430TargetMC,
                  LLVMInitializeMSP430AsmPrinter);
+    init_target!(all(llvm_component = "msp430", llvm_has_msp430_asm_parser),
+                 LLVMInitializeMSP430AsmParser);
     init_target!(llvm_component = "riscv",
                  LLVMInitializeRISCVTargetInfo,
                  LLVMInitializeRISCVTarget,

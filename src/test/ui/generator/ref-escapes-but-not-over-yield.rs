@@ -9,7 +9,7 @@ fn foo(x: &i32) {
         yield();
         let b = 5;
         a = &b;
-        //~^ ERROR `b` does not live long enough
+        //~^ ERROR borrowed data escapes outside of generator
     };
 }
 

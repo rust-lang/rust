@@ -32,5 +32,5 @@ LL |         XE::XEmpty5 => (),
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0530, E0532.
+Some errors have detailed explanations: E0530, E0532.
 For more information about an error, try `rustc --explain E0530`.

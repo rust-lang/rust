@@ -1,13 +1,13 @@
-error[E0502]: cannot borrow `t0` as mutable because `*t0` is also borrowed as immutable
-  --> $DIR/borrowck-swap-mut-base-ptr.rs:13:15
+error[E0502]: cannot borrow `t0` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-swap-mut-base-ptr.rs:13:10
    |
 LL |     let p: &isize = &*t0;     // Freezes `*t0`
-   |                      --- immutable borrow occurs here
+   |                     ---- immutable borrow occurs here
 LL |     swap(&mut t0, &mut t1);
-   |               ^^ mutable borrow occurs here
-...
-LL | }
-   | - immutable borrow ends here
+   |          ^^^^^^^ mutable borrow occurs here
+LL |     *t1 = 22;
+LL |     p.use_ref();
+   |     - immutable borrow later used here
 
 error: aborting due to previous error
 

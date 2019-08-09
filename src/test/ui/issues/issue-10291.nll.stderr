@@ -1,0 +1,11 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-10291.rs:3:9
+   |
+LL | fn test<'x>(x: &'x isize) {
+   |         -- lifetime `'x` defined here
+LL |     drop::<Box<dyn for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
+LL |         x
+   |         ^ returning this value requires that `'x` must outlive `'static`
+
+error: aborting due to previous error
+

@@ -8,6 +8,6 @@ This feature is part of "compiler plugins." It will often be used with the
 [`plugin`] and `rustc_private` features as well. For more details, see
 their docs.
 
-[`plugin`]: language-features/plugin.html
+[`plugin`]: plugin.md
 
 ------------------------

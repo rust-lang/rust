@@ -18,10 +18,10 @@ pub fn checked_dur2intervals(dur: &Duration) -> Option<abi::timestamp> {
 impl Instant {
     pub fn now() -> Instant {
         unsafe {
-            let mut t = mem::uninitialized();
-            let ret = abi::clock_time_get(abi::clockid::MONOTONIC, 0, &mut t);
+            let mut t: mem::MaybeUninit<abi::timestamp> = mem::MaybeUninit::uninit();
+            let ret = abi::clock_time_get(abi::clockid::MONOTONIC, 0, t.as_mut_ptr());
             assert_eq!(ret, abi::errno::SUCCESS);
-            Instant { t }
+            Instant { t: t.assume_init() }
         }
     }
 
@@ -33,11 +33,9 @@ impl Instant {
         Instant { t: 0 }
     }
 
-    pub fn sub_instant(&self, other: &Instant) -> Duration {
-        let diff = self.t
-            .checked_sub(other.t)
-            .expect("second instant is later than self");
-        Duration::new(diff / NSEC_PER_SEC, (diff % NSEC_PER_SEC) as u32)
+    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
+        let diff = self.t.checked_sub(other.t)?;
+        Some(Duration::new(diff / NSEC_PER_SEC, (diff % NSEC_PER_SEC) as u32))
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
@@ -61,10 +59,10 @@ pub struct SystemTime {
 impl SystemTime {
     pub fn now() -> SystemTime {
         unsafe {
-            let mut t = mem::uninitialized();
-            let ret = abi::clock_time_get(abi::clockid::REALTIME, 0, &mut t);
+            let mut t: mem::MaybeUninit<abi::timestamp> = mem::MaybeUninit::uninit();
+            let ret = abi::clock_time_get(abi::clockid::REALTIME, 0, t.as_mut_ptr());
             assert_eq!(ret, abi::errno::SUCCESS);
-            SystemTime { t }
+            SystemTime { t: t.assume_init() }
         }
     }
 

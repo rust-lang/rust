@@ -1,3 +1,11 @@
+warning: denote infinite loops with `loop { ... }`
+  --> $DIR/loop-break-value.rs:26:5
+   |
+LL |     'while_loop: while true {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
+   |
+   = note: `#[warn(while_true)]` on by default
+
 error[E0571]: `break` with value from a `while` loop
   --> $DIR/loop-break-value.rs:28:9
    |
@@ -152,5 +160,5 @@ LL |         break;
 
 error: aborting due to 16 previous errors
 
-Some errors occurred: E0308, E0571.
+Some errors have detailed explanations: E0308, E0571.
 For more information about an error, try `rustc --explain E0308`.

@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 #![feature(nll)]
 
 struct A<'a>(&'a ());

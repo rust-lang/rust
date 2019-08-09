@@ -6,4 +6,3 @@ struct Foo<'a, T: Iterator> { //~ ERROR rustc_outlives
 }
 
 fn main() {}
-

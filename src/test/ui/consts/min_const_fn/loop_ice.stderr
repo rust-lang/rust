@@ -1,10 +1,11 @@
-error[E0723]: loops are not allowed in const fn (see issue #57563)
+error[E0723]: loops are not allowed in const fn
   --> $DIR/loop_ice.rs:2:5
    |
 LL |     loop {}
    |     ^^^^^^^
    |
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

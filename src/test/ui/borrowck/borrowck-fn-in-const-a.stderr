@@ -1,0 +1,9 @@
+error[E0507]: cannot move out of `*x` which is behind a shared reference
+  --> $DIR/borrowck-fn-in-const-a.rs:6:16
+   |
+LL |         return *x
+   |                ^^ move occurs because `*x` has type `std::string::String`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,0 +1,164 @@
+error[E0308]: mismatched types
+  --> $DIR/if-without-else-as-fn-expr.rs:2:5
+   |
+LL | /     if bar % 5 == 0 {
+LL | |         return 3;
+LL | |     }
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error[E0317]: if may be missing an else clause
+  --> $DIR/if-without-else-as-fn-expr.rs:2:5
+   |
+LL |   fn foo(bar: usize) -> usize {
+   |                         ----- expected `usize` because of this return type
+LL | /     if bar % 5 == 0 {
+LL | |         return 3;
+LL | |     }
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+
+error[E0308]: mismatched types
+  --> $DIR/if-without-else-as-fn-expr.rs:10:20
+   |
+LL |       let x: usize = if bar % 5 == 0 {
+   |  ____________________^
+LL | |         return 3;
+LL | |     };
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error[E0317]: if may be missing an else clause
+  --> $DIR/if-without-else-as-fn-expr.rs:10:20
+   |
+LL |       let x: usize = if bar % 5 == 0 {
+   |  _________-__________^
+   | |         |
+   | |         expected because of this assignment
+LL | |         return 3;
+LL | |     };
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+
+error[E0308]: mismatched types
+  --> $DIR/if-without-else-as-fn-expr.rs:19:5
+   |
+LL | /     if bar % 5 == 0 {
+LL | |         3
+LL | |     }
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error[E0317]: if may be missing an else clause
+  --> $DIR/if-without-else-as-fn-expr.rs:19:5
+   |
+LL |   fn foo3(bar: usize) -> usize {
+   |                          ----- expected `usize` because of this return type
+LL | /     if bar % 5 == 0 {
+LL | |         3
+LL | |     }
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+
+error[E0308]: mismatched types
+  --> $DIR/if-without-else-as-fn-expr.rs:27:5
+   |
+LL | /     if let 0 = 1 {
+LL | |         return 3;
+LL | |     }
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error[E0317]: if may be missing an else clause
+  --> $DIR/if-without-else-as-fn-expr.rs:27:5
+   |
+LL |   fn foo_let(bar: usize) -> usize {
+   |                             ----- expected `usize` because of this return type
+LL | /     if let 0 = 1 {
+LL | |         return 3;
+LL | |     }
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+
+error[E0308]: mismatched types
+  --> $DIR/if-without-else-as-fn-expr.rs:35:20
+   |
+LL |       let x: usize = if let 0 = 1 {
+   |  ____________________^
+LL | |         return 3;
+LL | |     };
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error[E0317]: if may be missing an else clause
+  --> $DIR/if-without-else-as-fn-expr.rs:35:20
+   |
+LL |       let x: usize = if let 0 = 1 {
+   |  _________-__________^
+   | |         |
+   | |         expected because of this assignment
+LL | |         return 3;
+LL | |     };
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+
+error[E0308]: mismatched types
+  --> $DIR/if-without-else-as-fn-expr.rs:44:5
+   |
+LL | /     if let 0 = 1 {
+LL | |         3
+LL | |     }
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error[E0317]: if may be missing an else clause
+  --> $DIR/if-without-else-as-fn-expr.rs:44:5
+   |
+LL |   fn foo3_let(bar: usize) -> usize {
+   |                              ----- expected `usize` because of this return type
+LL | /     if let 0 = 1 {
+LL | |         3
+LL | |     }
+   | |_____^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+
+error: aborting due to 12 previous errors
+
+Some errors have detailed explanations: E0308, E0317.
+For more information about an error, try `rustc --explain E0308`.

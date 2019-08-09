@@ -1,8 +1,8 @@
 error[E0371]: the object type `(dyn Foo + 'a)` automatically implements the trait `Foo`
   --> $DIR/issue-20939.rs:3:1
    |
-LL | impl<'a> Foo for Foo+'a {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Foo + 'a)` automatically implements trait `Foo`
+LL | impl<'a> Foo for dyn Foo + 'a {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Foo + 'a)` automatically implements trait `Foo`
 
 error: aborting due to previous error
 

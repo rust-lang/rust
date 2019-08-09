@@ -1,9 +1,6 @@
 // Test that a structure which tries to store a pointer to `y` into
 // `p` (indirectly) fails to compile.
 
-#![feature(rustc_attrs)]
-#![feature(nll)]
-
 struct SomeStruct<'a, 'b: 'a> {
     p: &'a mut &'b i32,
     y: &'b i32,

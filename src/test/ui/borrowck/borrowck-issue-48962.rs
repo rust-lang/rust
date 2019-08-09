@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct Node {
     elem: i32,
     next: Option<Box<Node>>,

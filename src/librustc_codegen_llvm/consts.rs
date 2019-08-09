@@ -1,8 +1,6 @@
 use crate::llvm::{self, SetUnnamedAddr, True};
 use crate::debuginfo;
-use crate::monomorphize::MonoItem;
 use crate::common::CodegenCx;
-use crate::monomorphize::Instance;
 use crate::base;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -11,11 +9,13 @@ use libc::c_uint;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
     Pointer, ErrorHandled, GlobalId};
+use rustc::mir::mono::MonoItem;
 use rustc::hir::Node;
 use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;
+use syntax::symbol::sym;
 use syntax_pos::symbol::LocalInternedString;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, Instance};
 use rustc_codegen_ssa::traits::*;
 
 use rustc::ty::layout::{self, Size, Align, LayoutOf};
@@ -71,7 +71,11 @@ pub fn codegen_static_initializer(
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
     let alloc = match static_.val {
-        ConstValue::ByRef(ptr, alloc) if ptr.offset.bytes() == 0 => alloc,
+        ConstValue::ByRef {
+            alloc, offset,
+        } if offset.bytes() == 0 => {
+            alloc
+        },
         _ => bug!("static const eval returned {:#?}", static_),
     };
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
@@ -101,7 +105,7 @@ fn check_and_apply_linkage(
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
     sym: LocalInternedString,
-    span: Option<Span>
+    span: Span
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
     if let Some(linkage) = attrs.linkage {
@@ -115,11 +119,8 @@ fn check_and_apply_linkage(
         let llty2 = if let ty::RawPtr(ref mt) = ty.sty {
             cx.layout_of(mt.ty).llvm_type(cx)
         } else {
-            if let Some(span) = span {
-                cx.sess().span_fatal(span, "must have type `*const T` or `*mut T`")
-            } else {
-                bug!("must have type `*const T` or `*mut T`")
-            }
+            cx.sess().span_fatal(
+                span, "must have type `*const T` or `*mut T` due to `#[linkage]` attribute")
         };
         unsafe {
             // Declare a symbol `foo` with the desired linkage.
@@ -135,14 +136,7 @@ fn check_and_apply_linkage(
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(&sym);
             let g2 = cx.define_global(&real_name, llty).unwrap_or_else(||{
-                if let Some(span) = span {
-                    cx.sess().span_fatal(
-                        span,
-                        &format!("symbol `{}` is already defined", &sym)
-                    )
-                } else {
-                    bug!("symbol `{}` is already defined", &sym)
-                }
+                cx.sess().span_fatal(span, &format!("symbol `{}` is already defined", &sym))
             });
             llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
             llvm::LLVMSetInitializer(g2, g1);
@@ -216,7 +210,7 @@ impl CodegenCx<'ll, 'tcx> {
         let g = if let Some(id) = self.tcx.hir().as_local_hir_id(def_id) {
 
             let llty = self.layout_of(ty).llvm_type(self);
-            let (g, attrs) = match self.tcx.hir().get_by_hir_id(id) {
+            let (g, attrs) = match self.tcx.hir().get(id) {
                 Node::Item(&hir::Item {
                     ref attrs, span, node: hir::ItemKind::Static(..), ..
                 }) => {
@@ -239,7 +233,7 @@ impl CodegenCx<'ll, 'tcx> {
                     ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
                 }) => {
                     let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, Some(span)), attrs)
+                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, span), attrs)
                 }
 
                 item => bug!("get_static: expected static, found {:?}", item)
@@ -248,7 +242,7 @@ impl CodegenCx<'ll, 'tcx> {
             debug!("get_static: sym={} attrs={:?}", sym, attrs);
 
             for attr in attrs {
-                if attr.check_name("thread_local") {
+                if attr.check_name(sym::thread_local) {
                     llvm::set_thread_local_mode(g, self.tls_model);
                 }
             }
@@ -259,7 +253,8 @@ impl CodegenCx<'ll, 'tcx> {
             debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
 
             let attrs = self.tcx.codegen_fn_attrs(def_id);
-            let g = check_and_apply_linkage(&self, &attrs, ty, sym, None);
+            let span = self.tcx.def_span(def_id);
+            let g = check_and_apply_linkage(&self, &attrs, ty, sym, span);
 
             // Thread-local statics in some other crate need to *always* be linked
             // against in a thread-local fashion, so we need to be sure to apply the

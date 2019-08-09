@@ -5,19 +5,19 @@ use crate::borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
 use crate::borrow_check::nll::ToRegionVid;
 use crate::util::liveness::{self, DefUse};
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
-use rustc::mir::{Local, Location, Mir};
+use rustc::mir::{Local, Location, Body};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
 crate fn find<'tcx>(
-    mir: &Mir<'tcx>,
+    body: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
-    tcx: TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 ) -> Option<Cause> {
     let mut uf = UseFinder {
-        mir,
+        body,
         regioncx,
         tcx,
         region_vid,
@@ -27,15 +27,15 @@ crate fn find<'tcx>(
     uf.find()
 }
 
-struct UseFinder<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    mir: &'cx Mir<'tcx>,
+struct UseFinder<'cx, 'tcx> {
+    body: &'cx Body<'tcx>,
     regioncx: &'cx Rc<RegionInferenceContext<'tcx>>,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     start_point: Location,
 }
 
-impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
     fn find(&mut self) -> Option<Cause> {
         let mut queue = VecDeque::new();
         let mut visited = FxHashSet::default();
@@ -50,7 +50,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
                 continue;
             }
 
-            let block_data = &self.mir[p.block];
+            let block_data = &self.body[p.block];
 
             match self.def_use(p, block_data.visitable(p.statement_index)) {
                 Some(DefUseResult::Def) => {}
@@ -87,7 +87,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
 
     fn def_use(&self, location: Location, thing: &dyn MirVisitable<'tcx>) -> Option<DefUseResult> {
         let mut visitor = DefUseVisitor {
-            mir: self.mir,
+            body: self.body,
             tcx: self.tcx,
             region_vid: self.region_vid,
             def_use_result: None,
@@ -99,9 +99,9 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
     }
 }
 
-struct DefUseVisitor<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    mir: &'cx Mir<'tcx>,
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+struct DefUseVisitor<'cx, 'tcx> {
+    body: &'cx Body<'tcx>,
+    tcx: TyCtxt<'tcx>,
     region_vid: RegionVid,
     def_use_result: Option<DefUseResult>,
 }
@@ -112,9 +112,9 @@ enum DefUseResult {
     UseDrop { local: Local },
 }
 
-impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'gcx, 'tcx> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
-        let local_ty = self.mir.local_decls[local].ty;
+impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
+    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+        let local_ty = self.body.local_decls[local].ty;
 
         let mut found_it = false;
         self.tcx.for_each_free_region(&local_ty, |r| {

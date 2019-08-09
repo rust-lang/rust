@@ -10,4 +10,3 @@ pub const fn bazinga() {}
 
 fn main() {
 }
-

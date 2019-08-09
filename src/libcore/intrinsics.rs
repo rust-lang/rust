@@ -36,10 +36,12 @@
             issue = "0")]
 #![allow(missing_docs)]
 
+use crate::mem;
+
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[rustc_deprecated(reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
                    since = "1.18.0")]
-pub use ptr::drop_in_place;
+pub use crate::ptr::drop_in_place;
 
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
@@ -700,16 +702,15 @@ extern "rust-intrinsic" {
     /// which is unsafe unless `T` is `Copy`. Also, even if T is
     /// `Copy`, an all-zero value may not correspond to any legitimate
     /// state for the type in question.
+    #[unstable(feature = "core_intrinsics",
+               reason = "intrinsics are unlikely to ever be stabilized, instead \
+                         they should be used through stabilized interfaces \
+                         in the rest of the standard library",
+               issue = "0")]
+    #[rustc_deprecated(reason = "no longer used by rustc, will be removed - use MaybeUninit \
+                                 instead",
+                       since = "1.38.0")]
     pub fn init<T>() -> T;
-
-    /// Creates an uninitialized value.
-    ///
-    /// `uninit` is unsafe because there is no guarantee of what its
-    /// contents are. In particular its drop-flag may be set to any
-    /// state, which means it may claim either dropped or
-    /// undropped. In the general case one must use `ptr::write` to
-    /// initialize memory previous set to the result of `uninit`.
-    pub fn uninit<T>() -> T;
 
     /// Moves a value out of scope without running drop glue.
     pub fn forget<T: ?Sized>(_: T);
@@ -736,16 +737,6 @@ extern "rust-intrinsic" {
     /// # Examples
     ///
     /// There are a few things that `transmute` is really useful for.
-    ///
-    /// Getting the bitpattern of a floating point type (or, more generally,
-    /// type punning, when `T` and `U` aren't pointers):
-    ///
-    /// ```
-    /// let bitpattern = unsafe {
-    ///     std::mem::transmute::<f32, u32>(1.0)
-    /// };
-    /// assert_eq!(bitpattern, 0x3F800000);
-    /// ```
     ///
     /// Turning a pointer into a function pointer. This is *not* portable to
     /// machines where function pointers and data pointers have different sizes.
@@ -1061,6 +1052,15 @@ extern "rust-intrinsic" {
     /// Returns the absolute value of an `f64`.
     pub fn fabsf64(x: f64) -> f64;
 
+    /// Returns the minimum of two `f32` values.
+    pub fn minnumf32(x: f32, y: f32) -> f32;
+    /// Returns the minimum of two `f64` values.
+    pub fn minnumf64(x: f64, y: f64) -> f64;
+    /// Returns the maximum of two `f32` values.
+    pub fn maxnumf32(x: f32, y: f32) -> f32;
+    /// Returns the maximum of two `f64` values.
+    pub fn maxnumf64(x: f64, y: f64) -> f64;
+
     /// Copies the sign from `y` to `x` for `f32` values.
     pub fn copysignf32(x: f32, y: f32) -> f32;
     /// Copies the sign from `y` to `x` for `f64` values.
@@ -1250,6 +1250,18 @@ extern "rust-intrinsic" {
     /// y < 0 or y >= N, where N is the width of T in bits.
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
 
+    /// Returns the result of an unchecked addition, resulting in
+    /// undefined behavior when `x + y > T::max_value()` or `x + y < T::min_value()`.
+    pub fn unchecked_add<T>(x: T, y: T) -> T;
+
+    /// Returns the result of an unchecked substraction, resulting in
+    /// undefined behavior when `x - y > T::max_value()` or `x - y < T::min_value()`.
+    pub fn unchecked_sub<T>(x: T, y: T) -> T;
+
+    /// Returns the result of an unchecked multiplication, resulting in
+    /// undefined behavior when `x * y > T::max_value()` or `x * y < T::min_value()`.
+    pub fn unchecked_mul<T>(x: T, y: T) -> T;
+
     /// Performs rotate left.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `rotate_left` method. For example,
@@ -1301,36 +1313,36 @@ extern "rust-intrinsic" {
     /// platforms this is a `*mut *mut T` which is filled in by the compiler and
     /// on MSVC it's `*mut [usize; 2]`. For more information see the compiler's
     /// source as well as std's catch implementation.
-    pub fn try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
+    pub fn r#try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 }
 
-mod real_intrinsics {
-  extern "rust-intrinsic" {
-    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-    /// and destination must *not* overlap.
-    /// For the full docs, see the stabilized wrapper [`copy_nonoverlapping`].
-    ///
-    /// [`copy_nonoverlapping`]: ../../std/ptr/fn.copy_nonoverlapping.html
-    pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+// Some functions are defined here because they accidentally got made
+// available in this module on stable. See <https://github.com/rust-lang/rust/issues/15702>.
+// (`transmute` also falls into this category, but it cannot be wrapped due to the
+// check that `T` and `U` have the same size.)
 
-    /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
-    /// and destination may overlap.
-    /// For the full docs, see the stabilized wrapper [`copy`].
-    ///
-    /// [`copy`]: ../../std/ptr/fn.copy.html
-    pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
+/// Checks whether `ptr` is properly aligned with respect to
+/// `align_of::<T>()`.
+pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
+    !ptr.is_null() && ptr as usize % mem::align_of::<T>() == 0
+}
 
-    /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
-    /// `val`.
-    /// For the full docs, see the stabilized wrapper [`write_bytes`].
-    ///
-    /// [`write_bytes`]: ../../std/ptr/fn.write_bytes.html
-    pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-  }
+/// Checks whether the regions of memory starting at `src` and `dst` of size
+/// `count * size_of::<T>()` overlap.
+fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
+    let src_usize = src as usize;
+    let dst_usize = dst as usize;
+    let size = mem::size_of::<T>().checked_mul(count).unwrap();
+    let diff = if src_usize > dst_usize {
+        src_usize - dst_usize
+    } else {
+        dst_usize - src_usize
+    };
+    size > diff
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -1419,7 +1431,14 @@ mod real_intrinsics {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
-    real_intrinsics::copy_nonoverlapping(src, dst, count);
+    extern "rust-intrinsic" {
+        fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+    }
+
+    debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned or null pointer");
+    debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned or null pointer");
+    debug_assert!(!overlaps(src, dst, count), "attempt to copy to overlapping memory");
+    copy_nonoverlapping(src, dst, count)
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -1476,7 +1495,13 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
-    real_intrinsics::copy(src, dst, count)
+    extern "rust-intrinsic" {
+        fn copy<T>(src: *const T, dst: *mut T, count: usize);
+    }
+
+    debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned or null pointer");
+    debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned or null pointer");
+    copy(src, dst, count)
 }
 
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
@@ -1554,5 +1579,10 @@ pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[inline]
 pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
-    real_intrinsics::write_bytes(dst, val, count)
+    extern "rust-intrinsic" {
+        fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+    }
+
+    debug_assert!(is_aligned_and_not_null(dst), "attempt to write to unaligned or null pointer");
+    write_bytes(dst, val, count)
 }

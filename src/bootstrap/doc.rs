@@ -13,7 +13,7 @@ use std::io;
 use std::path::{PathBuf, Path};
 
 use crate::Mode;
-use build_helper::up_to_date;
+use build_helper::{t, up_to_date};
 
 use crate::util::symlink_dir;
 use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
@@ -23,7 +23,7 @@ use crate::cache::{INTERNER, Interned};
 use crate::config::Config;
 
 macro_rules! book {
-    ($($name:ident, $path:expr, $book_name:expr, $book_ver:expr;)+) => {
+    ($($name:ident, $path:expr, $book_name:expr;)+) => {
         $(
             #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -46,10 +46,10 @@ macro_rules! book {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                builder.ensure(Rustbook {
+                builder.ensure(RustbookSrc {
                     target: self.target,
                     name: INTERNER.intern_str($book_name),
-                    version: $book_ver,
+                    src: doc_src(builder),
                 })
             }
         }
@@ -60,50 +60,17 @@ macro_rules! book {
 // NOTE: When adding a book here, make sure to ALSO build the book by
 // adding a build step in `src/bootstrap/builder.rs`!
 book!(
-    EditionGuide, "src/doc/edition-guide", "edition-guide", RustbookVersion::MdBook2;
-    EmbeddedBook, "src/doc/embedded-book", "embedded-book", RustbookVersion::MdBook2;
-    Nomicon, "src/doc/nomicon", "nomicon", RustbookVersion::MdBook1;
-    Reference, "src/doc/reference", "reference", RustbookVersion::MdBook1;
-    RustByExample, "src/doc/rust-by-example", "rust-by-example", RustbookVersion::MdBook1;
-    RustcBook, "src/doc/rustc", "rustc", RustbookVersion::MdBook1;
-    RustdocBook, "src/doc/rustdoc", "rustdoc", RustbookVersion::MdBook1;
+    EditionGuide, "src/doc/edition-guide", "edition-guide";
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book";
+    Nomicon, "src/doc/nomicon", "nomicon";
+    Reference, "src/doc/reference", "reference";
+    RustByExample, "src/doc/rust-by-example", "rust-by-example";
+    RustcBook, "src/doc/rustc", "rustc";
+    RustdocBook, "src/doc/rustdoc", "rustdoc";
 );
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-enum RustbookVersion {
-    MdBook1,
-    MdBook2,
-}
-
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-struct Rustbook {
-    target: Interned<String>,
-    name: Interned<String>,
-    version: RustbookVersion,
-}
-
-impl Step for Rustbook {
-    type Output = ();
-
-    // rustbook is never directly called, and only serves as a shim for the nomicon and the
-    // reference.
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    /// Invoke `rustbook` for `target` for the doc book `name`.
-    ///
-    /// This will not actually generate any documentation if the documentation has
-    /// already been generated.
-    fn run(self, builder: &Builder<'_>) {
-        let src = builder.src.join("src/doc");
-        builder.ensure(RustbookSrc {
-            target: self.target,
-            name: self.name,
-            src: INTERNER.intern_path(src),
-            version: self.version,
-        });
-    }
+fn doc_src(builder: &Builder<'_>) -> Interned<PathBuf> {
+    INTERNER.intern_path(builder.src.join("src/doc"))
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -134,7 +101,6 @@ impl Step for UnstableBook {
             target: self.target,
             name: INTERNER.intern_str("unstable-book"),
             src: builder.md_doc_out(self.target),
-            version: RustbookVersion::MdBook1,
         })
     }
 }
@@ -188,7 +154,6 @@ struct RustbookSrc {
     target: Interned<String>,
     name: Interned<String>,
     src: Interned<PathBuf>,
-    version: RustbookVersion,
 }
 
 impl Step for RustbookSrc {
@@ -220,18 +185,11 @@ impl Step for RustbookSrc {
         builder.info(&format!("Rustbook ({}) - {}", target, name));
         let _ = fs::remove_dir_all(&out);
 
-        let vers = match self.version {
-            RustbookVersion::MdBook1 => "1",
-            RustbookVersion::MdBook2 => "2",
-        };
-
         builder.run(rustbook_cmd
                        .arg("build")
                        .arg(&src)
                        .arg("-d")
-                       .arg(out)
-                       .arg("-m")
-                       .arg(vers));
+                       .arg(out));
     }
 }
 
@@ -274,33 +232,33 @@ impl Step for TheBook {
         let name = self.name;
 
         // build book
-        builder.ensure(Rustbook {
+        builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(name.to_string()),
-            version: RustbookVersion::MdBook1,
+            src: doc_src(builder),
         });
 
         // building older edition redirects
 
         let source_name = format!("{}/first-edition", name);
-        builder.ensure(Rustbook {
+        builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook1,
+            src: doc_src(builder),
         });
 
         let source_name = format!("{}/second-edition", name);
-        builder.ensure(Rustbook {
+        builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook1,
+            src: doc_src(builder),
         });
 
         let source_name = format!("{}/2018-edition", name);
-        builder.ensure(Rustbook {
+        builder.ensure(RustbookSrc {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook1,
+            src: doc_src(builder),
         });
 
         // build the version info page and CSS
@@ -331,24 +289,21 @@ fn invoke_rustdoc(
 
     let path = builder.src.join("src/doc").join(markdown);
 
-    let favicon = builder.src.join("src/doc/favicon.inc");
+    let header = builder.src.join("src/doc/redirect.inc");
     let footer = builder.src.join("src/doc/footer.inc");
     let version_info = out.join("version_info.html");
 
-    let mut cmd = builder.rustdoc_cmd(compiler.host);
+    let mut cmd = builder.rustdoc_cmd(compiler);
 
     let out = out.join("book");
 
     cmd.arg("--html-after-content").arg(&footer)
         .arg("--html-before-content").arg(&version_info)
-        .arg("--html-in-header").arg(&favicon)
+        .arg("--html-in-header").arg(&header)
         .arg("--markdown-no-toc")
-        .arg("--markdown-playground-url")
-        .arg("https://play.rust-lang.org/")
-        .arg("-o").arg(&out)
-        .arg(&path)
-        .arg("--markdown-css")
-        .arg("../rust.css");
+        .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
+        .arg("-o").arg(&out).arg(&path)
+        .arg("--markdown-css").arg("../rust.css");
 
     builder.run(&mut cmd);
 }
@@ -415,7 +370,7 @@ impl Step for Standalone {
             }
 
             let html = out.join(filename).with_extension("html");
-            let rustdoc = builder.rustdoc(compiler.host);
+            let rustdoc = builder.rustdoc(compiler);
             if up_to_date(&path, &html) &&
                up_to_date(&footer, &html) &&
                up_to_date(&favicon, &html) &&
@@ -425,14 +380,13 @@ impl Step for Standalone {
                 continue
             }
 
-            let mut cmd = builder.rustdoc_cmd(compiler.host);
+            let mut cmd = builder.rustdoc_cmd(compiler);
             cmd.arg("--html-after-content").arg(&footer)
                .arg("--html-before-content").arg(&version_info)
                .arg("--html-in-header").arg(&favicon)
                .arg("--markdown-no-toc")
                .arg("--index-page").arg(&builder.src.join("src/doc/index.md"))
-               .arg("--markdown-playground-url")
-               .arg("https://play.rust-lang.org/")
+               .arg("--markdown-playground-url").arg("https://play.rust-lang.org/")
                .arg("-o").arg(&out)
                .arg(&path);
 
@@ -479,12 +433,7 @@ impl Step for Std {
         builder.info(&format!("Documenting stage{} std ({})", stage, target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std)
@@ -523,6 +472,7 @@ impl Step for Std {
                  .arg("--markdown-css").arg("rust.css")
                  .arg("--markdown-no-toc")
                  .arg("--generate-redirect-pages")
+                 .arg("--resource-suffix").arg(crate::channel::CFG_RELEASE_NUM)
                  .arg("--index-page").arg(&builder.src.join("src/doc/index.md"));
 
             builder.run(&mut cargo);
@@ -566,12 +516,7 @@ impl Step for Test {
         builder.info(&format!("Documenting stage{} test ({})", stage, target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         // Build libstd docs so that we generate relative links
         builder.ensure(Std { stage, target });
@@ -589,6 +534,7 @@ impl Step for Test {
 
         cargo.arg("--no-deps")
              .arg("-p").arg("test")
+             .env("RUSTDOC_RESOURCE_SUFFIX", crate::channel::CFG_RELEASE_NUM)
              .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
 
         builder.run(&mut cargo);
@@ -634,12 +580,7 @@ impl Step for WhitelistedRustc {
         builder.info(&format!("Documenting stage{} whitelisted compiler ({})", stage, target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         // Build libstd docs so that we generate relative links
         builder.ensure(Std { stage, target });
@@ -660,6 +601,7 @@ impl Step for WhitelistedRustc {
         // for which docs must be built.
         for krate in &["proc_macro"] {
             cargo.arg("-p").arg(krate)
+                 .env("RUSTDOC_RESOURCE_SUFFIX", crate::channel::CFG_RELEASE_NUM)
                  .env("RUSTDOC_GENERATE_REDIRECT_PAGES", "1");
         }
 
@@ -707,12 +649,7 @@ impl Step for Rustc {
         t!(fs::create_dir_all(&out));
 
         // Get the correct compiler for this stage.
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -729,7 +666,7 @@ impl Step for Rustc {
 
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "doc");
-        cargo.env("RUSTDOCFLAGS", "--document-private-items");
+        cargo.env("RUSTDOCFLAGS", "--document-private-items --passes strip-hidden");
         compile::rustc_cargo(builder, &mut cargo);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
@@ -808,12 +745,7 @@ impl Step for Rustdoc {
         t!(fs::create_dir_all(&out));
 
         // Get the correct compiler for this stage.
-        let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
+        let compiler = builder.compiler_for(stage, builder.config.build, target);
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -824,7 +756,7 @@ impl Step for Rustdoc {
         builder.ensure(Rustc { stage, target });
 
         // Build rustdoc.
-        builder.ensure(tool::Rustdoc { host: compiler.host });
+        builder.ensure(tool::Rustdoc { compiler: compiler });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
         let out_dir = builder.stage_out(compiler, Mode::ToolRustc)
@@ -883,9 +815,14 @@ impl Step for ErrorIndex {
         builder.info(&format!("Documenting error index ({})", target));
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
-        let mut index = builder.tool_cmd(Tool::ErrorIndex);
+        let compiler = builder.compiler(2, builder.config.build);
+        let mut index = tool::ErrorIndex::command(
+            builder,
+            compiler,
+        );
         index.arg("html");
         index.arg(out.join("error-index.html"));
+        index.arg(crate::channel::CFG_RELEASE_NUM);
 
         // FIXME: shouldn't have to pass this env var
         index.env("CFG_BUILD", &builder.config.build)
@@ -918,11 +855,6 @@ impl Step for UnstableBookGen {
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-
-        builder.ensure(compile::Std {
-            compiler: builder.compiler(builder.top_stage, builder.config.build),
-            target,
-        });
 
         builder.info(&format!("Generating unstable book md files ({})", target));
         let out = builder.md_doc_out(target).join("unstable-book");

@@ -31,6 +31,7 @@
 //! variable only once, and it does so as soon as it can, so it is reasonable to ask what the type
 //! inferencer knows "so far".
 
+use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::fold::TypeFolder;
 use crate::util::nodemap::FxHashMap;
@@ -40,48 +41,79 @@ use std::collections::hash_map::Entry;
 use super::InferCtxt;
 use super::unify_key::ToType;
 
-pub struct TypeFreshener<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    freshen_count: u32,
-    freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
+pub struct TypeFreshener<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    ty_freshen_count: u32,
+    const_freshen_count: u32,
+    ty_freshen_map: FxHashMap<ty::InferTy, Ty<'tcx>>,
+    const_freshen_map: FxHashMap<ty::InferConst<'tcx>, &'tcx ty::Const<'tcx>>,
 }
 
-impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
-               -> TypeFreshener<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeFreshener<'a, 'tcx> {
         TypeFreshener {
             infcx,
-            freshen_count: 0,
-            freshen_map: Default::default(),
+            ty_freshen_count: 0,
+            const_freshen_count: 0,
+            ty_freshen_map: Default::default(),
+            const_freshen_map: Default::default(),
         }
     }
 
-    fn freshen<F>(&mut self,
-                  opt_ty: Option<Ty<'tcx>>,
-                  key: ty::InferTy,
-                  freshener: F)
-                  -> Ty<'tcx> where
+    fn freshen_ty<F>(
+        &mut self,
+        opt_ty: Option<Ty<'tcx>>,
+        key: ty::InferTy,
+        freshener: F,
+    ) -> Ty<'tcx>
+    where
         F: FnOnce(u32) -> ty::InferTy,
     {
         if let Some(ty) = opt_ty {
             return ty.fold_with(self);
         }
 
-        match self.freshen_map.entry(key) {
+        match self.ty_freshen_map.entry(key) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
-                let index = self.freshen_count;
-                self.freshen_count += 1;
-                let t = self.infcx.tcx.mk_infer(freshener(index));
+                let index = self.ty_freshen_count;
+                self.ty_freshen_count += 1;
+                let t = self.infcx.tcx.mk_ty_infer(freshener(index));
                 entry.insert(t);
                 t
             }
         }
     }
+
+    fn freshen_const<F>(
+        &mut self,
+        opt_ct: Option<&'tcx ty::Const<'tcx>>,
+        key: ty::InferConst<'tcx>,
+        freshener: F,
+        ty: Ty<'tcx>,
+    ) -> &'tcx ty::Const<'tcx>
+    where
+        F: FnOnce(u32) -> ty::InferConst<'tcx>,
+    {
+        if let Some(ct) = opt_ct {
+            return ct.fold_with(self);
+        }
+
+        match self.const_freshen_map.entry(key) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
+                let index = self.const_freshen_count;
+                self.const_freshen_count += 1;
+                let ct = self.infcx.tcx.mk_const_infer(freshener(index), ty);
+                entry.insert(ct);
+                ct
+            }
+        }
+    }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -101,7 +133,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::ReEmpty |
             ty::ReErased => {
                 // replace all free regions with 'erased
-                self.tcx().types.re_erased
+                self.tcx().lifetimes.re_erased
             }
 
             ty::ReClosureBound(..) => {
@@ -124,14 +156,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
         match t.sty {
             ty::Infer(ty::TyVar(v)) => {
                 let opt_ty = self.infcx.type_variables.borrow_mut().probe(v).known();
-                self.freshen(
+                self.freshen_ty(
                     opt_ty,
                     ty::TyVar(v),
                     ty::FreshTy)
             }
 
             ty::Infer(ty::IntVar(v)) => {
-                self.freshen(
+                self.freshen_ty(
                     self.infcx.int_unification_table.borrow_mut()
                                                     .probe_value(v)
                                                     .map(|v| v.to_type(tcx)),
@@ -140,7 +172,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             }
 
             ty::Infer(ty::FloatVar(v)) => {
-                self.freshen(
+                self.freshen_ty(
                     self.infcx.float_unification_table.borrow_mut()
                                                       .probe_value(v)
                                                       .map(|v| v.to_type(tcx)),
@@ -148,14 +180,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                     ty::FreshFloatTy)
             }
 
-            ty::Infer(ty::FreshTy(c)) |
-            ty::Infer(ty::FreshIntTy(c)) |
-            ty::Infer(ty::FreshFloatTy(c)) => {
-                if c >= self.freshen_count {
+            ty::Infer(ty::FreshTy(ct)) |
+            ty::Infer(ty::FreshIntTy(ct)) |
+            ty::Infer(ty::FreshFloatTy(ct)) => {
+                if ct >= self.ty_freshen_count {
                     bug!("Encountered a freshend type with id {} \
                           but our counter is only at {}",
-                         c,
-                         self.freshen_count);
+                         ct,
+                         self.ty_freshen_count);
                 }
                 t
             }
@@ -191,5 +223,47 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::Placeholder(..) |
             ty::Bound(..) => bug!("unexpected type {:?}", t),
         }
+    }
+
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        match ct.val {
+            ConstValue::Infer(ty::InferConst::Var(v)) => {
+                let opt_ct = self.infcx.const_unification_table
+                    .borrow_mut()
+                    .probe_value(v)
+                    .val
+                    .known();
+                return self.freshen_const(
+                    opt_ct,
+                    ty::InferConst::Var(v),
+                    ty::InferConst::Fresh,
+                    ct.ty,
+                );
+            }
+            ConstValue::Infer(ty::InferConst::Fresh(i)) => {
+                if i >= self.const_freshen_count {
+                    bug!(
+                        "Encountered a freshend const with id {} \
+                            but our counter is only at {}",
+                        i,
+                        self.const_freshen_count,
+                    );
+                }
+                return ct;
+            }
+
+            ConstValue::Infer(ty::InferConst::Canonical(..)) |
+            ConstValue::Placeholder(_) => {
+                bug!("unexpected const {:?}", ct)
+            }
+
+            ConstValue::Param(_) |
+            ConstValue::Scalar(_) |
+            ConstValue::Slice { .. } |
+            ConstValue::ByRef { .. } |
+            ConstValue::Unevaluated(..) => {}
+        }
+
+        ct.super_fold_with(self)
     }
 }

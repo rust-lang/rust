@@ -4,8 +4,8 @@ trait Trait {}
 struct Struct;
 
 impl Deref for Struct {
-    type Target = Trait;
-    fn deref(&self) -> &Trait {
+    type Target = dyn Trait;
+    fn deref(&self) -> &dyn Trait {
         unimplemented!();
     }
 }

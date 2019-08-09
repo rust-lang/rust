@@ -8,4 +8,3 @@ LL | fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); }
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.

@@ -5,10 +5,10 @@ LL |     let (_, thing) = my_stuff.iter().next().unwrap();
    |                      -------- immutable borrow occurs here
 LL | 
 LL |     my_stuff.clear();
-   |     ^^^^^^^^ mutable borrow occurs here
-...
-LL | }
-   | - immutable borrow ends here
+   |     ^^^^^^^^^^^^^^^^ mutable borrow occurs here
+LL | 
+LL |     println!("{}", *thing);
+   |                    ------ immutable borrow later used here
 
 error: aborting due to previous error
 

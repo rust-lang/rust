@@ -37,8 +37,6 @@ pub const RLIB_BYTECODE_OBJECT_MAGIC: &[u8] = b"RUST_OBJECT";
 // The version number this compiler will write to bytecode objects in rlibs
 pub const RLIB_BYTECODE_OBJECT_VERSION: u8 = 2;
 
-pub const RLIB_BYTECODE_EXTENSION: &str = "bc.z";
-
 pub fn encode(identifier: &str, bytecode: &[u8]) -> Vec<u8> {
     let mut encoded = Vec::new();
 

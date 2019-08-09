@@ -14,7 +14,7 @@ error[E0425]: cannot find value `field` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:20:9
    |
 LL |         field;
-   |         ^^^^^ help: try: `self.field`
+   |         ^^^^^ help: you might have meant to use the available field: `self.field`
 
 error[E0412]: cannot find type `Type` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:23:16
@@ -54,5 +54,5 @@ LL |         method;
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0412, E0425, E0531.
+Some errors have detailed explanations: E0412, E0425.
 For more information about an error, try `rustc --explain E0412`.

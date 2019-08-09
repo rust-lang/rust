@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 struct Baz<U> where U: Eq(U); //This is parsed as the new Fn* style parenthesis syntax.
 struct Baz<U> where U: Eq(U) -> R; // Notice this parses as well.
 struct Baz<U>(U) where U: Eq; // This rightfully signals no error as well.

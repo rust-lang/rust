@@ -1,11 +1,11 @@
-error[E0596]: cannot borrow field `(x as std::prelude::v1::Some).0` of immutable binding as mutable
+error[E0596]: cannot borrow `x.0` as mutable, as `x` is not declared as mutable
   --> $DIR/borrowck-ref-mut-of-imm.rs:4:12
    |
 LL | fn destructure(x: Option<isize>) -> isize {
-   |                - help: make this binding mutable: `mut x`
+   |                - help: consider changing this to be mutable: `mut x`
 ...
 LL |       Some(ref mut v) => *v
-   |            ^^^^^^^^^ cannot mutably borrow field of immutable binding
+   |            ^^^^^^^^^ cannot borrow as mutable
 
 error: aborting due to previous error
 

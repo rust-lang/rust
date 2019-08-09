@@ -7,8 +7,8 @@ LL |         (ref mut a, _) => a
 LL |         (ref mut b, _) => b
    |          ^^^^^^^^^ second mutable borrow occurs here
 ...
-LL | }
-   | - first borrow ends here
+LL |     *a += 1;
+   |     ------- first borrow later used here
 
 error: aborting due to previous error
 

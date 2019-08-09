@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // compile-flags:-Zprint-mono-items=lazy
 
 #![deny(dead_code)]

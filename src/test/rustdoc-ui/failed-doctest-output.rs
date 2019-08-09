@@ -5,10 +5,13 @@
 // compile-flags:--test
 // normalize-stdout-test: "src/test/rustdoc-ui" -> "$$DIR"
 // failure-status: 101
-// rustc-env:RUST_BACKTRACE=0
 
 // doctest fails at runtime
 /// ```
+/// println!("stdout 1");
+/// eprintln!("stderr 1");
+/// println!("stdout 2");
+/// eprintln!("stderr 2");
 /// panic!("oh no");
 /// ```
 pub struct SomeStruct;

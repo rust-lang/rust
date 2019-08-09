@@ -1,3 +1,8 @@
+// run-rustfix
+
+// The `try_into` suggestion doesn't include this, but we do suggest it after applying it
+use std::convert::TryInto;
+
 fn foo<N>(_x: N) {}
 
 fn main() {
@@ -33,10 +38,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<usize>(x_i8);
     //~^ ERROR mismatched types
-    foo::<usize>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<usize>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<usize>(x_f64);
+    // foo::<usize>(x_f32);
 
     foo::<isize>(x_usize);
     //~^ ERROR mismatched types
@@ -57,10 +60,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<isize>(x_i8);
     //~^ ERROR mismatched types
-    foo::<isize>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<isize>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<isize>(x_f64);
+    // foo::<isize>(x_f32);
 
     foo::<u64>(x_usize);
     //~^ ERROR mismatched types
@@ -81,10 +82,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<u64>(x_i8);
     //~^ ERROR mismatched types
-    foo::<u64>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<u64>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<u64>(x_f64);
+    // foo::<u64>(x_f32);
 
     foo::<i64>(x_usize);
     //~^ ERROR mismatched types
@@ -105,10 +104,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<i64>(x_i8);
     //~^ ERROR mismatched types
-    foo::<i64>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<i64>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<i64>(x_f64);
+    // foo::<i64>(x_f32);
 
     foo::<u32>(x_usize);
     //~^ ERROR mismatched types
@@ -129,10 +126,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<u32>(x_i8);
     //~^ ERROR mismatched types
-    foo::<u32>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<u32>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<u32>(x_f64);
+    // foo::<u32>(x_f32);
 
     foo::<i32>(x_usize);
     //~^ ERROR mismatched types
@@ -153,10 +148,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<i32>(x_i8);
     //~^ ERROR mismatched types
-    foo::<i32>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<i32>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<i32>(x_f64);
+    // foo::<i32>(x_f32);
 
     foo::<u16>(x_usize);
     //~^ ERROR mismatched types
@@ -177,10 +170,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<u16>(x_i8);
     //~^ ERROR mismatched types
-    foo::<u16>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<u16>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<u16>(x_f64);
+    // foo::<u16>(x_f32);
 
     foo::<i16>(x_usize);
     //~^ ERROR mismatched types
@@ -201,10 +192,8 @@ fn main() {
     foo::<i16>(x_i16);
     foo::<i16>(x_i8);
     //~^ ERROR mismatched types
-    foo::<i16>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<i16>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<i16>(x_f64);
+    // foo::<i16>(x_f32);
 
     foo::<u8>(x_usize);
     //~^ ERROR mismatched types
@@ -225,10 +214,8 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<u8>(x_i8);
     //~^ ERROR mismatched types
-    foo::<u8>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<u8>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<u8>(x_f64);
+    // foo::<u8>(x_f32);
 
     foo::<i8>(x_usize);
     //~^ ERROR mismatched types
@@ -249,10 +236,8 @@ fn main() {
     foo::<i8>(x_i16);
     //~^ ERROR mismatched types
     foo::<i8>(x_i8);
-    foo::<i8>(x_f64);
-    //~^ ERROR mismatched types
-    foo::<i8>(x_f32);
-    //~^ ERROR mismatched types
+    // foo::<i8>(x_f64);
+    // foo::<i8>(x_f32);
 
     foo::<f64>(x_usize);
     //~^ ERROR mismatched types
@@ -298,8 +283,7 @@ fn main() {
     //~^ ERROR mismatched types
     foo::<f32>(x_i8);
     //~^ ERROR mismatched types
-    foo::<f32>(x_f64);
-    //~^ ERROR mismatched types
+    // foo::<f32>(x_f64);
     foo::<f32>(x_f32);
 
     foo::<u32>(x_u8 as u16);

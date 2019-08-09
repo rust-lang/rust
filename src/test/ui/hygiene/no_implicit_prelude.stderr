@@ -7,13 +7,12 @@ LL |     fn f() { ::bar::m!(); }
 LL |         Vec::new();
    |         ^^^ use of undeclared type or module `Vec`
 
-error: cannot find macro `print!` in this scope
+error: cannot find macro `panic!` in this scope
   --> $DIR/no_implicit_prelude.rs:16:9
    |
-LL |         println!();
-   |         ^^^^^^^^^^^
+LL |         assert_eq!(0, 0);
+   |         ^^^^^^^^^^^^^^^^^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error[E0599]: no method named `clone` found for type `()` in the current scope
@@ -31,5 +30,5 @@ LL |         ().clone()
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0433, E0599.
+Some errors have detailed explanations: E0433, E0599.
 For more information about an error, try `rustc --explain E0433`.

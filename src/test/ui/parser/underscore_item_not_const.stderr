@@ -1,0 +1,92 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:6:11
+   |
+LL |     const _: () = ();
+   |           ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:9:11
+   |
+LL |     const _: () = ();
+   |           ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:12:11
+   |
+LL |     const _: () = ();
+   |           ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:17:8
+   |
+LL | static _: () = ();
+   |        ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:18:8
+   |
+LL | struct _();
+   |        ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:19:6
+   |
+LL | enum _ {}
+   |      ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:20:4
+   |
+LL | fn _() {}
+   |    ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:21:5
+   |
+LL | mod _ {}
+   |     ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:22:6
+   |
+LL | type _ = ();
+   |      ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:23:5
+   |
+LL | use _;
+   |     ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:24:5
+   |
+LL | use _ as g;
+   |     ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:25:7
+   |
+LL | trait _ {}
+   |       ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:26:7
+   |
+LL | trait _ = Copy;
+   |       ^ expected identifier, found reserved identifier
+
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/underscore_item_not_const.rs:27:14
+   |
+LL | macro_rules! _ { () => {} }
+   |              ^ expected identifier, found reserved identifier
+
+error: expected one of `!` or `::`, found `_`
+  --> $DIR/underscore_item_not_const.rs:28:7
+   |
+LL | union _ { f: u8 }
+   |       ^ expected one of `!` or `::` here
+
+error: aborting due to 15 previous errors
+

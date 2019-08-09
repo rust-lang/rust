@@ -8,4 +8,3 @@ extern {}
 extern {}
 
 fn main() {}
-

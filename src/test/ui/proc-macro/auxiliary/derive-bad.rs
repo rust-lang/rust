@@ -11,4 +11,3 @@ use proc_macro::TokenStream;
 pub fn derive_a(_input: TokenStream) -> TokenStream {
     "struct A { inner }".parse().unwrap()
 }
-

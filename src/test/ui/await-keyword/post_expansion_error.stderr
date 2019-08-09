@@ -1,9 +1,0 @@
-error[E0721]: `await` is a keyword in the 2018 edition
-  --> $DIR/post_expansion_error.rs:8:5
-   |
-LL |     await!()
-   |     ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0721`.

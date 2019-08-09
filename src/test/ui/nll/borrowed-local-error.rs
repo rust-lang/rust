@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn gimme(x: &(u32,)) -> &u32 {
     &x.0
 }

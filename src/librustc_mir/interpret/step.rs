@@ -1,12 +1,12 @@
-//! This module contains the `EvalContext` methods for executing a single step of the interpreter.
+//! This module contains the `InterpCx` methods for executing a single step of the interpreter.
 //!
 //! The main entry point is the `step` method.
 
 use rustc::mir;
 use rustc::ty::layout::LayoutOf;
-use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
+use rustc::mir::interpret::{InterpResult, Scalar, PointerArithmetic};
 
-use super::{EvalContext, Machine};
+use super::{InterpCx, Machine};
 
 /// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
@@ -35,8 +35,8 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
     }
 }
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    pub fn run(&mut self) -> EvalResult<'tcx> {
+impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
+    pub fn run(&mut self) -> InterpResult<'tcx> {
         while self.step()? {}
         Ok(())
     }
@@ -44,15 +44,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
-    pub fn step(&mut self) -> EvalResult<'tcx, bool> {
+    pub fn step(&mut self) -> InterpResult<'tcx, bool> {
         if self.stack.is_empty() {
             return Ok(false);
         }
 
         let block = self.frame().block;
         let stmt_id = self.frame().stmt;
-        let mir = self.mir();
-        let basic_block = &mir.basic_blocks()[block];
+        let body = self.body();
+        let basic_block = &body.basic_blocks()[block];
 
         let old_frames = self.cur_frame();
 
@@ -70,7 +70,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(true)
     }
 
-    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> EvalResult<'tcx> {
+    fn statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
         use rustc::mir::StatementKind::*;
@@ -121,7 +121,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // size of MIR constantly.
             Nop => {}
 
-            InlineAsm { .. } => return err!(InlineAsm),
+            InlineAsm { .. } => throw_unsup_format!("inline assembly is not supported"),
         }
 
         self.stack[frame_idx].stmt += 1;
@@ -136,7 +136,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         &mut self,
         rvalue: &mir::Rvalue<'tcx>,
         place: &mir::Place<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let dest = self.eval_place(place)?;
 
         use rustc::mir::Rvalue::*;
@@ -209,17 +209,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let dest = self.force_allocation(dest)?;
                 let length = dest.len(self)?;
 
-                if length > 0 {
-                    // write the first
+                if let Some(first_ptr) = self.check_mplace_access(dest, None)? {
+                    // Write the first.
                     let first = self.mplace_field(dest, 0)?;
                     self.copy_op(op, first.into())?;
 
                     if length > 1 {
-                        // copy the rest
-                        let (dest, dest_align) = first.to_scalar_ptr_align();
-                        let rest = dest.ptr_offset(first.layout.size, self)?;
+                        let elem_size = first.layout.size;
+                        // Copy the rest. This is performance-sensitive code
+                        // for big static/const arrays!
+                        let rest_ptr = first_ptr.offset(elem_size, self)?;
                         self.memory.copy_repeatedly(
-                            dest, dest_align, rest, dest_align, first.layout.size, length - 1, true
+                            first_ptr, rest_ptr, elem_size, length - 1, /*nonoverlapping:*/true
                         )?;
                     }
                 }
@@ -259,8 +260,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 )?;
             }
 
-            Cast(kind, ref operand, cast_ty) => {
-                debug_assert_eq!(self.monomorphize(cast_ty)?, dest.layout.ty);
+            Cast(kind, ref operand, _) => {
                 let src = self.eval_operand(operand, None)?;
                 self.cast(src, kind, dest)?;
             }
@@ -278,7 +278,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(())
     }
 
-    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<'tcx> {
+    fn terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", terminator.kind);
         self.tcx.span = terminator.source_info.span;
         self.memory.tcx.span = terminator.source_info.span;

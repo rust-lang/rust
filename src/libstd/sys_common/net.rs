@@ -1,7 +1,7 @@
 use crate::cmp;
 use crate::ffi::CString;
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind, IoVec, IoVecMut};
+use crate::io::{self, Error, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
 use crate::ptr;
@@ -37,12 +37,12 @@ use crate::sys::net::netc::IPV6_DROP_MEMBERSHIP;
 #[cfg(any(target_os = "linux", target_os = "android",
           target_os = "dragonfly", target_os = "freebsd",
           target_os = "openbsd", target_os = "netbsd",
-          target_os = "haiku", target_os = "bitrig"))]
+          target_os = "haiku"))]
 use libc::MSG_NOSIGNAL;
 #[cfg(not(any(target_os = "linux", target_os = "android",
               target_os = "dragonfly", target_os = "freebsd",
               target_os = "openbsd", target_os = "netbsd",
-              target_os = "haiku", target_os = "bitrig")))]
+              target_os = "haiku")))]
 const MSG_NOSIGNAL: c_int = 0x0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,7 +256,7 @@ impl TcpStream {
         self.inner.read(buf)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
 
@@ -271,7 +271,7 @@ impl TcpStream {
         Ok(ret as usize)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
     }
 
@@ -328,7 +328,7 @@ impl FromInner<Socket> for TcpStream {
 }
 
 impl fmt::Debug for TcpStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = f.debug_struct("TcpStream");
 
         if let Ok(addr) = self.socket_addr() {
@@ -435,7 +435,7 @@ impl FromInner<Socket> for TcpListener {
 }
 
 impl fmt::Debug for TcpListener {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = f.debug_struct("TcpListener");
 
         if let Ok(addr) = self.socket_addr() {
@@ -471,6 +471,12 @@ impl UdpSocket {
     pub fn socket(&self) -> &Socket { &self.inner }
 
     pub fn into_socket(self) -> Socket { self.inner }
+
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        sockname(|buf, len| unsafe {
+            c::getpeername(*self.inner.as_inner(), buf, len)
+        })
+    }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
@@ -638,7 +644,7 @@ impl FromInner<Socket> for UdpSocket {
 }
 
 impl fmt::Debug for UdpSocket {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut res = f.debug_struct("UdpSocket");
 
         if let Ok(addr) = self.socket_addr() {

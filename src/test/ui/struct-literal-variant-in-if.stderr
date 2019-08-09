@@ -1,0 +1,73 @@
+error: struct literals are not allowed here
+  --> $DIR/struct-literal-variant-in-if.rs:13:13
+   |
+LL |     if x == E::I { field1: true, field2: 42 } {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: surround the struct literal with parentheses
+   |
+LL |     if x == (E::I { field1: true, field2: 42 }) {}
+   |             ^                                 ^
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literal-variant-in-if.rs:15:13
+   |
+LL |     if x == E::V { field: false } {}
+   |             ^^^^^^^^^^^^^^^^^^^^^
+help: surround the struct literal with parentheses
+   |
+LL |     if x == (E::V { field: false }) {}
+   |             ^                     ^
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literal-variant-in-if.rs:17:13
+   |
+LL |     if x == E::J { field: -42 } {}
+   |             ^^^^^^^^^^^^^^^^^^^
+help: surround the struct literal with parentheses
+   |
+LL |     if x == (E::J { field: -42 }) {}
+   |             ^                   ^
+
+error: struct literals are not allowed here
+  --> $DIR/struct-literal-variant-in-if.rs:19:13
+   |
+LL |     if x == E::K { field: "" } {}
+   |             ^^^^^^^^^^^^^^^^^^
+help: surround the struct literal with parentheses
+   |
+LL |     if x == (E::K { field: "" }) {}
+   |             ^                  ^
+
+error[E0423]: expected value, found struct variant `E::V`
+  --> $DIR/struct-literal-variant-in-if.rs:10:13
+   |
+LL |     if x == E::V { field } {}
+   |             ^^^^----------
+   |             |
+   |             help: surround the struct literal with parenthesis: `(E::V { field })`
+
+error[E0308]: mismatched types
+  --> $DIR/struct-literal-variant-in-if.rs:10:20
+   |
+LL | fn test_E(x: E) {
+   |                 - help: try adding a return type: `-> bool`
+LL |     let field = true;
+LL |     if x == E::V { field } {}
+   |                    ^^^^^ expected (), found bool
+   |
+   = note: expected type `()`
+              found type `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/struct-literal-variant-in-if.rs:21:20
+   |
+LL |     let y: usize = ();
+   |                    ^^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0308, E0423.
+For more information about an error, try `rustc --explain E0308`.

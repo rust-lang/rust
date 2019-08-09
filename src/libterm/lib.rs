@@ -35,12 +35,7 @@
        test(attr(deny(warnings))))]
 #![deny(missing_docs)]
 
-#![deny(rust_2018_idioms)]
-
 #![cfg_attr(windows, feature(libc))]
-// Handle rustfmt skips
-#![feature(custom_attribute)]
-#![allow(unused_attributes)]
 
 use std::io::prelude::*;
 use std::io::{self, Stdout, Stderr};

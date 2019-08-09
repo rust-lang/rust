@@ -1,0 +1,21 @@
+error: Missing code example in this documentation
+  --> $DIR/lint-missing-doc-code-example.rs:19:1
+   |
+LL | / mod module1 {
+LL | | }
+   | |_^
+   |
+note: lint level defined here
+  --> $DIR/lint-missing-doc-code-example.rs:2:9
+   |
+LL | #![deny(missing_doc_code_examples)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Missing code example in this documentation
+  --> $DIR/lint-missing-doc-code-example.rs:37:3
+   |
+LL |   /// doc
+   |   ^^^^^^^
+
+error: aborting due to 2 previous errors
+

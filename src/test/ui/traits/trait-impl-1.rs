@@ -4,7 +4,7 @@
 
 trait T {}
 
-impl<'a> T+'a {
+impl<'a> dyn T + 'a {
     fn foo(&self) {}
 }
 

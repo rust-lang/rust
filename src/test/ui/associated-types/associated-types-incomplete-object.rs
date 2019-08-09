@@ -18,14 +18,14 @@ impl Foo for isize {
 }
 
 pub fn main() {
-    let a = &42isize as &Foo<A=usize, B=char>;
+    let a = &42isize as &dyn Foo<A=usize, B=char>;
 
-    let b = &42isize as &Foo<A=usize>;
+    let b = &42isize as &dyn Foo<A=usize>;
     //~^ ERROR the value of the associated type `B` (from the trait `Foo`) must be specified
 
-    let c = &42isize as &Foo<B=char>;
+    let c = &42isize as &dyn Foo<B=char>;
     //~^ ERROR the value of the associated type `A` (from the trait `Foo`) must be specified
 
-    let d = &42isize as &Foo;
+    let d = &42isize as &dyn Foo;
     //~^ ERROR the value of the associated types `A` (from the trait `Foo`), `B` (from the trait
 }

@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-54302.rs:13:5
+   |
+LL |     assert_deserialize_owned::<&'static str>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

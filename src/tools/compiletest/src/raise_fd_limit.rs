@@ -7,7 +7,6 @@
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 #[allow(non_camel_case_types)]
 pub unsafe fn raise_fd_limit() {
-    use libc;
     use std::cmp;
     use std::io;
     use std::mem::size_of_val;

@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(unused_must_use)]
 #![allow(dead_code)]
 #![allow(unused_mut)]
@@ -6,7 +6,7 @@ use std::thread;
 use std::sync::mpsc::Sender;
 
 type RingBuffer = Vec<f64> ;
-type SamplesFn = Box<FnMut(&RingBuffer) + Send>;
+type SamplesFn = Box<dyn FnMut(&RingBuffer) + Send>;
 
 enum Msg
 {

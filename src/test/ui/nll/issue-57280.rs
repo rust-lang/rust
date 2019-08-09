@@ -1,6 +1,4 @@
-#![feature(nll)]
-
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 trait Foo {
     const BLAH: &'static str;

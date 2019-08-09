@@ -1,22 +1,22 @@
-//! Syntax extensions in the Rust compiler.
+//! This crate contains implementations of built-in macros and other code generating facilities
+//! injecting code into the crate before it is lowered to HIR.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![deny(rust_2018_idioms)]
-
-#![feature(in_band_lifetimes)]
-#![feature(proc_macro_diagnostic)]
-#![feature(proc_macro_internals)]
-#![feature(proc_macro_span)]
+#![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
+#![feature(mem_take)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 
-#![recursion_limit="256"]
+use crate::deriving::*;
 
-extern crate proc_macro;
+use syntax::ast::Ident;
+use syntax::edition::Edition;
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
+use syntax::symbol::sym;
 
-mod diagnostics;
+mod error_codes;
 
 mod asm;
 mod assert;
@@ -24,105 +24,81 @@ mod cfg;
 mod compile_error;
 mod concat;
 mod concat_idents;
+mod deriving;
 mod env;
 mod format;
 mod format_foreign;
+mod global_allocator;
 mod global_asm;
 mod log_syntax;
-mod proc_macro_server;
+mod source_util;
 mod test;
-mod test_case;
 mod trace_macros;
 
-pub mod deriving;
-pub mod proc_macro_decls;
-pub mod proc_macro_impl;
+pub mod plugin_macro_defs;
+pub mod proc_macro_harness;
+pub mod standard_library_imports;
+pub mod test_harness;
 
-use rustc_data_structures::sync::Lrc;
-use syntax::ast;
-use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension, MultiModifier};
-use syntax::ext::hygiene;
-use syntax::symbol::Symbol;
-
-pub fn register_builtins(resolver: &mut dyn syntax::ext::base::Resolver,
-                         user_exts: Vec<NamedSyntaxExtension>) {
-    deriving::register_builtin_derives(resolver);
-
-    let mut register = |name, ext| {
-        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
-    };
-
-    macro_rules! register {
-        ($( $name:ident: $f:expr, )*) => { $(
-            register(Symbol::intern(stringify!($name)),
-                     NormalTT {
-                        expander: Box::new($f as MacroExpanderFn),
-                        def_info: None,
-                        allow_internal_unstable: None,
-                        allow_internal_unsafe: false,
-                        local_inner_macros: false,
-                        unstable_feature: None,
-                        edition: hygiene::default_edition(),
-                    });
-        )* }
+pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, edition: Edition) {
+    let mut register = |name, kind| resolver.register_builtin_macro(
+        Ident::with_empty_ctxt(name), SyntaxExtension {
+            is_builtin: true, ..SyntaxExtension::default(kind, edition)
+        },
+    );
+    macro register_bang($($name:ident: $f:expr,)*) {
+        $(register(sym::$name, SyntaxExtensionKind::LegacyBang(Box::new($f as MacroExpanderFn)));)*
+    }
+    macro register_attr($($name:ident: $f:expr,)*) {
+        $(register(sym::$name, SyntaxExtensionKind::LegacyAttr(Box::new($f)));)*
+    }
+    macro register_derive($($name:ident: $f:expr,)*) {
+        $(register(sym::$name, SyntaxExtensionKind::LegacyDerive(Box::new(BuiltinDerive($f))));)*
     }
 
-    use syntax::ext::source_util::*;
-    register! {
-        line: expand_line,
-        __rust_unstable_column: expand_column_gated,
-        column: expand_column,
-        file: expand_file,
-        stringify: expand_stringify,
-        include: expand_include,
-        include_str: expand_include_str,
-        include_bytes: expand_include_bytes,
-        module_path: expand_mod,
-
+    register_bang! {
+        __rust_unstable_column: source_util::expand_column,
         asm: asm::expand_asm,
-        global_asm: global_asm::expand_global_asm,
-        cfg: cfg::expand_cfg,
-        concat: concat::expand_syntax_ext,
-        concat_idents: concat_idents::expand_syntax_ext,
-        env: env::expand_env,
-        option_env: env::expand_option_env,
-        log_syntax: log_syntax::expand_syntax_ext,
-        trace_macros: trace_macros::expand_trace_macros,
-        compile_error: compile_error::expand_compile_error,
         assert: assert::expand_assert,
+        cfg: cfg::expand_cfg,
+        column: source_util::expand_column,
+        compile_error: compile_error::expand_compile_error,
+        concat_idents: concat_idents::expand_syntax_ext,
+        concat: concat::expand_syntax_ext,
+        env: env::expand_env,
+        file: source_util::expand_file,
+        format_args_nl: format::expand_format_args_nl,
+        format_args: format::expand_format_args,
+        global_asm: global_asm::expand_global_asm,
+        include_bytes: source_util::expand_include_bytes,
+        include_str: source_util::expand_include_str,
+        include: source_util::expand_include,
+        line: source_util::expand_line,
+        log_syntax: log_syntax::expand_syntax_ext,
+        module_path: source_util::expand_mod,
+        option_env: env::expand_option_env,
+        stringify: source_util::expand_stringify,
+        trace_macros: trace_macros::expand_trace_macros,
     }
 
-    register(Symbol::intern("test_case"), MultiModifier(Box::new(test_case::expand)));
-    register(Symbol::intern("test"), MultiModifier(Box::new(test::expand_test)));
-    register(Symbol::intern("bench"), MultiModifier(Box::new(test::expand_bench)));
+    register_attr! {
+        bench: test::expand_bench,
+        global_allocator: global_allocator::expand,
+        test: test::expand_test,
+        test_case: test::expand_test_case,
+    }
 
-    // format_args uses `unstable` things internally.
-    register(Symbol::intern("format_args"),
-             NormalTT {
-                expander: Box::new(format::expand_format_args),
-                def_info: None,
-                allow_internal_unstable: Some(vec![
-                    Symbol::intern("fmt_internals"),
-                ].into()),
-                allow_internal_unsafe: false,
-                local_inner_macros: false,
-                unstable_feature: None,
-                edition: hygiene::default_edition(),
-            });
-    register(Symbol::intern("format_args_nl"),
-             NormalTT {
-                 expander: Box::new(format::expand_format_args_nl),
-                 def_info: None,
-                 allow_internal_unstable: Some(vec![
-                     Symbol::intern("fmt_internals"),
-                 ].into()),
-                 allow_internal_unsafe: false,
-                 local_inner_macros: false,
-                 unstable_feature: None,
-                 edition: hygiene::default_edition(),
-             });
-
-    for (name, ext) in user_exts {
-        register(name, ext);
+    register_derive! {
+        Clone: clone::expand_deriving_clone,
+        Copy: bounds::expand_deriving_copy,
+        Debug: debug::expand_deriving_debug,
+        Default: default::expand_deriving_default,
+        Eq: eq::expand_deriving_eq,
+        Hash: hash::expand_deriving_hash,
+        Ord: ord::expand_deriving_ord,
+        PartialEq: partial_eq::expand_deriving_partial_eq,
+        PartialOrd: partial_ord::expand_deriving_partial_ord,
+        RustcDecodable: decodable::expand_deriving_rustc_decodable,
+        RustcEncodable: encodable::expand_deriving_rustc_encodable,
     }
 }

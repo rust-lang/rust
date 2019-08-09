@@ -60,18 +60,22 @@
 
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
-#![warn(intra_doc_link_resolution_failure)]
 #![warn(missing_debug_implementations)]
+#![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
+#![allow(explicit_outlives_requirements)]
+#![cfg_attr(not(bootstrap), allow(incomplete_features))]
 
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]
-#![feature(associated_type_defaults)]
+#![feature(bound_cloned)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(const_fn_union)]
-#![feature(custom_attribute)]
+#![feature(const_generics)]
+#![feature(custom_inner_attributes)]
+#![feature(decl_macro)]
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]
 #![feature(extern_types)]
@@ -97,6 +101,7 @@
 #![feature(staged_api)]
 #![feature(std_internals)]
 #![feature(stmt_expr_attributes)]
+#![feature(transparent_unions)]
 #![feature(unboxed_closures)]
 #![feature(unsized_locals)]
 #![feature(untagged_unions)]
@@ -112,18 +117,21 @@
 #![feature(wasm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(cmpxchg16b_target_feature)]
+#![feature(rtm_target_feature)]
+#![feature(f16c_target_feature)]
+#![feature(hexagon_target_feature)]
 #![feature(const_slice_len)]
 #![feature(const_str_as_bytes)]
 #![feature(const_str_len)]
 #![feature(const_int_conversion)]
 #![feature(const_transmute)]
-#![feature(reverse_bits)]
 #![feature(non_exhaustive)]
 #![feature(structural_match)]
 #![feature(abi_unadjusted)]
 #![feature(adx_target_feature)]
-#![feature(maybe_uninit, maybe_uninit_slice, maybe_uninit_array)]
+#![feature(maybe_uninit_slice, maybe_uninit_array)]
 #![feature(external_doc)]
+#![feature(mem_take)]
 
 #[prelude_import]
 #[allow(unused)]
@@ -222,12 +230,12 @@ mod tuple;
 mod unit;
 
 // Pull in the `core_arch` crate directly into libcore. The contents of
-// `core_arch` are in a different repository: rust-lang-nursery/stdsimd.
+// `core_arch` are in a different repository: rust-lang/stdarch.
 //
 // `core_arch` depends on libcore, but the contents of this module are
 // set up in such a way that directly pulling it here works such that the
 // crate uses the this crate as its libcore.
-#[path = "../stdsimd/crates/core_arch/src/mod.rs"]
+#[path = "../stdarch/crates/core_arch/src/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;

@@ -3,7 +3,7 @@ use crate::io::prelude::*;
 use crate::sys::stdio::panic_output;
 use crate::thread;
 
-pub fn dumb_print(args: fmt::Arguments) {
+pub fn dumb_print(args: fmt::Arguments<'_>) {
     if let Some(mut out) = panic_output() {
         let _ = out.write_fmt(args);
     }
@@ -14,7 +14,7 @@ pub fn dumb_print(args: fmt::Arguments) {
 // crate::intrinsics::abort() may be used instead.  The above implementations cover
 // all targets currently supported by libstd.
 
-pub fn abort(args: fmt::Arguments) -> ! {
+pub fn abort(args: fmt::Arguments<'_>) -> ! {
     dumb_print(format_args!("fatal runtime error: {}\n", args));
     unsafe { crate::sys::abort_internal(); }
 }

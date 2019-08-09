@@ -5,7 +5,7 @@ pub trait Foo {
     //~^ ERROR the size for values of type
 }
 
-pub fn f(_: ToString) {}
+pub fn f(_: dyn ToString) {}
 //~^ ERROR the size for values of type
 
 fn main() { }

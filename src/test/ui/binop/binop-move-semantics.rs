@@ -11,7 +11,7 @@ fn double_move<T: Add<Output=()>>(x: T) {
 fn move_then_borrow<T: Add<Output=()> + Clone>(x: T) {
     x
     +
-    x.clone();  //~ ERROR: use of moved value
+    x.clone();  //~ ERROR: borrow of moved value
 }
 
 fn move_borrowed<T: Add<Output=()>>(x: T, mut y: T) {
@@ -27,9 +27,9 @@ fn illegal_dereference<T: Add<Output=()>>(mut x: T, y: T) {
     let m = &mut x;
     let n = &y;
 
-    *m  //~ ERROR: cannot move out of borrowed content
+    *m  //~ ERROR: cannot move
     +
-    *n;  //~ ERROR: cannot move out of borrowed content
+    *n;  //~ ERROR: cannot move
     use_imm(n); use_mut(m);
 }
 struct Foo;

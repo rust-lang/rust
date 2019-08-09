@@ -147,4 +147,3 @@ impl MetadataExt for Metadata {
         [qspare[0] as u64, qspare[1] as u64]
     }
 }
-

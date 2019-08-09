@@ -1,4 +1,4 @@
 fn main() {
-    let v = 0 as *const u8;
+    let v = core::ptr::null::<u8>();
     v as *const [u8]; //~ ERROR E0607
 }

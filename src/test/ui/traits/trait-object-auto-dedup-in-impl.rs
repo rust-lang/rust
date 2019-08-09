@@ -5,15 +5,15 @@ struct Struct;
 impl Trait for Struct {}
 trait Trait {}
 
-type Send1 = Trait + Send;
-type Send2 = Trait + Send + Send;
+type Send1 = dyn Trait + Send;
+type Send2 = dyn Trait + Send + Send;
 
 fn main () {}
 
-impl Trait + Send {
+impl dyn Trait + Send {
     fn test(&self) { println!("one"); } //~ ERROR duplicate definitions with name `test`
 }
 
-impl Trait + Send + Send {
+impl dyn Trait + Send + Send {
     fn test(&self) { println!("two"); }
 }

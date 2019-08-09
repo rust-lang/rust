@@ -1,7 +1,5 @@
-// compile-pass
-// skip-codegen
+// check-pass
 
 fn _test() -> impl Default { }
 
-
-fn main() { }
+fn main() {}

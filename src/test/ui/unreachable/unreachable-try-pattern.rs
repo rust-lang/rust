@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![feature(never_type, exhaustive_patterns)]
 #![warn(unreachable_code)]
 #![warn(unreachable_patterns)]
@@ -39,4 +39,3 @@ fn main() {
     let _ = qux(Ok(123));
     let _ = vom(Ok(123));
 }
-

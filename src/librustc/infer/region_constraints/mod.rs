@@ -8,14 +8,18 @@ use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unify as ut;
+use crate::hir::def_id::DefId;
 use crate::ty::ReStatic;
 use crate::ty::{self, Ty, TyCtxt};
-use crate::ty::{BrFresh, ReLateBound, ReVar};
+use crate::ty::{ReLateBound, ReVar};
 use crate::ty::{Region, RegionVid};
+use syntax_pos::Span;
 
 use std::collections::BTreeMap;
-use std::{cmp, fmt, mem, u32};
+use std::{cmp, fmt, mem};
+use std::ops::Range;
 
 mod leak_check;
 
@@ -35,10 +39,6 @@ pub struct RegionConstraintCollector<'tcx> {
     /// is designated as their GLB (edges R3 <= R1 and R3 <= R2
     /// exist). This prevents us from making many such regions.
     glbs: CombineMap<'tcx>,
-
-    /// Global counter used during the GLB algorithm to create unique
-    /// names for fresh bound regions
-    bound_count: u32,
 
     /// The undo log records actions that might later be undone.
     ///
@@ -80,6 +80,11 @@ pub struct RegionConstraintData<'tcx> {
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
     pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
+
+    /// Constraints of the form `R0 member of [R1, ..., Rn]`, meaning that
+    /// `R0` must be equal to one of the regions `R1..Rn`. These occur
+    /// with `impl Trait` quite frequently.
+    pub member_constraints: Vec<MemberConstraint<'tcx>>,
 
     /// A "verify" is something that we need to verify after inference
     /// is done, but which does not directly affect inference in any
@@ -137,6 +142,43 @@ impl Constraint<'_> {
             Constraint::VarSubReg(_, r) | Constraint::RegSubVar(r, _) => r.is_placeholder(),
             Constraint::RegSubReg(r, s) => r.is_placeholder() || s.is_placeholder(),
         }
+    }
+}
+
+/// Requires that `region` must be equal to one of the regions in `choice_regions`.
+/// We often denote this using the syntax:
+///
+/// ```
+/// R0 member of [O1..On]
+/// ```
+#[derive(Debug, Clone, HashStable)]
+pub struct MemberConstraint<'tcx> {
+    /// The `DefId` of the opaque type causing this constraint: used for error reporting.
+    pub opaque_type_def_id: DefId,
+
+    /// The span where the hidden type was instantiated.
+    pub definition_span: Span,
+
+    /// The hidden type in which `member_region` appears: used for error reporting.
+    pub hidden_ty: Ty<'tcx>,
+
+    /// The region `R0`.
+    pub member_region: Region<'tcx>,
+
+    /// The options `O1..On`.
+    pub choice_regions: Lrc<Vec<Region<'tcx>>>,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for MemberConstraint<'tcx> {
+        opaque_type_def_id, definition_span, hidden_ty, member_region, choice_regions
+    }
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for MemberConstraint<'a> {
+        type Lifted = MemberConstraint<'tcx>;
+        opaque_type_def_id, definition_span, hidden_ty, member_region, choice_regions
     }
 }
 
@@ -391,7 +433,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             data,
             lubs,
             glbs,
-            bound_count: _,
             undo_log: _,
             num_open_snapshots: _,
             unification_table,
@@ -414,7 +455,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             *any_unifications = false;
         }
 
-        mem::replace(data, RegionConstraintData::default())
+        mem::take(data)
     }
 
     pub fn data(&self) -> &RegionConstraintData<'tcx> {
@@ -578,39 +619,6 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn new_bound(
-        &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        debruijn: ty::DebruijnIndex,
-    ) -> Region<'tcx> {
-        // Creates a fresh bound variable for use in GLB computations.
-        // See discussion of GLB computation in the large comment at
-        // the top of this file for more details.
-        //
-        // This computation is potentially wrong in the face of
-        // rollover.  It's conceivable, if unlikely, that one might
-        // wind up with accidental capture for nested functions in
-        // that case, if the outer function had bound regions created
-        // a very long time before and the inner function somehow
-        // wound up rolling over such that supposedly fresh
-        // identifiers were in fact shadowed. For now, we just assert
-        // that there is no rollover -- eventually we should try to be
-        // robust against this possibility, either by checking the set
-        // of bound identifiers that appear in a given expression and
-        // ensure that we generate one that is distinct, or by
-        // changing the representation of bound regions in a fn
-        // declaration
-
-        let sc = self.bound_count;
-        self.bound_count = sc + 1;
-
-        if sc >= self.bound_count {
-            bug!("rollover in RegionInference new_bound()");
-        }
-
-        tcx.mk_region(ReLateBound(debruijn, BrFresh(sc)))
-    }
-
     fn add_constraint(&mut self, constraint: Constraint<'tcx>, origin: SubregionOrigin<'tcx>) {
         // cannot add constraints once regions are resolved
         debug!(
@@ -680,6 +688,30 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
+    pub fn member_constraint(
+        &mut self,
+        opaque_type_def_id: DefId,
+        definition_span: Span,
+        hidden_ty: Ty<'tcx>,
+        member_region: ty::Region<'tcx>,
+        choice_regions: &Lrc<Vec<ty::Region<'tcx>>>,
+    ) {
+        debug!("member_constraint({:?} in {:#?})", member_region, choice_regions);
+
+        if choice_regions.iter().any(|&r| r == member_region) {
+            return;
+        }
+
+        self.data.member_constraints.push(MemberConstraint {
+            opaque_type_def_id,
+            definition_span,
+            hidden_ty,
+            member_region,
+            choice_regions: choice_regions.clone()
+        });
+
+    }
+
     pub fn make_subregion(
         &mut self,
         origin: SubregionOrigin<'tcx>,
@@ -737,7 +769,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn lub_regions(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
@@ -759,7 +791,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn glb_regions(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         origin: SubregionOrigin<'tcx>,
         a: Region<'tcx>,
         b: Region<'tcx>,
@@ -781,7 +813,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn opportunistic_resolve_var(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         rid: RegionVid,
     ) -> ty::Region<'tcx> {
         let vid = self.unification_table.probe_value(rid).min_vid;
@@ -797,7 +829,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     fn combine_vars(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         t: CombineMapType,
         a: Region<'tcx>,
         b: Region<'tcx>,
@@ -840,13 +872,14 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot) -> Vec<RegionVid> {
-        self.undo_log[mark.length..]
-            .iter()
-            .filter_map(|&elt| match elt {
-                AddVar(vid) => Some(vid),
-                _ => None,
-            }).collect()
+    pub fn vars_since_snapshot(
+        &self,
+        mark: &RegionSnapshot,
+    ) -> (Range<RegionVid>, Vec<RegionVariableOrigin>) {
+        let range = self.unification_table.vars_since_snapshot(&mark.region_snapshot);
+        (range.clone(), (range.start.index()..range.end.index()).map(|index| {
+            self.var_infos[ty::RegionVid::from(index)].origin.clone()
+        }).collect())
     }
 
     /// See [`RegionInference::region_constraints_added_in_snapshot`].
@@ -885,8 +918,8 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
-    pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+impl<'tcx> GenericKind<'tcx> {
+    pub fn to_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),
@@ -894,7 +927,7 @@ impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
+impl<'tcx> VerifyBound<'tcx> {
     pub fn must_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(..) => false,
@@ -942,9 +975,13 @@ impl<'tcx> RegionConstraintData<'tcx> {
     pub fn is_empty(&self) -> bool {
         let RegionConstraintData {
             constraints,
+            member_constraints,
             verifys,
             givens,
         } = self;
-        constraints.is_empty() && verifys.is_empty() && givens.is_empty()
+        constraints.is_empty() &&
+            member_constraints.is_empty() &&
+            verifys.is_empty() &&
+            givens.is_empty()
     }
 }

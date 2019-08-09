@@ -1,12 +1,12 @@
-error[E0382]: use of moved value: `start.test`
+error[E0382]: borrow of moved value: `start`
   --> $DIR/walk-struct-literal-with.rs:16:20
    |
+LL |     let start = Mine{test:"Foo".to_string(), other_val:0};
+   |         ----- move occurs because `start` has type `Mine`, which does not implement the `Copy` trait
 LL |     let end = Mine{other_val:1, ..start.make_string_bar()};
    |                                   ----- value moved here
 LL |     println!("{}", start.test);
-   |                    ^^^^^^^^^^ value used here after move
-   |
-   = note: move occurs because `start` has type `Mine`, which does not implement the `Copy` trait
+   |                    ^^^^^^^^^^ value borrowed here after move
 
 error: aborting due to previous error
 

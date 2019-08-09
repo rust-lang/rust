@@ -18,5 +18,5 @@ LL |     "".ipsum;
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0425, E0609.
+Some errors have detailed explanations: E0425, E0609.
 For more information about an error, try `rustc --explain E0425`.

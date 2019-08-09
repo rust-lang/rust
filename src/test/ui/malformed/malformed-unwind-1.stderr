@@ -1,14 +1,14 @@
-error: attribute must be of the form `#[unwind(allowed|aborts)]`
+error: malformed `unwind` attribute input
   --> $DIR/malformed-unwind-1.rs:3:1
    |
 LL | #[unwind]
-   | ^^^^^^^^^
+   | ^^^^^^^^^ help: must be of the form: `#[unwind(allowed|aborts)]`
 
-error: attribute must be of the form `#[unwind(allowed|aborts)]`
-  --> $DIR/malformed-unwind-1.rs:7:1
+error: malformed `unwind` attribute input
+  --> $DIR/malformed-unwind-1.rs:6:1
    |
 LL | #[unwind = ""]
-   | ^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^ help: must be of the form: `#[unwind(allowed|aborts)]`
 
 error: aborting due to 2 previous errors
 

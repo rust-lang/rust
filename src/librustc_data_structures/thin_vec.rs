@@ -66,3 +66,9 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for ThinVec<T> {
         (**self).hash_stable(hcx, hasher)
     }
 }
+
+impl<T> Default for ThinVec<T> {
+    fn default() -> Self {
+        Self(None)
+    }
+}

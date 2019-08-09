@@ -1,7 +1,7 @@
 use crate::io::prelude::*;
 
 use crate::fmt;
-use crate::io::{self, Initializer, IoVec, IoVecMut};
+use crate::io::{self, Initializer, IoSlice, IoSliceMut};
 use crate::net::{ToSocketAddrs, SocketAddr, Shutdown};
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -569,7 +569,7 @@ impl TcpStream {
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
 
@@ -582,7 +582,7 @@ impl Read for TcpStream {
 impl Write for TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
 
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
@@ -592,7 +592,7 @@ impl Write for TcpStream {
 impl Read for &TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
 
@@ -605,7 +605,7 @@ impl Read for &TcpStream {
 impl Write for &TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
 
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
@@ -626,7 +626,7 @@ impl IntoInner<net_imp::TcpStream> for TcpStream {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TcpStream {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -771,7 +771,7 @@ impl TcpListener {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn incoming(&self) -> Incoming {
+    pub fn incoming(&self) -> Incoming<'_> {
         Incoming { listener: self }
     }
 
@@ -922,19 +922,19 @@ impl IntoInner<net_imp::TcpListener> for TcpListener {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for TcpListener {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
 mod tests {
-    use crate::io::{ErrorKind, IoVec, IoVecMut};
+    use crate::fmt;
+    use crate::io::{ErrorKind, IoSlice, IoSliceMut};
     use crate::io::prelude::*;
     use crate::net::*;
     use crate::net::test::{next_test_ip4, next_test_ip6};
     use crate::sync::mpsc::channel;
-    use crate::sys_common::AsInner;
     use crate::time::{Instant, Duration};
     use crate::thread;
 
@@ -1129,7 +1129,7 @@ mod tests {
                 connect(i + 1, addr);
                 t!(stream.write(&[i as u8]));
             });
-            t.join().ok().unwrap();
+            t.join().ok().expect("thread panicked");
         }
     }
 
@@ -1162,7 +1162,7 @@ mod tests {
                 connect(i + 1, addr);
                 t!(stream.write(&[99]));
             });
-            t.join().ok().unwrap();
+            t.join().ok().expect("thread panicked");
         }
     }
 
@@ -1216,7 +1216,7 @@ mod tests {
             let mut b = [0];
             let mut c = [0; 3];
             let len = t!(s2.read_vectored(
-                &mut [IoVecMut::new(&mut a), IoVecMut::new(&mut b), IoVecMut::new(&mut c)],
+                &mut [IoSliceMut::new(&mut a), IoSliceMut::new(&mut b), IoSliceMut::new(&mut c)],
             ));
             assert!(len > 0);
             assert_eq!(b, [10]);
@@ -1235,7 +1235,7 @@ mod tests {
             let a = [];
             let b = [10];
             let c = [11, 12];
-            t!(s1.write_vectored(&[IoVec::new(&a), IoVec::new(&b), IoVec::new(&c)]));
+            t!(s1.write_vectored(&[IoSlice::new(&a), IoSlice::new(&b), IoSlice::new(&c)]));
 
             let mut buf = [0; 4];
             let len = t!(s2.read(&mut buf));
@@ -1377,6 +1377,8 @@ mod tests {
     }
 
     #[test]
+    // FIXME: https://github.com/fortanix/rust-sgx/issues/110
+    #[cfg_attr(target_env = "sgx", ignore)]
     fn shutdown_smoke() {
         each_ip(&mut |addr| {
             let a = t!(TcpListener::bind(&addr));
@@ -1397,6 +1399,8 @@ mod tests {
     }
 
     #[test]
+    // FIXME: https://github.com/fortanix/rust-sgx/issues/110
+    #[cfg_attr(target_env = "sgx", ignore)]
     fn close_readwrite_smoke() {
         each_ip(&mut |addr| {
             let a = t!(TcpListener::bind(&addr));
@@ -1550,30 +1554,51 @@ mod tests {
 
     #[test]
     fn debug() {
-        let name = if cfg!(windows) {"socket"} else {"fd"};
+        #[cfg(not(target_env = "sgx"))]
+        fn render_socket_addr<'a>(addr: &'a SocketAddr) -> impl fmt::Debug + 'a {
+            addr
+        }
+        #[cfg(target_env = "sgx")]
+        fn render_socket_addr<'a>(addr: &'a SocketAddr) -> impl fmt::Debug + 'a {
+            addr.to_string()
+        }
+
+        #[cfg(unix)]
+        use crate::os::unix::io::AsRawFd;
+        #[cfg(target_env = "sgx")]
+        use crate::os::fortanix_sgx::io::AsRawFd;
+        #[cfg(not(windows))]
+        fn render_inner(addr: &dyn AsRawFd) -> impl fmt::Debug {
+            addr.as_raw_fd()
+        }
+        #[cfg(windows)]
+        fn render_inner(addr: &dyn crate::os::windows::io::AsRawSocket) -> impl fmt::Debug {
+            addr.as_raw_socket()
+        }
+
+        let inner_name = if cfg!(windows) {"socket"} else {"fd"};
         let socket_addr = next_test_ip4();
 
         let listener = t!(TcpListener::bind(&socket_addr));
-        let listener_inner = listener.0.socket().as_inner();
         let compare = format!("TcpListener {{ addr: {:?}, {}: {:?} }}",
-                              socket_addr, name, listener_inner);
+                              render_socket_addr(&socket_addr),
+                              inner_name,
+                              render_inner(&listener));
         assert_eq!(format!("{:?}", listener), compare);
 
-        let stream = t!(TcpStream::connect(&("localhost",
-                                                 socket_addr.port())));
-        let stream_inner = stream.0.socket().as_inner();
-        let compare = format!("TcpStream {{ addr: {:?}, \
-                              peer: {:?}, {}: {:?} }}",
-                              stream.local_addr().unwrap(),
-                              stream.peer_addr().unwrap(),
-                              name,
-                              stream_inner);
+        let stream = t!(TcpStream::connect(&("localhost", socket_addr.port())));
+        let compare = format!("TcpStream {{ addr: {:?}, peer: {:?}, {}: {:?} }}",
+                              render_socket_addr(&stream.local_addr().unwrap()),
+                              render_socket_addr(&stream.peer_addr().unwrap()),
+                              inner_name,
+                              render_inner(&stream));
         assert_eq!(format!("{:?}", stream), compare);
     }
 
-    // FIXME: re-enabled bitrig/openbsd tests once their socket timeout code
+    // FIXME: re-enabled openbsd tests once their socket timeout code
     //        no longer has rounding errors.
-    #[cfg_attr(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"), ignore)]
+    #[cfg_attr(any(target_os = "netbsd", target_os = "openbsd"), ignore)]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     #[test]
     fn timeouts() {
         let addr = next_test_ip4();
@@ -1601,6 +1626,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_read_timeout() {
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
@@ -1618,6 +1644,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_read_with_timeout() {
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
@@ -1661,6 +1688,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)]
     fn nodelay() {
         let addr = next_test_ip4();
         let _listener = t!(TcpListener::bind(&addr));
@@ -1675,6 +1703,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)]
     fn ttl() {
         let ttl = 100;
 
@@ -1691,6 +1720,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)]
     fn set_nonblocking() {
         let addr = next_test_ip4();
         let listener = t!(TcpListener::bind(&addr));
@@ -1712,6 +1742,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn peek() {
         each_ip(&mut |addr| {
             let (txdone, rxdone) = channel();
@@ -1743,6 +1774,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn connect_timeout_valid() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();

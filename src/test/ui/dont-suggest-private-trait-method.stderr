@@ -5,9 +5,7 @@ LL | struct T;
    | --------- function or associated item `new` not found for this
 ...
 LL |     T::new();
-   |     ---^^^
-   |     |
-   |     function or associated item not found in `T`
+   |        ^^^ function or associated item not found in `T`
 
 error: aborting due to previous error
 

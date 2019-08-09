@@ -8,15 +8,5 @@ help: if you meant to write a `str` literal, use double quotes
 LL |     println!("●●");
    |              ^^^^
 
-error: format argument must be a string literal
-  --> $DIR/str-as-char.rs:4:14
-   |
-LL |     println!('●●');
-   |              ^^^^
-help: you might be missing a string literal to format with
-   |
-LL |     println!("{}", '●●');
-   |              ^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

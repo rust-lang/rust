@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::collections::HashSet;
 
 use build_helper::output;
+use serde::Deserialize;
 use serde_json;
 
 use crate::{Build, Crate};
@@ -19,7 +20,6 @@ struct Output {
 struct Package {
     id: String,
     name: String,
-    version: String,
     source: Option<String>,
     manifest_path: String,
 }
@@ -83,12 +83,7 @@ fn build_krate(features: &str, build: &mut Build, resolves: &mut Vec<ResolveNode
             let mut path = PathBuf::from(package.manifest_path);
             path.pop();
             build.crates.insert(name, Crate {
-                build_step: format!("build-crate-{}", name),
-                doc_step: format!("doc-crate-{}", name),
-                test_step: format!("test-crate-{}", name),
-                bench_step: format!("bench-crate-{}", name),
                 name,
-                version: package.version,
                 id: package.id,
                 deps: HashSet::new(),
                 path,

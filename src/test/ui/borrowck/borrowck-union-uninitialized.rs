@@ -10,9 +10,9 @@ fn main() {
     unsafe {
         let mut s: S;
         let mut u: U;
-        s.a = 0;
-        u.a = 0;
-        let sa = s.a; //~ ERROR use of possibly uninitialized variable: `s.a`
-        let ua = u.a; //~ ERROR use of possibly uninitialized variable: `u.a`
+        s.a = 0; //~ ERROR assign to part of possibly uninitialized variable: `s`
+        u.a = 0; //~ ERROR assign to part of possibly uninitialized variable: `u`
+        let sa = s.a;
+        let ua = u.a;
     }
 }

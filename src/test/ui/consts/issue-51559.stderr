@@ -1,0 +1,12 @@
+error: any use of this value will cause an error
+  --> $DIR/issue-51559.rs:4:33
+   |
+LL | pub const FOO: usize = unsafe { BAR as usize };
+   | --------------------------------^^^^^^^^^^^^---
+   |                                 |
+   |                                 "pointer-to-integer cast" needs an rfc before being allowed inside constants
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+

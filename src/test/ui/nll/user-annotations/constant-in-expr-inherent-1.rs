@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct Foo<'a> { x: &'a u32 }
 
 impl<'a> Foo<'a> {
@@ -12,4 +10,3 @@ fn foo<'a>(_: &'a u32) -> &'static u32 {
 
 fn main() {
 }
-

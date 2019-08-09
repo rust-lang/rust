@@ -9,6 +9,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use rustc::hir::def_id::DefId;
+use rustc::util::nodemap::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 
@@ -16,7 +17,6 @@ use crate::clean::{self, PrimitiveType};
 use crate::core::DocAccessLevels;
 use crate::html::item_type::ItemType;
 use crate::html::render::{self, cache, CURRENT_LOCATION_KEY};
-
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
@@ -45,6 +45,7 @@ pub struct GenericBounds<'a>(pub &'a [clean::GenericBound]);
 /// Wrapper struct for emitting a comma-separated list of items
 pub struct CommaSep<'a, T>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
+pub struct DefaultSpace(pub bool);
 
 /// Wrapper struct for properly emitting a function or method declaration.
 pub struct Function<'a> {
@@ -106,8 +107,10 @@ impl<'a, T: fmt::Display> fmt::Display for CommaSep<'a, T> {
 
 impl<'a> fmt::Display for GenericBounds<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut bounds_dup = FxHashSet::default();
         let &GenericBounds(bounds) = self;
-        for (i, bound) in bounds.iter().enumerate() {
+
+        for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(b.to_string())).enumerate() {
             if i > 0 {
                 f.write_str(" + ")?;
             }
@@ -205,16 +208,13 @@ impl<'a> fmt::Display for WhereClause<'a> {
                         clause.push_str(&format!("{}: {}", ty, GenericBounds(bounds)));
                     }
                 }
-                &clean::WherePredicate::RegionPredicate { ref lifetime,
-                                                          ref bounds } => {
-                    clause.push_str(&format!("{}: ", lifetime));
-                    for (i, lifetime) in bounds.iter().enumerate() {
-                        if i > 0 {
-                            clause.push_str(" + ");
-                        }
-
-                        clause.push_str(&lifetime.to_string());
-                    }
+                &clean::WherePredicate::RegionPredicate { ref lifetime, ref bounds } => {
+                    clause.push_str(&format!("{}: {}",
+                                             lifetime,
+                                             bounds.iter()
+                                                   .map(|b| b.to_string())
+                                                   .collect::<Vec<_>>()
+                                                   .join(" + ")));
                 }
                 &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
                     if f.alternate() {
@@ -259,6 +259,12 @@ impl fmt::Display for clean::Lifetime {
     }
 }
 
+impl fmt::Display for clean::Constant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.expr, f)
+    }
+}
+
 impl fmt::Display for clean::PolyTrait {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.generic_params.is_empty() {
@@ -300,32 +306,23 @@ impl fmt::Display for clean::GenericBound {
 impl fmt::Display for clean::GenericArgs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            clean::GenericArgs::AngleBracketed {
-                ref lifetimes, ref types, ref bindings
-            } => {
-                if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
+            clean::GenericArgs::AngleBracketed { ref args, ref bindings } => {
+                if !args.is_empty() || !bindings.is_empty() {
                     if f.alternate() {
                         f.write_str("<")?;
                     } else {
                         f.write_str("&lt;")?;
                     }
                     let mut comma = false;
-                    for lifetime in lifetimes {
-                        if comma {
-                            f.write_str(", ")?;
-                        }
-                        comma = true;
-                        write!(f, "{}", *lifetime)?;
-                    }
-                    for ty in types {
+                    for arg in args {
                         if comma {
                             f.write_str(", ")?;
                         }
                         comma = true;
                         if f.alternate() {
-                            write!(f, "{:#}", *ty)?;
+                            write!(f, "{:#}", *arg)?;
                         } else {
-                            write!(f, "{}", *ty)?;
+                            write!(f, "{}", *arg)?;
                         }
                     }
                     for binding in bindings {
@@ -521,8 +518,8 @@ fn primitive_link(f: &mut fmt::Formatter<'_>,
 
 /// Helper to render type parameters
 fn tybounds(w: &mut fmt::Formatter<'_>,
-            typarams: &Option<Vec<clean::GenericBound>>) -> fmt::Result {
-    match *typarams {
+            param_names: &Option<Vec<clean::GenericBound>>) -> fmt::Result {
+    match *param_names {
         Some(ref params) => {
             for param in params {
                 write!(w, " + ")?;
@@ -559,13 +556,13 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
         clean::Generic(ref name) => {
             f.write_str(name)
         }
-        clean::ResolvedPath{ did, ref typarams, ref path, is_generic } => {
-            if typarams.is_some() {
+        clean::ResolvedPath{ did, ref param_names, ref path, is_generic } => {
+            if param_names.is_some() {
                 f.write_str("dyn ")?;
             }
-            // Paths like T::Output and Self::Output should be rendered with all segments
+            // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             resolved_path(f, did, path, is_generic, use_absolute)?;
-            tybounds(f, typarams)
+            tybounds(f, param_names)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(prim) => primitive_link(f, prim, prim.as_str()),
@@ -587,7 +584,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 &[] => primitive_link(f, PrimitiveType::Unit, "()"),
                 &[ref one] => {
                     primitive_link(f, PrimitiveType::Tuple, "(")?;
-                    //carry f.alternate() into this display w/o branching manually
+                    // Carry `f.alternate()` into this display w/o branching manually.
                     fmt::Display::fmt(one, f)?;
                     primitive_link(f, PrimitiveType::Tuple, ",)")
                 }
@@ -640,7 +637,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 "&amp;".to_string()
             };
             match **ty {
-                clean::Slice(ref bt) => { // BorrowedRef{ ... Slice(T) } is &[T]
+                clean::Slice(ref bt) => { // `BorrowedRef{ ... Slice(T) }` is `&[T]`
                     match **bt {
                         clean::Generic(_) => {
                             if f.alternate() {
@@ -663,7 +660,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                         }
                     }
                 }
-                clean::ResolvedPath { typarams: Some(ref v), .. } if !v.is_empty() => {
+                clean::ResolvedPath { param_names: Some(ref v), .. } if !v.is_empty() => {
                     write!(f, "{}{}{}(", amp, lt, m)?;
                     fmt_type(&ty, f, use_absolute)?;
                     write!(f, ")")
@@ -717,31 +714,28 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 //        the ugliness comes from inlining across crates where
                 //        everything comes in as a fully resolved QPath (hard to
                 //        look at).
-                box clean::ResolvedPath { did, ref typarams, .. } => {
+                box clean::ResolvedPath { did, ref param_names, .. } => {
                     match href(did) {
                         Some((ref url, _, ref path)) if !f.alternate() => {
                             write!(f,
                                    "<a class=\"type\" href=\"{url}#{shortty}.{name}\" \
                                    title=\"type {path}::{name}\">{name}</a>",
                                    url = url,
-                                   shortty = ItemType::AssociatedType,
+                                   shortty = ItemType::AssocType,
                                    name = name,
                                    path = path.join("::"))?;
                         }
                         _ => write!(f, "{}", name)?,
                     }
 
-                    // FIXME: `typarams` are not rendered, and this seems bad?
-                    drop(typarams);
+                    // FIXME: `param_names` are not rendered, and this seems bad?
+                    drop(param_names);
                     Ok(())
                 }
                 _ => {
                     write!(f, "{}", name)
                 }
             }
-        }
-        clean::Unique(..) => {
-            panic!("should have been cleaned")
         }
     }
 }
@@ -771,7 +765,7 @@ fn fmt_impl(i: &clean::Impl,
             fmt::Display::fmt(ty, f)?;
         } else {
             match *ty {
-                clean::ResolvedPath { typarams: None, ref path, is_generic: false, .. } => {
+                clean::ResolvedPath { param_names: None, ref path, is_generic: false, .. } => {
                     let last = path.segments.last().unwrap();
                     fmt::Display::fmt(&last.name, f)?;
                     fmt::Display::fmt(&last.args, f)?;
@@ -1022,11 +1016,26 @@ impl fmt::Display for clean::ImportSource {
 
 impl fmt::Display for clean::TypeBinding {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "{} = {:#}", self.name, self.ty)
-        } else {
-            write!(f, "{} = {}", self.name, self.ty)
+        f.write_str(&self.name)?;
+        match self.kind {
+            clean::TypeBindingKind::Equality { ref ty } => {
+                if f.alternate() {
+                    write!(f, " = {:#}", ty)?;
+                } else {
+                    write!(f, " = {}", ty)?;
+                }
+            }
+            clean::TypeBindingKind::Constraint { ref bounds } => {
+                if !bounds.is_empty() {
+                    if f.alternate() {
+                        write!(f, ": {:#}", GenericBounds(bounds))?;
+                    } else {
+                        write!(f, ":&nbsp;{}", GenericBounds(bounds))?;
+                    }
+                }
+            }
         }
+        Ok(())
     }
 }
 
@@ -1054,6 +1063,16 @@ impl fmt::Display for AbiSpace {
         match self.0 {
             Abi::Rust => Ok(()),
             abi => write!(f, "extern {0}{1}{0} ", quot, abi.name()),
+        }
+    }
+}
+
+impl fmt::Display for DefaultSpace {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0 {
+            write!(f, "default ")
+        } else {
+            Ok(())
         }
     }
 }

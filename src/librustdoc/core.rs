@@ -1,11 +1,10 @@
 use rustc_lint;
 use rustc::session::{self, config};
-use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
-use rustc::hir::def::Def;
-use rustc::hir::{self, HirId, HirVec};
+use rustc::hir::def_id::{DefId, DefIndex, CrateNum, LOCAL_CRATE};
+use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 use rustc::lint::{self, LintPass};
 use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
@@ -16,13 +15,10 @@ use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
-use syntax::ast::{self, Ident};
 use syntax::source_map;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
-use syntax::ptr::P;
-use syntax::symbol::keywords;
-use syntax_pos::DUMMY_SP;
+use syntax::symbol::sym;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 use parking_lot::ReentrantMutex;
@@ -36,7 +32,7 @@ use std::rc::Rc;
 use crate::visit_ast::RustdocVisitor;
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::clean;
-use crate::clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
+use crate::clean::{Clean, MAX_DEF_ID, AttributesExt};
 use crate::html::render::RenderInfo;
 
 use crate::passes;
@@ -48,7 +44,7 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 pub struct DocContext<'tcx> {
 
-    pub tcx: TyCtxt<'tcx, 'tcx, 'tcx>,
+    pub tcx: TyCtxt<'tcx>,
     pub resolver: Rc<Option<RefCell<interface::BoxedResolver>>>,
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
@@ -63,20 +59,21 @@ pub struct DocContext<'tcx> {
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
-    /// Table type parameter definition -> substituted type
-    pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
-    /// Table `NodeId` of lifetime parameter definition -> substituted lifetime
+    /// Table `DefId` of type parameter -> substituted type
+    pub ty_substs: RefCell<FxHashMap<DefId, clean::Type>>,
+    /// Table `DefId` of lifetime parameter -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
-    /// Table node id of const parameter definition -> substituted const
-    pub ct_substs: RefCell<FxHashMap<Def, clean::Constant>>,
+    /// Table `DefId` of const parameter -> substituted const
+    pub ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
     /// Table DefId of `impl Trait` in argument position -> bounds
     pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
-    pub send_trait: Option<DefId>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
-    /// Maps (type_id, trait_id) -> auto trait impl
-    pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>,
+    /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
+    // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
+    pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
     pub all_traits: Vec<DefId>,
+    pub auto_traits: Vec<DefId>,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -94,9 +91,9 @@ impl<'tcx> DocContext<'tcx> {
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
     pub fn enter_alias<F, R>(&self,
-                             ty_substs: FxHashMap<Def, clean::Type>,
+                             ty_substs: FxHashMap<DefId, clean::Type>,
                              lt_substs: FxHashMap<DefId, clean::Lifetime>,
-                             ct_substs: FxHashMap<Def, clean::Constant>,
+                             ct_substs: FxHashMap<DefId, clean::Constant>,
                              f: F) -> R
     where F: FnOnce() -> R {
         let (old_tys, old_lts, old_cts) = (
@@ -116,8 +113,8 @@ impl<'tcx> DocContext<'tcx> {
     // registered after the AST is constructed would require storing the defid mapping in a
     // RefCell, decreasing the performance for normal compilation for very little gain.
     //
-    // Instead, we construct 'fake' def ids, which start immediately after the last DefId in
-    // DefIndexAddressSpace::Low. In the Debug impl for clean::Item, we explicitly check for fake
+    // Instead, we construct 'fake' def ids, which start immediately after the last DefId.
+    // In the Debug impl for clean::Item, we explicitly check for fake
     // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
     pub fn next_def_id(&self, crate_num: CrateNum) -> DefId {
         let start_def_id = {
@@ -126,11 +123,11 @@ impl<'tcx> DocContext<'tcx> {
                     .hir()
                     .definitions()
                     .def_path_table()
-                    .next_id(DefIndexAddressSpace::Low)
+                    .next_id()
             } else {
                 self.cstore
                     .def_path_table(crate_num)
-                    .next_id(DefIndexAddressSpace::Low)
+                    .next_id()
             };
 
             DefId {
@@ -146,10 +143,7 @@ impl<'tcx> DocContext<'tcx> {
             crate_num,
             DefId {
                 krate: crate_num,
-                index: DefIndex::from_array_index(
-                    def_id.index.as_array_index() + 1,
-                    def_id.index.address_space(),
-                ),
+                index: DefIndex::from(def_id.index.index() + 1),
             },
         );
 
@@ -166,104 +160,11 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Like the function of the same name on the HIR map, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
-        if self.all_fake_def_ids.borrow().contains(&def_id) {
-            None
-        } else {
-            self.tcx.hir().as_local_node_id(def_id)
-        }
-    }
-
-    // FIXME(@ljedrz): remove the NodeId variant
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
         if self.all_fake_def_ids.borrow().contains(&def_id) {
             None
         } else {
             self.tcx.hir().as_local_hir_id(def_id)
-        }
-    }
-
-    pub fn get_real_ty<F>(&self,
-                          def_id: DefId,
-                          def_ctor: &F,
-                          real_name: &Option<Ident>,
-                          generics: &ty::Generics,
-    ) -> hir::Ty
-    where F: Fn(DefId) -> Def {
-        let path = get_path_for_type(self.tcx, def_id, def_ctor);
-        let mut segments = path.segments.into_vec();
-        let last = segments.pop().expect("segments were empty");
-
-        segments.push(hir::PathSegment::new(
-            real_name.unwrap_or(last.ident),
-            None,
-            None,
-            self.generics_to_path_params(generics.clone()),
-            false,
-        ));
-
-        let new_path = hir::Path {
-            span: path.span,
-            def: path.def,
-            segments: HirVec::from_vec(segments),
-        };
-
-        hir::Ty {
-            node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
-            span: DUMMY_SP,
-            hir_id: hir::DUMMY_HIR_ID,
-        }
-    }
-
-    pub fn generics_to_path_params(&self, generics: ty::Generics) -> hir::GenericArgs {
-        let mut args = vec![];
-
-        for param in generics.params.iter() {
-            match param.kind {
-                ty::GenericParamDefKind::Lifetime => {
-                    let name = if param.name == "" {
-                        hir::ParamName::Plain(keywords::StaticLifetime.ident())
-                    } else {
-                        hir::ParamName::Plain(ast::Ident::from_interned_str(param.name))
-                    };
-
-                    args.push(hir::GenericArg::Lifetime(hir::Lifetime {
-                        hir_id: hir::DUMMY_HIR_ID,
-                        span: DUMMY_SP,
-                        name: hir::LifetimeName::Param(name),
-                    }));
-                }
-                ty::GenericParamDefKind::Type { .. } => {
-                    args.push(hir::GenericArg::Type(self.ty_param_to_ty(param.clone())));
-                }
-                ty::GenericParamDefKind::Const { .. } => {
-                    unimplemented!() // FIXME(const_generics)
-                }
-            }
-        }
-
-        hir::GenericArgs {
-            args: HirVec::from_vec(args),
-            bindings: HirVec::new(),
-            parenthesized: false,
-        }
-    }
-
-    pub fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
-        debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
-        hir::Ty {
-            node: hir::TyKind::Path(hir::QPath::Resolved(
-                None,
-                P(hir::Path {
-                    span: DUMMY_SP,
-                    def: Def::TyParam(param.def_id),
-                    segments: HirVec::from_vec(vec![
-                        hir::PathSegment::from_ident(Ident::from_interned_str(param.name))
-                    ]),
-                }),
-            )),
-            span: DUMMY_SP,
-            hir_id: hir::DUMMY_HIR_ID,
         }
     }
 }
@@ -291,15 +192,18 @@ pub fn new_handler(error_format: ErrorOutputType,
     // stick to the defaults
     let sessopts = Options::default();
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
-        ErrorOutputType::HumanReadable(color_config) => Box::new(
-            EmitterWriter::stderr(
-                color_config,
-                source_map.map(|cm| cm as _),
-                false,
-                sessopts.debugging_opts.teach,
-            ).ui_testing(ui_testing)
-        ),
-        ErrorOutputType::Json(pretty) => {
+        ErrorOutputType::HumanReadable(kind) => {
+            let (short, color_config) = kind.unzip();
+            Box::new(
+                EmitterWriter::stderr(
+                    color_config,
+                    source_map.map(|cm| cm as _),
+                    short,
+                    sessopts.debugging_opts.teach,
+                ).ui_testing(ui_testing)
+            )
+        },
+        ErrorOutputType::Json { pretty, json_rendered } => {
             let source_map = source_map.unwrap_or_else(
                 || Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping())));
             Box::new(
@@ -307,16 +211,10 @@ pub fn new_handler(error_format: ErrorOutputType,
                     None,
                     source_map,
                     pretty,
+                    json_rendered,
                 ).ui_testing(ui_testing)
             )
         },
-        ErrorOutputType::Short(color_config) => Box::new(
-            EmitterWriter::stderr(
-                color_config,
-                source_map.map(|cm| cm as _),
-                true,
-                false)
-        ),
     };
 
     errors::Handler::with_emitter_and_flags(
@@ -419,7 +317,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         actually_rustdoc: true,
-        debugging_opts: debugging_options.clone(),
+        debugging_opts: debugging_options,
         error_format,
         edition,
         describe_lints,
@@ -448,7 +346,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // current architecture.
         let resolver = abort_on_err(compiler.expansion(), sess).peek().1.clone();
 
-        if sess.err_count() > 0 {
+        if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 
@@ -461,23 +359,18 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             sess.abort_if_errors();
 
             let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
-            // Convert from a NodeId set to a DefId set since we don't always have easy access
-            // to the map from defid -> nodeid
+            // Convert from a HirId set to a DefId set since we don't always have easy access
+            // to the map from defid -> hirid
             let access_levels = AccessLevels {
                 map: access_levels.map.iter()
                                     .map(|(&k, &v)| (tcx.hir().local_def_id(k), v))
                                     .collect()
             };
 
-            let send_trait = if crate_name == Some("core".to_string()) {
-                clean::path_to_def_local(&tcx, &["marker", "Send"])
-            } else {
-                clean::path_to_def(&tcx, &["core", "marker", "Send"])
-            };
-
             let mut renderinfo = RenderInfo::default();
             renderinfo.access_levels = access_levels;
 
+            let all_traits = tcx.all_traits(LOCAL_CRATE).to_vec();
             let ctxt = DocContext {
                 tcx,
                 resolver,
@@ -490,11 +383,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 lt_substs: Default::default(),
                 ct_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
-                send_trait: send_trait,
                 fake_def_ids: Default::default(),
                 all_fake_def_ids: Default::default(),
                 generated_synthetics: Default::default(),
-                all_traits: tcx.all_traits(LOCAL_CRATE).to_vec(),
+                auto_traits: all_traits.iter().cloned().filter(|trait_def_id| {
+                    tcx.trait_is_auto(*trait_def_id)
+                }).collect(),
+                all_traits,
             };
             debug!("crate: {:?}", tcx.hir().krate());
 
@@ -518,13 +413,12 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             // Process all of the crate attributes, extracting plugin metadata along
             // with the passes which we are supposed to run.
-            for attr in krate.module.as_ref().unwrap().attrs.lists("doc") {
+            for attr in krate.module.as_ref().unwrap().attrs.lists(sym::doc) {
                 let diag = ctxt.sess().diagnostic();
 
-                let name = attr.name().map(|s| s.as_str());
-                let name = name.as_ref().map(|s| &s[..]);
+                let name = attr.name_or_empty();
                 if attr.is_word() {
-                    if name == Some("no_default_passes") {
+                    if name == sym::no_default_passes {
                         report_deprecated_attr("no_default_passes", diag);
                         if default_passes == passes::DefaultPassOption::Default {
                             default_passes = passes::DefaultPassOption::None;
@@ -532,13 +426,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
                 } else if let Some(value) = attr.value_str() {
                     let sink = match name {
-                        Some("passes") => {
+                        sym::passes => {
                             report_deprecated_attr("passes = \"...\"", diag);
                             &mut manual_passes
                         },
-                        Some("plugins") => {
+                        sym::plugins => {
                             report_deprecated_attr("plugins = \"...\"", diag);
-                            eprintln!("WARNING: #![doc(plugins = \"...\")] no longer functions; \
+                            eprintln!("WARNING: `#![doc(plugins = \"...\")]` no longer functions; \
                                       see CVE-2018-1000622");
                             continue
                         },
@@ -549,7 +443,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
                 }
 
-                if attr.is_word() && name == Some("document_private_items") {
+                if attr.is_word() && name == sym::document_private_items {
                     if default_passes == passes::DefaultPassOption::Default {
                         default_passes = passes::DefaultPassOption::Private;
                     }

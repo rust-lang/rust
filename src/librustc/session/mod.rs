@@ -7,9 +7,8 @@ use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::middle::allocator::AllocatorKind;
 use crate::middle::dependency_format;
-use crate::session::config::OutputType;
+use crate::session::config::{OutputType, PrintRequest, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use crate::util::common::{duration_to_secs_str, ErrorReported};
@@ -23,12 +22,16 @@ use rustc_data_structures::sync::{
 
 use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
+use errors::emitter::HumanReadableErrorType;
+use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
+use syntax::ext::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
 use syntax::parse::{self, ParseSess};
+use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 use crate::util::profiling::SelfProfiler;
 
@@ -45,8 +48,6 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::sync::{Arc, mpsc};
-
-use parking_lot::Mutex as PlMutex;
 
 mod code_stats;
 pub mod config;
@@ -88,7 +89,7 @@ pub struct Session {
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
-    pub plugin_attributes: Lock<Vec<(String, AttributeType)>>,
+    pub plugin_attributes: Lock<Vec<(Symbol, AttributeType)>>,
     pub crate_types: Once<Vec<config::CrateType>>,
     pub dependency_formats: Once<dependency_format::Dependencies>,
     /// The crate_disambiguator is constructed out of all the `-C metadata`
@@ -130,7 +131,7 @@ pub struct Session {
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
     /// Used by -Z self-profile
-    pub self_profiling: Option<Arc<PlMutex<SelfProfiler>>>,
+    pub self_profiling: Option<Arc<SelfProfiler>>,
 
     /// Some measurements that are being gathered during compilation.
     pub perf_stats: PerfStats,
@@ -164,6 +165,13 @@ pub struct Session {
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+
+    /// `Span`s of trait methods that weren't found to avoid emitting object safety errors
+    pub trait_methods_not_found: Lock<FxHashSet<Span>>,
+
+    /// Mapping from ident span to path span for paths that don't exist as written, but that
+    /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
+    pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
 }
 
 pub struct PerfStats {
@@ -207,66 +215,66 @@ impl Session {
         *self.crate_disambiguator.get()
     }
 
-    pub fn struct_span_warn<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_warn<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
-    pub fn struct_span_warn_with_code<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
-    pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_warn(msg)
     }
-    pub fn struct_span_err<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_err<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_err(sp, msg)
     }
-    pub fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
     // FIXME: This method should be removed (every error should have an associated error code).
-    pub fn struct_err<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_err(msg)
     }
-    pub fn struct_err_with_code<'a>(
-        &'a self,
+    pub fn struct_err_with_code(
+        &self,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_err_with_code(msg, code)
     }
-    pub fn struct_span_fatal<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_fatal<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
-    pub fn struct_span_fatal_with_code<'a, S: Into<MultiSpan>>(
-        &'a self,
+    pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
+        &self,
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
-    pub fn struct_fatal<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_> {
         self.diagnostic().struct_fatal(msg)
     }
 
@@ -312,8 +320,13 @@ impl Session {
         self.diagnostic().abort_if_errors();
     }
     pub fn compile_status(&self) -> Result<(), ErrorReported> {
-        compile_result_from_err_count(self.err_count())
+        if self.has_errors() {
+            Err(ErrorReported)
+        } else {
+            Ok(())
+        }
     }
+    // FIXME(matthewjasper) Remove this method, it should never be needed.
     pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorReported>
     where
         F: FnOnce() -> T,
@@ -403,10 +416,7 @@ impl Session {
     pub fn next_node_id(&self) -> NodeId {
         self.reserve_node_ids(1)
     }
-    pub(crate) fn current_node_id_count(&self) -> usize {
-        self.next_node_id.get().as_u32() as usize
-    }
-    pub fn diagnostic<'a>(&'a self) -> &'a errors::Handler {
+    pub fn diagnostic(&self) -> &errors::Handler {
         &self.parse_sess.span_diagnostic
     }
 
@@ -494,13 +504,16 @@ impl Session {
         );
     }
 
-    pub fn source_map<'a>(&'a self) -> &'a source_map::SourceMap {
+    pub fn source_map(&self) -> &source_map::SourceMap {
         self.parse_sess.source_map()
     }
     pub fn verbose(&self) -> bool {
         self.opts.debugging_opts.verbose
     }
     pub fn time_passes(&self) -> bool {
+        self.opts.debugging_opts.time_passes || self.opts.debugging_opts.time
+    }
+    pub fn time_extended(&self) -> bool {
         self.opts.debugging_opts.time_passes
     }
     pub fn profile_queries(&self) -> bool {
@@ -513,14 +526,8 @@ impl Session {
     pub fn instrument_mcount(&self) -> bool {
         self.opts.debugging_opts.instrument_mcount
     }
-    pub fn count_llvm_insns(&self) -> bool {
-        self.opts.debugging_opts.count_llvm_insns
-    }
     pub fn time_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.time_llvm_passes
-    }
-    pub fn codegen_stats(&self) -> bool {
-        self.opts.debugging_opts.codegen_stats
     }
     pub fn meta_stats(&self) -> bool {
         self.opts.debugging_opts.meta_stats
@@ -537,6 +544,9 @@ impl Session {
     }
     pub fn print_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.print_llvm_passes
+    }
+    pub fn binary_dep_depinfo(&self) -> bool {
+        self.opts.debugging_opts.binary_dep_depinfo
     }
 
     /// Gets the features enabled for the current compilation session.
@@ -832,19 +842,17 @@ impl Session {
 
     #[inline(never)]
     #[cold]
-    fn profiler_active<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
+    fn profiler_active<F: FnOnce(&SelfProfiler) -> ()>(&self, f: F) {
         match &self.self_profiling {
             None => bug!("profiler_active() called but there was no profiler active"),
             Some(profiler) => {
-                let mut p = profiler.lock();
-
-                f(&mut p);
+                f(&profiler);
             }
         }
     }
 
     #[inline(always)]
-    pub fn profiler<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
+    pub fn profiler<F: FnOnce(&SelfProfiler) -> ()>(&self, f: F) {
         if unlikely!(self.self_profiling.is_some()) {
             self.profiler_active(f)
         }
@@ -1031,46 +1039,57 @@ fn default_emitter(
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
     match (sopts.error_format, emitter_dest) {
-        (config::ErrorOutputType::HumanReadable(color_config), None) => Box::new(
-            EmitterWriter::stderr(
-                color_config,
-                Some(source_map.clone()),
-                false,
-                sopts.debugging_opts.teach,
-            ).ui_testing(sopts.debugging_opts.ui_testing),
-        ),
-        (config::ErrorOutputType::HumanReadable(_), Some(dst)) => Box::new(
-            EmitterWriter::new(dst, Some(source_map.clone()), false, false)
-                .ui_testing(sopts.debugging_opts.ui_testing),
-        ),
-        (config::ErrorOutputType::Json(pretty), None) => Box::new(
+        (config::ErrorOutputType::HumanReadable(kind), dst) => {
+            let (short, color_config) = kind.unzip();
+
+            if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
+                let emitter = AnnotateSnippetEmitterWriter::new(
+                    Some(source_map.clone()),
+                    short,
+                );
+                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+            } else {
+                let emitter = match dst {
+                    None => EmitterWriter::stderr(
+                        color_config,
+                        Some(source_map.clone()),
+                        short,
+                        sopts.debugging_opts.teach,
+                    ),
+                    Some(dst) => EmitterWriter::new(
+                        dst,
+                        Some(source_map.clone()),
+                        short,
+                        false, // no teach messages when writing to a buffer
+                        false, // no colors when writing to a buffer
+                    ),
+                };
+                Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
+            }
+        },
+        (config::ErrorOutputType::Json { pretty, json_rendered }, None) => Box::new(
             JsonEmitter::stderr(
                 Some(registry),
                 source_map.clone(),
                 pretty,
+                json_rendered,
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
-        (config::ErrorOutputType::Json(pretty), Some(dst)) => Box::new(
+        (config::ErrorOutputType::Json { pretty, json_rendered }, Some(dst)) => Box::new(
             JsonEmitter::new(
                 dst,
                 Some(registry),
                 source_map.clone(),
                 pretty,
+                json_rendered,
             ).ui_testing(sopts.debugging_opts.ui_testing),
         ),
-        (config::ErrorOutputType::Short(color_config), None) => Box::new(
-            EmitterWriter::stderr(color_config, Some(source_map.clone()), true, false),
-        ),
-        (config::ErrorOutputType::Short(_), Some(dst)) => {
-            Box::new(EmitterWriter::new(dst, Some(source_map.clone()), true, false))
-        }
     }
 }
 
 pub enum DiagnosticOutput {
     Default,
-    Raw(Box<dyn Write + Send>),
-    Emitter(Box<dyn Emitter + Send + sync::Send>)
+    Raw(Box<dyn Write + Send>)
 }
 
 pub fn build_session_with_source_map(
@@ -1106,7 +1125,6 @@ pub fn build_session_with_source_map(
         DiagnosticOutput::Raw(write) => {
             default_emitter(&sopts, registry, &source_map, Some(write))
         }
-        DiagnosticOutput::Emitter(emitter) => emitter,
     };
 
     let diagnostic_handler = errors::Handler::with_emitter_and_flags(
@@ -1132,7 +1150,29 @@ fn build_session_(
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
     let self_profiler =
-        if sopts.debugging_opts.self_profile { Some(Arc::new(PlMutex::new(SelfProfiler::new()))) }
+        if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile {
+            let directory = if let Some(ref directory) = d {
+                directory
+            } else {
+                std::path::Path::new(".")
+            };
+
+            let profiler = SelfProfiler::new(
+                directory,
+                sopts.crate_name.as_ref().map(|s| &s[..]),
+                &sopts.debugging_opts.self_profile_events
+            );
+            match profiler {
+                Ok(profiler) => {
+                    crate::ty::query::QueryName::register_with_profiler(&profiler);
+                    Some(Arc::new(profiler))
+                },
+                Err(e) => {
+                    early_warn(sopts.error_format, &format!("failed to create profiler: {}", e));
+                    None
+                }
+            }
+        }
         else { None };
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
@@ -1230,6 +1270,8 @@ fn build_session_(
         has_global_allocator: Once::new(),
         has_panic_handler: Once::new(),
         driver_lint_caps,
+        trait_methods_not_found: Lock::new(Default::default()),
+        confused_type_with_std_module: Lock::new(Default::default()),
     };
 
     validate_commandline_args_with_session_available(&sess);
@@ -1252,6 +1294,30 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
        sess.target.target.options.is_like_msvc {
         sess.err("Linker plugin based LTO is not supported together with \
                   `-C prefer-dynamic` when targeting MSVC");
+    }
+
+    // Make sure that any given profiling data actually exists so LLVM can't
+    // decide to silently skip PGO.
+    if let Some(ref path) = sess.opts.cg.profile_use {
+        if !path.exists() {
+            sess.err(&format!("File `{}` passed to `-C profile-use` does not exist.",
+                              path.display()));
+        }
+    }
+
+    // PGO does not work reliably with panic=unwind on Windows. Let's make it
+    // an error to combine the two for now. It always runs into an assertions
+    // if LLVM is built with assertions, but without assertions it sometimes
+    // does not crash and will probably generate a corrupted binary.
+    // We should only display this error if we're actually going to run PGO.
+    // If we're just supposed to print out some data, don't show the error (#61002).
+    if sess.opts.cg.profile_generate.enabled() &&
+       sess.target.target.options.is_like_msvc &&
+       sess.panic_strategy() == PanicStrategy::Unwind &&
+       sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {
+        sess.err("Profile-guided optimization does not yet work in conjunction \
+                  with `-Cpanic=unwind` on Windows when targeting MSVC. \
+                  See https://github.com/rust-lang/rust/issues/61002 for details.");
     }
 }
 
@@ -1307,13 +1373,12 @@ pub enum IncrCompSession {
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
-        config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false, false))
+        config::ErrorOutputType::HumanReadable(kind) => {
+            let (short, color_config) = kind.unzip();
+            Box::new(EmitterWriter::stderr(color_config, None, short, false))
         }
-        config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
-        config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true, false))
-        }
+        config::ErrorOutputType::Json { pretty, json_rendered } =>
+            Box::new(JsonEmitter::basic(pretty, json_rendered)),
     };
     let handler = errors::Handler::with_emitter(true, None, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
@@ -1322,24 +1387,15 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
-        config::ErrorOutputType::HumanReadable(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, false, false))
+        config::ErrorOutputType::HumanReadable(kind) => {
+            let (short, color_config) = kind.unzip();
+            Box::new(EmitterWriter::stderr(color_config, None, short, false))
         }
-        config::ErrorOutputType::Json(pretty) => Box::new(JsonEmitter::basic(pretty)),
-        config::ErrorOutputType::Short(color_config) => {
-            Box::new(EmitterWriter::stderr(color_config, None, true, false))
-        }
+        config::ErrorOutputType::Json { pretty, json_rendered } =>
+            Box::new(JsonEmitter::basic(pretty, json_rendered)),
     };
     let handler = errors::Handler::with_emitter(true, None, emitter);
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 
 pub type CompileResult = Result<(), ErrorReported>;
-
-pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
-    if err_count == 0 {
-        Ok(())
-    } else {
-        Err(ErrorReported)
-    }
-}

@@ -2,9 +2,8 @@ use super::BackendTypes;
 use crate::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess, VariableKind};
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, Instance};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_mir::monomorphize::Instance;
 use syntax::ast::Name;
 use syntax_pos::{SourceFile, Span};
 
@@ -22,13 +21,13 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         instance: Instance<'tcx>,
         sig: ty::FnSig<'tcx>,
         llfn: Self::Value,
-        mir: &mir::Mir<'_>,
+        mir: &mir::Body<'_>,
     ) -> FunctionDebugContext<Self::DIScope>;
 
     fn create_mir_scopes(
         &self,
-        mir: &mir::Mir<'_>,
-        debug_context: &FunctionDebugContext<Self::DIScope>,
+        mir: &mir::Body<'_>,
+        debug_context: &mut FunctionDebugContext<Self::DIScope>,
     ) -> IndexVec<mir::SourceScope, MirDebugScope<Self::DIScope>>;
     fn extend_scope_to_file(
         &self,
@@ -37,7 +36,7 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         defining_crate: CrateNum,
     ) -> Self::DIScope;
     fn debuginfo_finalize(&self);
-    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4];
+    fn debuginfo_upvar_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4];
 }
 
 pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
@@ -53,9 +52,10 @@ pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
     );
     fn set_source_location(
         &mut self,
-        debug_context: &FunctionDebugContext<Self::DIScope>,
+        debug_context: &mut FunctionDebugContext<Self::DIScope>,
         scope: Option<Self::DIScope>,
         span: Span,
     );
     fn insert_reference_to_gdb_debug_scripts_section_global(&mut self);
+    fn set_value_name(&mut self, value: Self::Value, name: &str);
 }

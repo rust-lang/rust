@@ -1,0 +1,30 @@
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/borrowck-mut-borrow-linear-errors.rs:10:30
+   |
+LL |             1 => { addr.push(&mut x); }
+   |                              ^^^^^^ second mutable borrow occurs here
+LL |             2 => { addr.push(&mut x); }
+LL |             _ => { addr.push(&mut x); }
+   |                    ----      ------ first mutable borrow occurs here
+   |                    |
+   |                    first borrow later used here
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/borrowck-mut-borrow-linear-errors.rs:11:30
+   |
+LL |             2 => { addr.push(&mut x); }
+   |                              ^^^^^^ second mutable borrow occurs here
+LL |             _ => { addr.push(&mut x); }
+   |                    ----      ------ first mutable borrow occurs here
+   |                    |
+   |                    first borrow later used here
+
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> $DIR/borrowck-mut-borrow-linear-errors.rs:12:30
+   |
+LL |             _ => { addr.push(&mut x); }
+   |                              ^^^^^^ mutable borrow starts here in previous iteration of loop
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

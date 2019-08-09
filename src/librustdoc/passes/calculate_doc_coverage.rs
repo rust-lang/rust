@@ -5,6 +5,7 @@ use crate::passes::Pass;
 
 use syntax::attr;
 use syntax_pos::FileName;
+use syntax::symbol::sym;
 
 use std::collections::BTreeMap;
 use std::ops;
@@ -131,7 +132,7 @@ impl fold::DocFolder for CoverageCalculator {
                 return Some(i);
             }
             clean::ImplItem(ref impl_)
-                if attr::contains_name(&i.attrs.other_attrs, "automatically_derived")
+                if attr::contains_name(&i.attrs.other_attrs, sym::automatically_derived)
                     || impl_.synthetic || impl_.blanket_impl.is_some() =>
             {
                 // built-in derives get the `#[automatically_derived]` attribute, and

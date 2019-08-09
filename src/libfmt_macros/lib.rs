@@ -8,10 +8,9 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 
-#![deny(rust_2018_idioms)]
-
 #![feature(nll)]
 #![feature(rustc_private)]
+#![feature(unicode_internals)]
 
 pub use Piece::*;
 pub use Position::*;
@@ -22,6 +21,17 @@ pub use Count::*;
 use std::str;
 use std::string;
 use std::iter;
+
+use syntax_pos::{InnerSpan, Symbol};
+
+#[derive(Copy, Clone)]
+struct InnerOffset(usize);
+
+impl InnerOffset {
+    fn to(self, end: InnerOffset) -> InnerSpan {
+        InnerSpan::new(self.0, end.0)
+    }
+}
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
@@ -38,7 +48,7 @@ pub enum Piece<'a> {
 #[derive(Copy, Clone, PartialEq)]
 pub struct Argument<'a> {
     /// Where to find this argument
-    pub position: Position<'a>,
+    pub position: Position,
     /// How to format the argument
     pub format: FormatSpec<'a>,
 }
@@ -46,16 +56,20 @@ pub struct Argument<'a> {
 /// Specification for the formatting of an argument in the format string.
 #[derive(Copy, Clone, PartialEq)]
 pub struct FormatSpec<'a> {
-    /// Optionally specified character to fill alignment with
+    /// Optionally specified character to fill alignment with.
     pub fill: Option<char>,
-    /// Optionally specified alignment
+    /// Optionally specified alignment.
     pub align: Alignment,
-    /// Packed version of various flags provided
+    /// Packed version of various flags provided.
     pub flags: u32,
-    /// The integer precision to use
-    pub precision: Count<'a>,
-    /// The string width requested for the resulting format
-    pub width: Count<'a>,
+    /// The integer precision to use.
+    pub precision: Count,
+    /// The span of the precision formatting flag (for diagnostics).
+    pub precision_span: Option<InnerSpan>,
+    /// The string width requested for the resulting format.
+    pub width: Count,
+    /// The span of the width formatting flag (for diagnostics).
+    pub width_span: Option<InnerSpan>,
     /// The descriptor string representing the name of the format desired for
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
@@ -64,16 +78,16 @@ pub struct FormatSpec<'a> {
 
 /// Enum describing where an argument for a format can be located.
 #[derive(Copy, Clone, PartialEq)]
-pub enum Position<'a> {
+pub enum Position {
     /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
     /// The argument is located at a specific index given in the format
     ArgumentIs(usize),
     /// The argument has a name.
-    ArgumentNamed(&'a str),
+    ArgumentNamed(Symbol),
 }
 
-impl Position<'_> {
+impl Position {
     pub fn index(&self) -> Option<usize> {
         match self {
             ArgumentIs(i) | ArgumentImplicitlyIs(i) => Some(*i),
@@ -118,11 +132,11 @@ pub enum Flag {
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
 #[derive(Copy, Clone, PartialEq)]
-pub enum Count<'a> {
+pub enum Count {
     /// The count is specified explicitly.
     CountIs(usize),
     /// The count is specified by the argument with the given name.
-    CountIsName(&'a str),
+    CountIsName(Symbol),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
     /// The count is implied and cannot be explicitly specified.
@@ -133,9 +147,8 @@ pub struct ParseError {
     pub description: string::String,
     pub note: Option<string::String>,
     pub label: string::String,
-    pub start: SpanIndex,
-    pub end: SpanIndex,
-    pub secondary_label: Option<(string::String, SpanIndex, SpanIndex)>,
+    pub span: InnerSpan,
+    pub secondary_label: Option<(string::String, InnerSpan)>,
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -154,22 +167,13 @@ pub struct Parser<'a> {
     /// `Some(raw count)` when the string is "raw", used to position spans correctly
     style: Option<usize>,
     /// Start and end byte offset of every successfully parsed argument
-    pub arg_places: Vec<(SpanIndex, SpanIndex)>,
+    pub arg_places: Vec<InnerSpan>,
     /// Characters that need to be shifted
     skips: Vec<usize>,
-    /// Span offset of the last opening brace seen, used for error reporting
-    last_opening_brace_pos: Option<SpanIndex>,
+    /// Span of the last opening brace seen, used for error reporting
+    last_opening_brace: Option<InnerSpan>,
     /// Wether the source string is comes from `println!` as opposed to `format!` or `print!`
     append_newline: bool,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct SpanIndex(pub usize);
-
-impl SpanIndex {
-    pub fn unwrap(self) -> usize {
-        self.0
-    }
 }
 
 impl<'a> Iterator for Parser<'a> {
@@ -179,19 +183,20 @@ impl<'a> Iterator for Parser<'a> {
         if let Some(&(pos, c)) = self.cur.peek() {
             match c {
                 '{' => {
-                    let curr_last_brace = self.last_opening_brace_pos;
-                    self.last_opening_brace_pos = Some(self.to_span_index(pos));
+                    let curr_last_brace = self.last_opening_brace;
+                    let byte_pos = self.to_span_index(pos);
+                    self.last_opening_brace = Some(byte_pos.to(InnerOffset(byte_pos.0 + 1)));
                     self.cur.next();
                     if self.consume('{') {
-                        self.last_opening_brace_pos = curr_last_brace;
+                        self.last_opening_brace = curr_last_brace;
 
                         Some(String(self.string(pos + 1)))
                     } else {
                         let arg = self.argument();
-                        if let Some(arg_pos) = self.must_consume('}').map(|end| {
-                            (self.to_span_index(pos), self.to_span_index(end + 1))
-                        }) {
-                            self.arg_places.push(arg_pos);
+                        if let Some(end) = self.must_consume('}') {
+                            let start = self.to_span_index(pos);
+                            let end = self.to_span_index(end + 1);
+                            self.arg_places.push(start.to(end));
                         }
                         Some(NextArgument(arg))
                     }
@@ -206,8 +211,7 @@ impl<'a> Iterator for Parser<'a> {
                             "unmatched `}` found",
                             "unmatched `}`",
                             "if you intended to print `}`, you can escape it using `}}`",
-                            err_pos,
-                            err_pos,
+                            err_pos.to(err_pos),
                         );
                         None
                     }
@@ -239,7 +243,7 @@ impl<'a> Parser<'a> {
             style,
             arg_places: vec![],
             skips,
-            last_opening_brace_pos: None,
+            last_opening_brace: None,
             append_newline,
         }
     }
@@ -251,15 +255,13 @@ impl<'a> Parser<'a> {
         &mut self,
         description: S1,
         label: S2,
-        start: SpanIndex,
-        end: SpanIndex,
+        span: InnerSpan,
     ) {
         self.errors.push(ParseError {
             description: description.into(),
             note: None,
             label: label.into(),
-            start,
-            end,
+            span,
             secondary_label: None,
         });
     }
@@ -272,51 +274,53 @@ impl<'a> Parser<'a> {
         description: S1,
         label: S2,
         note: S3,
-        start: SpanIndex,
-        end: SpanIndex,
+        span: InnerSpan,
     ) {
         self.errors.push(ParseError {
             description: description.into(),
             note: Some(note.into()),
             label: label.into(),
-            start,
-            end,
+            span,
             secondary_label: None,
         });
     }
 
     /// Optionally consumes the specified character. If the character is not at
-    /// the current position, then the current iterator isn't moved and false is
-    /// returned, otherwise the character is consumed and true is returned.
+    /// the current position, then the current iterator isn't moved and `false` is
+    /// returned, otherwise the character is consumed and `true` is returned.
     fn consume(&mut self, c: char) -> bool {
-        if let Some(&(_, maybe)) = self.cur.peek() {
+        self.consume_pos(c).is_some()
+    }
+
+    /// Optionally consumes the specified character. If the character is not at
+    /// the current position, then the current iterator isn't moved and `None` is
+    /// returned, otherwise the character is consumed and the current position is
+    /// returned.
+    fn consume_pos(&mut self, c: char) -> Option<usize> {
+        if let Some(&(pos, maybe)) = self.cur.peek() {
             if c == maybe {
                 self.cur.next();
-                true
-            } else {
-                false
+                return Some(pos);
             }
-        } else {
-            false
         }
+        None
     }
 
-    fn raw(&self) -> usize {
-        self.style.map(|raw| raw + 1).unwrap_or(0)
-    }
-
-    fn to_span_index(&self, pos: usize) -> SpanIndex {
+    fn to_span_index(&self, pos: usize) -> InnerOffset {
         let mut pos = pos;
+        // This handles the raw string case, the raw argument is the number of #
+        // in r###"..."### (we need to add one because of the `r`).
+        let raw = self.style.map(|raw| raw + 1).unwrap_or(0);
         for skip in &self.skips {
             if pos > *skip {
                 pos += 1;
-            } else if pos == *skip && self.raw() == 0 {
+            } else if pos == *skip && raw == 0 {
                 pos += 1;
             } else {
                 break;
             }
         }
-        SpanIndex(self.raw() + pos + 1)
+        InnerOffset(raw + pos + 1)
     }
 
     /// Forces consumption of the specified character. If the character is not
@@ -334,8 +338,8 @@ impl<'a> Parser<'a> {
                 let label = "expected `}`".to_owned();
                 let (note, secondary_label) = if c == '}' {
                     (Some("if you intended to print `{`, you can escape it using `{{`".to_owned()),
-                     self.last_opening_brace_pos.map(|pos| {
-                        ("because of this opening brace".to_owned(), pos, pos)
+                     self.last_opening_brace.map(|sp| {
+                        ("because of this opening brace".to_owned(), sp)
                      }))
                 } else {
                     (None, None)
@@ -344,8 +348,7 @@ impl<'a> Parser<'a> {
                     description,
                     note,
                     label,
-                    start: pos,
-                    end: pos,
+                    span: pos.to(pos),
                     secondary_label,
                 });
                 None
@@ -359,8 +362,8 @@ impl<'a> Parser<'a> {
                 let label = format!("expected `{:?}`", c);
                 let (note, secondary_label) = if c == '}' {
                     (Some("if you intended to print `{`, you can escape it using `{{`".to_owned()),
-                     self.last_opening_brace_pos.map(|pos| {
-                        ("because of this opening brace".to_owned(), pos, pos)
+                     self.last_opening_brace.map(|sp| {
+                        ("because of this opening brace".to_owned(), sp)
                      }))
                 } else {
                     (None, None)
@@ -369,12 +372,11 @@ impl<'a> Parser<'a> {
                     description,
                     note,
                     label,
-                    start: pos,
-                    end: pos,
+                    span: pos.to(pos),
                     secondary_label,
                 });
             } else {
-                self.err(description, format!("expected `{:?}`", c), pos, pos);
+                self.err(description, format!("expected `{:?}`", c), pos.to(pos));
             }
             None
         }
@@ -433,20 +435,24 @@ impl<'a> Parser<'a> {
     /// integer index of an argument, a named argument, or a blank string.
     /// Returns `Some(parsed_position)` if the position is not implicitly
     /// consuming a macro argument, `None` if it's the case.
-    fn position(&mut self) -> Option<Position<'a>> {
+    fn position(&mut self) -> Option<Position> {
         if let Some(i) = self.integer() {
             Some(ArgumentIs(i))
         } else {
             match self.cur.peek() {
-                Some(&(_, c)) if c.is_alphabetic() => Some(ArgumentNamed(self.word())),
+                Some(&(_, c)) if c.is_alphabetic() => {
+                    Some(ArgumentNamed(Symbol::intern(self.word())))
+                }
                 Some(&(pos, c)) if c == '_' => {
                     let invalid_name = self.string(pos);
                     self.err_with_note(format!("invalid argument name `{}`", invalid_name),
                                        "invalid argument name",
                                        "argument names cannot start with an underscore",
-                                       self.to_span_index(pos),
-                                       self.to_span_index(pos + invalid_name.len()));
-                    Some(ArgumentNamed(invalid_name))
+                                        self.to_span_index(pos).to(
+                                            self.to_span_index(pos + invalid_name.len())
+                                        ),
+                                        );
+                    Some(ArgumentNamed(Symbol::intern(invalid_name)))
                 },
 
                 // This is an `ArgumentNext`.
@@ -465,7 +471,9 @@ impl<'a> Parser<'a> {
             align: AlignUnknown,
             flags: 0,
             precision: CountImplied,
+            precision_span: None,
             width: CountImplied,
+            width_span: None,
             ty: &self.input[..0],
         };
         if !self.consume(':') {
@@ -502,6 +510,7 @@ impl<'a> Parser<'a> {
         }
         // Width and precision
         let mut havewidth = false;
+
         if self.consume('0') {
             // small ambiguity with '0$' as a format string. In theory this is a
             // '0' flag and then an ill-formatted format string with just a '$'
@@ -515,17 +524,28 @@ impl<'a> Parser<'a> {
             }
         }
         if !havewidth {
-            spec.width = self.count();
+            let width_span_start = if let Some((pos, _)) = self.cur.peek() {
+                *pos
+            } else {
+                0
+            };
+            let (w, sp) = self.count(width_span_start);
+            spec.width = w;
+            spec.width_span = sp;
         }
-        if self.consume('.') {
-            if self.consume('*') {
+        if let Some(start) = self.consume_pos('.') {
+            if let Some(end) = self.consume_pos('*') {
                 // Resolve `CountIsNextParam`.
                 // We can do this immediately as `position` is resolved later.
                 let i = self.curarg;
                 self.curarg += 1;
                 spec.precision = CountIsParam(i);
+                spec.precision_span =
+                    Some(self.to_span_index(start).to(self.to_span_index(end + 1)));
             } else {
-                spec.precision = self.count();
+                let (p, sp) = self.count(start);
+                spec.precision = p;
+                spec.precision_span = sp;
             }
         }
         // Optional radix followed by the actual format specifier
@@ -554,24 +574,25 @@ impl<'a> Parser<'a> {
     /// Parses a Count parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self) -> Count<'a> {
+    fn count(&mut self, start: usize) -> (Count, Option<InnerSpan>) {
         if let Some(i) = self.integer() {
-            if self.consume('$') {
-                CountIsParam(i)
+            if let Some(end) = self.consume_pos('$') {
+                let span = self.to_span_index(start).to(self.to_span_index(end + 1));
+                (CountIsParam(i), Some(span))
             } else {
-                CountIs(i)
+                (CountIs(i), None)
             }
         } else {
             let tmp = self.cur.clone();
             let word = self.word();
             if word.is_empty() {
                 self.cur = tmp;
-                CountImplied
+                (CountImplied, None)
             } else if self.consume('$') {
-                CountIsName(word)
+                (CountIsName(Symbol::intern(word)), None)
             } else {
                 self.cur = tmp;
-                CountImplied
+                (CountImplied, None)
             }
         }
     }
@@ -622,245 +643,4 @@ impl<'a> Parser<'a> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn same(fmt: &'static str, p: &[Piece<'static>]) {
-        let parser = Parser::new(fmt, None, vec![], false);
-        assert!(parser.collect::<Vec<Piece<'static>>>() == p);
-    }
-
-    fn fmtdflt() -> FormatSpec<'static> {
-        return FormatSpec {
-            fill: None,
-            align: AlignUnknown,
-            flags: 0,
-            precision: CountImplied,
-            width: CountImplied,
-            ty: "",
-        };
-    }
-
-    fn musterr(s: &str) {
-        let mut p = Parser::new(s, None, vec![], false);
-        p.next();
-        assert!(!p.errors.is_empty());
-    }
-
-    #[test]
-    fn simple() {
-        same("asdf", &[String("asdf")]);
-        same("a{{b", &[String("a"), String("{b")]);
-        same("a}}b", &[String("a"), String("}b")]);
-        same("a}}", &[String("a"), String("}")]);
-        same("}}", &[String("}")]);
-        same("\\}}", &[String("\\"), String("}")]);
-    }
-
-    #[test]
-    fn invalid01() {
-        musterr("{")
-    }
-    #[test]
-    fn invalid02() {
-        musterr("}")
-    }
-    #[test]
-    fn invalid04() {
-        musterr("{3a}")
-    }
-    #[test]
-    fn invalid05() {
-        musterr("{:|}")
-    }
-    #[test]
-    fn invalid06() {
-        musterr("{:>>>}")
-    }
-
-    #[test]
-    fn format_nothing() {
-        same("{}",
-             &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
-                   format: fmtdflt(),
-               })]);
-    }
-    #[test]
-    fn format_position() {
-        same("{3}",
-             &[NextArgument(Argument {
-                   position: ArgumentIs(3),
-                   format: fmtdflt(),
-               })]);
-    }
-    #[test]
-    fn format_position_nothing_else() {
-        same("{3:}",
-             &[NextArgument(Argument {
-                   position: ArgumentIs(3),
-                   format: fmtdflt(),
-               })]);
-    }
-    #[test]
-    fn format_type() {
-        same("{3:a}",
-             &[NextArgument(Argument {
-                   position: ArgumentIs(3),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: 0,
-                       precision: CountImplied,
-                       width: CountImplied,
-                       ty: "a",
-                   },
-               })]);
-    }
-    #[test]
-    fn format_align_fill() {
-        same("{3:>}",
-             &[NextArgument(Argument {
-                   position: ArgumentIs(3),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignRight,
-                       flags: 0,
-                       precision: CountImplied,
-                       width: CountImplied,
-                       ty: "",
-                   },
-               })]);
-        same("{3:0<}",
-             &[NextArgument(Argument {
-                   position: ArgumentIs(3),
-                   format: FormatSpec {
-                       fill: Some('0'),
-                       align: AlignLeft,
-                       flags: 0,
-                       precision: CountImplied,
-                       width: CountImplied,
-                       ty: "",
-                   },
-               })]);
-        same("{3:*<abcd}",
-             &[NextArgument(Argument {
-                   position: ArgumentIs(3),
-                   format: FormatSpec {
-                       fill: Some('*'),
-                       align: AlignLeft,
-                       flags: 0,
-                       precision: CountImplied,
-                       width: CountImplied,
-                       ty: "abcd",
-                   },
-               })]);
-    }
-    #[test]
-    fn format_counts() {
-        same("{:10s}",
-             &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: 0,
-                       precision: CountImplied,
-                       width: CountIs(10),
-                       ty: "s",
-                   },
-               })]);
-        same("{:10$.10s}",
-             &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: 0,
-                       precision: CountIs(10),
-                       width: CountIsParam(10),
-                       ty: "s",
-                   },
-               })]);
-        same("{:.*s}",
-             &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(1),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: 0,
-                       precision: CountIsParam(0),
-                       width: CountImplied,
-                       ty: "s",
-                   },
-               })]);
-        same("{:.10$s}",
-             &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: 0,
-                       precision: CountIsParam(10),
-                       width: CountImplied,
-                       ty: "s",
-                   },
-               })]);
-        same("{:a$.b$s}",
-             &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: 0,
-                       precision: CountIsName("b"),
-                       width: CountIsName("a"),
-                       ty: "s",
-                   },
-               })]);
-    }
-    #[test]
-    fn format_flags() {
-        same("{:-}",
-             &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: (1 << FlagSignMinus as u32),
-                       precision: CountImplied,
-                       width: CountImplied,
-                       ty: "",
-                   },
-               })]);
-        same("{:+#}",
-             &[NextArgument(Argument {
-                   position: ArgumentImplicitlyIs(0),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: (1 << FlagSignPlus as u32) | (1 << FlagAlternate as u32),
-                       precision: CountImplied,
-                       width: CountImplied,
-                       ty: "",
-                   },
-               })]);
-    }
-    #[test]
-    fn format_mixture() {
-        same("abcd {3:a} efg",
-             &[String("abcd "),
-               NextArgument(Argument {
-                   position: ArgumentIs(3),
-                   format: FormatSpec {
-                       fill: None,
-                       align: AlignUnknown,
-                       flags: 0,
-                       precision: CountImplied,
-                       width: CountImplied,
-                       ty: "a",
-                   },
-               }),
-               String(" efg")]);
-    }
-}
+mod tests;

@@ -1,5 +1,6 @@
-use ops::Try;
-use usize;
+use crate::ops::Try;
+use crate::usize;
+
 use super::super::{Iterator, DoubleEndedIterator, FusedIterator, TrustedLen};
 
 /// An iterator that strings two iterators together.
@@ -257,4 +258,3 @@ impl<A, B> FusedIterator for Chain<A, B>
 unsafe impl<A, B> TrustedLen for Chain<A, B>
     where A: TrustedLen, B: TrustedLen<Item=A::Item>,
 {}
-

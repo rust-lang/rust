@@ -1,16 +1,16 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-borrowed-uniq-rvalue.rs:10:27
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/borrowck-borrowed-uniq-rvalue.rs:10:28
    |
 LL |     buggy_map.insert(42, &*Box::new(1));
-   |                           ^^^^^^^^^^^^ - borrowed value dropped here while still borrowed
-   |                           |
-   |                           borrowed value does not live long enough
+   |                            ^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                            |
+   |                            creates a temporary which is freed while still in use
 ...
-LL | }
-   | - borrowed value needs to live until here
+LL |     buggy_map.insert(43, &*tmp);
+   |     --------- borrow later used here
    |
-   = note: consider using a `let` binding to increase its lifetime
+   = note: consider using a `let` binding to create a longer lived value
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

@@ -1,11 +1,10 @@
 use rustc::middle::lang_items;
-use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
-use rustc::mir;
-use rustc::mir::interpret::EvalErrorKind;
+use rustc::ty::{self, Ty, TypeFoldable, Instance};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
+use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
+use rustc::mir::interpret::PanicInfo;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
-use rustc_mir::monomorphize;
 use crate::base;
 use crate::MemFlags;
 use crate::common::{self, IntPredicate};
@@ -15,12 +14,12 @@ use crate::traits::*;
 
 use std::borrow::Cow;
 
-use syntax::symbol::Symbol;
+use syntax::symbol::LocalInternedString;
 use syntax_pos::Pos;
 
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
-use super::operand::{OperandValue, OperandRef};
+use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
@@ -152,7 +151,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
 }
 
 /// Codegen implementations for some terminator variants.
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
     fn codegen_resume_terminator<'b>(
         &mut self,
@@ -214,24 +213,17 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         } else {
             let (otherwise, targets) = targets.split_last().unwrap();
-            let switch = bx.switch(discr.immediate(),
-                                   helper.llblock(self, *otherwise),
-                                   values.len());
-            let switch_llty = bx.immediate_backend_type(
-                bx.layout_of(switch_ty)
+            bx.switch(
+                discr.immediate(),
+                helper.llblock(self, *otherwise),
+                values.iter().zip(targets).map(|(&value, target)| {
+                    (value, helper.llblock(self, *target))
+                })
             );
-            for (&value, target) in values.iter().zip(targets) {
-                let llval = bx.const_uint_big(switch_llty, value);
-                let llbb = helper.llblock(self, *target);
-                bx.add_case(switch, llval, llbb)
-            }
         }
     }
 
-    fn codegen_return_terminator<'b>(
-        &mut self,
-        mut bx: Bx,
-    ) {
+    fn codegen_return_terminator(&mut self, mut bx: Bx) {
         if self.fn_ty.c_variadic {
             match self.va_list_ref {
                 Some(va_list) => {
@@ -241,6 +233,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bug!("C-variadic function must have a `va_list_ref`");
                 }
             }
+        }
+        if self.fn_ty.ret.layout.abi.is_uninhabited() {
+            // Functions with uninhabited return values are marked `noreturn`,
+            // so we should make sure that we never actually do.
+            bx.abort();
+            bx.unreachable();
+            return;
         }
         let llval = match self.fn_ty.ret.mode {
             PassMode::Ignore(IgnoreMode::Zst) | PassMode::Indirect(..) => {
@@ -254,7 +253,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op =
-                    self.codegen_consume(&mut bx, &mir::Place::RETURN_PLACE);
+                    self.codegen_consume(&mut bx, &mir::Place::RETURN_PLACE.as_ref());
                 if let Ref(llval, _, align) = op.val {
                     bx.load(llval, align)
                 } else {
@@ -305,9 +304,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) {
-        let ty = location.ty(self.mir, bx.tcx()).to_ty(bx.tcx());
+        let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(&ty);
-        let drop_fn = monomorphize::resolve_drop_in_place(bx.tcx(), ty);
+        let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
@@ -315,7 +314,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return
         }
 
-        let place = self.codegen_place(&mut bx, location);
+        let place = self.codegen_place(&mut bx, &location.as_ref());
         let (args1, args2);
         let mut args = if let Some(llextra) = place.llextra {
             args2 = [place.llval, llextra];
@@ -331,14 +330,14 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     ty::ParamEnv::reveal_all(),
                     &sig,
                 );
-                let fn_ty = bx.new_vtable(sig, &[]);
+                let fn_ty = FnType::new_vtable(&bx, sig, &[]);
                 let vtable = args[1];
                 args = &args[..1];
                 (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_ty), fn_ty)
             }
             _ => {
                 (bx.get_fn(drop_fn),
-                 bx.fn_type_of_instance(&drop_fn))
+                 FnType::of_instance(&bx, &drop_fn))
             }
         };
         helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
@@ -369,7 +368,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let mir::interpret::EvalErrorKind::OverflowNeg = *msg {
+            if let PanicInfo::OverflowNeg = *msg {
                 const_cond = Some(expected);
             }
         }
@@ -398,51 +397,45 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Get the location information.
         let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-        let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-        let filename = bx.const_str_slice(filename);
+        let filename = LocalInternedString::intern(&loc.file.name.to_string());
         let line = bx.const_u32(loc.line as u32);
         let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
-        let align = self.cx.tcx().data_layout.aggregate_align.abi
-            .max(self.cx.tcx().data_layout.i32_align.abi)
-            .max(self.cx.tcx().data_layout.pointer_align.abi);
 
         // Put together the arguments to the panic entry point.
-        let (lang_item, args) = match *msg {
-            EvalErrorKind::BoundsCheck { ref len, ref index } => {
+        let (lang_item, args) = match msg {
+            PanicInfo::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
 
-                let file_line_col = bx.const_struct(&[filename, line, col], false);
-                let file_line_col = bx.static_addr_of(
-                    file_line_col,
-                    align,
-                    Some("panic_bounds_check_loc")
+                let file_line_col = bx.static_panic_msg(
+                    None,
+                    filename,
+                    line,
+                    col,
+                    "panic_bounds_check_loc",
                 );
                 (lang_items::PanicBoundsCheckFnLangItem,
-                 vec![file_line_col, index, len])
+                    vec![file_line_col, index, len])
             }
             _ => {
                 let str = msg.description();
-                let msg_str = Symbol::intern(str).as_str();
-                let msg_str = bx.const_str_slice(msg_str);
-                let msg_file_line_col = bx.const_struct(
-                    &[msg_str, filename, line, col],
-                    false
-                );
-                let msg_file_line_col = bx.static_addr_of(
-                    msg_file_line_col,
-                    align,
-                    Some("panic_loc")
+                let msg_str = LocalInternedString::intern(str);
+                let msg_file_line_col = bx.static_panic_msg(
+                    Some(msg_str),
+                    filename,
+                    line,
+                    col,
+                    "panic_loc",
                 );
                 (lang_items::PanicFnLangItem,
-                 vec![msg_file_line_col])
+                    vec![msg_file_line_col])
             }
         };
 
         // Obtain the panic entry point.
         let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_ty = bx.fn_type_of_instance(&instance);
+        let fn_ty = FnType::of_instance(&bx, &instance);
         let llfn = bx.get_fn(instance);
 
         // Codegen the actual panic invoke/call.
@@ -510,7 +503,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return;
         }
 
-        // The "spoofed" `VaList` added to a C-variadic functions signature
+        // The "spoofed" `VaListImpl` added to a C-variadic functions signature
         // should not be included in the `extra_args` calculation.
         let extra_args_start_idx = sig.inputs().len() - if sig.c_variadic { 1 } else { 0 };
         let extra_args = &args[extra_args_start_idx..];
@@ -521,7 +514,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let fn_ty = match def {
             Some(ty::InstanceDef::Virtual(..)) => {
-                bx.new_vtable(sig, &extra_args)
+                FnType::new_vtable(&bx, sig, &extra_args)
             }
             Some(ty::InstanceDef::DropGlue(_, None)) => {
                 // Empty drop glue; a no-op.
@@ -529,7 +522,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.funclet_br(self, &mut bx, target);
                 return;
             }
-            _ => bx.new_fn_type(sig, &extra_args)
+            _ => FnType::new(&bx, sig, &extra_args)
         };
 
         // Emit a panic or a no-op for `panic_if_uninhabited`.
@@ -538,35 +531,28 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             if layout.abi.is_uninhabited() {
                 let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-                let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                let filename = bx.const_str_slice(filename);
+                let filename = LocalInternedString::intern(&loc.file.name.to_string());
                 let line = bx.const_u32(loc.line as u32);
                 let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
-                let align = self.cx.tcx().data_layout.aggregate_align.abi
-                    .max(self.cx.tcx().data_layout.i32_align.abi)
-                    .max(self.cx.tcx().data_layout.pointer_align.abi);
 
                 let str = format!(
                     "Attempted to instantiate uninhabited type {}",
                     ty
                 );
-                let msg_str = Symbol::intern(&str).as_str();
-                let msg_str = bx.const_str_slice(msg_str);
-                let msg_file_line_col = bx.const_struct(
-                    &[msg_str, filename, line, col],
-                    false,
-                );
-                let msg_file_line_col = bx.static_addr_of(
-                    msg_file_line_col,
-                    align,
-                    Some("panic_loc"),
+                let msg_str = LocalInternedString::intern(&str);
+                let msg_file_line_col = bx.static_panic_msg(
+                    Some(msg_str),
+                    filename,
+                    line,
+                    col,
+                    "panic_loc",
                 );
 
                 // Obtain the panic entry point.
                 let def_id =
                     common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_ty = bx.fn_type_of_instance(&instance);
+                let fn_ty = FnType::of_instance(&bx, &instance);
                 let llfn = bx.get_fn(instance);
 
                 // Codegen the actual panic invoke/call.
@@ -621,15 +607,27 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but specified directly in the code. This means it gets promoted
                         // and we can then extract the value by evaluating the promoted.
                         mir::Operand::Copy(
-                            mir::Place::Base(mir::PlaceBase::Promoted(box(index, ty)))
+                            Place {
+                                base: PlaceBase::Static(box Static {
+                                    kind: StaticKind::Promoted(promoted),
+                                    ty,
+                                }),
+                                projection: None,
+                            }
                         ) |
                         mir::Operand::Move(
-                            mir::Place::Base(mir::PlaceBase::Promoted(box(index, ty)))
+                            Place {
+                                base: PlaceBase::Static(box Static {
+                                    kind: StaticKind::Promoted(promoted),
+                                    ty,
+                                }),
+                                projection: None,
+                            }
                         ) => {
                             let param_env = ty::ParamEnv::reveal_all();
                             let cid = mir::interpret::GlobalId {
                                 instance: self.instance,
-                                promoted: Some(index),
+                                promoted: Some(promoted),
                             };
                             let c = bx.tcx().const_eval(param_env.and(cid));
                             let (llval, ty) = self.simd_shuffle_indices(
@@ -649,7 +647,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             span_bug!(span, "shuffle indices must be constant");
                         }
                         mir::Operand::Constant(ref constant) => {
-                            let c = self.eval_mir_constant(&bx, constant);
+                            let c = self.eval_mir_constant(constant);
                             let (llval, ty) = self.simd_shuffle_indices(
                                 &bx,
                                 constant.span,
@@ -693,7 +691,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             (&args[..], None)
         };
 
-        // Useful determining if the current argument is the "spoofed" `VaList`
+        // Useful determining if the current argument is the "spoofed" `VaListImpl`
         let last_arg_idx = if sig.inputs().is_empty() {
             None
         } else {
@@ -701,21 +699,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
         'make_args: for (i, arg) in first_args.iter().enumerate() {
             // If this is a C-variadic function the function signature contains
-            // an "spoofed" `VaList`. This argument is ignored, but we need to
+            // an "spoofed" `VaListImpl`. This argument is ignored, but we need to
             // populate it with a dummy operand so that the users real arguments
             // are not overwritten.
-            let i = if sig.c_variadic && last_arg_idx.map(|x| x == i).unwrap_or(false) {
-                let layout = match self.cx.tcx().lang_items().va_list() {
-                    Some(did) => bx.cx().layout_of(bx.tcx().type_of(did)),
-                    None => bug!("`va_list` language item required for C-variadics"),
-                };
-                let op = OperandRef {
-                    val: OperandValue::Immediate(
-                        bx.cx().const_undef(bx.cx().immediate_backend_type(layout)
-                    )),
-                    layout: layout,
-                };
-                self.codegen_argument(&mut bx, op, &mut llargs, &fn_ty.args[i]);
+            let i = if sig.c_variadic && last_arg_idx.map(|x| i >= x).unwrap_or(false) {
                 if i + 1 < fn_ty.args.len() {
                     i + 1
                 } else {
@@ -805,7 +792,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 }
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_block(
         &mut self,
         bb: mir::BasicBlock,
@@ -981,7 +968,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.range_metadata(llval, 0..2);
                     }
                 }
-                // We store bools as i8 so we need to truncate to i1.
+                // We store bools as `i8` so we need to truncate to `i1`.
                 llval = base::to_immediate(bx, llval, arg.layout);
             }
         }
@@ -1111,17 +1098,20 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         fn_ret: &ArgType<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>, is_intrinsic: bool
     ) -> ReturnDest<'tcx, Bx::Value> {
-        // If the return is ignored, we can just return a do-nothing ReturnDest
+        // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
         }
-        let dest = if let mir::Place::Base(mir::PlaceBase::Local(index)) = *dest {
+        let dest = if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: None,
+        } = *dest {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
                 LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
                 LocalRef::Operand(None) => {
-                    // Handle temporary places, specifically Operand ones, as
-                    // they don't have allocas
+                    // Handle temporary places, specifically `Operand` ones, as
+                    // they don't have `alloca`s.
                     return if fn_ret.is_indirect() {
                         // Odd, but possible, case, we have an operand temporary,
                         // but the calling convention has an indirect return.
@@ -1131,8 +1121,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         ReturnDest::IndirectOperand(tmp, index)
                     } else if is_intrinsic {
                         // Currently, intrinsics always need a location to store
-                        // the result. so we create a temporary alloca for the
-                        // result
+                        // the result, so we create a temporary `alloca` for the
+                        // result.
                         let tmp = PlaceRef::alloca(bx, fn_ret.layout, "tmp_ret");
                         tmp.storage_live(bx);
                         ReturnDest::IndirectOperand(tmp, index)
@@ -1145,13 +1135,16 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         } else {
-            self.codegen_place(bx, dest)
+            self.codegen_place(bx, &mir::PlaceRef {
+                base: &dest.base,
+                projection: &dest.projection,
+            })
         };
         if fn_ret.is_indirect() {
             if dest.align < dest.layout.align.abi {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
-                // fact, the calls it creates write only to temps),
+                // fact, the calls it creates write only to temps).
                 //
                 // If someone changes that, please update this code path
                 // to create a temporary.
@@ -1170,12 +1163,15 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         src: &mir::Operand<'tcx>,
         dst: &mir::Place<'tcx>
     ) {
-        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *dst {
+        if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: None,
+        } = *dst {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
                 LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
                 LocalRef::Operand(None) => {
-                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(dst));
+                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(&dst.as_ref()));
                     assert!(!dst_layout.ty.has_erasable_regions());
                     let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
                     place.storage_live(bx);
@@ -1190,7 +1186,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         } else {
-            let dst = self.codegen_place(bx, dst);
+            let dst = self.codegen_place(bx, &dst.as_ref());
             self.codegen_transmute_into(bx, src, dst);
         }
     }
@@ -1246,12 +1242,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 }
 
 enum ReturnDest<'tcx, V> {
-    // Do nothing, the return value is indirect or ignored
+    // Do nothing; the return value is indirect or ignored.
     Nothing,
-    // Store the return value to the pointer
+    // Store the return value to the pointer.
     Store(PlaceRef<'tcx, V>),
-    // Stores an indirect return value to an operand local place
+    // Store an indirect return value to an operand local place.
     IndirectOperand(PlaceRef<'tcx, V>, mir::Local),
-    // Stores a direct return value to an operand local place
+    // Store a direct return value to an operand local place.
     DirectOperand(mir::Local)
 }

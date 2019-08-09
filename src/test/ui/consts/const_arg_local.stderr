@@ -1,0 +1,8 @@
+error: argument 3 is required to be a constant
+  --> $DIR/const_arg_local.rs:10:5
+   |
+LL |     _mm_clmulepi64_si128(a, b, imm8)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

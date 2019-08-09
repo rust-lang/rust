@@ -5,6 +5,9 @@ use std::path::Path;
 
 use errors::Handler;
 
+#[cfg(test)]
+mod tests;
+
 macro_rules! try_something {
     ($e:expr, $diag:expr, $out:expr) => ({
         match $e {
@@ -103,16 +106,16 @@ fn is_line_comment(pos: usize, v: &[u8], events: &[Events]) -> bool {
     if let Some(&Events::StartComment(_)) = events.last() {
         return false;
     }
-    pos + 1 < v.len() && v[pos + 1] == b'/'
+    v[pos + 1] == b'/'
 }
 
 fn load_css_events(v: &[u8]) -> Vec<Events> {
     let mut pos = 0;
     let mut events = Vec::with_capacity(100);
 
-    while pos < v.len() - 1 {
+    while pos + 1 < v.len() {
         match v[pos] {
-            b'/' if pos + 1 < v.len() && v[pos + 1] == b'*' => {
+            b'/' if v[pos + 1] == b'*' => {
                 events.push(Events::StartComment(pos));
                 pos += 1;
             }
@@ -123,7 +126,7 @@ fn load_css_events(v: &[u8]) -> Vec<Events> {
             b'\n' if previous_is_line_comment(&events) => {
                 events.push(Events::EndComment(pos));
             }
-            b'*' if pos + 1 < v.len() && v[pos + 1] == b'/' => {
+            b'*' if v[pos + 1] == b'/' => {
                 events.push(Events::EndComment(pos + 2));
                 pos += 1;
             }
@@ -264,106 +267,14 @@ pub fn get_differences(against: &CssPath, other: &CssPath, v: &mut Vec<String>) 
     }
 }
 
-pub fn test_theme_against<P: AsRef<Path>>(f: &P, against: &CssPath, diag: &Handler)
-    -> (bool, Vec<String>)
-{
+pub fn test_theme_against<P: AsRef<Path>>(
+    f: &P,
+    against: &CssPath,
+    diag: &Handler,
+) -> (bool, Vec<String>) {
     let data = try_something!(fs::read(f), diag, (false, vec![]));
     let paths = load_css_paths(&data);
     let mut ret = vec![];
     get_differences(against, &paths, &mut ret);
     (true, ret)
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn test_comments_in_rules() {
-        let text = r#"
-rule a {}
-
-rule b, c
-// a line comment
-{}
-
-rule d
-// another line comment
-e {}
-
-rule f/* a multine
-
-comment*/{}
-
-rule g/* another multine
-
-comment*/h
-
-i {}
-
-rule j/*commeeeeent
-
-you like things like "{}" in there? :)
-*/
-end {}"#;
-
-        let against = r#"
-rule a {}
-
-rule b, c {}
-
-rule d e {}
-
-rule f {}
-
-rule gh i {}
-
-rule j end {}
-"#;
-
-        let mut ret = Vec::new();
-        get_differences(&load_css_paths(against.as_bytes()),
-                        &load_css_paths(text.as_bytes()),
-                        &mut ret);
-        assert!(ret.is_empty());
-    }
-
-    #[test]
-    fn test_text() {
-        let text = r#"
-a
-/* sdfs
-*/ b
-c // sdf
-d {}
-"#;
-        let paths = load_css_paths(text.as_bytes());
-        assert!(paths.children.contains(&CssPath::new("a b c d".to_owned())));
-    }
-
-    #[test]
-    fn test_comparison() {
-        let x = r#"
-a {
-    b {
-        c {}
-    }
-}
-"#;
-
-        let y = r#"
-a {
-    b {}
-}
-"#;
-
-        let against = load_css_paths(y.as_bytes());
-        let other = load_css_paths(x.as_bytes());
-
-        let mut ret = Vec::new();
-        get_differences(&against, &other, &mut ret);
-        assert!(ret.is_empty());
-        get_differences(&other, &against, &mut ret);
-        assert_eq!(ret, vec!["  Missing \"c\" rule".to_owned()]);
-    }
 }

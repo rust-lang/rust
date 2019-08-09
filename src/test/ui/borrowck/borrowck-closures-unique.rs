@@ -39,17 +39,14 @@ fn d(x: &mut isize) {
     c1;
 }
 
-// This test was originally encoded in the form shown as `fn f` below.
-// However, since MIR-borrowck and thus NLL takes more control-flow information
-// into account, it was necessary to change the test in order to witness the
-// same (expected) error under both AST-borrowck and NLL.
 fn e(x: &'static mut isize) {
-    let c1 = |y: &'static mut isize| x = y; //~ ERROR closure cannot assign to immutable argument
+    let c1 = |y: &'static mut isize| x = y;
+    //~^ ERROR cannot assign to `x`, as it is not declared as mutable
     c1;
 }
 
 fn f(x: &'static mut isize) {
-    let c1 = || x = panic!(); //~ ERROR closure cannot assign to immutable argument
+    let c1 = || x = panic!(); // OK assignment is unreachable.
     c1;
 }
 

@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/issue-52534.rs:12:14
+  --> $DIR/issue-52534.rs:9:14
    |
 LL |     foo(|a| &x)
    |          -   ^ `x` would have to be valid for `'0`...
@@ -13,7 +13,7 @@ LL | }
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html#dangling-references>
 
 error[E0597]: `y` does not live long enough
-  --> $DIR/issue-52534.rs:18:26
+  --> $DIR/issue-52534.rs:15:26
    |
 LL |     baz(|first, second| &y)
    |          -----           ^ `y` would have to be valid for `'0`...

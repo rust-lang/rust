@@ -1,0 +1,20 @@
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/lifetime-bound-will-change-warning.rs:34:5
+   |
+LL | fn test2<'a>(x: &'a Box<dyn Fn() + 'a>) {
+   |              - `x` is a reference that is only valid in the function body
+LL |     // but ref_obj will not, so warn.
+LL |     ref_obj(x)
+   |     ^^^^^^^^^^ `x` escapes the function body here
+
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/lifetime-bound-will-change-warning.rs:39:5
+   |
+LL | fn test2cc<'a>(x: &'a Box<dyn Fn() + 'a>) {
+   |                - `x` is a reference that is only valid in the function body
+LL |     // same as test2, but cross crate
+LL |     lib::ref_obj(x)
+   |     ^^^^^^^^^^^^^^^ `x` escapes the function body here
+
+error: aborting due to 2 previous errors
+

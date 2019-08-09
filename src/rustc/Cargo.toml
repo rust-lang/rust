@@ -17,7 +17,7 @@ rustc_driver = { path = "../librustc_driver" }
 rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 
 [dependencies.jemalloc-sys]
-version = '0.1.8'
+version = '0.3.0'
 optional = true
 features = ['unprefixed_malloc_on_supported_platforms']
 

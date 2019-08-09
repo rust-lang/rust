@@ -1,0 +1,31 @@
+error[E0501]: cannot borrow `*a` as mutable because previous closure requires unique access
+  --> $DIR/E0501.rs:14:23
+   |
+LL |     let bar = || {
+   |               -- closure construction occurs here
+LL |         inside_closure(a)
+   |                        - first borrow occurs due to use of `a` in closure
+LL |     };
+LL |     outside_closure_1(a);
+   |                       ^ second borrow occurs here
+...
+LL |     drop(bar);
+   |          --- first borrow later used here
+
+error[E0501]: cannot borrow `*a` as immutable because previous closure requires unique access
+  --> $DIR/E0501.rs:17:23
+   |
+LL |     let bar = || {
+   |               -- closure construction occurs here
+LL |         inside_closure(a)
+   |                        - first borrow occurs due to use of `a` in closure
+...
+LL |     outside_closure_2(a);
+   |                       ^ second borrow occurs here
+...
+LL |     drop(bar);
+   |          --- first borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0501`.

@@ -2,10 +2,9 @@ error[E0208]: [o]
   --> $DIR/variance-object-types.rs:11:1
    |
 LL | / struct Foo<'a> {
-LL | |     x: Box<Fn(i32) -> &'a i32 + 'static>
+LL | |     x: Box<dyn Fn(i32) -> &'a i32 + 'static>
 LL | | }
    | |_^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0208`.

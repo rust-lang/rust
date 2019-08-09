@@ -1,11 +1,9 @@
-// aux-build:derive-a.rs
-
-#![allow(warnings)]
+// aux-build:test-macros.rs
 
 #[macro_use]
-extern crate derive_a;
+extern crate test_macros;
 
-#[derive_A] //~ ERROR attribute `derive_A` is currently unknown
+#[derive_Empty] //~ ERROR cannot find attribute macro `derive_Empty` in this scope
 struct A;
 
 fn main() {}

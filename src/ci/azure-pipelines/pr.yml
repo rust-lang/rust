@@ -1,0 +1,35 @@
+#
+# Azure Pipelines pull request build for Rust
+#
+
+trigger: none
+pr:
+- master
+
+variables:
+- group: public-credentials
+
+jobs:
+- job: Linux
+  timeoutInMinutes: 600
+  pool:
+    vmImage: ubuntu-16.04
+  steps:
+    - template: steps/run.yml
+  strategy:
+    matrix:
+      x86_64-gnu-llvm-6.0:
+        IMAGE: x86_64-gnu-llvm-6.0
+      mingw-check:
+        IMAGE: mingw-check
+
+- job: LinuxTools
+  timeoutInMinutes: 600
+  pool:
+    vmImage: ubuntu-16.04
+  steps:
+    - template: steps/run.yml
+      parameters:
+        only_on_updated_submodules: 'yes'
+  variables:
+    IMAGE: x86_64-gnu-tools

@@ -7,17 +7,18 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
+use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::substitute::substitute_value;
 use crate::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
-    OriginalQueryValues, QueryRegionConstraint, QueryResponse,
+    OriginalQueryValues, QueryRegionConstraints, QueryOutlivesConstraint, QueryResponse,
 };
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxtBuilder;
 use crate::infer::{InferCtxt, InferOk, InferResult};
+use crate::mir::interpret::ConstValue;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
 use crate::traits::query::{Fallible, NoSolution};
@@ -25,10 +26,10 @@ use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::{Kind, UnpackedKind};
-use crate::ty::{self, BoundVar, Lift, Ty, TyCtxt};
+use crate::ty::{self, BoundVar, InferConst, Ty, TyCtxt};
 use crate::util::captures::Captures;
 
-impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
+impl<'tcx> InferCtxtBuilder<'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
     /// canonical key `canonical_key`, this method will create a new
     /// inference context, instantiate the key, and run your operation
@@ -41,19 +42,19 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     ///
     /// (It might be mildly nicer to implement this on `TyCtxt`, and
     /// not `InferCtxtBuilder`, but that is a bit tricky right now.
-    /// In part because we would need a `for<'gcx: 'tcx>` sort of
+    /// In part because we would need a `for<'tcx>` sort of
     /// bound for the closure and in part because it is convenient to
     /// have `'tcx` be free on this function so that we can talk about
     /// `K: TypeFoldable<'tcx>`.)
     pub fn enter_canonical_trait_query<K, R>(
-        &'tcx mut self,
+        &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>, &mut dyn TraitEngine<'tcx>, K)
-            -> Fallible<R>,
-    ) -> Fallible<CanonicalizedQueryResponse<'gcx, R>>
+        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
-        R: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        R: Debug + TypeFoldable<'tcx>,
+        Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable,
     {
         self.enter_with_canonical(
             DUMMY_SP,
@@ -71,7 +72,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
     /// implementation. It is given:
     ///
@@ -96,9 +97,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Fallible<CanonicalizedQueryResponse<'gcx, T>>
+    ) -> Fallible<CanonicalizedQueryResponse<'tcx, T>>
     where
-        T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        T: Debug + TypeFoldable<'tcx>,
+        Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
         let canonical_result = self.canonicalize_response(&query_response);
@@ -108,7 +110,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             canonical_result
         );
 
-        Ok(Lrc::new(canonical_result))
+        Ok(self.tcx.arena.alloc(canonical_result))
     }
 
     /// A version of `make_canonicalized_query_response` that does
@@ -123,14 +125,14 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     pub fn make_query_response_ignoring_pending_obligations<T>(
         &self,
         inference_vars: CanonicalVarValues<'tcx>,
-        answer: T
-    ) -> Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>
+        answer: T,
+    ) -> Canonical<'tcx, QueryResponse<'tcx, T>>
     where
-        T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        T: Debug + TypeFoldable<'tcx>,
     {
         self.canonicalize_response(&QueryResponse {
             var_values: inference_vars,
-            region_constraints: vec![],
+            region_constraints: QueryRegionConstraints::default(),
             certainty: Certainty::Proven, // Ambiguities are OK!
             value: answer,
         })
@@ -145,7 +147,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Result<QueryResponse<'tcx, T>, NoSolution>
     where
-        T: Debug + TypeFoldable<'tcx> + Lift<'gcx>,
+        T: Debug + TypeFoldable<'tcx>,
     {
         let tcx = self.tcx;
 
@@ -172,7 +174,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
         let region_obligations = self.take_registered_region_obligations();
         let region_constraints = self.with_region_constraints(|region_constraints| {
-            make_query_outlives(
+            make_query_region_constraints(
                 tcx,
                 region_obligations
                     .iter()
@@ -220,10 +222,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             mut obligations,
         } = self.query_response_substitution(cause, param_env, original_values, query_response)?;
 
-        obligations.extend(self.query_region_constraints_into_obligations(
+        obligations.extend(self.query_outlives_constraints_into_obligations(
             cause,
             param_env,
-            &query_response.value.region_constraints,
+            &query_response.value.region_constraints.outlives,
             &result_subst,
         ));
 
@@ -246,9 +248,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// that come out of these queries, which it wants to convert into
     /// MIR-based constraints and solve. Therefore, it is most
     /// convenient for the NLL Type Checker to **directly consume**
-    /// the `QueryRegionConstraint` values that arise from doing a
+    /// the `QueryOutlivesConstraint` values that arise from doing a
     /// query. This is contrast to other parts of the compiler, which
-    /// would prefer for those `QueryRegionConstraint` to be converted
+    /// would prefer for those `QueryOutlivesConstraint` to be converted
     /// into the older infcx-style constraints (e.g., calls to
     /// `sub_regions` or `register_region_obligation`).
     ///
@@ -261,7 +263,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///   result. If any errors arise, they are propagated back as an
     ///   `Err` result.
     /// - In the case of a successful substitution, we will append
-    ///   `QueryRegionConstraint` values onto the
+    ///   `QueryOutlivesConstraint` values onto the
     ///   `output_query_region_constraints` vector for the solver to
     ///   use (if an error arises, some values may also be pushed, but
     ///   they should be ignored).
@@ -277,7 +279,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         original_values: &OriginalQueryValues<'tcx>,
         query_response: &Canonical<'tcx, QueryResponse<'tcx, R>>,
-        output_query_region_constraints: &mut Vec<QueryRegionConstraint<'tcx>>,
+        output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> InferResult<'tcx, R>
     where
         R: Debug + TypeFoldable<'tcx>,
@@ -285,7 +287,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         let result_subst =
             self.query_response_substitution_guess(cause, original_values, query_response);
 
-        // Compute `QueryRegionConstraint` values that unify each of
+        // Compute `QueryOutlivesConstraint` values that unify each of
         // the original values `v_o` that was canonicalized into a
         // variable...
         let mut obligations = vec![];
@@ -304,8 +306,10 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     // To make `v_o = v_r`, we emit `v_o: v_r` and `v_r: v_o`.
                     if v_o != v_r {
                         output_query_region_constraints
+                            .outlives
                             .push(ty::Binder::dummy(ty::OutlivesPredicate(v_o.into(), v_r)));
                         output_query_region_constraints
+                            .outlives
                             .push(ty::Binder::dummy(ty::OutlivesPredicate(v_r.into(), v_o)));
                     }
                 }
@@ -315,8 +319,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     obligations.extend(ok.into_obligations());
                 }
 
-                (UnpackedKind::Const(..), UnpackedKind::Const(..)) => {
-                    unimplemented!() // FIXME(const_generics)
+                (UnpackedKind::Const(v1), UnpackedKind::Const(v2)) => {
+                    let ok = self.at(cause, param_env).eq(v1, v2)?;
+                    obligations.extend(ok.into_obligations());
                 }
 
                 _ => {
@@ -330,12 +335,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         }
 
         // ...also include the other query region constraints from the query.
-        output_query_region_constraints.extend(
-            query_response.value.region_constraints.iter().filter_map(|r_c| {
+        output_query_region_constraints.outlives.extend(
+            query_response.value.region_constraints.outlives.iter().filter_map(|r_c| {
                 let r_c = substitute_value(self.tcx, &result_subst, r_c);
 
                 // Screen out `'a: 'a` cases -- we skip the binder here but
-                // only care the inner values to one another, so they are still at
+                // only compare the inner values to one another, so they are still at
                 // consistent binding levels.
                 let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder();
                 if k1 != r2.into() {
@@ -343,6 +348,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 } else {
                     None
                 }
+            })
+        );
+
+        // ...also include the query member constraints.
+        output_query_region_constraints.member_constraints.extend(
+            query_response.value.region_constraints.member_constraints.iter().map(|p_c| {
+                substitute_value(self.tcx, &result_subst, p_c)
             })
         );
 
@@ -477,8 +489,17 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                         opt_values[br.assert_bound_var()] = Some(*original_value);
                     }
                 }
-                UnpackedKind::Const(..) => {
-                    unimplemented!() // FIXME(const_generics)
+                UnpackedKind::Const(result_value) => {
+                    if let ty::Const {
+                        val: ConstValue::Infer(InferConst::Canonical(debrujin, b)),
+                        ..
+                    } = result_value {
+                        // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
+
+                        // We only allow a `ty::INNERMOST` index in substitutions.
+                        assert_eq!(*debrujin, ty::INNERMOST);
+                        opt_values[*b] = Some(*original_value);
+                    }
                 }
             }
         }
@@ -548,13 +569,13 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
     /// Converts the region constraints resulting from a query into an
     /// iterator of obligations.
-    fn query_region_constraints_into_obligations<'a>(
+    fn query_outlives_constraints_into_obligations<'a>(
         &'a self,
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        unsubstituted_region_constraints: &'a [QueryRegionConstraint<'tcx>],
+        unsubstituted_region_constraints: &'a [QueryOutlivesConstraint<'tcx>],
         result_subst: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'gcx> {
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
         unsubstituted_region_constraints
             .iter()
             .map(move |constraint| {
@@ -614,8 +635,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                         obligations
                             .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
                     }
-                    (UnpackedKind::Const(..), UnpackedKind::Const(..)) => {
-                        unimplemented!() // FIXME(const_generics)
+                    (UnpackedKind::Const(v1), UnpackedKind::Const(v2)) => {
+                        let ok = self.at(cause, param_env).eq(v1, v2)?;
+                        obligations.extend(ok.into_obligations());
                     }
                     _ => {
                         bug!("kind mismatch, cannot unify {:?} and {:?}", value1, value2,);
@@ -632,15 +654,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
 /// Given the region obligations and constraints scraped from the infcx,
 /// creates query region constraints.
-pub fn make_query_outlives<'tcx>(
-    tcx: TyCtxt<'_, '_, 'tcx>,
+pub fn make_query_region_constraints<'tcx>(
+    tcx: TyCtxt<'tcx>,
     outlives_obligations: impl Iterator<Item = (Ty<'tcx>, ty::Region<'tcx>)>,
     region_constraints: &RegionConstraintData<'tcx>,
-) -> Vec<QueryRegionConstraint<'tcx>> {
+) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData {
         constraints,
         verifys,
         givens,
+        member_constraints,
     } = region_constraints;
 
     assert!(verifys.is_empty());
@@ -671,5 +694,5 @@ pub fn make_query_outlives<'tcx>(
         )
         .collect();
 
-    outlives
+    QueryRegionConstraints { outlives, member_constraints: member_constraints.clone() }
 }

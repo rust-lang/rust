@@ -4,5 +4,5 @@
 fn main() {
     let mut counter = 0;
     let tick = move || counter += 1;
-    tick(); //~ ERROR cannot borrow immutable local variable `tick` as mutable
+    tick(); //~ ERROR cannot borrow `tick` as mutable, as it is not declared as mutable
 }

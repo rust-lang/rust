@@ -1,20 +1,20 @@
-error[E0596]: cannot borrow immutable argument `arg` as mutable
+error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
   --> $DIR/mut-suggestion.rs:12:5
    |
 LL | fn func(arg: S) {
-   |         --- help: make this binding mutable: `mut arg`
+   |         --- help: consider changing this to be mutable: `mut arg`
 ...
 LL |     arg.mutate();
-   |     ^^^ cannot borrow mutably
+   |     ^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable local variable `local` as mutable
-  --> $DIR/mut-suggestion.rs:21:5
+error[E0596]: cannot borrow `local` as mutable, as it is not declared as mutable
+  --> $DIR/mut-suggestion.rs:20:5
    |
 LL |     let local = S;
-   |         ----- help: make this binding mutable: `mut local`
+   |         ----- help: consider changing this to be mutable: `mut local`
 ...
 LL |     local.mutate();
-   |     ^^^^^ cannot borrow mutably
+   |     ^^^^^ cannot borrow as mutable
 
 error: aborting due to 2 previous errors
 

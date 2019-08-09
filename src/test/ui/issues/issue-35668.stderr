@@ -1,8 +1,10 @@
 error[E0369]: binary operation `*` cannot be applied to type `&T`
-  --> $DIR/issue-35668.rs:2:22
+  --> $DIR/issue-35668.rs:2:23
    |
 LL |     a.iter().map(|a| a*a)
-   |                      ^^^
+   |                      -^- &T
+   |                      |
+   |                      &T
    |
    = note: an implementation of `std::ops::Mul` might be missing for `&T`
 

@@ -12,4 +12,9 @@ mod nonexistent_env {
     //~^ ERROR environment variable `NON_EXISTENT` not defined
 }
 
+mod erroneous_literal {
+    include!(concat!("NON_EXISTENT"suffix, "/data.rs"));
+    //~^ ERROR suffixes on a string literal are invalid
+}
+
 fn main() {}

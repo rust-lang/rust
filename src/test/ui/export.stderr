@@ -30,5 +30,5 @@ LL | fn main() { foo::z(10); }
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0425, E0603.
+Some errors have detailed explanations: E0425, E0603.
 For more information about an error, try `rustc --explain E0425`.

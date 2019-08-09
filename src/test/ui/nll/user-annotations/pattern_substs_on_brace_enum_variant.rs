@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 enum Foo<'a> {
     Bar { field: &'a u32 }
 }

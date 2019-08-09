@@ -1,19 +1,3 @@
-// revisions: ast nll
-
-// Since we are testing nll migration explicitly as a separate
-// revision, don't worry about the --compare-mode=nll on this test.
-
-// ignore-compare-mode-nll
-
-//[ast]compile-flags: -Z borrowck=ast
-//[nll]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
-
-// Note: the borrowck analysis was originally a flow-insensitive pass
-// over the AST. Therefore, some of these (AST) errors are marked as
-// spurious and are corrected by the flow-sensitive (NLL) analysis.
-// The others are either genuine or would require more advanced
-// changes. The latter cases are noted.
-
 #![feature(box_syntax)]
 
 fn borrow(_v: &isize) {}
@@ -26,13 +10,13 @@ fn inc(v: &mut Box<isize>) {
 }
 
 fn loop_overarching_alias_mut() {
-    // In this instance, the borrow encompasses the entire loop.
+    // In this instance, the borrow ends on the line before the loop
 
     let mut v: Box<_> = box 3;
     let mut x = &mut v;
     **x += 1;
     loop {
-        borrow(&*v); //[ast]~ ERROR cannot borrow
+        borrow(&*v); // OK
     }
 }
 
@@ -42,38 +26,37 @@ fn block_overarching_alias_mut() {
     let mut v: Box<_> = box 3;
     let mut x = &mut v;
     for _ in 0..3 {
-        borrow(&*v); //[ast]~ ERROR cannot borrow
-        //[nll]~^ ERROR cannot borrow
+        borrow(&*v); //~ ERROR cannot borrow
     }
     *x = box 5;
 }
 fn loop_aliased_mut() {
-    // In this instance, the borrow is carried through the loop.
+    // In this instance, the borrow ends right after each assignment to _x
 
     let mut v: Box<_> = box 3;
     let mut w: Box<_> = box 4;
     let mut _x = &w;
     loop {
-        borrow_mut(&mut *v); //[ast]~ ERROR cannot borrow
+        borrow_mut(&mut *v); // OK
         _x = &v;
     }
 }
 
 fn while_aliased_mut() {
-    // In this instance, the borrow is carried through the loop.
+    // In this instance, the borrow ends right after each assignment to _x
 
     let mut v: Box<_> = box 3;
     let mut w: Box<_> = box 4;
     let mut _x = &w;
     while cond() {
-        borrow_mut(&mut *v); //[ast]~ ERROR cannot borrow
+        borrow_mut(&mut *v); // OK
         _x = &v;
     }
 }
 
 
 fn loop_aliased_mut_break() {
-    // In this instance, the borrow is carried through the loop.
+    // In this instance, the borrow ends right after each assignment to _x
 
     let mut v: Box<_> = box 3;
     let mut w: Box<_> = box 4;
@@ -83,11 +66,11 @@ fn loop_aliased_mut_break() {
         _x = &v;
         break;
     }
-    borrow_mut(&mut *v); //[ast]~ ERROR cannot borrow
+    borrow_mut(&mut *v); // OK
 }
 
 fn while_aliased_mut_break() {
-    // In this instance, the borrow is carried through the loop.
+    // In this instance, the borrow ends right after each assignment to _x
 
     let mut v: Box<_> = box 3;
     let mut w: Box<_> = box 4;
@@ -97,7 +80,7 @@ fn while_aliased_mut_break() {
         _x = &v;
         break;
     }
-    borrow_mut(&mut *v); //[ast]~ ERROR cannot borrow
+    borrow_mut(&mut *v); // OK
 }
 
 fn while_aliased_mut_cond(cond: bool, cond2: bool) {
@@ -106,10 +89,9 @@ fn while_aliased_mut_cond(cond: bool, cond2: bool) {
     let mut x = &mut w;
     while cond {
         **x += 1;
-        borrow(&*v); //[ast]~ ERROR cannot borrow
-        //[nll]~^ ERROR cannot borrow
+        borrow(&*v); //~ ERROR cannot borrow
         if cond2 {
-            x = &mut v; //[ast]~ ERROR cannot borrow
+            x = &mut v; // OK
         }
     }
 }

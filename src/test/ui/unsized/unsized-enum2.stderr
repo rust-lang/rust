@@ -85,8 +85,8 @@ LL |     VH{u: isize, x: [u32]},
 error[E0277]: the size for values of type `(dyn Foo + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:53:8
    |
-LL |     VM(Foo),
-   |        ^^^ doesn't have a size known at compile-time
+LL |     VM(dyn Foo),
+   |        ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn Foo + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -95,8 +95,8 @@ LL |     VM(Foo),
 error[E0277]: the size for values of type `(dyn Bar + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:55:8
    |
-LL |     VN{x: Bar},
-   |        ^^^^^^ doesn't have a size known at compile-time
+LL |     VN{x: dyn Bar},
+   |        ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn Bar + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -105,8 +105,8 @@ LL |     VN{x: Bar},
 error[E0277]: the size for values of type `(dyn FooBar + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:57:15
    |
-LL |     VO(isize, FooBar),
-   |               ^^^^^^ doesn't have a size known at compile-time
+LL |     VO(isize, dyn FooBar),
+   |               ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn FooBar + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -115,8 +115,8 @@ LL |     VO(isize, FooBar),
 error[E0277]: the size for values of type `(dyn BarFoo + 'static)` cannot be known at compilation time
   --> $DIR/unsized-enum2.rs:59:18
    |
-LL |     VP{u: isize, x: BarFoo},
-   |                  ^^^^^^^^^ doesn't have a size known at compile-time
+LL |     VP{u: isize, x: dyn BarFoo},
+   |                  ^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn BarFoo + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

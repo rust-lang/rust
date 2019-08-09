@@ -3,5 +3,5 @@ struct Lorem {
 }
 
 fn main() {
-    let _foo: *mut Lorem = 0 as *mut _; // no error here
+    let _foo: *mut Lorem = core::ptr::null_mut(); // no error here
 }

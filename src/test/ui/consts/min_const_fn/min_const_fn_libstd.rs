@@ -1,6 +1,4 @@
-#![feature(integer_atomics)]
-
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 use std::cell::UnsafeCell;
 use std::sync::atomic::AtomicU32;

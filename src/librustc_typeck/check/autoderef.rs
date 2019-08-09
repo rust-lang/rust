@@ -20,8 +20,8 @@ enum AutoderefKind {
     Overloaded,
 }
 
-pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+pub struct Autoderef<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
     body_id: hir::HirId,
     param_env: ty::ParamEnv<'tcx>,
     steps: Vec<(Ty<'tcx>, AutoderefKind)>,
@@ -31,10 +31,10 @@ pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
     include_raw_pointers: bool,
     span: Span,
     silence_errors: bool,
-    reached_recursion_limit: bool
+    reached_recursion_limit: bool,
 }
 
-impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
     type Item = (Ty<'tcx>, usize);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -85,20 +85,20 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-               param_env: ty::ParamEnv<'tcx>,
-               body_id: hir::HirId,
-               span: Span,
-               base_ty: Ty<'tcx>)
-               -> Autoderef<'a, 'gcx, 'tcx>
-    {
+impl<'a, 'tcx> Autoderef<'a, 'tcx> {
+    pub fn new(
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        body_id: hir::HirId,
+        span: Span,
+        base_ty: Ty<'tcx>,
+    ) -> Autoderef<'a, 'tcx> {
         Autoderef {
             infcx,
             body_id,
             param_env,
             steps: vec![],
-            cur_ty: infcx.resolve_type_vars_if_possible(&base_ty),
+            cur_ty: infcx.resolve_vars_if_possible(&base_ty),
             obligations: vec![],
             at_start: true,
             include_raw_pointers: false,
@@ -152,19 +152,19 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                ty, normalized_ty, obligations);
         self.obligations.extend(obligations);
 
-        Some(self.infcx.resolve_type_vars_if_possible(&normalized_ty))
+        Some(self.infcx.resolve_vars_if_possible(&normalized_ty))
     }
 
     /// Returns the final type, generating an error if it is an
     /// unresolved inference variable.
-    pub fn unambiguous_final_ty(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    pub fn unambiguous_final_ty(&self, fcx: &FnCtxt<'a, 'tcx>) -> Ty<'tcx> {
         fcx.structurally_resolved_type(self.span, self.cur_ty)
     }
 
     /// Returns the final type we ended up with, which may well be an
     /// inference variable (we will resolve it first, if possible).
     pub fn maybe_ambiguous_final_ty(&self) -> Ty<'tcx> {
-        self.infcx.resolve_type_vars_if_possible(&self.cur_ty)
+        self.infcx.resolve_vars_if_possible(&self.cur_ty)
     }
 
     pub fn step_count(&self) -> usize {
@@ -172,13 +172,15 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
     }
 
     /// Returns the adjustment steps.
-    pub fn adjust_steps(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, needs: Needs)
-                        -> Vec<Adjustment<'tcx>> {
+    pub fn adjust_steps(&self, fcx: &FnCtxt<'a, 'tcx>, needs: Needs) -> Vec<Adjustment<'tcx>> {
         fcx.register_infer_ok_obligations(self.adjust_steps_as_infer_ok(fcx, needs))
     }
 
-    pub fn adjust_steps_as_infer_ok(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, needs: Needs)
-                                    -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
+    pub fn adjust_steps_as_infer_ok(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+        needs: Needs,
+    ) -> InferOk<'tcx, Vec<Adjustment<'tcx>>> {
         let mut obligations = vec![];
         let targets = self.steps.iter().skip(1).map(|&(ty, _)| ty)
             .chain(iter::once(self.cur_ty));
@@ -230,7 +232,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         self.reached_recursion_limit
     }
 
-    pub fn finalize(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
+    pub fn finalize(self, fcx: &FnCtxt<'a, 'tcx>) {
         fcx.register_predicates(self.into_obligations());
     }
 
@@ -239,9 +241,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn report_autoderef_recursion_limit_error<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>, span: Span, ty: Ty<'tcx>)
-{
+pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
     // We've reached the recursion limit, error gracefully.
     let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
     let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`",
@@ -262,8 +262,8 @@ pub fn report_autoderef_recursion_limit_error<'a, 'gcx, 'tcx>(
     }
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn autoderef(&'a self, span: Span, base_ty: Ty<'tcx>) -> Autoderef<'a, 'tcx> {
         Autoderef::new(self, self.param_env, self.body_id, span, base_ty)
     }
 

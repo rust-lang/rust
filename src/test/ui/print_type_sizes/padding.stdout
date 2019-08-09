@@ -1,21 +1,21 @@
 print-type-size type: `E1`: 12 bytes, alignment: 4 bytes
 print-type-size     discriminant: 1 bytes
+print-type-size     variant `B`: 11 bytes
+print-type-size         padding: 3 bytes
+print-type-size         field `.0`: 8 bytes, alignment: 4 bytes
 print-type-size     variant `A`: 7 bytes
 print-type-size         field `.1`: 1 bytes
 print-type-size         padding: 2 bytes
 print-type-size         field `.0`: 4 bytes, alignment: 4 bytes
+print-type-size type: `E2`: 12 bytes, alignment: 4 bytes
+print-type-size     discriminant: 1 bytes
 print-type-size     variant `B`: 11 bytes
 print-type-size         padding: 3 bytes
 print-type-size         field `.0`: 8 bytes, alignment: 4 bytes
-print-type-size type: `E2`: 12 bytes, alignment: 4 bytes
-print-type-size     discriminant: 1 bytes
 print-type-size     variant `A`: 7 bytes
 print-type-size         field `.0`: 1 bytes
 print-type-size         padding: 2 bytes
 print-type-size         field `.1`: 4 bytes, alignment: 4 bytes
-print-type-size     variant `B`: 11 bytes
-print-type-size         padding: 3 bytes
-print-type-size         field `.0`: 8 bytes, alignment: 4 bytes
 print-type-size type: `S`: 8 bytes, alignment: 4 bytes
 print-type-size     field `.g`: 4 bytes
 print-type-size     field `.a`: 1 bytes

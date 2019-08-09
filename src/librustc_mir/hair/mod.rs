@@ -9,7 +9,8 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::Canonical;
 use rustc::middle::region;
 use rustc::ty::subst::SubstsRef;
-use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, LazyConst, UserType};
+use rustc::ty::{AdtDef, UpvarSubsts, Ty, Const, UserType};
+use rustc::ty::adjustment::{PointerCast};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir;
 use syntax_pos::Span;
@@ -28,15 +29,6 @@ mod util;
 pub enum LintLevel {
     Inherited,
     Explicit(hir::HirId)
-}
-
-impl LintLevel {
-    pub fn is_explicit(self) -> bool {
-        match self {
-            LintLevel::Inherited => false,
-            LintLevel::Explicit(_) => true
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -64,13 +56,9 @@ pub enum StmtRef<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct StatementSpan(pub Span);
-
-#[derive(Clone, Debug)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
     pub opt_destruction_scope: Option<region::Scope>,
-    pub span: StatementSpan,
 }
 
 #[derive(Clone, Debug)]
@@ -180,28 +168,11 @@ pub enum ExprKind<'tcx> {
     NeverToAny {
         source: ExprRef<'tcx>,
     },
-    ReifyFnPointer {
+    Pointer {
+        cast: PointerCast,
         source: ExprRef<'tcx>,
-    },
-    ClosureFnPointer {
-        source: ExprRef<'tcx>,
-    },
-    UnsafeFnPointer {
-        source: ExprRef<'tcx>,
-    },
-    MutToConstPointer {
-        source: ExprRef<'tcx>,
-    },
-    Unsize {
-        source: ExprRef<'tcx>,
-    },
-    If {
-        condition: ExprRef<'tcx>,
-        then: ExprRef<'tcx>,
-        otherwise: Option<ExprRef<'tcx>>,
     },
     Loop {
-        condition: Option<ExprRef<'tcx>>,
         body: ExprRef<'tcx>,
     },
     Match {
@@ -289,7 +260,7 @@ pub enum ExprKind<'tcx> {
         movability: Option<hir::GeneratorMovability>,
     },
     Literal {
-        literal: &'tcx LazyConst<'tcx>,
+        literal: &'tcx Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
     InlineAsm {
@@ -326,6 +297,8 @@ pub struct Arm<'tcx> {
     pub guard: Option<Guard<'tcx>>,
     pub body: ExprRef<'tcx>,
     pub lint_level: LintLevel,
+    pub scope: region::Scope,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -366,13 +339,13 @@ impl<'tcx> ExprRef<'tcx> {
 pub trait Mirror<'tcx> {
     type Output;
 
-    fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Self::Output;
+    fn make_mirror(self, cx: &mut Cx<'_, 'tcx>) -> Self::Output;
 }
 
 impl<'tcx> Mirror<'tcx> for Expr<'tcx> {
     type Output = Expr<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
+    fn make_mirror(self, _: &mut Cx<'_, 'tcx>) -> Expr<'tcx> {
         self
     }
 }
@@ -380,7 +353,7 @@ impl<'tcx> Mirror<'tcx> for Expr<'tcx> {
 impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
     type Output = Expr<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, hir: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
+    fn make_mirror(self, hir: &mut Cx<'a, 'tcx>) -> Expr<'tcx> {
         match self {
             ExprRef::Hair(h) => h.make_mirror(hir),
             ExprRef::Mirror(m) => *m,
@@ -391,7 +364,7 @@ impl<'tcx> Mirror<'tcx> for ExprRef<'tcx> {
 impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Stmt<'tcx> {
+    fn make_mirror(self, _: &mut Cx<'_, 'tcx>) -> Stmt<'tcx> {
         self
     }
 }
@@ -399,7 +372,7 @@ impl<'tcx> Mirror<'tcx> for Stmt<'tcx> {
 impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
     type Output = Stmt<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Stmt<'tcx> {
+    fn make_mirror(self, _: &mut Cx<'_, 'tcx>) -> Stmt<'tcx> {
         match self {
             StmtRef::Mirror(m) => *m,
         }
@@ -409,7 +382,7 @@ impl<'tcx> Mirror<'tcx> for StmtRef<'tcx> {
 impl<'tcx> Mirror<'tcx> for Block<'tcx> {
     type Output = Block<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, _: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
+    fn make_mirror(self, _: &mut Cx<'_, 'tcx>) -> Block<'tcx> {
         self
     }
 }

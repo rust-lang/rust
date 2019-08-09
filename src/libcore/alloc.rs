@@ -2,12 +2,12 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use cmp;
-use fmt;
-use mem;
-use usize;
-use ptr::{self, NonNull};
-use num::NonZeroUsize;
+use crate::cmp;
+use crate::fmt;
+use crate::mem;
+use crate::usize;
+use crate::ptr::{self, NonNull};
+use crate::num::NonZeroUsize;
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
@@ -99,7 +99,7 @@ impl Layout {
     /// [`Layout::from_size_align`](#method.from_size_align).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
-    pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
+    pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         Layout { size_: size, align_: NonZeroUsize::new_unchecked(align) }
     }
 
@@ -338,7 +338,7 @@ pub struct LayoutErr {
 // (we need this for downstream impl of trait Error)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 impl fmt::Display for LayoutErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("invalid parameters to Layout::from_size_align")
     }
 }
@@ -354,14 +354,17 @@ pub struct AllocErr;
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
 impl fmt::Display for AllocErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("memory allocation failed")
     }
 }
 
-/// The `CannotReallocInPlace` error is used when `grow_in_place` or
-/// `shrink_in_place` were unable to reuse the given memory block for
+/// The `CannotReallocInPlace` error is used when [`grow_in_place`] or
+/// [`shrink_in_place`] were unable to reuse the given memory block for
 /// a requested layout.
+///
+/// [`grow_in_place`]: ./trait.Alloc.html#method.grow_in_place
+/// [`shrink_in_place`]: ./trait.Alloc.html#method.shrink_in_place
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct CannotReallocInPlace;
@@ -376,7 +379,7 @@ impl CannotReallocInPlace {
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
 impl fmt::Display for CannotReallocInPlace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.description())
     }
 }
@@ -480,7 +483,7 @@ pub unsafe trait GlobalAlloc {
     ///   this allocator,
     ///
     /// * `layout` must be the same layout that was used
-    ///   to allocated that block of memory,
+    ///   to allocate that block of memory,
     #[stable(feature = "global_alloc", since = "1.28.0")]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout);
 
@@ -535,7 +538,7 @@ pub unsafe trait GlobalAlloc {
     /// * `ptr` must be currently allocated via this allocator,
     ///
     /// * `layout` must be the same layout that was used
-    ///   to allocated that block of memory,
+    ///   to allocate that block of memory,
     ///
     /// * `new_size` must be greater than zero.
     ///
@@ -824,11 +827,11 @@ pub unsafe trait Alloc {
         let old_size = layout.size();
 
         if new_size >= old_size {
-            if let Ok(()) = self.grow_in_place(ptr, layout.clone(), new_size) {
+            if let Ok(()) = self.grow_in_place(ptr, layout, new_size) {
                 return Ok(ptr);
             }
         } else if new_size < old_size {
-            if let Ok(()) = self.shrink_in_place(ptr, layout.clone(), new_size) {
+            if let Ok(()) = self.shrink_in_place(ptr, layout, new_size) {
                 return Ok(ptr);
             }
         }

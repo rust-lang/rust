@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct Bar;
 
 struct Foo<'s> {
@@ -8,7 +6,7 @@ struct Foo<'s> {
 
 impl Foo<'_> {
     fn new(bar: &mut Bar) -> Self {
-        Foo { bar } //~ERROR lifetime may not live long enough
+        Foo { bar } //~ERROR
     }
 }
 

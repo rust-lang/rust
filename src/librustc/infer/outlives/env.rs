@@ -27,7 +27,7 @@ use crate::ty::{self, Ty};
 /// interested in the `OutlivesEnvironment`. -nmatsakis
 #[derive(Clone)]
 pub struct OutlivesEnvironment<'tcx> {
-    param_env: ty::ParamEnv<'tcx>,
+    pub param_env: ty::ParamEnv<'tcx>,
     free_region_map: FreeRegionMap<'tcx>,
 
     // Contains, for each body B that we are checking (that is, the fn
@@ -67,7 +67,7 @@ pub struct OutlivesEnvironment<'tcx> {
 /// because of implied bounds.
 pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
 
-impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
+impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
         let mut env = OutlivesEnvironment {
             param_env,
@@ -160,7 +160,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     /// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
     pub fn add_implied_bounds(
         &mut self,
-        infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &InferCtxt<'a, 'tcx>,
         fn_sig_tys: &[Ty<'tcx>],
         body_id: hir::HirId,
         span: Span,
@@ -168,7 +168,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
         debug!("add_implied_bounds()");
 
         for &ty in fn_sig_tys {
-            let ty = infcx.resolve_type_vars_if_possible(&ty);
+            let ty = infcx.resolve_vars_if_possible(&ty);
             debug!("add_implied_bounds: ty = {}", ty);
             let implied_bounds = infcx.implied_outlives_bounds(self.param_env, body_id, ty, span);
             self.add_outlives_bounds(Some(infcx), implied_bounds)
@@ -190,11 +190,8 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> OutlivesEnvironment<'tcx> {
     /// contain inference variables, it must be supplied, in which
     /// case we will register "givens" on the inference context. (See
     /// `RegionConstraintData`.)
-    fn add_outlives_bounds<I>(
-        &mut self,
-        infcx: Option<&InferCtxt<'a, 'gcx, 'tcx>>,
-        outlives_bounds: I,
-    ) where
+    fn add_outlives_bounds<I>(&mut self, infcx: Option<&InferCtxt<'a, 'tcx>>, outlives_bounds: I)
+    where
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
         // Record relationships such as `T:'x` that don't go into the

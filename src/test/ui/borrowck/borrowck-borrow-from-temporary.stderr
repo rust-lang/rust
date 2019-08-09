@@ -1,18 +1,11 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-borrow-from-temporary.rs:9:24
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/borrowck-borrow-from-temporary.rs:10:5
    |
 LL |     let &Foo(ref x) = &id(Foo(3));
-   |                        ^^^^^^^^^^ temporary value does not live long enough
+   |                        ---------- temporary value created here
 LL |     x
-LL | }
-   | - temporary value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 8:8...
-  --> $DIR/borrowck-borrow-from-temporary.rs:8:8
-   |
-LL | fn foo<'a>() -> &'a isize {
-   |        ^^
+   |     ^ returns a value referencing data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

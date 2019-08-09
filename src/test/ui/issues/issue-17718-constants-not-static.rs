@@ -3,7 +3,7 @@ fn id<T>(x: T) -> T { x }
 const FOO: usize = 3;
 
 fn foo() -> &'static usize { &id(FOO) }
-//~^ ERROR: borrowed value does not live long enough
+//~^ ERROR: cannot return reference to temporary value
 
 fn main() {
 }

@@ -28,7 +28,7 @@ fn foo2<I: Foo>(x: I) {
 }
 
 
-pub fn baz(x: &Foo<A=Bar>) {
+pub fn baz(x: &dyn Foo<A=Bar>) {
     let _: Bar = x.boo();
 }
 

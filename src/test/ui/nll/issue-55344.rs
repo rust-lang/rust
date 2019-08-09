@@ -1,7 +1,5 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
-#![feature(nll)]
-#![allow(unreachable_code)]
 #![deny(unused_mut)]
 
 pub fn foo() {

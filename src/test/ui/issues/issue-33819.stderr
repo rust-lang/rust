@@ -1,8 +1,11 @@
-error[E0596]: cannot borrow immutable local variable `v` as mutable
-  --> $DIR/issue-33819.rs:4:39
+error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
+  --> $DIR/issue-33819.rs:4:34
    |
 LL |         Some(ref v) => { let a = &mut v; },
-   |                                       ^ cannot borrow mutably
+   |                                  ^^^^^^
+   |                                  |
+   |                                  cannot borrow as mutable
+   |                                  try removing `&mut` here
 
 error: aborting due to previous error
 

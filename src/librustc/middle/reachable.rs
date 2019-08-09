@@ -7,7 +7,7 @@
 
 use crate::hir::{CodegenFnAttrs, CodegenFnAttrFlags};
 use crate::hir::Node;
-use crate::hir::def::Def;
+use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
 use crate::ty::{self, TyCtxt};
@@ -27,9 +27,7 @@ use crate::hir::intravisit;
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         item: &hir::Item,
-                         attrs: CodegenFnAttrs) -> bool {
+fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true
     }
@@ -37,23 +35,25 @@ fn item_might_be_inlined(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match item.node {
         hir::ItemKind::Impl(..) |
         hir::ItemKind::Fn(..) => {
-            let generics = tcx.generics_of(tcx.hir().local_def_id_from_hir_id(item.hir_id));
+            let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
             generics.requires_monomorphization(tcx)
         }
         _ => false,
     }
 }
 
-fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     impl_item: &hir::ImplItem,
-                                     impl_src: DefId) -> bool {
+fn method_might_be_inlined(
+    tcx: TyCtxt<'_>,
+    impl_item: &hir::ImplItem,
+    impl_src: DefId,
+) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
-    let generics = tcx.generics_of(tcx.hir().local_def_id_from_hir_id(impl_item.hir_id));
+    let generics = tcx.generics_of(tcx.hir().local_def_id(impl_item.hir_id));
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true
     }
     if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_src) {
-        match tcx.hir().find_by_hir_id(impl_hir_id) {
+        match tcx.hir().find(impl_hir_id) {
             Some(Node::Item(item)) =>
                 item_might_be_inlined(tcx, &item, codegen_fn_attrs),
             Some(..) | None =>
@@ -65,9 +65,9 @@ fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 // Information needed while computing reachability.
-struct ReachableContext<'a, 'tcx: 'a> {
+struct ReachableContext<'a, 'tcx> {
     // The type context.
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     // The set of items which must be exported in the linkage sense.
     reachable_symbols: HirIdSet,
@@ -92,33 +92,33 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        let def = match expr.node {
+        let res = match expr.node {
             hir::ExprKind::Path(ref qpath) => {
-                Some(self.tables.qpath_def(qpath, expr.hir_id))
+                Some(self.tables.qpath_res(qpath, expr.hir_id))
             }
             hir::ExprKind::MethodCall(..) => {
-                self.tables.type_dependent_defs().get(expr.hir_id).cloned()
+                self.tables.type_dependent_def(expr.hir_id)
+                    .map(|(kind, def_id)| Res::Def(kind, def_id))
             }
             _ => None
         };
 
-        match def {
-            Some(Def::Local(node_id)) | Some(Def::Upvar(node_id, ..)) => {
-                let hir_id = self.tcx.hir().node_to_hir_id(node_id);
+        match res {
+            Some(Res::Local(hir_id)) => {
                 self.reachable_symbols.insert(hir_id);
             }
-            Some(def) => {
-                if let Some((hir_id, def_id)) = def.opt_def_id().and_then(|def_id| {
+            Some(res) => {
+                if let Some((hir_id, def_id)) = res.opt_def_id().and_then(|def_id| {
                     self.tcx.hir().as_local_hir_id(def_id).map(|hir_id| (hir_id, def_id))
                 }) {
                     if self.def_id_represents_local_inlined_item(def_id) {
                         self.worklist.push(hir_id);
                     } else {
-                        match def {
+                        match res {
                             // If this path leads to a constant, then we need to
                             // recurse into the constant to continue finding
                             // items that are reachable.
-                            Def::Const(..) | Def::AssociatedConst(..) => {
+                            Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                                 self.worklist.push(hir_id);
                             }
 
@@ -147,7 +147,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             None => { return false; }
         };
 
-        match self.tcx.hir().find_by_hir_id(hir_id) {
+        match self.tcx.hir().find(hir_id) {
             Some(Node::Item(item)) => {
                 match item.node {
                     hir::ItemKind::Fn(..) =>
@@ -174,12 +174,12 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         } else {
                             let impl_did = self.tcx
                                                .hir()
-                                               .get_parent_did_by_hir_id(hir_id);
+                                               .get_parent_did(hir_id);
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.
                             let impl_hir_id = self.tcx.hir().as_local_hir_id(impl_did).unwrap();
-                            match self.tcx.hir().expect_item_by_hir_id(impl_hir_id).node {
+                            match self.tcx.hir().expect_item(impl_hir_id).node {
                                 hir::ItemKind::Impl(..) => {
                                     let generics = self.tcx.generics_of(impl_did);
                                     generics.requires_monomorphization(self.tcx)
@@ -188,8 +188,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             }
                         }
                     }
-                    hir::ImplItemKind::Existential(..) |
-                    hir::ImplItemKind::Type(_) => false,
+                    hir::ImplItemKind::OpaqueTy(..) |
+                    hir::ImplItemKind::TyAlias(_) => false,
                 }
             }
             Some(_) => false,
@@ -205,7 +205,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 continue
             }
 
-            if let Some(ref item) = self.tcx.hir().find_by_hir_id(search_item) {
+            if let Some(ref item) = self.tcx.hir().find(search_item) {
                 self.propagate_node(item, search_item);
             }
         }
@@ -222,7 +222,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 } else {
                     false
                 };
-                let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                let def_id = self.tcx.hir().local_def_id(item.hir_id);
                 let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
                 let is_extern = codegen_attrs.contains_extern_indicator();
                 let std_internal = codegen_attrs.flags.contains(
@@ -243,7 +243,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Node::Item(item) => {
                 match item.node {
                     hir::ItemKind::Fn(.., body) => {
-                        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+                        let def_id = self.tcx.hir().local_def_id(item.hir_id);
                         if item_might_be_inlined(self.tcx,
                                                  &item,
                                                  self.tcx.codegen_fn_attrs(def_id)) {
@@ -263,8 +263,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // worklist, as determined by the privacy pass
                     hir::ItemKind::ExternCrate(_) |
                     hir::ItemKind::Use(..) |
-                    hir::ItemKind::Existential(..) |
-                    hir::ItemKind::Ty(..) |
+                    hir::ItemKind::OpaqueTy(..) |
+                    hir::ItemKind::TyAlias(..) |
                     hir::ItemKind::Static(..) |
                     hir::ItemKind::Mod(..) |
                     hir::ItemKind::ForeignMod(..) |
@@ -296,13 +296,13 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         self.visit_nested_body(body);
                     }
                     hir::ImplItemKind::Method(_, body) => {
-                        let did = self.tcx.hir().get_parent_did_by_hir_id(search_item);
+                        let did = self.tcx.hir().get_parent_did(search_item);
                         if method_might_be_inlined(self.tcx, impl_item, did) {
                             self.visit_nested_body(body)
                         }
                     }
-                    hir::ImplItemKind::Existential(..) |
-                    hir::ImplItemKind::Type(_) => {}
+                    hir::ImplItemKind::OpaqueTy(..) |
+                    hir::ImplItemKind::TyAlias(_) => {}
                 }
             }
             Node::Expr(&hir::Expr { node: hir::ExprKind::Closure(.., body, _, _), .. }) => {
@@ -311,14 +311,14 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // Nothing to recurse on for these
             Node::ForeignItem(_) |
             Node::Variant(_) |
-            Node::StructCtor(_) |
+            Node::Ctor(..) |
             Node::Field(_) |
             Node::Ty(_) |
             Node::MacroDef(_) => {}
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
-                    self.tcx.hir().hir_to_string(search_item),
+                    self.tcx.hir().node_to_string(search_item),
                     node,
                 );
             }
@@ -334,18 +334,18 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 // items of non-exported traits (or maybe all local traits?) unless their respective
 // trait items are used from inlinable code through method call syntax or UFCS, or their
 // trait is a lang item.
-struct CollectPrivateImplItemsVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct CollectPrivateImplItemsVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
     access_levels: &'a privacy::AccessLevels,
     worklist: &'a mut Vec<hir::HirId>,
 }
 
-impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         // Anything which has custom linkage gets thrown on the worklist no
         // matter where it is in the crate, along with "special std symbols"
         // which are currently akin to allocator symbols.
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let def_id = self.tcx.hir().local_def_id(item.hir_id);
         let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
         if codegen_attrs.contains_extern_indicator() ||
             codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
@@ -354,12 +354,11 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 
         // We need only trait impls here, not inherent impls, and only non-exported ones
         if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
-            let node_id = self.tcx.hir().hir_to_node_id(item.hir_id);
-            if !self.access_levels.is_reachable(node_id) {
+            if !self.access_levels.is_reachable(item.hir_id) {
                 self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id.hir_id));
 
-                let trait_def_id = match trait_ref.path.def {
-                    Def::Trait(def_id) => def_id,
+                let trait_def_id = match trait_ref.path.res {
+                    Res::Def(DefKind::Trait, def_id) => def_id,
                     _ => unreachable!()
                 };
 
@@ -392,7 +391,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 #[derive(Clone, HashStable)]
 pub struct ReachableSet(pub Lrc<HirIdSet>);
 
-fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
+fn reachable_set(tcx: TyCtxt<'_>, crate_num: CrateNum) -> ReachableSet {
     debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
@@ -415,7 +414,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
     reachable_context.worklist.extend(
-        access_levels.map.iter().map(|(id, _)| tcx.hir().node_to_hir_id(*id)));
+        access_levels.map.iter().map(|(id, _)| *id));
     for item in tcx.lang_items().items().iter() {
         if let Some(did) = *item {
             if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {

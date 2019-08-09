@@ -6,7 +6,7 @@ fn foo(cond: bool) {
     let mut x;
 
     if cond {
-        x = &id(3); //~ ERROR borrowed value does not live long enough
+        x = &id(3); //~ ERROR temporary value dropped while borrowed
         assert_eq!(*x, 3);
     }
 }

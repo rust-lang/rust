@@ -1,7 +1,4 @@
 // Test new Index error message for slices
-// ignore-tidy-linelength
-
-
 
 use std::ops::Index;
 

@@ -5,6 +5,12 @@ LL |     Box::new(|| books.push(4))
    |              ^^ ----- `books` is borrowed here
    |              |
    |              may outlive borrowed value `books`
+   |
+note: closure is returned here
+  --> $DIR/borrowck-escaping-closure-error-2.rs:11:5
+   |
+LL |     Box::new(|| books.push(4))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to force the closure to take ownership of `books` (and any other referenced variables), use the `move` keyword
    |
 LL |     Box::new(move || books.push(4))

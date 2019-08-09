@@ -98,7 +98,8 @@ application of these fields based on a variety of attributes when using
    `crate_local`) or matching against a particular method. Currently used
    for `try`.
  - `from_desugaring`: usable both as boolean (whether the flag is present)
-   or matching against a particular desugaring.
+   or matching against a particular desugaring. The desugaring is identified
+   with its variant name in the `DesugaringKind` enum.
 
 For example, the `Iterator` trait can be annotated in the following way:
 
@@ -137,4 +138,17 @@ error[E0277]: `&str` is not an iterator
   = note: call `.chars()` or `.bytes() on `&str`
   = help: the trait `std::iter::Iterator` is not implemented for `&str`
   = note: required by `std::iter::IntoIterator::into_iter`
+```
+
+If you need to filter on multiple attributes, you can use `all`, `any` or
+`not` in the following way:
+
+```rust,compile_fail
+#[rustc_on_unimplemented(
+    on(
+        all(_Self="&str", T="std::string::String"),
+        note="you can coerce a `{T}` into a `{Self}` by writing `&*variable`"
+    )
+)]
+pub trait From<T>: Sized { /* ... */ }
 ```

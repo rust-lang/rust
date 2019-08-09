@@ -6,7 +6,7 @@ use super::LocalRef;
 use super::OperandValue;
 use crate::traits::*;
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(
         &mut self,
         mut bx: Bx,
@@ -17,7 +17,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&mut bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(ref place, ref rvalue) => {
-                if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
+                if let mir::Place {
+                    base: mir::PlaceBase::Local(index),
+                    projection: None,
+                } = *place {
                     match self.locals[index] {
                         LocalRef::Place(cg_dest) => {
                             self.codegen_rvalue(bx, cg_dest, rvalue)
@@ -43,12 +46,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                 } else {
-                    let cg_dest = self.codegen_place(&mut bx, place);
+                    let cg_dest = self.codegen_place(&mut bx, &place.as_ref());
                     self.codegen_rvalue(bx, cg_dest, rvalue)
                 }
             }
             mir::StatementKind::SetDiscriminant{ref place, variant_index} => {
-                self.codegen_place(&mut bx, place)
+                self.codegen_place(&mut bx, &place.as_ref())
                     .codegen_set_discr(&mut bx, variant_index);
                 bx
             }
@@ -68,13 +71,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 bx
             }
-            mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
-                let outputs = outputs.iter().map(|output| {
-                    self.codegen_place(&mut bx, output)
+            mir::StatementKind::InlineAsm(ref asm) => {
+                let outputs = asm.outputs.iter().map(|output| {
+                    self.codegen_place(&mut bx, &output.as_ref())
                 }).collect();
 
-                let input_vals = inputs.iter()
-                    .fold(Vec::with_capacity(inputs.len()), |mut acc, (span, input)| {
+                let input_vals = asm.inputs.iter()
+                    .fold(Vec::with_capacity(asm.inputs.len()), |mut acc, (span, input)| {
                         let op = self.codegen_operand(&mut bx, input);
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
@@ -85,8 +88,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         acc
                 });
 
-                if input_vals.len() == inputs.len() {
-                    let res = bx.codegen_inline_asm(asm, outputs, input_vals);
+                if input_vals.len() == asm.inputs.len() {
+                    let res = bx.codegen_inline_asm(&asm.asm, outputs, input_vals);
                     if !res {
                         span_err!(bx.sess(), statement.source_info.span, E0668,
                                   "malformed inline assembly");

@@ -13,21 +13,21 @@ LL |     let _foo = &[1_usize, 2] as [usize];
 error[E0620]: cast to unsized type: `std::boxed::Box<usize>` as `dyn std::fmt::Debug`
   --> $DIR/issue-17441.rs:5:16
    |
-LL |     let _bar = Box::new(1_usize) as std::fmt::Debug;
-   |                ^^^^^^^^^^^^^^^^^^^^^---------------
+LL |     let _bar = Box::new(1_usize) as dyn std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^^-------------------
    |                                     |
-   |                                     help: try casting to a `Box` instead: `Box<std::fmt::Debug>`
+   |                                     help: try casting to a `Box` instead: `Box<dyn std::fmt::Debug>`
 
 error[E0620]: cast to unsized type: `usize` as `dyn std::fmt::Debug`
   --> $DIR/issue-17441.rs:8:16
    |
-LL |     let _baz = 1_usize as std::fmt::Debug;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let _baz = 1_usize as dyn std::fmt::Debug;
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using a box or reference as appropriate
   --> $DIR/issue-17441.rs:8:16
    |
-LL |     let _baz = 1_usize as std::fmt::Debug;
+LL |     let _baz = 1_usize as dyn std::fmt::Debug;
    |                ^^^^^^^
 
 error[E0620]: cast to unsized type: `[usize; 2]` as `[usize]`

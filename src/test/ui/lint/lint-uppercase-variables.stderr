@@ -15,7 +15,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(unused_variables)] implied by #[warn(unused)]
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 
 error: structure field `X` should have a snake case name
   --> $DIR/lint-uppercase-variables.rs:10:5

@@ -1,0 +1,87 @@
+error[E0594]: cannot assign to `t.0`, as `t` is not declared as mutable
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:13:9
+   |
+LL |         let t: Tuple = (S(0), 0);
+   |             - help: consider changing this to be mutable: `mut t`
+LL |         drop(t);
+LL |         t.0 = S(1);
+   |         ^^^^^^^^^^ cannot assign
+
+error[E0382]: assign to part of moved value: `t`
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:13:9
+   |
+LL |         let t: Tuple = (S(0), 0);
+   |             - move occurs because `t` has type `(S, i32)`, which does not implement the `Copy` trait
+LL |         drop(t);
+   |              - value moved here
+LL |         t.0 = S(1);
+   |         ^^^^^^^^^^ value partially assigned here after move
+
+error[E0594]: cannot assign to `t.1`, as `t` is not declared as mutable
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:16:9
+   |
+LL |         let t: Tuple = (S(0), 0);
+   |             - help: consider changing this to be mutable: `mut t`
+...
+LL |         t.1 = 2;
+   |         ^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `u.0`, as `u` is not declared as mutable
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:24:9
+   |
+LL |         let u: Tpair = Tpair(S(0), 0);
+   |             - help: consider changing this to be mutable: `mut u`
+LL |         drop(u);
+LL |         u.0 = S(1);
+   |         ^^^^^^^^^^ cannot assign
+
+error[E0382]: assign to part of moved value: `u`
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:24:9
+   |
+LL |         let u: Tpair = Tpair(S(0), 0);
+   |             - move occurs because `u` has type `Tpair`, which does not implement the `Copy` trait
+LL |         drop(u);
+   |              - value moved here
+LL |         u.0 = S(1);
+   |         ^^^^^^^^^^ value partially assigned here after move
+
+error[E0594]: cannot assign to `u.1`, as `u` is not declared as mutable
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:27:9
+   |
+LL |         let u: Tpair = Tpair(S(0), 0);
+   |             - help: consider changing this to be mutable: `mut u`
+...
+LL |         u.1 = 2;
+   |         ^^^^^^^ cannot assign
+
+error[E0594]: cannot assign to `v.x`, as `v` is not declared as mutable
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:35:9
+   |
+LL |         let v: Spair = Spair { x: S(0), y: 0 };
+   |             - help: consider changing this to be mutable: `mut v`
+LL |         drop(v);
+LL |         v.x = S(1);
+   |         ^^^^^^^^^^ cannot assign
+
+error[E0382]: assign to part of moved value: `v`
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:35:9
+   |
+LL |         let v: Spair = Spair { x: S(0), y: 0 };
+   |             - move occurs because `v` has type `Spair`, which does not implement the `Copy` trait
+LL |         drop(v);
+   |              - value moved here
+LL |         v.x = S(1);
+   |         ^^^^^^^^^^ value partially assigned here after move
+
+error[E0594]: cannot assign to `v.y`, as `v` is not declared as mutable
+  --> $DIR/issue-54499-field-mutation-of-moved-out.rs:38:9
+   |
+LL |         let v: Spair = Spair { x: S(0), y: 0 };
+   |             - help: consider changing this to be mutable: `mut v`
+...
+LL |         v.y = 2;
+   |         ^^^^^^^ cannot assign
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

@@ -30,5 +30,3 @@ LL | pub(in too_soon) struct H;
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0577, E0578.
-For more information about an error, try `rustc --explain E0577`.

@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/fns.rs:25:29
+  --> $DIR/fns.rs:23:29
    |
 LL |     some_fn::<&'static u32>(&c);
    |     ------------------------^^-
@@ -10,7 +10,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/fns.rs:30:24
+  --> $DIR/fns.rs:28:24
    |
 LL | fn annot_reference_named_lifetime<'a>(_d: &'a u32) {
    |                                   -- lifetime `'a` defined here
@@ -24,7 +24,7 @@ LL | }
    | - `c` dropped here while still borrowed
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/fns.rs:40:28
+  --> $DIR/fns.rs:38:28
    |
 LL | fn annot_reference_named_lifetime_in_closure<'a>(_: &'a u32) {
    |                                              -- lifetime `'a` defined here

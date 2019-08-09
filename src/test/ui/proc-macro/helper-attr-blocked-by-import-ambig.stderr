@@ -1,0 +1,21 @@
+error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:8:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^ ambiguous name
+   |
+note: `empty_helper` could refer to the derive helper attribute defined here
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:10
+   |
+LL | #[derive(Empty)]
+   |          ^^^^^
+note: `empty_helper` could also refer to the attribute macro imported here
+  --> $DIR/helper-attr-blocked-by-import-ambig.rs:5:5
+   |
+LL | use test_macros::empty_attr as empty_helper;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.

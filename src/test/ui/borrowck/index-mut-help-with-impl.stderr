@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/index-mut-help-with-impl.rs:9:5
    |
 LL |     Index::index(&v, 1..2).make_ascii_uppercase();

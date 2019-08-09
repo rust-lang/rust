@@ -2,9 +2,11 @@ error[E0505]: cannot move out of `a.x` because it is borrowed
   --> $DIR/borrowck-move-subcomponent.rs:15:14
    |
 LL |   let pb = &a;
-   |             - borrow of `a` occurs here
+   |            -- borrow of `a` occurs here
 LL |   let S { x: ax } = a;
    |              ^^ move out of `a.x` occurs here
+LL |   f(pb);
+   |     -- borrow later used here
 
 error: aborting due to previous error
 

@@ -1,0 +1,24 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/suggest-std-when-using-type.rs:2:14
+   |
+LL |     let pi = f32::consts::PI;
+   |              ^^^^^^^^^^^^^^^
+help: you are looking for the module in `std`, not the primitive type
+   |
+LL |     let pi = std::f32::consts::PI;
+   |              ^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no function or associated item named `from_utf8` found for type `str` in the current scope
+  --> $DIR/suggest-std-when-using-type.rs:5:14
+   |
+LL |         str::from_utf8(bytes)
+   |              ^^^^^^^^^ function or associated item not found in `str`
+help: you are looking for the module in `std`, not the primitive type
+   |
+LL |         std::str::from_utf8(bytes)
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0223, E0599.
+For more information about an error, try `rustc --explain E0223`.

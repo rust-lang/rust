@@ -17,7 +17,6 @@ use rustc::ty::subst::{Kind, Subst, UserSubsts, UserSelfTy};
 use rustc::ty::{
     FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
 };
-use rustc_data_structures::sync::Lrc;
 use std::fmt;
 use syntax_pos::DUMMY_SP;
 
@@ -36,9 +35,9 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn type_op_ascribe_user_type<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, AscribeUserType<'tcx>>>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>, NoSolution> {
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (
@@ -57,13 +56,13 @@ fn type_op_ascribe_user_type<'tcx>(
         })
 }
 
-struct AscribeUserTypeCx<'me, 'gcx: 'tcx, 'tcx: 'me> {
-    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+struct AscribeUserTypeCx<'me, 'tcx> {
+    infcx: &'me InferCtxt<'me, 'tcx>,
     param_env: ParamEnv<'tcx>,
     fulfill_cx: &'me mut dyn TraitEngine<'tcx>,
 }
 
-impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
+impl AscribeUserTypeCx<'me, 'tcx> {
     fn normalize<T>(&mut self, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -95,7 +94,7 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         );
     }
 
-    fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -168,9 +167,9 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
 }
 
 fn type_op_eq<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Eq<'tcx>>>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>, NoSolution> {
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (param_env, Eq { a, b }) = key.into_parts();
@@ -182,12 +181,12 @@ fn type_op_eq<'tcx>(
 }
 
 fn type_op_normalize<T>(
-    infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+    infcx: &InferCtxt<'_, 'tcx>,
     fulfill_cx: &mut dyn TraitEngine<'tcx>,
     key: ParamEnvAnd<'tcx, Normalize<T>>,
 ) -> Fallible<T>
 where
-    T: fmt::Debug + TypeFoldable<'tcx> + Lift<'gcx>,
+    T: fmt::Debug + TypeFoldable<'tcx> + Lift<'tcx>,
 {
     let (param_env, Normalize { value }) = key.into_parts();
     let Normalized { value, obligations } = infcx
@@ -198,41 +197,41 @@ where
 }
 
 fn type_op_normalize_ty(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Ty<'tcx>>>>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>>, NoSolution> {
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_predicate(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<Predicate<'tcx>>>>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, Predicate<'tcx>>>>, NoSolution> {
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, Predicate<'tcx>>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_fn_sig(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<FnSig<'tcx>>>>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, FnSig<'tcx>>>>, NoSolution> {
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, FnSig<'tcx>>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_poly_fn_sig(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Normalize<PolyFnSig<'tcx>>>>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, PolyFnSig<'tcx>>>>, NoSolution> {
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, PolyFnSig<'tcx>>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_subtype<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Subtype<'tcx>>>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>, NoSolution> {
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (param_env, Subtype { sub, sup }) = key.into_parts();
@@ -244,9 +243,9 @@ fn type_op_subtype<'tcx>(
 }
 
 fn type_op_prove_predicate<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, ProvePredicate<'tcx>>>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>, NoSolution> {
+) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, NoSolution> {
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (param_env, ProvePredicate { predicate }) = key.into_parts();

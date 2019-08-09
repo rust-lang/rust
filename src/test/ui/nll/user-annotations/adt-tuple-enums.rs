@@ -1,7 +1,6 @@
 // Unit test for the "user substitutions" that are annotated on each
 // node.
 
-#![feature(nll)]
 #![allow(warnings)]
 
 enum SomeEnum<T> {

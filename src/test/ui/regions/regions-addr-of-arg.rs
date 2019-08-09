@@ -10,7 +10,7 @@ fn bar(a: isize) {
 }
 
 fn zed<'a>(a: isize) -> &'a isize {
-    &a //~ ERROR `a` does not live long enough
+    &a //~ ERROR cannot return reference to function parameter `a`
 }
 
 fn main() {

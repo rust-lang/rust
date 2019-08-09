@@ -12,4 +12,3 @@ impl<H> AddrVec<H, DeviceId> {
 }
 
 fn main() {}
-

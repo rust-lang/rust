@@ -3,10 +3,10 @@
 // revisions: nll_target
 
 // The following revisions are disabled due to missing support from two-phase beyond autorefs
-//[nll_beyond]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref
+//[nll_beyond]compile-flags: -Z borrowck=mir -Z two-phase-beyond-autoref
 //[nll_beyond] should-fail
 
-//[nll_target]compile-flags: -Z borrowck=mir -Z two-phase-borrows
+//[nll_target]compile-flags: -Z borrowck=mir
 
 // This is a corner case that the current implementation is (probably)
 // treating more conservatively than is necessary. But it also does
@@ -47,4 +47,3 @@ fn main() {
     // flummoxes our attmpt to delay the activation point here.)
     delay.push(2);
 }
-

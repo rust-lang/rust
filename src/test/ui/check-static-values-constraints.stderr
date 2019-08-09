@@ -85,11 +85,14 @@ error[E0019]: static contains unimplemented expression type
 LL |     box 3;
    |         ^
 
-error[E0507]: cannot move out of static item
+error[E0507]: cannot move out of static item `x`
   --> $DIR/check-static-values-constraints.rs:116:45
    |
 LL |     let y = { static x: Box<isize> = box 3; x };
-   |                                             ^ cannot move out of static item
+   |                                             ^
+   |                                             |
+   |                                             move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+   |                                             help: consider borrowing here: `&x`
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:116:38
@@ -105,5 +108,5 @@ LL |     let y = { static x: Box<isize> = box 3; x };
 
 error: aborting due to 17 previous errors
 
-Some errors occurred: E0010, E0015, E0019, E0493, E0507.
+Some errors have detailed explanations: E0010, E0015, E0019, E0507.
 For more information about an error, try `rustc --explain E0010`.

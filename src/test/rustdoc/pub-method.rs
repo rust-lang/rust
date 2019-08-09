@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // compile-flags: --document-private-items
 
 #![crate_name = "foo"]

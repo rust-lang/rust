@@ -1,8 +1,8 @@
-error: expected a macro, found built-in attribute
+error: expected derive macro, found built-in attribute `inline`
   --> $DIR/macro-path-prelude-fail-4.rs:1:10
    |
 LL | #[derive(inline)]
-   |          ^^^^^^
+   |          ^^^^^^ not a derive macro
 
 error: aborting due to previous error
 

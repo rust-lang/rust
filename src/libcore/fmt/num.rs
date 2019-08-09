@@ -1,12 +1,12 @@
 //! Integer and floating-point number formatting
 
 
-use fmt;
-use ops::{Div, Rem, Sub};
-use str;
-use slice;
-use ptr;
-use mem::MaybeUninit;
+use crate::fmt;
+use crate::ops::{Div, Rem, Sub};
+use crate::str;
+use crate::slice;
+use crate::ptr;
+use crate::mem::MaybeUninit;
 
 #[doc(hidden)]
 trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
@@ -46,12 +46,12 @@ trait GenericRadix {
     fn digit(x: u8) -> u8;
 
     /// Format an integer using the radix using a formatter.
-    fn fmt_int<T: Int>(&self, mut x: T, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt_int<T: Int>(&self, mut x: T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // The radix can be as low as 2, so we need a buffer of at least 128
         // characters for a base 2 number.
         let zero = T::zero();
         let is_nonnegative = x >= zero;
-        let mut buf = uninitialized_array![u8; 128];
+        let mut buf = [MaybeUninit::<u8>::uninit(); 128];
         let mut curr = buf.len();
         let base = T::from_u8(Self::BASE);
         if is_nonnegative {
@@ -60,7 +60,7 @@ trait GenericRadix {
             for byte in buf.iter_mut().rev() {
                 let n = x % base;               // Get the current place value.
                 x = x / base;                   // Deaccumulate the number.
-                byte.set(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                byte.write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
@@ -72,7 +72,7 @@ trait GenericRadix {
             for byte in buf.iter_mut().rev() {
                 let n = zero - (x % base);      // Get the current place value.
                 x = x / base;                   // Deaccumulate the number.
-                byte.set(Self::digit(n.to_u8())); // Store the digit in the buffer.
+                byte.write(Self::digit(n.to_u8())); // Store the digit in the buffer.
                 curr -= 1;
                 if x == zero {
                     // No more digits left to accumulate.
@@ -131,7 +131,7 @@ macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::$Trait for $T {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 $Radix.fmt_int(*self as $U, f)
             }
         }
@@ -143,7 +143,7 @@ macro_rules! debug {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
             #[inline]
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 if f.debug_lower_hex() {
                     fmt::LowerHex::fmt(self, f)
                 } else if f.debug_upper_hex() {
@@ -188,15 +188,15 @@ static DEC_DIGITS_LUT: &[u8; 200] =
 
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
-        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter) -> fmt::Result {
-            let mut buf = uninitialized_array![u8; 39];
+        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len() as isize;
             let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
             let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             unsafe {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
-                assert!(::mem::size_of::<$u>() >= 2);
+                assert!(crate::mem::size_of::<$u>() >= 2);
 
                 // eagerly decode 4 characters at a time
                 while n >= 10000 {
@@ -243,7 +243,7 @@ macro_rules! impl_Display {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl fmt::Display for $t {
                 #[allow(unused_comparisons)]
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     let is_nonnegative = *self >= 0;
                     let n = if is_nonnegative {
                         self.$conv_fn()

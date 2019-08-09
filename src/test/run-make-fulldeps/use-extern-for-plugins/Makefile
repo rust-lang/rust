@@ -2,7 +2,6 @@
 
 # ignore-freebsd
 # ignore-openbsd
-# ignore-bitrig
 # ignore-sunos
 
 HOST := $(shell $(RUSTC) -vV | grep 'host:' | sed 's/host: //')

@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/variance-use-covariant-struct-1.rs:10:5
+   |
+LL | fn foo<'min,'max>(v: SomeStruct<&'min ()>)
+   |        ---- ---- lifetime `'max` defined here
+   |        |
+   |        lifetime `'min` defined here
+...
+LL |     v
+   |     ^ returning this value requires that `'min` must outlive `'max`
+
+error: aborting due to previous error
+

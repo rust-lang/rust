@@ -19,4 +19,3 @@ fn c() {
 fn d() {
     assert!(false);
 }
-

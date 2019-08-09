@@ -1,0 +1,65 @@
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:17:9
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+...
+LL |         u
+   |         ^ returning this value requires that `'b` must outlive `'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:26:18
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+...
+LL |         let me = Self::make_me();
+   |                  ^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:33:9
+   |
+LL | impl<'a, 'b> Evil<'a, 'b> {
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
+LL |     fn inherent_evil(u: &'b u32) -> &'a u32 {
+LL |         u
+   |         ^ returning this value requires that `'b` must outlive `'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:41:5
+   |
+LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     <()>::static_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:45:5
+   |
+LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     <IndirectEvil>::static_evil(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-static-method.rs:50:5
+   |
+LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     <Evil>::inherent_evil(b) // bug? shouldn't this be an error
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+
+error: aborting due to 6 previous errors
+

@@ -8,7 +8,7 @@
 //!
 //! The [`Command`] struct is used to configure and spawn processes:
 //!
-//! ```
+//! ```no_run
 //! use std::process::Command;
 //!
 //! let output = Command::new("echo")
@@ -111,7 +111,7 @@ use crate::io::prelude::*;
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
-use crate::io::{self, Initializer};
+use crate::io::{self, Initializer, IoSlice, IoSliceMut};
 use crate::path::Path;
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
@@ -133,6 +133,18 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// Calling [`wait`](#method.wait) (or other functions that wrap around it) will make
 /// the parent process wait until the child has actually exited before
 /// continuing.
+///
+/// # Warning
+///
+/// On some system, calling [`wait`] or similar is necessary for the OS to
+/// release resources. A process that terminated but has not been waited on is
+/// still around as a "zombie". Leaving too many zombies around may exhaust
+/// global resources (for example process IDs).
+///
+/// The standard library does *not* automatically wait on child processes (not
+/// even if the `Child` is dropped), it is up to the application developer to do
+/// so. As a consequence, dropping `Child` handles without waiting on them first
+/// is not recommended in long-running applications.
 ///
 /// # Examples
 ///
@@ -194,7 +206,7 @@ impl IntoInner<imp::Process> for Child {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Child {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Child")
             .field("stdin", &self.stdin)
             .field("stdout", &self.stdout)
@@ -225,6 +237,10 @@ impl Write for ChildStdin {
         self.inner.write(buf)
     }
 
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.write_vectored(bufs)
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -246,7 +262,7 @@ impl FromInner<AnonPipe> for ChildStdin {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("ChildStdin { .. }")
     }
 }
@@ -271,6 +287,11 @@ impl Read for ChildStdout {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.inner.read_vectored(bufs)
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -293,7 +314,7 @@ impl FromInner<AnonPipe> for ChildStdout {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdout {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("ChildStdout { .. }")
     }
 }
@@ -318,6 +339,11 @@ impl Read for ChildStderr {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.inner.read_vectored(bufs)
+    }
+
     #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
@@ -340,7 +366,7 @@ impl FromInner<AnonPipe> for ChildStderr {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStderr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("ChildStderr { .. }")
     }
 }
@@ -803,7 +829,7 @@ impl fmt::Debug for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
 }
@@ -844,7 +870,7 @@ pub struct Output {
 // strings, otherwise it prints the byte sequence instead
 #[stable(feature = "process_output_debug", since = "1.7.0")]
 impl fmt::Debug for Output {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
 
         let stdout_utf8 = str::from_utf8(&self.stdout);
         let stdout_debug: &dyn fmt::Debug = match stdout_utf8 {
@@ -1002,7 +1028,7 @@ impl FromInner<imp::Stdio> for Stdio {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdio {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Stdio { .. }")
     }
 }
@@ -1127,10 +1153,13 @@ impl From<fs::File> for Stdio {
 ///
 /// This `struct` is used to represent the exit status of a child process.
 /// Child processes are created via the [`Command`] struct and their exit
-/// status is exposed through the [`status`] method.
+/// status is exposed through the [`status`] method, or the [`wait`] method
+/// of a [`Child`] process.
 ///
 /// [`Command`]: struct.Command.html
+/// [`Child`]: struct.Child.html
 /// [`status`]: struct.Command.html#method.status
+/// [`wait`]: struct.Child.html#method.wait
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
@@ -1199,7 +1228,7 @@ impl FromInner<imp::ExitStatus> for ExitStatus {
 
 #[stable(feature = "process", since = "1.0.0")]
 impl fmt::Display for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -1621,7 +1650,7 @@ impl Termination for ExitCode {
     }
 }
 
-#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
+#[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten", target_env = "sgx"))))]
 mod tests {
     use crate::io::prelude::*;
 
@@ -1734,33 +1763,6 @@ mod tests {
         p.stdout.as_mut().unwrap().read_to_string(&mut out).unwrap();
         assert!(p.wait().unwrap().success());
         assert_eq!(out, "foobar\n");
-    }
-
-
-    #[test]
-    #[cfg_attr(target_os = "android", ignore)]
-    #[cfg(unix)]
-    fn uid_works() {
-        use crate::os::unix::prelude::*;
-
-        let mut p = Command::new("/bin/sh")
-                            .arg("-c").arg("true")
-                            .uid(unsafe { libc::getuid() })
-                            .gid(unsafe { libc::getgid() })
-                            .spawn().unwrap();
-        assert!(p.wait().unwrap().success());
-    }
-
-    #[test]
-    #[cfg_attr(target_os = "android", ignore)]
-    #[cfg(unix)]
-    fn uid_to_root_fails() {
-        use crate::os::unix::prelude::*;
-
-        // if we're already root, this isn't a valid test. Most of the bots run
-        // as non-root though (android is an exception).
-        if unsafe { libc::getuid() == 0 } { return }
-        assert!(Command::new("/bin/ls").uid(0).gid(0).spawn().is_err());
     }
 
     #[test]

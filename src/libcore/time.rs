@@ -12,16 +12,15 @@
 //! assert_eq!(Duration::new(5, 0), Duration::from_secs(5));
 //! ```
 
-use {fmt, u64};
-use iter::Sum;
-use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
+use crate::{fmt, u64};
+use crate::iter::Sum;
+use crate::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
 const NANOS_PER_MICRO: u32 = 1_000;
 const MILLIS_PER_SEC: u64 = 1_000;
 const MICROS_PER_SEC: u64 = 1_000_000;
-const MAX_NANOS_F64: f64 = ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
 
 /// A `Duration` type to represent a span of time, typically used for system
 /// timeouts.
@@ -510,15 +509,34 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.as_float_secs(), 2.7);
+    /// assert_eq!(dur.as_secs_f64(), 2.7);
     /// ```
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
-    pub const fn as_float_secs(&self) -> f64 {
+    pub const fn as_secs_f64(&self) -> f64 {
         (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
     }
 
-    /// Creates a new `Duration` from the specified number of seconds.
+    /// Returns the number of seconds contained by this `Duration` as `f32`.
+    ///
+    /// The returned value does include the fractional (nanosecond) part of the duration.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// assert_eq!(dur.as_secs_f32(), 2.7);
+    /// ```
+    #[unstable(feature = "duration_float", issue = "54361")]
+    #[inline]
+    pub const fn as_secs_f32(&self) -> f32 {
+        (self.secs as f32) + (self.nanos as f32) / (NANOS_PER_SEC as f32)
+    }
+
+    /// Creates a new `Duration` from the specified number of seconds represented
+    /// as `f64`.
     ///
     /// # Panics
     /// This constructor will panic if `secs` is not finite, negative or overflows `Duration`.
@@ -528,17 +546,55 @@ impl Duration {
     /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
-    /// let dur = Duration::from_float_secs(2.7);
+    /// let dur = Duration::from_secs_f64(2.7);
     /// assert_eq!(dur, Duration::new(2, 700_000_000));
     /// ```
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
-    pub fn from_float_secs(secs: f64) -> Duration {
+    pub fn from_secs_f64(secs: f64) -> Duration {
+        const MAX_NANOS_F64: f64 =
+            ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f64;
         let nanos =  secs * (NANOS_PER_SEC as f64);
         if !nanos.is_finite() {
             panic!("got non-finite value when converting float to duration");
         }
         if nanos >= MAX_NANOS_F64 {
+            panic!("overflow when converting float to duration");
+        }
+        if nanos < 0.0 {
+            panic!("underflow when converting float to duration");
+        }
+        let nanos =  nanos as u128;
+        Duration {
+            secs: (nanos / (NANOS_PER_SEC as u128)) as u64,
+            nanos: (nanos % (NANOS_PER_SEC as u128)) as u32,
+        }
+    }
+
+    /// Creates a new `Duration` from the specified number of seconds represented
+    /// as `f32`.
+    ///
+    /// # Panics
+    /// This constructor will panic if `secs` is not finite, negative or overflows `Duration`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::from_secs_f32(2.7);
+    /// assert_eq!(dur, Duration::new(2, 700_000_000));
+    /// ```
+    #[unstable(feature = "duration_float", issue = "54361")]
+    #[inline]
+    pub fn from_secs_f32(secs: f32) -> Duration {
+        const MAX_NANOS_F32: f32 =
+            ((u64::MAX as u128 + 1)*(NANOS_PER_SEC as u128)) as f32;
+        let nanos =  secs * (NANOS_PER_SEC as f32);
+        if !nanos.is_finite() {
+            panic!("got non-finite value when converting float to duration");
+        }
+        if nanos >= MAX_NANOS_F32 {
             panic!("overflow when converting float to duration");
         }
         if nanos < 0.0 {
@@ -568,7 +624,29 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
-        Duration::from_float_secs(rhs * self.as_float_secs())
+        Duration::from_secs_f64(rhs * self.as_secs_f64())
+    }
+
+    /// Multiplies `Duration` by `f32`.
+    ///
+    /// # Panics
+    /// This method will panic if result is not finite, negative or overflows `Duration`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// // note that due to rounding errors result is slightly different
+    /// // from 8.478 and 847800.0
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_640));
+    /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847799, 969_120_256));
+    /// ```
+    #[unstable(feature = "duration_float", issue = "54361")]
+    #[inline]
+    pub fn mul_f32(self, rhs: f32) -> Duration {
+        Duration::from_secs_f32(rhs * self.as_secs_f32())
     }
 
     /// Divide `Duration` by `f64`.
@@ -589,7 +667,30 @@ impl Duration {
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
-        Duration::from_float_secs(self.as_float_secs() / rhs)
+        Duration::from_secs_f64(self.as_secs_f64() / rhs)
+    }
+
+    /// Divide `Duration` by `f32`.
+    ///
+    /// # Panics
+    /// This method will panic if result is not finite, negative or overflows `Duration`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur = Duration::new(2, 700_000_000);
+    /// // note that due to rounding errors result is slightly
+    /// // different from 0.859_872_611
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_576));
+    /// // note that truncation is used, not rounding
+    /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_598));
+    /// ```
+    #[unstable(feature = "duration_float", issue = "54361")]
+    #[inline]
+    pub fn div_f32(self, rhs: f32) -> Duration {
+        Duration::from_secs_f32(self.as_secs_f32() / rhs)
     }
 
     /// Divide `Duration` by `Duration` and return `f64`.
@@ -601,12 +702,29 @@ impl Duration {
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
-    /// assert_eq!(dur1.div_duration(dur2), 0.5);
+    /// assert_eq!(dur1.div_duration_f64(dur2), 0.5);
     /// ```
     #[unstable(feature = "duration_float", issue = "54361")]
     #[inline]
-    pub fn div_duration(self, rhs: Duration) -> f64 {
-        self.as_float_secs() / rhs.as_float_secs()
+    pub fn div_duration_f64(self, rhs: Duration) -> f64 {
+        self.as_secs_f64() / rhs.as_secs_f64()
+    }
+
+    /// Divide `Duration` by `Duration` and return `f32`.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_float)]
+    /// use std::time::Duration;
+    ///
+    /// let dur1 = Duration::new(2, 700_000_000);
+    /// let dur2 = Duration::new(5, 400_000_000);
+    /// assert_eq!(dur1.div_duration_f32(dur2), 0.5);
+    /// ```
+    #[unstable(feature = "duration_float", issue = "54361")]
+    #[inline]
+    pub fn div_duration_f32(self, rhs: Duration) -> f32 {
+        self.as_secs_f32() / rhs.as_secs_f32()
     }
 }
 
@@ -729,7 +847,7 @@ impl<'a> Sum<&'a Duration> for Duration {
 
 #[stable(feature = "duration_debug_impl", since = "1.27.0")]
 impl fmt::Debug for Duration {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         /// Formats a floating point number in decimal notation.
         ///
         /// The number is given as the `integer_part` and a fractional part.
@@ -741,7 +859,7 @@ impl fmt::Debug for Duration {
         /// of 10, everything else doesn't make sense. `fractional_part` has
         /// to be less than `10 * divisor`!
         fn fmt_decimal(
-            f: &mut fmt::Formatter,
+            f: &mut fmt::Formatter<'_>,
             mut integer_part: u64,
             mut fractional_part: u32,
             mut divisor: u32,
@@ -803,7 +921,7 @@ impl fmt::Debug for Duration {
             // Determine the end of the buffer: if precision is set, we just
             // use as many digits from the buffer (capped to 9). If it isn't
             // set, we only use all digits up to the last non-zero one.
-            let end = f.precision().map(|p| ::cmp::min(p, 9)).unwrap_or(pos);
+            let end = f.precision().map(|p| crate::cmp::min(p, 9)).unwrap_or(pos);
 
             // If we haven't emitted a single fractional digit and the precision
             // wasn't set to a non-zero value, we don't print the decimal point.
@@ -813,7 +931,7 @@ impl fmt::Debug for Duration {
                 // We are only writing ASCII digits into the buffer and it was
                 // initialized with '0's, so it contains valid UTF8.
                 let s = unsafe {
-                    ::str::from_utf8_unchecked(&buf[..end])
+                    crate::str::from_utf8_unchecked(&buf[..end])
                 };
 
                 // If the user request a precision > 9, we pad '0's at the end.

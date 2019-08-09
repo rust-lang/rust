@@ -16,7 +16,7 @@
 //! [`FakeRead`]: rustc::mir::StatementKind::FakeRead
 //! [`Nop`]: rustc::mir::StatementKind::Nop
 
-use rustc::mir::{BasicBlock, BorrowKind, Rvalue, Location, Mir};
+use rustc::mir::{BorrowKind, Rvalue, Location, Body};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
@@ -27,18 +27,14 @@ pub struct CleanupNonCodegenStatements;
 pub struct DeleteNonCodegenStatements;
 
 impl MirPass for CleanupNonCodegenStatements {
-    fn run_pass<'a, 'tcx>(&self,
-                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _source: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+    fn run_pass<'tcx>(&self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let mut delete = DeleteNonCodegenStatements;
-        delete.visit_mir(mir);
+        delete.visit_body(body);
     }
 }
 
 impl<'tcx> MutVisitor<'tcx> for DeleteNonCodegenStatements {
     fn visit_statement(&mut self,
-                       block: BasicBlock,
                        statement: &mut Statement<'tcx>,
                        location: Location) {
         match statement.kind {
@@ -47,6 +43,6 @@ impl<'tcx> MutVisitor<'tcx> for DeleteNonCodegenStatements {
             | StatementKind::FakeRead(..) => statement.make_nop(),
             _ => (),
         }
-        self.super_statement(block, statement, location);
+        self.super_statement(statement, location);
     }
 }

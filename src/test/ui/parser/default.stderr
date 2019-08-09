@@ -1,8 +1,8 @@
-error: expected one of `async`, `const`, `existential`, `extern`, `fn`, `type`, or `unsafe`, found `pub`
+error: expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe`, found `pub`
   --> $DIR/default.rs:22:13
    |
 LL |     default pub fn foo<T: Default>() -> T { T::default() }
-   |             ^^^ expected one of 7 possible tokens here
+   |             ^^^ expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe` here
 
 error[E0449]: unnecessary visibility qualifier
   --> $DIR/default.rs:16:5
@@ -21,5 +21,5 @@ LL | impl Foo for u32 {
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0046, E0449.
+Some errors have detailed explanations: E0046, E0449.
 For more information about an error, try `rustc --explain E0046`.

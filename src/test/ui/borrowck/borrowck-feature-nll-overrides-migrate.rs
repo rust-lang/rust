@@ -20,8 +20,8 @@ fn main() {
         ref mut foo
             if {
                 (|| { let bar = foo; bar.take() })();
-                //[zflag]~^ ERROR cannot move out of borrowed content [E0507]
-                //[edition]~^^ ERROR cannot move out of borrowed content [E0507]
+                //[zflag]~^ ERROR cannot move out of `foo` in pattern guard [E0507]
+                //[edition]~^^ ERROR cannot move out of `foo` in pattern guard [E0507]
                 false
             } => {},
         Some(ref _s) => println!("Note this arm is bogus; the `Some` became `None` in the guard."),

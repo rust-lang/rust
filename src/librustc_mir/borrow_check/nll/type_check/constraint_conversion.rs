@@ -3,7 +3,8 @@ use crate::borrow_check::nll::region_infer::TypeTest;
 use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::borrow_check::nll::universal_regions::UniversalRegions;
 use crate::borrow_check::nll::ToRegionVid;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryRegionConstraints;
+use rustc::infer::canonical::QueryOutlivesConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc::infer::region_constraints::{GenericKind, VerifyBound};
@@ -13,9 +14,9 @@ use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, TyCtxt};
 use syntax_pos::DUMMY_SP;
 
-crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+crate struct ConstraintConversion<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     universal_regions: &'a UniversalRegions<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -25,9 +26,9 @@ crate struct ConstraintConversion<'a, 'gcx: 'tcx, 'tcx: 'a> {
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     crate fn new(
-        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        infcx: &'a InferCtxt<'a, 'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -49,13 +50,33 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub(super) fn convert_all(&mut self, query_constraints: &[QueryRegionConstraint<'tcx>]) {
-        for query_constraint in query_constraints {
+    pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
+        debug!("convert_all(query_constraints={:#?})", query_constraints);
+
+        let QueryRegionConstraints { outlives, member_constraints } = query_constraints;
+
+        // Annoying: to invoke `self.to_region_vid`, we need access to
+        // `self.constraints`, but we also want to be mutating
+        // `self.member_constraints`. For now, just swap out the value
+        // we want and replace at the end.
+        let mut tmp = std::mem::replace(
+            &mut self.constraints.member_constraints,
+            Default::default(),
+        );
+        for member_constraint in member_constraints {
+            tmp.push_constraint(
+                member_constraint,
+                |r| self.to_region_vid(r),
+            );
+        }
+        self.constraints.member_constraints = tmp;
+
+        for query_constraint in outlives {
             self.convert(query_constraint);
         }
     }
 
-    pub(super) fn convert(&mut self, query_constraint: &QueryRegionConstraint<'tcx>) {
+    pub(super) fn convert(&mut self, query_constraint: &QueryOutlivesConstraint<'tcx>) {
         debug!("generate: constraints at: {:#?}", self.locations);
 
         // Extract out various useful fields we'll need below.
@@ -150,9 +171,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'gcx, 'tcx> TypeOutlivesDelegate<'tcx>
-    for &'a mut ConstraintConversion<'b, 'gcx, 'tcx>
-{
+impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'b, 'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         _origin: SubregionOrigin<'tcx>,

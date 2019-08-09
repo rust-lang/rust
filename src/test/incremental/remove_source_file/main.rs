@@ -6,7 +6,7 @@
 // Note that we specify -g so that the SourceFiles actually get referenced by the
 // incr. comp. cache:
 // compile-flags: -Z query-dep-graph -g
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![crate_type= "rlib"]
 

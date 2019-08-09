@@ -28,5 +28,4 @@ LL | fn baz<T: Foo>(_: T) {}
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0271, E0631.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0271`.

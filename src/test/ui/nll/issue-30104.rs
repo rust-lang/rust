@@ -1,8 +1,6 @@
 // Regression test for #30104
 
-// compile-pass
-
-#![feature(nll)]
+// build-pass (FIXME(62277): could be check-pass?)
 
 use std::ops::{Deref, DerefMut};
 

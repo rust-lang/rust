@@ -13,5 +13,5 @@ fn main() {
         (Some(y), ()) => {},
         _ => {},
     }
-    x; //~ ERROR use of partially moved value
+    x; //~ ERROR use of moved value
 }

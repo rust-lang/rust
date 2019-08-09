@@ -2,11 +2,16 @@ error[E0597]: `*a` does not live long enough
   --> $DIR/destructor-restrictions.rs:8:10
    |
 LL |         *a.borrow() + 1
-   |          ^ borrowed value does not live long enough
+   |          ^---------
+   |          |
+   |          borrowed value does not live long enough
+   |          a temporary with access to the borrow is created here ...
 LL |     };
-   |     -- borrowed value needs to live until here
+   |     -- ... and the borrow might be used here, when that temporary is dropped and runs the destructor for type `std::cell::Ref<'_, i32>`
    |     |
    |     `*a` dropped here while still borrowed
+   |
+   = note: The temporary is part of an expression at the end of a block. Consider forcing this temporary to be dropped sooner, before the block's local variables are dropped. For example, you could save the expression's value in a new local variable `x` and then make `x` be the expression at the end of the block.
 
 error: aborting due to previous error
 

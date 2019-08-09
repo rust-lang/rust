@@ -6,7 +6,7 @@ struct R<'a> {
     // This struct is needed to create the
     // otherwise infinite type of a fn that
     // accepts itself as argument:
-    c: Box<FnMut(&mut R, bool) + 'a>
+    c: Box<dyn FnMut(&mut R, bool) + 'a>
 }
 
 fn innocent_looking_victim() {
@@ -29,7 +29,7 @@ fn innocent_looking_victim() {
 
 fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) {
     let mut r = R {c: Box::new(f)};
-    f(&mut r, false) //~ ERROR use of moved value
+    f(&mut r, false) //~ ERROR borrow of moved value
 }
 
 fn main() { innocent_looking_victim() }

@@ -28,7 +28,7 @@ const ENCLU_EGETKEY: u32 = 1;
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> {
     unsafe {
-        let mut out = MaybeUninit::uninitialized();
+        let mut out = MaybeUninit::uninit();
         let error;
 
         asm!(
@@ -41,7 +41,7 @@ pub fn egetkey(request: &Align512<[u8; 512]>) -> Result<Align16<[u8; 16]>, u32> 
         );
 
         match error {
-            0 => Ok(out.into_initialized()),
+            0 => Ok(out.assume_init()),
             err => Err(err),
         }
     }
@@ -58,7 +58,7 @@ pub fn ereport(
     reportdata: &Align128<[u8; 64]>,
 ) -> Align512<[u8; 432]> {
     unsafe {
-        let mut report = MaybeUninit::uninitialized();
+        let mut report = MaybeUninit::uninit();
 
         asm!(
             "enclu"
@@ -69,6 +69,6 @@ pub fn ereport(
               "{rdx}"(report.as_mut_ptr())
         );
 
-        report.into_initialized()
+        report.assume_init()
     }
 }

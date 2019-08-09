@@ -1,4 +1,4 @@
-FROM ubuntu:18.10
+FROM ubuntu:19.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
+  libssl-dev \
+  pkg-config \
   xz-utils
 
 COPY scripts/sccache.sh /scripts/

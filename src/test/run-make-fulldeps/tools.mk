@@ -47,6 +47,7 @@ DYLIB = $(TMPDIR)/$(1).dll
 STATICLIB = $(TMPDIR)/$(1).lib
 STATICLIB_GLOB = $(1)*.lib
 BIN = $(1).exe
+LLVM_FILECHECK := $(shell cygpath -u "$(LLVM_FILECHECK)")
 else
 RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)
 FAIL = $(TARGET_RPATH_ENV) $(RUN_BINFILE) && exit 1 || exit 0
@@ -87,10 +88,6 @@ else
 ifeq ($(UNAME),FreeBSD)
 	EXTRACFLAGS := -lm -lpthread -lgcc_s
 else
-ifeq ($(UNAME),Bitrig)
-	EXTRACFLAGS := -lm -lpthread
-	EXTRACXXFLAGS := -lc++ -lc++abi
-else
 ifeq ($(UNAME),SunOS)
 	EXTRACFLAGS := -lm -lpthread -lposix4 -lsocket -lresolv
 else
@@ -100,7 +97,6 @@ ifeq ($(UNAME),OpenBSD)
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
 	EXTRACXXFLAGS := -lstdc++
-endif
 endif
 endif
 endif

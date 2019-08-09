@@ -2,7 +2,7 @@
 
 The tracking issue for this feature is [#29625]
 
-See Also: [`fn_traits`](library-features/fn-traits.html)
+See Also: [`fn_traits`](../library-features/fn-traits.md)
 
 [#29625]: https://github.com/rust-lang/rust/issues/29625
 

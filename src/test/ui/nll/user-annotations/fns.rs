@@ -1,8 +1,6 @@
 // Unit test for the "user substitutions" that are annotated on each
 // node.
 
-#![feature(nll)]
-
 fn some_fn<T>(arg: T) { }
 
 fn no_annot() {

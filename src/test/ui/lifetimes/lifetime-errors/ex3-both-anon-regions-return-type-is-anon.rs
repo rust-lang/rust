@@ -9,4 +9,3 @@ impl Foo {
 }
 
 fn main() { }
-

@@ -3,7 +3,7 @@
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, nonstandard_style, missing_debug_implementations)]
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(rustdoc)] {
 
         // When documenting libstd we want to show unix/windows/linux modules as
@@ -24,7 +24,7 @@ cfg_if! {
         // If we're not documenting libstd then we just expose the main modules
         // as we otherwise would.
 
-        #[cfg(any(target_os = "redox", unix))]
+        #[cfg(any(target_os = "redox", unix, target_os = "vxworks"))]
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use crate::sys::ext as unix;
 
@@ -39,7 +39,6 @@ cfg_if! {
 }
 
 #[cfg(target_os = "android")]    pub mod android;
-#[cfg(target_os = "bitrig")]     pub mod bitrig;
 #[cfg(target_os = "dragonfly")]  pub mod dragonfly;
 #[cfg(target_os = "freebsd")]    pub mod freebsd;
 #[cfg(target_os = "haiku")]      pub mod haiku;
@@ -51,6 +50,9 @@ cfg_if! {
 #[cfg(target_os = "emscripten")] pub mod emscripten;
 #[cfg(target_os = "fuchsia")]    pub mod fuchsia;
 #[cfg(target_os = "hermit")]     pub mod hermit;
+#[cfg(target_os = "redox")]      pub mod redox;
+#[cfg(target_os = "wasi")]       pub mod wasi;
+#[cfg(target_os = "vxworks")]    pub mod vxworks;
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] pub mod fortanix_sgx;
 
 pub mod raw;

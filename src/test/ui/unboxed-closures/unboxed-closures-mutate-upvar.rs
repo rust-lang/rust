@@ -11,8 +11,8 @@ fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
 
 fn a() {
     let n = 0;
-    let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
-        n += 1;
+    let mut f = to_fn_mut(|| {
+        n += 1; //~ ERROR cannot assign to `n`, as it is not declared as mutable
     });
 }
 

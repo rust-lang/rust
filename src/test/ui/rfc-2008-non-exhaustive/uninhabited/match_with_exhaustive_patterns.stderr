@@ -1,0 +1,35 @@
+error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedEnum` is non-empty
+  --> $DIR/match_with_exhaustive_patterns.rs:22:11
+   |
+LL |     match x {}
+   |           ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedStruct` is non-empty
+  --> $DIR/match_with_exhaustive_patterns.rs:26:11
+   |
+LL |     match x {}
+   |           ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedTupleStruct` is non-empty
+  --> $DIR/match_with_exhaustive_patterns.rs:30:11
+   |
+LL |     match x {}
+   |           ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedVariants` is non-empty
+  --> $DIR/match_with_exhaustive_patterns.rs:34:11
+   |
+LL |     match x {}
+   |           ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0004`.

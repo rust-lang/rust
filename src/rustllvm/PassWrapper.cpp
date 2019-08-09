@@ -26,8 +26,6 @@
 using namespace llvm;
 using namespace llvm::legacy;
 
-extern cl::opt<bool> EnableARMEHABI;
-
 typedef struct LLVMOpaquePass *LLVMPassRef;
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
@@ -97,6 +95,23 @@ void LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
   LLVMPassManagerRef PMR
 ) {
   unwrap(PMBR)->populateThinLTOPassManager(*unwrap(PMR));
+}
+
+extern "C"
+void LLVMRustAddLastExtensionPasses(
+    LLVMPassManagerBuilderRef PMBR, LLVMPassRef *Passes, size_t NumPasses) {
+  auto AddExtensionPasses = [Passes, NumPasses](
+      const PassManagerBuilder &Builder, PassManagerBase &PM) {
+    for (size_t I = 0; I < NumPasses; I++) {
+      PM.add(unwrap(Passes[I]));
+    }
+  };
+  // Add the passes to both of the pre-finalization extension points,
+  // so they are run for optimized and non-optimized builds.
+  unwrap(PMBR)->addExtension(PassManagerBuilder::EP_OptimizerLast,
+                             AddExtensionPasses);
+  unwrap(PMBR)->addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
+                             AddExtensionPasses);
 }
 
 #ifdef LLVM_COMPONENT_X86
@@ -266,8 +281,8 @@ static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
 
 #ifdef LLVM_RUSTLLVM
 /// getLongestEntryLength - Return the length of the longest entry in the table.
-///
-static size_t getLongestEntryLength(ArrayRef<SubtargetFeatureKV> Table) {
+template<typename KV>
+static size_t getLongestEntryLength(ArrayRef<KV> Table) {
   size_t MaxLen = 0;
   for (auto &I : Table)
     MaxLen = std::max(MaxLen, std::strlen(I.Key));
@@ -279,7 +294,7 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   const Triple::ArchType HostArch = Triple(sys::getProcessTriple()).getArch();
   const Triple::ArchType TargetArch = Target->getTargetTriple().getArch();
-  const ArrayRef<SubtargetFeatureKV> CPUTable = MCInfo->getCPUTable();
+  const ArrayRef<SubtargetSubTypeKV> CPUTable = MCInfo->getCPUTable();
   unsigned MaxCPULen = getLongestEntryLength(CPUTable);
 
   printf("Available CPUs for this target:\n");
@@ -289,7 +304,7 @@ extern "C" void LLVMRustPrintTargetCPUs(LLVMTargetMachineRef TM) {
       MaxCPULen, "native", (int)HostCPU.size(), HostCPU.data());
   }
   for (auto &CPU : CPUTable)
-    printf("    %-*s - %s.\n", MaxCPULen, CPU.Key, CPU.Desc);
+    printf("    %-*s\n", MaxCPULen, CPU.Key);
   printf("\n");
 }
 
@@ -646,8 +661,9 @@ char RustPrintModulePass::ID = 0;
 INITIALIZE_PASS(RustPrintModulePass, "print-rust-module",
                 "Print rust module to stderr", false, false)
 
-extern "C" void LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
-                                    const char *Path, DemangleFn Demangle) {
+extern "C" LLVMRustResult
+LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
+                    const char *Path, DemangleFn Demangle) {
   llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
   std::string ErrorInfo;
 
@@ -655,12 +671,18 @@ extern "C" void LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
   raw_fd_ostream OS(Path, EC, sys::fs::F_None);
   if (EC)
     ErrorInfo = EC.message();
+  if (ErrorInfo != "") {
+    LLVMRustSetLastError(ErrorInfo.c_str());
+    return LLVMRustResult::Failure;
+  }
 
   formatted_raw_ostream FOS(OS);
 
   PM->add(new RustPrintModulePass(FOS, Demangle));
 
   PM->run(*unwrap(M));
+
+  return LLVMRustResult::Success;
 }
 
 extern "C" void LLVMRustPrintPasses() {
@@ -866,8 +888,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     return PrevailingType::Unknown;
   };
 #if LLVM_VERSION_GE(8, 0)
+  // We don't have a complete picture in our use of ThinLTO, just our immediate
+  // crate, so we need `ImportEnabled = false` to limit internalization.
+  // Otherwise, we sometimes lose `static` values -- see #60184.
   computeDeadSymbolsWithConstProp(Ret->Index, Ret->GUIDPreservedSymbols,
-                                  deadIsPrevailing, /* ImportEnabled = */ true);
+                                  deadIsPrevailing, /* ImportEnabled = */ false);
 #else
   computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing);
 #endif
@@ -903,7 +928,10 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
                               GlobalValue::LinkageTypes NewLinkage) {
     ResolvedODR[ModuleIdentifier][GUID] = NewLinkage;
   };
-#if LLVM_VERSION_GE(8, 0)
+#if LLVM_VERSION_GE(9, 0)
+  thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage,
+                                  Ret->GUIDPreservedSymbols);
+#elif LLVM_VERSION_GE(8, 0)
   thinLTOResolvePrevailingInIndex(Ret->Index, isPrevailing, recordNewLinkage);
 #else
   thinLTOResolveWeakForLinkerInIndex(Ret->Index, isPrevailing, recordNewLinkage);

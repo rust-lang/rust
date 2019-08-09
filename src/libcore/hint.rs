@@ -2,7 +2,7 @@
 
 //! Hints to compiler that affects how code should be emitted or optimized.
 
-use intrinsics;
+use crate::intrinsics;
 
 /// Informs the compiler that this point in the code is not reachable, enabling
 /// further optimizations.
@@ -21,11 +21,10 @@ use intrinsics;
 /// difficult-to-debug problems.
 ///
 /// Use this function only when you can prove that the code will never call it.
+/// Otherwise, consider using the [`unreachable!`] macro, which does not allow
+/// optimizations but will panic when executed.
 ///
-/// The [`unreachable!()`] macro is the safe counterpart of this function, which
-/// will panic instead when executed.
-///
-/// [`unreachable!()`]: ../macro.unreachable.html
+/// [`unreachable!`]: ../macro.unreachable.html
 ///
 /// # Example
 ///
@@ -50,25 +49,93 @@ pub unsafe fn unreachable_unchecked() -> ! {
     intrinsics::unreachable()
 }
 
-/// Save power or switch hyperthreads in a busy-wait spin-loop.
+/// Signals the processor that it is entering a busy-wait spin-loop.
 ///
-/// This function is deliberately more primitive than
-/// [`std::thread::yield_now`](../../std/thread/fn.yield_now.html) and
-/// does not directly yield to the system's scheduler.
-/// In some cases it might be useful to use a combination of both functions.
-/// Careful benchmarking is advised.
+/// Upon receiving spin-loop signal the processor can optimize its behavior by, for example, saving
+/// power or switching hyper-threads.
 ///
-/// On some platforms this function may not do anything at all.
+/// This function is different than [`std::thread::yield_now`] which directly yields to the
+/// system's scheduler, whereas `spin_loop` only signals the processor that it is entering a
+/// busy-wait spin-loop without yielding control to the system's scheduler.
+///
+/// Using a busy-wait spin-loop with `spin_loop` is ideally used in situations where a
+/// contended lock is held by another thread executed on a different CPU and where the waiting
+/// times are relatively small. Because entering busy-wait spin-loop does not trigger the system's
+/// scheduler, no overhead for switching threads occurs. However, if the thread holding the
+/// contended lock is running on the same CPU, the spin-loop is likely to occupy an entire CPU slice
+/// before switching to the thread that holds the lock. If the contending lock is held by a thread
+/// on the same CPU or if the waiting times for acquiring the lock are longer, it is often better to
+/// use [`std::thread::yield_now`].
+///
+/// **Note**: On platforms that do not support receiving spin-loop hints this function does not
+/// do anything at all.
+///
+/// [`std::thread::yield_now`]: ../../std/thread/fn.yield_now.html
 #[inline]
 #[unstable(feature = "renamed_spin_loop", issue = "55002")]
 pub fn spin_loop() {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    unsafe {
-        asm!("pause" ::: "memory" : "volatile");
+    #[cfg(
+        all(
+            any(target_arch = "x86", target_arch = "x86_64"),
+            target_feature = "sse2"
+        )
+    )] {
+        #[cfg(target_arch = "x86")] {
+            unsafe { crate::arch::x86::_mm_pause() };
+        }
+
+        #[cfg(target_arch = "x86_64")] {
+            unsafe { crate::arch::x86_64::_mm_pause() };
+        }
     }
 
-    #[cfg(target_arch = "aarch64")]
+    #[cfg(
+        any(
+            target_arch = "aarch64",
+            all(target_arch = "arm", target_feature = "v6")
+        )
+    )] {
+        #[cfg(target_arch = "aarch64")] {
+            unsafe { crate::arch::aarch64::__yield() };
+        }
+        #[cfg(target_arch = "arm")] {
+            unsafe { crate::arch::arm::__yield() };
+        }
+    }
+}
+
+/// A function that is opaque to the optimizer, to allow benchmarks to
+/// pretend to use outputs to assist in avoiding dead-code
+/// elimination.
+///
+/// This function is a no-op, and does not even read from `dummy`.
+#[inline]
+#[unstable(feature = "test", issue = "50297")]
+#[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
+pub fn black_box<T>(dummy: T) -> T {
+    // We need to "use" the argument in some way LLVM can't introspect, and on
+    // targets that support it we can typically leverage inline assembly to do
+    // this. LLVM's intepretation of inline assembly is that it's, well, a black
+    // box. This isn't the greatest implementation since it probably deoptimizes
+    // more than we want, but it's so far good enough.
+    #[cfg(not(any(
+        target_arch = "asmjs",
+        all(
+            target_arch = "wasm32",
+            target_os = "emscripten"
+        )
+    )))]
     unsafe {
-        asm!("yield" ::: "memory" : "volatile");
+        asm!("" : : "r"(&dummy));
+        return dummy;
+    }
+
+    // Not all platforms support inline assembly so try to do something without
+    // inline assembly which in theory still hinders at least some optimizations
+    // on those targets. This is the "best effort" scenario.
+    unsafe {
+        let ret = crate::ptr::read_volatile(&dummy);
+        crate::mem::forget(dummy);
+        ret
     }
 }

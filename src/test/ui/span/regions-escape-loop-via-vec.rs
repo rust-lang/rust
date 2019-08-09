@@ -6,7 +6,7 @@ fn broken() {
         let mut z = x; //~ ERROR cannot use `x` because it was mutably borrowed
         _y.push(&mut z);
         //~^ ERROR `z` does not live long enough
-        x += 1; //~ ERROR cannot assign
+        x += 1; //~ ERROR cannot use `x` because it was mutably borrowed
     }
 }
 

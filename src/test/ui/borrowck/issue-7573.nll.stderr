@@ -1,0 +1,14 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/issue-7573.rs:21:9
+   |
+LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
+   |         ---------------- `lines_to_use` is declared here, outside of the closure body
+LL |
+LL |     let push_id = |installed_id: &CrateId| {
+   |                    ------------ `installed_id` is a reference that is only valid in the closure body
+...
+LL |         lines_to_use.push(installed_id);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `installed_id` escapes the closure body here
+
+error: aborting due to previous error
+

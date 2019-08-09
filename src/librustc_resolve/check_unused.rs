@@ -48,7 +48,7 @@ impl<'a> UnusedImport<'a> {
     }
 }
 
-struct UnusedImportCheckVisitor<'a, 'b: 'a> {
+struct UnusedImportCheckVisitor<'a, 'b> {
     resolver: &'a mut Resolver<'b>,
     /// All the (so far) unused imports, grouped path list
     unused_imports: NodeMap<UnusedImport<'a>>,

@@ -1,7 +1,4 @@
-// compile-pass
-
-#![allow(warnings)]
-#![feature(nll)]
+// build-pass (FIXME(62277): could be check-pass?)
 
 struct LoadedObject {
     bodies: Vec<Body>,
@@ -34,4 +31,3 @@ fn convert(objects: Vec<LoadedObject>) -> (Vec<Body>, Vec<Graphic>) {
 }
 
 fn main() {}
-

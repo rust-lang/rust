@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 // Regression test for #35546. Check that we are able to codegen
 // this. Before we had problems because of the drop glue signature
@@ -6,11 +6,11 @@
 // `value` field of `Node<Send>`).
 
 struct Node<T: ?Sized + Send> {
-    next: Option<Box<Node<Send>>>,
+    next: Option<Box<Node<dyn Send>>>,
     value: T,
 }
 
-fn clear(head: &mut Option<Box<Node<Send>>>) {
+fn clear(head: &mut Option<Box<Node<dyn Send>>>) {
     match head.take() {
         Some(node) => *head = node.next,
         None => (),

@@ -3,7 +3,7 @@
 //! FIXME: this might be better as a "generic" fixed-point combinator,
 //! but is not as ugly as it is right now.
 
-use rustc::mir::{BasicBlock, Location};
+use rustc::mir::{BasicBlock, Local, Location};
 use rustc::ty::RegionVid;
 use rustc_data_structures::bit_set::BitIter;
 
@@ -11,39 +11,36 @@ use crate::borrow_check::location::LocationIndex;
 
 use polonius_engine::Output;
 
-use crate::dataflow::move_paths::indexes::BorrowIndex;
+use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::HasMoveData;
 use crate::dataflow::Borrows;
 use crate::dataflow::EverInitializedPlaces;
-use crate::dataflow::{FlowAtLocation, FlowsAtLocation};
 use crate::dataflow::MaybeUninitializedPlaces;
+use crate::dataflow::{FlowAtLocation, FlowsAtLocation};
 use either::Either;
 use std::fmt;
 use std::rc::Rc;
 
+crate type PoloniusOutput = Output<RegionVid, BorrowIndex, LocationIndex, Local>;
+
 // (forced to be `pub` due to its use as an associated type below.)
-crate struct Flows<'b, 'gcx: 'tcx, 'tcx: 'b> {
-    borrows: FlowAtLocation<'tcx, Borrows<'b, 'gcx, 'tcx>>,
-    pub uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
-    pub ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'gcx, 'tcx>>,
+crate struct Flows<'b, 'tcx> {
+    borrows: FlowAtLocation<'tcx, Borrows<'b, 'tcx>>,
+    pub uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'tcx>>,
+    pub ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'tcx>>,
 
     /// Polonius Output
-    pub polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
+    pub polonius_output: Option<Rc<PoloniusOutput>>,
 }
 
-impl<'b, 'gcx, 'tcx> Flows<'b, 'gcx, 'tcx> {
+impl<'b, 'tcx> Flows<'b, 'tcx> {
     crate fn new(
-        borrows: FlowAtLocation<'tcx, Borrows<'b, 'gcx, 'tcx>>,
-        uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'gcx, 'tcx>>,
-        ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'gcx, 'tcx>>,
-        polonius_output: Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex>>>,
+        borrows: FlowAtLocation<'tcx, Borrows<'b, 'tcx>>,
+        uninits: FlowAtLocation<'tcx, MaybeUninitializedPlaces<'b, 'tcx>>,
+        ever_inits: FlowAtLocation<'tcx, EverInitializedPlaces<'b, 'tcx>>,
+        polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> Self {
-        Flows {
-            borrows,
-            uninits,
-            ever_inits,
-            polonius_output,
-        }
+        Flows { borrows, uninits, ever_inits, polonius_output }
     }
 
     crate fn borrows_in_scope(
@@ -70,7 +67,7 @@ macro_rules! each_flow {
     };
 }
 
-impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
+impl<'b, 'tcx> FlowsAtLocation for Flows<'b, 'tcx> {
     fn reset_to_entry_of(&mut self, bb: BasicBlock) {
         each_flow!(self, reset_to_entry_of(bb));
     }
@@ -92,7 +89,7 @@ impl<'b, 'gcx, 'tcx> FlowsAtLocation for Flows<'b, 'gcx, 'tcx> {
     }
 }
 
-impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
+impl<'b, 'tcx> fmt::Display for Flows<'b, 'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
 

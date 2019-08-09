@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-early-bound-error-method.rs:20:9
+   |
+LL | impl<'a> Box<'a> {
+   |      -- lifetime `'a` defined here
+LL |     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {
+   |           -- lifetime `'b` defined here
+LL |         g2.get()
+   |         ^^^^^^^^ returning this value requires that `'b` must outlive `'a`
+
+error: aborting due to previous error
+

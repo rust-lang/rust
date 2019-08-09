@@ -14,15 +14,15 @@ LL | fn take_param<T:Foo>(foo: &T) { }
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/kindck-inherited-copy-bound.rs:24:19
    |
-LL |     let z = &x as &Foo;
-   |                   ^^^^ the trait `Foo` cannot be made into an object
+LL |     let z = &x as &dyn Foo;
+   |                   ^^^^^^^^ the trait `Foo` cannot be made into an object
    |
    = note: the trait cannot require that `Self : Sized`
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/kindck-inherited-copy-bound.rs:24:13
    |
-LL |     let z = &x as &Foo;
+LL |     let z = &x as &dyn Foo;
    |             ^^ the trait `Foo` cannot be made into an object
    |
    = note: the trait cannot require that `Self : Sized`
@@ -30,5 +30,5 @@ LL |     let z = &x as &Foo;
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0038, E0277.
+Some errors have detailed explanations: E0038, E0277.
 For more information about an error, try `rustc --explain E0038`.

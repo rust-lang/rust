@@ -59,7 +59,7 @@ pub struct Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.repr, f)
     }
 }
@@ -413,7 +413,7 @@ impl Error {
     /// }
     ///
     /// impl Display for MyError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         write!(f, "MyError: {}", &self.v)
     ///     }
     /// }
@@ -512,7 +512,7 @@ impl Error {
 }
 
 impl fmt::Debug for Repr {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             Repr::Os(code) =>
                 fmt.debug_struct("Os")
@@ -527,7 +527,7 @@ impl fmt::Debug for Repr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr {
             Repr::Os(code) => {
                 let detail = sys::os::error_string(code);
@@ -612,7 +612,7 @@ mod test {
         struct TestError;
 
         impl fmt::Display for TestError {
-            fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
                 Ok(())
             }
         }

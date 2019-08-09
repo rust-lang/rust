@@ -1,8 +1,8 @@
-error[E0433]: failed to resolve: maybe a missing `extern crate bad;`?
+error[E0433]: failed to resolve: maybe a missing crate `bad`?
   --> $DIR/test.rs:50:12
    |
 LL |     pub(in bad::path) mod m1 {}
-   |            ^^^ maybe a missing `extern crate bad;`?
+   |            ^^^ maybe a missing crate `bad`?
 
 error: visibilities can only be restricted to ancestor modules
   --> $DIR/test.rs:51:12
@@ -78,5 +78,5 @@ LL |     u.h();
 
 error: aborting due to 12 previous errors
 
-Some errors occurred: E0364, E0433, E0603, E0616, E0624.
+Some errors have detailed explanations: E0364, E0433, E0603, E0616, E0624.
 For more information about an error, try `rustc --explain E0364`.

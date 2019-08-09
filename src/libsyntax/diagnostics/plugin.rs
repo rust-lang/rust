@@ -4,10 +4,9 @@ use std::env;
 use crate::ast::{self, Ident, Name};
 use crate::source_map;
 use crate::ext::base::{ExtCtxt, MacEager, MacResult};
-use crate::ext::build::AstBuilder;
-use crate::parse::token;
+use crate::parse::token::{self, Token};
 use crate::ptr::P;
-use crate::symbol::{keywords, Symbol};
+use crate::symbol::kw;
 use crate::tokenstream::{TokenTree};
 
 use smallvec::smallvec;
@@ -33,13 +32,15 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                    span: Span,
                                    token_tree: &[TokenTree])
                                    -> Box<dyn MacResult+'cx> {
-    let code = match (token_tree.len(), token_tree.get(0)) {
-        (1, Some(&TokenTree::Token(_, token::Ident(code, _)))) => code,
+    let code = match token_tree {
+        [
+            TokenTree::Token(Token { kind: token::Ident(code, _), .. })
+        ] => code,
         _ => unreachable!()
     };
 
     ecx.parse_sess.registered_diagnostics.with_lock(|diagnostics| {
-        match diagnostics.get_mut(&code.name) {
+        match diagnostics.get_mut(&code) {
             // Previously used errors.
             Some(&mut ErrorInfo { description: _, use_site: Some(previous_span) }) => {
                 ecx.struct_span_warn(span, &format!(
@@ -66,20 +67,19 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                        span: Span,
                                        token_tree: &[TokenTree])
                                        -> Box<dyn MacResult+'cx> {
-    let (code, description) = match (
-        token_tree.len(),
-        token_tree.get(0),
-        token_tree.get(1),
-        token_tree.get(2)
-    ) {
-        (1, Some(&TokenTree::Token(_, token::Ident(ref code, _))), None, None) => {
-            (code, None)
+    let (code, description) = match  token_tree {
+        [
+            TokenTree::Token(Token { kind: token::Ident(code, _), .. })
+        ] => {
+            (*code, None)
         },
-        (3, Some(&TokenTree::Token(_, token::Ident(ref code, _))),
-            Some(&TokenTree::Token(_, token::Comma)),
-            Some(&TokenTree::Token(_, token::Literal(token::StrRaw(description, _), None)))) => {
-            (code, Some(description))
-        }
+        [
+            TokenTree::Token(Token { kind: token::Ident(code, _), .. }),
+            TokenTree::Token(Token { kind: token::Comma, .. }),
+            TokenTree::Token(Token { kind: token::Literal(token::Lit { symbol, .. }), ..})
+        ] => {
+            (*code, Some(*symbol))
+        },
         _ => unreachable!()
     };
 
@@ -112,41 +112,28 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt<'_>,
             description,
             use_site: None
         };
-        if diagnostics.insert(code.name, info).is_some() {
+        if diagnostics.insert(code, info).is_some() {
             ecx.span_err(span, &format!(
                 "diagnostic code {} already registered", code
             ));
         }
     });
 
-    let span = span.apply_mark(ecx.current_expansion.mark);
-
-    let sym = Ident::new(Symbol::gensym(&format!("__register_diagnostic_{}", code)), span);
-
-    MacEager::items(smallvec![
-        ecx.item_mod(
-            span,
-            span,
-            sym,
-            vec![],
-            vec![],
-        )
-    ])
+    MacEager::items(smallvec![])
 }
 
-#[allow(deprecated)]
 pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                           span: Span,
                                           token_tree: &[TokenTree])
                                           -> Box<dyn MacResult+'cx> {
     assert_eq!(token_tree.len(), 3);
-    let (crate_name, name) = match (&token_tree[0], &token_tree[2]) {
+    let (crate_name, ident) = match (&token_tree[0], &token_tree[2]) {
         (
             // Crate name.
-            &TokenTree::Token(_, token::Ident(ref crate_name, _)),
+            &TokenTree::Token(Token { kind: token::Ident(crate_name, _), .. }),
             // DIAGNOSTICS ident.
-            &TokenTree::Token(_, token::Ident(ref name, _))
-        ) => (*&crate_name, name),
+            &TokenTree::Token(Token { kind: token::Ident(name, _), span })
+        ) => (crate_name, Ident::new(name, span)),
         _ => unreachable!()
     };
 
@@ -160,7 +147,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                 ecx.span_bug(span, &format!(
                     "error writing metadata for triple `{}` and crate `{}`, error: {}, \
                      cause: {:?}",
-                    target_triple, crate_name, e.description(), e.cause()
+                    target_triple, crate_name, e.description(), e.source()
                 ));
             }
         });
@@ -185,7 +172,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
             (descriptions.len(), ecx.expr_vec(span, descriptions))
         });
 
-    let static_ = ecx.lifetime(span, keywords::StaticLifetime.ident());
+    let static_ = ecx.lifetime(span, Ident::with_empty_ctxt(kw::StaticLifetime));
     let ty_str = ecx.ty_rptr(
         span,
         ecx.ty_ident(span, ecx.ident_of("str")),
@@ -209,7 +196,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
 
     MacEager::items(smallvec![
         P(ast::Item {
-            ident: *name,
+            ident,
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
             node: ast::ItemKind::Const(

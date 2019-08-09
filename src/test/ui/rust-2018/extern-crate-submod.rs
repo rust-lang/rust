@@ -23,4 +23,3 @@ use m::edition_lint_paths::foo;
 fn main() {
     foo();
 }
-

@@ -1,0 +1,16 @@
+error: lifetime may not live long enough
+  --> $DIR/hr-subtype.rs:39:13
+   |
+LL |           fn supertype<'x,'y:'x,'z:'y>() {
+   |                        -- -- lifetime `'y` defined here
+   |                        |
+   |                        lifetime `'x` defined here
+LL |               gimme::<$t1>(None::<$t2>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'x` must outlive `'y`
+...
+LL | / check! { free_x_vs_free_y: (fn(&'x u32),
+LL | |                             fn(&'y u32)) }
+   | |__________________________________________- in this macro invocation
+
+error: aborting due to previous error
+

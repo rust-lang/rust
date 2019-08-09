@@ -1,0 +1,207 @@
+# FIXME(linux): need to configure core dumps, enable them, and then dump
+# backtraces on failure from all core dumps:
+#
+# - bash: sudo apt install gdb
+# - bash: sudo sh -c 'echo "/checkout/obj/cores/core.%p.%E" > /proc/sys/kernel/core_pattern'
+#
+# Check travis config for `gdb --batch` command to print all crash logs
+
+parameters:
+  # When this parameter is set to anything other than an empty string the tests
+  # will only be executed when the commit updates submodules
+  only_on_updated_submodules: ''
+
+steps:
+
+# Disable automatic line ending conversion, which is enabled by default on
+# Azure's Windows image. Having the conversion enabled caused regressions both
+# in our test suite (it broke miri tests) and in the ecosystem, since we
+# started shipping install scripts with CRLF endings instead of the old LF.
+#
+# Note that we do this a couple times during the build as the PATH and current
+# user/directory change, e.g. when mingw is enabled.
+- bash: git config --global core.autocrlf false
+  displayName: "Disable git automatic line ending conversion"
+
+- checkout: self
+  fetchDepth: 2
+
+# Set the SKIP_JOB environment variable if this job is supposed to only run
+# when submodules are updated and they were not. The following time consuming
+# tasks will be skipped when the environment variable is present.
+- ${{ if parameters.only_on_updated_submodules }}:
+  - bash: |
+      set -e
+      # Submodules pseudo-files inside git have the 160000 permissions, so when
+      # those files are present in the diff a submodule was updated.
+      if git diff HEAD^ | grep "^index .* 160000" >/dev/null 2>&1; then
+          echo "Executing the job since submodules are updated"
+      else
+          echo "Not executing this job since no submodules were updated"
+          echo "##vso[task.setvariable variable=SKIP_JOB;]1"
+      fi
+    displayName: Decide whether to run this job
+
+# Spawn a background process to collect CPU usage statistics which we'll upload
+# at the end of the build. See the comments in the script here for more
+# information.
+- bash: python src/ci/cpu-usage-over-time.py &> cpu-usage.csv &
+  displayName: "Collect CPU-usage statistics in the background"
+
+- bash: printenv | sort
+  displayName: Show environment variables
+
+- bash: |
+    set -e
+    df -h
+    du . | sort -nr | head -n100
+  displayName: Show disk usage
+  # FIXME: this hasn't been tested, but maybe it works on Windows? Should test!
+  condition: and(succeeded(), ne(variables['Agent.OS'], 'Windows_NT'))
+
+- template: install-sccache.yml
+- template: install-clang.yml
+
+# Switch to XCode 9.3 on OSX since it seems to be the last version that supports
+# i686-apple-darwin. We'll eventually want to upgrade this and it will probably
+# force us to drop i686-apple-darwin, but let's keep the wheels turning for now.
+- bash: |
+    set -e
+    sudo xcode-select --switch /Applications/Xcode_9.3.app
+  displayName: Switch to Xcode 9.3 (OSX)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+
+- template: install-windows-build-deps.yml
+
+# Looks like docker containers have IPv6 disabled by default, so let's turn it
+# on since libstd tests require it
+- bash: |
+    set -e
+    sudo mkdir -p /etc/docker
+    echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
+    sudo service docker restart
+  displayName: Enable IPv6
+  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Linux'))
+
+# Disable automatic line ending conversion (again). On Windows, when we're
+# installing dependencies, something switches the git configuration directory or
+# re-enables autocrlf. We've not tracked down the exact cause -- and there may
+# be multiple -- but this should ensure submodules are checked out with the
+# appropriate line endings.
+- bash: git config --replace-all --global core.autocrlf false
+  displayName: "Disable git automatic line ending conversion"
+
+# Check out all our submodules, but more quickly than using git by using one of
+# our custom scripts
+- bash: |
+    set -e
+    mkdir -p $HOME/rustsrc
+    $BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc
+  condition: and(succeeded(), not(variables.SKIP_JOB), ne(variables['Agent.OS'], 'Windows_NT'))
+  displayName: Check out submodules (Unix)
+- script: |
+    if not exist C:\cache\rustsrc\NUL mkdir C:\cache\rustsrc
+    sh src/ci/init_repo.sh . /c/cache/rustsrc
+  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['Agent.OS'], 'Windows_NT'))
+  displayName: Check out submodules (Windows)
+
+# See also the disable for autocrlf above, this just checks that it worked
+#
+# We check both in rust-lang/rust and in a submodule to make sure both are
+# accurate. Submodules are checked out significantly later than the main
+# repository in this script, so settings can (and do!) change between then.
+#
+# Linux (and maybe macOS) builders don't currently have dos2unix so just only
+# run this step on Windows.
+- bash: |
+    set -x
+    # print out the git configuration so we can better investigate failures in
+    # the following
+    git config --list --show-origin
+    dos2unix -ih Cargo.lock src/tools/rust-installer/install-template.sh
+    endings=$(dos2unix -ic Cargo.lock src/tools/rust-installer/install-template.sh)
+    # if endings has non-zero length, error out
+    if [ -n "$endings" ]; then exit 1 ; fi
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+  displayName: Verify line endings are LF
+
+# Ensure the `aws` CLI is installed so we can deploy later on, cache docker
+# images, etc.
+- bash: src/ci/install-awscli.sh
+  env:
+    AGENT_OS: $(Agent.OS)
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+  displayName: Install awscli
+
+# Configure our CI_JOB_NAME variable which log analyzers can use for the main
+# step to see what's going on.
+- bash: |
+    builder=$(echo $AGENT_JOBNAME | cut -d ' ' -f 2)
+    echo "##vso[task.setvariable variable=CI_JOB_NAME]$builder"
+  displayName: Configure Job Name
+
+# As a quick smoke check on the otherwise very fast mingw-check linux builder
+# check our own internal scripts.
+- bash: |
+    set -e
+    git clone --depth=1 https://github.com/rust-lang-nursery/rust-toolstate.git
+    cd rust-toolstate
+    python2.7 "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "" ""
+    cd ..
+    rm -rf rust-toolstate
+  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['IMAGE'], 'mingw-check'))
+  displayName: Verify the publish_toolstate script works
+
+- bash: |
+    set -e
+    # Remove any preexisting rustup installation since it can interfere
+    # with the cargotest step and its auto-detection of things like Clippy in
+    # the environment
+    rustup self uninstall -y || true
+    if [ "$IMAGE" = "" ]; then
+      src/ci/run.sh
+    else
+      src/ci/docker/run.sh $IMAGE
+    fi
+  #timeoutInMinutes: 180
+  timeoutInMinutes: 600
+  env:
+    CI: true
+    SRC: .
+    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+    TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)
+  condition: and(succeeded(), not(variables.SKIP_JOB))
+  displayName: Run build
+
+# If we're a deploy builder, use the `aws` command to publish everything to our
+# bucket.
+- bash: |
+    set -e
+    source src/ci/shared.sh
+    if [ "$AGENT_OS" = "Linux" ]; then
+        rm -rf obj/build/dist/doc
+        upload_dir=obj/build/dist
+    else
+        rm -rf build/dist/doc
+        upload_dir=build/dist
+    fi
+    ls -la $upload_dir
+    deploy_dir=rustc-builds
+    if [ "$DEPLOY_ALT" == "1" ]; then
+        deploy_dir=rustc-builds-alt
+    fi
+    retry aws s3 cp --no-progress --recursive --acl public-read ./$upload_dir s3://$DEPLOY_BUCKET/$deploy_dir/$BUILD_SOURCEVERSION
+  env:
+    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+  condition: and(succeeded(), not(variables.SKIP_JOB), or(eq(variables.DEPLOY, '1'), eq(variables.DEPLOY_ALT, '1')))
+  displayName: Upload artifacts
+
+# Upload CPU usage statistics that we've been gathering this whole time. Always
+# execute this step in case we want to inspect failed builds, but don't let
+# errors here ever fail the build since this is just informational.
+- bash: aws s3 cp --acl public-read cpu-usage.csv s3://$DEPLOY_BUCKET/rustc-builds/$BUILD_SOURCEVERSION/cpu-$SYSTEM_JOBNAME.csv
+  env:
+    AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+  condition: variables['AWS_SECRET_ACCESS_KEY']
+  continueOnError: true
+  displayName: Upload CPU usage statistics

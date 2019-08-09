@@ -1,16 +1,16 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/union_promotion.rs:9:29
    |
 LL |       let x: &'static bool = &unsafe {
-   |  _____________________________^
+   |  ____________-------------____^
+   | |            |
+   | |            type annotation requires that borrow lasts for `'static`
 LL | |         Foo { a: &1 }.b == Foo { a: &2 }.b
 LL | |     };
-   | |_____^ temporary value does not live long enough
+   | |_____^ creates a temporary which is freed while still in use
 LL |   }
-   |   - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |   - temporary value is freed at the end of this statement
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

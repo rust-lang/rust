@@ -1,7 +1,5 @@
 // Check that we handle multiple closures in the same promoted constant.
 
-#![feature(nll)]
-
 fn foo() -> &'static i32 {
     let z = 0;
     let p = &(|y| y, |y| y);

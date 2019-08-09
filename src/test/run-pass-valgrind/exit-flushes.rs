@@ -1,6 +1,7 @@
 // no-prefer-dynamic
 // ignore-cloudabi
 // ignore-emscripten
+// ignore-sgx no processes
 // ignore-macos this needs valgrind 3.11 or higher; see
 // https://github.com/rust-lang/rust/pull/30365#issuecomment-165763679
 

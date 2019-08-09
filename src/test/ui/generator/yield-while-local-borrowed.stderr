@@ -1,39 +1,21 @@
-error[E0626]: borrow may still be in use when generator yields (Ast)
-  --> $DIR/yield-while-local-borrowed.rs:15:22
-   |
-LL |         let a = &mut 3;
-   |                      ^
-...
-LL |         yield();
-   |         ------- possible yield occurs here
-
-error[E0626]: borrow may still be in use when generator yields (Ast)
-  --> $DIR/yield-while-local-borrowed.rs:43:22
-   |
-LL |             let b = &a;
-   |                      ^
-...
-LL |             yield();
-   |             ------- possible yield occurs here
-
-error[E0626]: borrow may still be in use when generator yields (Mir)
-  --> $DIR/yield-while-local-borrowed.rs:15:17
+error[E0626]: borrow may still be in use when generator yields
+  --> $DIR/yield-while-local-borrowed.rs:13:17
    |
 LL |         let a = &mut 3;
    |                 ^^^^^^
-...
+LL |
 LL |         yield();
    |         ------- possible yield occurs here
 
-error[E0626]: borrow may still be in use when generator yields (Mir)
-  --> $DIR/yield-while-local-borrowed.rs:43:21
+error[E0626]: borrow may still be in use when generator yields
+  --> $DIR/yield-while-local-borrowed.rs:40:21
    |
 LL |             let b = &a;
    |                     ^^
-...
+LL |
 LL |             yield();
    |             ------- possible yield occurs here
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0626`.

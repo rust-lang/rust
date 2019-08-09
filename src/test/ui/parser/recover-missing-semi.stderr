@@ -1,0 +1,39 @@
+error: expected one of `.`, `;`, `?`, or an operator, found `let`
+  --> $DIR/recover-missing-semi.rs:4:5
+   |
+LL |     let _: usize = ()
+   |                      - help: a semicolon may be missing here
+LL |
+LL |     let _ = 3;
+   |     ^^^
+
+error: expected one of `.`, `;`, `?`, or an operator, found `return`
+  --> $DIR/recover-missing-semi.rs:11:5
+   |
+LL |     let _: usize = ()
+   |                      - help: a semicolon may be missing here
+LL |
+LL |     return 3;
+   |     ^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/recover-missing-semi.rs:2:20
+   |
+LL |     let _: usize = ()
+   |                    ^^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-missing-semi.rs:9:20
+   |
+LL |     let _: usize = ()
+   |                    ^^ expected usize, found ()
+   |
+   = note: expected type `usize`
+              found type `()`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

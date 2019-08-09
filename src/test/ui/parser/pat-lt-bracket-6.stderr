@@ -1,8 +1,28 @@
 error: expected one of `)`, `,`, or `@`, found `[`
-  --> $DIR/pat-lt-bracket-6.rs:2:19
+  --> $DIR/pat-lt-bracket-6.rs:5:19
    |
 LL |     let Test(&desc[..]) = x;
    |                   ^ expected one of `)`, `,`, or `@` here
 
-error: aborting due to previous error
+error[E0658]: subslice patterns are unstable
+  --> $DIR/pat-lt-bracket-6.rs:5:20
+   |
+LL |     let Test(&desc[..]) = x;
+   |                    ^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/62254
+   = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
+error[E0308]: mismatched types
+  --> $DIR/pat-lt-bracket-6.rs:9:30
+   |
+LL | const RECOVERY_WITNESS: () = 0;
+   |                              ^ expected (), found integer
+   |
+   = note: expected type `()`
+              found type `{integer}`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

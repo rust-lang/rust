@@ -14,6 +14,6 @@ impl ::std::fmt::Write for Stream {
 
 fn main() {
     write(|| format_args!("{}", String::from("Hello world")));
-    //~^ ERROR borrowed value does not live long enough
-    //~| ERROR borrowed value does not live long enough
+    //~^ ERROR cannot return value referencing temporary value
+    //~| ERROR cannot return value referencing temporary value
 }

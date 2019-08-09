@@ -7,4 +7,3 @@ fn fail() -> ! {
 
 fn main() {
 }
-

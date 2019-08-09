@@ -32,6 +32,7 @@ impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
 /// from any borrow of a given type.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToOwned {
+    /// The resulting type after obtaining ownership.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Owned: Borrow<Self>;
 
@@ -135,7 +136,7 @@ impl<T> ToOwned for T
 /// Another example showing how to keep `Cow` in a struct:
 ///
 /// ```
-/// use std::borrow::{Cow, ToOwned};
+/// use std::borrow::Cow;
 ///
 /// struct Items<'a, X: 'a> where [X]: ToOwned<Owned = Vec<X>> {
 ///     values: Cow<'a, [X]>,

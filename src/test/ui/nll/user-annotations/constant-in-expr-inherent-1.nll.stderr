@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/constant-in-expr-inherent-1.rs:8:5
+   |
+LL | fn foo<'a>(_: &'a u32) -> &'static u32 {
+   |        -- lifetime `'a` defined here
+LL |     <Foo<'a>>::C
+   |     ^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+

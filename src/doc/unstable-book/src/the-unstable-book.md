@@ -14,7 +14,7 @@ fn main() {
 
 The `box_syntax` feature [has a chapter][box] describing how to use it.
 
-[box]: language-features/box-syntax.html
+[box]: language-features/box-syntax.md
 
 Because this documentation relates to unstable features, we make no guarantees
 that what is contained here is accurate or up to date. It's developed on a

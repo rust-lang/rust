@@ -1,18 +1,16 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-17545.rs:7:10
    |
-LL |         &id(()),
-   |          ^^^^^^ temporary value does not live long enough
-LL |     ));
-   |       - temporary value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 5:12...
-  --> $DIR/issue-17545.rs:5:12
-   |
-LL | pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
-   |            ^^
-   = note: consider using a `let` binding to increase its lifetime
+LL |   pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
+   |              -- lifetime `'a` defined here
+LL | /     bar.call((
+LL | |         &id(()),
+   | |          ^^^^^^ creates a temporary which is freed while still in use
+LL | |     ));
+   | |      -- temporary value is freed at the end of this statement
+   | |______|
+   |        argument requires that borrow lasts for `'a`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

@@ -64,7 +64,7 @@ RUN env \
     env \
     CC=arm-linux-gnueabihf-gcc CFLAGS="-march=armv7-a" \
     CXX=arm-linux-gnueabihf-g++ CXXFLAGS="-march=armv7-a" \
-    bash musl.sh armv7 && \
+    bash musl.sh armv7hf && \
     env \
     CC=aarch64-linux-gnu-gcc \
     CXX=aarch64-linux-gnu-g++ \
@@ -104,12 +104,17 @@ ENV TARGETS=$TARGETS,armv5te-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
-ENV TARGETS=$TARGETS,x86_64-unknown-redox
+# FIXME: temporarily disable the redox builder,
+# see: https://github.com/rust-lang/rust/issues/63160
+# ENV TARGETS=$TARGETS,x86_64-unknown-redox
 ENV TARGETS=$TARGETS,thumbv6m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
+ENV TARGETS=$TARGETS,thumbv8m.base-none-eabi
 ENV TARGETS=$TARGETS,thumbv8m.main-none-eabi
+ENV TARGETS=$TARGETS,thumbv8m.main-none-eabihf
+ENV TARGETS=$TARGETS,riscv32i-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64imac-unknown-none-elf
@@ -124,7 +129,6 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
-    CC_armebv7r_none_eabi=arm-none-eabi-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
     AR_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
     CXX_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
@@ -133,7 +137,7 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
-      --musl-root-armv7=/musl-armv7 \
+      --musl-root-armv7hf=/musl-armv7hf \
       --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \

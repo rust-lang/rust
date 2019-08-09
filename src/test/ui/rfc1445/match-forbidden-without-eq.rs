@@ -20,6 +20,8 @@ fn main() {
         f32::INFINITY => { }
         //~^ WARNING floating-point types cannot be used in patterns
         //~| WARNING will become a hard error in a future release
+        //~| WARNING floating-point types cannot be used in patterns
+        //~| WARNING this was previously accepted by the compiler but is being phased out
         _ => { }
     }
 }

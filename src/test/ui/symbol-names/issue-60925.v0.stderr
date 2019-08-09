@@ -1,0 +1,20 @@
+error: symbol-name(_RNvMNtCs4fqI2P2rA04_11issue_609253fooINtB2_3FooNtNtB4_4llvm3FooE3foo)
+  --> $DIR/issue-60925.rs:21:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<issue_60925[317d481089b8c8fe]::foo::Foo<issue_60925[317d481089b8c8fe]::llvm::Foo>>::foo)
+  --> $DIR/issue-60925.rs:21:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<issue_60925::foo::Foo<issue_60925::llvm::Foo>>::foo)
+  --> $DIR/issue-60925.rs:21:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

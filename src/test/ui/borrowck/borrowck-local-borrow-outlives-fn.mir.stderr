@@ -1,9 +1,0 @@
-error[E0515]: cannot return reference to function parameter `x`
-  --> $DIR/borrowck-local-borrow-outlives-fn.rs:5:5
-   |
-LL |     &x
-   |     ^^ returns a reference to data owned by the current function
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0515`.

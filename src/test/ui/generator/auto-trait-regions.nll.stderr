@@ -1,0 +1,41 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/auto-trait-regions.rs:44:24
+   |
+LL |         let a = A(&mut true, &mut true, No);
+   |                        ^^^^                - temporary value is freed at the end of this statement
+   |                        |
+   |                        creates a temporary which is freed while still in use
+LL |         yield;
+LL |         assert_foo(a);
+   |                    - borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/auto-trait-regions.rs:44:35
+   |
+LL |         let a = A(&mut true, &mut true, No);
+   |                                   ^^^^     - temporary value is freed at the end of this statement
+   |                                   |
+   |                                   creates a temporary which is freed while still in use
+LL |         yield;
+LL |         assert_foo(a);
+   |                    - borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error: higher-ranked subtype error
+  --> $DIR/auto-trait-regions.rs:30:5
+   |
+LL |     assert_foo(gen);
+   |     ^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/auto-trait-regions.rs:48:5
+   |
+LL |     assert_foo(gen);
+   |     ^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

@@ -23,9 +23,9 @@
 /// * Values of type `&T` are coerced to values of type `&U`
 /// * `T` implicitly implements all the (immutable) methods of the type `U`.
 ///
-/// For more details, visit [the chapter in *The Rust Programming Language*]
-/// [book] as well as the reference sections on [the dereference operator]
-/// [ref-deref-op], [method resolution] and [type coercions].
+/// For more details, visit [the chapter in *The Rust Programming Language*][book]
+/// as well as the reference sections on [the dereference operator][ref-deref-op],
+/// [method resolution] and [type coercions].
 ///
 /// [book]: ../../book/ch15-02-deref.html
 /// [`DerefMut`]: trait.DerefMut.html
@@ -49,7 +49,7 @@
 /// impl<T> Deref for DerefExample<T> {
 ///     type Target = T;
 ///
-///     fn deref(&self) -> &T {
+///     fn deref(&self) -> &Self::Target {
 ///         &self.value
 ///     }
 /// }
@@ -113,9 +113,9 @@ impl<T: ?Sized> Deref for &mut T {
 /// * Values of type `&mut T` are coerced to values of type `&mut U`
 /// * `T` implicitly implements all the (mutable) methods of the type `U`.
 ///
-/// For more details, visit [the chapter in *The Rust Programming Language*]
-/// [book] as well as the reference sections on [the dereference operator]
-/// [ref-deref-op], [method resolution] and [type coercions].
+/// For more details, visit [the chapter in *The Rust Programming Language*][book]
+/// as well as the reference sections on [the dereference operator][ref-deref-op],
+/// [method resolution] and [type coercions].
 ///
 /// [book]: ../../book/ch15-02-deref.html
 /// [`Deref`]: trait.Deref.html
@@ -139,13 +139,13 @@ impl<T: ?Sized> Deref for &mut T {
 /// impl<T> Deref for DerefMutExample<T> {
 ///     type Target = T;
 ///
-///     fn deref(&self) -> &T {
+///     fn deref(&self) -> &Self::Target {
 ///         &self.value
 ///     }
 /// }
 ///
 /// impl<T> DerefMut for DerefMutExample<T> {
-///     fn deref_mut(&mut self) -> &mut T {
+///     fn deref_mut(&mut self) -> &mut Self::Target {
 ///         &mut self.value
 ///     }
 /// }

@@ -10,7 +10,7 @@ use rustc_data_structures::indexed_vec::Idx;
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     type Output = Block<'tcx>;
 
-    fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Block<'tcx> {
+    fn make_mirror(self, cx: &mut Cx<'_, 'tcx>) -> Block<'tcx> {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.
         let stmts = mirror_stmts(cx, self.hir_id.local_id, &*self.stmts);
@@ -40,15 +40,15 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
     }
 }
 
-fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                block_id: hir::ItemLocalId,
-                                stmts: &'tcx [hir::Stmt])
-                                -> Vec<StmtRef<'tcx>> {
+fn mirror_stmts<'a, 'tcx>(
+    cx: &mut Cx<'a, 'tcx>,
+    block_id: hir::ItemLocalId,
+    stmts: &'tcx [hir::Stmt],
+) -> Vec<StmtRef<'tcx>> {
     let mut result = vec![];
     for (index, stmt) in stmts.iter().enumerate() {
         let hir_id = stmt.hir_id;
         let opt_dxn_ext = cx.region_scope_tree.opt_destruction_scope(hir_id.local_id);
-        let stmt_span = StatementSpan(cx.tcx.hir().span_by_hir_id(hir_id));
         match stmt.node {
             hir::StmtKind::Expr(ref expr) |
             hir::StmtKind::Semi(ref expr) => {
@@ -61,7 +61,6 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         expr: expr.to_ref(),
                     },
                     opt_destruction_scope: opt_dxn_ext,
-                    span: stmt_span,
                 })))
             }
             hir::StmtKind::Item(..) => {
@@ -106,7 +105,6 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         lint_level: LintLevel::Explicit(local.hir_id),
                     },
                     opt_destruction_scope: opt_dxn_ext,
-                    span: stmt_span,
                 })));
             }
         }
@@ -114,9 +112,10 @@ fn mirror_stmts<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     return result;
 }
 
-pub fn to_expr_ref<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                   block: &'tcx hir::Block)
-                                   -> ExprRef<'tcx> {
+pub fn to_expr_ref<'a, 'tcx>(
+    cx: &mut Cx<'a, 'tcx>,
+    block: &'tcx hir::Block,
+) -> ExprRef<'tcx> {
     let block_ty = cx.tables().node_type(block.hir_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(block.hir_id.local_id);
     let expr = Expr {

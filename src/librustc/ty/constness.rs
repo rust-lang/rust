@@ -2,35 +2,38 @@ use crate::ty::query::Providers;
 use crate::hir::def_id::DefId;
 use crate::hir;
 use crate::ty::TyCtxt;
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::{sym, Symbol};
 use crate::hir::map::blocks::FnLikeNode;
 use syntax::attr;
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Whether the `def_id` counts as const fn in your current crate, considering all active
     /// feature gates
     pub fn is_const_fn(self, def_id: DefId) -> bool {
-        self.is_const_fn_raw(def_id) && match self.lookup_stability(def_id) {
-            Some(stab) => match stab.const_stability {
+        self.is_const_fn_raw(def_id) && match self.is_unstable_const_fn(def_id) {
+            Some(feature_name) => {
                 // has a `rustc_const_unstable` attribute, check whether the user enabled the
-                // corresponding feature gate
-                Some(feature_name) => self.features()
+                // corresponding feature gate, const_constructor is not a lib feature, so has
+                // to be checked separately.
+                self.features()
                     .declared_lib_features
                     .iter()
-                    .any(|&(sym, _)| sym == feature_name),
-                // the function has no stability attribute, it is stable as const fn or the user
-                // needs to use feature gates to use the function at all
-                None => true,
+                    .any(|&(sym, _)| sym == feature_name)
+                    || (feature_name == sym::const_constructor
+                        && self.features().const_constructor)
             },
-            // functions without stability are either stable user written const fn or the user is
-            // using feature gates and we thus don't care what they do
+            // functions without const stability are either stable user written
+            // const fn or the user is using feature gates and we thus don't
+            // care what they do
             None => true,
         }
     }
 
     /// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
     pub fn is_unstable_const_fn(self, def_id: DefId) -> Option<Symbol> {
-        if self.is_const_fn_raw(def_id) {
+        if self.is_constructor(def_id) {
+            Some(sym::const_constructor)
+        } else if self.is_const_fn_raw(def_id) {
             self.lookup_stability(def_id)?.const_stability
         } else {
             None
@@ -64,20 +67,23 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 }
 
 
-pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
+pub fn provide(providers: &mut Providers<'_>) {
     /// only checks whether the function has a `const` modifier
-    fn is_const_fn_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    fn is_const_fn_raw(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         let hir_id = tcx.hir().as_local_hir_id(def_id)
                               .expect("Non-local call to local provider is_const_fn");
 
-        if let Some(fn_like) = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)) {
+        let node = tcx.hir().get(hir_id);
+        if let Some(fn_like) = FnLikeNode::from_node(node) {
             fn_like.constness() == hir::Constness::Const
+        } else if let hir::Node::Ctor(_) = node {
+            true
         } else {
             false
         }
     }
 
-    fn is_promotable_const_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         tcx.is_const_fn(def_id) && match tcx.lookup_stability(def_id) {
             Some(stab) => {
                 if cfg!(debug_assertions) && stab.promotable {
@@ -95,9 +101,16 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         }
     }
 
+    fn const_fn_is_allowed_fn_ptr(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+        tcx.is_const_fn(def_id) &&
+            tcx.lookup_stability(def_id)
+                .map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)
+    }
+
     *providers = Providers {
         is_const_fn_raw,
         is_promotable_const_fn,
+        const_fn_is_allowed_fn_ptr,
         ..*providers
     };
 }

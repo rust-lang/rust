@@ -95,13 +95,10 @@ fn f() {
     b1.a[1].v.set(Some(&b3));
     //~^ ERROR `b3` does not live long enough
     b2.a[0].v.set(Some(&b2));
-    //~^ ERROR `b2` does not live long enough
     b2.a[1].v.set(Some(&b3));
-    //~^ ERROR `b3` does not live long enough
     b3.a[0].v.set(Some(&b1));
     //~^ ERROR `b1` does not live long enough
     b3.a[1].v.set(Some(&b2));
-    //~^ ERROR `b2` does not live long enough
 }
 
 fn main() {

@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-addr-of-self.rs:7:16
+   |
+LL |     pub fn chase_cat(&mut self) {
+   |                      - let's call the lifetime of this reference `'1`
+LL |         let p: &'static mut usize = &mut self.cats_chased;
+   |                ^^^^^^^^^^^^^^^^^^ type annotation requires that `'1` must outlive `'static`
+
+error: aborting due to previous error
+

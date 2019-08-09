@@ -4,10 +4,7 @@ error[E0252]: the name `X` is defined multiple times
 LL |     pub use self::bar::X;
    |             ------------ previous import of the type `X` here
 LL |     use self::bar::X;
-   |     ----^^^^^^^^^^^^-
-   |     |   |
-   |     |   `X` reimported here
-   |     help: remove unnecessary import
+   |         ^^^^^^^^^^^^ `X` reimported here
    |
    = note: `X` must be defined only once in the type namespace of this module
 

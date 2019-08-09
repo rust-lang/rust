@@ -12,5 +12,5 @@ LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!()
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0433, E0603.
+Some errors have detailed explanations: E0433, E0603.
 For more information about an error, try `rustc --explain E0433`.

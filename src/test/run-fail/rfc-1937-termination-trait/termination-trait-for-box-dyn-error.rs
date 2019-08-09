@@ -1,4 +1,4 @@
-// compile-pass
+// error-pattern:returned Box<dyn Error> from main()
 // failure-status: 1
 
 use std::error::Error;

@@ -16,7 +16,7 @@ error[E0503]: cannot use `i` because it was mutably borrowed
 LL |     /*1*/ let p = &mut i; // (reservation of `i` starts here)
    |                   ------ borrow of `i` occurs here
 ...
-LL |     /*4*/ let k = i;      //[nll_beyond]~  ERROR cannot use `i` because it was mutably borrowed [E0503]
+LL |     /*4*/ let k = i;
    |                   ^ use of borrowed `i`
 ...
 LL |     /*5*/ *p += 1;

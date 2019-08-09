@@ -1,6 +1,7 @@
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::ToRegionVid;
-use rustc::mir::{Local, Mir};
+use crate::borrow_check::Upvar;
+use rustc::mir::{Local, Body};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::source_map::Span;
@@ -9,8 +10,9 @@ use syntax_pos::symbol::Symbol;
 impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn get_var_name_and_span_for_region(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        body: &Body<'tcx>,
+        upvars: &[Upvar],
         fr: RegionVid,
     ) -> Option<(Option<Symbol>, Span)> {
         debug!("get_var_name_and_span_for_region(fr={:?})", fr);
@@ -19,22 +21,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("get_var_name_and_span_for_region: attempting upvar");
         self.get_upvar_index_for_region(tcx, fr)
             .map(|index| {
-                let (name, span) = self.get_upvar_name_and_span_for_region(tcx, mir, index);
+                let (name, span) =
+                    self.get_upvar_name_and_span_for_region(tcx, upvars, index);
                 (Some(name), span)
             })
             .or_else(|| {
                 debug!("get_var_name_and_span_for_region: attempting argument");
                 self.get_argument_index_for_region(tcx, fr)
-                    .map(|index| self.get_argument_name_and_span_for_region(mir, index))
+                    .map(|index| self.get_argument_name_and_span_for_region(body, index))
             })
     }
 
     /// Search the upvars (if any) to find one that references fr. Return its index.
-    crate fn get_upvar_index_for_region(
-        &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        fr: RegionVid,
-    ) -> Option<usize> {
+    crate fn get_upvar_index_for_region(&self, tcx: TyCtxt<'tcx>, fr: RegionVid) -> Option<usize> {
         let upvar_index = self
             .universal_regions
             .defining_ty
@@ -66,15 +65,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// declared.
     crate fn get_upvar_name_and_span_for_region(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        upvars: &[Upvar],
         upvar_index: usize,
     ) -> (Symbol, Span) {
-        let upvar_hir_id = mir.upvar_decls[upvar_index].var_hir_id.assert_crate_local();
+        let upvar_hir_id = upvars[upvar_index].var_hir_id;
         debug!("get_upvar_name_and_span_for_region: upvar_hir_id={:?}", upvar_hir_id);
 
-        let upvar_name = tcx.hir().name_by_hir_id(upvar_hir_id);
-        let upvar_span = tcx.hir().span_by_hir_id(upvar_hir_id);
+        let upvar_name = tcx.hir().name(upvar_hir_id);
+        let upvar_span = tcx.hir().span(upvar_hir_id);
         debug!("get_upvar_name_and_span_for_region: upvar_name={:?} upvar_span={:?}",
                upvar_name, upvar_span);
 
@@ -88,7 +87,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// user - in particular, index 0 is not the implicit self parameter.
     crate fn get_argument_index_for_region(
         &self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         fr: RegionVid,
     ) -> Option<usize> {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
@@ -117,19 +116,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// declared.
     crate fn get_argument_name_and_span_for_region(
         &self,
-        mir: &Mir<'tcx>,
+        body: &Body<'tcx>,
         argument_index: usize,
     ) -> (Option<Symbol>, Span) {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
         let argument_local = Local::new(implicit_inputs + argument_index + 1);
         debug!("get_argument_name_and_span_for_region: argument_local={:?}", argument_local);
 
-        let argument_name = mir.local_decls[argument_local].name;
-        let argument_span = mir.local_decls[argument_local].source_info.span;
+        let argument_name = body.local_decls[argument_local].name;
+        let argument_span = body.local_decls[argument_local].source_info.span;
         debug!("get_argument_name_and_span_for_region: argument_name={:?} argument_span={:?}",
                argument_name, argument_span);
 
         (argument_name, argument_span)
     }
-
 }

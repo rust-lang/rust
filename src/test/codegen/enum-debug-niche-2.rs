@@ -4,7 +4,7 @@
 
 // ignore-tidy-linelength
 // ignore-windows
-// min-system-llvm-version 7.0
+// min-system-llvm-version 8.0
 
 // compile-flags: -g -C no-prepopulate-passes
 
@@ -13,7 +13,6 @@
 // CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "Error",{{.*}}extraData: i64 0{{[,)].*}}
 
 #![feature(never_type)]
-#![feature(nll)]
 
 #[derive(Copy, Clone)]
 pub struct Entity {

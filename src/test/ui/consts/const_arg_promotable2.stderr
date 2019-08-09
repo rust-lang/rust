@@ -1,0 +1,8 @@
+error: argument 1 is required to be a constant
+  --> $DIR/const_arg_promotable2.rs:8:5
+   |
+LL |     bar(a);
+   |     ^^^^^^
+
+error: aborting due to previous error
+

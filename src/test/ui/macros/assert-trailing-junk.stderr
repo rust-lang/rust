@@ -1,0 +1,60 @@
+error: expected one of `,`, `.`, `?`, or an operator, found `some`
+  --> $DIR/assert-trailing-junk.rs:6:18
+   |
+LL |     assert!(true some extra junk, "whatever");
+   |                  ^^^^ expected one of `,`, `.`, `?`, or an operator here
+
+error: expected one of `,`, `.`, `?`, or an operator, found `some`
+  --> $DIR/assert-trailing-junk.rs:9:18
+   |
+LL |     assert!(true some extra junk);
+   |                  ^^^^ expected one of `,`, `.`, `?`, or an operator here
+
+error: no rules expected the token `blah`
+  --> $DIR/assert-trailing-junk.rs:12:30
+   |
+LL |     assert!(true, "whatever" blah);
+   |                             -^^^^ no rules expected this token in macro call
+   |                             |
+   |                             help: missing comma here
+
+warning: unexpected string literal
+  --> $DIR/assert-trailing-junk.rs:15:18
+   |
+LL |     assert!(true "whatever" blah);
+   |                 -^^^^^^^^^^
+   |                 |
+   |                 help: try adding a comma
+   |
+   = note: this is going to be an error in the future
+
+error: no rules expected the token `blah`
+  --> $DIR/assert-trailing-junk.rs:15:29
+   |
+LL |     assert!(true "whatever" blah);
+   |                            -^^^^ no rules expected this token in macro call
+   |                            |
+   |                            help: missing comma here
+
+warning: macro requires an expression as an argument
+  --> $DIR/assert-trailing-junk.rs:19:5
+   |
+LL |     assert!(true;);
+   |     ^^^^^^^^^^^^-^^
+   |                 |
+   |                 help: try removing semicolon
+   |
+   = note: this is going to be an error in the future
+
+warning: unexpected string literal
+  --> $DIR/assert-trailing-junk.rs:22:27
+   |
+LL |     assert!(false || true "error message");
+   |                          -^^^^^^^^^^^^^^^
+   |                          |
+   |                          help: try adding a comma
+   |
+   = note: this is going to be an error in the future
+
+error: aborting due to 4 previous errors
+

@@ -2,10 +2,10 @@ error[E0026]: variant `MyOption::MySome` does not have a field named `x`
   --> $DIR/issue-17800.rs:8:28
    |
 LL |         MyOption::MySome { x: 42 } => (),
-   |                            ^^^^^
+   |                            ^
    |                            |
    |                            variant `MyOption::MySome` does not have this field
-   |                            help: did you mean: `0`
+   |                            help: a field with a similar name exists: `0`
 
 error: aborting due to previous error
 

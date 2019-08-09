@@ -94,7 +94,7 @@ use self::node_index::NodeIndex;
 mod graphviz;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub trait ForestObligation : Clone + Debug {
     type Predicate : Clone + hash::Hash + Eq + Debug;
@@ -263,7 +263,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             done_cache: Default::default(),
             waiting_cache: Default::default(),
             scratch: Some(vec![]),
-            obligation_tree_id_generator: (0..).map(|i| ObligationTreeId(i)),
+            obligation_tree_id_generator: (0..).map(ObligationTreeId),
             error_cache: Default::default(),
         }
     }

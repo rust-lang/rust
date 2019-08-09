@@ -1,6 +1,4 @@
-// compile-pass
-#![allow(dead_code)]
-#![feature(nll)]
+// build-pass (FIXME(62277): could be check-pass?)
 
 struct WithDrop;
 

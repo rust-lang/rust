@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 use std::borrow::Cow;
 use std::mem::size_of;
 use std::{usize, isize};
@@ -368,7 +366,6 @@ fn test_vec_truncate_drop() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_vec_truncate_fail() {
     struct BadElem(i32);
     impl Drop for BadElem {
@@ -392,7 +389,6 @@ fn test_index() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_index_out_of_bounds() {
     let vec = vec![1, 2, 3];
     let _ = vec[3];
@@ -400,7 +396,6 @@ fn test_index_out_of_bounds() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_slice_out_of_bounds_1() {
     let x = vec![1, 2, 3, 4, 5];
     &x[!0..];
@@ -408,7 +403,6 @@ fn test_slice_out_of_bounds_1() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_slice_out_of_bounds_2() {
     let x = vec![1, 2, 3, 4, 5];
     &x[..6];
@@ -416,7 +410,6 @@ fn test_slice_out_of_bounds_2() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_slice_out_of_bounds_3() {
     let x = vec![1, 2, 3, 4, 5];
     &x[!0..4];
@@ -424,7 +417,6 @@ fn test_slice_out_of_bounds_3() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_slice_out_of_bounds_4() {
     let x = vec![1, 2, 3, 4, 5];
     &x[1..6];
@@ -432,7 +424,6 @@ fn test_slice_out_of_bounds_4() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_slice_out_of_bounds_5() {
     let x = vec![1, 2, 3, 4, 5];
     &x[3..2];
@@ -440,7 +431,6 @@ fn test_slice_out_of_bounds_5() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_swap_remove_empty() {
     let mut vec = Vec::<i32>::new();
     vec.swap_remove(0);
@@ -511,7 +501,6 @@ fn test_drain_items_zero_sized() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_drain_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     v.drain(5..6);
@@ -585,7 +574,6 @@ fn test_drain_max_vec_size() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_drain_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     v.drain(5..=5);
@@ -615,7 +603,6 @@ fn test_splice_inclusive_range() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_splice_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
@@ -624,7 +611,6 @@ fn test_splice_out_of_bounds() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_splice_inclusive_out_of_bounds() {
     let mut v = vec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
@@ -959,6 +945,115 @@ fn drain_filter_complex() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support catching panics
+fn drain_filter_consumed_panic() {
+    use std::rc::Rc;
+    use std::sync::Mutex;
+
+    struct Check {
+        index: usize,
+        drop_counts: Rc<Mutex<Vec<usize>>>,
+    };
+
+    impl Drop for Check {
+        fn drop(&mut self) {
+            self.drop_counts.lock().unwrap()[self.index] += 1;
+            println!("drop: {}", self.index);
+        }
+    }
+
+    let check_count = 10;
+    let drop_counts = Rc::new(Mutex::new(vec![0_usize; check_count]));
+    let mut data: Vec<Check> = (0..check_count)
+        .map(|index| Check { index, drop_counts: Rc::clone(&drop_counts) })
+        .collect();
+
+    let _ = std::panic::catch_unwind(move || {
+        let filter = |c: &mut Check| {
+            if c.index == 2 {
+                panic!("panic at index: {}", c.index);
+            }
+            // Verify that if the filter could panic again on another element
+            // that it would not cause a double panic and all elements of the
+            // vec would still be dropped exactly once.
+            if c.index == 4 {
+                panic!("panic at index: {}", c.index);
+            }
+            c.index < 6
+        };
+        let drain = data.drain_filter(filter);
+
+        // NOTE: The DrainFilter is explictly consumed
+        drain.for_each(drop);
+    });
+
+    let drop_counts = drop_counts.lock().unwrap();
+    assert_eq!(check_count, drop_counts.len());
+
+    for (index, count) in drop_counts.iter().cloned().enumerate() {
+        assert_eq!(1, count, "unexpected drop count at index: {} (count: {})", index, count);
+    }
+}
+
+#[test]
+#[cfg(not(miri))] // Miri does not support catching panics
+fn drain_filter_unconsumed_panic() {
+    use std::rc::Rc;
+    use std::sync::Mutex;
+
+    struct Check {
+        index: usize,
+        drop_counts: Rc<Mutex<Vec<usize>>>,
+    };
+
+    impl Drop for Check {
+        fn drop(&mut self) {
+            self.drop_counts.lock().unwrap()[self.index] += 1;
+            println!("drop: {}", self.index);
+        }
+    }
+
+    let check_count = 10;
+    let drop_counts = Rc::new(Mutex::new(vec![0_usize; check_count]));
+    let mut data: Vec<Check> = (0..check_count)
+        .map(|index| Check { index, drop_counts: Rc::clone(&drop_counts) })
+        .collect();
+
+    let _ = std::panic::catch_unwind(move || {
+        let filter = |c: &mut Check| {
+            if c.index == 2 {
+                panic!("panic at index: {}", c.index);
+            }
+            // Verify that if the filter could panic again on another element
+            // that it would not cause a double panic and all elements of the
+            // vec would still be dropped exactly once.
+            if c.index == 4 {
+                panic!("panic at index: {}", c.index);
+            }
+            c.index < 6
+        };
+        let _drain = data.drain_filter(filter);
+
+        // NOTE: The DrainFilter is dropped without being consumed
+    });
+
+    let drop_counts = drop_counts.lock().unwrap();
+    assert_eq!(check_count, drop_counts.len());
+
+    for (index, count) in drop_counts.iter().cloned().enumerate() {
+        assert_eq!(1, count, "unexpected drop count at index: {} (count: {})", index, count);
+    }
+}
+
+#[test]
+fn drain_filter_unconsumed() {
+    let mut vec = vec![1, 2, 3, 4];
+    let drain = vec.drain_filter(|&mut x| x % 2 != 0);
+    drop(drain);
+    assert_eq!(vec, [2, 4]);
+}
+
+#[test]
 fn test_reserve_exact() {
     // This is all the same as test_reserve
 
@@ -983,6 +1078,7 @@ fn test_reserve_exact() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve() {
 
     // These are the interesting cases:
@@ -1085,6 +1181,7 @@ fn test_try_reserve() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve_exact() {
 
     // This is exactly the same as test_try_reserve with the method changed.
@@ -1162,4 +1259,25 @@ fn test_try_reserve_exact() {
         } else { panic!("usize::MAX should trigger an overflow!") }
     }
 
+}
+
+#[test]
+fn test_stable_push_pop() {
+    // Test that, if we reserved enough space, adding and removing elements does not
+    // invalidate references into the vector (such as `v0`).  This test also
+    // runs in Miri, which would detect such problems.
+    let mut v = Vec::with_capacity(10);
+    v.push(13);
+
+    // laundering the lifetime -- we take care that `v` does not reallocate, so that's okay.
+    let v0 = unsafe { &*(&v[0] as *const _) };
+
+    // Now do a bunch of things and occasionally use `v0` again to assert it is still valid.
+    v.push(1);
+    v.push(2);
+    v.insert(1, 1);
+    assert_eq!(*v0, 13);
+    v.remove(1);
+    v.pop().unwrap();
+    assert_eq!(*v0, 13);
 }

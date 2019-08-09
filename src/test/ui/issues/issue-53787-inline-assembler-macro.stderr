@@ -1,9 +1,8 @@
 error[E0669]: invalid value for constraint in inline assembly
-  --> $DIR/issue-53787-inline-assembler-macro.rs:21:16
+  --> $DIR/issue-53787-inline-assembler-macro.rs:23:16
    |
 LL |     fake_jump!("FirstFunc");
    |                ^^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0669`.

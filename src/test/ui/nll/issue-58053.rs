@@ -1,4 +1,3 @@
-#![allow(warnings)]
 #![feature(nll)]
 
 fn main() {

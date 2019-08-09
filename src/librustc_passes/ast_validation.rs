@@ -1,4 +1,4 @@
-// Validate AST before lowering it to HIR
+// Validate AST before lowering it to HIR.
 //
 // This pass is supposed to catch things that fit into AST data structures,
 // but not permitted by the language. It runs after expansion when AST is frozen,
@@ -14,15 +14,14 @@ use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::ext::proc_macro::is_proc_macro_attr;
+use syntax::feature_gate::is_builtin_attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::keywords;
-use syntax::ptr::P;
+use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
-use syntax_ext::proc_macro_decls::is_proc_macro_attr;
-use syntax_pos::Span;
-use errors::Applicability;
-use log::debug;
+use syntax_pos::{Span, MultiSpan};
+use errors::{Applicability, FatalError};
 
 #[derive(Copy, Clone, Debug)]
 struct OuterImplTrait {
@@ -52,23 +51,26 @@ impl OuterImplTrait {
 struct AstValidator<'a> {
     session: &'a Session,
     has_proc_macro_decls: bool,
-    has_global_allocator: bool,
 
-    // Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
-    // Nested `impl Trait` _is_ allowed in associated type position,
-    // e.g `impl Iterator<Item=impl Debug>`
+    /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
+    /// Nested `impl Trait` _is_ allowed in associated type position,
+    /// e.g., `impl Iterator<Item = impl Debug>`.
     outer_impl_trait: Option<OuterImplTrait>,
 
-    // Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
-    // or `Foo::Bar<impl Trait>`
+    /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
+    /// or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
 
-    // rust-lang/rust#57979: the ban of nested `impl Trait` was buggy
-    // until PRs #57730 and #57981 landed: it would jump directly to
-    // walk_ty rather than visit_ty (or skip recurring entirely for
-    // impl trait in projections), and thus miss some cases. We track
-    // whether we should downgrade to a warning for short-term via
-    // these booleans.
+    /// Used to ban associated type bounds (i.e., `Type<AssocType: Bounds>`) in
+    /// certain positions.
+    is_assoc_ty_bound_banned: bool,
+
+    /// rust-lang/rust#57979: the ban of nested `impl Trait` was buggy
+    /// until PRs #57730 and #57981 landed: it would jump directly to
+    /// walk_ty rather than visit_ty (or skip recurring entirely for
+    /// impl trait in projections), and thus miss some cases. We track
+    /// whether we should downgrade to a warning for short-term via
+    /// these booleans.
     warning_period_57979_didnt_record_next_impl_trait: bool,
     warning_period_57979_impl_trait_in_proj: bool,
 }
@@ -87,26 +89,43 @@ impl<'a> AstValidator<'a> {
         self.is_impl_trait_banned = old;
     }
 
+    fn with_banned_assoc_ty_bound(&mut self, f: impl FnOnce(&mut Self)) {
+        let old = mem::replace(&mut self.is_assoc_ty_bound_banned, true);
+        f(self);
+        self.is_assoc_ty_bound_banned = old;
+    }
+
     fn with_impl_trait(&mut self, outer: Option<OuterImplTrait>, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.outer_impl_trait, outer);
         f(self);
         self.outer_impl_trait = old;
     }
 
-    fn visit_assoc_type_binding_from_generic_args(&mut self, type_binding: &'a TypeBinding) {
-        // rust-lang/rust#57979: bug in old visit_generic_args called
-        // walk_ty rather than visit_ty, skipping outer `impl Trait`
-        // if it happened to occur at `type_binding.ty`
-        if let TyKind::ImplTrait(..) = type_binding.ty.node {
-            self.warning_period_57979_didnt_record_next_impl_trait = true;
+    fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
+        match constraint.kind {
+            AssocTyConstraintKind::Equality { ref ty } => {
+                // rust-lang/rust#57979: bug in old `visit_generic_args` called
+                // `walk_ty` rather than `visit_ty`, skipping outer `impl Trait`
+                // if it happened to occur at `ty`.
+                if let TyKind::ImplTrait(..) = ty.node {
+                    self.warning_period_57979_didnt_record_next_impl_trait = true;
+                }
+            }
+            AssocTyConstraintKind::Bound { .. } => {
+                if self.is_assoc_ty_bound_banned {
+                    self.err_handler().span_err(constraint.span,
+                        "associated type bounds are not allowed within structs, enums, or unions"
+                    );
+                }
+            }
         }
-        self.visit_assoc_type_binding(type_binding);
+        self.visit_assoc_ty_constraint(constraint);
     }
 
     fn visit_ty_from_generic_args(&mut self, ty: &'a Ty) {
-        // rust-lang/rust#57979: bug in old visit_generic_args called
-        // walk_ty rather than visit_ty, skippping outer `impl Trait`
-        // if it happened to occur at `ty`
+        // rust-lang/rust#57979: bug in old `visit_generic_args` called
+        // `walk_ty` rather than `visit_ty`, skippping outer `impl Trait`
+        // if it happened to occur at `ty`.
         if let TyKind::ImplTrait(..) = ty.node {
             self.warning_period_57979_didnt_record_next_impl_trait = true;
         }
@@ -117,10 +136,10 @@ impl<'a> AstValidator<'a> {
         let only_recorded_since_pull_request_57730 =
             self.warning_period_57979_didnt_record_next_impl_trait;
 
-        // (this flag is designed to be set to true and then only
+        // (This flag is designed to be set to `true`, and then only
         // reach the construction point for the outer impl trait once,
         // so its safe and easiest to unconditionally reset it to
-        // false)
+        // false.)
         self.warning_period_57979_didnt_record_next_impl_trait = false;
 
         OuterImplTrait {
@@ -128,7 +147,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    // Mirrors visit::walk_ty, but tracks relevant state
+    // Mirrors `visit::walk_ty`, but tracks relevant state.
     fn walk_ty(&mut self, t: &'a Ty) {
         match t.node {
             TyKind::ImplTrait(..) => {
@@ -177,9 +196,9 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_lifetime(&self, ident: Ident) {
-        let valid_names = [keywords::UnderscoreLifetime.name(),
-                           keywords::StaticLifetime.name(),
-                           keywords::Invalid.name()];
+        let valid_names = [kw::UnderscoreLifetime,
+                           kw::StaticLifetime,
+                           kw::Invalid];
         if !valid_names.contains(&ident.name) && ident.without_first_quote().is_reserved() {
             self.err_handler().span_err(ident.span, "lifetimes cannot use keyword names");
         }
@@ -189,14 +208,6 @@ impl<'a> AstValidator<'a> {
         if ident.without_first_quote().is_reserved() {
             self.err_handler()
                 .span_err(ident.span, &format!("invalid label name `{}`", ident.name));
-        }
-    }
-
-    fn invalid_non_exhaustive_attribute(&self, variant: &Variant) {
-        let has_non_exhaustive = attr::contains_name(&variant.node.attrs, "non_exhaustive");
-        if has_non_exhaustive {
-            self.err_handler().span_err(variant.span,
-                                        "#[non_exhaustive] is not yet supported on variants");
         }
     }
 
@@ -276,7 +287,7 @@ impl<'a> AstValidator<'a> {
     // ```
     fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
         match expr.node {
-            ExprKind::Lit(..) => {}
+            ExprKind::Lit(..) | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner)
                 if match inner.node { ExprKind::Lit(_) => true, _ => false } => {}
@@ -305,52 +316,27 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// With eRFC 2497, we need to check whether an expression is ambiguous and warn or error
-    /// depending on the edition, this function handles that.
-    fn while_if_let_ambiguity(&self, expr: &P<Expr>) {
-        if let Some((span, op_kind)) = self.while_if_let_expr_ambiguity(&expr) {
-            let mut err = self.err_handler().struct_span_err(
-                span, &format!("ambiguous use of `{}`", op_kind.to_string())
-            );
-
-            err.note(
-                "this will be a error until the `let_chains` feature is stabilized"
-            );
-            err.note(
-                "see rust-lang/rust#53668 for more information"
-            );
-
-            if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
-                err.span_suggestion(
-                    span, "consider adding parentheses", format!("({})", snippet),
-                    Applicability::MachineApplicable,
+    fn check_fn_decl(&self, fn_decl: &FnDecl) {
+        fn_decl
+            .inputs
+            .iter()
+            .flat_map(|i| i.attrs.as_ref())
+            .filter(|attr| {
+                let arr = [sym::allow, sym::cfg, sym::cfg_attr, sym::deny, sym::forbid, sym::warn];
+                !arr.contains(&attr.name_or_empty()) && is_builtin_attr(attr)
+            })
+            .for_each(|attr| if attr.is_sugared_doc {
+                let mut err = self.err_handler().struct_span_err(
+                    attr.span,
+                    "documentation comments cannot be applied to function parameters"
                 );
+                err.span_label(attr.span, "doc comments are not allowed here");
+                err.emit();
             }
-
-            err.emit();
-        }
-    }
-
-    /// With eRFC 2497 adding if-let chains, there is a requirement that the parsing of
-    /// `&&` and `||` in a if-let statement be unambiguous. This function returns a span and
-    /// a `BinOpKind` (either `&&` or `||` depending on what was ambiguous) if it is determined
-    /// that the current expression parsed is ambiguous and will break in future.
-    fn while_if_let_expr_ambiguity(&self, expr: &P<Expr>) -> Option<(Span, BinOpKind)> {
-        debug!("while_if_let_expr_ambiguity: expr.node: {:?}", expr.node);
-        match &expr.node {
-            ExprKind::Binary(op, _, _) if op.node == BinOpKind::And || op.node == BinOpKind::Or => {
-                Some((expr.span, op.node))
-            },
-            ExprKind::Range(ref lhs, ref rhs, _) => {
-                let lhs_ambiguous = lhs.as_ref()
-                    .and_then(|lhs| self.while_if_let_expr_ambiguity(lhs));
-                let rhs_ambiguous = rhs.as_ref()
-                    .and_then(|rhs| self.while_if_let_expr_ambiguity(rhs));
-
-                lhs_ambiguous.or(rhs_ambiguous)
-            }
-            _ => None,
-        }
+            else {
+                self.err_handler().span_err(attr.span, "allow, cfg, cfg_attr, deny, \
+                forbid, and warn are the only allowed built-in attributes in function parameters")
+            });
     }
 }
 
@@ -360,18 +346,28 @@ enum GenericPosition {
 }
 
 fn validate_generics_order<'a>(
+    sess: &Session,
     handler: &errors::Handler,
-    generics: impl Iterator<Item = (ParamKindOrd, Span, Option<String>)>,
+    generics: impl Iterator<
+        Item = (
+            ParamKindOrd,
+            Option<&'a [GenericBound]>,
+            Span,
+            Option<String>
+        ),
+    >,
     pos: GenericPosition,
     span: Span,
 ) {
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxHashMap::default();
     let mut param_idents = vec![];
+    let mut found_type = false;
+    let mut found_const = false;
 
-    for (kind, span, ident) in generics {
+    for (kind, bounds, span, ident) in generics {
         if let Some(ident) = ident {
-            param_idents.push((kind, param_idents.len(), ident));
+            param_idents.push((kind, bounds, param_idents.len(), ident));
         }
         let max_param = &mut max_param;
         match max_param {
@@ -381,17 +377,28 @@ fn validate_generics_order<'a>(
             }
             Some(_) | None => *max_param = Some(kind),
         };
+        match kind {
+            ParamKindOrd::Type => found_type = true,
+            ParamKindOrd::Const => found_const = true,
+            _ => {}
+        }
     }
 
     let mut ordered_params = "<".to_string();
     if !out_of_order.is_empty() {
-        param_idents.sort_by_key(|&(po, i, _)| (po, i));
+        param_idents.sort_by_key(|&(po, _, i, _)| (po, i));
         let mut first = true;
-        for (_, _, ident) in param_idents {
+        for (_, bounds, _, ident) in param_idents {
             if !first {
                 ordered_params += ", ";
             }
             ordered_params += &ident;
+            if let Some(bounds) = bounds {
+                if !bounds.is_empty() {
+                    ordered_params += ": ";
+                    ordered_params += &pprust::bounds_to_string(&bounds);
+                }
+            }
             first = false;
         }
     }
@@ -402,8 +409,8 @@ fn validate_generics_order<'a>(
         GenericPosition::Arg => "argument",
     };
 
-    for (param_ord, (max_param, spans)) in out_of_order {
-        let mut err = handler.struct_span_err(spans,
+    for (param_ord, (max_param, spans)) in &out_of_order {
+        let mut err = handler.struct_span_err(spans.clone(),
             &format!(
                 "{} {pos}s must be declared prior to {} {pos}s",
                 param_ord,
@@ -413,55 +420,45 @@ fn validate_generics_order<'a>(
         if let GenericPosition::Param = pos {
             err.span_suggestion(
                 span,
-                &format!("reorder the {}s: lifetimes, then types, then consts", pos_str),
+                &format!(
+                    "reorder the {}s: lifetimes, then types{}",
+                    pos_str,
+                    if sess.features_untracked().const_generics { ", then consts" } else { "" },
+                ),
                 ordered_params.clone(),
                 Applicability::MachineApplicable,
             );
         }
         err.emit();
     }
+
+    // FIXME(const_generics): we shouldn't have to abort here at all, but we currently get ICEs
+    // if we don't. Const parameters and type parameters can currently conflict if they
+    // are out-of-order.
+    if !out_of_order.is_empty() && found_type && found_const {
+        FatalError.raise();
+    }
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
-        match expr.node {
-            ExprKind::IfLet(_, ref expr, _, _) | ExprKind::WhileLet(_, ref expr, _, _) =>
-                self.while_if_let_ambiguity(&expr),
+        match &expr.node {
+            ExprKind::Closure(_, _, _, fn_decl, _, _) => {
+                self.check_fn_decl(fn_decl);
+            }
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
-            }
-            ExprKind::ObsoleteInPlace(ref place, ref val) => {
-                let mut err = self.err_handler().struct_span_err(
-                    expr.span,
-                    "emplacement syntax is obsolete (for now, anyway)",
-                );
-                err.note(
-                    "for more information, see \
-                     <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>"
-                );
-                match val.node {
-                    ExprKind::Lit(ref v) if v.node.is_numeric() => {
-                        err.span_suggestion(
-                            place.span.between(val.span),
-                            "if you meant to write a comparison against a negative value, add a \
-                             space in between `<` and `-`",
-                            "< -".to_string(),
-                            Applicability::MaybeIncorrect
-                        );
-                    }
-                    _ => {}
-                }
-                err.emit();
             }
             _ => {}
         }
 
-        visit::walk_expr(self, expr)
+        visit::walk_expr(self, expr);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
         match ty.node {
             TyKind::BareFn(ref bfty) => {
+                self.check_fn_decl(&bfty.decl);
                 self.check_decl_no_pat(&bfty.decl, |span, _| {
                     struct_span_err!(self.session, span, E0561,
                                      "patterns aren't allowed in function pointer types").emit();
@@ -541,10 +538,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
-        if attr::contains_name(&item.attrs, "global_allocator") {
-            self.has_global_allocator = true;
-        }
-
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, None);
@@ -579,10 +572,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .note("only trait implementations may be annotated with default").emit();
                 }
             }
-            ItemKind::Fn(_, ref header, ref generics, _) => {
+            ItemKind::Fn(ref decl, ref header, ref generics, _) => {
+                self.visit_fn_header(header);
+                self.check_fn_decl(decl);
                 // We currently do not permit const generics in `const fn`, as
                 // this is tantamount to allowing compile-time dependent typing.
-                self.visit_fn_header(header);
                 if header.constness.node == Constness::Const {
                     // Look for const generics and error if we find any.
                     for param in &generics.params {
@@ -608,7 +602,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
-                    self.invalid_non_exhaustive_attribute(variant);
                     for field in variant.node.data.fields() {
                         self.invalid_visibility(&field.vis, None);
                     }
@@ -619,20 +612,24 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // Auto traits cannot have generics, super traits nor contain items.
                     if !generics.params.is_empty() {
                         struct_span_err!(self.session, item.span, E0567,
-                                        "auto traits cannot have generic parameters").emit();
+                            "auto traits cannot have generic parameters"
+                        ).emit();
                     }
                     if !bounds.is_empty() {
                         struct_span_err!(self.session, item.span, E0568,
-                                        "auto traits cannot have super traits").emit();
+                            "auto traits cannot have super traits"
+                        ).emit();
                     }
                     if !trait_items.is_empty() {
                         struct_span_err!(self.session, item.span, E0380,
-                                "auto traits cannot have methods or associated items").emit();
+                            "auto traits cannot have methods or associated items"
+                        ).emit();
                     }
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
                 for trait_item in trait_items {
                     if let TraitItemKind::Method(ref sig, ref block) = trait_item.node {
+                        self.check_fn_decl(&sig.decl);
                         self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness.node);
                         self.check_trait_fn_not_const(sig.header.constness);
                         if block.is_none() {
@@ -653,21 +650,29 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                attr::first_attr_value_str_by_name(&item.attrs, "path");
-                if attr::contains_name(&item.attrs, "warn_directory_ownership") {
+                attr::first_attr_value_str_by_name(&item.attrs, sym::path);
+                if attr::contains_name(&item.attrs, sym::warn_directory_ownership) {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
                     self.session.buffer_lint(lint, item.id, item.span, msg);
                 }
             }
             ItemKind::Union(ref vdata, _) => {
-                if !vdata.is_struct() {
+                if let VariantData::Tuple(..) | VariantData::Unit(..) = vdata {
                     self.err_handler().span_err(item.span,
                                                 "tuple and unit unions are not permitted");
                 }
                 if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span,
                                                 "unions cannot have zero fields");
+                }
+            }
+            ItemKind::OpaqueTy(ref bounds, _) => {
+                if !bounds.iter()
+                          .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
+                    let msp = MultiSpan::from_spans(bounds.iter()
+                        .map(|bound| bound.span()).collect());
+                    self.err_handler().span_err(msp, "at least one trait must be specified");
                 }
             }
             _ => {}
@@ -679,6 +684,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         match fi.node {
             ForeignItemKind::Fn(ref decl, _) => {
+                self.check_fn_decl(decl);
                 self.check_decl_no_pat(decl, |span, _| {
                     struct_span_err!(self.session, span, E0130,
                                      "patterns aren't allowed in foreign function declarations")
@@ -691,23 +697,30 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_foreign_item(self, fi)
     }
 
-    // Mirrors visit::walk_generic_args, but tracks relevant state
+    // Mirrors `visit::walk_generic_args`, but tracks relevant state.
     fn visit_generic_args(&mut self, _: Span, generic_args: &'a GenericArgs) {
         match *generic_args {
             GenericArgs::AngleBracketed(ref data) => {
                 walk_list!(self, visit_generic_arg, &data.args);
-                validate_generics_order(self.err_handler(), data.args.iter().map(|arg| {
-                    (match arg {
-                        GenericArg::Lifetime(..) => ParamKindOrd::Lifetime,
-                        GenericArg::Type(..) => ParamKindOrd::Type,
-                        GenericArg::Const(..) => ParamKindOrd::Const,
-                    }, arg.span(), None)
-                }), GenericPosition::Arg, generic_args.span());
+                validate_generics_order(
+                    self.session,
+                    self.err_handler(),
+                    data.args.iter().map(|arg| {
+                        (match arg {
+                            GenericArg::Lifetime(..) => ParamKindOrd::Lifetime,
+                            GenericArg::Type(..) => ParamKindOrd::Type,
+                            GenericArg::Const(..) => ParamKindOrd::Const,
+                        }, None, arg.span(), None)
+                    }),
+                    GenericPosition::Arg,
+                    generic_args.span(),
+                );
 
-                // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
+                // Type bindings such as `Item = impl Debug` in `Iterator<Item = Debug>`
                 // are allowed to contain nested `impl Trait`.
                 self.with_impl_trait(None, |this| {
-                    walk_list!(this, visit_assoc_type_binding_from_generic_args, &data.bindings);
+                    walk_list!(this, visit_assoc_ty_constraint_from_generic_args,
+                        &data.constraints);
                 });
             }
             GenericArgs::Parenthesized(ref data) => {
@@ -735,18 +748,24 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
         }
 
-        validate_generics_order(self.err_handler(), generics.params.iter().map(|param| {
-            let span = param.ident.span;
-            let ident = Some(param.ident.to_string());
-            match &param.kind {
-                GenericParamKind::Lifetime { .. } => (ParamKindOrd::Lifetime, span, ident),
-                GenericParamKind::Type { .. } => (ParamKindOrd::Type, span, ident),
-                GenericParamKind::Const { ref ty } => {
-                    let ty = pprust::ty_to_string(ty);
-                    (ParamKindOrd::Const, span, Some(format!("const {}: {}", param.ident, ty)))
-                }
-            }
-        }), GenericPosition::Param, generics.span);
+        validate_generics_order(
+            self.session,
+            self.err_handler(),
+            generics.params.iter().map(|param| {
+                let ident = Some(param.ident.to_string());
+                let (kind, ident) = match &param.kind {
+                    GenericParamKind::Lifetime { .. } => (ParamKindOrd::Lifetime, ident),
+                    GenericParamKind::Type { .. } => (ParamKindOrd::Type, ident),
+                    GenericParamKind::Const { ref ty } => {
+                        let ty = pprust::ty_to_string(ty);
+                        (ParamKindOrd::Const, Some(format!("const {}: {}", param.ident, ty)))
+                    }
+                };
+                (kind, Some(&*param.bounds), param.ident.span, ident)
+            }),
+            GenericPosition::Param,
+            generics.span,
+        );
 
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(ref predicate) = *predicate {
@@ -794,6 +813,17 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         visit::walk_poly_trait_ref(self, t, m);
     }
 
+    fn visit_variant_data(&mut self, s: &'a VariantData, _: Ident,
+                          _: &'a Generics, _: NodeId, _: Span) {
+        self.with_banned_assoc_ty_bound(|this| visit::walk_struct_def(this, s))
+    }
+
+    fn visit_enum_def(&mut self, enum_definition: &'a EnumDef,
+                      generics: &'a Generics, item_id: NodeId, _: Span) {
+        self.with_banned_assoc_ty_bound(
+            |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
+    }
+
     fn visit_mac(&mut self, mac: &Spanned<Mac_>) {
         // when a new macro kind is added but the author forgets to set it up for expansion
         // because that's the only part that won't cause a compiler error
@@ -802,25 +832,28 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                  the relevant `fold_*()` method in `PlaceholderExpander`?");
     }
 
-    fn visit_fn_header(&mut self, header: &'a FnHeader) {
-        if header.asyncness.node.is_async() && self.session.rust_2015() {
-            struct_span_err!(self.session, header.asyncness.span, E0670,
-                             "`async fn` is not permitted in the 2015 edition").emit();
+    fn visit_impl_item(&mut self, ii: &'a ImplItem) {
+        match ii.node {
+            ImplItemKind::Method(ref sig, _) => {
+                self.check_fn_decl(&sig.decl);
+            }
+            _ => {}
         }
+        visit::walk_impl_item(self, ii);
     }
 }
 
-pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
+pub fn check_crate(session: &Session, krate: &Crate) -> bool {
     let mut validator = AstValidator {
         session,
         has_proc_macro_decls: false,
-        has_global_allocator: false,
         outer_impl_trait: None,
         is_impl_trait_banned: false,
+        is_assoc_ty_bound_banned: false,
         warning_period_57979_didnt_record_next_impl_trait: false,
         warning_period_57979_impl_trait_in_proj: false,
     };
     visit::walk_crate(&mut validator, krate);
 
-    (validator.has_proc_macro_decls, validator.has_global_allocator)
+    validator.has_proc_macro_decls
 }

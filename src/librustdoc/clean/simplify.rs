@@ -91,7 +91,9 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
                 PP::AngleBracketed { ref mut bindings, .. } => {
                     bindings.push(clean::TypeBinding {
                         name: name.clone(),
-                        ty: rhs.clone(),
+                        kind: clean::TypeBindingKind::Equality {
+                            ty: rhs.clone(),
+                        },
                     });
                 }
                 PP::Parenthesized { ref mut output, .. } => {
@@ -129,7 +131,7 @@ pub fn ty_params(mut params: Vec<clean::GenericParamDef>) -> Vec<clean::GenericP
     for param in &mut params {
         match param.kind {
             clean::GenericParamDefKind::Type { ref mut bounds, .. } => {
-                *bounds = ty_bounds(mem::replace(bounds, Vec::new()));
+                *bounds = ty_bounds(mem::take(bounds));
             }
             _ => panic!("expected only type parameters"),
         }

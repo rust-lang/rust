@@ -1,0 +1,26 @@
+
+running 1 test
+test $DIR/failed-doctest-missing-codes.rs - Foo (line 8) ... FAILED
+
+failures:
+
+---- $DIR/failed-doctest-missing-codes.rs - Foo (line 8) stdout ----
+error[E0308]: mismatched types
+ --> $DIR/failed-doctest-missing-codes.rs:9:13
+  |
+3 | let x: () = 5i32;
+  |             ^^^^ expected (), found i32
+  |
+  = note: expected type `()`
+             found type `i32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
+Some expected error codes were not found: ["E0004"]
+
+failures:
+    $DIR/failed-doctest-missing-codes.rs - Foo (line 8)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+

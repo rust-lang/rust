@@ -9,15 +9,15 @@ trait Test {
 }
 
 struct SomeStruct<'a> {
-    t: &'a MyBox<Test>,
-    u: &'a MyBox<Test+'a>,
+    t: &'a MyBox<dyn Test>,
+    u: &'a MyBox<dyn Test + 'a>,
 }
 
 struct MyBox<T:?Sized> {
     b: Box<T>
 }
 
-fn c<'a>(t: &'a MyBox<Test+'a>, mut ss: SomeStruct<'a>) {
+fn c<'a>(t: &'a MyBox<dyn Test+'a>, mut ss: SomeStruct<'a>) {
     ss.t = t; //~ ERROR mismatched types
 }
 

@@ -38,5 +38,4 @@ LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0308, E0623.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0308`.

@@ -1,8 +1,8 @@
-error[E0452]: malformed lint attribute
+error[E0452]: malformed lint attribute input
   --> $DIR/E0452.rs:1:10
    |
 LL | #![allow(foo = "")]
-   |          ^^^^^^^^
+   |          ^^^^^^^^ bad attribute argument
 
 error: aborting due to previous error
 

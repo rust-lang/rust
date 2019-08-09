@@ -1,0 +1,10 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-26217.rs:4:5
+   |
+LL | fn bar<'a>() {
+   |        -- lifetime `'a` defined here
+LL |     foo::<&'a i32>();
+   |     ^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+
+error: aborting due to previous error
+

@@ -1,48 +1,30 @@
-error[E0597]: `vec` does not live long enough
-  --> $DIR/borrowck-vec-pattern-element-loan.rs:5:26
+error[E0515]: cannot return value referencing local variable `vec`
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:10:5
    |
 LL |     let vec: &[isize] = &vec;
-   |                          ^^^ borrowed value does not live long enough
+   |                         ---- `vec` is borrowed here
 ...
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 3:6...
-  --> $DIR/borrowck-vec-pattern-element-loan.rs:3:6
-   |
-LL | fn a<'a>() -> &'a [isize] {
-   |      ^^
+LL |     tail
+   |     ^^^^ returns a value referencing data owned by the current function
 
-error[E0597]: `vec` does not live long enough
-  --> $DIR/borrowck-vec-pattern-element-loan.rs:15:26
+error[E0515]: cannot return value referencing local variable `vec`
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:20:5
    |
 LL |     let vec: &[isize] = &vec;
-   |                          ^^^ borrowed value does not live long enough
+   |                         ---- `vec` is borrowed here
 ...
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:6...
-  --> $DIR/borrowck-vec-pattern-element-loan.rs:13:6
-   |
-LL | fn b<'a>() -> &'a [isize] {
-   |      ^^
+LL |     init
+   |     ^^^^ returns a value referencing data owned by the current function
 
-error[E0597]: `vec` does not live long enough
-  --> $DIR/borrowck-vec-pattern-element-loan.rs:25:26
+error[E0515]: cannot return value referencing local variable `vec`
+  --> $DIR/borrowck-vec-pattern-element-loan.rs:30:5
    |
 LL |     let vec: &[isize] = &vec;
-   |                          ^^^ borrowed value does not live long enough
+   |                         ---- `vec` is borrowed here
 ...
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 23:6...
-  --> $DIR/borrowck-vec-pattern-element-loan.rs:23:6
-   |
-LL | fn c<'a>() -> &'a [isize] {
-   |      ^^
+LL |     slice
+   |     ^^^^^ returns a value referencing data owned by the current function
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

@@ -1,26 +1,26 @@
-error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
+error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:3:9
    |
 LL |     fn foo(mut a: &String) {
-   |                   ------- use `&mut String` here to make mutable
+   |                   ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
 LL |         a.push_str("bar");
-   |         ^ cannot borrow as mutable
+   |         ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
+error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:8:5
    |
 LL | pub fn foo<'a>(mut a: &'a String) {
-   |                       ---------- use `&'a mut String` here to make mutable
+   |                       ---------- help: consider changing this to be a mutable reference: `&'a mut String`
 LL |     a.push_str("foo");
-   |     ^ cannot borrow as mutable
+   |     ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable borrowed content `*a` as mutable
+error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:15:9
    |
 LL |     pub fn foo(mut a: &String) {
-   |                       ------- use `&mut String` here to make mutable
+   |                       ------- help: consider changing this to be a mutable reference: `&mut std::string::String`
 LL |         a.push_str("foo");
-   |         ^ cannot borrow as mutable
+   |         ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to 3 previous errors
 

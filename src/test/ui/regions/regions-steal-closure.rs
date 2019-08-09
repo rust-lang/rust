@@ -1,10 +1,10 @@
 #![feature(fn_traits)]
 
 struct ClosureBox<'a> {
-    cl: Box<FnMut() + 'a>,
+    cl: Box<dyn FnMut() + 'a>,
 }
 
-fn box_it<'r>(x: Box<FnMut() + 'r>) -> ClosureBox<'r> {
+fn box_it<'r>(x: Box<dyn FnMut() + 'r>) -> ClosureBox<'r> {
     ClosureBox {cl: x}
 }
 

@@ -247,11 +247,11 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         self.incoming_edges(target).sources()
     }
 
-    pub fn depth_traverse<'a>(
-        &'a self,
+    pub fn depth_traverse(
+        &self,
         start: NodeIndex,
         direction: Direction,
-    ) -> DepthFirstTraversal<'a, N, E> {
+    ) -> DepthFirstTraversal<'_, N, E> {
         DepthFirstTraversal::with_start_node(self, start, direction)
     }
 

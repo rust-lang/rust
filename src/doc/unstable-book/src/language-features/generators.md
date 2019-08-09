@@ -146,7 +146,7 @@ closure-like semantics. Namely:
   generators also depend on variables live across suspension points. This means
   that although the ambient environment may be `Send` or `Sync`, the generator
   itself may not be due to internal variables live across `yield` points being
-  not-`Send` or not-`Sync`. Note that generators, like closures, do
+  not-`Send` or not-`Sync`. Note that generators do
   not implement traits like `Copy` or `Clone` automatically.
 
 * Whenever a generator is dropped it will drop all captured environment

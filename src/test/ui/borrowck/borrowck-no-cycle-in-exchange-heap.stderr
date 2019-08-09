@@ -4,7 +4,9 @@ error[E0505]: cannot move out of `x` because it is borrowed
 LL |       Cycle::Node(ref mut y) => {
    |                   --------- borrow of `x.0` occurs here
 LL |         y.a = x;
-   |               ^ move out of `x` occurs here
+   |         ---   ^ move out of `x` occurs here
+   |         |
+   |         borrow later used here
 
 error: aborting due to previous error
 

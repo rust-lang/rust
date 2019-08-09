@@ -6,7 +6,7 @@ fn foo() -> isize {
         x = 0;
     }
 
-    println!("{}", x); //~ ERROR use of possibly uninitialized variable: `x`
+    println!("{}", x); //~ ERROR borrow of possibly uninitialized variable: `x`
 
     return 17;
 }

@@ -24,7 +24,7 @@ type F = &'static (u8)::AssocTy;
 
 // Qualified paths cannot appear in bounds, so the recovery
 // should apply to the whole sum and not `(Send)`.
-type G = 'static + (Send)::AssocTy;
+type G = dyn 'static + (Send)::AssocTy;
 //~^ ERROR missing angle brackets in associated item path
 //~| ERROR ambiguous associated type
 
@@ -32,5 +32,17 @@ type G = 'static + (Send)::AssocTy;
 // Recovery should not apply in this context.
 type H = Fn(u8) -> (u8)::Output;
 //~^ ERROR ambiguous associated type
+
+macro_rules! ty {
+    ($ty: ty) => ($ty::AssocTy);
+    //~^ ERROR missing angle brackets in associated item path
+    //~| ERROR ambiguous associated type
+    () => (u8);
+}
+
+type J = ty!(u8);
+type I = ty!()::AssocTy;
+//~^ ERROR missing angle brackets in associated item path
+//~| ERROR ambiguous associated type
 
 fn main() {}

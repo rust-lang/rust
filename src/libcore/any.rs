@@ -61,8 +61,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fmt;
-use intrinsics;
+use crate::fmt;
+use crate::intrinsics;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -107,7 +107,7 @@ impl<T: 'static + ?Sized > Any for T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for dyn Any {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Any")
     }
 }
@@ -117,14 +117,14 @@ impl fmt::Debug for dyn Any {
 // dispatch works with upcasting.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for dyn Any + Send {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Any")
     }
 }
 
 #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
 impl fmt::Debug for dyn Any + Send + Sync {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Any")
     }
 }
@@ -449,4 +449,31 @@ impl TypeId {
             t: unsafe { intrinsics::type_id::<T>() },
         }
     }
+}
+
+/// Returns the name of a type as a string slice.
+///
+/// # Note
+///
+/// This is intended for diagnostic use. The exact contents and format of the
+/// string are not specified, other than being a best-effort description of the
+/// type. For example, `type_name::<Option<String>>()` could return the
+/// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
+/// `"foobar"`. In addition, the output may change between versions of the
+/// compiler.
+///
+/// The type name should not be considered a unique identifier of a type;
+/// multiple types may share the same type name.
+///
+/// The current implementation uses the same infrastructure as compiler
+/// diagnostics and debuginfo, but this is not guaranteed.
+#[stable(feature = "type_name", since = "1.38.0")]
+#[rustc_const_unstable(feature = "const_type_name")]
+pub const fn type_name<T: ?Sized>() -> &'static str {
+    #[cfg(bootstrap)]
+    unsafe {
+        intrinsics::type_name::<T>()
+    }
+    #[cfg(not(bootstrap))]
+    intrinsics::type_name::<T>()
 }

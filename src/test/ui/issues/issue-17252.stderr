@@ -5,7 +5,7 @@ LL | const FOO: usize = FOO;
    |                    ^^^
    |
    = note: ...which again requires processing `FOO`, completing the cycle
-note: cycle used when processing `main::{{constant}}`
+note: cycle used when processing `main::{{constant}}#0`
   --> $DIR/issue-17252.rs:4:18
    |
 LL |     let _x: [u8; FOO]; // caused stack overflow prior to fix

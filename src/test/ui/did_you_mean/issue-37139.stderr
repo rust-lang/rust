@@ -1,11 +1,11 @@
-error[E0596]: cannot borrow immutable local variable `x` as mutable
-  --> $DIR/issue-37139.rs:12:23
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/issue-37139.rs:12:18
    |
 LL |             test(&mut x);
-   |                       ^
-   |                       |
-   |                       cannot reborrow mutably
-   |                       try removing `&mut` here
+   |                  ^^^^^^
+   |                  |
+   |                  cannot borrow as mutable
+   |                  try removing `&mut` here
 
 error: aborting due to previous error
 

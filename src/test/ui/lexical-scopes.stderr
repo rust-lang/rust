@@ -12,11 +12,8 @@ error[E0599]: no function or associated item named `f` found for type `Foo` in t
   --> $DIR/lexical-scopes.rs:10:10
    |
 LL |     Foo::f();
-   |     -----^
-   |     |
-   |     function or associated item not found in `Foo`
+   |          ^ function or associated item not found in `Foo`
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0574, E0599.
-For more information about an error, try `rustc --explain E0574`.
+For more information about this error, try `rustc --explain E0599`.

@@ -30,5 +30,5 @@ LL |         S(1, 2, .., 3, 4) => {}
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0023, E0308.
+Some errors have detailed explanations: E0023, E0308.
 For more information about an error, try `rustc --explain E0023`.

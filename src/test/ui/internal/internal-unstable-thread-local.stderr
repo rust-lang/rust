@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'function'
 LL | thread_local!(static BAR: () = internal_unstable::unstable());
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(function)] to the crate attributes to enable
+   = help: add `#![feature(function)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

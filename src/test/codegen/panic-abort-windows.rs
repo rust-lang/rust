@@ -1,8 +1,5 @@
-// ignore-tidy-linelength
-
 // This test is for *-windows-msvc only.
 // ignore-android
-// ignore-bitrig
 // ignore-cloudabi
 // ignore-dragonfly
 // ignore-emscripten
@@ -14,6 +11,7 @@
 // ignore-netbsd
 // ignore-openbsd
 // ignore-solaris
+// ignore-sgx
 
 // compile-flags: -C no-prepopulate-passes -C panic=abort -O
 

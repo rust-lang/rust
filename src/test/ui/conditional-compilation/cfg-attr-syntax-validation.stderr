@@ -63,5 +63,5 @@ LL | generate_s10!(concat!("nonexistent"));
 
 error: aborting due to 10 previous errors
 
-Some errors occurred: E0537, E0565.
+Some errors have detailed explanations: E0537, E0565.
 For more information about an error, try `rustc --explain E0537`.

@@ -1,0 +1,26 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-54302-cases.rs:63:5
+   |
+LL |     <u32 as RefFoo<u32>>::ref_foo(a)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-54302-cases.rs:69:5
+   |
+LL |     <i32 as RefFoo<i32>>::ref_foo(a)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-54302-cases.rs:75:5
+   |
+LL |     <u64 as RefFoo<u64>>::ref_foo(a)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-54302-cases.rs:81:5
+   |
+LL |     <i64 as RefFoo<i64>>::ref_foo(a)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

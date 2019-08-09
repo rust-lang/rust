@@ -8,7 +8,7 @@ use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use syntax_pos::{Span, DUMMY_SP};
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Adds a new temporary value of type `ty` storing the result of
     /// evaluating `expr`.
     ///
@@ -16,7 +16,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// call `schedule_drop` once the temporary is initialized.
     pub fn temp(&mut self, ty: Ty<'tcx>, span: Span) -> Place<'tcx> {
         let temp = self.local_decls.push(LocalDecl::new_temp(ty, span));
-        let place = Place::Base(PlaceBase::Local(temp));
+        let place = Place::from(temp);
         debug!("temp: created temp {:?} with type {:?}",
                place, self.local_decls[temp].ty);
         place
@@ -27,13 +27,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn literal_operand(&mut self,
                            span: Span,
                            ty: Ty<'tcx>,
-                           literal: ty::Const<'tcx>)
+                           literal: &'tcx ty::Const<'tcx>)
                            -> Operand<'tcx> {
         let constant = box Constant {
             span,
             ty,
             user_ty: None,
-            literal: self.hir.tcx().mk_lazy_const(ty::LazyConst::Evaluated(literal)),
+            literal,
         };
         Operand::Constant(constant)
     }
@@ -70,7 +70,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn consume_by_copy_or_move(&self, place: Place<'tcx>) -> Operand<'tcx> {
         let tcx = self.hir.tcx();
-        let ty = place.ty(&self.local_decls, tcx).to_ty(tcx);
+        let ty = place.ty(&self.local_decls, tcx).ty;
         if !self.hir.type_is_copy_modulo_regions(ty, DUMMY_SP) {
             Operand::Move(place)
         } else {

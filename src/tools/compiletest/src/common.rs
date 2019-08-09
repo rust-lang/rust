@@ -1,5 +1,6 @@
 pub use self::Mode::*;
 
+use std::ffi::OsString;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -11,11 +12,10 @@ use crate::util::PathBufExt;
 pub enum Mode {
     CompileFail,
     RunFail,
-    /// This now behaves like a `ui` test that has an implict `// run-pass`.
-    RunPass,
     RunPassValgrind,
     Pretty,
-    DebugInfoBoth,
+    DebugInfoCdb,
+    DebugInfoGdbLldb,
     DebugInfoGdb,
     DebugInfoLldb,
     Codegen,
@@ -26,15 +26,17 @@ pub enum Mode {
     Ui,
     JsDocTest,
     MirOpt,
+    Assembly,
 }
 
 impl Mode {
     pub fn disambiguator(self) -> &'static str {
-        // Run-pass and pretty run-pass tests could run concurrently, and if they do,
+        // Pretty-printing tests could run concurrently, and if they do,
         // they need to keep their output segregated. Same is true for debuginfo tests that
-        // can be run both on gdb and lldb.
+        // can be run on cdb, gdb, and lldb.
         match self {
             Pretty => ".pretty",
+            DebugInfoCdb => ".cdb",
             DebugInfoGdb => ".gdb",
             DebugInfoLldb => ".lldb",
             _ => "",
@@ -48,10 +50,10 @@ impl FromStr for Mode {
         match s {
             "compile-fail" => Ok(CompileFail),
             "run-fail" => Ok(RunFail),
-            "run-pass" => Ok(RunPass),
             "run-pass-valgrind" => Ok(RunPassValgrind),
             "pretty" => Ok(Pretty),
-            "debuginfo-both" => Ok(DebugInfoBoth),
+            "debuginfo-cdb" => Ok(DebugInfoCdb),
+            "debuginfo-gdb+lldb" => Ok(DebugInfoGdbLldb),
             "debuginfo-lldb" => Ok(DebugInfoLldb),
             "debuginfo-gdb" => Ok(DebugInfoGdb),
             "codegen" => Ok(Codegen),
@@ -62,6 +64,7 @@ impl FromStr for Mode {
             "ui" => Ok(Ui),
             "js-doc-test" => Ok(JsDocTest),
             "mir-opt" => Ok(MirOpt),
+            "assembly" => Ok(Assembly),
             _ => Err(()),
         }
     }
@@ -72,10 +75,10 @@ impl fmt::Display for Mode {
         let s = match *self {
             CompileFail => "compile-fail",
             RunFail => "run-fail",
-            RunPass => "run-pass",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
-            DebugInfoBoth => "debuginfo-both",
+            DebugInfoCdb => "debuginfo-cdb",
+            DebugInfoGdbLldb => "debuginfo-gdb+lldb",
             DebugInfoGdb => "debuginfo-gdb",
             DebugInfoLldb => "debuginfo-lldb",
             Codegen => "codegen",
@@ -86,6 +89,37 @@ impl fmt::Display for Mode {
             Ui => "ui",
             JsDocTest => "js-doc-test",
             MirOpt => "mir-opt",
+            Assembly => "assembly",
+        };
+        fmt::Display::fmt(s, f)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Hash)]
+pub enum PassMode {
+    Check,
+    Build,
+    Run,
+}
+
+impl FromStr for PassMode {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, ()> {
+        match s {
+            "check" => Ok(PassMode::Check),
+            "build" => Ok(PassMode::Build),
+            "run" => Ok(PassMode::Run),
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for PassMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match *self {
+            PassMode::Check => "check",
+            PassMode::Build => "build",
+            PassMode::Run => "run",
         };
         fmt::Display::fmt(s, f)
     }
@@ -114,6 +148,7 @@ impl CompareMode {
     }
 }
 
+/// Configuration for compiletest
 #[derive(Clone)]
 pub struct Config {
     /// `true` to to overwrite stderr/stdout files instead of complaining about changes in output.
@@ -140,6 +175,9 @@ pub struct Config {
     /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
 
+    /// Path to LLVM's bin directory.
+    pub llvm_bin_dir: Option<PathBuf>,
+
     /// The valgrind path.
     pub valgrind_path: Option<String>,
 
@@ -160,7 +198,7 @@ pub struct Config {
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
-    /// The test mode, compile-fail, run-fail, run-pass
+    /// The test mode, compile-fail, run-fail, ui
     pub mode: Mode,
 
     /// Run ignored tests
@@ -171,6 +209,9 @@ pub struct Config {
 
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
+
+    /// Force the pass mode of a check/build/run-pass test to this mode.
+    pub force_pass_mode: Option<PassMode>,
 
     /// Write out a parseable log of tests that were run
     pub logfile: Option<PathBuf>,
@@ -190,6 +231,9 @@ pub struct Config {
 
     /// Host triple for the compiler being invoked
     pub host: String,
+
+    /// Path to / name of the Microsoft Console Debugger (CDB) executable
+    pub cdb: Option<OsString>,
 
     /// Path to / name of the GDB executable
     pub gdb: Option<String>,
@@ -242,6 +286,11 @@ pub struct Config {
     /// mode describing what file the actual ui output will be compared to
     pub compare_mode: Option<CompareMode>,
 
+    /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
+    /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
+    /// created in `/<build_base>/rustfix_missing_coverage.txt`
+    pub rustfix_coverage: bool,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,
@@ -251,6 +300,8 @@ pub struct Config {
     pub linker: Option<String>,
     pub llvm_components: String,
     pub llvm_cxxflags: String,
+
+    /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests
     pub nodejs: Option<String>,
 }
 

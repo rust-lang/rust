@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // pretty-expanded FIXME #23616
 
 #![feature(fn_traits, unboxed_closures)]
@@ -26,20 +26,20 @@ impl Alloy {
     }
 }
 
-impl<'b> Fn<(&'b mut (Response+'b),)> for SendFile {
-    extern "rust-call" fn call(&self, (_res,): (&'b mut (Response+'b),)) {}
+impl<'b> Fn<(&'b mut (dyn Response + 'b),)> for SendFile {
+    extern "rust-call" fn call(&self, (_res,): (&'b mut (dyn Response + 'b),)) {}
 }
 
-impl<'b> FnMut<(&'b mut (Response+'b),)> for SendFile {
-    extern "rust-call" fn call_mut(&mut self, (_res,): (&'b mut (Response+'b),)) {
+impl<'b> FnMut<(&'b mut (dyn Response + 'b),)> for SendFile {
+    extern "rust-call" fn call_mut(&mut self, (_res,): (&'b mut (dyn Response+'b),)) {
         self.call((_res,))
     }
 }
 
-impl<'b> FnOnce<(&'b mut (Response+'b),)> for SendFile {
+impl<'b> FnOnce<(&'b mut (dyn Response + 'b),)> for SendFile {
     type Output = ();
 
-    extern "rust-call" fn call_once(self, (_res,): (&'b mut (Response+'b),)) {
+    extern "rust-call" fn call_once(self, (_res,): (&'b mut (dyn Response+'b),)) {
         self.call((_res,))
     }
 }

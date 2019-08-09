@@ -6,7 +6,7 @@ LL |     (|| Box::new(*(&[0][..])))();
    |
    = help: the trait `std::marker::Sized` is not implemented for `[{integer}]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required by `<std::boxed::Box<T>>::new`
+   = note: required by `std::boxed::Box::<T>::new`
 
 error: aborting due to previous error
 

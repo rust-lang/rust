@@ -1,9 +1,8 @@
-//compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 struct Foo {
-    bar: for<'r> Fn(usize, &'r FnMut())
+    bar: dyn for<'r> Fn(usize, &'r dyn FnMut())
 }
 
 fn main() {
 }
-

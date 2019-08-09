@@ -18,6 +18,13 @@
 // lldb-command:print x
 // lldb-check:[...]$0 = 5
 
+// === CDB TESTS ==================================================================================
+
+// cdb-command:g
+
+// cdb-command:dx x
+// cdb-check:string [...] : 5 [Type: [...]]
+
 fn main() {
     let x = 1;
 
@@ -25,4 +32,3 @@ fn main() {
 }
 
 fn zzz() {()}
-

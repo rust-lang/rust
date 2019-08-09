@@ -28,6 +28,17 @@ macro_rules! rtassert {
     })
 }
 
+#[allow(unused_macros)] // not used on all platforms
+macro_rules! rtunwrap {
+    ($ok:ident, $e:expr) => (match $e {
+        $ok(v) => v,
+        ref err => {
+            let err = err.as_ref().map(|_|()); // map Ok/Some which might not be Debug
+            rtabort!(concat!("unwrap failed: ", stringify!($e), " = {:?}"), err)
+        },
+    })
+}
+
 pub mod alloc;
 pub mod at_exit_imp;
 #[cfg(feature = "backtrace")]
@@ -35,6 +46,13 @@ pub mod backtrace;
 pub mod condvar;
 pub mod io;
 pub mod mutex;
+#[cfg(any(rustdoc, // see `mod os`, docs are generated for multiple platforms
+          unix,
+          target_os = "redox",
+          target_os = "cloudabi",
+          target_arch = "wasm32",
+          all(target_vendor = "fortanix", target_env = "sgx")))]
+pub mod os_str_bytes;
 pub mod poison;
 pub mod remutex;
 pub mod rwlock;
@@ -45,11 +63,11 @@ pub mod util;
 pub mod wtf8;
 pub mod bytestring;
 pub mod process;
+pub mod fs;
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(any(target_os = "cloudabi",
                  target_os = "l4re",
-                 target_os = "redox",
                  all(target_arch = "wasm32", not(target_os = "emscripten")),
                  all(target_vendor = "fortanix", target_env = "sgx")))] {
         pub use crate::sys::net;
@@ -57,12 +75,6 @@ cfg_if! {
         pub mod net;
     }
 }
-
-#[cfg(feature = "backtrace")]
-#[cfg(any(all(unix, not(target_os = "emscripten")),
-          all(windows, target_env = "gnu"),
-          target_os = "redox"))]
-pub mod gnu;
 
 // common error constructors
 

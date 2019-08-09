@@ -1,15 +1,14 @@
-error[E0502]: cannot borrow `v` as mutable because `*v` is also borrowed as immutable
+error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-loan-blocks-mut-uniq.rs:10:12
    |
 LL |     borrow(&*v,
-   |             -- immutable borrow occurs here
+   |     ------ --- immutable borrow occurs here
+   |     |
+   |     immutable borrow later used by call
 LL |            |w| {
    |            ^^^ mutable borrow occurs here
 LL |             v = box 4;
-   |             - borrow occurs due to use of `v` in closure
-...
-LL |         })
-   |          - immutable borrow ends here
+   |             - second borrow occurs due to use of `v` in closure
 
 error: aborting due to previous error
 

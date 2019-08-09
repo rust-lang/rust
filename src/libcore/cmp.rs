@@ -72,7 +72,7 @@ use self::Ordering::*;
 /// }
 ///
 /// impl PartialEq for Book {
-///     fn eq(&self, other: &Book) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.isbn == other.isbn
 ///     }
 /// }
@@ -233,7 +233,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 ///     format: BookFormat,
 /// }
 /// impl PartialEq for Book {
-///     fn eq(&self, other: &Book) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.isbn == other.isbn
 ///     }
 /// }
@@ -265,7 +265,7 @@ pub trait Eq: PartialEq<Self> {
 #[unstable(feature = "derive_eq",
            reason = "deriving hack, should not be public",
            issue = "0")]
-pub struct AssertParamIsEq<T: Eq + ?Sized> { _field: ::marker::PhantomData<T> }
+pub struct AssertParamIsEq<T: Eq + ?Sized> { _field: crate::marker::PhantomData<T> }
 
 /// An `Ordering` is the result of a comparison between two values.
 ///
@@ -286,13 +286,13 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> { _field: ::marker::PhantomData<T> }
 #[derive(Clone, Copy, PartialEq, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Ordering {
-    /// An ordering where a compared value is less [than another].
+    /// An ordering where a compared value is less than another.
     #[stable(feature = "rust1", since = "1.0.0")]
     Less = -1,
-    /// An ordering where a compared value is equal [to another].
+    /// An ordering where a compared value is equal to another.
     #[stable(feature = "rust1", since = "1.0.0")]
     Equal = 0,
-    /// An ordering where a compared value is greater [than another].
+    /// An ordering where a compared value is greater than another.
     #[stable(feature = "rust1", since = "1.0.0")]
     Greater = 1,
 }
@@ -319,7 +319,7 @@ impl Ordering {
     /// This method can be used to reverse a comparison:
     ///
     /// ```
-    /// let mut data: &mut [_] = &mut [2, 10, 5, 8];
+    /// let data: &mut [_] = &mut [2, 10, 5, 8];
     ///
     /// // sort the array from largest to smallest.
     /// data.sort_by(|a, b| a.cmp(b).reverse());
@@ -493,19 +493,19 @@ impl<T: Ord> Ord for Reverse<T> {
 /// }
 ///
 /// impl Ord for Person {
-///     fn cmp(&self, other: &Person) -> Ordering {
+///     fn cmp(&self, other: &Self) -> Ordering {
 ///         self.height.cmp(&other.height)
 ///     }
 /// }
 ///
 /// impl PartialOrd for Person {
-///     fn partial_cmp(&self, other: &Person) -> Option<Ordering> {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 ///         Some(self.cmp(other))
 ///     }
 /// }
 ///
 /// impl PartialEq for Person {
-///     fn eq(&self, other: &Person) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.height == other.height
 ///     }
 /// }
@@ -568,8 +568,14 @@ pub trait Ord: Eq + PartialOrd<Self> {
         if self <= other { self } else { other }
     }
 
-    /// Returns max if self is greater than max, and min if self is less than min.
-    /// Otherwise this will return self.  Panics if min > max.
+    /// Restrict a value to a certain interval.
+    ///
+    /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
+    /// less than `min`. Otherwise this returns `self`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `min > max`.
     ///
     /// # Examples
     ///
@@ -586,8 +592,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
         assert!(min <= max);
         if self < min {
             min
-        }
-        else if self > max {
+        } else if self > max {
             max
         } else {
             self
@@ -691,13 +696,13 @@ impl PartialOrd for Ordering {
 /// }
 ///
 /// impl PartialOrd for Person {
-///     fn partial_cmp(&self, other: &Person) -> Option<Ordering> {
+///     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
 ///         self.height.partial_cmp(&other.height)
 ///     }
 /// }
 ///
 /// impl PartialEq for Person {
-///     fn eq(&self, other: &Person) -> bool {
+///     fn eq(&self, other: &Self) -> bool {
 ///         self.height == other.height
 ///     }
 /// }
@@ -879,7 +884,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types
 mod impls {
-    use cmp::Ordering::{self, Less, Greater, Equal};
+    use crate::cmp::Ordering::{self, Less, Greater, Equal};
 
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(

@@ -6,10 +6,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cell::UnsafeCell;
-use cmp;
-use hash::Hash;
-use hash::Hasher;
+use crate::cell::UnsafeCell;
+use crate::cmp;
+use crate::hash::Hash;
+use crate::hash::Hasher;
 
 /// Types that can be transferred across thread boundaries.
 ///
@@ -73,9 +73,9 @@ impl<T: ?Sized> !Send for *mut T { }
 /// impl Foo for Impl { }
 /// impl Bar for Impl { }
 ///
-/// let x: &Foo = &Impl;    // OK
-/// // let y: &Bar = &Impl; // error: the trait `Bar` cannot
-///                         // be made into an object
+/// let x: &dyn Foo = &Impl;    // OK
+/// // let y: &dyn Bar = &Impl; // error: the trait `Bar` cannot
+///                             // be made into an object
 /// ```
 ///
 /// [trait object]: ../../book/ch17-02-trait-objects.html
@@ -103,7 +103,7 @@ pub trait Sized {
 /// `Unsize` is implemented for:
 ///
 /// - `[T; N]` is `Unsize<[T]>`
-/// - `T` is `Unsize<Trait>` when `T: Trait`
+/// - `T` is `Unsize<dyn Trait>` when `T: Trait`
 /// - `Foo<..., T, ...>` is `Unsize<Foo<..., U, ...>>` if:
 ///   - `T: Unsize<U>`
 ///   - Foo is a struct
@@ -498,7 +498,7 @@ macro_rules! impls{
 /// #     end: *const T,
 /// #     phantom: PhantomData<&'a T>,
 /// # }
-/// fn borrow_vec<'a, T>(vec: &'a Vec<T>) -> Slice<'a, T> {
+/// fn borrow_vec<T>(vec: &Vec<T>) -> Slice<'_, T> {
 ///     let ptr = vec.as_ptr();
 ///     Slice {
 ///         start: ptr,
@@ -654,6 +654,12 @@ impl<'a, T: ?Sized + 'a> Unpin for &'a T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<'a, T: ?Sized + 'a> Unpin for &'a mut T {}
+
+#[stable(feature = "pin_raw", since = "1.38.0")]
+impl<T: ?Sized> Unpin for *const T {}
+
+#[stable(feature = "pin_raw", since = "1.38.0")]
+impl<T: ?Sized> Unpin for *mut T {}
 
 /// Implementations of `Copy` for primitive types.
 ///

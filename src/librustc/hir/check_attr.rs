@@ -12,6 +12,7 @@ use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use std::fmt::{self, Display};
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -25,8 +26,8 @@ pub(crate) enum Target {
     Mod,
     ForeignMod,
     GlobalAsm,
-    Ty,
-    Existential,
+    TyAlias,
+    OpaqueTy,
     Enum,
     Struct,
     Union,
@@ -49,8 +50,8 @@ impl Display for Target {
             Target::Mod => "module",
             Target::ForeignMod => "foreign module",
             Target::GlobalAsm => "global asm",
-            Target::Ty => "type alias",
-            Target::Existential => "existential type",
+            Target::TyAlias => "type alias",
+            Target::OpaqueTy => "opaque type",
             Target::Enum => "enum",
             Target::Struct => "struct",
             Target::Union => "union",
@@ -74,8 +75,8 @@ impl Target {
             hir::ItemKind::Mod(..) => Target::Mod,
             hir::ItemKind::ForeignMod(..) => Target::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => Target::GlobalAsm,
-            hir::ItemKind::Ty(..) => Target::Ty,
-            hir::ItemKind::Existential(..) => Target::Existential,
+            hir::ItemKind::TyAlias(..) => Target::TyAlias,
+            hir::ItemKind::OpaqueTy(..) => Target::OpaqueTy,
             hir::ItemKind::Enum(..) => Target::Enum,
             hir::ItemKind::Struct(..) => Target::Struct,
             hir::ItemKind::Union(..) => Target::Union,
@@ -86,27 +87,27 @@ impl Target {
     }
 }
 
-struct CheckAttrVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct CheckAttrVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
+impl CheckAttrVisitor<'tcx> {
     /// Checks any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
-            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id_from_hir_id(item.hir_id));
-        } else if let Some(a) = item.attrs.iter().find(|a| a.check_name("target_feature")) {
+            self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id(item.hir_id));
+        } else if let Some(a) = item.attrs.iter().find(|a| a.check_name(sym::target_feature)) {
             self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
                 .span_label(item.span, "not a function")
                 .emit();
         }
 
         for attr in &item.attrs {
-            if attr.check_name("inline") {
+            if attr.check_name(sym::inline) {
                 self.check_inline(attr, &item.span, target)
-            } else if attr.check_name("non_exhaustive") {
+            } else if attr.check_name(sym::non_exhaustive) {
                 self.check_non_exhaustive(attr, item, target)
-            } else if attr.check_name("marker") {
+            } else if attr.check_name(sym::marker) {
                 self.check_marker(attr, item, target)
             }
         }
@@ -166,7 +167,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // ```
         let hints: Vec<_> = item.attrs
             .iter()
-            .filter(|attr| attr.name() == "repr")
+            .filter(|attr| attr.check_name(sym::repr))
             .filter_map(|attr| attr.meta_item_list())
             .flatten()
             .collect();
@@ -177,26 +178,15 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         let mut is_transparent = false;
 
         for hint in &hints {
-            let name = if let Some(name) = hint.name() {
-                name
-            } else {
-                // Invalid repr hint like repr(42). We don't check for unrecognized hints here
-                // (libsyntax does that), so just ignore it.
-                continue;
-            };
-
-            let (article, allowed_targets) = match &*name.as_str() {
-                "C" | "align" => {
-                    is_c |= name == "C";
-                    if target != Target::Struct &&
-                            target != Target::Union &&
-                            target != Target::Enum {
-                                ("a", "struct, enum or union")
-                    } else {
-                        continue
+            let (article, allowed_targets) = match hint.name_or_empty() {
+                name @ sym::C | name @ sym::align => {
+                    is_c |= name == sym::C;
+                    match target {
+                        Target::Struct | Target::Union | Target::Enum => continue,
+                        _ => ("a", "struct, enum, or union"),
                     }
                 }
-                "packed" => {
+                sym::packed => {
                     if target != Target::Struct &&
                             target != Target::Union {
                                 ("a", "struct or union")
@@ -204,7 +194,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         continue
                     }
                 }
-                "simd" => {
+                sym::simd => {
                     is_simd = true;
                     if target != Target::Struct {
                         ("a", "struct")
@@ -212,17 +202,16 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         continue
                     }
                 }
-                "transparent" => {
+                sym::transparent => {
                     is_transparent = true;
-                    if target != Target::Struct {
-                        ("a", "struct")
-                    } else {
-                        continue
+                    match target {
+                        Target::Struct | Target::Union | Target::Enum => continue,
+                        _ => ("a", "struct, enum, or union"),
                     }
                 }
-                "i8"  | "u8"  | "i16" | "u16" |
-                "i32" | "u32" | "i64" | "u64" |
-                "isize" | "usize" => {
+                sym::i8  | sym::u8  | sym::i16 | sym::u16 |
+                sym::i32 | sym::u32 | sym::i64 | sym::u64 |
+                sym::isize | sym::usize => {
                     int_reprs += 1;
                     if target != Target::Enum {
                         ("an", "enum")
@@ -233,7 +222,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 _ => continue,
             };
             self.emit_repr_error(
-                hint.span,
+                hint.span(),
                 item.span,
                 &format!("attribute should be applied to {}", allowed_targets),
                 &format!("not {} {}", article, allowed_targets),
@@ -242,13 +231,13 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
         // Just point at all repr hints if there are any incompatibilities.
         // This is not ideal, but tracking precisely which ones are at fault is a huge hassle.
-        let hint_spans = hints.iter().map(|hint| hint.span);
+        let hint_spans = hints.iter().map(|hint| hint.span());
 
         // Error on repr(transparent, <anything else>).
         if is_transparent && hints.len() > 1 {
             let hint_spans: Vec<_> = hint_spans.clone().collect();
             span_err!(self.tcx.sess, hint_spans, E0692,
-                      "transparent struct cannot have other repr hints");
+                      "transparent {} cannot have other repr hints", target);
         }
         // Warn on repr(u8, u16), repr(C, simd), and c-like-enum-repr(C, u8)
         if (int_reprs > 1)
@@ -276,15 +265,15 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // When checking statements ignore expressions, they will be checked later
         if let hir::StmtKind::Local(ref l) = stmt.node {
             for attr in l.attrs.iter() {
-                if attr.check_name("inline") {
+                if attr.check_name(sym::inline) {
                     self.check_inline(attr, &stmt.span, Target::Statement);
                 }
-                if attr.check_name("repr") {
+                if attr.check_name(sym::repr) {
                     self.emit_repr_error(
                         attr.span,
                         stmt.span,
                         "attribute should not be applied to a statement",
-                        "not a struct, enum or union",
+                        "not a struct, enum, or union",
                     );
                 }
             }
@@ -297,15 +286,15 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             _ => Target::Expression,
         };
         for attr in expr.attrs.iter() {
-            if attr.check_name("inline") {
+            if attr.check_name(sym::inline) {
                 self.check_inline(attr, &expr.span, target);
             }
-            if attr.check_name("repr") {
+            if attr.check_name(sym::repr) {
                 self.emit_repr_error(
                     attr.span,
                     expr.span,
                     "attribute should not be applied to an expression",
-                    "not defining a struct, enum or union",
+                    "not defining a struct, enum, or union",
                 );
             }
         }
@@ -313,7 +302,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_used(&self, item: &hir::Item, target: Target) {
         for attr in &item.attrs {
-            if attr.name() == "used" && target != Target::Static {
+            if attr.check_name(sym::used) && target != Target::Static {
                 self.tcx.sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }
@@ -321,7 +310,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
+impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
@@ -358,7 +347,7 @@ fn is_c_like_enum(item: &hir::Item) -> bool {
     }
 }
 
-fn check_mod_attrs<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,
         &mut CheckAttrVisitor { tcx }.as_deep_visitor()

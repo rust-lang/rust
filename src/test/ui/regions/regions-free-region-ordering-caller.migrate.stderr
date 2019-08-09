@@ -1,0 +1,31 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/regions-free-region-ordering-caller.rs:11:12
+   |
+LL | fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |                     ---------     ---------
+   |                     |
+   |                     these two types are declared with different lifetimes...
+LL |     let z: Option<&'b &'a usize> = None;
+   |            ^^^^^^^^^^^^^^^^^^^^^ ...but data from `a` flows into `b` here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/regions-free-region-ordering-caller.rs:17:12
+   |
+LL | fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |                     ---------     ---------
+   |                     |
+   |                     these two types are declared with different lifetimes...
+LL |     let y: Paramd<'a> = Paramd { x: a };
+LL |     let z: Option<&'b Paramd<'a>> = None;
+   |            ^^^^^^^^^^^^^^^^^^^^^^ ...but data from `a` flows into `b` here
+
+error[E0623]: lifetime mismatch
+  --> $DIR/regions-free-region-ordering-caller.rs:22:12
+   |
+LL | fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
+   |                     ---------     --------- these two types are declared with different lifetimes...
+LL |     let z: Option<&'a &'b usize> = None;
+   |            ^^^^^^^^^^^^^^^^^^^^^ ...but data from `b` flows into `a` here
+
+error: aborting due to 3 previous errors
+

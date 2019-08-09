@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-method-type-parameters-cross-crate.rs:20:5
+   |
+LL | fn call_bigger_region<'x, 'y>(a: Inv<'x>, b: Inv<'y>) {
+   |                       --  -- lifetime `'y` defined here
+   |                       |
+   |                       lifetime `'x` defined here
+LL |     // Here the value provided for 'y is 'y, and hence 'y:'x does not hold.
+LL |     a.bigger_region(b)
+   |     ^^^^^^^^^^^^^^^^^^ argument requires that `'y` must outlive `'x`
+
+error: aborting due to previous error
+

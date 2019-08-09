@@ -3,6 +3,7 @@ use std::path::Path;
 use std::str;
 use errors;
 use crate::syntax::feature_gate::UnstableFeatures;
+use crate::syntax::edition::Edition;
 use crate::html::markdown::{IdMap, ErrorCodes, Markdown};
 
 use std::cell::RefCell;
@@ -23,7 +24,7 @@ pub struct ExternalHtml {
 impl ExternalHtml {
     pub fn load(in_header: &[String], before_content: &[String], after_content: &[String],
                 md_before_content: &[String], md_after_content: &[String], diag: &errors::Handler,
-                id_map: &mut IdMap)
+                id_map: &mut IdMap, edition: Edition)
             -> Option<ExternalHtml> {
         let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
         load_external_files(in_header, diag)
@@ -34,7 +35,8 @@ impl ExternalHtml {
             .and_then(|(ih, bc)|
                 load_external_files(md_before_content, diag)
                     .map(|m_bc| (ih,
-                            format!("{}{}", bc, Markdown(&m_bc, &[], RefCell::new(id_map), codes))))
+                            format!("{}{}", bc, Markdown(&m_bc, &[], RefCell::new(id_map),
+                                    codes, edition))))
             )
             .and_then(|(ih, bc)|
                 load_external_files(after_content, diag)
@@ -43,7 +45,8 @@ impl ExternalHtml {
             .and_then(|(ih, bc, ac)|
                 load_external_files(md_after_content, diag)
                     .map(|m_ac| (ih, bc,
-                            format!("{}{}", ac, Markdown(&m_ac, &[], RefCell::new(id_map), codes))))
+                            format!("{}{}", ac, Markdown(&m_ac, &[], RefCell::new(id_map),
+                                    codes, edition))))
             )
             .map(|(ih, bc, ac)|
                 ExternalHtml {

@@ -15,8 +15,8 @@ impl Drop for Enum {
 fn main() {
     let foo = X(1);
     drop(foo);
-    match foo { //~ ERROR use of moved value
-        X(1) => (),
+    match foo {
+        X(1) => (), //~ ERROR use of moved value
         _ => unreachable!()
     }
 

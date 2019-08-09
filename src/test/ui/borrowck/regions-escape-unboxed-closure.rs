@@ -1,4 +1,4 @@
-fn with_int(f: &mut FnMut(&isize)) {
+fn with_int(f: &mut dyn FnMut(&isize)) {
 }
 
 fn main() {

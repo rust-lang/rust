@@ -1,14 +1,14 @@
-error[E0433]: failed to resolve: not a module `V`
+error[E0433]: failed to resolve: `V` is a variant, not a module
   --> $DIR/resolve-variant-assoc-item.rs:5:8
    |
 LL |     E::V::associated_item;
-   |        ^ not a module `V`
+   |        ^ `V` is a variant, not a module
 
-error[E0433]: failed to resolve: not a module `V`
+error[E0433]: failed to resolve: `V` is a variant, not a module
   --> $DIR/resolve-variant-assoc-item.rs:6:5
    |
 LL |     V::associated_item;
-   |     ^ not a module `V`
+   |     ^ `V` is a variant, not a module
 
 error: aborting due to 2 previous errors
 

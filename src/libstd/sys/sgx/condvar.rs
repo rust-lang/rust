@@ -33,7 +33,7 @@ impl Condvar {
     }
 
     pub unsafe fn wait_timeout(&self, _mutex: &Mutex, _dur: Duration) -> bool {
-        panic!("timeout not supported in SGX");
+        rtabort!("timeout not supported in SGX");
     }
 
     #[inline]

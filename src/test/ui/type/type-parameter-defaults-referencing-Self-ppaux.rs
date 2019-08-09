@@ -11,7 +11,7 @@ impl MyAdd for i32 {
 
 fn main() {
     let x: i32 = 5;
-    let y = x as MyAdd<i32>;
+    let y = x as dyn MyAdd<i32>;
     //~^ ERROR E0038
     //~| ERROR cast to unsized type: `i32` as `dyn MyAdd<i32>`
 }

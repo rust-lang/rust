@@ -11,4 +11,3 @@ struct Bar<'a, T> where T: 'a {
 }
 
 fn main() {}
-

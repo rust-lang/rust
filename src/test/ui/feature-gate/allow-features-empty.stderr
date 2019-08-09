@@ -1,0 +1,27 @@
+error[E0725]: the feature `rustc_diagnostic_macros` is not in the list of allowed features
+  --> $DIR/allow-features-empty.rs:4:12
+   |
+LL | #![feature(rustc_diagnostic_macros)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0725]: the feature `rustc_const_unstable` is not in the list of allowed features
+  --> $DIR/allow-features-empty.rs:6:12
+   |
+LL | #![feature(rustc_const_unstable)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error[E0725]: the feature `lang_items` is not in the list of allowed features
+  --> $DIR/allow-features-empty.rs:8:12
+   |
+LL | #![feature(lang_items)]
+   |            ^^^^^^^^^^
+
+error[E0725]: the feature `unknown_stdlib_feature` is not in the list of allowed features
+  --> $DIR/allow-features-empty.rs:10:12
+   |
+LL | #![feature(unknown_stdlib_feature)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0725`.

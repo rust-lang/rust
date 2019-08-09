@@ -1,8 +1,5 @@
-// compile-pass
-#![allow(dead_code)]
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(non_upper_case_globals)]
-
-#![feature(nll)]
 
 static mut x: &'static u32 = &0;
 

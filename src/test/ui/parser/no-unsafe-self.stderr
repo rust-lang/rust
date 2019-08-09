@@ -1,35 +1,35 @@
 error: cannot pass `self` by raw pointer
-  --> $DIR/no-unsafe-self.rs:4:17
+  --> $DIR/no-unsafe-self.rs:2:17
    |
 LL |     fn foo(*mut self);
    |                 ^^^^ cannot pass `self` by raw pointer
 
 error: cannot pass `self` by raw pointer
-  --> $DIR/no-unsafe-self.rs:5:19
+  --> $DIR/no-unsafe-self.rs:3:19
    |
 LL |     fn baz(*const self);
    |                   ^^^^ cannot pass `self` by raw pointer
 
 error: cannot pass `self` by raw pointer
-  --> $DIR/no-unsafe-self.rs:6:13
+  --> $DIR/no-unsafe-self.rs:4:13
    |
 LL |     fn bar(*self);
    |             ^^^^ cannot pass `self` by raw pointer
 
 error: cannot pass `self` by raw pointer
-  --> $DIR/no-unsafe-self.rs:11:17
+  --> $DIR/no-unsafe-self.rs:9:17
    |
 LL |     fn foo(*mut self) { }
    |                 ^^^^ cannot pass `self` by raw pointer
 
 error: cannot pass `self` by raw pointer
-  --> $DIR/no-unsafe-self.rs:12:19
+  --> $DIR/no-unsafe-self.rs:10:19
    |
 LL |     fn baz(*const self) { }
    |                   ^^^^ cannot pass `self` by raw pointer
 
 error: cannot pass `self` by raw pointer
-  --> $DIR/no-unsafe-self.rs:13:13
+  --> $DIR/no-unsafe-self.rs:11:13
    |
 LL |     fn bar(*self) { }
    |             ^^^^ cannot pass `self` by raw pointer

@@ -1,0 +1,58 @@
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:14:13
+   |
+LL |         x => {
+   |         -
+   |         |
+   |         first assignment to `x`
+   |         help: make this binding mutable: `mut x`
+LL |             x += 1;
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:20:13
+   |
+LL |         E::Foo(x) => {
+   |                -
+   |                |
+   |                first assignment to `x`
+   |                help: make this binding mutable: `mut x`
+LL |             x += 1;
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:26:13
+   |
+LL |         S { bar: x } => {
+   |                  -
+   |                  |
+   |                  first assignment to `x`
+   |                  help: make this binding mutable: `mut x`
+LL |             x += 1;
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:32:13
+   |
+LL |         (x,) => {
+   |          -
+   |          |
+   |          first assignment to `x`
+   |          help: make this binding mutable: `mut x`
+LL |             x += 1;
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/borrowck-match-binding-is-assignment.rs:38:13
+   |
+LL |         [x,_,_] => {
+   |          -
+   |          |
+   |          first assignment to `x`
+   |          help: make this binding mutable: `mut x`
+LL |             x += 1;
+   |             ^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0384`.

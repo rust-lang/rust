@@ -3,7 +3,7 @@
 // ignore-musl
 // ignore-cloudabi
 // ignore-emscripten
-
+// ignore-sgx no dynamic libraries
 #![crate_type = "cdylib"]
 
 extern crate cdylib_dep;

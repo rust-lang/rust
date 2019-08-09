@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // run-pass
 
 #![deny(deprecated_in_future)]

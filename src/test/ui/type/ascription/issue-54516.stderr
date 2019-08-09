@@ -1,0 +1,13 @@
+error: expected token: `,`
+  --> $DIR/issue-54516.rs:4:58
+   |
+LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
+   |                            -                             ^ expected `,`
+   |                            |
+   |                            help: maybe write a path separator here: `::`
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: for more information, see https://github.com/rust-lang/rust/issues/23416
+
+error: aborting due to previous error
+

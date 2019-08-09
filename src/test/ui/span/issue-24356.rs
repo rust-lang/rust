@@ -1,7 +1,5 @@
 // Regression test for #24356
 
-// ignore-tidy-linelength
-
 fn main() {
     {
         use std::ops::Deref;

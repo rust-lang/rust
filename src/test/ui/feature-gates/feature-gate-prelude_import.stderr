@@ -4,7 +4,7 @@ error[E0658]: `#[prelude_import]` is for use by rustc only
 LL | #[prelude_import]
    | ^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(prelude_import)] to the crate attributes to enable
+   = help: add `#![feature(prelude_import)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

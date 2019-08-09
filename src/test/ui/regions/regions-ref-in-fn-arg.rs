@@ -2,13 +2,13 @@
 #![feature(box_syntax)]
 
 fn arg_item(box ref x: Box<isize>) -> &'static isize {
-    x //~^ ERROR borrowed value does not live long enough
+    x //~ ERROR cannot return value referencing function parameter
 }
 
 fn with<R, F>(f: F) -> R where F: FnOnce(Box<isize>) -> R { f(box 3) }
 
 fn arg_closure() -> &'static isize {
-    with(|box ref x| x) //~ ERROR borrowed value does not live long enough
+    with(|box ref x| x) //~ ERROR cannot return value referencing function parameter
 }
 
 fn main() {}

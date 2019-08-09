@@ -9,38 +9,83 @@
 // Re-exported core operators
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use marker::{Copy, Send, Sized, Sync, Unpin};
+pub use crate::marker::{Copy, Send, Sized, Sync, Unpin};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use ops::{Drop, Fn, FnMut, FnOnce};
+pub use crate::ops::{Drop, Fn, FnMut, FnOnce};
 
 // Re-exported functions
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use mem::drop;
+pub use crate::mem::drop;
 
 // Re-exported types and traits
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use clone::Clone;
+pub use crate::clone::Clone;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
+pub use crate::cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use convert::{AsRef, AsMut, Into, From};
+pub use crate::convert::{AsRef, AsMut, Into, From};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use default::Default;
+pub use crate::default::Default;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use iter::{Iterator, Extend, IntoIterator};
+pub use crate::iter::{Iterator, Extend, IntoIterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use iter::{DoubleEndedIterator, ExactSizeIterator};
+pub use crate::iter::{DoubleEndedIterator, ExactSizeIterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use option::Option::{self, Some, None};
+pub use crate::option::Option::{self, Some, None};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use result::Result::{self, Ok, Err};
+pub use crate::result::Result::{self, Ok, Err};
+
+// Re-exported built-in macros
+#[cfg(not(bootstrap))]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[allow(deprecated)]
+#[doc(no_inline)]
+pub use crate::macros::builtin::{
+    Clone,
+    Copy,
+    Debug,
+    Default,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+    RustcDecodable,
+    RustcEncodable,
+    __rust_unstable_column,
+    asm,
+    assert,
+    bench,
+    cfg,
+    column,
+    compile_error,
+    concat,
+    concat_idents,
+    env,
+    file,
+    format_args,
+    format_args_nl,
+    global_allocator,
+    global_asm,
+    include,
+    include_bytes,
+    include_str,
+    line,
+    log_syntax,
+    module_path,
+    option_env,
+    stringify,
+    test,
+    test_case,
+    trace_macros,
+};

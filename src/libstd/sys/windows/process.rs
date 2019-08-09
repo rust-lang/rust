@@ -219,7 +219,7 @@ impl Command {
 }
 
 impl fmt::Debug for Command {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.program)?;
         for arg in &self.args {
             write!(f, " {:?}", arg)?;
@@ -267,13 +267,8 @@ impl Stdio {
 
             Stdio::MakePipe => {
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
-                let pipes = pipe::anon_pipe(ours_readable)?;
+                let pipes = pipe::anon_pipe(ours_readable, true)?;
                 *pipe = Some(pipes.ours);
-                cvt(unsafe {
-                    c::SetHandleInformation(pipes.theirs.handle().raw(),
-                                            c::HANDLE_FLAG_INHERIT,
-                                            c::HANDLE_FLAG_INHERIT)
-                })?;
                 Ok(pipes.theirs.into_handle())
             }
 
@@ -393,7 +388,7 @@ impl From<c::DWORD> for ExitStatus {
 }
 
 impl fmt::Display for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Windows exit codes with the high bit set typically mean some form of
         // unhandled exception or warning. In this scenario printing the exit
         // code in decimal doesn't always make sense because it's a very large

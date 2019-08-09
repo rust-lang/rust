@@ -1,0 +1,21 @@
+steps:
+
+- bash: |
+    set -e
+    curl -fo /usr/local/bin/sccache https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin
+    chmod +x /usr/local/bin/sccache
+  displayName: Install sccache (OSX)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Darwin'))
+
+- script: |
+    md sccache
+    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf sccache\sccache.exe https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2018-04-26-sccache-x86_64-pc-windows-msvc"
+    echo ##vso[task.prependpath]%CD%\sccache
+  displayName: Install sccache (Windows)
+  condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'))
+
+# Note that we don't install sccache on Linux since it's installed elsewhere
+# through all the containers.
+#
+# FIXME: we should probably install sccache outside the containers and then
+# mount it inside the containers so we can centralize all installation here.

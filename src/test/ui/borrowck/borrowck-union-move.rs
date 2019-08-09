@@ -23,17 +23,17 @@ fn main() {
         {
             let mut u = Unn { n1: NonCopy };
             let a = u.n1;
-            let a = u.n1; //~ ERROR use of moved value: `u.n1`
+            let a = u.n1; //~ ERROR use of moved value: `u`
         }
         {
             let mut u = Unn { n1: NonCopy };
             let a = u.n1;
-            let a = u; //~ ERROR use of partially moved value: `u`
+            let a = u; //~ ERROR use of moved value: `u`
         }
         {
             let mut u = Unn { n1: NonCopy };
             let a = u.n1;
-            let a = u.n2; //~ ERROR use of moved value: `u.n2`
+            let a = u.n2; //~ ERROR use of moved value: `u`
         }
         // 2 Copy
         {
@@ -60,12 +60,12 @@ fn main() {
         {
             let mut u = Ucn { c: Copy };
             let a = u.n;
-            let a = u.n; //~ ERROR use of moved value: `u.n`
+            let a = u.n; //~ ERROR use of moved value: `u`
         }
         {
             let mut u = Ucn { c: Copy };
             let a = u.n;
-            let a = u.c; //~ ERROR use of moved value: `u.c`
+            let a = u.c; //~ ERROR use of moved value: `u`
         }
         {
             let mut u = Ucn { c: Copy };
@@ -80,7 +80,7 @@ fn main() {
         {
             let mut u = Ucn { c: Copy };
             let a = u.n;
-            let a = u; //~ ERROR use of partially moved value: `u`
+            let a = u; //~ ERROR use of moved value: `u`
         }
     }
 }

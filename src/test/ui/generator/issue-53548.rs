@@ -15,7 +15,7 @@
 // also analogous to what we would do for higher-ranked regions
 // appearing within the trait in other positions).
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(generators)]
 
@@ -36,4 +36,3 @@ fn main() {
         yield ();
     });
 }
-

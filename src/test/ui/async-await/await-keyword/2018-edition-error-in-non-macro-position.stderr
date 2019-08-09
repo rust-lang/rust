@@ -1,0 +1,72 @@
+error: expected identifier, found reserved keyword `await`
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:7:13
+   |
+LL |     pub mod await {
+   |             ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     pub mod r#await {
+   |             ^^^^^^^
+
+error: expected identifier, found reserved keyword `await`
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:8:20
+   |
+LL |         pub struct await;
+   |                    ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |         pub struct r#await;
+   |                    ^^^^^^^
+
+error: expected identifier, found reserved keyword `await`
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:11:22
+   |
+LL | use self::outer_mod::await::await;
+   |                      ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | use self::outer_mod::r#await::await;
+   |                      ^^^^^^^
+
+error: expected identifier, found reserved keyword `await`
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:11:29
+   |
+LL | use self::outer_mod::await::await;
+   |                             ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | use self::outer_mod::await::r#await;
+   |                             ^^^^^^^
+
+error: expected identifier, found reserved keyword `await`
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:14:14
+   |
+LL | struct Foo { await: () }
+   |              ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | struct Foo { r#await: () }
+   |              ^^^^^^^
+
+error: expected identifier, found reserved keyword `await`
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:17:15
+   |
+LL | impl Foo { fn await() {} }
+   |               ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | impl Foo { fn r#await() {} }
+   |               ^^^^^^^
+
+error: expected identifier, found reserved keyword `await`
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:20:14
+   |
+LL | macro_rules! await {
+   |              ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL | macro_rules! r#await {
+   |              ^^^^^^^
+
+error: aborting due to 7 previous errors
+

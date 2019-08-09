@@ -1,7 +1,7 @@
 error: invalid start of unicode escape
   --> $DIR/issue-43692.rs:2:9
    |
-LL |     '/u{_10FFFF}';
+LL |     '\u{_10FFFF}';
    |         ^
 
 error: aborting due to previous error

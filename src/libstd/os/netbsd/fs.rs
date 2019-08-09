@@ -136,4 +136,3 @@ impl MetadataExt for Metadata {
         self.as_inner().as_inner().st_flags as u32
     }
 }
-

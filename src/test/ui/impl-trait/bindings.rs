@@ -1,4 +1,5 @@
 #![feature(impl_trait_in_bindings)]
+//~^ WARN the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash
 
 fn a<T: Clone>(x: T) {
     const foo: impl Clone = x;

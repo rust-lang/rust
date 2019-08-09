@@ -9,7 +9,7 @@ use crate::hir::Node;
 use crate::util::common::ErrorReported;
 use crate::infer::lexical_region_resolve::RegionResolutionError::SubSupConflict;
 
-impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when binding escapes a closure.
     ///
     /// Consider a case where we have
@@ -48,11 +48,11 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             if let (&SubregionOrigin::BindingTypeIsNotValidAtDecl(ref external_span),
                     &RegionKind::ReFree(ref free_region)) = (&sub_origin, sup_region) {
                 let hir = &self.tcx().hir();
-                if let Some(node_id) = hir.as_local_node_id(free_region.scope) {
+                if let Some(hir_id) = hir.as_local_hir_id(free_region.scope) {
                     if let Node::Expr(Expr {
                         node: Closure(_, _, _, closure_span, None),
                         ..
-                    }) = hir.get(node_id) {
+                    }) = hir.get(hir_id) {
                         let sup_sp = sup_origin.span();
                         let origin_sp = origin.span();
                         let mut err = self.tcx().sess.struct_span_err(
@@ -109,4 +109,3 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         None
     }
 }
-

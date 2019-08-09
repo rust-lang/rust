@@ -5,7 +5,7 @@ use std::ops::Not;
 fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
     !x;
 
-    x.clone();  //~ ERROR: use of moved value
+    x.clone();  //~ ERROR: borrow of moved value
 }
 
 fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
@@ -21,9 +21,9 @@ fn illegal_dereference<T: Not<Output=T>>(mut x: T, y: T) {
     let m = &mut x;
     let n = &y;
 
-    !*m;  //~ ERROR: cannot move out of borrowed content
+    !*m;  //~ ERROR: cannot move out of `*m`
 
-    !*n;  //~ ERROR: cannot move out of borrowed content
+    !*n;  //~ ERROR: cannot move out of `*n`
     use_imm(n); use_mut(m);
 }
 fn main() {}

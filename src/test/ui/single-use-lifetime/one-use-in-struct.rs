@@ -2,7 +2,7 @@
 // even when they are only used once (since to not use a named
 // lifetime is illegal!)
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![deny(single_use_lifetimes)]
 #![allow(dead_code)]
@@ -17,5 +17,12 @@ enum Bar<'f> {
 }
 
 trait Baz<'f> { }
+
+// `Derive`d impls shouldn't trigger a warning, either (Issue #53738).
+
+#[derive(Debug)]
+struct Quux<'a> {
+    priors: &'a u32,
+}
 
 fn main() { }

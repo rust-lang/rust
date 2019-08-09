@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 struct Foo<Self>(Self);
 //~^ ERROR expected identifier, found keyword `Self`
 //~^^ ERROR E0392

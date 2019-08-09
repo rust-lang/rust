@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to local variable `v`
-  --> $DIR/borrowed-universal-error-2.rs:6:5
+  --> $DIR/borrowed-universal-error-2.rs:3:5
    |
 LL |     &v
    |     ^^ returns a reference to data owned by the current function

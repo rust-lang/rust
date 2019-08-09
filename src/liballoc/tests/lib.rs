@@ -2,11 +2,12 @@
 #![feature(box_syntax)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
+#![feature(option_flattening)]
 #![feature(pattern)]
 #![feature(repeat_generic_slice)]
+#![feature(trusted_len)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(vecdeque_rotate)]
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

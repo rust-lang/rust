@@ -2,13 +2,17 @@ error[E0164]: expected tuple struct/variant, found method `<Path>::new`
   --> $DIR/match-fn-call.rs:6:9
    |
 LL |         Path::new("foo") => println!("foo"),
-   |         ^^^^^^^^^^^^^^^^ not a tuple variant or struct
+   |         ^^^^^^^^^^^^^^^^ `fn` calls are not allowed in patterns
+   |
+   = help: for more information, visit https://doc.rust-lang.org/book/ch18-00-patterns.html
 
 error[E0164]: expected tuple struct/variant, found method `<Path>::new`
   --> $DIR/match-fn-call.rs:8:9
    |
 LL |         Path::new("bar") => println!("bar"),
-   |         ^^^^^^^^^^^^^^^^ not a tuple variant or struct
+   |         ^^^^^^^^^^^^^^^^ `fn` calls are not allowed in patterns
+   |
+   = help: for more information, visit https://doc.rust-lang.org/book/ch18-00-patterns.html
 
 error: aborting due to 2 previous errors
 

@@ -14,10 +14,6 @@
 # =============================================================================
 [llvm]
 
-# Indicates whether rustc will support compilation with LLVM
-# note: rustc does not compile without LLVM at the moment
-#enabled = true
-
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
 
@@ -61,14 +57,13 @@
 # support. You'll need to write a target specification at least, and most
 # likely, teach rustc about the C ABI of the target. Get in touch with the
 # Rust team and file an issue if you need assistance in porting!
-#targets = "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon"
+#targets = "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;Sparc;SystemZ;WebAssembly;X86"
 
 # LLVM experimental targets to build support for. These targets are specified in
 # the same format as above, but since these targets are experimental, they are
 # not built by default and the experimental Rust compilation targets that depend
-# on them will not work unless the user opts in to building them. By default the
-# `WebAssembly` and `RISCV` targets are enabled when compiling LLVM from scratch.
-#experimental-targets = "WebAssembly;RISCV"
+# on them will not work unless the user opts in to building them.
+#experimental-targets = ""
 
 # Cap the number of parallel linker invocations when compiling LLVM.
 # This can be useful when building LLVM with debug info, which significantly
@@ -305,20 +300,27 @@
 # library.
 #debug-assertions = false
 
-# Whether or not debuginfo is emitted
-#debuginfo = false
+# Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
+# `0` - no debug info
+# `1` - line tables only
+# `2` - full debug info with variable and type information
+# Can be overriden for specific subsets of Rust code (rustc, std or tools).
+# Debuginfo for tests run with compiletest is not controlled by this option
+# and needs to be enabled separately with `debuginfo-level-tests`.
+#debuginfo-level = if debug { 2 } else { 0 }
 
-# Whether or not line number debug information is emitted
-#debuginfo-lines = false
+# Debuginfo level for the compiler.
+#debuginfo-level-rustc = debuginfo-level
 
-# Whether or not to only build debuginfo for the standard library if enabled.
-# If enabled, this will not compile the compiler with debuginfo, just the
-# standard library.
-#debuginfo-only-std = false
+# Debuginfo level for the standard library.
+#debuginfo-level-std = debuginfo-level
 
-# Enable debuginfo for the extended tools: cargo, rls, rustfmt
-# Adding debuginfo makes them several times larger.
-#debuginfo-tools = false
+# Debuginfo level for the tools.
+#debuginfo-level-tools = debuginfo-level
+
+# Debuginfo level for the test suites run with compiletest.
+# FIXME(#61117): Some tests fail when this option is enabled.
+#debuginfo-level-tests = 0
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
@@ -349,10 +351,8 @@
 # harness are debuggable just from logfiles.
 #verbose-tests = false
 
-# Flag indicating whether tests are compiled with optimizations (the -O flag) or
-# with debuginfo (the -g flag)
+# Flag indicating whether tests are compiled with optimizations (the -O flag).
 #optimize-tests = true
-#debuginfo-tests = true
 
 # Flag indicating whether codegen tests will be run or not. If you get an error
 # saying that the FileCheck executable is missing, you may want to disable this.
@@ -367,10 +367,6 @@
 
 # When creating source tarballs whether or not to create a source tarball.
 #dist-src = false
-
-# Whether to also run the Miri tests suite when running tests.
-# As a side-effect also generates MIR for all libraries.
-#test-miri = false
 
 # After building or testing extended tools (e.g. clippy and rustfmt), append the
 # result (broken, compiling, testing) into this JSON file.
@@ -424,6 +420,9 @@
 # running the tests in normal mode. Largely only used on CI and during local
 # development of NLL
 #test-compare-mode = false
+
+# Use LLVM libunwind as the implementation for Rust's unwinder.
+#llvm-libunwind = false
 
 # =============================================================================
 # Options for specific targets
@@ -480,6 +479,9 @@
 # that this option only makes sense for MUSL targets that produce statically
 # linked binaries
 #musl-root = "..."
+
+# The root location of the `wasm32-wasi` sysroot.
+#wasi-root = "..."
 
 # Used in testing for configuring where the QEMU images are located, you
 # probably don't want to use this.

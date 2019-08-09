@@ -3,7 +3,7 @@ use crate::infer::canonical::OriginalQueryValues;
 use crate::traits::{EvaluationResult, PredicateObligation, SelectionContext,
              TraitQueryMode, OverflowError};
 
-impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
     /// in the given `ParamEnv`.
     pub fn predicate_may_hold(
@@ -64,7 +64,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             Err(OverflowError) => {
                 let mut selcx =
                     SelectionContext::with_query_mode(&self, TraitQueryMode::Standard);
-                selcx.evaluate_obligation_recursively(obligation)
+                selcx.evaluate_root_obligation(obligation)
                     .unwrap_or_else(|r| {
                         span_bug!(
                             obligation.cause.span,

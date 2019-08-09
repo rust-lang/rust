@@ -1,8 +1,10 @@
 error[E0369]: binary operation `+` cannot be applied to type `()`
-  --> $DIR/issue-40610.rs:4:5
+  --> $DIR/issue-40610.rs:4:8
    |
 LL |     () + f(&[1.0]);
-   |     ^^^^^^^^^^^^^^
+   |     -- ^ --------- ()
+   |     |
+   |     ()
    |
    = note: an implementation of `std::ops::Add` might be missing for `()`
 

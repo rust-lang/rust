@@ -1,0 +1,45 @@
+error[E0381]: borrow of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-ref-chain.rs:8:14
+   |
+LL |     let _y = &**x;
+   |              ^^^^ use of possibly uninitialized `**x`
+
+error[E0381]: borrow of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-ref-chain.rs:11:14
+   |
+LL |     let _y = &**x;
+   |              ^^^^ use of possibly uninitialized `**x`
+
+error[E0381]: borrow of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-uninit-ref-chain.rs:14:14
+   |
+LL |     let _y = &**x;
+   |              ^^^^ use of possibly uninitialized `**x`
+
+error[E0381]: assign to part of possibly uninitialized variable: `a`
+  --> $DIR/borrowck-uninit-ref-chain.rs:18:5
+   |
+LL |     a.x = 0;
+   |     ^^^^^^^ use of possibly uninitialized `a`
+
+error[E0381]: assign to part of possibly uninitialized variable: `a`
+  --> $DIR/borrowck-uninit-ref-chain.rs:22:5
+   |
+LL |     a.x = &&0;
+   |     ^^^^^^^^^ use of possibly uninitialized `a`
+
+error[E0381]: assign to part of possibly uninitialized variable: `a`
+  --> $DIR/borrowck-uninit-ref-chain.rs:27:5
+   |
+LL |     a.x = 0;
+   |     ^^^^^^^ use of possibly uninitialized `a`
+
+error[E0381]: assign to part of possibly uninitialized variable: `a`
+  --> $DIR/borrowck-uninit-ref-chain.rs:31:5
+   |
+LL |     a.x = &&0;
+   |     ^^^^^^^^^ use of possibly uninitialized `a`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

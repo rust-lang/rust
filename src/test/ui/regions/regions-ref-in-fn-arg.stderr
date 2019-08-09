@@ -1,24 +1,19 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-ref-in-fn-arg.rs:4:17
+error[E0515]: cannot return value referencing function parameter
+  --> $DIR/regions-ref-in-fn-arg.rs:5:5
    |
 LL | fn arg_item(box ref x: Box<isize>) -> &'static isize {
-   |                 ^^^^^ borrowed value does not live long enough
+   |             --------- function parameter borrowed here
 LL |     x
-LL | }
-   | - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     ^ returns a value referencing data owned by the current function
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/regions-ref-in-fn-arg.rs:11:15
+error[E0515]: cannot return value referencing function parameter
+  --> $DIR/regions-ref-in-fn-arg.rs:11:22
    |
 LL |     with(|box ref x| x)
-   |               ^^^^^  - borrowed value only lives until here
-   |               |
-   |               borrowed value does not live long enough
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |           ---------  ^ returns a value referencing data owned by the current function
+   |           |
+   |           function parameter borrowed here
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

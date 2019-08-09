@@ -7,6 +7,7 @@
 #[macro_use]
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use rustc::hir;
 use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPassObject, LintArray};
@@ -16,17 +17,7 @@ declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
 
 declare_lint!(PLEASE_LINT, Warn, "Warn about items named 'pleaselintme'");
 
-struct Pass;
-
-impl LintPass for Pass {
-    fn name(&self) -> &'static str {
-        "Pass"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(TEST_LINT, PLEASE_LINT)
-    }
-}
+declare_lint_pass!(Pass => [TEST_LINT, PLEASE_LINT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {

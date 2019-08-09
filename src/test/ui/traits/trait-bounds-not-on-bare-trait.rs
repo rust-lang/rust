@@ -6,6 +6,7 @@ trait Foo {
 
 fn foo(_x: Foo + Send) {
     //~^ ERROR the size for values of type
+    //~| WARN trait objects without an explicit `dyn` are deprecated
 }
 
 fn main() { }

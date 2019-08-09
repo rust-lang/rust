@@ -2,7 +2,7 @@ error[E0432]: unresolved import `nonexistent_module`
   --> $DIR/issue-53269.rs:6:9
    |
 LL |     use nonexistent_module::mac;
-   |         ^^^^^^^^^^^^^^^^^^ maybe a missing `extern crate nonexistent_module;`?
+   |         ^^^^^^^^^^^^^^^^^^ maybe a missing crate `nonexistent_module`?
 
 error[E0659]: `mac` is ambiguous (`macro_rules` vs non-`macro_rules` from other module)
   --> $DIR/issue-53269.rs:8:5
@@ -24,5 +24,5 @@ LL |     use nonexistent_module::mac;
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0432, E0659.
+Some errors have detailed explanations: E0432, E0659.
 For more information about an error, try `rustc --explain E0432`.

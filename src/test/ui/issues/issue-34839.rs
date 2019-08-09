@@ -1,6 +1,4 @@
-// compile-pass
-// skip-codegen
-#![allow(dead_code)]
+// check-pass
 
 trait RegularExpression: Sized {
     type Text;
@@ -17,6 +15,5 @@ struct FindCaptures<'t, R>(&'t R::Text) where R: RegularExpression, R::Text: 't;
 enum FindCapturesInner<'r, 't> {
     Dynamic(FindCaptures<'t, ExecNoSyncStr<'r>>),
 }
-
 
 fn main() {}

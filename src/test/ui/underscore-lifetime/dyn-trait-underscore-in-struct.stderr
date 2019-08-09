@@ -12,5 +12,4 @@ LL |     x: Box<dyn Debug + '_>,
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0106, E0228.
-For more information about an error, try `rustc --explain E0106`.
+For more information about this error, try `rustc --explain E0106`.

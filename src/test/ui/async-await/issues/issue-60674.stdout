@@ -1,0 +1,3 @@
+async fn f(mut x: u8) { }
+async fn g((mut x, y, mut z): (u8, u8, u8)) { }
+async fn g(mut x: u8, (a, mut b, c): (u8, u8, u8), y: u8) { }

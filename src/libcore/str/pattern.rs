@@ -7,10 +7,10 @@
             reason = "API not fully fleshed out and ready to be stabilized",
             issue = "27721")]
 
-use cmp;
-use fmt;
-use slice::memchr;
-use usize;
+use crate::cmp;
+use crate::fmt;
+use crate::slice::memchr;
+use crate::usize;
 
 // Pattern
 
@@ -658,7 +658,7 @@ pub struct CharPredicateSearcher<'a, F>(<MultiCharEqPattern<F> as Pattern<'a>>::
 impl<F> fmt::Debug for CharPredicateSearcher<'_, F>
     where F: FnMut(char) -> bool
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CharPredicateSearcher")
             .field("haystack", &self.0.haystack)
             .field("char_indices", &self.0.char_indices)

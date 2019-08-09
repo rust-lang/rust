@@ -1,11 +1,11 @@
-error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-54597-reject-move-out-of-borrow-via-pat.rs:16:13
+error[E0507]: cannot move out of `*array` which is behind a shared reference
+  --> $DIR/issue-54597-reject-move-out-of-borrow-via-pat.rs:14:13
    |
 LL |             *array
    |             ^^^^^^
    |             |
-   |             cannot move out of borrowed content
-   |             help: consider removing the `*`: `array`
+   |             move occurs because `*array` has type `std::vec::Vec<Value>`, which does not implement the `Copy` trait
+   |             help: consider borrowing here: `&*array`
 
 error: aborting due to previous error
 

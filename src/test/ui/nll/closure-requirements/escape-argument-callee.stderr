@@ -4,9 +4,9 @@ note: No external requirements
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                      ^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0/1:9 ~ escape_argument_callee[317d]::test[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:13 ~ escape_argument_callee[317d]::test[0]::{{closure}}[0]) with closure substs [
                i16,
-               for<'r, 's, 't0> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) mut &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) i32, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 't0)) i32))
+               for<'r, 's, 't0> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 'r)) mut &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 's)) i32, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 't0)) i32)),
            ]
 
 error: lifetime may not live long enough
@@ -16,7 +16,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                       -  -  ^^^^^^ assignment requires that `'1` must outlive `'2`
    |                                       |  |
    |                                       |  has type `&'1 i32`
-   |                                       has type `&mut &'2 i32`
+   |                                       has type `&'_#2r mut &'2 i32`
 
 note: No external requirements
   --> $DIR/escape-argument-callee.rs:20:1
@@ -30,7 +30,7 @@ LL | |     deref(p);
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0/0:3 ~ escape_argument_callee[317d]::test[0]) with substs []
+   = note: defining type: DefId(0:12 ~ escape_argument_callee[317d]::test[0]) with substs []
 
 error: aborting due to previous error
 

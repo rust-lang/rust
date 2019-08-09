@@ -1,20 +1,20 @@
 error: expected identifier, found keyword `Self`
-  --> $DIR/issue-36638.rs:3:12
+  --> $DIR/issue-36638.rs:1:12
    |
 LL | struct Foo<Self>(Self);
    |            ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/issue-36638.rs:7:11
+  --> $DIR/issue-36638.rs:5:11
    |
 LL | trait Bar<Self> {}
    |           ^^^^ expected identifier, found keyword
 
 error[E0392]: parameter `Self` is never used
-  --> $DIR/issue-36638.rs:3:12
+  --> $DIR/issue-36638.rs:1:12
    |
 LL | struct Foo<Self>(Self);
-   |            ^^^^ unused type parameter
+   |            ^^^^ unused parameter
    |
    = help: consider removing `Self` or using a marker such as `std::marker::PhantomData`
 

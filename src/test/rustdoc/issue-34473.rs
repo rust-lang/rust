@@ -7,6 +7,5 @@ mod second {
 // @has foo/index.html
 // @!has - SomeTypeWithLongName
 // @has foo/struct.SomeType.html
-// @!has - SomeTypeWithLongName
 // @!has foo/struct.SomeTypeWithLongName.html
 pub use second::{SomeTypeWithLongName as SomeType};

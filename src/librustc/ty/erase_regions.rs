@@ -8,13 +8,13 @@ pub(super) fn provide(providers: &mut ty::query::Providers<'_>) {
     };
 }
 
-fn erase_regions_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+fn erase_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     // N.B., use `super_fold_with` here. If we used `fold_with`, it
     // could invoke the `erase_regions_ty` query recursively.
     ty.super_fold_with(&mut RegionEraserVisitor { tcx })
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     /// Returns an equivalent value with all free regions removed (note
     /// that late-bound regions remain, because they are important for
     /// subtyping, but they are anonymized and normalized as well)..
@@ -32,20 +32,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-struct RegionEraserVisitor<'a, 'gcx: 'tcx, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+struct RegionEraserVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionEraserVisitor<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let Some(ty_lifted) = self.tcx.lift_to_global(&ty) {
-            self.tcx.erase_regions_ty(ty_lifted)
-        } else {
+        if ty.has_local_value() {
             ty.super_fold_with(self)
+        } else {
+            self.tcx.erase_regions_ty(ty)
         }
     }
 
@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionEraserVisitor<'a, 'gcx, 't
         // whenever a substitution occurs.
         match *r {
             ty::ReLateBound(..) => r,
-            _ => self.tcx.types.re_erased
+            _ => self.tcx.lifetimes.re_erased
         }
     }
 }

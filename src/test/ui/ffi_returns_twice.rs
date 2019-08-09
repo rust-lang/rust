@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![feature(ffi_returns_twice)]
 #![crate_type = "lib"]
 

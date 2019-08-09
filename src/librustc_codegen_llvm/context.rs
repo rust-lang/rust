@@ -1,24 +1,23 @@
 use crate::attributes;
 use crate::llvm;
+use crate::llvm_util;
 use crate::debuginfo;
-use crate::monomorphize::Instance;
 use crate::value::Value;
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 
-use crate::monomorphize::partitioning::CodegenUnit;
 use crate::type_::Type;
-use crate::type_of::PointeeInfo;
 use rustc_codegen_ssa::traits::*;
-use libc::c_uint;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc::mir::mono::Stats;
+use rustc::mir::mono::CodegenUnit;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
-use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout, VariantIdx};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{
+    LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx, HasParamEnv
+};
+use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
 use rustc_codegen_ssa::callee::resolve_and_get_fn;
@@ -31,27 +30,27 @@ use std::iter;
 use std::str;
 use std::sync::Arc;
 use syntax::symbol::LocalInternedString;
+use syntax::source_map::{DUMMY_SP, Span};
 use crate::abi::Abi;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub struct CodegenCx<'ll, 'tcx: 'll> {
-    pub tcx: TyCtxt<'ll, 'tcx, 'tcx>,
+pub struct CodegenCx<'ll, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
 
     pub llmod: &'ll llvm::Module,
     pub llcx: &'ll llvm::Context,
-    pub stats: RefCell<Stats>,
     pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<
-            (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
+    pub vtables:
+        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
     pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'ll Value>>,
 
@@ -143,8 +142,13 @@ pub fn is_pie_binary(sess: &Session) -> bool {
     !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
+fn strip_function_ptr_alignment(data_layout: String) -> String {
+    // FIXME: Make this more general.
+    data_layout.replace("-Fi8-", "-")
+}
+
 pub unsafe fn create_module(
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_>,
     llcx: &'ll llvm::Context,
     mod_name: &str,
 ) -> &'ll llvm::Module {
@@ -152,14 +156,19 @@ pub unsafe fn create_module(
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
+    let mut target_data_layout = sess.target.target.data_layout.clone();
+    if llvm_util::get_major_version() < 9 {
+        target_data_layout = strip_function_ptr_alignment(target_data_layout);
+    }
+
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = crate::back::write::create_target_machine(tcx, false);
+        let tm = crate::back::write::create_informational_target_machine(&tcx.sess, false);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 
-        let data_layout = llvm::LLVMGetDataLayout(llmod);
-        let data_layout = str::from_utf8(CStr::from_ptr(data_layout).to_bytes())
+        let llvm_data_layout = llvm::LLVMGetDataLayout(llmod);
+        let llvm_data_layout = str::from_utf8(CStr::from_ptr(llvm_data_layout).to_bytes())
             .ok().expect("got a non-UTF8 data-layout from LLVM");
 
         // Unfortunately LLVM target specs change over time, and right now we
@@ -180,16 +189,16 @@ pub unsafe fn create_module(
         let cfg_llvm_root = option_env!("CFG_LLVM_ROOT").unwrap_or("");
         let custom_llvm_used = cfg_llvm_root.trim() != "";
 
-        if !custom_llvm_used && sess.target.target.data_layout != data_layout {
+        if !custom_llvm_used && target_data_layout != llvm_data_layout {
             bug!("data-layout for builtin `{}` target, `{}`, \
                   differs from LLVM default, `{}`",
                  sess.target.target.llvm_target,
-                 sess.target.target.data_layout,
-                 data_layout);
+                 target_data_layout,
+                 llvm_data_layout);
         }
     }
 
-    let data_layout = SmallCStr::new(&sess.target.target.data_layout);
+    let data_layout = SmallCStr::new(&target_data_layout);
     llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
 
     let llvm_target = SmallCStr::new(&sess.target.target.llvm_target);
@@ -210,10 +219,11 @@ pub unsafe fn create_module(
 }
 
 impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
-    crate fn new(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
-                 codegen_unit: Arc<CodegenUnit<'tcx>>,
-                 llvm_module: &'ll crate::ModuleLlvm)
-                 -> Self {
+    crate fn new(
+        tcx: TyCtxt<'tcx>,
+        codegen_unit: Arc<CodegenUnit<'tcx>>,
+        llvm_module: &'ll crate::ModuleLlvm,
+    ) -> Self {
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -284,7 +294,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             tls_model,
             llmod,
             llcx,
-            stats: RefCell::new(Stats::default()),
             codegen_unit,
             instances: Default::default(),
             vtables: Default::default(),
@@ -324,10 +333,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
         get_fn(self, instance)
-    }
-
-    fn get_param(&self, llfn: &'ll Value, index: c_uint) -> &'ll Value {
-        llvm::get_param(llfn, index)
     }
 
     fn eh_personality(&self) -> &'ll Value {
@@ -377,7 +382,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     // Returns a Value of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
     fn eh_unwind_resume(&self) -> &'ll Value {
-        use crate::attributes;
         let unwresume = &self.eh_unwind_resume;
         if let Some(llfn) = unwresume.get() {
             return llfn;
@@ -411,14 +415,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn check_overflow(&self) -> bool {
         self.check_overflow
-    }
-
-    fn stats(&self) -> &RefCell<Stats> {
-        &self.stats
-    }
-
-    fn consume_stats(self) -> RefCell<Stats> {
-        self.stats
     }
 
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>> {
@@ -475,7 +471,7 @@ impl CodegenCx<'b, 'tcx> {
         };
         let f = self.declare_cfn(name, fn_ty);
         llvm::SetUnnamedAddr(f, false);
-        self.intrinsics.borrow_mut().insert(name, f.clone());
+        self.intrinsics.borrow_mut().insert(name, f);
         f
     }
 
@@ -661,6 +657,11 @@ impl CodegenCx<'b, 'tcx> {
         ifn!("llvm.fabs.v2f64", fn(t_v2f64) -> t_v2f64);
         ifn!("llvm.fabs.v4f64", fn(t_v4f64) -> t_v4f64);
         ifn!("llvm.fabs.v8f64", fn(t_v8f64) -> t_v8f64);
+
+        ifn!("llvm.minnum.f32", fn(t_f32, t_f32) -> t_f32);
+        ifn!("llvm.minnum.f64", fn(t_f64, t_f64) -> t_f64);
+        ifn!("llvm.maxnum.f32", fn(t_f32, t_f32) -> t_f32);
+        ifn!("llvm.maxnum.f64", fn(t_f64, t_f64) -> t_f64);
 
         ifn!("llvm.floor.f32", fn(t_f32) -> t_f32);
         ifn!("llvm.floor.v2f32", fn(t_v2f32) -> t_v2f32);
@@ -850,7 +851,7 @@ impl HasTargetSpec for CodegenCx<'ll, 'tcx> {
 }
 
 impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
@@ -860,11 +861,21 @@ impl LayoutOf for CodegenCx<'ll, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
+        self.spanned_layout_of(ty, DUMMY_SP)
+    }
+
+    fn spanned_layout_of(&self, ty: Ty<'tcx>, span: Span) -> Self::TyLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
             .unwrap_or_else(|e| if let LayoutError::SizeOverflow(_) = e {
-                self.sess().fatal(&e.to_string())
+                self.sess().span_fatal(span, &e.to_string())
             } else {
                 bug!("failed to get layout for `{}`: {}", ty, e)
             })
+    }
+}
+
+impl<'tcx, 'll> HasParamEnv<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        ty::ParamEnv::reveal_all()
     }
 }

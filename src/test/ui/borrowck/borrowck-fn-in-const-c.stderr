@@ -1,13 +1,11 @@
-error[E0597]: `local.inner` does not live long enough
-  --> $DIR/borrowck-fn-in-const-c.rs:17:17
+error[E0713]: borrow may still be in use when destructor runs
+  --> $DIR/borrowck-fn-in-const-c.rs:17:16
    |
 LL |         return &local.inner;
-   |                 ^^^^^^^^^^^ borrowed value does not live long enough
+   |                ^^^^^^^^^^^^ returning this value requires that `local.inner` is borrowed for `'static`
 LL |     }
-   |     - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     - here, drop of `local` needs exclusive access to `local.inner`, because the type `DropString` implements the `Drop` trait
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0713`.

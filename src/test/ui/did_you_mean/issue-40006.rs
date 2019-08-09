@@ -1,4 +1,4 @@
-impl X { //~ ERROR cannot be made into an object
+impl dyn X { //~ ERROR cannot be made into an object
 //~^ ERROR missing
     Y
 }

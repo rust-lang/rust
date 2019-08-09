@@ -30,4 +30,3 @@ LL |         let _: u128 = simd_bitmask(m64);
 
 error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0511`.

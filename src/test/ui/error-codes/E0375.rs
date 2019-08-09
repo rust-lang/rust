@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(coerce_unsized)]
 use std::ops::CoerceUnsized;
 

@@ -9,7 +9,7 @@ LL | |         println!("irrefutable pattern");
 LL | |     });
    | |_______- in this macro invocation
    |
-   = note: #[warn(irrefutable_let_patterns)] on by default
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
 
 warning: irrefutable while-let pattern
   --> $DIR/while-let.rs:6:13

@@ -13,7 +13,6 @@ use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::slice;
 use crate::sys::{c, cvt};
-use crate::sys::handle::Handle;
 
 use super::to_u16s;
 
@@ -136,7 +135,7 @@ pub struct SplitPaths<'a> {
     must_yield: bool,
 }
 
-pub fn split_paths(unparsed: &OsStr) -> SplitPaths {
+pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     SplitPaths {
         data: unparsed.encode_wide(),
         must_yield: true,
@@ -212,7 +211,7 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 }
 
 impl fmt::Display for JoinPathsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "path segment contains `\"`".fmt(f)
     }
 }
@@ -284,10 +283,11 @@ pub fn temp_dir() -> PathBuf {
     }, super::os2path).unwrap()
 }
 
-pub fn home_dir() -> Option<PathBuf> {
-    crate::env::var_os("HOME").or_else(|| {
-        crate::env::var_os("USERPROFILE")
-    }).map(PathBuf::from).or_else(|| unsafe {
+#[cfg(not(target_vendor = "uwp"))]
+fn home_dir_crt() -> Option<PathBuf> {
+    unsafe {
+        use crate::sys::handle::Handle;
+
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();
         if c::OpenProcessToken(me, c::TOKEN_READ, &mut token) == 0 {
@@ -301,7 +301,18 @@ pub fn home_dir() -> Option<PathBuf> {
                 _ => sz - 1, // sz includes the null terminator
             }
         }, super::os2path).ok()
-    })
+    }
+}
+
+#[cfg(target_vendor = "uwp")]
+fn home_dir_crt() -> Option<PathBuf> {
+    None
+}
+
+pub fn home_dir() -> Option<PathBuf> {
+    crate::env::var_os("HOME").or_else(|| {
+        crate::env::var_os("USERPROFILE")
+    }).map(PathBuf::from).or_else(|| home_dir_crt())
 }
 
 pub fn exit(code: i32) -> ! {

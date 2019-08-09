@@ -25,6 +25,25 @@ LL |     fn mul(self, s: f64) -> f64 {
    = note: expected type `fn(Vec3, f64) -> i32`
               found type `fn(Vec3, f64) -> f64`
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/wrong-mul-method-signature.rs:63:45
+   |
+LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
+   |                                             ^^^ expected struct `Vec2`, found floating-point number
+   |
+   = note: expected type `Vec2`
+              found type `{float}`
 
-For more information about this error, try `rustc --explain E0053`.
+error[E0308]: mismatched types
+  --> $DIR/wrong-mul-method-signature.rs:63:19
+   |
+LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found f64
+   |
+   = note: expected type `Vec2`
+              found type `f64`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0053, E0308.
+For more information about an error, try `rustc --explain E0053`.

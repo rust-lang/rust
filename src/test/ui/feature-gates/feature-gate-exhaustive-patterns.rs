@@ -6,4 +6,3 @@ fn foo() -> Result<u32, !> {
 fn main() {
     let Ok(_x) = foo(); //~ ERROR refutable pattern in local binding
 }
-

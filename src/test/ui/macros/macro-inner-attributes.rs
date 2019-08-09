@@ -1,4 +1,4 @@
-#![feature(custom_attribute)]
+#![feature(rustc_attrs)]
 
 macro_rules! test { ($nm:ident,
                      #[$a:meta],
@@ -12,7 +12,7 @@ test!(b,
       #[cfg(not(qux))],
       pub fn bar() { });
 
-#[qux]
+#[rustc_dummy]
 fn main() {
     a::bar();
     //~^ ERROR failed to resolve: use of undeclared type or module `a`

@@ -1,8 +1,9 @@
+use log::debug;
+use rustc::dep_graph::DepNode;
 use rustc::session::Session;
 use rustc::util::common::{ProfQDumpParams, ProfileQueriesMsg, profq_msg, profq_set_chan};
 use std::sync::mpsc::{Receiver};
 use std::io::{Write};
-use rustc::dep_graph::{DepNode};
 use std::time::{Duration, Instant};
 
 pub mod trace;
@@ -61,7 +62,6 @@ fn total_duration(traces: &[trace::Rec]) -> Duration {
 fn profile_queries_thread(r: Receiver<ProfileQueriesMsg>) {
     use self::trace::*;
     use std::fs::File;
-    use std::time::{Instant};
 
     let mut profq_msgs: Vec<ProfileQueriesMsg> = vec![];
     let mut frame: StackFrame = StackFrame { parse_st: ParseState::Clear, traces: vec![] };

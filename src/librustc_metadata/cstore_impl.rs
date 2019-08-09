@@ -11,6 +11,7 @@ use rustc::middle::cstore::{CrateStore, DepKind,
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
+use rustc::hir;
 use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::query::Providers;
@@ -20,6 +21,7 @@ use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::svh::Svh;
 
+use smallvec::SmallVec;
 use std::any::Any;
 use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
@@ -28,9 +30,11 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map;
 use syntax::edition::Edition;
+use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind};
+use syntax::ext::proc_macro::BangProcMacro;
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax_pos::{Span, NO_EXPANSION, FileName};
 use rustc_data_structures::bit_set::BitSet;
 
@@ -38,11 +42,12 @@ macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $other:ident, $cdata:ident,
       $($name:ident => $compute:block)*) => {
         pub fn provide_extern<$lt>(providers: &mut Providers<$lt>) {
-            $(fn $name<'a, $lt:$lt, T>($tcx: TyCtxt<'a, $lt, $lt>, def_id_arg: T)
-                                    -> <ty::queries::$name<$lt> as
-                                        QueryConfig<$lt>>::Value
-                where T: IntoArgs,
-            {
+            // HACK(eddyb) `$lt: $lt` forces `$lt` to be early-bound, which
+            // allows the associated type in the return type to be normalized.
+            $(fn $name<$lt: $lt, T: IntoArgs>(
+                $tcx: TyCtxt<$lt>,
+                def_id_arg: T,
+            ) -> <ty::queries::$name<$lt> as QueryConfig<$lt>>::Value {
                 #[allow(unused_variables)]
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
@@ -92,25 +97,27 @@ impl IntoArgs for (CrateNum, DefId) {
 provide! { <'tcx> tcx, def_id, other, cdata,
     type_of => { cdata.get_type(def_id.index, tcx) }
     generics_of => {
-        tcx.alloc_generics(cdata.get_generics(def_id.index, tcx.sess))
+        tcx.arena.alloc(cdata.get_generics(def_id.index, tcx.sess))
     }
-    predicates_of => { Lrc::new(cdata.get_predicates(def_id.index, tcx)) }
-    predicates_defined_on => { Lrc::new(cdata.get_predicates_defined_on(def_id.index, tcx)) }
-    super_predicates_of => { Lrc::new(cdata.get_super_predicates(def_id.index, tcx)) }
+    predicates_of => { tcx.arena.alloc(cdata.get_predicates(def_id.index, tcx)) }
+    predicates_defined_on => {
+        tcx.arena.alloc(cdata.get_predicates_defined_on(def_id.index, tcx))
+    }
+    super_predicates_of => { tcx.arena.alloc(cdata.get_super_predicates(def_id.index, tcx)) }
     trait_def => {
-        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx.sess))
+        tcx.arena.alloc(cdata.get_trait_def(def_id.index, tcx.sess))
     }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;
         tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
     }
-    variances_of => { Lrc::new(cdata.get_item_variances(def_id.index)) }
+    variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
-        let mut result = vec![];
+        let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index,
-          |child| result.push(child.def.def_id()), tcx.sess);
-        Lrc::new(result)
+          |child| result.push(child.res.def_id()), tcx.sess);
+        tcx.arena.alloc_slice(&result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
@@ -125,18 +132,19 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
         });
 
-        let mir = tcx.alloc_mir(mir);
+        let mir = tcx.arena.alloc(mir);
 
         mir
     }
     mir_const_qualif => {
-        (cdata.mir_const_qualif(def_id.index), Lrc::new(BitSet::new_empty(0)))
+        (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
     }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
-    inherent_impls => { Lrc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+    inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
-    describe_def => { cdata.get_def(def_id.index) }
+    static_mutability => { cdata.static_mutability(def_id.index) }
+    def_kind => { cdata.def_kind(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     lookup_stability => {
         cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
@@ -158,7 +166,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
-    dylib_dependency_formats => { Lrc::new(cdata.get_dylib_dependency_formats()) }
+    dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
@@ -167,10 +175,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_profiler_runtime => { cdata.root.profiler_runtime }
     panic_strategy => { cdata.root.panic_strategy }
     extern_crate => {
-        let r = Lrc::new(*cdata.extern_crate.lock());
-        r
+        let r = *cdata.extern_crate.lock();
+        r.map(|c| &*tcx.arena.alloc(c))
     }
     is_no_builtins => { cdata.root.no_builtins }
+    symbol_mangling_version => { cdata.root.symbol_mangling_version }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     reachable_non_generics => {
         let reachable_non_generics = tcx
@@ -185,10 +194,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             })
             .collect();
 
-        Lrc::new(reachable_non_generics)
+        tcx.arena.alloc(reachable_non_generics)
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
-    foreign_modules => { Lrc::new(cdata.get_foreign_modules(tcx.sess)) }
+    foreign_modules => { cdata.get_foreign_modules(tcx) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }
@@ -205,18 +214,12 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     extra_filename => { cdata.root.extra_filename.clone() }
 
-
     implementations_of_trait => {
-        let mut result = vec![];
-        let filter = Some(other);
-        cdata.get_implementations_for_trait(filter, &mut result);
-        Lrc::new(result)
+        cdata.get_implementations_for_trait(tcx, Some(other))
     }
 
     all_trait_implementations => {
-        let mut result = vec![];
-        cdata.get_implementations_for_trait(None, &mut result);
-        Lrc::new(result)
+        cdata.get_implementations_for_trait(tcx, None)
     }
 
     visibility => { cdata.get_visibility(def_id.index) }
@@ -226,13 +229,13 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     crate_name => { cdata.name }
     item_children => {
-        let mut result = vec![];
+        let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
-        Lrc::new(result)
+        tcx.arena.alloc_slice(&result)
     }
-    defined_lib_features => { Lrc::new(cdata.get_lib_features()) }
-    defined_lang_items => { Lrc::new(cdata.get_lang_items()) }
-    missing_lang_items => { Lrc::new(cdata.get_missing_lang_items()) }
+    defined_lib_features => { cdata.get_lib_features(tcx) }
+    defined_lang_items => { cdata.get_lang_items(tcx) }
+    missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
         let r = match *cdata.extern_crate.borrow() {
@@ -244,15 +247,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
-    exported_symbols => {
-        let cnum = cdata.cnum;
-        assert!(cnum != LOCAL_CRATE);
-
-        Arc::new(cdata.exported_symbols(tcx))
-    }
+    exported_symbols => { Arc::new(cdata.exported_symbols(tcx)) }
 }
 
-pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
+pub fn provide(providers: &mut Providers<'_>) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
@@ -291,7 +289,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         },
         foreign_modules: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(foreign_modules::collect(tcx))
+            &tcx.arena.alloc(foreign_modules::collect(tcx))[..]
         },
         link_args: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -328,7 +326,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             // which is to say, its not deterministic in general. But
             // we believe that libstd is consistently assigned crate
             // num 1, so it should be enough to resolve #46112.
-            let mut crates: Vec<CrateNum> = (*tcx.crates()).clone();
+            let mut crates: Vec<CrateNum> = (*tcx.crates()).to_owned();
             crates.sort();
 
             for &cnum in crates.iter() {
@@ -347,25 +345,25 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             {
                 let visible_parent_map = &mut visible_parent_map;
                 let mut add_child = |bfs_queue: &mut VecDeque<_>,
-                                     child: &def::Export,
+                                     child: &def::Export<hir::HirId>,
                                      parent: DefId| {
                     if child.vis != ty::Visibility::Public {
                         return;
                     }
 
-                    let child = child.def.def_id();
-
-                    match visible_parent_map.entry(child) {
-                        Entry::Occupied(mut entry) => {
-                            // If `child` is defined in crate `cnum`, ensure
-                            // that it is mapped to a parent in `cnum`.
-                            if child.krate == cnum && entry.get().krate != cnum {
-                                entry.insert(parent);
+                    if let Some(child) = child.res.opt_def_id() {
+                        match visible_parent_map.entry(child) {
+                            Entry::Occupied(mut entry) => {
+                                // If `child` is defined in crate `cnum`, ensure
+                                // that it is mapped to a parent in `cnum`.
+                                if child.krate == cnum && entry.get().krate != cnum {
+                                    entry.insert(parent);
+                                }
                             }
-                        }
-                        Entry::Vacant(entry) => {
-                            entry.insert(parent);
-                            bfs_queue.push_back(child);
+                            Entry::Vacant(entry) => {
+                                entry.insert(parent);
+                                bfs_queue.push_back(child);
+                            }
                         }
                     }
                 };
@@ -377,7 +375,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                 }
             }
 
-            Lrc::new(visible_parent_map)
+            tcx.arena.alloc(visible_parent_map)
         },
 
         ..*providers
@@ -407,7 +405,19 @@ impl cstore::CStore {
         self.get_crate_data(def.krate).get_struct_field_names(def.index)
     }
 
-    pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<def::Export> {
+    pub fn ctor_kind_untracked(&self, def: DefId) -> def::CtorKind {
+        self.get_crate_data(def.krate).get_ctor_kind(def.index)
+    }
+
+    pub fn item_attrs_untracked(&self, def: DefId, sess: &Session) -> Lrc<[ast::Attribute]> {
+        self.get_crate_data(def.krate).get_item_attrs(def.index, sess)
+    }
+
+    pub fn item_children_untracked(
+        &self,
+        def_id: DefId,
+        sess: &Session
+    ) -> Vec<def::Export<hir::HirId>> {
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
             .each_child_of_item(def_id.index, |child| result.push(child), sess);
@@ -418,17 +428,12 @@ impl cstore::CStore {
         let data = self.get_crate_data(id.krate);
         if let Some(ref proc_macros) = data.proc_macros {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
-        } else if data.name == "proc_macro" && data.item_name(id.index) == "quote" {
-            use syntax::ext::base::SyntaxExtension;
-            use syntax_ext::proc_macro_impl::BangProcMacro;
-
+        } else if data.name == sym::proc_macro && data.item_name(id.index) == sym::quote {
             let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
-            let ext = SyntaxExtension::ProcMacro {
-                expander: Box::new(BangProcMacro { client }),
-                allow_internal_unstable: Some(vec![
-                    Symbol::intern("proc_macro_def_site"),
-                ].into()),
-                edition: data.root.edition,
+            let kind = SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client }));
+            let ext = SyntaxExtension {
+                allow_internal_unstable: Some([sym::proc_macro_def_site][..].into()),
+                ..SyntaxExtension::default(kind, data.root.edition)
             };
             return LoadedMacro::ProcMacro(Lrc::new(ext));
         }
@@ -467,7 +472,7 @@ impl cstore::CStore {
         })
     }
 
-    pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssociatedItem {
+    pub fn associated_item_cloned_untracked(&self, def: DefId) -> ty::AssocItem {
         self.get_crate_data(def.krate).get_associated_item(def.index)
     }
 }
@@ -484,6 +489,10 @@ impl CrateStore for cstore::CStore {
     fn crate_name_untracked(&self, cnum: CrateNum) -> Symbol
     {
         self.get_crate_data(cnum).name
+    }
+
+    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {
+        self.get_crate_data(cnum).private_dep
     }
 
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
@@ -541,10 +550,7 @@ impl CrateStore for cstore::CStore {
         self.do_postorder_cnums_untracked()
     }
 
-    fn encode_metadata<'a, 'tcx>(&self,
-                                 tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                                 -> EncodedMetadata
-    {
+    fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
     }
 

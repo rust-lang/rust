@@ -3,8 +3,8 @@
 //------------------------------------------------------------------------------
 
 const unsafe fn ret_i32_no_unsafe() -> i32 { 42 }
-const unsafe fn ret_null_ptr_no_unsafe<T>() -> *const T { 0 as *const T }
-const unsafe fn ret_null_mut_ptr_no_unsafe<T>() -> *mut T { 0 as *mut T }
+const unsafe fn ret_null_ptr_no_unsafe<T>() -> *const T { std::ptr::null() }
+const unsafe fn ret_null_mut_ptr_no_unsafe<T>() -> *mut T { std::ptr::null_mut() }
 const fn no_unsafe() { unsafe {} }
 
 const fn call_unsafe_const_fn() -> i32 {

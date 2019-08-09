@@ -12,5 +12,5 @@ LL | fn foo(b: Box<Bar()>) {
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0107, E0214.
+Some errors have detailed explanations: E0107, E0214.
 For more information about an error, try `rustc --explain E0107`.

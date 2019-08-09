@@ -1,19 +1,18 @@
 //~ ERROR mismatched types
-// aux-build:span-preservation.rs
+// aux-build:test-macros.rs
 
 // For each of these, we should get the appropriate type mismatch error message,
 // and the function should be echoed.
 
-extern crate span_preservation as foo;
+#[macro_use]
+extern crate test_macros;
 
-use foo::foo;
-
-#[foo]
+#[recollect_attr]
 fn a() {
     let x: usize = "hello";;;;; //~ ERROR mismatched types
 }
 
-#[foo]
+#[recollect_attr]
 fn b(x: Option<isize>) -> usize {
     match x {
         Some(x) => { return x }, //~ ERROR mismatched types
@@ -21,7 +20,7 @@ fn b(x: Option<isize>) -> usize {
     }
 }
 
-#[foo]
+#[recollect_attr]
 fn c() {
     struct Foo {
         a: usize
@@ -39,12 +38,12 @@ fn c() {
 // FIXME: This doesn't work at the moment. See the one below. The pretty-printer
 // injects a "C" between `extern` and `fn` which causes a "probably_eq"
 // `TokenStream` mismatch. The lack of `"C"` should be preserved in the AST.
-#[foo]
+#[recollect_attr]
 extern fn bar() {
     0
 }
 
-#[foo]
+#[recollect_attr]
 extern "C" fn baz() {
     0 //~ ERROR mismatched types
 }

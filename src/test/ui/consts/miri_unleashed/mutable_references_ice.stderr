@@ -1,0 +1,21 @@
+warning: skipping const checks
+  --> $DIR/mutable_references_ice.rs:27:9
+   |
+LL |         *MUH.x.get() = 99;
+   |         ^^^^^^^^^^^^^^^^^
+
+thread 'rustc' panicked at 'assertion failed: `(left != right)`
+  left: `Const`,
+ right: `Const`: UnsafeCells are not allowed behind references in constants. This should have been prevented statically by const qualification. If this were allowed one would be able to change a constant at one use site and other use sites may arbitrarily decide to change, too.', src/librustc_mir/interpret/intern.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+
+error: internal compiler error: unexpected panic
+
+note: the compiler unexpectedly panicked. this is a bug.
+
+note: we would appreciate a bug report: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports
+
+note: rustc VERSION running on TARGET
+
+note: compiler flags: FLAGS
+

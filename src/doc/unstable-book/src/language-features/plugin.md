@@ -8,7 +8,7 @@ The tracking issue for this feature is: [#29597]
 This feature is part of "compiler plugins." It will often be used with the
 [`plugin_registrar`] and `rustc_private` features.
 
-[`plugin_registrar`]: language-features/plugin-registrar.html
+[`plugin_registrar`]: plugin-registrar.md
 
 ------------------------
 
@@ -39,12 +39,12 @@ of a library.
 
 Plugins can extend Rust's syntax in various ways. One kind of syntax extension
 is the procedural macro. These are invoked the same way as [ordinary
-macros](../book/macros.html), but the expansion is performed by arbitrary Rust
+macros](../../book/macros.md), but the expansion is performed by arbitrary Rust
 code that manipulates syntax trees at
 compile time.
 
 Let's write a plugin
-[`roman_numerals.rs`](https://github.com/rust-lang/rust/blob/master/src/test/run-pass-fulldeps/auxiliary/roman_numerals.rs)
+[`roman_numerals.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/roman_numerals.rs)
 that implements Roman numeral integer literals.
 
 ```rust,ignore
@@ -56,15 +56,14 @@ extern crate syntax_pos;
 extern crate rustc;
 extern crate rustc_plugin;
 
-use syntax::parse::token;
+use syntax::parse::token::{self, Token};
 use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
-use syntax::ext::build::AstBuilder;  // A trait for expr_usize.
 use syntax_pos::Span;
 use rustc_plugin::Registry;
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
-        -> Box<MacResult + 'static> {
+        -> Box<dyn MacResult + 'static> {
 
     static NUMERALS: &'static [(&'static str, usize)] = &[
         ("M", 1000), ("CM", 900), ("D", 500), ("CD", 400),
@@ -80,7 +79,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     }
 
     let text = match args[0] {
-        TokenTree::Token(_, token::Ident(s)) => s.to_string(),
+        TokenTree::Token(Token { kind: token::Ident(s, _), .. }) => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
             return DummyResult::any(sp);
@@ -130,9 +129,9 @@ The advantages over a simple `fn(&str) -> u32` are:
   a way to define new literal syntax for any data type.
 
 In addition to procedural macros, you can define new
-[`derive`](../reference/attributes.html#derive)-like attributes and other kinds
+[`derive`](../../reference/attributes/derive.md)-like attributes and other kinds
 of extensions.  See `Registry::register_syntax_extension` and the
-`SyntaxExtension` enum.  For a more involved macro example, see
+`SyntaxExtension` struct.  For a more involved macro example, see
 [`regex_macros`](https://github.com/rust-lang/regex/blob/master/regex_macros/src/lib.rs).
 
 
@@ -164,17 +163,10 @@ can continue and find further errors.
 To print syntax fragments for debugging, you can use `span_note` together with
 `syntax::print::pprust::*_to_string`.
 
-The example above produced an integer literal using `AstBuilder::expr_usize`.
-As an alternative to the `AstBuilder` trait, `libsyntax` provides a set of
-quasiquote macros. They are undocumented and very rough around the edges.
-However, the implementation may be a good starting point for an improved
-quasiquote as an ordinary plugin library.
-
-
 # Lint plugins
 
 Plugins can extend [Rust's lint
-infrastructure](../reference/attributes.html#lint-check-attributes) with
+infrastructure](../../reference/attributes/diagnostics.md#lint-check-attributes) with
 additional checks for code style, safety, etc. Now let's write a plugin
 [`lint_plugin_test.rs`](https://github.com/rust-lang/rust/blob/master/src/test/ui-fulldeps/auxiliary/lint_plugin_test.rs)
 that warns about any item named `lintme`.
@@ -253,7 +245,7 @@ mostly use the same infrastructure as lint plugins, and provide examples of how
 to access type information.
 
 Lints defined by plugins are controlled by the usual [attributes and compiler
-flags](../reference/attributes.html#lint-check-attributes), e.g.
+flags](../../reference/attributes/diagnostics.md#lint-check-attributes), e.g.
 `#[allow(test_lint)]` or `-A test-lint`. These identifiers are derived from the
 first argument to `declare_lint!`, with appropriate case and punctuation
 conversion.

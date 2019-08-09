@@ -33,14 +33,14 @@ fn bar<'a>(x: &'a isize) {
 
     // &'a CAN be declared on functions and used then:
     fn g<'a>(a: &'a isize) { } // OK
-    fn h(a: Box<for<'a> FnOnce(&'a isize)>) { } // OK
+    fn h(a: Box<dyn for<'a> FnOnce(&'a isize)>) { } // OK
 }
 
 // Test nesting of lifetimes in fn type declarations
 fn fn_types(a: &'a isize, //~ ERROR undeclared lifetime
-            b: Box<for<'a> FnOnce(&'a isize,
+            b: Box<dyn for<'a> FnOnce(&'a isize,
                                   &'b isize, //~ ERROR undeclared lifetime
-                                  Box<for<'b> FnOnce(&'a isize,
+                                  Box<dyn for<'b> FnOnce(&'a isize,
                                                      &'b isize)>,
                                   &'b isize)>, //~ ERROR undeclared lifetime
             c: &'a isize) //~ ERROR undeclared lifetime

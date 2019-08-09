@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![deny(intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: to escape `[` and `]` characters, just add '/' before them like `/[` or `/]`
+   = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
 error: aborting due to previous error
 

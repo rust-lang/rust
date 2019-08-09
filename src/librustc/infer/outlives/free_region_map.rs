@@ -11,6 +11,10 @@ pub struct FreeRegionMap<'tcx> {
 }
 
 impl<'tcx> FreeRegionMap<'tcx> {
+    pub fn elements(&self) -> impl Iterator<Item=&Region<'tcx>> {
+        self.relation.elements()
+    }
+
     pub fn is_empty(&self) -> bool {
         self.relation.is_empty()
     }
@@ -28,11 +32,12 @@ impl<'tcx> FreeRegionMap<'tcx> {
     /// cases, this is more conservative than necessary, in order to
     /// avoid making arbitrary choices. See
     /// `TransitiveRelation::postdom_upper_bound` for more details.
-    pub fn lub_free_regions<'a, 'gcx>(&self,
-                                      tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                      r_a: Region<'tcx>,
-                                      r_b: Region<'tcx>)
-                                      -> Region<'tcx> {
+    pub fn lub_free_regions(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        r_a: Region<'tcx>,
+        r_b: Region<'tcx>,
+    ) -> Region<'tcx> {
         debug!("lub_free_regions(r_a={:?}, r_b={:?})", r_a, r_b);
         assert!(is_free(r_a));
         assert!(is_free(r_b));
@@ -90,8 +95,8 @@ impl_stable_hash_for!(struct FreeRegionMap<'tcx> {
 
 impl<'a, 'tcx> Lift<'tcx> for FreeRegionMap<'a> {
     type Lifted = FreeRegionMap<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<FreeRegionMap<'tcx>> {
-        self.relation.maybe_map(|&fr| fr.lift_to_tcx(tcx))
+    fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<FreeRegionMap<'tcx>> {
+        self.relation.maybe_map(|&fr| tcx.lift(&fr))
                      .map(|relation| FreeRegionMap { relation })
     }
 }

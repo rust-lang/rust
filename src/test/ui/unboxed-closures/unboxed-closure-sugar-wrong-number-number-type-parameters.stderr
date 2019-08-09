@@ -1,16 +1,16 @@
 error[E0107]: wrong number of type arguments: expected 0, found 1
-  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:5:15
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:5:19
    |
-LL | fn foo(_: Zero())
-   |               ^^ unexpected type argument
+LL | fn foo(_: dyn Zero())
+   |                   ^^ unexpected type argument
 
 error[E0220]: associated type `Output` not found for `Zero`
-  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:5:15
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters.rs:5:19
    |
-LL | fn foo(_: Zero())
-   |               ^^ associated type `Output` not found
+LL | fn foo(_: dyn Zero())
+   |                   ^^ associated type `Output` not found
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0107, E0220.
+Some errors have detailed explanations: E0107, E0220.
 For more information about an error, try `rustc --explain E0107`.

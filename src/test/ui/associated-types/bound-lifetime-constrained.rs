@@ -25,12 +25,12 @@ fn func2(_: for<'a> fn() -> <() as Foo<'a>>::Item) {
 }
 
 #[cfg(object)]
-fn object1(_: Box<for<'a> Fn(<() as Foo<'a>>::Item) -> &'a i32>) {
+fn object1(_: Box<dyn for<'a> Fn(<() as Foo<'a>>::Item) -> &'a i32>) {
     //[object]~^ ERROR E0582
 }
 
 #[cfg(object)]
-fn object2(_: Box<for<'a> Fn() -> <() as Foo<'a>>::Item>) {
+fn object2(_: Box<dyn for<'a> Fn() -> <() as Foo<'a>>::Item>) {
     //[object]~^ ERROR E0582
 }
 

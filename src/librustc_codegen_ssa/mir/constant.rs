@@ -1,43 +1,32 @@
 use rustc::mir::interpret::ErrorHandled;
-use rustc_mir::const_eval::const_field;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::GlobalId;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout;
+use rustc::ty::layout::{self, HasTyCtxt};
 use syntax::source_map::Span;
 use crate::traits::*;
 
 use super::FunctionCx;
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    fn fully_evaluate(
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    pub fn eval_mir_constant(
         &mut self,
-        bx: &Bx,
-        constant: &'tcx ty::LazyConst<'tcx>,
-    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
-        match *constant {
-            ty::LazyConst::Unevaluated(def_id, ref substs) => {
-                let tcx = bx.tcx();
-                let param_env = ty::ParamEnv::reveal_all();
-                let instance = ty::Instance::resolve(tcx, param_env, def_id, substs).unwrap();
-                let cid = GlobalId {
+        constant: &mir::Constant<'tcx>,
+    ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
+        match constant.literal.val {
+            mir::interpret::ConstValue::Unevaluated(def_id, ref substs) => {
+                let substs = self.monomorphize(substs);
+                let instance = ty::Instance::resolve(
+                    self.cx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs,
+                ).unwrap();
+                let cid = mir::interpret::GlobalId {
                     instance,
                     promoted: None,
                 };
-                tcx.const_eval(param_env.and(cid))
+                self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid))
             },
-            ty::LazyConst::Evaluated(constant) => Ok(constant),
+            _ => Ok(self.monomorphize(&constant.literal)),
         }
-    }
-
-    pub fn eval_mir_constant(
-        &mut self,
-        bx: &Bx,
-        constant: &mir::Constant<'tcx>,
-    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
-        let c = self.monomorphize(&constant.literal);
-        self.fully_evaluate(bx, c)
     }
 
     /// process constant containing SIMD shuffle indices
@@ -46,22 +35,18 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &Bx,
         span: Span,
         ty: Ty<'tcx>,
-        constant: Result<ty::Const<'tcx>, ErrorHandled>,
+        constant: Result<&'tcx ty::Const<'tcx>, ErrorHandled>,
     ) -> (Bx::Value, Ty<'tcx>) {
         constant
             .map(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
                 let fields = match c.ty.sty {
-                    ty::Array(_, n) => n.unwrap_usize(bx.tcx()),
-                    ref other => bug!("invalid simd shuffle type: {}", other),
+                    ty::Array(_, n) => n.eval_usize(bx.tcx(), ty::ParamEnv::reveal_all()),
+                    _ => bug!("invalid simd shuffle type: {}", c.ty),
                 };
                 let values: Vec<_> = (0..fields).map(|field| {
-                    let field = const_field(
-                        bx.tcx(),
-                        ty::ParamEnv::reveal_all(),
-                        None,
-                        mir::Field::new(field as usize),
-                        c,
+                    let field = bx.tcx().const_field(
+                        ty::ParamEnv::reveal_all().and((&c, mir::Field::new(field as usize)))
                     );
                     if let Some(prim) = field.val.try_to_scalar() {
                         let layout = bx.layout_of(field_ty);

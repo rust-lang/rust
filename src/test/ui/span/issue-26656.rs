@@ -10,7 +10,7 @@ impl<B: Button> Trigger<B> for () {
 
 // Still unsound Zook
 trait Button { fn push(&self); }
-struct Zook<B> { button: B, trigger: Box<Trigger<B>+'static> }
+struct Zook<B> { button: B, trigger: Box<dyn Trigger<B>+'static> }
 
 impl<B> Drop for Zook<B> {
     fn drop(&mut self) {

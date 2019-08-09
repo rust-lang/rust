@@ -5,7 +5,6 @@ use crate::io::ErrorKind;
 #[cfg(any(rustdoc, target_os = "linux"))] pub use crate::os::linux as platform;
 
 #[cfg(all(not(rustdoc), target_os = "android"))]   pub use crate::os::android as platform;
-#[cfg(all(not(rustdoc), target_os = "bitrig"))]    pub use crate::os::bitrig as platform;
 #[cfg(all(not(rustdoc), target_os = "dragonfly"))] pub use crate::os::dragonfly as platform;
 #[cfg(all(not(rustdoc), target_os = "freebsd"))]   pub use crate::os::freebsd as platform;
 #[cfg(all(not(rustdoc), target_os = "haiku"))]     pub use crate::os::haiku as platform;
@@ -18,6 +17,7 @@ use crate::io::ErrorKind;
 #[cfg(all(not(rustdoc), target_os = "fuchsia"))]   pub use crate::os::fuchsia as platform;
 #[cfg(all(not(rustdoc), target_os = "l4re"))]      pub use crate::os::linux as platform;
 #[cfg(all(not(rustdoc), target_os = "hermit"))]    pub use crate::os::hermit as platform;
+#[cfg(all(not(rustdoc), target_os = "redox"))]      pub use crate::os::redox as platform;
 
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;
@@ -28,8 +28,6 @@ pub mod weak;
 pub mod alloc;
 pub mod args;
 pub mod android;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 pub mod cmath;
 pub mod condvar;
 pub mod env;
@@ -47,7 +45,6 @@ mod l4re;
 #[cfg(target_os = "l4re")]
 pub use self::l4re::net;
 pub mod os;
-pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
@@ -58,6 +55,8 @@ pub mod thread;
 pub mod thread_local;
 pub mod time;
 pub mod stdio;
+
+pub use crate::sys_common::os_str_bytes as os_str;
 
 #[cfg(not(test))]
 pub fn init() {

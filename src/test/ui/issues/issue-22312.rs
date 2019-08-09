@@ -8,7 +8,7 @@ pub trait Array2D: Index<usize> {
             return None;
         }
         let i = y * self.columns() + x;
-        let indexer = &(*self as &Index<usize, Output = <Self as Index<usize>>::Output>);
+        let indexer = &(*self as &dyn Index<usize, Output = <Self as Index<usize>>::Output>);
         //~^ERROR non-primitive cast
         Some(indexer.index(i))
     }

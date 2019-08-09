@@ -1,22 +1,13 @@
 #![crate_name = "compiletest"]
 #![feature(test)]
-#![deny(warnings, rust_2018_idioms)]
+#![feature(vec_remove_item)]
 
-#[cfg(unix)]
-extern crate libc;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate serde_derive;
 extern crate test;
 
-use crate::common::CompareMode;
+use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{Config, TestPaths};
-use crate::common::{DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
-use filetime::FileTime;
+use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
 use getopts::Options;
 use std::env;
 use std::ffi::OsString;
@@ -24,13 +15,18 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::SystemTime;
 use test::ColorConfig;
 use crate::util::logv;
 use walkdir::WalkDir;
 use env_logger;
 use getopts;
+use log::*;
 
 use self::header::{EarlyProps, Ignore};
+
+#[cfg(test)]
+mod tests;
 
 pub mod common;
 pub mod errors;
@@ -131,8 +127,13 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "(compile-fail|run-fail|run-pass|\
-             run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+            "(compile-fail|run-fail|run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
+        )
+        .optopt(
+            "",
+            "pass",
+            "force {check,build,run}-pass tests to this mode.",
+            "check | build | run"
         )
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "exact", "filters match exactly")
@@ -170,6 +171,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "logfile", "file to log test execution to", "FILE")
         .optopt("", "target", "the target to build for", "TARGET")
         .optopt("", "host", "the host to build for", "HOST")
+        .optopt(
+            "",
+            "cdb",
+            "path to CDB to use for CDB debuginfo tests",
+            "PATH",
+        )
         .optopt(
             "",
             "gdb",
@@ -220,6 +227,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "LIST",
         )
         .reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS")
+        .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
         .optopt(
             "",
@@ -232,6 +240,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "compare-mode",
             "mode describing what file the actual ui output will be compared to",
             "COMPARE MODE",
+        )
+        .optflag(
+            "",
+            "rustfix-coverage",
+            "enable this to generate a Rustfix coverage file, which is saved in \
+                `./<build_base>/rustfix_missing_coverage.txt`",
         )
         .optflag("h", "help", "show this message");
 
@@ -272,6 +286,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
+    let cdb = analyze_cdb(matches.opt_str("cdb"), &target);
     let (gdb, gdb_version, gdb_native_rust) = analyze_gdb(matches.opt_str("gdb"), &target,
                                                           &android_cross_path);
     let (lldb_version, lldb_native_rust) = extract_lldb_version(matches.opt_str("lldb-version"));
@@ -299,7 +314,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
-        llvm_filecheck: matches.opt_str("llvm-filecheck").map(|s| PathBuf::from(&s)),
+        llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
+        llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
         src_base,
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
@@ -311,12 +327,17 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_ignored,
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
+        force_pass_mode: matches.opt_str("pass").map(|mode|
+            mode.parse::<PassMode>()
+                .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
+        ),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
         target: target,
         host: opt_str2(matches.opt_str("host")),
+        cdb,
         gdb,
         gdb_version,
         gdb_native_rust,
@@ -336,6 +357,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
         compare_mode: matches.opt_str("compare-mode").map(CompareMode::parse),
+        rustfix_coverage: matches.opt_present("rustfix-coverage"),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -371,6 +393,10 @@ pub fn log_config(config: &Config) {
         ),
     );
     logv(c, format!("filter_exact: {}", config.filter_exact));
+    logv(c, format!(
+        "force_pass_mode: {}",
+        opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),
+    ));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(
         c,
@@ -418,7 +444,7 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {
-        if config.mode == DebugInfoGdb || config.mode == DebugInfoBoth {
+        if config.mode == DebugInfoGdb || config.mode == DebugInfoGdbLldb {
             println!(
                 "{} debug-info test uses tcp 5039 port.\
                  please reserve it",
@@ -437,8 +463,8 @@ pub fn run_tests(config: &Config) {
 
     match config.mode {
         // Note that we don't need to emit the gdb warning when
-        // DebugInfoBoth, so it is ok to list that here.
-        DebugInfoBoth | DebugInfoLldb => {
+        // DebugInfoGdbLldb, so it is ok to list that here.
+        DebugInfoGdbLldb | DebugInfoLldb => {
             if let Some(lldb_version) = config.lldb_version.as_ref() {
                 if is_blacklisted_lldb_version(&lldb_version[..]) {
                     println!(
@@ -467,12 +493,26 @@ pub fn run_tests(config: &Config) {
                 return;
             }
         }
-        _ => { /* proceed */ }
+
+        DebugInfoCdb | _ => { /* proceed */ }
     }
 
     // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
     if let Mode::CodegenUnits = config.mode {
         let _ = fs::remove_dir_all("tmp/partitioning-tests");
+    }
+
+    // If we want to collect rustfix coverage information,
+    // we first make sure that the coverage file does not exist.
+    // It will be created later on.
+    if config.rustfix_coverage {
+        let mut coverage_file_path = config.build_base.clone();
+        coverage_file_path.push("rustfix_missing_coverage.txt");
+        if coverage_file_path.exists() {
+            if let Err(e) = fs::remove_file(&coverage_file_path) {
+                panic!("Could not delete {} due to {}", coverage_file_path.display(), e)
+            }
+        }
     }
 
     let opts = test_opts(config);
@@ -502,6 +542,7 @@ pub fn run_tests(config: &Config) {
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
+        exclude_should_panic: false,
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
         run_ignored: if config.run_ignored {
@@ -598,6 +639,8 @@ fn collect_tests_from_dir(
     Ok(())
 }
 
+
+/// Returns true if `file_name` looks like a proper test file name.
 pub fn is_test(file_name: &OsString) -> bool {
     let file_name = file_name.to_str().unwrap();
 
@@ -648,7 +691,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
                     &early_props,
                     revision.map(|s| s.as_str()),
                 )
-                || ((config.mode == DebugInfoBoth ||
+                || ((config.mode == DebugInfoGdbLldb || config.mode == DebugInfoCdb ||
                      config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
                     && config.target.contains("emscripten"))
                 || (config.mode == DebugInfoGdb && !early_props.ignore.can_run_gdb())
@@ -733,31 +776,36 @@ fn up_to_date(
 
 #[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
 struct Stamp {
-    time: FileTime,
+    time: SystemTime,
     file: PathBuf,
 }
 
 impl Stamp {
     fn from_path(p: &Path) -> Self {
+        let time = fs::metadata(p)
+            .and_then(|metadata| metadata.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+
         Stamp {
-            time: mtime(&p),
+            time,
             file: p.into(),
         }
     }
 
-    fn from_dir(path: &Path) -> impl Iterator<Item=Stamp> {
+    fn from_dir(path: &Path) -> impl Iterator<Item = Stamp> {
         WalkDir::new(path)
             .into_iter()
             .map(|entry| entry.unwrap())
             .filter(|entry| entry.file_type().is_file())
-            .map(|entry| Stamp::from_path(entry.path()))
-    }
-}
+            .map(|entry| {
+                let time = (|| -> io::Result<_> { entry.metadata()?.modified() })();
 
-fn mtime(path: &Path) -> FileTime {
-    fs::metadata(path)
-        .map(|f| FileTime::from_last_modification_time(&f))
-        .unwrap_or_else(|_| FileTime::zero())
+                Stamp {
+                    time: time.unwrap_or(SystemTime::UNIX_EPOCH),
+                    file: entry.path().into(),
+                }
+            })
+    }
 }
 
 fn make_test_name(
@@ -767,7 +815,7 @@ fn make_test_name(
 ) -> test::TestName {
     // Convert a complete path to something like
     //
-    //    run-pass/foo/bar/baz.rs
+    //    ui/foo/bar/baz.rs
     let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
@@ -791,7 +839,7 @@ fn make_test_closure(
     revision: Option<&String>,
 ) -> test::TestFn {
     let mut config = config.clone();
-    if config.mode == DebugInfoBoth {
+    if config.mode == DebugInfoGdbLldb {
         // If both gdb and lldb were ignored, then the test as a whole
         // would be ignored.
         if !ignore.can_run_gdb() {
@@ -815,6 +863,47 @@ fn is_android_gdb_target(target: &String) -> bool {
         "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => true,
         _ => false,
     }
+}
+
+/// Returns `true` if the given target is a MSVC target for the purpouses of CDB testing.
+fn is_pc_windows_msvc_target(target: &String) -> bool {
+    target.ends_with("-pc-windows-msvc")
+}
+
+fn find_cdb(target: &String) -> Option<OsString> {
+    if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
+        return None;
+    }
+
+    let pf86 = env::var_os("ProgramFiles(x86)").or(env::var_os("ProgramFiles"))?;
+    let cdb_arch = if cfg!(target_arch="x86") {
+        "x86"
+    } else if cfg!(target_arch="x86_64") {
+        "x64"
+    } else if cfg!(target_arch="aarch64") {
+        "arm64"
+    } else if cfg!(target_arch="arm") {
+        "arm"
+    } else {
+        return None; // No compatible CDB.exe in the Windows 10 SDK
+    };
+
+    let mut path = PathBuf::new();
+    path.push(pf86);
+    path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
+    path.push(cdb_arch);
+    path.push(r"cdb.exe");
+
+    if !path.exists() {
+        return None;
+    }
+
+    Some(path.into_os_string())
+}
+
+/// Returns Path to CDB
+fn analyze_cdb(cdb: Option<String>, target: &String) -> Option<OsString> {
+    cdb.map(|s| OsString::from(s)).or(find_cdb(target))
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)
@@ -1006,45 +1095,4 @@ fn extract_lldb_version(full_version_line: Option<String>) -> (Option<String>, b
 
 fn is_blacklisted_lldb_version(version: &str) -> bool {
     version == "350"
-}
-
-#[test]
-fn test_extract_gdb_version() {
-    macro_rules! test { ($($expectation:tt: $input:tt,)*) => {{$(
-        assert_eq!(extract_gdb_version($input), Some($expectation));
-    )*}}}
-
-    test! {
-        7000001: "GNU gdb (GDB) CentOS (7.0.1-45.el5.centos)",
-
-        7002000: "GNU gdb (GDB) Red Hat Enterprise Linux (7.2-90.el6)",
-
-        7004000: "GNU gdb (Ubuntu/Linaro 7.4-2012.04-0ubuntu2.1) 7.4-2012.04",
-        7004001: "GNU gdb (GDB) 7.4.1-debian",
-
-        7006001: "GNU gdb (GDB) Red Hat Enterprise Linux 7.6.1-80.el7",
-
-        7007001: "GNU gdb (Ubuntu 7.7.1-0ubuntu5~14.04.2) 7.7.1",
-        7007001: "GNU gdb (Debian 7.7.1+dfsg-5) 7.7.1",
-        7007001: "GNU gdb (GDB) Fedora 7.7.1-21.fc20",
-
-        7008000: "GNU gdb (GDB; openSUSE 13.2) 7.8",
-        7009001: "GNU gdb (GDB) Fedora 7.9.1-20.fc22",
-        7010001: "GNU gdb (GDB) Fedora 7.10.1-31.fc23",
-
-        7011000: "GNU gdb (Ubuntu 7.11-0ubuntu1) 7.11",
-        7011001: "GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.04) 7.11.1",
-        7011001: "GNU gdb (Debian 7.11.1-2) 7.11.1",
-        7011001: "GNU gdb (GDB) Fedora 7.11.1-86.fc24",
-        7011001: "GNU gdb (GDB; openSUSE Leap 42.1) 7.11.1",
-        7011001: "GNU gdb (GDB; openSUSE Tumbleweed) 7.11.1",
-
-        7011090: "7.11.90",
-        7011090: "GNU gdb (Ubuntu 7.11.90.20161005-0ubuntu1) 7.11.90.20161005-git",
-
-        7012000: "7.12",
-        7012000: "GNU gdb (GDB) 7.12",
-        7012000: "GNU gdb (GDB) 7.12.20161027-git",
-        7012050: "GNU gdb (GDB) 7.12.50.20161027-git",
-    }
 }

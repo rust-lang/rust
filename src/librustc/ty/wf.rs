@@ -7,6 +7,7 @@ use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax_pos::Span;
 use crate::middle::lang_items;
+use crate::mir::interpret::ConstValue;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include
@@ -14,13 +15,13 @@ use crate::middle::lang_items;
 /// inference variable, returns `None`, because we are not able to
 /// make any progress at all. This is to prevent "livelock" where we
 /// say "$0 is WF if $0 is WF".
-pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                   param_env: ty::ParamEnv<'tcx>,
-                                   body_id: hir::HirId,
-                                   ty: Ty<'tcx>,
-                                   span: Span)
-                                   -> Option<Vec<traits::PredicateObligation<'tcx>>>
-{
+pub fn obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: hir::HirId,
+    ty: Ty<'tcx>,
+    span: Span,
+) -> Option<Vec<traits::PredicateObligation<'tcx>>> {
     let mut wf = WfPredicates { infcx,
                                 param_env,
                                 body_id,
@@ -40,25 +41,25 @@ pub fn obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// well-formed.  For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
-pub fn trait_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                         param_env: ty::ParamEnv<'tcx>,
-                                         body_id: hir::HirId,
-                                         trait_ref: &ty::TraitRef<'tcx>,
-                                         span: Span)
-                                         -> Vec<traits::PredicateObligation<'tcx>>
-{
+pub fn trait_obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: hir::HirId,
+    trait_ref: &ty::TraitRef<'tcx>,
+    span: Span,
+) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
     wf.compute_trait_ref(trait_ref, Elaborate::All);
     wf.normalize()
 }
 
-pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                             param_env: ty::ParamEnv<'tcx>,
-                                             body_id: hir::HirId,
-                                             predicate: &ty::Predicate<'tcx>,
-                                             span: Span)
-                                             -> Vec<traits::PredicateObligation<'tcx>>
-{
+pub fn predicate_obligations<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    body_id: hir::HirId,
+    predicate: &ty::Predicate<'tcx>,
+    span: Span,
+) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![] };
 
     // (*) ok to skip binders, because wf code is prepared for it
@@ -100,8 +101,8 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     wf.normalize()
 }
 
-struct WfPredicates<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+struct WfPredicates<'a, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body_id: hir::HirId,
     span: Span,
@@ -137,7 +138,7 @@ enum Elaborate {
     None,
 }
 
-impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     fn cause(&mut self, code: traits::ObligationCauseCode<'tcx>) -> traits::ObligationCause<'tcx> {
         traits::ObligationCause::new(self.span, self.body_id, code)
     }
@@ -203,8 +204,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
     /// Pushes the obligations required for an array length to be WF
     /// into `self.out`.
-    fn compute_array_len(&mut self, constant: ty::LazyConst<'tcx>) {
-        if let ty::LazyConst::Unevaluated(def_id, substs) = constant {
+    fn compute_array_len(&mut self, constant: ty::Const<'tcx>) {
+        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
             let obligations = self.nominal_obligations(def_id, substs);
             self.out.extend(obligations);
 
@@ -264,7 +265,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::Tuple(ref tys) => {
                     if let Some((_last, rest)) = tys.split_last() {
                         for elem in rest {
-                            self.require_sized(elem, traits::TupleElem);
+                            self.require_sized(elem.expect_ty(), traits::TupleElem);
                         }
                     }
                 }
@@ -361,7 +362,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     // should've been checked by the instantiation
                     // of whatever returned this exact `impl Trait`.
 
-                    // for named existential types we still need to check them
+                    // for named opaque `impl Trait` types we still need to check them
                     if super::is_impl_trait_defn(self.infcx.tcx, did).is_none() {
                         let obligations = self.nominal_obligations(did, substs);
                         self.out.extend(obligations);
@@ -507,15 +508,14 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 /// they declare `trait SomeTrait : 'static`, for example, then
 /// `'static` would appear in the list. The hard work is done by
 /// `ty::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>)
-    -> Vec<ty::Region<'tcx>>
-{
+pub fn object_region_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
+) -> Vec<ty::Region<'tcx>> {
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a placeholder type.
-    let open_ty = tcx.mk_infer(ty::FreshTy(0));
+    let open_ty = tcx.mk_ty_infer(ty::FreshTy(0));
 
     let predicates = existential_predicates.iter().filter_map(|predicate| {
         if let ty::ExistentialPredicate::Projection(_) = *predicate.skip_binder() {

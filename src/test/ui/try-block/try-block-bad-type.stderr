@@ -1,14 +1,15 @@
-error[E0277]: the trait bound `i32: std::convert::From<&str>` is not satisfied
-  --> $DIR/try-block-bad-type.rs:7:9
+error[E0277]: `?` couldn't convert the error to `i32`
+  --> $DIR/try-block-bad-type.rs:7:16
    |
 LL |         Err("")?;
-   |         ^^^^^^^^ the trait `std::convert::From<&str>` is not implemented for `i32`
+   |                ^ the trait `std::convert::From<&str>` is not implemented for `i32`
    |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: the following implementations were found:
              <i32 as std::convert::From<bool>>
-             <i32 as std::convert::From<core::num::NonZeroI32>>
              <i32 as std::convert::From<i16>>
              <i32 as std::convert::From<i8>>
+             <i32 as std::convert::From<std::num::NonZeroI32>>
            and 2 others
    = note: required by `std::convert::From::from`
 
@@ -48,5 +49,5 @@ LL |     let res: i32 = try { 5 };
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0271, E0277.
+Some errors have detailed explanations: E0271, E0277.
 For more information about an error, try `rustc --explain E0271`.

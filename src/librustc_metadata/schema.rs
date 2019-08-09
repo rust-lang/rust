@@ -2,27 +2,23 @@ use crate::index;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
-use rustc::hir::def_id::{DefIndex, DefId, CrateNum};
-use rustc::ich::StableHashingContext;
+use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary, ForeignModule};
 use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::session::CrateDisambiguator;
+use rustc::session::config::SymbolManglingVersion;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_data_structures::svh::Svh;
 
-use rustc_serialize as serialize;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
-use std::mem;
-
-use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
-                                           StableHasherResult};
 
 pub fn rustc_version() -> String {
     format!("rustc {}",
@@ -88,17 +84,8 @@ impl<T> Clone for Lazy<T> {
     }
 }
 
-impl<T> serialize::UseSpecializedEncodable for Lazy<T> {}
-impl<T> serialize::UseSpecializedDecodable for Lazy<T> {}
-
-impl<CTX, T> HashStable<CTX> for Lazy<T> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          _: &mut CTX,
-                                          _: &mut StableHasher<W>) {
-        // There's nothing to do. Whatever got encoded within this Lazy<>
-        // wrapper has already been hashed.
-    }
-}
+impl<T> rustc_serialize::UseSpecializedEncodable for Lazy<T> {}
+impl<T> rustc_serialize::UseSpecializedDecodable for Lazy<T> {}
 
 /// A sequence of type T referred to by its absolute position
 /// in the metadata and length, and which can be decoded lazily.
@@ -145,17 +132,8 @@ impl<T> Clone for LazySeq<T> {
     }
 }
 
-impl<T> serialize::UseSpecializedEncodable for LazySeq<T> {}
-impl<T> serialize::UseSpecializedDecodable for LazySeq<T> {}
-
-impl<CTX, T> HashStable<CTX> for LazySeq<T> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          _: &mut CTX,
-                                          _: &mut StableHasher<W>) {
-        // There's nothing to do. Whatever got encoded within this Lazy<>
-        // wrapper has already been hashed.
-    }
-}
+impl<T> rustc_serialize::UseSpecializedEncodable for LazySeq<T> {}
+impl<T> rustc_serialize::UseSpecializedDecodable for LazySeq<T> {}
 
 /// Encoding / decoding state for `Lazy` and `LazySeq`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -174,7 +152,7 @@ pub enum LazyState {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct CrateRoot {
+pub struct CrateRoot<'tcx> {
     pub name: Symbol,
     pub triple: TargetTriple,
     pub extra_filename: String,
@@ -199,10 +177,10 @@ pub struct CrateRoot {
     pub source_map: LazySeq<syntax_pos::SourceFile>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
-    pub exported_symbols: EncodedExportedSymbols,
+    pub exported_symbols: LazySeq<(ExportedSymbol<'tcx>, SymbolExportLevel)>,
     pub interpret_alloc_index: LazySeq<u32>,
 
-    pub index: LazySeq<index::Index>,
+    pub entries_index: LazySeq<index::Index<'tcx>>,
 
     pub compiler_builtins: bool,
     pub needs_allocator: bool,
@@ -211,6 +189,7 @@ pub struct CrateRoot {
     pub panic_runtime: bool,
     pub profiler_runtime: bool,
     pub sanitizer_runtime: bool,
+    pub symbol_mangling_version: SymbolManglingVersion,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -221,34 +200,10 @@ pub struct CrateDep {
     pub extra_filename: String,
 }
 
-impl_stable_hash_for!(struct CrateDep {
-    name,
-    hash,
-    kind,
-    extra_filename
-});
-
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TraitImpls {
     pub trait_id: (u32, DefIndex),
     pub impls: LazySeq<DefIndex>,
-}
-
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TraitImpls {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let TraitImpls {
-            trait_id: (krate, def_index),
-            ref impls,
-        } = *self;
-
-        DefId {
-            krate: CrateNum::from_u32(krate),
-            index: def_index
-        }.hash_stable(hcx, hasher);
-        impls.hash_stable(hcx, hasher);
-    }
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -268,25 +223,8 @@ pub struct Entry<'tcx> {
     pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
     pub predicates_defined_on: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
-    pub mir: Option<Lazy<mir::Mir<'tcx>>>,
+    pub mir: Option<Lazy<mir::Body<'tcx>>>,
 }
-
-impl_stable_hash_for!(struct Entry<'tcx> {
-    kind,
-    visibility,
-    span,
-    attributes,
-    children,
-    stability,
-    deprecation,
-    ty,
-    inherent_impls,
-    variances,
-    generics,
-    predicates,
-    predicates_defined_on,
-    mir
-});
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum EntryKind<'tcx> {
@@ -299,7 +237,9 @@ pub enum EntryKind<'tcx> {
     ForeignType,
     GlobalAsm,
     Type,
-    Existential,
+    TypeParam,
+    ConstParam,
+    OpaqueTy,
     Enum(ReprOptions),
     Field,
     Variant(Lazy<VariantData<'tcx>>),
@@ -314,123 +254,34 @@ pub enum EntryKind<'tcx> {
     Trait(Lazy<TraitData<'tcx>>),
     Impl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
-    AssociatedType(AssociatedContainer),
-    AssociatedExistential(AssociatedContainer),
-    AssociatedConst(AssociatedContainer, ConstQualif, Lazy<RenderedConst>),
+    AssocType(AssocContainer),
+    AssocOpaqueTy(AssocContainer),
+    AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
     TraitAlias(Lazy<TraitAliasData<'tcx>>),
 }
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            EntryKind::ImmStatic        |
-            EntryKind::MutStatic        |
-            EntryKind::ForeignImmStatic |
-            EntryKind::ForeignMutStatic |
-            EntryKind::ForeignMod       |
-            EntryKind::GlobalAsm        |
-            EntryKind::ForeignType      |
-            EntryKind::Field |
-            EntryKind::Existential |
-            EntryKind::Type => {
-                // Nothing else to hash here.
-            }
-            EntryKind::Const(qualif, ref const_data) => {
-                qualif.hash_stable(hcx, hasher);
-                const_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::Enum(ref repr_options) => {
-                repr_options.hash_stable(hcx, hasher);
-            }
-            EntryKind::Variant(ref variant_data) => {
-                variant_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::Struct(ref variant_data, ref repr_options) |
-            EntryKind::Union(ref variant_data, ref repr_options)  => {
-                variant_data.hash_stable(hcx, hasher);
-                repr_options.hash_stable(hcx, hasher);
-            }
-            EntryKind::Fn(ref fn_data) |
-            EntryKind::ForeignFn(ref fn_data) => {
-                fn_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::Mod(ref mod_data) => {
-                mod_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::MacroDef(ref macro_def) => {
-                macro_def.hash_stable(hcx, hasher);
-            }
-            EntryKind::Generator(data) => {
-                data.hash_stable(hcx, hasher);
-            }
-            EntryKind::Closure(closure_data) => {
-                closure_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::Trait(ref trait_data) => {
-                trait_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::TraitAlias(ref trait_alias_data) => {
-                trait_alias_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::Impl(ref impl_data) => {
-                impl_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::Method(ref method_data) => {
-                method_data.hash_stable(hcx, hasher);
-            }
-            EntryKind::AssociatedExistential(associated_container) |
-            EntryKind::AssociatedType(associated_container) => {
-                associated_container.hash_stable(hcx, hasher);
-            }
-            EntryKind::AssociatedConst(associated_container, qualif, ref const_data) => {
-                associated_container.hash_stable(hcx, hasher);
-                qualif.hash_stable(hcx, hasher);
-                const_data.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-/// Additional data for EntryKind::Const and EntryKind::AssociatedConst
+/// Additional data for EntryKind::Const and EntryKind::AssocConst
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
 pub struct ConstQualif {
     pub mir: u8,
     pub ast_promotable: bool,
 }
 
-impl_stable_hash_for!(struct ConstQualif { mir, ast_promotable });
-
 /// Contains a constant which has been rendered to a String.
 /// Used by rustdoc.
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct RenderedConst(pub String);
 
-impl<'a> HashStable<StableHashingContext<'a>> for RenderedConst {
-    #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        self.0.hash_stable(hcx, hasher);
-    }
-}
-
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ModData {
-    pub reexports: LazySeq<def::Export>,
+    pub reexports: LazySeq<def::Export<hir::HirId>>,
 }
-
-impl_stable_hash_for!(struct ModData { reexports });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct MacroDef {
     pub body: String,
     pub legacy: bool,
 }
-
-impl_stable_hash_for!(struct MacroDef { body, legacy });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData<'tcx> {
@@ -439,28 +290,16 @@ pub struct FnData<'tcx> {
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
 
-impl_stable_hash_for!(struct FnData<'tcx> { constness, arg_names, sig });
-
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct VariantData<'tcx> {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
-
-    /// If this is a struct's only variant, this
-    /// is the index of the "struct ctor" item.
-    pub struct_ctor: Option<DefIndex>,
-
+    /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
+    pub ctor: Option<DefIndex>,
     /// If this is a tuple struct or variant
     /// ctor, this is its "function" signature.
     pub ctor_sig: Option<Lazy<ty::PolyFnSig<'tcx>>>,
 }
-
-impl_stable_hash_for!(struct VariantData<'tcx> {
-    ctor_kind,
-    discr,
-    struct_ctor,
-    ctor_sig
-});
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TraitData<'tcx> {
@@ -471,22 +310,10 @@ pub struct TraitData<'tcx> {
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
 
-impl_stable_hash_for!(struct TraitData<'tcx> {
-    unsafety,
-    paren_sugar,
-    has_auto_impl,
-    is_marker,
-    super_predicates
-});
-
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TraitAliasData<'tcx> {
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
-
-impl_stable_hash_for!(struct TraitAliasData<'tcx> {
-    super_predicates
-});
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ImplData<'tcx> {
@@ -499,56 +326,41 @@ pub struct ImplData<'tcx> {
     pub trait_ref: Option<Lazy<ty::TraitRef<'tcx>>>,
 }
 
-impl_stable_hash_for!(struct ImplData<'tcx> {
-    polarity,
-    defaultness,
-    parent_impl,
-    coerce_unsized_info,
-    trait_ref
-});
-
 
 /// Describes whether the container of an associated item
 /// is a trait or an impl and whether, in a trait, it has
 /// a default, or an in impl, whether it's marked "default".
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub enum AssociatedContainer {
+pub enum AssocContainer {
     TraitRequired,
     TraitWithDefault,
     ImplDefault,
     ImplFinal,
 }
 
-impl_stable_hash_for!(enum crate::schema::AssociatedContainer {
-    TraitRequired,
-    TraitWithDefault,
-    ImplDefault,
-    ImplFinal
-});
-
-impl AssociatedContainer {
-    pub fn with_def_id(&self, def_id: DefId) -> ty::AssociatedItemContainer {
+impl AssocContainer {
+    pub fn with_def_id(&self, def_id: DefId) -> ty::AssocItemContainer {
         match *self {
-            AssociatedContainer::TraitRequired |
-            AssociatedContainer::TraitWithDefault => ty::TraitContainer(def_id),
+            AssocContainer::TraitRequired |
+            AssocContainer::TraitWithDefault => ty::TraitContainer(def_id),
 
-            AssociatedContainer::ImplDefault |
-            AssociatedContainer::ImplFinal => ty::ImplContainer(def_id),
+            AssocContainer::ImplDefault |
+            AssocContainer::ImplFinal => ty::ImplContainer(def_id),
         }
     }
 
     pub fn defaultness(&self) -> hir::Defaultness {
         match *self {
-            AssociatedContainer::TraitRequired => hir::Defaultness::Default {
+            AssocContainer::TraitRequired => hir::Defaultness::Default {
                 has_value: false,
             },
 
-            AssociatedContainer::TraitWithDefault |
-            AssociatedContainer::ImplDefault => hir::Defaultness::Default {
+            AssocContainer::TraitWithDefault |
+            AssocContainer::ImplDefault => hir::Defaultness::Default {
                 has_value: true,
             },
 
-            AssociatedContainer::ImplFinal => hir::Defaultness::Final,
+            AssocContainer::ImplFinal => hir::Defaultness::Final,
         }
     }
 }
@@ -556,29 +368,20 @@ impl AssociatedContainer {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct MethodData<'tcx> {
     pub fn_data: FnData<'tcx>,
-    pub container: AssociatedContainer,
+    pub container: AssocContainer,
     pub has_self: bool,
 }
-impl_stable_hash_for!(struct MethodData<'tcx> { fn_data, container, has_self });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {
     pub sig: Lazy<ty::PolyFnSig<'tcx>>,
 }
-impl_stable_hash_for!(struct ClosureData<'tcx> { sig });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct GeneratorData<'tcx> {
     pub layout: mir::GeneratorLayout<'tcx>,
 }
-impl_stable_hash_for!(struct GeneratorData<'tcx> { layout });
 
 // Tags used for encoding Spans:
 pub const TAG_VALID_SPAN: u8 = 0;
 pub const TAG_INVALID_SPAN: u8 = 1;
-
-#[derive(RustcEncodable, RustcDecodable)]
-pub struct EncodedExportedSymbols {
-    pub position: usize,
-    pub len: usize,
-}

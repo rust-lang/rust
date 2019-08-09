@@ -5,7 +5,7 @@
 use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
-use crate::mir::interpret::GlobalId;
+use crate::mir::interpret::{GlobalId, ConstValue};
 use crate::traits::project::Normalized;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation, Reveal};
 use crate::ty::fold::{TypeFoldable, TypeFolder};
@@ -14,7 +14,7 @@ use crate::ty::{self, Ty, TyCtxt};
 
 use super::NoSolution;
 
-impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
+impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// Normalize `value` in the context of the inference context,
     /// yielding a resulting type, or an error if `value` cannot be
     /// normalized. If you don't care about regions, you should prefer
@@ -34,7 +34,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
     {
         debug!(
             "normalize::<{}>(value={:?}, param_env={:?})",
-            unsafe { ::std::intrinsics::type_name::<T>() },
+            ::std::any::type_name::<T>(),
             value,
             self.param_env,
         );
@@ -73,8 +73,8 @@ pub struct NormalizationResult<'tcx> {
     pub normalized_ty: Ty<'tcx>,
 }
 
-struct QueryNormalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+struct QueryNormalizer<'cx, 'tcx> {
+    infcx: &'cx InferCtxt<'cx, 'tcx>,
     cause: &'cx ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     obligations: Vec<PredicateObligation<'tcx>>,
@@ -82,8 +82,8 @@ struct QueryNormalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     anon_depth: usize,
 }
 
-impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'tcx> {
+impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
+    fn tcx<'c>(&'c self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -145,7 +145,9 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                 let gcx = self.infcx.tcx.global_tcx();
 
                 let mut orig_values = OriginalQueryValues::default();
-                let c_data = self.infcx.canonicalize_query(
+                // HACK(matthewjasper) `'static` is special-cased in selection,
+                // so we cannot canonicalize it.
+                let c_data = self.infcx.canonicalize_hr_query_hack(
                     &self.param_env.and(*data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
@@ -188,10 +190,11 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
         }
     }
 
-    fn fold_const(&mut self, constant: &'tcx ty::LazyConst<'tcx>) -> &'tcx ty::LazyConst<'tcx> {
-        if let ty::LazyConst::Unevaluated(def_id, substs) = *constant {
+    fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
             let tcx = self.infcx.tcx.global_tcx();
-            if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
+            let param_env = self.param_env;
+            if !param_env.has_local_value() {
                 if substs.needs_infer() || substs.has_placeholders() {
                     let identity_substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
@@ -201,13 +204,12 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                             promoted: None,
                         };
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                            let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = evaluated.subst(tcx, substs);
-                            return tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated));
+                            return evaluated;
                         }
                     }
                 } else {
-                    if let Some(substs) = self.tcx().lift_to_global(&substs) {
+                    if !substs.has_local_value() {
                         let instance = ty::Instance::resolve(tcx, param_env, def_id, substs);
                         if let Some(instance) = instance {
                             let cid = GlobalId {
@@ -215,7 +217,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                                 promoted: None,
                             };
                             if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return tcx.mk_lazy_const(ty::LazyConst::Evaluated(evaluated));
+                                return evaluated;
                             }
                         }
                     }

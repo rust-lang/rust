@@ -1,6 +1,8 @@
 error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/asm-out-assign-imm.rs:24:34
    |
+LL |     let x: isize;
+   |         - help: make this binding mutable: `mut x`
 LL |     x = 1;
    |     ----- first assignment to `x`
 ...

@@ -1,0 +1,15 @@
+error[E0308]: try expression alternatives have incompatible types
+  --> $DIR/issue-59756.rs:13:5
+   |
+LL |     foo()?
+   |     ^^^^^-
+   |     |    |
+   |     |    help: try removing this `?`
+   |     expected enum `std::result::Result`, found struct `A`
+   |
+   = note: expected type `std::result::Result<A, B>`
+              found type `A`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

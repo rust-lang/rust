@@ -1,0 +1,53 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/expect-fn-supply-fn.rs:30:5
+   |
+LL |     with_closure_expecting_fn_with_free_region(|x: fn(&u32), y| {});
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ---------------- found signature of `fn(for<'r> fn(&'r u32), _) -> _`
+   |     |
+   |     expected signature of `fn(fn(&'a u32), &i32) -> _`
+   |
+note: required by `with_closure_expecting_fn_with_free_region`
+  --> $DIR/expect-fn-supply-fn.rs:1:1
+   |
+LL | / fn with_closure_expecting_fn_with_free_region<F>(_: F)
+LL | |     where F: for<'a> FnOnce(fn(&'a u32), &i32)
+LL | | {
+LL | | }
+   | |_^
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/expect-fn-supply-fn.rs:37:5
+   |
+LL |     with_closure_expecting_fn_with_bound_region(|x: fn(&'x u32), y| {});
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ------------------- found signature of `fn(fn(&'x u32), _) -> _`
+   |     |
+   |     expected signature of `fn(for<'r> fn(&'r u32), &i32) -> _`
+   |
+note: required by `with_closure_expecting_fn_with_bound_region`
+  --> $DIR/expect-fn-supply-fn.rs:6:1
+   |
+LL | / fn with_closure_expecting_fn_with_bound_region<F>(_: F)
+LL | |     where F: FnOnce(fn(&u32), &i32)
+LL | | {
+LL | | }
+   | |_^
+
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/expect-fn-supply-fn.rs:46:5
+   |
+LL |     with_closure_expecting_fn_with_bound_region(|x: Foo<'_>, y| {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --------------- found signature of `for<'r> fn(fn(&'r u32), _) -> _`
+   |     |
+   |     expected signature of `fn(for<'r> fn(&'r u32), &i32) -> _`
+   |
+note: required by `with_closure_expecting_fn_with_bound_region`
+  --> $DIR/expect-fn-supply-fn.rs:6:1
+   |
+LL | / fn with_closure_expecting_fn_with_bound_region<F>(_: F)
+LL | |     where F: FnOnce(fn(&u32), &i32)
+LL | | {
+LL | | }
+   | |_^
+
+error: aborting due to 3 previous errors
+

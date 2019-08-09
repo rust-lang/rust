@@ -16,18 +16,18 @@ fn deref<T>(ss: &T) -> T {
     loop { }
 }
 
-fn load0(ss: &MyBox<SomeTrait>) -> MyBox<SomeTrait> {
+fn load0(ss: &MyBox<dyn SomeTrait>) -> MyBox<dyn SomeTrait> {
     deref(ss)
 }
 
-fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
-                b: &'b MyBox<SomeTrait>)
-                -> &'b MyBox<SomeTrait>
+fn load1<'a,'b>(a: &'a MyBox<dyn SomeTrait>,
+                b: &'b MyBox<dyn SomeTrait>)
+                -> &'b MyBox<dyn SomeTrait>
 {
     a //~ ERROR lifetime mismatch
 }
 
-fn load2<'a>(ss: &MyBox<SomeTrait+'a>) -> MyBox<SomeTrait+'a> {
+fn load2<'a>(ss: &MyBox<dyn SomeTrait + 'a>) -> MyBox<dyn SomeTrait + 'a> {
     load0(ss) //~ ERROR mismatched types
 }
 

@@ -7,8 +7,8 @@
 fn escaping_borrow_of_closure_params_1() {
     let g = |x: usize, y:usize| {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
-        //~^ ERROR `x` does not live long enough
-        //~| ERROR `y` does not live long enough
+        //~^ ERROR E0373
+        //~| ERROR E0373
         return f;
     };
 
@@ -22,8 +22,8 @@ fn escaping_borrow_of_closure_params_1() {
 fn escaping_borrow_of_closure_params_2() {
     let g = |x: usize, y:usize| {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
-        //~^ ERROR `x` does not live long enough
-        //~| ERROR `y` does not live long enough
+        //~^ ERROR E0373
+        //~| ERROR E0373
         f
     };
 
@@ -51,7 +51,7 @@ fn ok_borrow_of_fn_params(a: usize, b:usize) {
 // TOP-LEVEL FN'S
 
 fn escaping_borrow_of_fn_params_1() {
-    fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+    fn g<'a>(x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
         //~^ ERROR E0373
         //~| ERROR E0373
@@ -62,7 +62,7 @@ fn escaping_borrow_of_fn_params_1() {
 }
 
 fn escaping_borrow_of_fn_params_2() {
-    fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+    fn g<'a>(x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
         //~^ ERROR E0373
         //~| ERROR E0373
@@ -73,7 +73,7 @@ fn escaping_borrow_of_fn_params_2() {
 }
 
 fn move_of_fn_params() {
-    fn g<'a>(x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+    fn g<'a>(x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
         let f = move |t: bool| if t { x } else { y };
         return Box::new(f);
     };
@@ -86,7 +86,7 @@ fn move_of_fn_params() {
 fn escaping_borrow_of_method_params_1() {
     struct S;
     impl S {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
             //~| ERROR E0373
@@ -100,7 +100,7 @@ fn escaping_borrow_of_method_params_1() {
 fn escaping_borrow_of_method_params_2() {
     struct S;
     impl S {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
             //~| ERROR E0373
@@ -113,7 +113,7 @@ fn escaping_borrow_of_method_params_2() {
 fn move_of_method_params() {
     struct S;
     impl S {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = move |t: bool| if t { x } else { y };
             return Box::new(f);
         }
@@ -125,10 +125,10 @@ fn move_of_method_params() {
 // TRAIT IMPL METHODS
 
 fn escaping_borrow_of_trait_impl_params_1() {
-    trait T { fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a>; }
+    trait T { fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a>; }
     struct S;
     impl T for S {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
             //~| ERROR E0373
@@ -140,10 +140,10 @@ fn escaping_borrow_of_trait_impl_params_1() {
 }
 
 fn escaping_borrow_of_trait_impl_params_2() {
-    trait T { fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a>; }
+    trait T { fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a>; }
     struct S;
     impl T for S {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
             //~| ERROR E0373
@@ -154,10 +154,10 @@ fn escaping_borrow_of_trait_impl_params_2() {
 }
 
 fn move_of_trait_impl_params() {
-    trait T { fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a>; }
+    trait T { fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a>; }
     struct S;
     impl T for S {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = move |t: bool| if t { x } else { y };
             return Box::new(f);
         }
@@ -171,7 +171,7 @@ fn move_of_trait_impl_params() {
 fn escaping_borrow_of_trait_default_params_1() {
     struct S;
     trait T {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
             //~| ERROR E0373
@@ -185,7 +185,7 @@ fn escaping_borrow_of_trait_default_params_1() {
 fn escaping_borrow_of_trait_default_params_2() {
     struct S;
     trait T {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
             //~^ ERROR E0373
             //~| ERROR E0373
@@ -199,7 +199,7 @@ fn escaping_borrow_of_trait_default_params_2() {
 fn move_of_trait_default_params() {
     struct S;
     trait T {
-        fn g<'a>(&self, x: usize, y:usize) -> Box<Fn(bool) -> usize + 'a> {
+        fn g<'a>(&self, x: usize, y:usize) -> Box<dyn Fn(bool) -> usize + 'a> {
             let f = move |t: bool| if t { x } else { y };
             return Box::new(f);
         }
@@ -210,4 +210,3 @@ fn move_of_trait_default_params() {
 }
 
 fn main() { }
-

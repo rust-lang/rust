@@ -5,7 +5,7 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 
@@ -25,7 +25,7 @@ pub fn change_loop_body() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_loop_body() {
     let mut _x = 0;
@@ -48,7 +48,7 @@ pub fn change_iteration_variable_name() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_iteration_variable_name() {
     let mut _x = 0;
@@ -71,7 +71,7 @@ pub fn change_iteration_variable_pattern() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_iteration_variable_pattern() {
     let mut _x = 0;
@@ -94,7 +94,7 @@ pub fn change_iterable() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_iterable() {
     let mut _x = 0;
@@ -116,7 +116,7 @@ pub fn add_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_break() {
     let mut _x = 0;
@@ -187,7 +187,7 @@ pub fn change_break_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_break_label() {
     let mut _x = 0;
@@ -237,7 +237,7 @@ pub fn change_continue_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_continue_label() {
     let mut _x = 0;
@@ -262,7 +262,7 @@ pub fn change_continue_to_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, MirBuilt, MirOptimized")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_continue_to_break() {
     let mut _x = 0;

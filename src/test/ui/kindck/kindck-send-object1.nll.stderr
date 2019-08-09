@@ -1,0 +1,32 @@
+error[E0277]: `(dyn Dummy + 'a)` cannot be shared between threads safely
+  --> $DIR/kindck-send-object1.rs:10:5
+   |
+LL |     assert_send::<&'a dyn Dummy>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be shared between threads safely
+   |
+   = help: the trait `std::marker::Sync` is not implemented for `(dyn Dummy + 'a)`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `&'a (dyn Dummy + 'a)`
+note: required by `assert_send`
+  --> $DIR/kindck-send-object1.rs:5:1
+   |
+LL | fn assert_send<T:Send+'static>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: `(dyn Dummy + 'a)` cannot be sent between threads safely
+  --> $DIR/kindck-send-object1.rs:29:5
+   |
+LL |     assert_send::<Box<dyn Dummy + 'a>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
+   |
+   = help: the trait `std::marker::Send` is not implemented for `(dyn Dummy + 'a)`
+   = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<(dyn Dummy + 'a)>`
+   = note: required because it appears within the type `std::boxed::Box<(dyn Dummy + 'a)>`
+note: required by `assert_send`
+  --> $DIR/kindck-send-object1.rs:5:1
+   |
+LL | fn assert_send<T:Send+'static>() { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

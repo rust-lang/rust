@@ -1,0 +1,28 @@
+error[E0621]: explicit lifetime required in the type of `ss`
+  --> $DIR/object-lifetime-default-from-box-error.rs:18:5
+   |
+LL | fn load(ss: &mut SomeStruct) -> Box<dyn SomeTrait> {
+   |             --------------- help: add explicit lifetime `'static` to the type of `ss`: `&mut SomeStruct<'static>`
+...
+LL |     ss.r
+   |     ^^^^ lifetime `'static` required
+
+error[E0507]: cannot move out of `ss.r` which is behind a mutable reference
+  --> $DIR/object-lifetime-default-from-box-error.rs:18:5
+   |
+LL |     ss.r
+   |     ^^^^ move occurs because `ss.r` has type `std::boxed::Box<dyn SomeTrait>`, which does not implement the `Copy` trait
+
+error[E0621]: explicit lifetime required in the type of `ss`
+  --> $DIR/object-lifetime-default-from-box-error.rs:31:5
+   |
+LL | fn store1<'b>(ss: &mut SomeStruct, b: Box<dyn SomeTrait+'b>) {
+   |                   --------------- help: add explicit lifetime `'b` to the type of `ss`: `&mut SomeStruct<'b>`
+...
+LL |     ss.r = b;
+   |     ^^^^ lifetime `'b` required
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0507, E0621.
+For more information about an error, try `rustc --explain E0507`.

@@ -98,21 +98,21 @@ documentation for them as well!
 `rustdoc` can also generate HTML from standalone Markdown files. Let's
 give it a try: create a `README.md` file with these contents:
 
-```text
-    # Docs
+````text
+# Docs
 
-    This is a project to test out `rustdoc`.
+This is a project to test out `rustdoc`.
 
-    [Here is a link!](https://www.rust-lang.org)
+[Here is a link!](https://www.rust-lang.org)
 
-    ## Subheading
+## Subheading
 
-    ```rust
-    fn foo() -> i32 {
-        1 + 1
-    }
-    ```
+```rust
+fn foo() -> i32 {
+    1 + 1
+}
 ```
+````
 
 And call `rustdoc` on it:
 

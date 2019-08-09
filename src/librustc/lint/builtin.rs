@@ -5,10 +5,12 @@
 //! lints are all available in `rustc_lint::builtin`.
 
 use crate::lint::{LintPass, LateLintPass, LintArray};
+use crate::middle::stability;
 use crate::session::Session;
 use errors::{Applicability, DiagnosticBuilder};
 use syntax::ast;
 use syntax::source_map::Span;
+use syntax::symbol::Symbol;
 
 declare_lint! {
     pub EXCEEDING_BITSHIFTS,
@@ -92,19 +94,19 @@ declare_lint! {
 declare_lint! {
     pub UNUSED_FEATURES,
     Warn,
-    "unused features found in crate-level #[feature] directives"
+    "unused features found in crate-level `#[feature]` directives"
 }
 
 declare_lint! {
     pub STABLE_FEATURES,
     Warn,
-    "stable features found in #[feature] directive"
+    "stable features found in `#[feature]` directive"
 }
 
 declare_lint! {
     pub UNKNOWN_CRATE_TYPES,
     Deny,
-    "unknown crate type found in #[crate_type] directive"
+    "unknown crate type found in `#[crate_type]` directive"
 }
 
 declare_lint! {
@@ -199,12 +201,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub INCOHERENT_FUNDAMENTAL_IMPLS,
-    Deny,
-    "potentially-conflicting impls were erroneously allowed"
-}
-
-declare_lint! {
     pub ORDER_DEPENDENT_TRAIT_OBJECTS,
     Deny,
     "trait-object types were treated as different depending on marker-trait order"
@@ -261,7 +257,7 @@ declare_lint! {
 
 declare_lint! {
     pub BARE_TRAIT_OBJECTS,
-    Allow,
+    Warn,
     "suggest using `dyn Trait` for trait objects"
 }
 
@@ -353,23 +349,24 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub DUPLICATE_MATCHER_BINDING_NAME,
-    Warn,
-    "duplicate macro matcher binding name"
+    pub INDIRECT_STRUCTURAL_MATCH,
+    // defaulting to allow until rust-lang/rust#62614 is fixed.
+    Allow,
+    "pattern with const indirectly referencing non-`#[structural_match]` type"
 }
 
 /// Some lints that are buffered from `libsyntax`. See `syntax::early_buffered_lints`.
 pub mod parser {
     declare_lint! {
-        pub QUESTION_MARK_MACRO_SEP,
-        Allow,
-        "detects the use of `?` as a macro separator"
-    }
-
-    declare_lint! {
         pub ILL_FORMED_ATTRIBUTE_INPUT,
         Warn,
         "ill-formed attribute inputs that were previously accepted and used in practice"
+    }
+
+    declare_lint! {
+        pub META_VARIABLE_MISUSE,
+        Allow,
+        "possible meta-variable misuse at macro definition"
     }
 }
 
@@ -382,7 +379,7 @@ declare_lint! {
 
 declare_lint! {
     pub AMBIGUOUS_ASSOCIATED_ITEMS,
-    Warn,
+    Deny,
     "ambiguous associated items"
 }
 
@@ -392,80 +389,78 @@ declare_lint! {
     "nested occurrence of `impl Trait` type"
 }
 
-/// Does nothing as a lint pass, but registers some `Lint`s
-/// that are used by other parts of the compiler.
-#[derive(Copy, Clone)]
-pub struct HardwiredLints;
+declare_lint! {
+    pub MUTABLE_BORROW_RESERVATION_CONFLICT,
+    Warn,
+    "reservation of a two-phased borrow conflicts with other shared borrows"
+}
 
-impl LintPass for HardwiredLints {
-    fn name(&self) -> &'static str {
-        "HardwiredLints"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-            EXCEEDING_BITSHIFTS,
-            UNUSED_IMPORTS,
-            UNUSED_EXTERN_CRATES,
-            UNUSED_QUALIFICATIONS,
-            UNKNOWN_LINTS,
-            UNUSED_VARIABLES,
-            UNUSED_ASSIGNMENTS,
-            DEAD_CODE,
-            UNREACHABLE_CODE,
-            UNREACHABLE_PATTERNS,
-            UNUSED_MACROS,
-            WARNINGS,
-            UNUSED_FEATURES,
-            STABLE_FEATURES,
-            UNKNOWN_CRATE_TYPES,
-            TRIVIAL_CASTS,
-            TRIVIAL_NUMERIC_CASTS,
-            PRIVATE_IN_PUBLIC,
-            EXPORTED_PRIVATE_DEPENDENCIES,
-            PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-            INVALID_TYPE_PARAM_DEFAULT,
-            CONST_ERR,
-            RENAMED_AND_REMOVED_LINTS,
-            SAFE_EXTERN_STATICS,
-            SAFE_PACKED_BORROWS,
-            PATTERNS_IN_FNS_WITHOUT_BODY,
-            LEGACY_DIRECTORY_OWNERSHIP,
-            LEGACY_CONSTRUCTOR_VISIBILITY,
-            MISSING_FRAGMENT_SPECIFIER,
-            PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
-            LATE_BOUND_LIFETIME_ARGUMENTS,
-            INCOHERENT_FUNDAMENTAL_IMPLS,
-            ORDER_DEPENDENT_TRAIT_OBJECTS,
-            DEPRECATED,
-            UNUSED_UNSAFE,
-            UNUSED_MUT,
-            UNCONDITIONAL_RECURSION,
-            SINGLE_USE_LIFETIMES,
-            UNUSED_LIFETIMES,
-            UNUSED_LABELS,
-            TYVAR_BEHIND_RAW_POINTER,
-            ELIDED_LIFETIMES_IN_PATHS,
-            BARE_TRAIT_OBJECTS,
-            ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
-            UNSTABLE_NAME_COLLISIONS,
-            IRREFUTABLE_LET_PATTERNS,
-            DUPLICATE_MACRO_EXPORTS,
-            INTRA_DOC_LINK_RESOLUTION_FAILURE,
-            MISSING_DOC_CODE_EXAMPLES,
-            PRIVATE_DOC_TESTS,
-            WHERE_CLAUSES_OBJECT_SAFETY,
-            PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-            MACRO_USE_EXTERN_CRATE,
-            MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
-            parser::QUESTION_MARK_MACRO_SEP,
-            parser::ILL_FORMED_ATTRIBUTE_INPUT,
-            DEPRECATED_IN_FUTURE,
-            AMBIGUOUS_ASSOCIATED_ITEMS,
-            NESTED_IMPL_TRAIT,
-        )
-    }
+declare_lint_pass! {
+    /// Does nothing as a lint pass, but registers some `Lint`s
+    /// that are used by other parts of the compiler.
+    HardwiredLints => [
+        ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+        EXCEEDING_BITSHIFTS,
+        UNUSED_IMPORTS,
+        UNUSED_EXTERN_CRATES,
+        UNUSED_QUALIFICATIONS,
+        UNKNOWN_LINTS,
+        UNUSED_VARIABLES,
+        UNUSED_ASSIGNMENTS,
+        DEAD_CODE,
+        UNREACHABLE_CODE,
+        UNREACHABLE_PATTERNS,
+        UNUSED_MACROS,
+        WARNINGS,
+        UNUSED_FEATURES,
+        STABLE_FEATURES,
+        UNKNOWN_CRATE_TYPES,
+        TRIVIAL_CASTS,
+        TRIVIAL_NUMERIC_CASTS,
+        PRIVATE_IN_PUBLIC,
+        EXPORTED_PRIVATE_DEPENDENCIES,
+        PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+        INVALID_TYPE_PARAM_DEFAULT,
+        CONST_ERR,
+        RENAMED_AND_REMOVED_LINTS,
+        SAFE_EXTERN_STATICS,
+        SAFE_PACKED_BORROWS,
+        PATTERNS_IN_FNS_WITHOUT_BODY,
+        LEGACY_DIRECTORY_OWNERSHIP,
+        LEGACY_CONSTRUCTOR_VISIBILITY,
+        MISSING_FRAGMENT_SPECIFIER,
+        PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
+        LATE_BOUND_LIFETIME_ARGUMENTS,
+        ORDER_DEPENDENT_TRAIT_OBJECTS,
+        DEPRECATED,
+        UNUSED_UNSAFE,
+        UNUSED_MUT,
+        UNCONDITIONAL_RECURSION,
+        SINGLE_USE_LIFETIMES,
+        UNUSED_LIFETIMES,
+        UNUSED_LABELS,
+        TYVAR_BEHIND_RAW_POINTER,
+        ELIDED_LIFETIMES_IN_PATHS,
+        BARE_TRAIT_OBJECTS,
+        ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
+        UNSTABLE_NAME_COLLISIONS,
+        IRREFUTABLE_LET_PATTERNS,
+        DUPLICATE_MACRO_EXPORTS,
+        INTRA_DOC_LINK_RESOLUTION_FAILURE,
+        MISSING_DOC_CODE_EXAMPLES,
+        PRIVATE_DOC_TESTS,
+        WHERE_CLAUSES_OBJECT_SAFETY,
+        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
+        MACRO_USE_EXTERN_CRATE,
+        MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
+        parser::ILL_FORMED_ATTRIBUTE_INPUT,
+        parser::META_VARIABLE_MISUSE,
+        DEPRECATED_IN_FUTURE,
+        AMBIGUOUS_ASSOCIATED_ITEMS,
+        NESTED_IMPL_TRAIT,
+        MUTABLE_BORROW_RESERVATION_CONFLICT,
+        INDIRECT_STRUCTURAL_MATCH,
+    ]
 }
 
 // this could be a closure, but then implementing derive traits
@@ -482,6 +477,50 @@ pub enum BuiltinLintDiagnostics {
     UnknownCrateTypes(Span, String, String),
     UnusedImports(String, Vec<(Span, String)>),
     NestedImplTrait { outer_impl_trait_span: Span, inner_impl_trait_span: Span },
+    RedundantImport(Vec<(Span, bool)>, ast::Ident),
+    DeprecatedMacro(Option<Symbol>, Span),
+}
+
+pub(crate) fn add_elided_lifetime_in_path_suggestion(
+    sess: &Session,
+    db: &mut DiagnosticBuilder<'_>,
+    n: usize,
+    path_span: Span,
+    incl_angl_brckt: bool,
+    insertion_span: Span,
+    anon_lts: String,
+) {
+    let (replace_span, suggestion) = if incl_angl_brckt {
+        (insertion_span, anon_lts)
+    } else {
+        // When possible, prefer a suggestion that replaces the whole
+        // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
+        // at a point (which makes for an ugly/confusing label)
+        if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
+            // But our spans can get out of whack due to macros; if the place we think
+            // we want to insert `'_` isn't even within the path expression's span, we
+            // should bail out of making any suggestion rather than panicking on a
+            // subtract-with-overflow or string-slice-out-out-bounds (!)
+            // FIXME: can we do better?
+            if insertion_span.lo().0 < path_span.lo().0 {
+                return;
+            }
+            let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
+            if insertion_index > snippet.len() {
+                return;
+            }
+            let (before, after) = snippet.split_at(insertion_index);
+            (path_span, format!("{}{}{}", before, anon_lts, after))
+        } else {
+            (insertion_span, anon_lts)
+        }
+    };
+    db.span_suggestion(
+        replace_span,
+        &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
+        suggestion,
+        Applicability::MachineApplicable
+    );
 }
 
 impl BuiltinLintDiagnostics {
@@ -528,36 +567,14 @@ impl BuiltinLintDiagnostics {
             BuiltinLintDiagnostics::ElidedLifetimesInPaths(
                 n, path_span, incl_angl_brckt, insertion_span, anon_lts
             ) => {
-                let (replace_span, suggestion) = if incl_angl_brckt {
-                    (insertion_span, anon_lts)
-                } else {
-                    // When possible, prefer a suggestion that replaces the whole
-                    // `Path<T>` expression with `Path<'_, T>`, rather than inserting `'_, `
-                    // at a point (which makes for an ugly/confusing label)
-                    if let Ok(snippet) = sess.source_map().span_to_snippet(path_span) {
-                        // But our spans can get out of whack due to macros; if the place we think
-                        // we want to insert `'_` isn't even within the path expression's span, we
-                        // should bail out of making any suggestion rather than panicking on a
-                        // subtract-with-overflow or string-slice-out-out-bounds (!)
-                        // FIXME: can we do better?
-                        if insertion_span.lo().0 < path_span.lo().0 {
-                            return;
-                        }
-                        let insertion_index = (insertion_span.lo().0 - path_span.lo().0) as usize;
-                        if insertion_index > snippet.len() {
-                            return;
-                        }
-                        let (before, after) = snippet.split_at(insertion_index);
-                        (path_span, format!("{}{}{}", before, anon_lts, after))
-                    } else {
-                        (insertion_span, anon_lts)
-                    }
-                };
-                db.span_suggestion(
-                    replace_span,
-                    &format!("indicate the anonymous lifetime{}", if n >= 2 { "s" } else { "" }),
-                    suggestion,
-                    Applicability::MachineApplicable
+                add_elided_lifetime_in_path_suggestion(
+                    sess,
+                    db,
+                    n,
+                    path_span,
+                    incl_angl_brckt,
+                    insertion_span,
+                    anon_lts,
                 );
             }
             BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
@@ -578,6 +595,17 @@ impl BuiltinLintDiagnostics {
                 db.span_label(outer_impl_trait_span, "outer `impl Trait`");
                 db.span_label(inner_impl_trait_span, "nested `impl Trait` here");
             }
+            BuiltinLintDiagnostics::RedundantImport(spans, ident) => {
+                for (span, is_imported) in spans {
+                    let introduced = if is_imported { "imported" } else { "defined" };
+                    db.span_label(
+                        span,
+                        format!("the item `{}` is already {} here", ident, introduced)
+                    );
+                }
+            }
+            BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span) =>
+                stability::deprecation_suggestion(db, suggestion, span),
         }
     }
 }

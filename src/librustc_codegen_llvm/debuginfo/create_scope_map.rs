@@ -5,7 +5,7 @@ use super::utils::{DIB, span_start};
 use crate::llvm;
 use crate::llvm::debuginfo::{DIScope, DISubprogram};
 use crate::common::CodegenCx;
-use rustc::mir::{Mir, SourceScope};
+use rustc::mir::{Body, SourceScope};
 
 use libc::c_uint;
 
@@ -20,7 +20,7 @@ use syntax_pos::BytePos;
 /// If debuginfo is disabled, the returned vector is empty.
 pub fn create_mir_scopes(
     cx: &CodegenCx<'ll, '_>,
-    mir: &Mir<'_>,
+    mir: &Body<'_>,
     debug_context: &FunctionDebugContext<&'ll DISubprogram>,
 ) -> IndexVec<SourceScope, MirDebugScope<&'ll DIScope>> {
     let null_scope = MirDebugScope {
@@ -55,7 +55,7 @@ pub fn create_mir_scopes(
 }
 
 fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
-                  mir: &Mir<'_>,
+                  mir: &Body<'_>,
                   has_variables: &BitSet<SourceScope>,
                   debug_context: &FunctionDebugContextData<&'ll DISubprogram>,
                   scope: SourceScope,

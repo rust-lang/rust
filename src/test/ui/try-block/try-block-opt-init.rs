@@ -14,4 +14,3 @@ pub fn main() {
     };
     assert_eq!(cfg_res, 5); //~ ERROR borrow of possibly uninitialized variable: `cfg_res`
 }
-

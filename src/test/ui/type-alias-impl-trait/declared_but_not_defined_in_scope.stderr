@@ -1,0 +1,8 @@
+error: could not find defining uses
+  --> $DIR/declared_but_not_defined_in_scope.rs:7:5
+   |
+LL |     pub type Boo = impl ::std::fmt::Debug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

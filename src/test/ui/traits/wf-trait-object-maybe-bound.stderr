@@ -1,0 +1,32 @@
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/wf-trait-object-maybe-bound.rs:7:15
+   |
+LL | type _0 = dyn ?Sized + Foo;
+   |               ^^^^^^
+
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/wf-trait-object-maybe-bound.rs:10:21
+   |
+LL | type _1 = dyn Foo + ?Sized;
+   |                     ^^^^^^
+
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/wf-trait-object-maybe-bound.rs:13:21
+   |
+LL | type _2 = dyn Foo + ?Sized + ?Sized;
+   |                     ^^^^^^
+
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/wf-trait-object-maybe-bound.rs:13:30
+   |
+LL | type _2 = dyn Foo + ?Sized + ?Sized;
+   |                              ^^^^^^
+
+error: `?Trait` is not permitted in trait object types
+  --> $DIR/wf-trait-object-maybe-bound.rs:17:15
+   |
+LL | type _3 = dyn ?Sized + Foo;
+   |               ^^^^^^
+
+error: aborting due to 5 previous errors
+

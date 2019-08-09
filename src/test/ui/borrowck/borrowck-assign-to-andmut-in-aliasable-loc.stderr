@@ -1,19 +1,18 @@
-error[E0389]: cannot assign to data in a `&` reference
+error[E0594]: cannot assign to `*s.pointer` which is behind a `&` reference
   --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:9:5
    |
 LL | fn a(s: &S) {
-   |         -- use `&mut S` here to make mutable
+   |         -- help: consider changing this to be a mutable reference: `&mut S<'_>`
 LL |     *s.pointer += 1;
-   |     ^^^^^^^^^^^^^^^ assignment into an immutable reference
+   |     ^^^^^^^^^^^^^^^ `s` is a `&` reference, so the data it refers to cannot be written
 
-error[E0389]: cannot assign to data in a `&` reference
+error[E0594]: cannot assign to `*s.pointer` which is behind a `&` reference
   --> $DIR/borrowck-assign-to-andmut-in-aliasable-loc.rs:17:5
    |
 LL | fn c(s: & &mut S) {
-   |         -------- use `&mut &mut S` here to make mutable
+   |         -------- help: consider changing this to be a mutable reference: `&mut &mut S<'_>`
 LL |     *s.pointer += 1;
-   |     ^^^^^^^^^^^^^^^ assignment into an immutable reference
+   |     ^^^^^^^^^^^^^^^ `s` is a `&` reference, so the data it refers to cannot be written
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0389`.

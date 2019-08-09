@@ -12,7 +12,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn normalize_ty_after_erasing_regions<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     goal: ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
     debug!("normalize_ty_after_erasing_regions(goal={:#?})", goal);
@@ -36,9 +36,8 @@ fn normalize_ty_after_erasing_regions<'tcx>(
                     None,
                 );
 
-                let normalized_value = infcx.resolve_type_vars_if_possible(&normalized_value);
-                let normalized_value = infcx.tcx.erase_regions(&normalized_value);
-                tcx.lift_to_global(&normalized_value).unwrap()
+                let normalized_value = infcx.resolve_vars_if_possible(&normalized_value);
+                infcx.tcx.erase_regions(&normalized_value)
             }
             Err(NoSolution) => bug!("could not fully normalize `{:?}`", value),
         }

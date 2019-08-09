@@ -19,10 +19,10 @@ fn main() {
     match [0, 1, 2] {
         [0] => {}, //~ ERROR pattern requires
 
-        [0, 1, x..] => {
+        [0, 1, x @ ..] => {
             let a: [_; 1] = x;
         }
-        [0, 1, 2, 3, x..] => {} //~ ERROR pattern requires
+        [0, 1, 2, 3, x @ ..] => {} //~ ERROR pattern requires
     };
 
     match does_not_exist { //~ ERROR cannot find value `does_not_exist` in this scope

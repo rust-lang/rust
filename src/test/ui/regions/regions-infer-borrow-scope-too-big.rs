@@ -8,9 +8,9 @@ fn x_coord<'r>(p: &'r Point) -> &'r isize {
 }
 
 fn foo<'a>(p: Box<Point>) -> &'a isize {
-    let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
+    let xc = x_coord(&*p);
     assert_eq!(*xc, 3);
-    return xc;
+    return xc; //~ ERROR cannot return value referencing local data `*p`
 }
 
 fn main() {}

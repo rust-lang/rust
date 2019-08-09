@@ -1,12 +1,29 @@
-error: lifetime may not live long enough
-  --> $DIR/issue-55394.rs:11:9
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'s` due to conflicting requirements
+  --> $DIR/issue-55394.rs:9:9
    |
-LL |     fn new(bar: &mut Bar) -> Self {
-   |                 -            ---- return type is Foo<'2>
-   |                 |
-   |                 let's call the lifetime of this reference `'1`
 LL |         Foo { bar }
-   |         ^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
+   |         ^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the method body at 8:5...
+  --> $DIR/issue-55394.rs:8:5
+   |
+LL | /     fn new(bar: &mut Bar) -> Self {
+LL | |         Foo { bar }
+LL | |     }
+   | |_____^
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/issue-55394.rs:9:15
+   |
+LL |         Foo { bar }
+   |               ^^^
+note: but, the lifetime must be valid for the lifetime '_ as defined on the impl at 7:10...
+  --> $DIR/issue-55394.rs:7:10
+   |
+LL | impl Foo<'_> {
+   |          ^^
+   = note: ...so that the expression is assignable:
+           expected Foo<'_>
+              found Foo<'_>
 
 error: aborting due to previous error
 

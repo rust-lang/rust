@@ -1,0 +1,25 @@
+#
+# Azure Pipelines job to publish toolstate. Only triggers on pushes to master.
+#
+
+pr: none
+trigger:
+  - master
+
+variables:
+- group: real-prod-credentials
+
+pool:
+  vmImage: ubuntu-16.04
+
+steps:
+- checkout: self
+  fetchDepth: 2
+
+- script: |
+    export MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
+    . src/ci/docker/x86_64-gnu-tools/repo.sh
+    commit_toolstate_change "$MESSAGE_FILE" "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN"
+  displayName: Publish toolstate
+  env:
+    TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)

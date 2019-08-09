@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // Issue 23030: Detect overflowing discriminant
 //
 // Check that we detect the overflow even if enum is not used.

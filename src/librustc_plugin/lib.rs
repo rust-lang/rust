@@ -17,6 +17,7 @@
 //! #![feature(rustc_private)]
 //!
 //! extern crate rustc_plugin;
+//! extern crate rustc_driver;
 //! extern crate syntax;
 //! extern crate syntax_pos;
 //!
@@ -47,8 +48,9 @@
 //! #![plugin(myplugin)]
 //! ```
 //!
-//! See the [`plugin` feature](../unstable-book/language-features/plugin.html) of
-//! the Unstable Book for more examples.
+//! See the [`plugin`
+//! feature](https://doc.rust-lang.org/nightly/unstable-book/language-features/plugin.html)
+//! of the Unstable Book for more examples.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
@@ -57,11 +59,9 @@
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-
 pub use registry::Registry;
 
-mod diagnostics;
+mod error_codes;
 pub mod registry;
 pub mod load;
 pub mod build;

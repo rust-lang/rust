@@ -52,8 +52,8 @@ struct Dst<X: ?Sized> {
 
 struct TwoStrs(str, str) where str: Sized;
 
-fn unsized_local() where for<'a> Dst<A + 'a>: Sized {
-    let x: Dst<A> = *(Box::new(Dst { x: 1 }) as Box<Dst<A>>);
+fn unsized_local() where for<'a> Dst<dyn A + 'a>: Sized {
+    let x: Dst<dyn A> = *(Box::new(Dst { x: 1 }) as Box<Dst<dyn A>>);
 }
 
 fn return_str() -> str where str: Sized {

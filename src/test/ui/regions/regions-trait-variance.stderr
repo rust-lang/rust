@@ -1,18 +1,11 @@
-error[E0597]: `*b` does not live long enough
-  --> $DIR/regions-trait-variance.rs:37:19
+error[E0515]: cannot return value referencing local data `*b`
+  --> $DIR/regions-trait-variance.rs:38:5
    |
 LL |     let bb: &B = &*b;
-   |                   ^^ borrowed value does not live long enough
+   |                  --- `*b` is borrowed here
 LL |     make_a(bb)
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 33:16...
-  --> $DIR/regions-trait-variance.rs:33:16
-   |
-LL | fn make_make_a<'a>() -> A<'a> {
-   |                ^^
+   |     ^^^^^^^^^^ returns a value referencing data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

@@ -1,13 +1,14 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-52049.rs:6:10
    |
 LL |     foo(&unpromotable(5u32));
-   |          ^^^^^^^^^^^^^^^^^^ - temporary value only lives until here
-   |          |
-   |          temporary value does not live long enough
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     -----^^^^^^^^^^^^^^^^^^-
+   |     |    |
+   |     |    creates a temporary which is freed while still in use
+   |     argument requires that borrow lasts for `'static`
+LL | }
+   | - temporary value is freed at the end of this statement
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

@@ -1,0 +1,14 @@
+error: use of deprecated item 'Foo::deprecated': replaced by `replacement`
+  --> $DIR/suggestion.rs:27:9
+   |
+LL |     foo.deprecated();
+   |         ^^^^^^^^^^ help: replace the use of the deprecated item: `replacement`
+   |
+note: lint level defined here
+  --> $DIR/suggestion.rs:7:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+
+error: aborting due to previous error
+

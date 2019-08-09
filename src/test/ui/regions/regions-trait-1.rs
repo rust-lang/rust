@@ -19,12 +19,12 @@ impl<'a> GetCtxt for HasCtxt<'a> {
 
 }
 
-fn get_v(gc: Box<GetCtxt>) -> usize {
+fn get_v(gc: Box<dyn GetCtxt>) -> usize {
     gc.get_ctxt().v
 }
 
 fn main() {
     let ctxt = Ctxt { v: 22 };
     let hc = HasCtxt { c: &ctxt };
-    assert_eq!(get_v(box hc as Box<GetCtxt>), 22);
+    assert_eq!(get_v(box hc as Box<dyn GetCtxt>), 22);
 }

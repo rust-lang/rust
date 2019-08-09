@@ -1,6 +1,5 @@
 // Regression test for issue #47053
 
-#![feature(nll)]
 #![feature(thread_local)]
 
 #[thread_local]

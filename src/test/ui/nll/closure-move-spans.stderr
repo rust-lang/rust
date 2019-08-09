@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/closure-move-spans.rs:7:13
+  --> $DIR/closure-move-spans.rs:5:13
    |
 LL | fn move_after_move(x: String) {
    |                    - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -11,7 +11,7 @@ LL |     let y = x;
    |             ^ value used here after move
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/closure-move-spans.rs:12:13
+  --> $DIR/closure-move-spans.rs:10:13
    |
 LL | fn borrow_after_move(x: String) {
    |                      - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
@@ -23,7 +23,7 @@ LL |     let y = &x;
    |             ^^ value borrowed here after move
 
 error[E0382]: borrow of moved value: `x`
-  --> $DIR/closure-move-spans.rs:17:13
+  --> $DIR/closure-move-spans.rs:15:13
    |
 LL | fn borrow_mut_after_move(mut x: String) {
    |                          ----- move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait

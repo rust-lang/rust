@@ -38,7 +38,7 @@ pub fn print_hir_stats(krate: &hir::Crate) {
     collector.print("HIR STATS");
 }
 
-pub fn print_ast_stats<'v>(krate: &'v ast::Crate, title: &str) {
+pub fn print_ast_stats(krate: &ast::Crate, title: &str) {
     let mut collector = StatCollector {
         krate: None,
         data: FxHashMap::default(),
@@ -94,6 +94,11 @@ impl<'k> StatCollector<'k> {
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
+    fn visit_arg(&mut self, arg: &'v hir::Arg) {
+        self.record("Arg", Id::Node(arg.hir_id), arg);
+        hir_visit::walk_arg(self, arg)
+    }
+
     fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'v> {
         panic!("visit_nested_xxx must be manually implemented in this visitor")
     }
@@ -149,7 +154,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_arm(&mut self, a: &'v hir::Arm) {
-        self.record("Arm", Id::None, a);
+        self.record("Arm", Id::Node(a.hir_id), a);
         hir_visit::walk_arm(self, a)
     }
 
@@ -353,9 +358,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_path_segment(self, path_span, path_segment)
     }
 
-    fn visit_assoc_type_binding(&mut self, type_binding: &'v ast::TypeBinding) {
-        self.record("TypeBinding", Id::None, type_binding);
-        ast_visit::walk_assoc_type_binding(self, type_binding)
+    fn visit_assoc_ty_constraint(&mut self, constraint: &'v ast::AssocTyConstraint) {
+        self.record("AssocTyConstraint", Id::None, constraint);
+        ast_visit::walk_assoc_ty_constraint(self, constraint)
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {

@@ -25,4 +25,3 @@ impl Deref for MyBar {
     type Target = Baz;
     fn deref(&self) -> &Baz { loop {} }
 }
-

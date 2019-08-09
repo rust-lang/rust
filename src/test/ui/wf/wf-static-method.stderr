@@ -105,5 +105,4 @@ LL |     <IndirectEvil>::static_evil(b)
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0312, E0478, E0495.
-For more information about an error, try `rustc --explain E0312`.
+For more information about this error, try `rustc --explain E0478`.

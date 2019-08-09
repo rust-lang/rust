@@ -1,13 +1,13 @@
-// aux-build:macro-brackets.rs
+// aux-build:test-macros.rs
 
-extern crate macro_brackets as bar;
-use bar::doit;
+#[macro_use]
+extern crate test_macros;
 
 macro_rules! id {
     ($($t:tt)*) => ($($t)*)
 }
 
-#[doit]
+#[identity_attr]
 id![static X: u32 = 'a';]; //~ ERROR: mismatched types
 
 

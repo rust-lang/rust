@@ -2,15 +2,14 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-autoref-3261.rs:15:9
    |
 LL |     (&mut x).with(
-   |           - first mutable borrow occurs here
+   |     -------- ---- first borrow later used by call
+   |     |
+   |     first mutable borrow occurs here
 LL |         |opt| {
    |         ^^^^^ second mutable borrow occurs here
 ...
 LL |                     x = X(Either::Left((0, 0)));
-   |                     - borrow occurs due to use of `x` in closure
-...
-LL |         })
-   |          - first borrow ends here
+   |                     - second borrow occurs due to use of `x` in closure
 
 error: aborting due to previous error
 

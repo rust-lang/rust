@@ -23,8 +23,6 @@ use crate::time::Duration;
 
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 pub mod cmath;
 pub mod env;
 pub mod fs;
@@ -32,7 +30,6 @@ pub mod io;
 pub mod memchr;
 pub mod net;
 pub mod os;
-pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
@@ -40,8 +37,12 @@ pub mod stack_overflow;
 pub mod thread;
 pub mod time;
 pub mod stdio;
+pub mod thread_local;
+pub mod fast_thread_local;
 
-cfg_if! {
+pub use crate::sys_common::os_str_bytes as os_str;
+
+cfg_if::cfg_if! {
     if #[cfg(target_feature = "atomics")] {
         #[path = "condvar_atomics.rs"]
         pub mod condvar;
@@ -49,13 +50,10 @@ cfg_if! {
         pub mod mutex;
         #[path = "rwlock_atomics.rs"]
         pub mod rwlock;
-        #[path = "thread_local_atomics.rs"]
-        pub mod thread_local;
     } else {
         pub mod condvar;
         pub mod mutex;
         pub mod rwlock;
-        pub mod thread_local;
     }
 }
 

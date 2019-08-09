@@ -97,4 +97,3 @@ pub fn both_attrs() {}
 /// assert_eq!(1 + 1, 2);
 /// ```
 pub fn both_attrs_reverse() {}
-

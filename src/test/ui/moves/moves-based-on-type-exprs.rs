@@ -9,13 +9,13 @@ fn touch<A>(_a: &A) {}
 fn f10() {
     let x = "hi".to_string();
     let _y = Foo { f:x };
-    touch(&x); //~ ERROR use of moved value: `x`
+    touch(&x); //~ ERROR borrow of moved value: `x`
 }
 
 fn f20() {
     let x = "hi".to_string();
     let _y = (x, 3);
-    touch(&x); //~ ERROR use of moved value: `x`
+    touch(&x); //~ ERROR borrow of moved value: `x`
 }
 
 fn f21() {
@@ -32,8 +32,8 @@ fn f30(cond: bool) {
     } else {
         y
     };
-    touch(&x); //~ ERROR use of moved value: `x`
-    touch(&y); //~ ERROR use of moved value: `y`
+    touch(&x); //~ ERROR borrow of moved value: `x`
+    touch(&y); //~ ERROR borrow of moved value: `y`
 }
 
 fn f40(cond: bool) {
@@ -43,8 +43,8 @@ fn f40(cond: bool) {
         true => x,
         false => y
     };
-    touch(&x); //~ ERROR use of moved value: `x`
-    touch(&y); //~ ERROR use of moved value: `y`
+    touch(&x); //~ ERROR borrow of moved value: `x`
+    touch(&y); //~ ERROR borrow of moved value: `y`
 }
 
 fn f50(cond: bool) {
@@ -55,32 +55,32 @@ fn f50(cond: bool) {
         true => 10,
         false => 20,
     };
-    touch(&x); //~ ERROR use of moved value: `x`
+    touch(&x); //~ ERROR borrow of moved value: `x`
     touch(&y);
 }
 
 fn f70() {
     let x = "hi".to_string();
     let _y = [x];
-    touch(&x); //~ ERROR use of moved value: `x`
+    touch(&x); //~ ERROR borrow of moved value: `x`
 }
 
 fn f80() {
     let x = "hi".to_string();
     let _y = vec![x];
-    touch(&x); //~ ERROR use of moved value: `x`
+    touch(&x); //~ ERROR borrow of moved value: `x`
 }
 
 fn f100() {
     let x = vec!["hi".to_string()];
     let _y = x.into_iter().next().unwrap();
-    touch(&x); //~ ERROR use of moved value: `x`
+    touch(&x); //~ ERROR borrow of moved value: `x`
 }
 
 fn f110() {
     let x = vec!["hi".to_string()];
     let _y = [x.into_iter().next().unwrap(); 1];
-    touch(&x); //~ ERROR use of moved value: `x`
+    touch(&x); //~ ERROR borrow of moved value: `x`
 }
 
 fn f120() {

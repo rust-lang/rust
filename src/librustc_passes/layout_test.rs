@@ -7,12 +7,14 @@ use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::layout::TargetDataLayout;
 use rustc::ty::layout::TyLayout;
+use rustc::ty::layout::HasParamEnv;
 use rustc::ty::ParamEnv;
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
 use syntax::ast::Attribute;
+use syntax::symbol::sym;
 
-pub fn test_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn test_layout(tcx: TyCtxt<'_>) {
     if tcx.features().rustc_attrs {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         tcx.hir()
@@ -21,17 +23,17 @@ pub fn test_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 }
 
-struct VarianceTest<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct VarianceTest<'tcx> {
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
+impl ItemLikeVisitor<'tcx> for VarianceTest<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        let item_def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
+        let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
 
-        if let ItemKind::Ty(..) = item.node {
+        if let ItemKind::TyAlias(..) = item.node {
             for attr in self.tcx.get_attrs(item_def_id).iter() {
-                if attr.check_name("rustc_layout") {
+                if attr.check_name(sym::rustc_layout) {
                     self.dump_layout_of(item_def_id, item, attr);
                 }
             }
@@ -42,7 +44,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) {}
 }
 
-impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
+impl VarianceTest<'tcx> {
     fn dump_layout_of(&self, item_def_id: DefId, item: &hir::Item, attr: &Attribute) {
         let tcx = self.tcx;
         let param_env = self.tcx.param_env(item_def_id);
@@ -53,29 +55,26 @@ impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
                 // The `..` are the names of fields to dump.
                 let meta_items = attr.meta_item_list().unwrap_or_default();
                 for meta_item in meta_items {
-                    let name = meta_item.word().map(|mi| mi.name().as_str());
-                    let name = name.as_ref().map(|s| &s[..]).unwrap_or("");
-
-                    match name {
-                        "abi" => {
+                    match meta_item.name_or_empty() {
+                        sym::abi => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("abi: {:?}", ty_layout.abi));
                         }
 
-                        "align" => {
+                        sym::align => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("align: {:?}", ty_layout.align));
                         }
 
-                        "size" => {
+                        sym::size => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("size: {:?}", ty_layout.size));
                         }
 
-                        "homogeneous_aggregate" => {
+                        sym::homogeneous_aggregate => {
                             self.tcx.sess.span_err(
                                 item.span,
                                 &format!(
@@ -86,9 +85,9 @@ impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
                             );
                         }
 
-                        _ => {
+                        name => {
                             self.tcx.sess.span_err(
-                                meta_item.span,
+                                meta_item.span(),
                                 &format!("unrecognized field name `{}`", name),
                             );
                         }
@@ -105,12 +104,12 @@ impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
     }
 }
 
-struct UnwrapLayoutCx<'me, 'tcx> {
-    tcx: TyCtxt<'me, 'tcx, 'tcx>,
+struct UnwrapLayoutCx<'tcx> {
+    tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
 }
 
-impl<'me, 'tcx> LayoutOf for UnwrapLayoutCx<'me, 'tcx> {
+impl LayoutOf for UnwrapLayoutCx<'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
@@ -119,13 +118,19 @@ impl<'me, 'tcx> LayoutOf for UnwrapLayoutCx<'me, 'tcx> {
     }
 }
 
-impl<'me, 'tcx> HasTyCtxt<'tcx> for UnwrapLayoutCx<'me, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+impl HasTyCtxt<'tcx> for UnwrapLayoutCx<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'me, 'tcx> HasDataLayout for UnwrapLayoutCx<'me, 'tcx> {
+impl HasParamEnv<'tcx> for UnwrapLayoutCx<'tcx> {
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        self.param_env
+    }
+}
+
+impl HasDataLayout for UnwrapLayoutCx<'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
         self.tcx.data_layout()
     }

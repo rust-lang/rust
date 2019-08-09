@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::io::{self, IoVec, IoVecMut};
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
 use crate::time::Duration;
 use crate::sys::{unsupported, Void, sgx_ineffective, AsInner, FromInner, IntoInner, TryIntoInner};
@@ -41,10 +41,27 @@ impl FromInner<FileDesc> for Socket {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TcpStream {
     inner: Socket,
     peer_addr: Option<String>,
+}
+
+impl fmt::Debug for TcpStream {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut res = f.debug_struct("TcpStream");
+
+        if let Some(ref addr) = self.inner.local_addr {
+            res.field("addr", addr);
+        }
+
+        if let Some(ref peer) = self.peer_addr {
+            res.field("peer", peer);
+        }
+
+        res.field("fd", &self.inner.inner.as_inner())
+            .finish()
+    }
 }
 
 fn io_err_to_addr(result: io::Result<&SocketAddr>) -> io::Result<String> {
@@ -75,16 +92,32 @@ impl TcpStream {
         Ok(TcpStream { inner: Socket::new(fd, local_addr), peer_addr: Some(peer_addr) })
     }
 
-    pub fn connect_timeout(addr: &SocketAddr, _: Duration) -> io::Result<TcpStream> {
+    pub fn connect_timeout(addr: &SocketAddr, dur: Duration) -> io::Result<TcpStream> {
+        if dur == Duration::default() {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                      "cannot set a 0 duration timeout"));
+        }
         Self::connect(Ok(addr)) // FIXME: ignoring timeout
     }
 
-    pub fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        sgx_ineffective(())
+    pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        match dur {
+            Some(dur) if dur == Duration::default() => {
+                return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                          "cannot set a 0 duration timeout"));
+            }
+            _ => sgx_ineffective(())
+        }
     }
 
-    pub fn set_write_timeout(&self, _: Option<Duration>) -> io::Result<()> {
-        sgx_ineffective(())
+    pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
+        match dur {
+            Some(dur) if dur == Duration::default() => {
+                return Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                          "cannot set a 0 duration timeout"));
+            }
+            _ => sgx_ineffective(())
+        }
     }
 
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
@@ -103,24 +136,16 @@ impl TcpStream {
         self.inner.inner.read(buf)
     }
 
-    pub fn read_vectored(&self, buf: &mut [IoVecMut<'_>]) -> io::Result<usize> {
-        let buf = match buf.get_mut(0) {
-            Some(buf) => buf,
-            None => return Ok(0),
-        };
-        self.read(buf)
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        self.inner.inner.read_vectored(bufs)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.inner.inner.write(buf)
     }
 
-    pub fn write_vectored(&self, buf: &[IoVec<'_>]) -> io::Result<usize> {
-        let buf = match buf.get(0) {
-            Some(buf) => buf,
-            None => return Ok(0),
-        };
-        self.write(buf)
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.inner.inner.write_vectored(bufs)
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -182,9 +207,22 @@ impl FromInner<(Socket, Option<String>)> for TcpStream {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TcpListener {
     inner: Socket,
+}
+
+impl fmt::Debug for TcpListener {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut res = f.debug_struct("TcpListener");
+
+        if let Some(ref addr) = self.inner.local_addr {
+            res.field("addr", addr);
+        }
+
+        res.field("fd", &self.inner.inner.as_inner())
+            .finish()
+    }
 }
 
 impl TcpListener {
@@ -255,6 +293,10 @@ pub struct UdpSocket(Void);
 impl UdpSocket {
     pub fn bind(_: io::Result<&SocketAddr>) -> io::Result<UdpSocket> {
         unsupported()
+    }
+
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        match self.0 {}
     }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
@@ -379,7 +421,7 @@ impl UdpSocket {
 }
 
 impl fmt::Debug for UdpSocket {
-    fn fmt(&self, _f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.0 {}
     }
 }
@@ -396,7 +438,7 @@ impl error::Error for NonIpSockAddr {
 }
 
 impl fmt::Display for NonIpSockAddr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Failed to convert address to SocketAddr: {}", self.host)
     }
 }

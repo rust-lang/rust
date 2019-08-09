@@ -1,9 +1,9 @@
 print-type-size type: `Enum`: 51 bytes, alignment: 1 bytes
 print-type-size     discriminant: 1 bytes
-print-type-size     variant `Small`: 7 bytes
-print-type-size         field `.0`: 7 bytes
 print-type-size     variant `Large`: 50 bytes
 print-type-size         field `.0`: 50 bytes
+print-type-size     variant `Small`: 7 bytes
+print-type-size         field `.0`: 7 bytes
 print-type-size type: `FiftyBytes`: 50 bytes, alignment: 1 bytes
 print-type-size     field `.0`: 50 bytes
 print-type-size type: `SevenBytes`: 7 bytes, alignment: 1 bytes

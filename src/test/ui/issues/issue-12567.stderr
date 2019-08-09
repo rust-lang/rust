@@ -1,39 +1,45 @@
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
-  --> $DIR/issue-12567.rs:6:16
+  --> $DIR/issue-12567.rs:4:11
+   |
+LL |     match (l1, l2) {
+   |           ^^^^^^^^ cannot move out of here
+...
+LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
+   |                 -- data moved here
+LL |             => println!("one empty"),
+LL |         (&[hd1, ..], &[hd2, ..])
+   |                        --- ...and here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/issue-12567.rs:8:17
    |
 LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
-   |                ^--^^^^^
-   |                ||
-   |                |hint: to prevent move, use `ref hd` or `ref mut hd`
-   |                cannot move out of here
+   |                 ^^
+LL |             => println!("one empty"),
+LL |         (&[hd1, ..], &[hd2, ..])
+   |                        ^^^
 
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
-  --> $DIR/issue-12567.rs:6:30
+  --> $DIR/issue-12567.rs:4:11
+   |
+LL |     match (l1, l2) {
+   |           ^^^^^^^^ cannot move out of here
+...
+LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
+   |                 -- data moved here
+LL |             => println!("one empty"),
+LL |         (&[hd1, ..], &[hd2, ..])
+   |            --- ...and here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/issue-12567.rs:8:17
    |
 LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
-   |                              ^--^^^^^
-   |                              ||
-   |                              |hint: to prevent move, use `ref hd` or `ref mut hd`
-   |                              cannot move out of here
-
-error[E0508]: cannot move out of type `[T]`, a non-copy slice
-  --> $DIR/issue-12567.rs:10:11
-   |
+   |                 ^^
+LL |             => println!("one empty"),
 LL |         (&[hd1, ..], &[hd2, ..])
-   |           ^---^^^^^
-   |           ||
-   |           |hint: to prevent move, use `ref hd1` or `ref mut hd1`
-   |           cannot move out of here
+   |            ^^^
 
-error[E0508]: cannot move out of type `[T]`, a non-copy slice
-  --> $DIR/issue-12567.rs:10:23
-   |
-LL |         (&[hd1, ..], &[hd2, ..])
-   |                       ^---^^^^^
-   |                       ||
-   |                       |hint: to prevent move, use `ref hd2` or `ref mut hd2`
-   |                       cannot move out of here
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0508`.

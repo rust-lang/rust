@@ -1,41 +1,77 @@
 warning: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:9:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:10:9
    |
 LL |         (_) => {}
    |         ^^^ help: remove these parentheses
    |
 note: lint level defined here
-  --> $DIR/issue-54538-unused-parens-lint.rs:5:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:6:9
    |
 LL | #![warn(unused_parens)]
    |         ^^^^^^^^^^^^^
 
 warning: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:10:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:11:9
    |
 LL |         (y) => {}
    |         ^^^ help: remove these parentheses
 
 warning: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:11:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:12:9
    |
 LL |         (ref r) => {}
    |         ^^^^^^^ help: remove these parentheses
 
 warning: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:12:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:13:9
    |
-LL |         (e @ 1..=2) => {}
+LL |         (e @ 1...2) => {}
    |         ^^^^^^^^^^^ help: remove these parentheses
 
 warning: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:18:9
+  --> $DIR/issue-54538-unused-parens-lint.rs:19:9
    |
 LL |         (e @ &(1...2)) => {}
    |         ^^^^^^^^^^^^^^ help: remove these parentheses
 
 warning: unnecessary parentheses around pattern
-  --> $DIR/issue-54538-unused-parens-lint.rs:19:10
+  --> $DIR/issue-54538-unused-parens-lint.rs:20:10
+   |
+LL |         &(_) => {}
+   |          ^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:31:9
+   |
+LL |         (_) => {}
+   |         ^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:32:9
+   |
+LL |         (y) => {}
+   |         ^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:33:9
+   |
+LL |         (ref r) => {}
+   |         ^^^^^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:34:9
+   |
+LL |         (e @ 1..=2) => {}
+   |         ^^^^^^^^^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:40:9
+   |
+LL |         (e @ &(1..=2)) => {}
+   |         ^^^^^^^^^^^^^^ help: remove these parentheses
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/issue-54538-unused-parens-lint.rs:41:10
    |
 LL |         &(_) => {}
    |          ^^^ help: remove these parentheses

@@ -1,14 +1,14 @@
-// aux-build:attr_proc_macro.rs
+// aux-build:test-macros.rs
 
-extern crate attr_proc_macro;
-use attr_proc_macro::*;
+#[macro_use]
+extern crate test_macros;
 
-#[attr_proc_macro] // OK
+#[identity_attr] // OK
 #[derive(Clone)]
 struct Before;
 
 #[derive(Clone)]
-#[attr_proc_macro] //~ ERROR macro attributes must be placed before `#[derive]`
+#[identity_attr] //~ ERROR macro attributes must be placed before `#[derive]`
 struct After;
 
 fn main() {}

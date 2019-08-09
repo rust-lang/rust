@@ -20,4 +20,3 @@ pub mod reexport {
     // @has - '//*[@class="rust trait"]' 'fn add(self, rhs: RHS) -> Self::Output;'
     pub use issue_20727::Add;
 }
-

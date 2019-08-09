@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/match-ref-mut-let-invariance.rs:11:9
+   |
+LL | impl<'b> S<'b> {
+   |      -- lifetime `'b` defined here
+LL |     fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
+   |            -- lifetime `'a` defined here
+LL |         let ref mut x = self.0;
+LL |         x
+   |         ^ returning this value requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

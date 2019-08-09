@@ -71,5 +71,5 @@ LL |     v as *const [u8];
 
 error: aborting due to 10 previous errors
 
-Some errors occurred: E0054, E0368, E0425, E0599, E0600, E0603, E0604, E0605, E0606...
+Some errors have detailed explanations: E0054, E0368, E0425, E0599, E0600, E0603, E0604, E0605, E0606...
 For more information about an error, try `rustc --explain E0054`.

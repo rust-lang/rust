@@ -1,12 +1,12 @@
 error: any use of this value will cause an error
-  --> $DIR/const-slice-oob.rs:4:1
+  --> $DIR/const-slice-oob.rs:4:18
    |
 LL | const BAR: u32 = FOO[5];
-   | ^^^^^^^^^^^^^^^^^------^
+   | -----------------^^^^^^-
    |                  |
    |                  index out of bounds: the len is 3 but the index is 5
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error
 

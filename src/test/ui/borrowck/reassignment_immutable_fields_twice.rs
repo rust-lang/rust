@@ -10,8 +10,8 @@ fn var_then_field() {
 fn same_field_twice() {
     let x: (u32, u32);
     x.0 = 1; //~ ERROR
-    x.0 = 22; //~ ERROR
-    x.1 = 44; //~ ERROR
+    x.0 = 22;
+    x.1 = 44;
 }
 
 fn main() { }

@@ -1,0 +1,21 @@
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-one-is-struct-2.rs:4:5
+   |
+LL | fn foo(mut x: Ref, y: &u32) {
+   |        -----          - let's call the lifetime of this reference `'2`
+   |        |
+   |        has type `Ref<'_, '1>`
+LL |     y = x.b;
+   |     ^^^^^^^ assignment requires that `'1` must outlive `'2`
+
+error[E0384]: cannot assign to immutable argument `y`
+  --> $DIR/ex3-both-anon-regions-one-is-struct-2.rs:4:5
+   |
+LL | fn foo(mut x: Ref, y: &u32) {
+   |                    - help: make this binding mutable: `mut y`
+LL |     y = x.b;
+   |     ^^^^^^^ cannot assign to immutable argument
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0384`.

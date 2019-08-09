@@ -61,17 +61,17 @@ for details on how to format and write long error codes.
 
 * All of them are accessible [online](http://doc.rust-lang.org/error-index.html),
   which are auto-generated from rustc source code in different places:
-  [librustc](https://github.com/rust-lang/rust/blob/master/src/librustc/diagnostics.rs),
-  [libsyntax](https://github.com/rust-lang/rust/blob/master/src/libsyntax/diagnostics.rs),
-  [librustc_borrowck](https://github.com/rust-lang/rust/blob/master/src/librustc_borrowck/diagnostics.rs),
-  [librustc_metadata](https://github.com/rust-lang/rust/blob/master/src/librustc_metadata/diagnostics.rs),
-  [librustc_mir](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/diagnostics.rs),
-  [librustc_passes](https://github.com/rust-lang/rust/blob/master/src/librustc_passes/diagnostics.rs),
-  [librustc_privacy](https://github.com/rust-lang/rust/blob/master/src/librustc_privacy/diagnostics.rs),
-  [librustc_resolve](https://github.com/rust-lang/rust/blob/master/src/librustc_resolve/diagnostics.rs),
-  [librustc_codegen_llvm](https://github.com/rust-lang/rust/blob/master/src/librustc_codegen_llvm/diagnostics.rs),
-  [librustc_plugin](https://github.com/rust-lang/rust/blob/master/src/librustc_plugin/diagnostics.rs),
-  [librustc_typeck](https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/diagnostics.rs).
+  [librustc](https://github.com/rust-lang/rust/blob/master/src/librustc/error_codes.rs),
+  [libsyntax](https://github.com/rust-lang/rust/blob/master/src/libsyntax/error_codes.rs),
+  [librustc_borrowck](https://github.com/rust-lang/rust/blob/master/src/librustc_borrowck/error_codes.rs),
+  [librustc_metadata](https://github.com/rust-lang/rust/blob/master/src/librustc_metadata/error_codes.rs),
+  [librustc_mir](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/error_codes.rs),
+  [librustc_passes](https://github.com/rust-lang/rust/blob/master/src/librustc_passes/error_codes.rs),
+  [librustc_privacy](https://github.com/rust-lang/rust/blob/master/src/librustc_privacy/error_codes.rs),
+  [librustc_resolve](https://github.com/rust-lang/rust/blob/master/src/librustc_resolve/error_codes.rs),
+  [librustc_codegen_llvm](https://github.com/rust-lang/rust/blob/master/src/librustc_codegen_llvm/error_codes.rs),
+  [librustc_plugin](https://github.com/rust-lang/rust/blob/master/src/librustc_plugin/error_codes.rs),
+  [librustc_typeck](https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/error_codes.rs).
 * Explanations have full markdown support. Use it, especially to highlight
 code with backticks.
 * When talking about the compiler, call it `the compiler`, not `Rust` or

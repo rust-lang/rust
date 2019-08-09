@@ -6,6 +6,7 @@
 // ignore-windows
 // ignore-cloudabi
 // ignore-emscripten
+// ignore-sgx no processes
 
 use std::process::Command;
 // use std::os::unix::process::CommandExt;

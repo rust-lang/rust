@@ -1,13 +1,16 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type="lib"]
-#![feature(repr_simd)]
+#![feature(repr_simd, transparent_enums, transparent_unions)]
 
 use std::marker::PhantomData;
 
+#[derive(Copy, Clone)]
 pub struct Zst1;
+#[derive(Copy, Clone)]
 pub struct Zst2(());
 
+#[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct F32(f32);
 
@@ -111,6 +114,44 @@ pub struct StructWithProjection(<f32 as Mirror>::It);
 // CHECK: define float @test_Projection(float %arg0)
 #[no_mangle]
 pub extern fn test_Projection(_: StructWithProjection) -> StructWithProjection { loop {} }
+
+#[repr(transparent)]
+pub enum EnumF32 {
+    Variant(F32)
+}
+
+// CHECK: define float @test_EnumF32(float %arg0)
+#[no_mangle]
+pub extern fn test_EnumF32(_: EnumF32) -> EnumF32 { loop {} }
+
+#[repr(transparent)]
+pub enum EnumF32WithZsts {
+    Variant(Zst1, F32, Zst2)
+}
+
+// CHECK: define float @test_EnumF32WithZsts(float %arg0)
+#[no_mangle]
+pub extern fn test_EnumF32WithZsts(_: EnumF32WithZsts) -> EnumF32WithZsts { loop {} }
+
+#[repr(transparent)]
+pub union UnionF32 {
+    field: F32,
+}
+
+// CHECK: define float @test_UnionF32(float %arg0)
+#[no_mangle]
+pub extern fn test_UnionF32(_: UnionF32) -> UnionF32 { loop {} }
+
+#[repr(transparent)]
+pub union UnionF32WithZsts {
+    zst1: Zst1,
+    field: F32,
+    zst2: Zst2,
+}
+
+// CHECK: define float @test_UnionF32WithZsts(float %arg0)
+#[no_mangle]
+pub extern fn test_UnionF32WithZsts(_: UnionF32WithZsts) -> UnionF32WithZsts { loop {} }
 
 
 // All that remains to be tested are aggregates. They are tested in separate files called repr-

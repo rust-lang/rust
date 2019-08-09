@@ -150,10 +150,9 @@
 //! Any `with_capacity` constructor will instruct the collection to allocate
 //! enough space for the specified number of elements. Ideally this will be for
 //! exactly that many elements, but some implementation details may prevent
-//! this. [`Vec`] and [`VecDeque`] can be relied on to allocate exactly the
-//! requested amount, though. Use `with_capacity` when you know exactly how many
-//! elements will be inserted, or at least have a reasonable upper-bound on that
-//! number.
+//! this. See collection-specific documentation for details. In general, use
+//! `with_capacity` when you know exactly how many elements will be inserted, or
+//! at least have a reasonable upper-bound on that number.
 //!
 //! When anticipating a large influx of elements, the `reserve` family of
 //! methods can be used to hint to the collection how much room it should make

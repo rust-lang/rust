@@ -1,7 +1,7 @@
 #![warn(anonymous_parameters)]
 // Test for the anonymous_parameters deprecation lint (RFC 1685)
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // edition:2015
 // run-rustfix
 

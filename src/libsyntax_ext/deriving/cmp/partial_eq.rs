@@ -3,10 +3,9 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{BinOpKind, Expr, MetaItem};
-use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
+use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
@@ -14,6 +13,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
                                   mitem: &MetaItem,
                                   item: &Annotatable,
                                   push: &mut dyn FnMut(Annotatable)) {
+    cx.resolver.add_derives(cx.current_expansion.id.parent(), SpecialDerives::PARTIAL_EQ);
+
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_op(cx: &mut ExtCtxt<'_>,
@@ -25,8 +26,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
              -> P<Expr>
     {
         let op = |cx: &mut ExtCtxt<'_>, span: Span, self_f: P<Expr>, other_fs: &[P<Expr>]| {
-            let other_f = match (other_fs.len(), other_fs.get(0)) {
-                (1, Some(o_f)) => o_f,
+            let other_f = match other_fs {
+                [o_f] => o_f,
                 _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`"),
             };
 
@@ -62,8 +63,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
 
     macro_rules! md {
         ($name:expr, $f:ident) => { {
-            let inline = cx.meta_word(span, Symbol::intern("inline"));
-            let attrs = vec![cx.attribute(span, inline)];
+            let inline = cx.meta_word(span, sym::inline);
+            let attrs = vec![cx.attribute(inline)];
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),

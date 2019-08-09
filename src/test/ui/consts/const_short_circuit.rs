@@ -1,5 +1,3 @@
-#![feature(underscore_const_names)]
-
 const _: bool = false && false;
 const _: bool = true && false;
 const _: bool = {

@@ -15,8 +15,6 @@ use smallvec::{SmallVec, smallvec};
 use syntax::source_map::DUMMY_SP;
 use rustc::traits::FulfillmentContext;
 
-use rustc_data_structures::sync::Lrc;
-
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         implied_outlives_bounds,
@@ -25,11 +23,11 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn implied_outlives_bounds<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> Result<
-        Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>>,
-        NoSolution,
+    &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
+    NoSolution,
 > {
     tcx.infer_ctxt()
        .enter_canonical_trait_query(&goal, |infcx, _fulfill_cx, key| {
@@ -39,9 +37,9 @@ fn implied_outlives_bounds<'tcx>(
 }
 
 fn compute_implied_outlives_bounds<'tcx>(
-    infcx: &InferCtxt<'_, '_, 'tcx>,
+    infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>
+    ty: Ty<'tcx>,
 ) -> Fallible<Vec<OutlivesBound<'tcx>>> {
     let tcx = infcx.tcx;
 
@@ -123,7 +121,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                 ty::Predicate::TypeOutlives(ref data) => match data.no_bound_vars() {
                     None => vec![],
                     Some(ty::OutlivesPredicate(ty_a, r_b)) => {
-                        let ty_a = infcx.resolve_type_vars_if_possible(&ty_a);
+                        let ty_a = infcx.resolve_vars_if_possible(&ty_a);
                         let mut components = smallvec![];
                         tcx.push_outlives_components(ty_a, &mut components);
                         implied_bounds_from_components(r_b, components)

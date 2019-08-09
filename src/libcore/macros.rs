@@ -1,19 +1,21 @@
-/// Entry point of thread panic. For details, see `std::macros`.
+/// Panics the current thread.
+///
+/// For details, see `std::macros`.
 #[macro_export]
 #[allow_internal_unstable(core_panic, __rust_unstable_column)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
-        panic!("explicit panic")
+        $crate::panic!("explicit panic")
     );
     ($msg:expr) => ({
         $crate::panicking::panic(&($msg, file!(), line!(), __rust_unstable_column!()))
     });
     ($msg:expr,) => (
-        panic!($msg)
+        $crate::panic!($msg)
     );
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*),
+        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)+),
                                      &(file!(), line!(), __rust_unstable_column!()))
     });
 }
@@ -56,7 +58,7 @@ macro_rules! assert_eq {
         }
     });
     ($left:expr, $right:expr,) => ({
-        assert_eq!($left, $right)
+        $crate::assert_eq!($left, $right)
     });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
@@ -113,7 +115,7 @@ macro_rules! assert_ne {
         }
     });
     ($left:expr, $right:expr,) => {
-        assert_ne!($left, $right)
+        $crate::assert_ne!($left, $right)
     };
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
@@ -132,7 +134,7 @@ macro_rules! assert_ne {
     });
 }
 
-/// Ensure that a boolean expression is `true` at runtime.
+/// Asserts that a boolean expression is `true` at runtime.
 ///
 /// This will invoke the [`panic!`] macro if the provided expression cannot be
 /// evaluated to `true` at runtime.
@@ -143,11 +145,11 @@ macro_rules! assert_ne {
 /// # Uses
 ///
 /// Unlike [`assert!`], `debug_assert!` statements are only enabled in non
-/// optimized builds by default. An optimized build will omit all
+/// optimized builds by default. An optimized build will not execute
 /// `debug_assert!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development.
+/// development. The result of expanding `debug_assert!` is always type checked.
 ///
 /// An unchecked assertion allows a program in an inconsistent state to keep
 /// running, which might have unexpected consequences but does not introduce
@@ -188,11 +190,11 @@ macro_rules! debug_assert {
 /// debug representations.
 ///
 /// Unlike [`assert_eq!`], `debug_assert_eq!` statements are only enabled in non
-/// optimized builds by default. An optimized build will omit all
+/// optimized builds by default. An optimized build will not execute
 /// `debug_assert_eq!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert_eq!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development.
+/// development. The result of expanding `debug_assert_eq!` is always type checked.
 ///
 /// [`assert_eq!`]: ../std/macro.assert_eq.html
 ///
@@ -206,7 +208,7 @@ macro_rules! debug_assert {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! debug_assert_eq {
-    ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_eq!($($arg)*); })
+    ($($arg:tt)*) => (if cfg!(debug_assertions) { $crate::assert_eq!($($arg)*); })
 }
 
 /// Asserts that two expressions are not equal to each other.
@@ -215,11 +217,11 @@ macro_rules! debug_assert_eq {
 /// debug representations.
 ///
 /// Unlike [`assert_ne!`], `debug_assert_ne!` statements are only enabled in non
-/// optimized builds by default. An optimized build will omit all
+/// optimized builds by default. An optimized build will not execute
 /// `debug_assert_ne!` statements unless `-C debug-assertions` is passed to the
 /// compiler. This makes `debug_assert_ne!` useful for checks that are too
 /// expensive to be present in a release build but may be helpful during
-/// development.
+/// development. The result of expanding `debug_assert_ne!` is always type checked.
 ///
 /// [`assert_ne!`]: ../std/macro.assert_ne.html
 ///
@@ -233,11 +235,10 @@ macro_rules! debug_assert_eq {
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
 macro_rules! debug_assert_ne {
-    ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_ne!($($arg)*); })
+    ($($arg:tt)*) => (if cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
 }
 
-/// Helper macro for reducing boilerplate code for matching `Result` together
-/// with converting downstream errors.
+/// Unwraps a result or propagates its error.
 ///
 /// The `?` operator was added to replace `try!` and should be used instead.
 /// Furthermore, `try` is a reserved word in Rust 2018, so if you must use
@@ -309,10 +310,10 @@ macro_rules! r#try {
             return $crate::result::Result::Err($crate::convert::From::from(err))
         }
     });
-    ($expr:expr,) => (r#try!($expr));
+    ($expr:expr,) => ($crate::r#try!($expr));
 }
 
-/// Write formatted data into a buffer.
+/// Writes formatted data into a buffer.
 ///
 /// This macro accepts a format string, a list of arguments, and a 'writer'. Arguments will be
 /// formatted according to the specified format string and the result will be passed to the writer.
@@ -334,11 +335,14 @@ macro_rules! r#try {
 /// ```
 /// use std::io::Write;
 ///
-/// let mut w = Vec::new();
-/// write!(&mut w, "test").unwrap();
-/// write!(&mut w, "formatted {}", "arguments").unwrap();
+/// fn main() -> std::io::Result<()> {
+///     let mut w = Vec::new();
+///     write!(&mut w, "test")?;
+///     write!(&mut w, "formatted {}", "arguments")?;
 ///
-/// assert_eq!(w, b"testformatted arguments");
+///     assert_eq!(w, b"testformatted arguments");
+///     Ok(())
+/// }
 /// ```
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
@@ -349,11 +353,15 @@ macro_rules! r#try {
 /// use std::fmt::Write as FmtWrite;
 /// use std::io::Write as IoWrite;
 ///
-/// let mut s = String::new();
-/// let mut v = Vec::new();
-/// write!(&mut s, "{} {}", "abc", 123).unwrap(); // uses fmt::Write::write_fmt
-/// write!(&mut v, "s = {:?}", s).unwrap(); // uses io::Write::write_fmt
-/// assert_eq!(v, b"s = \"abc 123\"");
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let mut s = String::new();
+///     let mut v = Vec::new();
+///
+///     write!(&mut s, "{} {}", "abc", 123)?; // uses fmt::Write::write_fmt
+///     write!(&mut v, "s = {:?}", s)?; // uses io::Write::write_fmt
+///     assert_eq!(v, b"s = \"abc 123\"");
+///     Ok(())
+/// }
 /// ```
 ///
 /// Note: This macro can be used in `no_std` setups as well.
@@ -395,14 +403,17 @@ macro_rules! write {
 /// # Examples
 ///
 /// ```
-/// use std::io::Write;
+/// use std::io::{Write, Result};
 ///
-/// let mut w = Vec::new();
-/// writeln!(&mut w).unwrap();
-/// writeln!(&mut w, "test").unwrap();
-/// writeln!(&mut w, "formatted {}", "arguments").unwrap();
+/// fn main() -> Result<()> {
+///     let mut w = Vec::new();
+///     writeln!(&mut w)?;
+///     writeln!(&mut w, "test")?;
+///     writeln!(&mut w, "formatted {}", "arguments")?;
 ///
-/// assert_eq!(&w[..], "\ntest\nformatted arguments\n".as_bytes());
+///     assert_eq!(&w[..], "\ntest\nformatted arguments\n".as_bytes());
+///     Ok(())
+/// }
 /// ```
 ///
 /// A module can import both `std::fmt::Write` and `std::io::Write` and call `write!` on objects
@@ -413,28 +424,32 @@ macro_rules! write {
 /// use std::fmt::Write as FmtWrite;
 /// use std::io::Write as IoWrite;
 ///
-/// let mut s = String::new();
-/// let mut v = Vec::new();
-/// writeln!(&mut s, "{} {}", "abc", 123).unwrap(); // uses fmt::Write::write_fmt
-/// writeln!(&mut v, "s = {:?}", s).unwrap(); // uses io::Write::write_fmt
-/// assert_eq!(v, b"s = \"abc 123\\n\"\n");
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let mut s = String::new();
+///     let mut v = Vec::new();
+///
+///     writeln!(&mut s, "{} {}", "abc", 123)?; // uses fmt::Write::write_fmt
+///     writeln!(&mut v, "s = {:?}", s)?; // uses io::Write::write_fmt
+///     assert_eq!(v, b"s = \"abc 123\\n\"\n");
+///     Ok(())
+/// }
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
     ($dst:expr) => (
-        write!($dst, "\n")
+        $crate::write!($dst, "\n")
     );
     ($dst:expr,) => (
-        writeln!($dst)
+        $crate::writeln!($dst)
     );
     ($dst:expr, $($arg:tt)*) => (
         $dst.write_fmt(format_args_nl!($($arg)*))
     );
 }
 
-/// A utility macro for indicating unreachable code.
+/// Indicates unreachable code.
 ///
 /// This is useful any time that the compiler can't determine that some code is unreachable. For
 /// example:
@@ -444,9 +459,10 @@ macro_rules! writeln {
 /// * Iterators that dynamically terminate.
 ///
 /// If the determination that the code is unreachable proves incorrect, the
-/// program immediately terminates with a [`panic!`]. The function [`unreachable_unchecked`],
-/// which belongs to the [`std::hint`] module, informs the compiler to
-/// optimize the code out of the release version entirely.
+/// program immediately terminates with a [`panic!`].
+///
+/// The unsafe counterpart of this macro is the [`unreachable_unchecked`] function, which
+/// will cause undefined behavior if the code is reached.
 ///
 /// [`panic!`]:  ../std/macro.panic.html
 /// [`unreachable_unchecked`]: ../std/hint/fn.unreachable_unchecked.html
@@ -492,17 +508,17 @@ macro_rules! unreachable {
         panic!("internal error: entered unreachable code")
     });
     ($msg:expr) => ({
-        unreachable!("{}", $msg)
+        $crate::unreachable!("{}", $msg)
     });
     ($msg:expr,) => ({
-        unreachable!($msg)
+        $crate::unreachable!($msg)
     });
     ($fmt:expr, $($arg:tt)*) => ({
         panic!(concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
     });
 }
 
-/// A standardized placeholder for marking unfinished code.
+/// Indicates unfinished code.
 ///
 /// This can be useful if you are prototyping and are just looking to have your
 /// code type-check, or if you're implementing a trait that requires multiple
@@ -556,208 +572,808 @@ macro_rules! unreachable {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"));
-    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)*)));
+    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)+)));
 }
 
-/// A macro to create an array of [`MaybeUninit`]
+/// Indicates unfinished code.
+///
+/// This can be useful if you are prototyping and are just looking to have your
+/// code typecheck. `todo!` works exactly like `unimplemented!`. The only
+/// difference between the two macros is the name.
+///
+/// # Panics
+///
+/// This will always [panic!](macro.panic.html)
+///
+/// # Examples
+///
+/// Here's an example of some in-progress code. We have a trait `Foo`:
+///
+/// ```
+/// trait Foo {
+///     fn bar(&self);
+///     fn baz(&self);
+/// }
+/// ```
+///
+/// We want to implement `Foo` on one of our types, but we also want to work on
+/// just `bar()` first. In order for our code to compile, we need to implement
+/// `baz()`, so we can use `todo!`:
+///
+/// ```
+/// #![feature(todo_macro)]
+///
+/// # trait Foo {
+/// #     fn bar(&self);
+/// #     fn baz(&self);
+/// # }
+/// struct MyStruct;
+///
+/// impl Foo for MyStruct {
+///     fn bar(&self) {
+///         // implementation goes here
+///     }
+///
+///     fn baz(&self) {
+///         // let's not worry about implementing baz() for now
+///         todo!();
+///     }
+/// }
+///
+/// fn main() {
+///     let s = MyStruct;
+///     s.bar();
+///
+///     // we aren't even using baz() yet, so this is fine.
+/// }
+/// ```
+#[macro_export]
+#[unstable(feature = "todo_macro", issue = "59277")]
+macro_rules! todo {
+    () => (panic!("not yet implemented"));
+    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)+)));
+}
+
+/// Creates an array of [`MaybeUninit`].
 ///
 /// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
+/// It exists solely because bootstrap does not yet support const array-init expressions.
 ///
 /// [`MaybeUninit`]: mem/union.MaybeUninit.html
+// FIXME: Remove both versions of this macro once bootstrap is 1.38.
 #[macro_export]
 #[unstable(feature = "maybe_uninit_array", issue = "53491")]
-macro_rules! uninitialized_array {
-    // This `into_initialized` is safe because an array of `MaybeUninit` does not
+#[cfg(bootstrap)]
+macro_rules! uninit_array {
+    // This `assume_init` is safe because an array of `MaybeUninit` does not
     // require initialization.
-    // FIXME(#49147): Could be replaced by an array initializer, once those can
-    // be any const expression.
     ($t:ty; $size:expr) => (unsafe {
-        MaybeUninit::<[MaybeUninit<$t>; $size]>::uninitialized().into_initialized()
+        MaybeUninit::<[MaybeUninit<$t>; $size]>::uninit().assume_init()
     });
 }
 
-/// Built-in macros to the compiler itself.
+/// Creates an array of [`MaybeUninit`].
 ///
-/// These macros do not have any corresponding definition with a `macro_rules!`
-/// macro, but are documented here. Their implementations can be found hardcoded
-/// into libsyntax itself.
+/// This macro constructs an uninitialized array of the type `[MaybeUninit<K>; N]`.
+/// It exists solely because bootstrap does not yet support const array-init expressions.
 ///
-/// For more information, see documentation for `std`'s macros.
-#[cfg(rustdoc)]
-mod builtin {
+/// [`MaybeUninit`]: mem/union.MaybeUninit.html
+// FIXME: Just inline this version of the macro once bootstrap is 1.38.
+#[macro_export]
+#[unstable(feature = "maybe_uninit_array", issue = "53491")]
+#[cfg(not(bootstrap))]
+macro_rules! uninit_array {
+    ($t:ty; $size:expr) => (
+        [MaybeUninit::<$t>::UNINIT; $size]
+    );
+}
 
-    /// Unconditionally causes compilation to fail with the given error message when encountered.
+/// Definitions of built-in macros.
+///
+/// Most of the macro properties (stability, visibility, etc.) are taken from the source code here,
+/// with exception of expansion functions transforming macro inputs into outputs,
+/// those functions are provided by the compiler.
+#[cfg(not(bootstrap))]
+pub(crate) mod builtin {
+
+    /// Causes compilation to fail with the given error message when encountered.
     ///
-    /// For more information, see the documentation for [`std::compile_error!`].
+    /// This macro should be used when a crate uses a conditional compilation strategy to provide
+    /// better error messages for erroneous conditions. It's the compiler-level form of [`panic!`],
+    /// but emits an error during *compilation* rather than at *runtime*.
     ///
-    /// [`std::compile_error!`]: ../std/macro.compile_error.html
+    /// # Examples
+    ///
+    /// Two such examples are macros and `#[cfg]` environments.
+    ///
+    /// Emit better compiler error if a macro is passed invalid values. Without the final branch,
+    /// the compiler would still emit an error, but the error's message would not mention the two
+    /// valid values.
+    ///
+    /// ```compile_fail
+    /// macro_rules! give_me_foo_or_bar {
+    ///     (foo) => {};
+    ///     (bar) => {};
+    ///     ($x:ident) => {
+    ///         compile_error!("This macro only accepts `foo` or `bar`");
+    ///     }
+    /// }
+    ///
+    /// give_me_foo_or_bar!(neither);
+    /// // ^ will fail at compile time with message "This macro only accepts `foo` or `bar`"
+    /// ```
+    ///
+    /// Emit compiler error if one of a number of features isn't available.
+    ///
+    /// ```compile_fail
+    /// #[cfg(not(any(feature = "foo", feature = "bar")))]
+    /// compile_error!("Either feature \"foo\" or \"bar\" must be enabled for this crate.");
+    /// ```
+    ///
+    /// [`panic!`]: ../std/macro.panic.html
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! compile_error {
-        ($msg:expr) => ({ /* compiler built-in */ });
-        ($msg:expr,) => ({ /* compiler built-in */ });
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro compile_error {
+        ($msg:expr) => ({ /* compiler built-in */ }),
+        ($msg:expr,) => ({ /* compiler built-in */ })
     }
 
-    /// The core macro for formatted string creation & output.
+    /// Constructs parameters for the other string-formatting macros.
     ///
-    /// For more information, see the documentation for [`std::format_args!`].
+    /// This macro functions by taking a formatting string literal containing
+    /// `{}` for each additional argument passed. `format_args!` prepares the
+    /// additional parameters to ensure the output can be interpreted as a string
+    /// and canonicalizes the arguments into a single type. Any value that implements
+    /// the [`Display`] trait can be passed to `format_args!`, as can any
+    /// [`Debug`] implementation be passed to a `{:?}` within the formatting string.
     ///
-    /// [`std::format_args!`]: ../std/macro.format_args.html
+    /// This macro produces a value of type [`fmt::Arguments`]. This value can be
+    /// passed to the macros within [`std::fmt`] for performing useful redirection.
+    /// All other formatting macros ([`format!`], [`write!`], [`println!`], etc) are
+    /// proxied through this one. `format_args!`, unlike its derived macros, avoids
+    /// heap allocations.
+    ///
+    /// You can use the [`fmt::Arguments`] value that `format_args!` returns
+    /// in `Debug` and `Display` contexts as seen below. The example also shows
+    /// that `Debug` and `Display` format to the same thing: the interpolated
+    /// format string in `format_args!`.
+    ///
+    /// ```rust
+    /// let debug = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
+    /// let display = format!("{}", format_args!("{} foo {:?}", 1, 2));
+    /// assert_eq!("1 foo 2", display);
+    /// assert_eq!(display, debug);
+    /// ```
+    ///
+    /// For more information, see the documentation in [`std::fmt`].
+    ///
+    /// [`Display`]: ../std/fmt/trait.Display.html
+    /// [`Debug`]: ../std/fmt/trait.Debug.html
+    /// [`fmt::Arguments`]: ../std/fmt/struct.Arguments.html
+    /// [`std::fmt`]: ../std/fmt/index.html
+    /// [`format!`]: ../std/macro.format.html
+    /// [`write!`]: ../std/macro.write.html
+    /// [`println!`]: ../std/macro.println.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// let s = fmt::format(format_args!("hello {}", "world"));
+    /// assert_eq!(s, format!("hello {}", "world"));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! format_args {
-        ($fmt:expr) => ({ /* compiler built-in */ });
-        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ });
+    #[allow_internal_unstable(fmt_internals)]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro format_args {
+        ($fmt:expr) => ({ /* compiler built-in */ }),
+        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
     }
 
-    /// Inspect an environment variable at compile time.
+    /// Same as `format_args`, but adds a newline in the end.
+    #[unstable(feature = "format_args_nl", issue = "0",
+               reason = "`format_args_nl` is only for internal \
+                         language use and is subject to change")]
+    #[allow_internal_unstable(fmt_internals)]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro format_args_nl {
+        ($fmt:expr) => ({ /* compiler built-in */ }),
+        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+    }
+
+    /// Inspects an environment variable at compile time.
     ///
-    /// For more information, see the documentation for [`std::env!`].
+    /// This macro will expand to the value of the named environment variable at
+    /// compile time, yielding an expression of type `&'static str`.
     ///
-    /// [`std::env!`]: ../std/macro.env.html
+    /// If the environment variable is not defined, then a compilation error
+    /// will be emitted. To not emit a compile error, use the [`option_env!`]
+    /// macro instead.
+    ///
+    /// [`option_env!`]: ../std/macro.option_env.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let path: &'static str = env!("PATH");
+    /// println!("the $PATH variable at the time of compiling was: {}", path);
+    /// ```
+    ///
+    /// You can customize the error message by passing a string as the second
+    /// parameter:
+    ///
+    /// ```compile_fail
+    /// let doc: &'static str = env!("documentation", "what's that?!");
+    /// ```
+    ///
+    /// If the `documentation` environment variable is not defined, you'll get
+    /// the following error:
+    ///
+    /// ```text
+    /// error: what's that?!
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! env {
-        ($name:expr) => ({ /* compiler built-in */ });
-        ($name:expr,) => ({ /* compiler built-in */ });
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro env {
+        ($name:expr) => ({ /* compiler built-in */ }),
+        ($name:expr,) => ({ /* compiler built-in */ })
     }
 
-    /// Optionally inspect an environment variable at compile time.
+    /// Optionally inspects an environment variable at compile time.
     ///
-    /// For more information, see the documentation for [`std::option_env!`].
+    /// If the named environment variable is present at compile time, this will
+    /// expand into an expression of type `Option<&'static str>` whose value is
+    /// `Some` of the value of the environment variable. If the environment
+    /// variable is not present, then this will expand to `None`. See
+    /// [`Option<T>`][option] for more information on this type.
     ///
-    /// [`std::option_env!`]: ../std/macro.option_env.html
+    /// A compile time error is never emitted when using this macro regardless
+    /// of whether the environment variable is present or not.
+    ///
+    /// [option]: ../std/option/enum.Option.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let key: Option<&'static str> = option_env!("SECRET_KEY");
+    /// println!("the secret key might be: {:?}", key);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! option_env {
-        ($name:expr) => ({ /* compiler built-in */ });
-        ($name:expr,) => ({ /* compiler built-in */ });
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro option_env {
+        ($name:expr) => ({ /* compiler built-in */ }),
+        ($name:expr,) => ({ /* compiler built-in */ })
     }
 
-    /// Concatenate identifiers into one identifier.
+    /// Concatenates identifiers into one identifier.
     ///
-    /// For more information, see the documentation for [`std::concat_idents!`].
+    /// This macro takes any number of comma-separated identifiers, and
+    /// concatenates them all into one, yielding an expression which is a new
+    /// identifier. Note that hygiene makes it such that this macro cannot
+    /// capture local variables. Also, as a general rule, macros are only
+    /// allowed in item, statement or expression position. That means while
+    /// you may use this macro for referring to existing variables, functions or
+    /// modules etc, you cannot define a new one with it.
     ///
-    /// [`std::concat_idents!`]: ../std/macro.concat_idents.html
-    #[unstable(feature = "concat_idents_macro", issue = "29599")]
-    #[rustc_doc_only_macro]
-    macro_rules! concat_idents {
-        ($($e:ident),+) => ({ /* compiler built-in */ });
-        ($($e:ident,)+) => ({ /* compiler built-in */ });
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(concat_idents)]
+    ///
+    /// # fn main() {
+    /// fn foobar() -> u32 { 23 }
+    ///
+    /// let f = concat_idents!(foo, bar);
+    /// println!("{}", f());
+    ///
+    /// // fn concat_idents!(new, fun, name) { } // not usable in this way!
+    /// # }
+    /// ```
+    #[unstable(feature = "concat_idents", issue = "29599",
+               reason = "`concat_idents` is not stable enough for use and is subject to change")]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro concat_idents {
+        ($($e:ident),+) => ({ /* compiler built-in */ }),
+        ($($e:ident,)+) => ({ /* compiler built-in */ })
     }
 
     /// Concatenates literals into a static string slice.
     ///
-    /// For more information, see the documentation for [`std::concat!`].
+    /// This macro takes any number of comma-separated literals, yielding an
+    /// expression of type `&'static str` which represents all of the literals
+    /// concatenated left-to-right.
     ///
-    /// [`std::concat!`]: ../std/macro.concat.html
+    /// Integer and floating point literals are stringified in order to be
+    /// concatenated.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = concat!("test", 10, 'b', true);
+    /// assert_eq!(s, "test10btrue");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! concat {
-        ($($e:expr),*) => ({ /* compiler built-in */ });
-        ($($e:expr,)*) => ({ /* compiler built-in */ });
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro concat {
+        ($($e:expr),*) => ({ /* compiler built-in */ }),
+        ($($e:expr,)*) => ({ /* compiler built-in */ })
     }
 
-    /// A macro which expands to the line number on which it was invoked.
+    /// Expands to the line number on which it was invoked.
     ///
-    /// For more information, see the documentation for [`std::line!`].
+    /// With [`column!`] and [`file!`], these macros provide debugging information for
+    /// developers about the location within the source.
     ///
-    /// [`std::line!`]: ../std/macro.line.html
+    /// The expanded expression has type `u32` and is 1-based, so the first line
+    /// in each file evaluates to 1, the second to 2, etc. This is consistent
+    /// with error messages by common compilers or popular editors.
+    /// The returned line is *not necessarily* the line of the `line!` invocation itself,
+    /// but rather the first macro invocation leading up to the invocation
+    /// of the `line!` macro.
+    ///
+    /// [`column!`]: macro.column.html
+    /// [`file!`]: macro.file.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let current_line = line!();
+    /// println!("defined on line: {}", current_line);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! line { () => ({ /* compiler built-in */ }) }
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro line() { /* compiler built-in */ }
 
-    /// A macro which expands to the column number on which it was invoked.
+    /// Expands to the column number at which it was invoked.
     ///
-    /// For more information, see the documentation for [`std::column!`].
+    /// With [`line!`] and [`file!`], these macros provide debugging information for
+    /// developers about the location within the source.
     ///
-    /// [`std::column!`]: ../std/macro.column.html
+    /// The expanded expression has type `u32` and is 1-based, so the first column
+    /// in each line evaluates to 1, the second to 2, etc. This is consistent
+    /// with error messages by common compilers or popular editors.
+    /// The returned column is *not necessarily* the line of the `column!` invocation itself,
+    /// but rather the first macro invocation leading up to the invocation
+    /// of the `column!` macro.
+    ///
+    /// [`line!`]: macro.line.html
+    /// [`file!`]: macro.file.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let current_col = column!();
+    /// println!("defined on column: {}", current_col);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! column { () => ({ /* compiler built-in */ }) }
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro column() { /* compiler built-in */ }
 
-    /// A macro which expands to the file name from which it was invoked.
-    ///
-    /// For more information, see the documentation for [`std::file!`].
-    ///
-    /// [`std::file!`]: ../std/macro.file.html
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! file { () => ({ /* compiler built-in */ }) }
+    /// Same as `column`, but less likely to be shadowed.
+    #[unstable(feature = "__rust_unstable_column", issue = "0",
+               reason = "internal implementation detail of the `panic` macro")]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro __rust_unstable_column() { /* compiler built-in */ }
 
-    /// A macro which stringifies its arguments.
+    /// Expands to the file name in which it was invoked.
     ///
-    /// For more information, see the documentation for [`std::stringify!`].
+    /// With [`line!`] and [`column!`], these macros provide debugging information for
+    /// developers about the location within the source.
     ///
-    /// [`std::stringify!`]: ../std/macro.stringify.html
+    ///
+    /// The expanded expression has type `&'static str`, and the returned file
+    /// is not the invocation of the `file!` macro itself, but rather the
+    /// first macro invocation leading up to the invocation of the `file!`
+    /// macro.
+    ///
+    /// [`line!`]: macro.line.html
+    /// [`column!`]: macro.column.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let this_file = file!();
+    /// println!("defined in file: {}", this_file);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! stringify { ($($t:tt)*) => ({ /* compiler built-in */ }) }
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro file() { /* compiler built-in */ }
+
+    /// Stringifies its arguments.
+    ///
+    /// This macro will yield an expression of type `&'static str` which is the
+    /// stringification of all the tokens passed to the macro. No restrictions
+    /// are placed on the syntax of the macro invocation itself.
+    ///
+    /// Note that the expanded results of the input tokens may change in the
+    /// future. You should be careful if you rely on the output.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let one_plus_one = stringify!(1 + 1);
+    /// assert_eq!(one_plus_one, "1 + 1");
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro stringify($($t:tt)*) { /* compiler built-in */ }
 
     /// Includes a utf8-encoded file as a string.
     ///
-    /// For more information, see the documentation for [`std::include_str!`].
+    /// The file is located relative to the current file. (similarly to how
+    /// modules are found)
     ///
-    /// [`std::include_str!`]: ../std/macro.include_str.html
+    /// This macro will yield an expression of type `&'static str` which is the
+    /// contents of the file.
+    ///
+    /// # Examples
+    ///
+    /// Assume there are two files in the same directory with the following
+    /// contents:
+    ///
+    /// File 'spanish.in':
+    ///
+    /// ```text
+    /// adiós
+    /// ```
+    ///
+    /// File 'main.rs':
+    ///
+    /// ```ignore (cannot-doctest-external-file-dependency)
+    /// fn main() {
+    ///     let my_str = include_str!("spanish.in");
+    ///     assert_eq!(my_str, "adiós\n");
+    ///     print!("{}", my_str);
+    /// }
+    /// ```
+    ///
+    /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! include_str {
-        ($file:expr) => ({ /* compiler built-in */ });
-        ($file:expr,) => ({ /* compiler built-in */ });
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro include_str {
+        ($file:expr) => ({ /* compiler built-in */ }),
+        ($file:expr,) => ({ /* compiler built-in */ })
     }
 
     /// Includes a file as a reference to a byte array.
     ///
-    /// For more information, see the documentation for [`std::include_bytes!`].
+    /// The file is located relative to the current file. (similarly to how
+    /// modules are found)
     ///
-    /// [`std::include_bytes!`]: ../std/macro.include_bytes.html
+    /// This macro will yield an expression of type `&'static [u8; N]` which is
+    /// the contents of the file.
+    ///
+    /// # Examples
+    ///
+    /// Assume there are two files in the same directory with the following
+    /// contents:
+    ///
+    /// File 'spanish.in':
+    ///
+    /// ```text
+    /// adiós
+    /// ```
+    ///
+    /// File 'main.rs':
+    ///
+    /// ```ignore (cannot-doctest-external-file-dependency)
+    /// fn main() {
+    ///     let bytes = include_bytes!("spanish.in");
+    ///     assert_eq!(bytes, b"adi\xc3\xb3s\n");
+    ///     print!("{}", String::from_utf8_lossy(bytes));
+    /// }
+    /// ```
+    ///
+    /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! include_bytes {
-        ($file:expr) => ({ /* compiler built-in */ });
-        ($file:expr,) => ({ /* compiler built-in */ });
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro include_bytes {
+        ($file:expr) => ({ /* compiler built-in */ }),
+        ($file:expr,) => ({ /* compiler built-in */ })
     }
 
     /// Expands to a string that represents the current module path.
     ///
-    /// For more information, see the documentation for [`std::module_path!`].
+    /// The current module path can be thought of as the hierarchy of modules
+    /// leading back up to the crate root. The first component of the path
+    /// returned is the name of the crate currently being compiled.
     ///
-    /// [`std::module_path!`]: ../std/macro.module_path.html
+    /// # Examples
+    ///
+    /// ```
+    /// mod test {
+    ///     pub fn foo() {
+    ///         assert!(module_path!().ends_with("test"));
+    ///     }
+    /// }
+    ///
+    /// test::foo();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! module_path { () => ({ /* compiler built-in */ }) }
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro module_path() { /* compiler built-in */ }
 
-    /// Boolean evaluation of configuration flags, at compile-time.
+    /// Evaluates boolean combinations of configuration flags at compile-time.
     ///
-    /// For more information, see the documentation for [`std::cfg!`].
+    /// In addition to the `#[cfg]` attribute, this macro is provided to allow
+    /// boolean expression evaluation of configuration flags. This frequently
+    /// leads to less duplicated code.
     ///
-    /// [`std::cfg!`]: ../std/macro.cfg.html
+    /// The syntax given to this macro is the same syntax as the [`cfg`]
+    /// attribute.
+    ///
+    /// [`cfg`]: ../reference/conditional-compilation.html#the-cfg-attribute
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let my_directory = if cfg!(windows) {
+    ///     "windows-specific-directory"
+    /// } else {
+    ///     "unix-directory"
+    /// };
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! cfg { ($($cfg:tt)*) => ({ /* compiler built-in */ }) }
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro cfg($($cfg:tt)*) { /* compiler built-in */ }
 
-    /// Parse a file as an expression or an item according to the context.
+    /// Parses a file as an expression or an item according to the context.
     ///
-    /// For more information, see the documentation for [`std::include!`].
+    /// The file is located relative to the current file (similarly to how
+    /// modules are found).
     ///
-    /// [`std::include!`]: ../std/macro.include.html
+    /// Using this macro is often a bad idea, because if the file is
+    /// parsed as an expression, it is going to be placed in the
+    /// surrounding code unhygienically. This could result in variables
+    /// or functions being different from what the file expected if
+    /// there are variables or functions that have the same name in
+    /// the current file.
+    ///
+    /// # Examples
+    ///
+    /// Assume there are two files in the same directory with the following
+    /// contents:
+    ///
+    /// File 'monkeys.in':
+    ///
+    /// ```ignore (only-for-syntax-highlight)
+    /// ['🙈', '🙊', '🙉']
+    ///     .iter()
+    ///     .cycle()
+    ///     .take(6)
+    ///     .collect::<String>()
+    /// ```
+    ///
+    /// File 'main.rs':
+    ///
+    /// ```ignore (cannot-doctest-external-file-dependency)
+    /// fn main() {
+    ///     let my_string = include!("monkeys.in");
+    ///     assert_eq!("🙈🙊🙉🙈🙊🙉", my_string);
+    ///     println!("{}", my_string);
+    /// }
+    /// ```
+    ///
+    /// Compiling 'main.rs' and running the resulting binary will print
+    /// "🙈🙊🙉🙈🙊🙉".
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_doc_only_macro]
-    macro_rules! include {
-        ($file:expr) => ({ /* compiler built-in */ });
-        ($file:expr,) => ({ /* compiler built-in */ });
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro include {
+        ($file:expr) => ({ /* compiler built-in */ }),
+        ($file:expr,) => ({ /* compiler built-in */ })
     }
 
-    /// Ensure that a boolean expression is `true` at runtime.
+    /// Asserts that a boolean expression is `true` at runtime.
     ///
-    /// For more information, see the documentation for [`std::assert!`].
+    /// This will invoke the [`panic!`] macro if the provided expression cannot be
+    /// evaluated to `true` at runtime.
     ///
-    /// [`std::assert!`]: ../std/macro.assert.html
-    #[rustc_doc_only_macro]
+    /// # Uses
+    ///
+    /// Assertions are always checked in both debug and release builds, and cannot
+    /// be disabled. See [`debug_assert!`] for assertions that are not enabled in
+    /// release builds by default.
+    ///
+    /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
+    /// violated could lead to unsafety.
+    ///
+    /// Other use-cases of `assert!` include testing and enforcing run-time
+    /// invariants in safe code (whose violation cannot result in unsafety).
+    ///
+    /// # Custom Messages
+    ///
+    /// This macro has a second form, where a custom panic message can
+    /// be provided with or without arguments for formatting. See [`std::fmt`]
+    /// for syntax for this form.
+    ///
+    /// [`panic!`]: macro.panic.html
+    /// [`debug_assert!`]: macro.debug_assert.html
+    /// [`std::fmt`]: ../std/fmt/index.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // the panic message for these assertions is the stringified value of the
+    /// // expression given.
+    /// assert!(true);
+    ///
+    /// fn some_computation() -> bool { true } // a very simple function
+    ///
+    /// assert!(some_computation());
+    ///
+    /// // assert with a custom message
+    /// let x = true;
+    /// assert!(x, "x wasn't true!");
+    ///
+    /// let a = 3; let b = 27;
+    /// assert!(a + b == 30, "a = {}, b = {}", a, b);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    macro_rules! assert {
-        ($cond:expr) => ({ /* compiler built-in */ });
-        ($cond:expr,) => ({ /* compiler built-in */ });
-        ($cond:expr, $($arg:tt)+) => ({ /* compiler built-in */ });
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro assert {
+        ($cond:expr) => ({ /* compiler built-in */ }),
+        ($cond:expr,) => ({ /* compiler built-in */ }),
+        ($cond:expr, $($arg:tt)+) => ({ /* compiler built-in */ })
     }
+
+    /// Inline assembly.
+    #[unstable(feature = "asm", issue = "29722",
+               reason = "inline assembly is not stable enough for use and is subject to change")]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro asm("assembly template"
+                  : $("output"(operand),)*
+                  : $("input"(operand),)*
+                  : $("clobbers",)*
+                  : $("options",)*) { /* compiler built-in */ }
+
+    /// Module-level inline assembly.
+    #[unstable(feature = "global_asm", issue = "35119",
+               reason = "`global_asm!` is not stable enough for use and is subject to change")]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro global_asm("assembly") { /* compiler built-in */ }
+
+    /// Prints passed tokens into the standard output.
+    #[unstable(feature = "log_syntax", issue = "29598",
+               reason = "`log_syntax!` is not stable enough for use and is subject to change")]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro log_syntax($($arg:tt)*) { /* compiler built-in */ }
+
+    /// Enables or disables tracing functionality used for debugging other macros.
+    #[unstable(feature = "trace_macros", issue = "29598",
+               reason = "`trace_macros` is not stable enough for use and is subject to change")]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro trace_macros {
+        (true) => ({ /* compiler built-in */ }),
+        (false) => ({ /* compiler built-in */ })
+    }
+
+    /// Attribute macro applied to a function to turn it into a unit test.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(test, rustc_attrs)]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro test($item:item) { /* compiler built-in */ }
+
+    /// Attribute macro applied to a function to turn it into a benchmark test.
+    #[unstable(feature = "test", issue = "50297",
+               reason = "`bench` is a part of custom test frameworks which are unstable")]
+    #[allow_internal_unstable(test, rustc_attrs)]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro bench($item:item) { /* compiler built-in */ }
+
+    /// An implementation detail of the `#[test]` and `#[bench]` macros.
+    #[unstable(feature = "custom_test_frameworks", issue = "50297",
+               reason = "custom test frameworks are an unstable feature")]
+    #[allow_internal_unstable(test, rustc_attrs)]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro test_case($item:item) { /* compiler built-in */ }
+
+    /// Attribute macro applied to a static to register it as a global allocator.
+    #[stable(feature = "global_allocator", since = "1.28.0")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    pub macro global_allocator($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `Clone`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics, derive_clone_copy)]
+    pub macro Clone($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `Copy`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics, derive_clone_copy)]
+    pub macro Copy($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `Debug`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro Debug($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `Default`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro Default($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `Eq`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics, derive_eq)]
+    pub macro Eq($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `Hash`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro Hash($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `Ord`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro Ord($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `PartialEq`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro PartialEq($item:item) { /* compiler built-in */ }
+
+    /// Derive macro generating an impl of the trait `PartialOrd`.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro PartialOrd($item:item) { /* compiler built-in */ }
+
+    /// Unstable implementation detail of the `rustc` compiler, do not use.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics, libstd_sys_internals)]
+    pub macro RustcDecodable($item:item) { /* compiler built-in */ }
+
+    /// Unstable implementation detail of the `rustc` compiler, do not use.
+    #[rustc_builtin_macro]
+    #[rustc_macro_transparency = "semitransparent"]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow_internal_unstable(core_intrinsics)]
+    pub macro RustcEncodable($item:item) { /* compiler built-in */ }
 }

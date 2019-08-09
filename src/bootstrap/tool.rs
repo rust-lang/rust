@@ -4,12 +4,13 @@ use std::path::PathBuf;
 use std::process::{Command, exit};
 use std::collections::HashSet;
 
+use build_helper::t;
+
 use crate::Mode;
 use crate::Compiler;
 use crate::builder::{Step, RunConfig, ShouldRun, Builder};
 use crate::util::{exe, add_lib_path};
 use crate::compile;
-use crate::native;
 use crate::channel::GitInfo;
 use crate::channel;
 use crate::cache::Interned;
@@ -73,16 +74,16 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
-        let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, &mut cargo, &mut |msg| {
+        let is_expected = compile::stream_cargo(builder, &mut cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
                 | "rls"
                 | "cargo"
                 | "clippy-driver"
                 | "miri"
+                | "rustfmt"
                 => {}
 
                 _ => return,
@@ -107,36 +108,63 @@ impl Step for ToolBuild {
                     continue
                 }
 
-                // Don't worry about libs that turn out to be host dependencies
-                // or build scripts, we only care about target dependencies that
-                // are in `deps`.
-                if let Some(maybe_target) = val.1
-                    .parent()                   // chop off file name
-                    .and_then(|p| p.parent())   // chop off `deps`
-                    .and_then(|p| p.parent())   // chop off `release`
-                    .and_then(|p| p.file_name())
-                    .and_then(|p| p.to_str())
-                {
-                    if maybe_target != &*target {
-                        continue
+                // Don't worry about compiles that turn out to be host
+                // dependencies or build scripts. To skip these we look for
+                // anything that goes in `.../release/deps` but *doesn't* go in
+                // `$target/release/deps`. This ensure that outputs in
+                // `$target/release` are still considered candidates for
+                // deduplication.
+                if let Some(parent) = val.1.parent() {
+                    if parent.ends_with("release/deps") {
+                        let maybe_target = parent
+                            .parent()
+                            .and_then(|p| p.parent())
+                            .and_then(|p| p.file_name())
+                            .and_then(|p| p.to_str())
+                            .unwrap();
+                        if maybe_target != &*target {
+                            continue;
+                        }
                     }
                 }
 
+                // Record that we've built an artifact for `id`, and if one was
+                // already listed then we need to see if we reused the same
+                // artifact or produced a duplicate.
                 let mut artifacts = builder.tool_artifacts.borrow_mut();
                 let prev_artifacts = artifacts
                     .entry(target)
                     .or_default();
-                if let Some(prev) = prev_artifacts.get(&*id) {
-                    if prev.1 != val.1 {
-                        duplicates.push((
-                            id.to_string(),
-                            val,
-                            prev.clone(),
-                        ));
+                let prev = match prev_artifacts.get(&*id) {
+                    Some(prev) => prev,
+                    None => {
+                        prev_artifacts.insert(id.to_string(), val);
+                        continue;
                     }
-                    return
+                };
+                if prev.1 == val.1 {
+                    return; // same path, same artifact
                 }
-                prev_artifacts.insert(id.to_string(), val);
+
+                // If the paths are different and one of them *isn't* inside of
+                // `release/deps`, then it means it's probably in
+                // `$target/release`, or it's some final artifact like
+                // `libcargo.rlib`. In these situations Cargo probably just
+                // copied it up from `$target/release/deps/libcargo-xxxx.rlib`,
+                // so if the features are equal we can just skip it.
+                let prev_no_hash = prev.1.parent().unwrap().ends_with("release/deps");
+                let val_no_hash = val.1.parent().unwrap().ends_with("release/deps");
+                if prev.2 == val.2 || !prev_no_hash || !val_no_hash {
+                    return;
+                }
+
+                // ... and otherwise this looks like we duplicated some sort of
+                // compilation, so record it to generate an error later.
+                duplicates.push((
+                    id.to_string(),
+                    val,
+                    prev.clone(),
+                ));
             }
         });
 
@@ -235,7 +263,7 @@ pub fn prepare_tool_cargo(
     cargo.env("CFG_VERSION", builder.rust_version());
     cargo.env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM);
 
-    let info = GitInfo::new(&builder.config, &dir);
+    let info = GitInfo::new(builder.config.ignore_git, &dir);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);
     }
@@ -251,9 +279,9 @@ pub fn prepare_tool_cargo(
     cargo
 }
 
-macro_rules! tool {
+macro_rules! bootstrap_tool {
     ($(
-        $name:ident, $path:expr, $tool_name:expr, $mode:expr
+        $name:ident, $path:expr, $tool_name:expr
         $(,llvm_tools = $llvm:expr)*
         $(,is_external_tool = $external:expr)*
         ;
@@ -266,13 +294,6 @@ macro_rules! tool {
         }
 
         impl Tool {
-            pub fn get_mode(&self) -> Mode {
-                let mode = match self {
-                    $(Tool::$name => $mode,)+
-                };
-                mode
-            }
-
             /// Whether this tool requires LLVM to run
             pub fn uses_llvm_tools(&self) -> bool {
                 match self {
@@ -283,25 +304,13 @@ macro_rules! tool {
 
         impl<'a> Builder<'a> {
             pub fn tool_exe(&self, tool: Tool) -> PathBuf {
-                let stage = self.tool_default_stage(tool);
                 match tool {
                     $(Tool::$name =>
                         self.ensure($name {
-                            compiler: self.compiler(stage, self.config.build),
+                            compiler: self.compiler(0, self.config.build),
                             target: self.config.build,
                         }),
                     )+
-                }
-            }
-
-            pub fn tool_default_stage(&self, tool: Tool) -> u32 {
-                // Compile the error-index in the same stage as rustdoc to avoid
-                // recompiling rustdoc twice if we can. Otherwise compile
-                // everything else in stage0 as there's no need to rebootstrap
-                // everything.
-                match tool {
-                    Tool::ErrorIndex if self.top_stage >= 2 => self.top_stage,
-                    _ => 0,
                 }
             }
         }
@@ -322,7 +331,8 @@ macro_rules! tool {
 
             fn make_run(run: RunConfig<'_>) {
                 run.builder.ensure($name {
-                    compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
+                    // snapshot compiler
+                    compiler: run.builder.compiler(0, run.builder.config.build),
                     target: run.target,
                 });
             }
@@ -332,7 +342,7 @@ macro_rules! tool {
                     compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
-                    mode: $mode,
+                    mode: Mode::ToolBootstrap,
                     path: $path,
                     is_optional_tool: false,
                     source_type: if false $(|| $external)* {
@@ -348,20 +358,66 @@ macro_rules! tool {
     }
 }
 
-tool!(
-    Rustbook, "src/tools/rustbook", "rustbook", Mode::ToolBootstrap;
-    ErrorIndex, "src/tools/error_index_generator", "error_index_generator", Mode::ToolRustc;
-    UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen", Mode::ToolBootstrap;
-    Tidy, "src/tools/tidy", "tidy", Mode::ToolBootstrap;
-    Linkchecker, "src/tools/linkchecker", "linkchecker", Mode::ToolBootstrap;
-    CargoTest, "src/tools/cargotest", "cargotest", Mode::ToolBootstrap;
-    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolBootstrap, llvm_tools = true;
-    BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolBootstrap;
-    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolBootstrap;
-    RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolBootstrap,
-        is_external_tool = true;
-    RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes", Mode::ToolBootstrap;
+bootstrap_tool!(
+    Rustbook, "src/tools/rustbook", "rustbook";
+    UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen";
+    Tidy, "src/tools/tidy", "tidy";
+    Linkchecker, "src/tools/linkchecker", "linkchecker";
+    CargoTest, "src/tools/cargotest", "cargotest";
+    Compiletest, "src/tools/compiletest", "compiletest", llvm_tools = true;
+    BuildManifest, "src/tools/build-manifest", "build-manifest";
+    RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
+    RustInstaller, "src/tools/rust-installer", "fabricate", is_external_tool = true;
+    RustdocTheme, "src/tools/rustdoc-themes", "rustdoc-themes";
 );
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct ErrorIndex {
+    pub compiler: Compiler,
+}
+
+impl ErrorIndex {
+    pub fn command(builder: &Builder<'_>, compiler: Compiler) -> Command {
+        let mut cmd = Command::new(builder.ensure(ErrorIndex {
+            compiler
+        }));
+        add_lib_path(
+            vec![PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host))],
+            &mut cmd,
+        );
+        cmd
+    }
+}
+
+impl Step for ErrorIndex {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/error_index_generator")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        // Compile the error-index in the same stage as rustdoc to avoid
+        // recompiling rustdoc twice if we can.
+        let stage = if run.builder.top_stage >= 2 { run.builder.top_stage } else { 0 };
+        run.builder.ensure(ErrorIndex {
+            compiler: run.builder.compiler(stage, run.builder.config.build),
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.compiler.host,
+            tool: "error_index_generator",
+            mode: Mode::ToolRustc,
+            path: "src/tools/error_index_generator",
+            is_optional_tool: false,
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+        }).expect("expected to build -- essential tool")
+    }
+}
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct RemoteTestServer {
@@ -399,7 +455,9 @@ impl Step for RemoteTestServer {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub struct Rustdoc {
-    pub host: Interned<String>,
+    /// This should only ever be 0 or 2.
+    /// We sometimes want to reference the "bootstrap" rustdoc, which is why this option is here.
+    pub compiler: Compiler,
 }
 
 impl Step for Rustdoc {
@@ -413,12 +471,12 @@ impl Step for Rustdoc {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustdoc {
-            host: run.host,
+            compiler: run.builder.compiler(run.builder.top_stage, run.host),
         });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let target_compiler = builder.compiler(builder.top_stage, self.host);
+        let target_compiler = self.compiler;
         if target_compiler.stage == 0 {
             if !target_compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
@@ -450,11 +508,6 @@ impl Step for Rustdoc {
             &[],
         );
 
-        // Most tools don't get debuginfo, but rustdoc should.
-        cargo.env("RUSTC_DEBUGINFO", builder.config.rust_debuginfo.to_string())
-             .env("RUSTC_DEBUGINFO_LINES", builder.config.rust_debuginfo_lines.to_string());
-
-        let _folder = builder.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
         builder.info(&format!("Building rustdoc for stage{} ({})",
             target_compiler.stage, target_compiler.host));
         builder.run(&mut cargo);
@@ -504,9 +557,9 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        // Cargo depends on procedural macros, which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // Cargo depends on procedural macros, so make sure the host
+        // libstd/libproc_macro is available.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
@@ -578,26 +631,26 @@ macro_rules! tool_extended {
 tool_extended!((self, builder),
     Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
     CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {
-        // Clippy depends on procedural macros (serde), which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // Clippy depends on procedural macros, so make sure that's built for
+        // the compiler itself.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
     };
     Clippy, clippy, "src/tools/clippy", "clippy-driver", {
-        // Clippy depends on procedural macros (serde), which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // Clippy depends on procedural macros, so make sure that's built for
+        // the compiler itself.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
     };
     Miri, miri, "src/tools/miri", "miri", {};
     CargoMiri, miri, "src/tools/miri", "cargo-miri", {
-        // Miri depends on procedural macros (serde), which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // Miri depends on procedural macros, so make sure that's built for
+        // the compiler itself.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
@@ -611,9 +664,9 @@ tool_extended!((self, builder),
         if clippy.is_some() {
             self.extra_features.push("clippy".to_owned());
         }
-        // RLS depends on procedural macros, which requires a full host
-        // compiler to be available, so we need to depend on that.
-        builder.ensure(compile::Rustc {
+        // RLS depends on procedural macros, so make sure that's built for
+        // the compiler itself.
+        builder.ensure(compile::Test {
             compiler: self.compiler,
             target: builder.config.build,
         });
@@ -626,24 +679,15 @@ impl<'a> Builder<'a> {
     /// `host`.
     pub fn tool_cmd(&self, tool: Tool) -> Command {
         let mut cmd = Command::new(self.tool_exe(tool));
-        let compiler = self.compiler(self.tool_default_stage(tool), self.config.build);
-        self.prepare_tool_cmd(compiler, tool, &mut cmd);
-        cmd
-    }
-
-    /// Prepares the `cmd` provided to be able to run the `compiler` provided.
-    ///
-    /// Notably this munges the dynamic library lookup path to point to the
-    /// right location to run `compiler`.
-    fn prepare_tool_cmd(&self, compiler: Compiler, tool: Tool, cmd: &mut Command) {
+        let compiler = self.compiler(0, self.config.build);
         let host = &compiler.host;
+        // Prepares the `cmd` provided to be able to run the `compiler` provided.
+        //
+        // Notably this munges the dynamic library lookup path to point to the
+        // right location to run `compiler`.
         let mut lib_paths: Vec<PathBuf> = vec![
-            if compiler.stage == 0 && tool != Tool::ErrorIndex {
-                self.build.rustc_snapshot_libdir()
-            } else {
-                PathBuf::from(&self.sysroot_libdir(compiler, compiler.host))
-            },
-            self.cargo_out(compiler, tool.get_mode(), *host).join("deps"),
+            self.build.rustc_snapshot_libdir(),
+            self.cargo_out(compiler, Mode::ToolBootstrap, *host).join("deps"),
         ];
 
         // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
@@ -664,56 +708,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        // Add the llvm/bin directory to PATH since it contains lots of
-        // useful, platform-independent tools
-        if tool.uses_llvm_tools() && !self.config.dry_run {
-            let mut additional_paths = vec![];
-
-            if let Some(llvm_bin_path) = self.llvm_bin_path() {
-                additional_paths.push(llvm_bin_path);
-            }
-
-            // If LLD is available, add that too.
-            if self.config.lld_enabled {
-                let lld_install_root = self.ensure(native::Lld {
-                    target: self.config.build,
-                });
-
-                let lld_bin_path = lld_install_root.join("bin");
-                additional_paths.push(lld_bin_path);
-            }
-
-            if host.contains("windows") {
-                // On Windows, PATH and the dynamic library path are the same,
-                // so we just add the LLVM bin path to lib_path
-                lib_paths.extend(additional_paths);
-            } else {
-                let old_path = env::var_os("PATH").unwrap_or_default();
-                let new_path = env::join_paths(additional_paths.into_iter()
-                        .chain(env::split_paths(&old_path)))
-                    .expect("Could not add LLVM bin path to PATH");
-                cmd.env("PATH", new_path);
-            }
-        }
-
-        add_lib_path(lib_paths, cmd);
-    }
-
-    fn llvm_bin_path(&self) -> Option<PathBuf> {
-        if self.config.llvm_enabled {
-            let llvm_config = self.ensure(native::Llvm {
-                target: self.config.build,
-                emscripten: false,
-            });
-
-            // Add the llvm/bin directory to PATH since it contains lots of
-            // useful, platform-independent tools
-            let llvm_bin_path = llvm_config.parent()
-                .expect("Expected llvm-config to be contained in directory");
-            assert!(llvm_bin_path.is_dir());
-            Some(llvm_bin_path.to_path_buf())
-        } else {
-            None
-        }
+        add_lib_path(lib_paths, &mut cmd);
+        cmd
     }
 }

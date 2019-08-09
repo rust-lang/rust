@@ -2,7 +2,7 @@
 
 extern crate issue_3907;
 
-type Foo = issue_3907::Foo;
+type Foo = dyn issue_3907::Foo;
 
 struct S {
     name: isize

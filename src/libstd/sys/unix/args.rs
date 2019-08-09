@@ -49,7 +49,6 @@ impl DoubleEndedIterator for Args {
           target_os = "android",
           target_os = "freebsd",
           target_os = "dragonfly",
-          target_os = "bitrig",
           target_os = "netbsd",
           target_os = "openbsd",
           target_os = "solaris",
@@ -57,7 +56,8 @@ impl DoubleEndedIterator for Args {
           target_os = "haiku",
           target_os = "l4re",
           target_os = "fuchsia",
-          target_os = "hermit"))]
+          target_os = "hermit",
+          target_os = "redox"))]
 mod imp {
     use crate::os::unix::prelude::*;
     use crate::ptr;

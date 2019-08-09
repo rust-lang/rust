@@ -1,7 +1,5 @@
 #![feature(rustc_private)]
 
-#![deny(rust_2018_idioms)]
-
 extern crate env_logger;
 extern crate syntax;
 extern crate serialize as rustc_serialize;
@@ -15,6 +13,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::cell::RefCell;
 
+use syntax::edition::DEFAULT_EDITION;
 use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
 use rustdoc::html::markdown::{Markdown, IdMap, ErrorCodes, PLAYGROUND};
@@ -27,9 +26,10 @@ enum OutputFormat {
 }
 
 impl OutputFormat {
-    fn from(format: &str) -> OutputFormat {
+    fn from(format: &str, resource_suffix: &str) -> OutputFormat {
         match &*format.to_lowercase() {
-            "html"     => OutputFormat::HTML(HTMLFormatter(RefCell::new(IdMap::new()))),
+            "html"     => OutputFormat::HTML(HTMLFormatter(RefCell::new(IdMap::new()),
+                                                           resource_suffix.to_owned())),
             "markdown" => OutputFormat::Markdown(MarkdownFormatter),
             s          => OutputFormat::Unknown(s.to_owned()),
         }
@@ -44,7 +44,7 @@ trait Formatter {
     fn footer(&self, output: &mut dyn Write) -> Result<(), Box<dyn Error>>;
 }
 
-struct HTMLFormatter(RefCell<IdMap>);
+struct HTMLFormatter(RefCell<IdMap>, String);
 struct MarkdownFormatter;
 
 impl Formatter for HTMLFormatter {
@@ -55,7 +55,7 @@ impl Formatter for HTMLFormatter {
 <title>Rust Compiler Error Index</title>
 <meta charset="utf-8">
 <!-- Include rust.css after light.css so its rules take priority. -->
-<link rel="stylesheet" type="text/css" href="light.css"/>
+<link rel="stylesheet" type="text/css" href="light{suffix}.css"/>
 <link rel="stylesheet" type="text/css" href="rust.css"/>
 <style>
 .error-undescribed {{
@@ -64,7 +64,7 @@ impl Formatter for HTMLFormatter {
 </style>
 </head>
 <body>
-"##)?;
+"##, suffix=self.1)?;
         Ok(())
     }
 
@@ -96,7 +96,8 @@ impl Formatter for HTMLFormatter {
             Some(ref desc) => {
                 let mut id_map = self.0.borrow_mut();
                 write!(output, "{}",
-                    Markdown(desc, &[], RefCell::new(&mut id_map), ErrorCodes::Yes))?
+                    Markdown(desc, &[], RefCell::new(&mut id_map),
+                             ErrorCodes::Yes, DEFAULT_EDITION))?
             },
             None => write!(output, "<p>No description.</p>\n")?,
         }
@@ -242,9 +243,12 @@ fn main_with_result(format: OutputFormat, dst: &Path) -> Result<(), Box<dyn Erro
 
 fn parse_args() -> (OutputFormat, PathBuf) {
     let mut args = env::args().skip(1);
-    let format = args.next().map(|a| OutputFormat::from(&a))
-                            .unwrap_or(OutputFormat::from("html"));
-    let dst = args.next().map(PathBuf::from).unwrap_or_else(|| {
+    let format = args.next();
+    let dst = args.next();
+    let resource_suffix = args.next().unwrap_or_else(String::new);
+    let format = format.map(|a| OutputFormat::from(&a, &resource_suffix))
+                       .unwrap_or(OutputFormat::from("html", &resource_suffix));
+    let dst = dst.map(PathBuf::from).unwrap_or_else(|| {
         match format {
             OutputFormat::HTML(..) => PathBuf::from("doc/error-index.html"),
             OutputFormat::Markdown(..) => PathBuf::from("doc/error-index.md"),
@@ -260,7 +264,7 @@ fn main() {
         *slot.borrow_mut() = Some((None, String::from("https://play.rust-lang.org/")));
     });
     let (format, dst) = parse_args();
-    let result = syntax::with_globals(move || {
+    let result = syntax::with_default_globals(move || {
         main_with_result(format, &dst)
     });
     if let Err(e) = result {

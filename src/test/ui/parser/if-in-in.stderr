@@ -5,9 +5,6 @@ LL |     for i in in 1..2 {
    |           ---^^
    |           |
    |           help: remove the duplicated `in`
-   |
-   = note: if you meant to use emplacement syntax, it is obsolete (for now, anyway)
-   = note: for more information on the status of emplacement syntax, see <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>
 
 error: aborting due to previous error
 

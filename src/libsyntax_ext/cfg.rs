@@ -6,17 +6,17 @@ use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};
-use syntax::ext::build::AstBuilder;
 use syntax::attr;
 use syntax::tokenstream;
 use syntax::parse::token;
 use syntax_pos::Span;
 
-pub fn expand_cfg<'cx>(cx: &mut ExtCtxt<'_>,
-                       sp: Span,
-                       tts: &[tokenstream::TokenTree])
-                       -> Box<dyn base::MacResult + 'static> {
-    let sp = sp.apply_mark(cx.current_expansion.mark);
+pub fn expand_cfg(
+    cx: &mut ExtCtxt<'_>,
+    sp: Span,
+    tts: &[tokenstream::TokenTree],
+) -> Box<dyn base::MacResult + 'static> {
+    let sp = sp.apply_mark(cx.current_expansion.id);
 
     match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {

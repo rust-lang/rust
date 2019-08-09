@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL |         #![warn(nonstandard_style)]
    |                 ^^^^^^^^^^^^^^^^^
-   = note: #[warn(non_camel_case_types)] implied by #[warn(nonstandard_style)]
+   = note: `#[warn(non_camel_case_types)]` implied by `#[warn(nonstandard_style)]`
 
 error: function `CamelCase` should have a snake case name
   --> $DIR/lint-group-nonstandard-style.rs:4:4
@@ -22,7 +22,7 @@ note: lint level defined here
    |
 LL | #![deny(nonstandard_style)]
    |         ^^^^^^^^^^^^^^^^^
-   = note: #[deny(non_snake_case)] implied by #[deny(nonstandard_style)]
+   = note: `#[deny(non_snake_case)]` implied by `#[deny(nonstandard_style)]`
 
 error: function `CamelCase` should have a snake case name
   --> $DIR/lint-group-nonstandard-style.rs:12:12
@@ -35,7 +35,7 @@ note: lint level defined here
    |
 LL |     #[forbid(nonstandard_style)]
    |              ^^^^^^^^^^^^^^^^^
-   = note: #[forbid(non_snake_case)] implied by #[forbid(nonstandard_style)]
+   = note: `#[forbid(non_snake_case)]` implied by `#[forbid(nonstandard_style)]`
 
 error: static variable `bad` should have an upper case name
   --> $DIR/lint-group-nonstandard-style.rs:14:16
@@ -48,7 +48,7 @@ note: lint level defined here
    |
 LL |     #[forbid(nonstandard_style)]
    |              ^^^^^^^^^^^^^^^^^
-   = note: #[forbid(non_upper_case_globals)] implied by #[forbid(nonstandard_style)]
+   = note: `#[forbid(non_upper_case_globals)]` implied by `#[forbid(nonstandard_style)]`
 
 warning: function `CamelCase` should have a snake case name
   --> $DIR/lint-group-nonstandard-style.rs:20:12
@@ -61,7 +61,7 @@ note: lint level defined here
    |
 LL |         #![warn(nonstandard_style)]
    |                 ^^^^^^^^^^^^^^^^^
-   = note: #[warn(non_snake_case)] implied by #[warn(nonstandard_style)]
+   = note: `#[warn(non_snake_case)]` implied by `#[warn(nonstandard_style)]`
 
 error: aborting due to 3 previous errors
 

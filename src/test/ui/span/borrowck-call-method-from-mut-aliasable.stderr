@@ -1,11 +1,11 @@
-error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-call-method-from-mut-aliasable.rs:17:5
    |
 LL | fn b(x: &Foo) {
-   |         ---- use `&mut Foo` here to make mutable
+   |         ---- help: consider changing this to be a mutable reference: `&mut Foo`
 LL |     x.f();
 LL |     x.h();
-   |     ^ cannot borrow as mutable
+   |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to previous error
 

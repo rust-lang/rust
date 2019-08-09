@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/ex2c-push-inference-variable.rs:7:5
+   |
+LL | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
+   |            --  -- lifetime `'c` defined here
+   |            |
+   |            lifetime `'b` defined here
+LL |     let z = Ref { data: y.data };
+LL |     x.push(z);
+   |     ^^^^^^^^^ argument requires that `'c` must outlive `'b`
+
+error: aborting due to previous error
+

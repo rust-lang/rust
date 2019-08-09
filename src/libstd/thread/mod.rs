@@ -157,12 +157,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::any::Any;
-use crate::boxed::FnBox;
 use crate::cell::UnsafeCell;
 use crate::ffi::{CStr, CString};
 use crate::fmt;
 use crate::io;
 use crate::mem;
+use crate::num::NonZeroU64;
 use crate::panic;
 use crate::panicking;
 use crate::str;
@@ -269,7 +269,7 @@ impl Builder {
     ///
     /// let builder = thread::Builder::new()
     ///                               .name("foo".into())
-    ///                               .stack_size(10);
+    ///                               .stack_size(32 * 1024);
     ///
     /// let handler = builder.spawn(|| {
     ///     // thread code
@@ -443,6 +443,7 @@ impl Builder {
     /// [`Builder::spawn`]: ../../std/thread/struct.Builder.html#method.spawn
     /// [`io::Result`]: ../../std/io/type.Result.html
     /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
+    /// [`JoinHandle::join`]: ../../std/thread/struct.JoinHandle.html#method.join
     #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
     pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
         F: FnOnce() -> T, F: Send + 'a, T: Send + 'a
@@ -487,7 +488,9 @@ impl Builder {
             // returning.
             native: Some(imp::Thread::new(
                 stack_size,
-                mem::transmute::<Box<dyn FnBox() + 'a>, Box<dyn FnBox() + 'static>>(Box::new(main))
+                mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(Box::new(
+                    main,
+                )),
             )?),
             thread: my_thread,
             packet: Packet(my_packet),
@@ -1036,7 +1039,7 @@ pub fn park_timeout(dur: Duration) {
 /// [`Thread`]: ../../std/thread/struct.Thread.html
 #[stable(feature = "thread_id", since = "1.19.0")]
 #[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
-pub struct ThreadId(u64);
+pub struct ThreadId(NonZeroU64);
 
 impl ThreadId {
     // Generate a new unique thread ID.
@@ -1044,7 +1047,7 @@ impl ThreadId {
         // We never call `GUARD.init()`, so it is UB to attempt to
         // acquire this mutex reentrantly!
         static GUARD: mutex::Mutex = mutex::Mutex::new();
-        static mut COUNTER: u64 = 0;
+        static mut COUNTER: u64 = 1;
 
         unsafe {
             let _guard = GUARD.lock();
@@ -1058,7 +1061,7 @@ impl ThreadId {
             let id = COUNTER;
             COUNTER += 1;
 
-            ThreadId(id)
+            ThreadId(NonZeroU64::new(id).unwrap())
         }
     }
 }
@@ -1255,8 +1258,11 @@ impl Thread {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Thread {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.name(), f)
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Thread")
+            .field("id", &self.id())
+            .field("name", &self.name())
+            .finish()
     }
 }
 
@@ -1465,7 +1471,7 @@ impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T> fmt::Debug for JoinHandle<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("JoinHandle { .. }")
     }
 }
@@ -1484,9 +1490,10 @@ fn _assert_sync_and_send() {
 mod tests {
     use super::Builder;
     use crate::any::Any;
+    use crate::mem;
     use crate::sync::mpsc::{channel, Sender};
     use crate::result;
-    use crate::thread;
+    use crate::thread::{self, ThreadId};
     use crate::time::Duration;
     use crate::u32;
 
@@ -1497,7 +1504,7 @@ mod tests {
     fn test_unnamed_thread() {
         thread::spawn(move|| {
             assert!(thread::current().name().is_none());
-        }).join().ok().unwrap();
+        }).join().ok().expect("thread panicked");
     }
 
     #[test]
@@ -1691,6 +1698,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_park_timeout_unpark_not_called() {
         for _ in 0..10 {
             thread::park_timeout(Duration::from_millis(10));
@@ -1698,6 +1706,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn test_park_timeout_unpark_called_other_thread() {
         for _ in 0..10 {
             let th = thread::current();
@@ -1712,8 +1721,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(target_env = "sgx", ignore)] // FIXME: https://github.com/fortanix/rust-sgx/issues/31
     fn sleep_ms_smoke() {
         thread::sleep(Duration::from_millis(2));
+    }
+
+    #[test]
+    fn test_size_of_option_thread_id() {
+        assert_eq!(mem::size_of::<Option<ThreadId>>(), mem::size_of::<ThreadId>());
     }
 
     #[test]
@@ -1727,6 +1742,6 @@ mod tests {
         assert!(thread::current().id() != spawned_id);
     }
 
-    // NOTE: the corresponding test for stderr is in run-pass/thread-stderr, due
+    // NOTE: the corresponding test for stderr is in ui/thread-stderr, due
     // to the test harness apparently interfering with stderr configuration.
 }

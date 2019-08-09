@@ -99,5 +99,5 @@ LL |     (0..13).collect<Vec<i32>();
 
 error: aborting due to 14 previous errors
 
-Some errors occurred: E0308, E0423, E0425, E0615.
+Some errors have detailed explanations: E0308, E0423, E0425, E0615.
 For more information about an error, try `rustc --explain E0308`.

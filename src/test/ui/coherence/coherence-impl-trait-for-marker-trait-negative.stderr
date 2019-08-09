@@ -33,5 +33,5 @@ LL | impl !Send for dyn Object + Marker2 {}
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0117, E0321, E0371.
+Some errors have detailed explanations: E0117, E0321, E0371.
 For more information about an error, try `rustc --explain E0117`.

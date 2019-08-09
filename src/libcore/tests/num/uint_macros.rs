@@ -2,10 +2,11 @@ macro_rules! uint_module { ($T:ident, $T_i:ident) => (
 #[cfg(test)]
 mod tests {
     use core::$T_i::*;
-    use num;
     use core::ops::{BitOr, BitAnd, BitXor, Shl, Shr, Not};
     use std::str::FromStr;
     use std::mem;
+
+    use crate::num;
 
     #[test]
     fn test_overflows() {

@@ -1,9 +1,16 @@
-pub struct IoVec<'a>(&'a [u8]);
+use crate::mem;
 
-impl<'a> IoVec<'a> {
+pub struct IoSlice<'a>(&'a [u8]);
+
+impl<'a> IoSlice<'a> {
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoVec<'a> {
-        IoVec(buf)
+    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+        IoSlice(buf)
+    }
+
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        self.0 = &self.0[n..]
     }
 
     #[inline]
@@ -12,12 +19,19 @@ impl<'a> IoVec<'a> {
     }
 }
 
-pub struct IoVecMut<'a>(&'a mut [u8]);
+pub struct IoSliceMut<'a>(&'a mut [u8]);
 
-impl<'a> IoVecMut<'a> {
+impl<'a> IoSliceMut<'a> {
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> IoVecMut<'a> {
-        IoVecMut(buf)
+    pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+        IoSliceMut(buf)
+    }
+
+    #[inline]
+    pub fn advance(&mut self, n: usize) {
+        let slice = mem::replace(&mut self.0, &mut []);
+        let (_, remaining) = slice.split_at_mut(n);
+        self.0 = remaining;
     }
 
     #[inline]

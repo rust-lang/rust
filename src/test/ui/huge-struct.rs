@@ -2,6 +2,10 @@
 // normalize-stderr-test "S1M" -> "SXX"
 // error-pattern: too big for the current
 
+// FIXME https://github.com/rust-lang/rust/issues/59774
+// normalize-stderr-test "thread.*panicked.*Metadata module not compiled.*\n" -> ""
+// normalize-stderr-test "note:.*RUST_BACKTRACE=1.*\n" -> ""
+
 struct S32<T> {
     v0: T,
     v1: T,
@@ -43,4 +47,6 @@ struct S1M<T> { val: S1k<S1k<T>> }
 
 fn main() {
     let fat: Option<S1M<S1M<S1M<u32>>>> = None;
+    //~^ ERROR the type `S32<S1M<S1M<u32>>>` is too big for the current architecture
+
 }

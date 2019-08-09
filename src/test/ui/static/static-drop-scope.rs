@@ -8,11 +8,11 @@ impl Drop for WithDtor {
 
 static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
 //~^ ERROR destructors cannot be evaluated at compile-time
-//~| ERROR borrowed value does not live long enoug
+//~| ERROR temporary value dropped while borrowed
 
 const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
 //~^ ERROR destructors cannot be evaluated at compile-time
-//~| ERROR borrowed value does not live long enoug
+//~| ERROR temporary value dropped while borrowed
 
 static EARLY_DROP_S: i32 = (WithDtor, 0).1;
 //~^ ERROR destructors cannot be evaluated at compile-time

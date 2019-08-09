@@ -1,0 +1,19 @@
+error[E0309]: the parameter type `A` may not live long enough
+  --> $DIR/regions-infer-bound-from-trait.rs:33:5
+   |
+LL |     check_bound(x, a)
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `A: 'a`...
+
+error[E0309]: the parameter type `A` may not live long enough
+  --> $DIR/regions-infer-bound-from-trait.rs:37:5
+   |
+LL |     check_bound(x, a)
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding an explicit lifetime bound `A: 'a`...
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

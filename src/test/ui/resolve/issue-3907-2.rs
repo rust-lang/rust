@@ -2,7 +2,7 @@
 
 extern crate issue_3907;
 
-type Foo = issue_3907::Foo+'static;
+type Foo = dyn issue_3907::Foo + 'static;
 
 struct S {
     name: isize

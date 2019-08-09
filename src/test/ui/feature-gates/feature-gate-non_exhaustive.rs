@@ -1,6 +1,6 @@
 //#![feature(non_exhaustive)]
 
-#[non_exhaustive] //~ERROR non exhaustive is an experimental feature (see issue #44109)
+#[non_exhaustive] //~ERROR non exhaustive is an experimental feature
 pub enum NonExhaustiveEnum {
     Unit,
     Tuple(u32),

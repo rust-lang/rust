@@ -1,5 +1,6 @@
 use crate::attr;
 use crate::ast::{Item, ItemKind};
+use crate::symbol::sym;
 
 pub enum EntryPointType {
     None,
@@ -14,11 +15,11 @@ pub enum EntryPointType {
 pub fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
     match item.node {
         ItemKind::Fn(..) => {
-            if attr::contains_name(&item.attrs, "start") {
+            if attr::contains_name(&item.attrs, sym::start) {
                 EntryPointType::Start
-            } else if attr::contains_name(&item.attrs, "main") {
+            } else if attr::contains_name(&item.attrs, sym::main) {
                 EntryPointType::MainAttr
-            } else if item.ident.name == "main" {
+            } else if item.ident.name == sym::main {
                 if depth == 1 {
                     // This is a top-level function so can be 'main'
                     EntryPointType::MainNamed

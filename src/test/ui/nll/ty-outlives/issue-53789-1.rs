@@ -1,9 +1,6 @@
 // Regression test for #53789.
 //
-// compile-pass
-
-#![feature(nll)]
-#![allow(unused_variables)]
+// build-pass (FIXME(62277): could be check-pass?)
 
 use std::collections::BTreeMap;
 
@@ -88,4 +85,3 @@ fn any_with<'a, A: Arbitrary<'a>>(args: A::Parameters) -> StrategyType<'a, A> {
 }
 
 fn main() { }
-

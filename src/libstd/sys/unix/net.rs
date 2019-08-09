@@ -1,5 +1,5 @@
 use crate::ffi::CStr;
-use crate::io::{self, IoVec, IoVecMut};
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{SocketAddr, Shutdown};
 use crate::str;
@@ -244,7 +244,7 @@ impl Socket {
         self.recv_with_flags(buf, MSG_PEEK)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
 
@@ -276,7 +276,7 @@ impl Socket {
         self.0.write(buf)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 

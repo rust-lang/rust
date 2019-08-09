@@ -1,4 +1,4 @@
-use crate::infer::InferCtxt;
+use crate::infer::{InferCtxt, ShallowResolver};
 use crate::mir::interpret::{GlobalId, ErrorHandled};
 use crate::ty::{self, Ty, TypeFoldable, ToPolyTraitRef};
 use crate::ty::error::ExpectedFound;
@@ -68,7 +68,7 @@ pub struct PendingPredicateObligation<'tcx> {
     pub stalled_on: Vec<Ty<'tcx>>,
 }
 
-impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
+impl<'a, 'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub fn new() -> FulfillmentContext<'tcx> {
         FulfillmentContext {
@@ -95,8 +95,10 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
     }
 
     /// Attempts to select obligations using `selcx`.
-    fn select(&mut self, selcx: &mut SelectionContext<'a, 'gcx, 'tcx>)
-              -> Result<(), Vec<FulfillmentError<'tcx>>> {
+    fn select(
+        &mut self,
+        selcx: &mut SelectionContext<'a, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         debug!("select(obligation-forest-size={})", self.predicates.len());
 
         let mut errors = Vec::new();
@@ -143,13 +145,13 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     /// `SomeTrait` or a where-clause that lets us unify `$0` with
     /// something concrete. If this fails, we'll unify `$0` with
     /// `projection_ty` again.
-    fn normalize_projection_type<'a, 'gcx>(&mut self,
-                                 infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                 param_env: ty::ParamEnv<'tcx>,
-                                 projection_ty: ty::ProjectionTy<'tcx>,
-                                 cause: ObligationCause<'tcx>)
-                                 -> Ty<'tcx>
-    {
+    fn normalize_projection_type(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        cause: ObligationCause<'tcx>,
+    ) -> Ty<'tcx> {
         debug!("normalize_projection_type(projection_ty={:?})",
                projection_ty);
 
@@ -172,13 +174,14 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         normalized_ty
     }
 
-    fn register_predicate_obligation<'a, 'gcx>(&mut self,
-                                     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                     obligation: PredicateObligation<'tcx>)
-    {
+    fn register_predicate_obligation(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        obligation: PredicateObligation<'tcx>,
+    ) {
         // this helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
-        let obligation = infcx.resolve_type_vars_if_possible(&obligation);
+        let obligation = infcx.resolve_vars_if_possible(&obligation);
 
         debug!("register_predicate_obligation(obligation={:?})", obligation);
 
@@ -190,11 +193,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         });
     }
 
-    fn select_all_or_error<'a, 'gcx>(
+    fn select_all_or_error(
         &mut self,
-        infcx: &InferCtxt<'a, 'gcx, 'tcx>
-    ) -> Result<(),Vec<FulfillmentError<'tcx>>>
-    {
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         self.select_where_possible(infcx)?;
 
         let errors: Vec<_> =
@@ -209,10 +211,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         }
     }
 
-    fn select_where_possible<'a, 'gcx>(&mut self,
-                             infcx: &InferCtxt<'a, 'gcx, 'tcx>)
-                             -> Result<(),Vec<FulfillmentError<'tcx>>>
-    {
+    fn select_where_possible(
+        &mut self,
+        infcx: &InferCtxt<'_, 'tcx>,
+    ) -> Result<(), Vec<FulfillmentError<'tcx>>> {
         let mut selcx = SelectionContext::new(infcx);
         self.select(&mut selcx)
     }
@@ -222,9 +224,9 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     }
 }
 
-struct FulfillProcessor<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
-    selcx: &'a mut SelectionContext<'b, 'gcx, 'tcx>,
-    register_region_obligations: bool
+struct FulfillProcessor<'a, 'b, 'tcx> {
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    register_region_obligations: bool,
 }
 
 fn mk_pending(os: Vec<PredicateObligation<'tcx>>) -> Vec<PendingPredicateObligation<'tcx>> {
@@ -234,7 +236,7 @@ fn mk_pending(os: Vec<PredicateObligation<'tcx>>) -> Vec<PendingPredicateObligat
     }).collect()
 }
 
-impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 'tcx> {
+impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     type Obligation = PendingPredicateObligation<'tcx>;
     type Error = FulfillmentErrorCode<'tcx>;
 
@@ -256,12 +258,12 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
         if !pending_obligation.stalled_on.is_empty() {
             if pending_obligation.stalled_on.iter().all(|&ty| {
                 // Use the force-inlined variant of shallow_resolve() because this code is hot.
-                let resolved_ty = self.selcx.infcx().inlined_shallow_resolve(&ty);
-                resolved_ty == ty // nothing changed here
+                let resolved = ShallowResolver::new(self.selcx.infcx()).inlined_shallow_resolve(ty);
+                resolved == ty // nothing changed here
             }) {
                 debug!("process_predicate: pending obligation {:?} still stalled on {:?}",
                        self.selcx.infcx()
-                           .resolve_type_vars_if_possible(&pending_obligation.obligation),
+                           .resolve_vars_if_possible(&pending_obligation.obligation),
                        pending_obligation.stalled_on);
                 return ProcessResult::Unchanged;
             }
@@ -272,7 +274,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
 
         if obligation.predicate.has_infer_types() {
             obligation.predicate =
-                self.selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate);
+                self.selcx.infcx().resolve_vars_if_possible(&obligation.predicate);
         }
 
         debug!("process_obligation: obligation = {:?}", obligation);
@@ -318,7 +320,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                             trait_ref_type_vars(self.selcx, data.to_poly_trait_ref());
 
                         debug!("process_predicate: pending obligation {:?} now stalled on {:?}",
-                               self.selcx.infcx().resolve_type_vars_if_possible(obligation),
+                               self.selcx.infcx().resolve_vars_if_possible(obligation),
                                pending_obligation.stalled_on);
 
                         ProcessResult::Unchanged
@@ -359,7 +361,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                             // `for<'a> T: 'a where 'a not in T`, which we can treat as
                             // `T: 'static`.
                             Some(t_a) => {
-                                let r_static = self.selcx.tcx().types.re_static;
+                                let r_static = self.selcx.tcx().lifetimes.re_static;
                                 if self.register_region_obligations {
                                     self.selcx.infcx().register_region_obligation_with_cause(
                                         t_a,
@@ -459,41 +461,35 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             }
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
-                match self.selcx.tcx().lift_to_global(&obligation.param_env) {
-                    None => {
+                if obligation.param_env.has_local_value() {
                         ProcessResult::Unchanged
-                    }
-                    Some(param_env) => {
-                        match self.selcx.tcx().lift_to_global(&substs) {
-                            Some(substs) => {
-                                let instance = ty::Instance::resolve(
-                                    self.selcx.tcx().global_tcx(),
-                                    param_env,
-                                    def_id,
-                                    substs,
-                                );
-                                if let Some(instance) = instance {
-                                    let cid = GlobalId {
-                                        instance,
-                                        promoted: None,
-                                    };
-                                    match self.selcx.tcx().at(obligation.cause.span)
-                                                          .const_eval(param_env.and(cid)) {
-                                        Ok(_) => ProcessResult::Changed(vec![]),
-                                        Err(err) => ProcessResult::Error(
-                                            CodeSelectionError(ConstEvalFailure(err)))
-                                    }
-                                } else {
-                                    ProcessResult::Error(CodeSelectionError(
-                                        ConstEvalFailure(ErrorHandled::TooGeneric)
-                                    ))
-                                }
-                            },
-                            None => {
-                                pending_obligation.stalled_on = substs.types().collect();
-                                ProcessResult::Unchanged
+                } else {
+                    if !substs.has_local_value() {
+                        let instance = ty::Instance::resolve(
+                            self.selcx.tcx().global_tcx(),
+                            obligation.param_env,
+                            def_id,
+                            substs,
+                        );
+                        if let Some(instance) = instance {
+                            let cid = GlobalId {
+                                instance,
+                                promoted: None,
+                            };
+                            match self.selcx.tcx().at(obligation.cause.span)
+                                                    .const_eval(obligation.param_env.and(cid)) {
+                                Ok(_) => ProcessResult::Changed(vec![]),
+                                Err(err) => ProcessResult::Error(
+                                    CodeSelectionError(ConstEvalFailure(err)))
                             }
+                        } else {
+                            ProcessResult::Error(CodeSelectionError(
+                                ConstEvalFailure(ErrorHandled::TooGeneric)
+                            ))
                         }
+                    } else {
+                        pending_obligation.stalled_on = substs.types().collect();
+                        ProcessResult::Unchanged
                     }
                 }
             }
@@ -514,12 +510,13 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
 }
 
 /// Returns the set of type variables contained in a trait ref
-fn trait_ref_type_vars<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a, 'gcx, 'tcx>,
-                                       t: ty::PolyTraitRef<'tcx>) -> Vec<Ty<'tcx>>
-{
+fn trait_ref_type_vars<'a, 'tcx>(
+    selcx: &mut SelectionContext<'a, 'tcx>,
+    t: ty::PolyTraitRef<'tcx>,
+) -> Vec<Ty<'tcx>> {
     t.skip_binder() // ok b/c this check doesn't care about regions
      .input_types()
-     .map(|t| selcx.infcx().resolve_type_vars_if_possible(&t))
+     .map(|t| selcx.infcx().resolve_vars_if_possible(&t))
      .filter(|t| t.has_infer_types())
      .flat_map(|t| t.walk())
      .filter(|t| match t.sty { ty::Infer(_) => true, _ => false })

@@ -12,4 +12,3 @@ LL | #[unstable(feature = "foo", issue = "0")]
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0711`.

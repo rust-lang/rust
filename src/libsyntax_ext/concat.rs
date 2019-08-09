@@ -1,6 +1,5 @@
 use syntax::ast;
 use syntax::ext::base;
-use syntax::ext::build::AstBuilder;
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
 
@@ -22,7 +21,6 @@ pub fn expand_syntax_ext(
         match e.node {
             ast::ExprKind::Lit(ref lit) => match lit.node {
                 ast::LitKind::Str(ref s, _)
-                | ast::LitKind::Err(ref s)
                 | ast::LitKind::Float(ref s, _)
                 | ast::LitKind::FloatUnsuffixed(ref s) => {
                     accumulator.push_str(&s.as_str());
@@ -41,6 +39,9 @@ pub fn expand_syntax_ext(
                 ast::LitKind::Byte(..) | ast::LitKind::ByteStr(..) => {
                     cx.span_err(e.span, "cannot concatenate a byte string literal");
                 }
+                ast::LitKind::Err(_) => {
+                    has_errors = true;
+                }
             },
             ast::ExprKind::Err => {
                 has_errors = true;
@@ -58,6 +59,6 @@ pub fn expand_syntax_ext(
     } else if has_errors {
         return base::DummyResult::expr(sp);
     }
-    let sp = sp.apply_mark(cx.current_expansion.mark);
+    let sp = sp.apply_mark(cx.current_expansion.id);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&accumulator)))
 }

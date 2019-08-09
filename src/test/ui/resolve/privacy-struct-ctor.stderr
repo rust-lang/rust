@@ -67,5 +67,5 @@ LL |     xcrate::m::n::Z;
 
 error: aborting due to 10 previous errors
 
-Some errors occurred: E0423, E0603.
+Some errors have detailed explanations: E0423, E0603.
 For more information about an error, try `rustc --explain E0423`.

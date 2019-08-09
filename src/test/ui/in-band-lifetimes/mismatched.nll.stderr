@@ -1,0 +1,20 @@
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/mismatched.rs:4:42
+   |
+LL | fn foo(x: &'a u32, y: &u32) -> &'a u32 { y }
+   |                       ----               ^ lifetime `'a` required
+   |                       |
+   |                       help: add explicit lifetime `'a` to the type of `y`: `&'a u32`
+
+error: lifetime may not live long enough
+  --> $DIR/mismatched.rs:6:46
+   |
+LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y }
+   |             --          --                   ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |             |           |
+   |             |           lifetime `'b` defined here
+   |             lifetime `'a` defined here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0621`.

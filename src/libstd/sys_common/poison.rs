@@ -136,14 +136,14 @@ pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for PoisonError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "PoisonError { inner: .. }".fmt(f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Display for PoisonError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "poisoned lock: another task failed inside".fmt(f)
     }
 }
@@ -214,7 +214,7 @@ impl<T> From<PoisonError<T>> for TryLockError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for TryLockError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             TryLockError::Poisoned(..) => "Poisoned(..)".fmt(f),
             TryLockError::WouldBlock => "WouldBlock".fmt(f)
@@ -224,7 +224,7 @@ impl<T> fmt::Debug for TryLockError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Display for TryLockError<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             TryLockError::Poisoned(..) => "poisoned lock: another task failed inside",
             TryLockError::WouldBlock => "try_lock failed because the operation would block"

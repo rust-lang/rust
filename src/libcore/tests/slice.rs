@@ -89,6 +89,19 @@ fn test_iterator_nth() {
 }
 
 #[test]
+fn test_iterator_nth_back() {
+    let v: &[_] = &[0, 1, 2, 3, 4];
+    for i in 0..v.len() {
+        assert_eq!(v.iter().nth_back(i).unwrap(), &v[v.len() - i - 1]);
+    }
+    assert_eq!(v.iter().nth_back(v.len()), None);
+
+    let mut iter = v.iter();
+    assert_eq!(iter.nth_back(2).unwrap(), &v[2]);
+    assert_eq!(iter.nth_back(1).unwrap(), &v[0]);
+}
+
+#[test]
 fn test_iterator_last() {
     let v: &[_] = &[0, 1, 2, 3, 4];
     assert_eq!(v.iter().last().unwrap(), &4);
@@ -132,6 +145,30 @@ fn test_chunks_nth() {
     let mut c2 = v2.chunks(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4]);
     assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_chunks_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks(3);
+    assert_eq!(c2.nth_back(1).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks(10);
+    assert_eq!(c3.nth_back(0).unwrap(), &[0, 1, 2, 3, 4]);
+    assert_eq!(c3.next(), None);
+
+    let v4: &[i32] = &[0, 1, 2];
+    let mut c4 = v4.chunks(10);
+    assert_eq!(c4.nth_back(1_000_000_000usize), None);
 }
 
 #[test]
@@ -186,6 +223,28 @@ fn test_chunks_mut_nth() {
 }
 
 #[test]
+fn test_chunks_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_mut(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c1 = v1.chunks_mut(3);
+    assert_eq!(c1.nth_back(1).unwrap(), &[0, 1, 2]);
+    assert_eq!(c1.next(), None);
+
+    let v3: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_mut(10);
+    assert_eq!(c3.nth_back(0).unwrap(), &[0, 1, 2, 3, 4]);
+    assert_eq!(c3.next(), None);
+
+    let v4: &mut [i32] = &mut [0, 1, 2];
+    let mut c4 = v4.chunks_mut(10);
+    assert_eq!(c4.nth_back(1_000_000_000usize), None);
+}
+
+#[test]
 fn test_chunks_mut_last() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
     let c = v.chunks_mut(2);
@@ -236,6 +295,25 @@ fn test_chunks_exact_nth() {
     let mut c2 = v2.chunks_exact(3);
     assert_eq!(c2.nth(1).unwrap(), &[3, 4, 5]);
     assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_chunks_exact_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_exact(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks_exact(3);
+    assert_eq!(c2.nth_back(0).unwrap(), &[0, 1, 2]);
+    assert_eq!(c2.next(), None);
+    assert_eq!(c2.next_back(), None);
+
+    let v3: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c3 = v3.chunks_exact(10);
+    assert_eq!(c3.nth_back(0), None);
 }
 
 #[test]
@@ -357,6 +435,19 @@ fn test_rchunks_nth() {
 }
 
 #[test]
+fn test_rchunks_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[4, 5]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.rchunks(3);
+    assert_eq!(c2.nth_back(1).unwrap(), &[2, 3, 4]);
+    assert_eq!(c2.next_back(), None);
+}
+
+#[test]
 fn test_rchunks_last() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.rchunks(2);
@@ -405,6 +496,19 @@ fn test_rchunks_mut_nth() {
     let mut c2 = v2.rchunks_mut(3);
     assert_eq!(c2.nth(1).unwrap(), &[0, 1]);
     assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_rchunks_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_mut(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[4, 5]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.rchunks_mut(3);
+    assert_eq!(c2.nth_back(1).unwrap(), &[2, 3, 4]);
+    assert_eq!(c2.next_back(), None);
 }
 
 #[test]
@@ -457,6 +561,19 @@ fn test_rchunks_exact_nth() {
     let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
     let mut c2 = v2.rchunks_exact(3);
     assert_eq!(c2.nth(1).unwrap(), &[1, 2, 3]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_rchunks_exact_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_exact(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[4, 5]);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.rchunks_exact(3);
+    assert_eq!(c2.nth_back(1).unwrap(), &[4, 5, 6]);
     assert_eq!(c2.next(), None);
 }
 
@@ -519,6 +636,19 @@ fn test_rchunks_exact_mut_nth() {
 }
 
 #[test]
+fn test_rchunks_exact_mut_nth_back() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_exact_mut(2);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[4, 5]);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4, 5, 6];
+    let mut c2 = v2.rchunks_exact_mut(3);
+    assert_eq!(c2.nth_back(1).unwrap(), &[4, 5, 6]);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
 fn test_rchunks_exact_mut_last() {
     let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
     let c = v.rchunks_exact_mut(2);
@@ -576,6 +706,19 @@ fn test_windows_nth() {
     let mut c2 = v2.windows(4);
     assert_eq!(c2.nth(1).unwrap()[1], 2);
     assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_windows_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.windows(2);
+    assert_eq!(c.nth_back(2).unwrap()[0], 2);
+    assert_eq!(c.next_back().unwrap()[1], 2);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.windows(4);
+    assert_eq!(c2.nth_back(1).unwrap()[1], 1);
+    assert_eq!(c2.next_back(), None);
 }
 
 #[test]
@@ -782,7 +925,6 @@ mod slice_index {
     //  to be used in `should_panic`)
     #[test]
     #[should_panic(expected = "out of range")]
-    #[cfg(not(miri))] // Miri does not support panics
     fn assert_range_eq_can_fail_by_panic() {
         assert_range_eq!([0, 1, 2], 0..5, [0, 1, 2]);
     }
@@ -792,7 +934,6 @@ mod slice_index {
     //  to be used in `should_panic`)
     #[test]
     #[should_panic(expected = "==")]
-    #[cfg(not(miri))] // Miri does not support panics
     fn assert_range_eq_can_fail_by_inequality() {
         assert_range_eq!([0, 1, 2], 0..2, [0, 1, 2]);
     }
@@ -842,7 +983,6 @@ mod slice_index {
 
                 #[test]
                 #[should_panic(expected = $expect_msg)]
-                #[cfg(not(miri))] // Miri does not support panics
                 fn index_fail() {
                     let v = $data;
                     let v: &[_] = &v;
@@ -851,7 +991,6 @@ mod slice_index {
 
                 #[test]
                 #[should_panic(expected = $expect_msg)]
-                #[cfg(not(miri))] // Miri does not support panics
                 fn index_mut_fail() {
                     let mut v = $data;
                     let v: &mut [_] = &mut v;
@@ -1015,22 +1154,31 @@ fn test_rotate_right() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(miri))] // Miri does not support entropy
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
-    use rand::{FromEntropy, Rng, rngs::SmallRng, seq::SliceRandom};
+    use rand::{SeedableRng, Rng, rngs::StdRng, seq::SliceRandom};
+
+    #[cfg(not(miri))] // Miri is too slow
+    let large_range = 500..510;
+    #[cfg(not(miri))] // Miri is too slow
+    let rounds = 100;
+
+    #[cfg(miri)]
+    let large_range = 0..0; // empty range
+    #[cfg(miri)]
+    let rounds = 1;
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
-    let mut rng = SmallRng::from_entropy();
+    let mut rng = StdRng::from_entropy();
 
-    for len in (2..25).chain(500..510) {
+    for len in (2..25).chain(large_range) {
         let v = &mut v[0..len];
         let tmp = &mut tmp[0..len];
 
         for &modulus in &[5, 10, 100, 1000] {
-            for _ in 0..100 {
+            for _ in 0..rounds {
                 for i in 0..len {
                     v[i] = rng.gen::<i32>() % modulus;
                 }
@@ -1082,6 +1230,124 @@ fn sort_unstable() {
     let mut v = [0xDEADBEEFu64];
     v.sort_unstable();
     assert!(v == [0xDEADBEEF]);
+}
+
+#[test]
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(miri))] // Miri is too slow
+fn partition_at_index() {
+    use core::cmp::Ordering::{Equal, Greater, Less};
+    use rand::rngs::StdRng;
+    use rand::seq::SliceRandom;
+    use rand::{SeedableRng, Rng};
+
+    let mut rng = StdRng::from_entropy();
+
+    for len in (2..21).chain(500..501) {
+        let mut orig = vec![0; len];
+
+        for &modulus in &[5, 10, 1000] {
+            for _ in 0..10 {
+                for i in 0..len {
+                    orig[i] = rng.gen::<i32>() % modulus;
+                }
+
+                let v_sorted = {
+                    let mut v = orig.clone();
+                    v.sort();
+                    v
+                };
+
+                // Sort in default order.
+                for pivot in 0..len {
+                    let mut v = orig.clone();
+                    v.partition_at_index(pivot);
+
+                    assert_eq!(v_sorted[pivot], v[pivot]);
+                    for i in 0..pivot {
+                        for j in pivot..len {
+                            assert!(v[i] <= v[j]);
+                        }
+                    }
+                }
+
+                // Sort in ascending order.
+                for pivot in 0..len {
+                    let mut v = orig.clone();
+                    let (left, pivot, right) = v.partition_at_index_by(pivot, |a, b| a.cmp(b));
+
+                    assert_eq!(left.len() + right.len(), len - 1);
+
+                    for l in left {
+                        assert!(l <= pivot);
+                        for r in right.iter_mut() {
+                            assert!(l <= r);
+                            assert!(pivot <= r);
+                        }
+                    }
+                }
+
+                // Sort in descending order.
+                let sort_descending_comparator = |a: &i32, b: &i32| b.cmp(a);
+                let v_sorted_descending = {
+                    let mut v = orig.clone();
+                    v.sort_by(sort_descending_comparator);
+                    v
+                };
+
+                for pivot in 0..len {
+                    let mut v = orig.clone();
+                    v.partition_at_index_by(pivot, sort_descending_comparator);
+
+                    assert_eq!(v_sorted_descending[pivot], v[pivot]);
+                    for i in 0..pivot {
+                        for j in pivot..len {
+                            assert!(v[j] <= v[i]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort at index using a completely random comparison function.
+    // This will reorder the elements *somehow*, but won't panic.
+    let mut v = [0; 500];
+    for i in 0..v.len() {
+        v[i] = i as i32;
+    }
+
+    for pivot in 0..v.len() {
+        v.partition_at_index_by(pivot, |_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+        v.sort();
+        for i in 0..v.len() {
+            assert_eq!(v[i], i as i32);
+        }
+    }
+
+    // Should not panic.
+    [(); 10].partition_at_index(0);
+    [(); 10].partition_at_index(5);
+    [(); 10].partition_at_index(9);
+    [(); 100].partition_at_index(0);
+    [(); 100].partition_at_index(50);
+    [(); 100].partition_at_index(99);
+
+    let mut v = [0xDEADBEEFu64];
+    v.partition_at_index(0);
+    assert!(v == [0xDEADBEEF]);
+}
+
+#[test]
+#[should_panic(expected = "index 0 greater than length of slice")]
+fn partition_at_index_zero_length() {
+    [0i32; 0].partition_at_index(0);
+}
+
+#[test]
+#[should_panic(expected = "index 20 greater than length of slice")]
+fn partition_at_index_past_length() {
+    [0i32; 10].partition_at_index(20);
 }
 
 pub mod memchr {
@@ -1171,7 +1437,7 @@ pub mod memchr {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_simple() {
     let bytes = [1u8, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<u16>() };
@@ -1195,7 +1461,7 @@ fn test_align_to_zst() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri cannot compute actual alignment of an allocation
+#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_non_trivial() {
     #[repr(align(8))] struct U64(u64, u64);
     #[repr(align(8))] struct U64U64U32(u64, u64, u32);
@@ -1300,11 +1566,17 @@ fn test_copy_within() {
     let mut bytes = *b"Hello, World!";
     bytes.copy_within(.., 0);
     assert_eq!(&bytes, b"Hello, World!");
+
+    // Ensure that copying at the end of slice won't cause UB.
+    let mut bytes = *b"Hello, World!";
+    bytes.copy_within(13..13, 5);
+    assert_eq!(&bytes, b"Hello, World!");
+    bytes.copy_within(5..5, 13);
+    assert_eq!(&bytes, b"Hello, World!");
 }
 
 #[test]
 #[should_panic(expected = "src is out of bounds")]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_copy_within_panics_src_too_long() {
     let mut bytes = *b"Hello, World!";
     // The length is only 13, so 14 is out of bounds.
@@ -1313,7 +1585,6 @@ fn test_copy_within_panics_src_too_long() {
 
 #[test]
 #[should_panic(expected = "dest is out of bounds")]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_copy_within_panics_dest_too_long() {
     let mut bytes = *b"Hello, World!";
     // The length is only 13, so a slice of length 4 starting at index 10 is out of bounds.
@@ -1321,11 +1592,17 @@ fn test_copy_within_panics_dest_too_long() {
 }
 #[test]
 #[should_panic(expected = "src end is before src start")]
-#[cfg(not(miri))] // Miri does not support panics
 fn test_copy_within_panics_src_inverted() {
     let mut bytes = *b"Hello, World!";
     // 2 is greater than 1, so this range is invalid.
     bytes.copy_within(2..1, 0);
+}
+#[test]
+#[should_panic(expected = "attempted to index slice up to maximum usize")]
+fn test_copy_within_panics_src_out_of_bounds() {
+    let mut bytes = *b"Hello, World!";
+    // an inclusive range ending at usize::max_value() would make src_end overflow
+    bytes.copy_within(usize::max_value()..=usize::max_value(), 0);
 }
 
 #[test]

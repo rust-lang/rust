@@ -48,5 +48,5 @@ LL | type A3 = dyn<<dyn as dyn>::dyn>;
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0412, E0433.
+Some errors have detailed explanations: E0412, E0433.
 For more information about an error, try `rustc --explain E0412`.

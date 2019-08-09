@@ -1,12 +1,13 @@
 error[E0597]: `p` does not live long enough
-  --> $DIR/issue-18118.rs:4:10
+  --> $DIR/issue-18118.rs:4:9
    |
 LL |         &p
-   |          ^ borrowed value does not live long enough
+   |         ^^
+   |         |
+   |         borrowed value does not live long enough
+   |         using this value as a constant requires that `p` is borrowed for `'static`
 LL |     };
-   |     - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     - `p` dropped here while still borrowed
 
 error: aborting due to previous error
 

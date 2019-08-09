@@ -2,7 +2,7 @@
 
 #[rustc_outlives]
 struct Foo<'a, 'b, T> { //~ ERROR rustc_outlives
-    field1: Bar<'a, 'b, T>
+    field1: dyn Bar<'a, 'b, T>
 }
 
 trait Bar<'x, 's, U>

@@ -1,0 +1,21 @@
+error[E0381]: assign to part of possibly uninitialized variable: `t`
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:12:9
+   |
+LL |         t.0 = S(1);
+   |         ^^^^^^^^^^ use of possibly uninitialized `t`
+
+error[E0381]: assign to part of possibly uninitialized variable: `u`
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:20:9
+   |
+LL |         u.0 = S(1);
+   |         ^^^^^^^^^^ use of possibly uninitialized `u`
+
+error[E0381]: assign to part of possibly uninitialized variable: `v`
+  --> $DIR/issue-54499-field-mutation-of-never-init.rs:28:9
+   |
+LL |         v.x = S(1);
+   |         ^^^^^^^^^^ use of possibly uninitialized `v`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

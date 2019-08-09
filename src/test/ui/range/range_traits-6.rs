@@ -4,4 +4,3 @@ use std::ops::*;
 struct R(RangeInclusive<usize>);
 
 fn main() {}
-

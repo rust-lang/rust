@@ -40,4 +40,3 @@ fn main() {
     let arena: TypedArena<C> = TypedArena::default();
     f(&arena);
 } //~^ ERROR `arena` does not live long enough
-

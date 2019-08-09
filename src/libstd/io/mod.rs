@@ -24,9 +24,9 @@
 //!     let mut buffer = [0; 10];
 //!
 //!     // read up to 10 bytes
-//!     f.read(&mut buffer)?;
+//!     let n = f.read(&mut buffer)?;
 //!
-//!     println!("The bytes: {:?}", buffer);
+//!     println!("The bytes: {:?}", &buffer[..n]);
 //!     Ok(())
 //! }
 //! ```
@@ -56,9 +56,9 @@
 //!     f.seek(SeekFrom::End(-10))?;
 //!
 //!     // read up to 10 bytes
-//!     f.read(&mut buffer)?;
+//!     let n = f.read(&mut buffer)?;
 //!
-//!     println!("The bytes: {:?}", buffer);
+//!     println!("The bytes: {:?}", &buffer[..n]);
 //!     Ok(())
 //! }
 //! ```
@@ -390,6 +390,28 @@ fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
     ret
 }
 
+pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
+where
+    F: FnOnce(&mut [u8]) -> Result<usize>
+{
+    let buf = bufs
+        .iter_mut()
+        .find(|b| !b.is_empty())
+        .map_or(&mut [][..], |b| &mut **b);
+    read(buf)
+}
+
+pub(crate) fn default_write_vectored<F>(write: F, bufs: &[IoSlice<'_>]) -> Result<usize>
+where
+    F: FnOnce(&[u8]) -> Result<usize>
+{
+    let buf = bufs
+        .iter()
+        .find(|b| !b.is_empty())
+        .map_or(&[][..], |b| &**b);
+    write(buf)
+}
+
 /// The `Read` trait allows for reading bytes from a source.
 ///
 /// Implementors of the `Read` trait are called 'readers'.
@@ -484,8 +506,17 @@ pub trait Read {
     ///
     /// No guarantees are provided about the contents of `buf` when this
     /// function is called, implementations cannot rely on any property of the
-    /// contents of `buf` being true. It is recommended that implementations
+    /// contents of `buf` being true. It is recommended that *implementations*
     /// only write data to `buf` instead of reading its contents.
+    ///
+    /// Correspondingly, however, *callers* of this method may not assume any guarantees
+    /// about how the implementation uses `buf`. The trait is safe to implement,
+    /// so it is possible that the code that's supposed to write to the buffer might also read
+    /// from it. It is your responsibility to make sure that `buf` is initialized
+    /// before calling `read`. Calling `read` with an uninitialized `buf` (of the kind one
+    /// obtains via [`MaybeUninit<T>`]) is not safe, and can lead to undefined behavior.
+    ///
+    /// [`MaybeUninit<T>`]: ../mem/union.MaybeUninit.html
     ///
     /// # Errors
     ///
@@ -515,7 +546,9 @@ pub trait Read {
     ///     let mut buffer = [0; 10];
     ///
     ///     // read up to 10 bytes
-    ///     f.read(&mut buffer[..])?;
+    ///     let n = f.read(&mut buffer[..])?;
+    ///
+    ///     println!("The bytes: {:?}", &buffer[..n]);
     ///     Ok(())
     /// }
     /// ```
@@ -528,14 +561,11 @@ pub trait Read {
     /// written to possibly being only partially filled. This method must behave
     /// as a single call to `read` with the buffers concatenated would.
     ///
-    /// The default implementation simply passes the first nonempty buffer to
-    /// `read`.
-    #[unstable(feature = "iovec", issue = "58452")]
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
-        match bufs.iter_mut().find(|b| !b.is_empty()) {
-            Some(buf) => self.read(buf),
-            None => Ok(0),
-        }
+    /// The default implementation calls `read` with either the first nonempty
+    /// buffer provided, or an empty one if none exists.
+    #[stable(feature = "iovec", since = "1.36.0")]
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
+        default_read_vectored(|b| self.read(b), bufs)
     }
 
     /// Determines if this `Read`er can work with buffers of uninitialized
@@ -890,32 +920,88 @@ pub trait Read {
 /// It is semantically a wrapper around an `&mut [u8]`, but is guaranteed to be
 /// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
 /// Windows.
-#[unstable(feature = "iovec", issue = "58452")]
+#[stable(feature = "iovec", since = "1.36.0")]
 #[repr(transparent)]
-pub struct IoVecMut<'a>(sys::io::IoVecMut<'a>);
+pub struct IoSliceMut<'a>(sys::io::IoSliceMut<'a>);
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> fmt::Debug for IoVecMut<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> fmt::Debug for IoSliceMut<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.0.as_slice(), fmt)
     }
 }
 
-impl<'a> IoVecMut<'a> {
-    /// Creates a new `IoVecMut` wrapping a byte slice.
+impl<'a> IoSliceMut<'a> {
+    /// Creates a new `IoSliceMut` wrapping a byte slice.
     ///
     /// # Panics
     ///
     /// Panics on Windows if the slice is larger than 4GB.
-    #[unstable(feature = "iovec", issue = "58452")]
+    #[stable(feature = "iovec", since = "1.36.0")]
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> IoVecMut<'a> {
-        IoVecMut(sys::io::IoVecMut::new(buf))
+    pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+        IoSliceMut(sys::io::IoSliceMut::new(buf))
+    }
+
+    /// Advance the internal cursor of the slice.
+    ///
+    /// # Notes
+    ///
+    /// Elements in the slice may be modified if the cursor is not advanced to
+    /// the end of the slice. For example if we have a slice of buffers with 2
+    /// `IoSliceMut`s, both of length 8, and we advance the cursor by 10 bytes
+    /// the first `IoSliceMut` will be untouched however the second will be
+    /// modified to remove the first 2 bytes (10 - 8).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSliceMut;
+    /// use std::mem;
+    /// use std::ops::Deref;
+    ///
+    /// let mut buf1 = [1; 8];
+    /// let mut buf2 = [2; 16];
+    /// let mut buf3 = [3; 8];
+    /// let mut bufs = &mut [
+    ///     IoSliceMut::new(&mut buf1),
+    ///     IoSliceMut::new(&mut buf2),
+    ///     IoSliceMut::new(&mut buf3),
+    /// ][..];
+    ///
+    /// // Mark 10 bytes as read.
+    /// bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 10);
+    /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
+    /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+    /// ```
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance<'b>(bufs: &'b mut [IoSliceMut<'a>], n: usize) -> &'b mut [IoSliceMut<'a>] {
+        // Number of buffers to remove.
+        let mut remove = 0;
+        // Total length of all the to be removed buffers.
+        let mut accumulated_len = 0;
+        for buf in bufs.iter() {
+            if accumulated_len + buf.len() > n {
+                break;
+            } else {
+                accumulated_len += buf.len();
+                remove += 1;
+            }
+        }
+
+        let bufs = &mut bufs[remove..];
+        if !bufs.is_empty() {
+            bufs[0].0.advance(n - accumulated_len)
+        }
+        bufs
     }
 }
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> Deref for IoVecMut<'a> {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> Deref for IoSliceMut<'a> {
     type Target = [u8];
 
     #[inline]
@@ -924,8 +1010,8 @@ impl<'a> Deref for IoVecMut<'a> {
     }
 }
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> DerefMut for IoVecMut<'a> {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> DerefMut for IoSliceMut<'a> {
     #[inline]
     fn deref_mut(&mut self) -> &mut [u8] {
         self.0.as_mut_slice()
@@ -937,32 +1023,87 @@ impl<'a> DerefMut for IoVecMut<'a> {
 /// It is semantically a wrapper around an `&[u8]`, but is guaranteed to be
 /// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
 /// Windows.
-#[unstable(feature = "iovec", issue = "58452")]
+#[stable(feature = "iovec", since = "1.36.0")]
 #[repr(transparent)]
-pub struct IoVec<'a>(sys::io::IoVec<'a>);
+pub struct IoSlice<'a>(sys::io::IoSlice<'a>);
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> fmt::Debug for IoVec<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> fmt::Debug for IoSlice<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.0.as_slice(), fmt)
     }
 }
 
-impl<'a> IoVec<'a> {
-    /// Creates a new `IoVec` wrapping a byte slice.
+impl<'a> IoSlice<'a> {
+    /// Creates a new `IoSlice` wrapping a byte slice.
     ///
     /// # Panics
     ///
     /// Panics on Windows if the slice is larger than 4GB.
-    #[unstable(feature = "iovec", issue = "58452")]
+    #[stable(feature = "iovec", since = "1.36.0")]
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoVec<'a> {
-        IoVec(sys::io::IoVec::new(buf))
+    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+        IoSlice(sys::io::IoSlice::new(buf))
+    }
+
+    /// Advance the internal cursor of the slice.
+    ///
+    /// # Notes
+    ///
+    /// Elements in the slice may be modified if the cursor is not advanced to
+    /// the end of the slice. For example if we have a slice of buffers with 2
+    /// `IoSlice`s, both of length 8, and we advance the cursor by 10 bytes the
+    /// first `IoSlice` will be untouched however the second will be modified to
+    /// remove the first 2 bytes (10 - 8).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_slice_advance)]
+    ///
+    /// use std::io::IoSlice;
+    /// use std::mem;
+    /// use std::ops::Deref;
+    ///
+    /// let mut buf1 = [1; 8];
+    /// let mut buf2 = [2; 16];
+    /// let mut buf3 = [3; 8];
+    /// let mut bufs = &mut [
+    ///     IoSlice::new(&mut buf1),
+    ///     IoSlice::new(&mut buf2),
+    ///     IoSlice::new(&mut buf3),
+    /// ][..];
+    ///
+    /// // Mark 10 bytes as written.
+    /// bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 10);
+    /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
+    /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+    #[unstable(feature = "io_slice_advance", issue = "62726")]
+    #[inline]
+    pub fn advance<'b>(bufs: &'b mut [IoSlice<'a>], n: usize) -> &'b mut [IoSlice<'a>] {
+        // Number of buffers to remove.
+        let mut remove = 0;
+        // Total length of all the to be removed buffers.
+        let mut accumulated_len = 0;
+        for buf in bufs.iter() {
+            if accumulated_len + buf.len() > n {
+                break;
+            } else {
+                accumulated_len += buf.len();
+                remove += 1;
+            }
+        }
+
+        let bufs = &mut bufs[remove..];
+        if !bufs.is_empty() {
+            bufs[0].0.advance(n - accumulated_len)
+        }
+        bufs
     }
 }
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> Deref for IoVec<'a> {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> Deref for IoSlice<'a> {
     type Target = [u8];
 
     #[inline]
@@ -1043,12 +1184,23 @@ impl Initializer {
 /// use std::fs::File;
 ///
 /// fn main() -> std::io::Result<()> {
+///     let data = b"some bytes";
+///
+///     let mut pos = 0;
 ///     let mut buffer = File::create("foo.txt")?;
 ///
-///     buffer.write(b"some bytes")?;
+///     while pos < data.len() {
+///         let bytes_written = buffer.write(&data[pos..])?;
+///         pos += bytes_written;
+///     }
 ///     Ok(())
 /// }
 /// ```
+///
+/// The trait also provides convenience methods like [`write_all`], which calls
+/// `write` in a loop until its entire input has been written.
+///
+/// [`write_all`]: #method.write_all
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(spotlight)]
 pub trait Write {
@@ -1064,7 +1216,7 @@ pub trait Write {
     /// an [`Err`] variant.
     ///
     /// If the return value is [`Ok(n)`] then it must be guaranteed that
-    /// `0 <= n <= buf.len()`. A return value of `0` typically means that the
+    /// `n <= buf.len()`. A return value of `0` typically means that the
     /// underlying object is no longer able to accept bytes and will likely not
     /// be able to in the future as well, or that the buffer provided is empty.
     ///
@@ -1103,18 +1255,15 @@ pub trait Write {
 
     /// Like `write`, except that it writes from a slice of buffers.
     ///
-    /// Data is copied to from each buffer in order, with the final buffer
+    /// Data is copied from each buffer in order, with the final buffer
     /// read from possibly being only partially consumed. This method must
     /// behave as a call to `write` with the buffers concatenated would.
     ///
-    /// The default implementation simply passes the first nonempty buffer to
-    /// `write`.
-    #[unstable(feature = "iovec", issue = "58452")]
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> Result<usize> {
-        match bufs.iter().find(|b| !b.is_empty()) {
-            Some(buf) => self.write(buf),
-            None => Ok(0),
-        }
+    /// The default implementation calls `write` with either the first nonempty
+    /// buffer provided, or an empty one if none exists.
+    #[stable(feature = "iovec", since = "1.36.0")]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
+        default_write_vectored(|b| self.write(b), bufs)
     }
 
     /// Flush this output stream, ensuring that all intermediately buffered
@@ -1135,7 +1284,7 @@ pub trait Write {
     /// fn main() -> std::io::Result<()> {
     ///     let mut buffer = BufWriter::new(File::create("foo.txt")?);
     ///
-    ///     buffer.write(b"some bytes")?;
+    ///     buffer.write_all(b"some bytes")?;
     ///     buffer.flush()?;
     ///     Ok(())
     /// }
@@ -1226,7 +1375,7 @@ pub trait Write {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(&mut self, fmt: fmt::Arguments) -> Result<()> {
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> Result<()> {
         // Create a shim which translates a Write to a fmt::Write and saves
         // off I/O errors. instead of discarding them
         struct Adaptor<'a, T: ?Sized + 'a> {
@@ -1329,6 +1478,85 @@ pub trait Seek {
     /// [`SeekFrom::Start`]: enum.SeekFrom.html#variant.Start
     #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
+
+    /// Returns the length of this stream (in bytes).
+    ///
+    /// This method is implemented using up to three seek operations. If this
+    /// method returns successfully, the seek position is unchanged (i.e. the
+    /// position before calling this method is the same as afterwards).
+    /// However, if this method returns an error, the seek position is
+    /// unspecified.
+    ///
+    /// If you need to obtain the length of *many* streams and you don't care
+    /// about the seek position afterwards, you can reduce the number of seek
+    /// operations by simply calling `seek(SeekFrom::End(0))` and using its
+    /// return value (it is also the stream length).
+    ///
+    /// Note that length of a stream can change over time (for example, when
+    /// data is appended to a file). So calling this method multiple times does
+    /// not necessarily return the same length each time.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_convenience)]
+    /// use std::{
+    ///     io::{self, Seek},
+    ///     fs::File,
+    /// };
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///
+    ///     let len = f.stream_len()?;
+    ///     println!("The file is currently {} bytes long", len);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_convenience", issue = "59359")]
+    fn stream_len(&mut self) -> Result<u64> {
+        let old_pos = self.stream_position()?;
+        let len = self.seek(SeekFrom::End(0))?;
+
+        // Avoid seeking a third time when we were already at the end of the
+        // stream. The branch is usually way cheaper than a seek operation.
+        if old_pos != len {
+            self.seek(SeekFrom::Start(old_pos))?;
+        }
+
+        Ok(len)
+    }
+
+    /// Returns the current seek position from the start of the stream.
+    ///
+    /// This is equivalent to `self.seek(SeekFrom::Current(0))`.
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_convenience)]
+    /// use std::{
+    ///     io::{self, BufRead, BufReader, Seek},
+    ///     fs::File,
+    /// };
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = BufReader::new(File::open("foo.txt")?);
+    ///
+    ///     let before = f.stream_position()?;
+    ///     f.read_line(&mut String::new())?;
+    ///     let after = f.stream_position()?;
+    ///
+    ///     println!("The first line was {} bytes long", after - before);
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_convenience", issue = "59359")]
+    fn stream_position(&mut self) -> Result<u64> {
+        self.seek(SeekFrom::Current(0))
+    }
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
@@ -1471,18 +1699,13 @@ pub trait BufRead: Read {
     /// let stdin = io::stdin();
     /// let mut stdin = stdin.lock();
     ///
-    /// // we can't have two `&mut` references to `stdin`, so use a block
-    /// // to end the borrow early.
-    /// let length = {
-    ///     let buffer = stdin.fill_buf().unwrap();
+    /// let buffer = stdin.fill_buf().unwrap();
     ///
-    ///     // work with buffer
-    ///     println!("{:?}", buffer);
-    ///
-    ///     buffer.len()
-    /// };
+    /// // work with buffer
+    /// println!("{:?}", buffer);
     ///
     /// // ensure the bytes we worked with aren't returned again later
+    /// let length = buffer.len();
     /// stdin.consume(length);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1798,7 +2021,7 @@ impl<T, U> Chain<T, U> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Chain")
             .field("t", &self.first)
             .field("u", &self.second)
@@ -1811,14 +2034,14 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if !self.done_first {
             match self.first.read(buf)? {
-                0 if buf.len() != 0 => self.done_first = true,
+                0 if !buf.is_empty() => self.done_first = true,
                 n => return Ok(n),
             }
         }
         self.second.read(buf)
     }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
         if !self.done_first {
             match self.first.read_vectored(bufs)? {
                 0 if bufs.iter().any(|b| !b.is_empty()) => self.done_first = true,
@@ -1843,7 +2066,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     fn fill_buf(&mut self) -> Result<&[u8]> {
         if !self.done_first {
             match self.first.fill_buf()? {
-                buf if buf.len() == 0 => { self.done_first = true; }
+                buf if buf.is_empty() => { self.done_first = true; }
                 buf => return Ok(buf),
             }
         }
@@ -2156,9 +2379,10 @@ impl<B: BufRead> Iterator for Lines<B> {
 #[cfg(test)]
 mod tests {
     use crate::io::prelude::*;
-    use crate::io;
-    use super::Cursor;
-    use super::repeat;
+    use super::{Cursor, SeekFrom, repeat};
+    use crate::io::{self, IoSlice, IoSliceMut};
+    use crate::mem;
+    use crate::ops::Deref;
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
@@ -2379,5 +2603,136 @@ mod tests {
             let mut vec = Vec::with_capacity(1024);
             super::read_to_end(&mut lr, &mut vec)
         });
+    }
+
+    #[test]
+    fn seek_len() -> io::Result<()> {
+        let mut c = Cursor::new(vec![0; 15]);
+        assert_eq!(c.stream_len()?, 15);
+
+        c.seek(SeekFrom::End(0))?;
+        let old_pos = c.stream_position()?;
+        assert_eq!(c.stream_len()?, 15);
+        assert_eq!(c.stream_position()?, old_pos);
+
+        c.seek(SeekFrom::Start(7))?;
+        c.seek(SeekFrom::Current(2))?;
+        let old_pos = c.stream_position()?;
+        assert_eq!(c.stream_len()?, 15);
+        assert_eq!(c.stream_position()?, old_pos);
+
+        Ok(())
+    }
+
+    #[test]
+    fn seek_position() -> io::Result<()> {
+        // All `asserts` are duplicated here to make sure the method does not
+        // change anything about the seek state.
+        let mut c = Cursor::new(vec![0; 15]);
+        assert_eq!(c.stream_position()?, 0);
+        assert_eq!(c.stream_position()?, 0);
+
+        c.seek(SeekFrom::End(0))?;
+        assert_eq!(c.stream_position()?, 15);
+        assert_eq!(c.stream_position()?, 15);
+
+
+        c.seek(SeekFrom::Start(7))?;
+        c.seek(SeekFrom::Current(2))?;
+        assert_eq!(c.stream_position()?, 9);
+        assert_eq!(c.stream_position()?, 9);
+
+        c.seek(SeekFrom::End(-3))?;
+        c.seek(SeekFrom::Current(1))?;
+        c.seek(SeekFrom::Current(-5))?;
+        assert_eq!(c.stream_position()?, 8);
+        assert_eq!(c.stream_position()?, 8);
+
+        Ok(())
+    }
+
+    #[test]
+    fn io_slice_mut_advance() {
+        let mut buf1 = [1; 8];
+        let mut buf2 = [2; 16];
+        let mut buf3 = [3; 8];
+        let mut bufs = &mut [
+            IoSliceMut::new(&mut buf1),
+            IoSliceMut::new(&mut buf2),
+            IoSliceMut::new(&mut buf3),
+        ][..];
+
+        // Only in a single buffer..
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 1);
+        assert_eq!(bufs[0].deref(), [1; 7].as_ref());
+        assert_eq!(bufs[1].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[2].deref(), [3; 8].as_ref());
+
+        // Removing a buffer, leaving others as is.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 7);
+        assert_eq!(bufs[0].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+
+        // Removing a buffer and removing from the next buffer.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 18);
+        assert_eq!(bufs[0].deref(), [3; 6].as_ref());
+    }
+
+    #[test]
+    fn io_slice_mut_advance_empty_slice() {
+        let mut empty_bufs = &mut [][..];
+        // Shouldn't panic.
+        IoSliceMut::advance(&mut empty_bufs, 1);
+    }
+
+    #[test]
+    fn io_slice_mut_advance_beyond_total_length() {
+        let mut buf1 = [1; 8];
+        let mut bufs = &mut [IoSliceMut::new(&mut buf1)][..];
+
+        // Going beyond the total length should be ok.
+        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 9);
+        assert!(bufs.is_empty());
+    }
+
+    #[test]
+    fn io_slice_advance() {
+        let mut buf1 = [1; 8];
+        let mut buf2 = [2; 16];
+        let mut buf3 = [3; 8];
+        let mut bufs =
+            &mut [IoSlice::new(&mut buf1), IoSlice::new(&mut buf2), IoSlice::new(&mut buf3)][..];
+
+        // Only in a single buffer..
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 1);
+        assert_eq!(bufs[0].deref(), [1; 7].as_ref());
+        assert_eq!(bufs[1].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[2].deref(), [3; 8].as_ref());
+
+        // Removing a buffer, leaving others as is.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 7);
+        assert_eq!(bufs[0].deref(), [2; 16].as_ref());
+        assert_eq!(bufs[1].deref(), [3; 8].as_ref());
+
+        // Removing a buffer and removing from the next buffer.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 18);
+        assert_eq!(bufs[0].deref(), [3; 6].as_ref());
+    }
+
+    #[test]
+    fn io_slice_advance_empty_slice() {
+        let mut empty_bufs = &mut [][..];
+        // Shouldn't panic.
+        IoSlice::advance(&mut empty_bufs, 1);
+    }
+
+    #[test]
+    fn io_slice_advance_beyond_total_length() {
+        let mut buf1 = [1; 8];
+        let mut bufs = &mut [IoSlice::new(&mut buf1)][..];
+
+        // Going beyond the total length should be ok.
+        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 9);
+        assert!(bufs.is_empty());
     }
 }

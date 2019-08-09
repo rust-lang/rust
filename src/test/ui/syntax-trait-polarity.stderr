@@ -36,5 +36,5 @@ LL | impl<T> !TestTrait for TestType2<T> {}
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0192, E0198.
+Some errors have detailed explanations: E0192, E0198.
 For more information about an error, try `rustc --explain E0192`.

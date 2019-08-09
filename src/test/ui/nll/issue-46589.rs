@@ -1,4 +1,8 @@
-#![feature(nll)]
+// This tests passes in Polonius mode, so is skipped in the automated compare-mode.
+// We will manually check it passes in Polonius tests, as we can't have a test here
+// which conditionally passes depending on a test revision/compile-flags.
+
+// ignore-compare-mode-polonius
 
 struct Foo;
 

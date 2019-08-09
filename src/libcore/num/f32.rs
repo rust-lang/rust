@@ -7,8 +7,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use mem;
-use num::FpCategory;
+#[cfg(not(test))]
+use crate::intrinsics;
+
+use crate::mem;
+use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f32`.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -372,15 +375,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn max(self, other: f32) -> f32 {
-        // IEEE754 says: maxNum(x, y) is the canonicalized number y if x < y, x if y < x, the
-        // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
-        // is either x or y, canonicalized (this means results might differ among implementations).
-        // When either x or y is a signalingNaN, then the result is according to 6.2.
-        //
-        // Since we do not support sNaN in Rust yet, we do not need to handle them.
-        // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
-        // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if self.is_nan() || self < other { other } else { self }) * 1.0
+        intrinsics::maxnumf32(self, other)
     }
 
     /// Returns the minimum of the two numbers.
@@ -396,15 +391,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn min(self, other: f32) -> f32 {
-        // IEEE754 says: minNum(x, y) is the canonicalized number x if x < y, y if y < x, the
-        // canonicalized number if one operand is a number and the other a quiet NaN. Otherwise it
-        // is either x or y, canonicalized (this means results might differ among implementations).
-        // When either x or y is a signalingNaN, then the result is according to 6.2.
-        //
-        // Since we do not support sNaN in Rust yet, we do not need to handle them.
-        // FIXME(nagisa): due to https://bugs.llvm.org/show_bug.cgi?id=33303 we canonicalize by
-        // multiplying by 1.0. Should switch to the `canonicalize` when it works.
-        (if other.is_nan() || self < other { self } else { other }) * 1.0
+        intrinsics::minnumf32(self, other)
     }
 
     /// Raw transmutation to `u32`.
@@ -463,15 +450,130 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
     /// let v = f32::from_bits(0x41480000);
-    /// let difference = (v - 12.5).abs();
-    /// assert!(difference <= 1e-5);
+    /// assert_eq!(v, 12.5);
     /// ```
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[inline]
     pub fn from_bits(v: u32) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         unsafe { mem::transmute(v) }
+    }
+
+    /// Return the memory representation of this floating point number as a byte array in
+    /// big-endian (network) byte order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let bytes = 12.5f32.to_be_bytes();
+    /// assert_eq!(bytes, [0x41, 0x48, 0x00, 0x00]);
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_be_bytes(self) -> [u8; 4] {
+        self.to_bits().to_be_bytes()
+    }
+
+    /// Return the memory representation of this floating point number as a byte array in
+    /// little-endian byte order.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let bytes = 12.5f32.to_le_bytes();
+    /// assert_eq!(bytes, [0x00, 0x00, 0x48, 0x41]);
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_le_bytes(self) -> [u8; 4] {
+        self.to_bits().to_le_bytes()
+    }
+
+    /// Return the memory representation of this floating point number as a byte array in
+    /// native byte order.
+    ///
+    /// As the target platform's native endianness is used, portable code
+    /// should use [`to_be_bytes`] or [`to_le_bytes`], as appropriate, instead.
+    ///
+    /// [`to_be_bytes`]: #method.to_be_bytes
+    /// [`to_le_bytes`]: #method.to_le_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let bytes = 12.5f32.to_ne_bytes();
+    /// assert_eq!(
+    ///     bytes,
+    ///     if cfg!(target_endian = "big") {
+    ///         [0x41, 0x48, 0x00, 0x00]
+    ///     } else {
+    ///         [0x00, 0x00, 0x48, 0x41]
+    ///     }
+    /// );
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn to_ne_bytes(self) -> [u8; 4] {
+        self.to_bits().to_ne_bytes()
+    }
+
+    /// Create a floating point value from its representation as a byte array in big endian.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let value = f32::from_be_bytes([0x41, 0x48, 0x00, 0x00]);
+    /// assert_eq!(value, 12.5);
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_be_bytes(bytes: [u8; 4]) -> Self {
+        Self::from_bits(u32::from_be_bytes(bytes))
+    }
+
+    /// Create a floating point value from its representation as a byte array in little endian.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let value = f32::from_le_bytes([0x00, 0x00, 0x48, 0x41]);
+    /// assert_eq!(value, 12.5);
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_le_bytes(bytes: [u8; 4]) -> Self {
+        Self::from_bits(u32::from_le_bytes(bytes))
+    }
+
+    /// Create a floating point value from its representation as a byte array in native endian.
+    ///
+    /// As the target platform's native endianness is used, portable code
+    /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as
+    /// appropriate instead.
+    ///
+    /// [`from_be_bytes`]: #method.from_be_bytes
+    /// [`from_le_bytes`]: #method.from_le_bytes
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_to_from_bytes)]
+    /// let value = f32::from_ne_bytes(if cfg!(target_endian = "big") {
+    ///     [0x41, 0x48, 0x00, 0x00]
+    /// } else {
+    ///     [0x00, 0x00, 0x48, 0x41]
+    /// });
+    /// assert_eq!(value, 12.5);
+    /// ```
+    #[unstable(feature = "float_to_from_bytes", issue = "60446")]
+    #[inline]
+    pub fn from_ne_bytes(bytes: [u8; 4]) -> Self {
+        Self::from_bits(u32::from_ne_bytes(bytes))
     }
 }

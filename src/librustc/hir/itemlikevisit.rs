@@ -51,7 +51,7 @@ pub trait ItemLikeVisitor<'hir> {
     fn visit_impl_item(&mut self, impl_item: &'hir ImplItem);
 }
 
-pub struct DeepVisitor<'v, V: 'v> {
+pub struct DeepVisitor<'v, V> {
     visitor: &'v mut V,
 }
 

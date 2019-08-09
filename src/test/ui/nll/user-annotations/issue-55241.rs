@@ -7,8 +7,6 @@
 //
 // run-pass
 
-#![feature(nll)]
-
 pub trait Hasher {
     type Out: Eq;
 }

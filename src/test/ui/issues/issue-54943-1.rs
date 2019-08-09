@@ -1,9 +1,7 @@
-#![feature(nll)]
-
 // This test is a minimal version of an ICE in the dropck-eyepatch tests
 // found in the fix for #54943.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 fn foo<T>(_t: T) {
 }

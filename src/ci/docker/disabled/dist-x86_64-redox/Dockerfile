@@ -7,8 +7,8 @@ COPY scripts/crosstool-ng.sh /scripts/
 RUN sh /scripts/crosstool-ng.sh
 
 WORKDIR /tmp
-COPY cross/install-x86_64-redox.sh /tmp/
-RUN ./install-x86_64-redox.sh
+COPY dist-various-1/install-x86_64-redox.sh /scripts/
+RUN sh /scripts/install-x86_64-redox.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

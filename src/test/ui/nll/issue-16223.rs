@@ -13,9 +13,8 @@
 //    |
 //    = note: move occurs because the value has type `A`, which does not implement the `Copy` trait
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
-#![feature(nll)]
 #![feature(box_patterns)]
 
 struct Root {

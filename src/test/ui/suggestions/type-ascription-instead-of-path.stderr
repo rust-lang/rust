@@ -1,0 +1,18 @@
+error[E0433]: failed to resolve: use of undeclared type or module `io`
+  --> $DIR/type-ascription-instead-of-path.rs:2:9
+   |
+LL |     std:io::stdin();
+   |         ^^ use of undeclared type or module `io`
+
+error[E0423]: expected value, found module `std`
+  --> $DIR/type-ascription-instead-of-path.rs:2:5
+   |
+LL |     std:io::stdin();
+   |     ^^^- help: maybe you meant to write a path separator here: `::`
+   |     |
+   |     not a value
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0433.
+For more information about an error, try `rustc --explain E0423`.

@@ -10,18 +10,18 @@ trait Bar: Foo { }
 trait Baz: Bar { }
 
 // Supertraits of Baz are not legal:
-impl Foo for Baz { }
+impl Foo for dyn Baz { }
 //[old]~^ ERROR E0371
 //[re]~^^ ERROR E0371
-impl Bar for Baz { }
+impl Bar for dyn Baz { }
 //[old]~^ ERROR E0371
 //[re]~^^ ERROR E0371
-impl Baz for Baz { }
+impl Baz for dyn Baz { }
 //[old]~^ ERROR E0371
 //[re]~^^ ERROR E0371
 
 // But other random traits are:
 trait Other { }
-impl Other for Baz { } // OK, Other not a supertrait of Baz
+impl Other for dyn Baz { } // OK, Other not a supertrait of Baz
 
 fn main() { }

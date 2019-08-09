@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 trait A {
     fn foo(*mut self); //~ ERROR cannot pass `self` by raw pointer
     fn baz(*const self); //~ ERROR cannot pass `self` by raw pointer

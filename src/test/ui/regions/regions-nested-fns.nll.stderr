@@ -1,0 +1,51 @@
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/regions-nested-fns.rs:10:9
+   |
+LL |     let mut ay = &y;
+   |         ------ `ay` is declared here, outside of the closure body
+LL | 
+LL |     ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
+   |                                                           - `z` is a reference that is only valid in the closure body
+...
+LL |         ay = z;
+   |         ^^^^^^ `z` escapes the closure body here
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/regions-nested-fns.rs:5:18
+   |
+LL |     let mut ay = &y;
+   |                  ^^ borrowed value does not live long enough
+...
+LL |         if false { return ay; }
+   |                           -- returning this value requires that `y` is borrowed for `'static`
+...
+LL | }
+   | - `y` dropped here while still borrowed
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/regions-nested-fns.rs:9:15
+   |
+LL |     ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
+   |                                                          --- value captured here
+LL |         ay = x;
+LL |         ay = &y;
+   |               ^ borrowed value does not live long enough
+...
+LL |         if false { return ay; }
+   |                           -- returning this value requires that `y` is borrowed for `'static`
+...
+LL | }
+   | - `y` dropped here while still borrowed
+
+error: lifetime may not live long enough
+  --> $DIR/regions-nested-fns.rs:14:27
+   |
+LL | fn nested<'x>(x: &'x isize) {
+   |           -- lifetime `'x` defined here
+...
+LL |         if false { return x; }
+   |                           ^ returning this value requires that `'x` must outlive `'static`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,10 +1,9 @@
-// aux-build:nested-item-spans.rs
+// aux-build:test-macros.rs
 
-extern crate nested_item_spans;
+#[macro_use]
+extern crate test_macros;
 
-use nested_item_spans::foo;
-
-#[foo]
+#[recollect_attr]
 fn another() {
     fn bar() {
         let x: u32 = "x"; //~ ERROR: mismatched types
@@ -14,7 +13,7 @@ fn another() {
 }
 
 fn main() {
-    #[foo]
+    #[recollect_attr]
     fn bar() {
         let x: u32 = "x"; //~ ERROR: mismatched types
     }

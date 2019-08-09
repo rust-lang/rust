@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/object-lifetime-default-elision.rs:71:5
+   |
+LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
+   |          -- -- lifetime `'b` defined here
+   |          |
+   |          lifetime `'a` defined here
+...
+LL |     ss
+   |     ^^ returning this value requires that `'a` must outlive `'b`
+
+error: aborting due to previous error
+

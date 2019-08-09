@@ -8,10 +8,10 @@ const fn foo5() -> Option<Cell<i32>> { Some(Cell::new(42)) }
 const fn foo6() -> Option<Cell<i32>> { None }
 
 fn main() {
-    let x: &'static () = &foo1(); //~ ERROR does not live long enough
-    let y: &'static i32 = &foo2(42); //~ ERROR does not live long enough
-    let z: &'static i32 = &foo3(); //~ ERROR does not live long enough
-    let a: &'static Cell<i32> = &foo4();  //~ ERROR does not live long enough
-    let a: &'static Option<Cell<i32>> = &foo5(); //~ ERROR does not live long enough
-    let a: &'static Option<Cell<i32>> = &foo6(); //~ ERROR does not live long enough
+    let x: &'static () = &foo1(); //~ ERROR temporary value dropped while borrowed
+    let y: &'static i32 = &foo2(42); //~ ERROR temporary value dropped while borrowed
+    let z: &'static i32 = &foo3(); //~ ERROR temporary value dropped while borrowed
+    let a: &'static Cell<i32> = &foo4();  //~ ERROR temporary value dropped while borrowed
+    let a: &'static Option<Cell<i32>> = &foo5(); //~ ERROR temporary value dropped while borrowed
+    let a: &'static Option<Cell<i32>> = &foo6(); //~ ERROR temporary value dropped while borrowed
 }

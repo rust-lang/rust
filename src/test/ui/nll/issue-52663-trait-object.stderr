@@ -1,10 +1,10 @@
 error[E0597]: `tmp0` does not live long enough
-  --> $DIR/issue-52663-trait-object.rs:13:20
+  --> $DIR/issue-52663-trait-object.rs:12:20
    |
 LL |         let tmp1 = &tmp0;
    |                    ^^^^^ borrowed value does not live long enough
-LL |         box tmp1 as Box<Foo + '_>
-   |         ------------------------- borrow later captured here by trait object
+LL |         box tmp1 as Box<dyn Foo + '_>
+   |         ----------------------------- borrow later captured here by trait object
 LL |     };
    |     - `tmp0` dropped here while still borrowed
 

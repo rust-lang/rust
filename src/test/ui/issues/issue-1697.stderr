@@ -2,7 +2,7 @@ error[E0432]: unresolved import `unresolved`
   --> $DIR/issue-1697.rs:3:5
    |
 LL | use unresolved::*;
-   |     ^^^^^^^^^^ maybe a missing `extern crate unresolved;`?
+   |     ^^^^^^^^^^ maybe a missing crate `unresolved`?
 
 error: aborting due to previous error
 

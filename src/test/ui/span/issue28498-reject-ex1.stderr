@@ -1,25 +1,17 @@
-error[E0597]: `foo.data` does not live long enough
+error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue28498-reject-ex1.rs:34:29
    |
 LL |     foo.data[0].1.set(Some(&foo.data[1]));
-   |                             ^^^^^^^^ borrowed value does not live long enough
+   |                             ^^^^^^^^
 ...
 LL | }
-   | - `foo.data` dropped here while still borrowed
+   | -
+   | |
+   | here, drop of `foo` needs exclusive access to `foo.data`, because the type `Foo<Concrete<'_>>` implements the `Drop` trait
+   | borrow might be used here, when `foo` is dropped and runs the `Drop` code for type `Foo`
    |
-   = note: values in a scope are dropped in the opposite order they are created
+   = note: consider using a `let` binding to create a longer lived value
 
-error[E0597]: `foo.data` does not live long enough
-  --> $DIR/issue28498-reject-ex1.rs:36:29
-   |
-LL |     foo.data[1].1.set(Some(&foo.data[0]));
-   |                             ^^^^^^^^ borrowed value does not live long enough
-LL |
-LL | }
-   | - `foo.data` dropped here while still borrowed
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0713`.

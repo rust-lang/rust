@@ -15,7 +15,7 @@ links to the major sections:
 * [Helpful Links and Information](#helpful-links-and-information)
 
 If you have questions, please make a post on [internals.rust-lang.org][internals] or
-hop on [#rust-internals][pound-rust-internals].
+hop on the [Rust Discord server][rust-discord], [Rust Zulip server][rust-zulip] or [#rust-internals][pound-rust-internals].
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
@@ -27,14 +27,17 @@ can give you a good example of how a typical contribution would go.
 
 [pound-rust-internals]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: https://internals.rust-lang.org
+[rust-discord]: http://discord.gg/rust-lang
+[rust-zulip]: https://rust-lang.zulipchat.com
 [coc]: https://www.rust-lang.org/conduct.html
+[rustc-guide]: https://rust-lang.github.io/rustc-guide/
 [walkthrough]: https://rust-lang.github.io/rustc-guide/walkthrough.html
 
 ## Feature Requests
 [feature-requests]: #feature-requests
 
 To request a change to the way the Rust language works, please head over
-to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the 
+to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the
 [README](https://github.com/rust-lang/rfcs/blob/master/README.md)
 for instructions.
 
@@ -119,6 +122,13 @@ bring those changes into the source repository.
 
 Please make pull requests against the `master` branch.
 
+Rust follows a no merge policy, meaning, when you encounter merge
+conflicts you are expected to always rebase instead of merge.
+E.g. always use rebase when bringing the latest changes from
+the master branch to your feature branch.
+Also, please make sure that fixup commits are squashed into other related
+commits with meaningful commit messages.
+
 Please make sure your pull request is in compliance with Rust's style
 guidelines by running
 
@@ -129,35 +139,46 @@ request); you can add [git hooks](https://git-scm.com/book/en/v2/Customizing-Git
 before every push to make sure you never forget to make this check.
 
 All pull requests are reviewed by another person. We have a bot,
-@rust-highfive, that will automatically assign a random person to review your
+[@rust-highfive][rust-highfive], that will automatically assign a random person to review your
 request.
 
 If you want to request that a specific person reviews your pull request,
-you can add an `r?` to the message. For example, Steve usually reviews
+you can add an `r?` to the message. For example, [Steve][steveklabnik] usually reviews
 documentation changes. So if you were to make a documentation change, add
 
     r? @steveklabnik
 
-to the end of the message, and @rust-highfive will assign @steveklabnik instead
+to the end of the message, and @rust-highfive will assign [@steveklabnik][steveklabnik] instead
 of a random person. This is entirely optional.
 
 After someone has reviewed your pull request, they will leave an annotation
 on the pull request with an `r+`. It will look something like this:
 
-    @bors: r+ 38fe8d2
+    @bors r+
 
-This tells @bors, our lovable integration bot, that your pull request has
-been approved. The PR then enters the [merge queue][merge-queue], where @bors
+This tells [@bors][bors], our lovable integration bot, that your pull request has
+been approved. The PR then enters the [merge queue][merge-queue], where [@bors][bors]
 will run all the tests on every platform we support. If it all works out,
-@bors will merge your code into `master` and close the pull request.
+[@bors][bors] will merge your code into `master` and close the pull request.
 
+Depending on the scale of the change, you may see a slightly different form of `r+`:
+
+    @bors r+ rollup
+
+The additional `rollup` tells [@bors][bors] that this change is eligible for to be
+"rolled up". Changes that are rolled up are tested and merged at the same time, to
+speed the process up. Typically only small changes that are expected not to conflict
+with one another are rolled up.
+
+[rust-highfive]: https://github.com/rust-highfive
+[steveklabnik]: https://github.com/steveklabnik
+[bors]: https://github.com/bors
 [merge-queue]: https://buildbot2.rust-lang.org/homu/queue/rust
 
 Speaking of tests, Rust has a comprehensive test suite. More information about
 it can be found [here][rctd].
 
 ### External Dependencies
-[external-dependencies]: #external-dependencies
 
 Currently building Rust will also build the following external projects:
 
@@ -187,10 +208,9 @@ Breakage is not allowed in the beta and stable channels, and must be addressed
 before the PR is merged.
 
 #### Breaking Tools Built With The Compiler
-[breaking-tools-built-with-the-compiler]: #breaking-tools-built-with-the-compiler
 
 Rust's build system builds a number of tools that make use of the
-internals of the compiler. This includes 
+internals of the compiler. This includes
 [Clippy](https://github.com/rust-lang/rust-clippy),
 [RLS](https://github.com/rust-lang/rls) and
 [rustfmt](https://github.com/rust-lang/rustfmt). If these tools
@@ -220,7 +240,7 @@ Here are those same steps in detail:
    `config.toml.example` in the root directory of the Rust repository.
    Set `submodules = false` in the `[build]` section. This will prevent `x.py`
    from resetting to the original branch after you make your changes. If you
-   need to [update any submodules to their latest versions][updating-submodules],
+   need to [update any submodules to their latest versions](#updating-submodules),
    see the section of this file about that for more information.
 2. (optional) Run `./x.py test src/tools/rustfmt` (substituting the submodule
    that broke for `rustfmt`). Fix any errors in the submodule (and possibly others).
@@ -234,7 +254,6 @@ Here are those same steps in detail:
 8. (optional) Send a PR to rust-lang/rust updating the submodule.
 
 #### Updating submodules
-[updating-submodules]: #updating-submodules
 
 These instructions are specific to updating `rustfmt`, however they may apply
 to the other submodules as well. Please help by improving these instructions
@@ -288,22 +307,11 @@ This should change the version listed in `Cargo.lock` to the new version you upd
 the submodule to. Running `./x.py build` should work now.
 
 ## Writing Documentation
-[writing-documentation]: #writing-documentation
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
 is located in `src/doc` in the tree, and standard API documentation is generated
-from the source code itself.
-
-Documentation pull requests function in the same way as other pull requests,
-though you may see a slightly different form of `r+`:
-
-    @bors: r+ 38fe8d2 rollup
-
-That additional `rollup` tells @bors that this change is eligible for a 'rollup'.
-To save @bors some work, and to get small changes through more quickly, when
-@bors attempts to merge a commit that's rollup-eligible, it will also merge
-the other rollup-eligible patches too, and they'll get tested and merged at
-the same time.
+from the source code itself. Documentation pull requests function in the same way
+as other pull requests.
 
 To find documentation-related issues, sort by the [T-doc label][tdoc].
 
@@ -325,7 +333,6 @@ tracker in that repo is also a great way to find things that need doing. There
 are issues for beginners and advanced compiler devs alike!
 
 ## Issue Triage
-[issue-triage]: #issue-triage
 
 Sometimes, an issue will stay open, even though the bug has been fixed. And
 sometimes, the original bug may go stale because something has changed in the
@@ -393,7 +400,6 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 [rfcbot]: https://github.com/anp/rfcbot-rs/
 
 ## Out-of-tree Contributions
-[out-of-tree-contributions]: #out-of-tree-contributions
 
 There are a number of other ways to contribute to Rust that don't deal with
 this repository.
@@ -413,7 +419,6 @@ valuable!
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
 
 ## Helpful Links and Information
-[helpful-info]: #helpful-info
 
 For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information
@@ -428,7 +433,8 @@ are:
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
-* For @bors, [this cheat sheet][cheatsheet] is helpful (Remember to replace `@homu` with `@bors` in the commands that you use.)
+* For [@bors][bors], [this cheat sheet][cheatsheet] is helpful
+(though you'll need to replace `@homu` with `@bors` in any commands)
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 

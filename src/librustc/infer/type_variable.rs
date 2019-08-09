@@ -1,11 +1,11 @@
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
-use crate::ty::{self, Ty};
+use crate::ty::{self, Ty, TyVid};
 
 use std::cmp;
 use std::marker::PhantomData;
 use std::u32;
-use rustc_data_structures::fx::FxHashMap;
+use std::ops::Range;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 
@@ -17,7 +17,7 @@ pub struct TypeVariableTable<'tcx> {
     /// the known value.
     eq_relations: ut::UnificationTable<ut::InPlace<TyVidEqKey<'tcx>>>,
 
-    /// Two variables are unified in `eq_relations` when we have a
+    /// Two variables are unified in `sub_relations` when we have a
     /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
     /// table exists only to help with the occurs check. In particular,
     /// we want to report constraints like these as an occurs check
@@ -37,28 +37,29 @@ pub struct TypeVariableTable<'tcx> {
     sub_relations: ut::UnificationTable<ut::InPlace<ty::TyVid>>,
 }
 
-/// Reasons to create a type inference variable
 #[derive(Copy, Clone, Debug)]
-pub enum TypeVariableOrigin {
-    MiscVariable(Span),
-    NormalizeProjectionType(Span),
-    TypeInference(Span),
-    TypeParameterDefinition(Span, InternedString),
-
-    /// one of the upvars or closure kind parameters in a `ClosureSubsts`
-    /// (before it has been determined)
-    ClosureSynthetic(Span),
-    SubstitutionPlaceholder(Span),
-    AutoDeref(Span),
-    AdjustmentType(Span),
-    DivergingStmt(Span),
-    DivergingBlockExpr(Span),
-    DivergingFn(Span),
-    LatticeVariable(Span),
-    Generalized(ty::TyVid),
+pub struct TypeVariableOrigin {
+    pub kind: TypeVariableOriginKind,
+    pub span: Span,
 }
 
-pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
+/// Reasons to create a type inference variable
+#[derive(Copy, Clone, Debug)]
+pub enum TypeVariableOriginKind {
+    MiscVariable,
+    NormalizeProjectionType,
+    TypeInference,
+    TypeParameterDefinition(InternedString),
+
+    /// One of the upvars or closure kind parameters in a `ClosureSubsts`
+    /// (before it has been determined).
+    ClosureSynthetic,
+    SubstitutionPlaceholder,
+    AutoDeref,
+    AdjustmentType,
+    DivergingFn,
+    LatticeVariable,
+}
 
 struct TypeVariableData {
     origin: TypeVariableOrigin,
@@ -114,7 +115,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///
     /// Note that this function does not return care whether
     /// `vid` has been unified with something else or not.
-    pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
+    pub fn var_diverges(&self, vid: ty::TyVid) -> bool {
         self.values.get(vid.index as usize).diverging
     }
 
@@ -292,24 +293,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.sub_relations.commit(sub_snapshot);
     }
 
-    /// Returns a map `{V1 -> V2}`, where the keys `{V1}` are
-    /// ty-variables created during the snapshot, and the values
-    /// `{V2}` are the root variables that they were unified with,
-    /// along with their origin.
-    pub fn types_created_since_snapshot(&mut self, s: &Snapshot<'tcx>) -> TypeVariableMap {
-        let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
-
-        actions_since_snapshot
-            .iter()
-            .filter_map(|action| match action {
-                &sv::UndoLog::NewElem(index) => Some(ty::TyVid { index: index as u32 }),
-                _ => None,
-            })
-            .map(|vid| {
-                let origin = self.values.get(vid.index as usize).origin.clone();
-                (vid, origin)
-            })
-            .collect()
+    /// Returns a range of the type variables created during the snapshot.
+    pub fn vars_since_snapshot(
+        &mut self,
+        s: &Snapshot<'tcx>,
+    ) -> (Range<TyVid>, Vec<TypeVariableOrigin>) {
+        let range = self.eq_relations.vars_since_snapshot(&s.eq_snapshot);
+        (range.start.vid..range.end.vid, (range.start.vid.index..range.end.vid.index).map(|index| {
+            self.values.get(index as usize).origin.clone()
+        }).collect())
     }
 
     /// Finds the set of type variables that existed *before* `s`
@@ -376,7 +368,7 @@ impl sv::SnapshotVecDelegate for Delegate {
 
     fn reverse(_values: &mut Vec<TypeVariableData>, _action: Instantiate) {
         // We don't actually have to *do* anything to reverse an
-        // instanation; the value for a variable is stored in the
+        // instantiation; the value for a variable is stored in the
         // `eq_relations` and hence its rollback code will handle
         // it. In fact, we could *almost* just remove the
         // `SnapshotVec` entirely, except that we would have to
@@ -455,4 +447,3 @@ impl ut::UnifyKey for ty::TyVid {
     fn from_index(i: u32) -> ty::TyVid { ty::TyVid { index: i } }
     fn tag() -> &'static str { "TyVid" }
 }
-

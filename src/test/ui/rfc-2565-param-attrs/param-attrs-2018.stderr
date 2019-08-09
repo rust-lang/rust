@@ -1,0 +1,18 @@
+error: expected one of `:` or `@`, found `)`
+  --> $DIR/param-attrs-2018.rs:5:41
+   |
+LL | trait Trait2015 { fn foo(#[allow(C)] i32); }
+   |                                         ^ expected one of `:` or `@` here
+   |
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this was a parameter name, give it a type
+   |
+LL | trait Trait2015 { fn foo(#[allow(C)] i32: TypeName); }
+   |                                      ^^^^^^^^^^^^^
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | trait Trait2015 { fn foo(#[allow(C)] _: i32); }
+   |                                      ^^^^^^
+
+error: aborting due to previous error
+

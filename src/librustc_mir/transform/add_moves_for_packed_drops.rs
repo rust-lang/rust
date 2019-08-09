@@ -40,43 +40,34 @@ use crate::util;
 pub struct AddMovesForPackedDrops;
 
 impl MirPass for AddMovesForPackedDrops {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>)
-    {
-        debug!("add_moves_for_packed_drops({:?} @ {:?})", src, mir.span);
-        add_moves_for_packed_drops(tcx, mir, src.def_id());
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+        debug!("add_moves_for_packed_drops({:?} @ {:?})", src, body.span);
+        add_moves_for_packed_drops(tcx, body, src.def_id());
     }
 }
 
-pub fn add_moves_for_packed_drops<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &mut Mir<'tcx>,
-    def_id: DefId)
-{
-    let patch = add_moves_for_packed_drops_patch(tcx, mir, def_id);
-    patch.apply(mir);
+pub fn add_moves_for_packed_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, def_id: DefId) {
+    let patch = add_moves_for_packed_drops_patch(tcx, body, def_id);
+    patch.apply(body);
 }
 
-fn add_moves_for_packed_drops_patch<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &Mir<'tcx>,
-    def_id: DefId)
-    -> MirPatch<'tcx>
-{
-    let mut patch = MirPatch::new(mir);
+fn add_moves_for_packed_drops_patch<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    def_id: DefId,
+) -> MirPatch<'tcx> {
+    let mut patch = MirPatch::new(body);
     let param_env = tcx.param_env(def_id);
 
-    for (bb, data) in mir.basic_blocks().iter_enumerated() {
+    for (bb, data) in body.basic_blocks().iter_enumerated() {
         let loc = Location { block: bb, statement_index: data.statements.len() };
         let terminator = data.terminator();
 
         match terminator.kind {
             TerminatorKind::Drop { ref location, .. }
-                if util::is_disaligned(tcx, mir, param_env, location) =>
+                if util::is_disaligned(tcx, body, param_env, location) =>
             {
-                add_move_for_packed_drop(tcx, mir, &mut patch, terminator,
+                add_move_for_packed_drop(tcx, body, &mut patch, terminator,
                                          loc, data.is_cleanup);
             }
             TerminatorKind::DropAndReplace { .. } => {
@@ -90,14 +81,14 @@ fn add_moves_for_packed_drops_patch<'a, 'tcx>(
     patch
 }
 
-fn add_move_for_packed_drop<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &Mir<'tcx>,
+fn add_move_for_packed_drop<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
     patch: &mut MirPatch<'tcx>,
     terminator: &Terminator<'tcx>,
     loc: Location,
-    is_cleanup: bool)
-{
+    is_cleanup: bool,
+) {
     debug!("add_move_for_packed_drop({:?} @ {:?})", terminator, loc);
     let (location, target, unwind) = match terminator.kind {
         TerminatorKind::Drop { ref location, target, unwind } =>
@@ -106,7 +97,7 @@ fn add_move_for_packed_drop<'a, 'tcx>(
     };
 
     let source_info = terminator.source_info;
-    let ty = location.ty(mir, tcx).to_ty(tcx);
+    let ty = location.ty(body, tcx).ty;
     let temp = patch.new_temp(ty, terminator.source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {
@@ -121,10 +112,10 @@ fn add_move_for_packed_drop<'a, 'tcx>(
 
     patch.add_statement(
         loc, StatementKind::StorageLive(temp));
-    patch.add_assign(loc, Place::Base(PlaceBase::Local(temp)),
+    patch.add_assign(loc, Place::from(temp),
                      Rvalue::Use(Operand::Move(location.clone())));
     patch.patch_terminator(loc.block, TerminatorKind::Drop {
-        location: Place::Base(PlaceBase::Local(temp)),
+        location: Place::from(temp),
         target: storage_dead_block,
         unwind
     });

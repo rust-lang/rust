@@ -1,7 +1,5 @@
 // Test for ICE from issue 57989
 
-#![feature(nll)]
-
 fn f(x: &i32) {
     let g = &x;
     *x = 0;     //~ ERROR cannot assign to `*x` which is behind a `&` reference

@@ -2,17 +2,17 @@
 
 trait Foo {}
 
-fn a(_x: Box<Foo+Send>) {
+fn a(_x: Box<dyn Foo + Send>) {
 }
 
-fn b(_x: &'static (Foo+'static)) {
+fn b(_x: &'static (dyn Foo + 'static)) {
 }
 
-fn c(x: Box<Foo+Sync>) {
+fn c(x: Box<dyn Foo + Sync>) {
     a(x); //~ ERROR mismatched types
 }
 
-fn d(x: &'static (Foo+Sync)) {
+fn d(x: &'static (dyn Foo + Sync)) {
     b(x);
 }
 

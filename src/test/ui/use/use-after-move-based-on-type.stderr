@@ -1,12 +1,12 @@
-error[E0382]: use of moved value: `x`
+error[E0382]: borrow of moved value: `x`
   --> $DIR/use-after-move-based-on-type.rs:4:20
    |
+LL |     let x = "Hello!".to_string();
+   |         - move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
 LL |     let _y = x;
-   |         -- value moved here
+   |              - value moved here
 LL |     println!("{}", x);
-   |                    ^ value used here after move
-   |
-   = note: move occurs because `x` has type `std::string::String`, which does not implement the `Copy` trait
+   |                    ^ value borrowed here after move
 
 error: aborting due to previous error
 

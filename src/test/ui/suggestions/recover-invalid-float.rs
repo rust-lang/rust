@@ -1,11 +1,10 @@
+// run-rustfix
+
 fn main() {
-    let _: usize = .3;
+    let _: f32 = .3;
     //~^ ERROR float literals must have an integer part
-    //~| ERROR mismatched types
-    let _: usize = .42f32;
+    let _: f32 = .42f32;
     //~^ ERROR float literals must have an integer part
-    //~| ERROR mismatched types
-    let _: usize = .5f64;
+    let _: f64 = .5f64;
     //~^ ERROR float literals must have an integer part
-    //~| ERROR mismatched types
 }

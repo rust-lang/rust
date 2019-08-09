@@ -1,0 +1,23 @@
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+  --> $DIR/issue-61452.rs:5:5
+   |
+LL | pub async fn f(x: Option<usize>) {
+   |                - help: consider changing this to be mutable: `mut x`
+LL |     x.take();
+   |     ^ cannot borrow as mutable
+
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/issue-61452.rs:10:5
+   |
+LL | pub async fn g(x: usize) {
+   |                -
+   |                |
+   |                first assignment to `x`
+   |                help: make this binding mutable: `mut x`
+LL |     x += 1;
+   |     ^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0384, E0596.
+For more information about an error, try `rustc --explain E0384`.

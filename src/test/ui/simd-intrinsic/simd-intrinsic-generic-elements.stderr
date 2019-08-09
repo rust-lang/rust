@@ -90,4 +90,3 @@ LL |         simd_shuffle8::<_, i32x2>(x, x, [0; 8]);
 
 error: aborting due to 15 previous errors
 
-For more information about this error, try `rustc --explain E0511`.

@@ -42,4 +42,3 @@ pub fn main() {
         do_something_with(j);
     }
 }
-

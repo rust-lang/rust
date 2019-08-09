@@ -1,8 +1,10 @@
 error[E0369]: binary operation `*` cannot be applied to type `bool`
-  --> $DIR/binop-mul-bool.rs:3:21
+  --> $DIR/binop-mul-bool.rs:3:26
    |
 LL | fn main() { let x = true * false; }
-   |                     ^^^^^^^^^^^^
+   |                     ---- ^ ----- bool
+   |                     |
+   |                     bool
    |
    = note: an implementation of `std::ops::Mul` might be missing for `bool`
 

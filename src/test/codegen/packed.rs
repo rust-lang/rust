@@ -152,4 +152,3 @@ pub fn pkd2_nested_pair(pair1: &mut Packed2NestedPair, pair2: &mut Packed2Nested
 // CHECK: call void @llvm.memcpy.{{.*}}(i8* align 2 %{{.*}}, i8* align 2 %{{.*}}, i{{[0-9]+}} 8, i1 false)
     *pair2 = *pair1;
 }
-

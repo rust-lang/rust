@@ -1,5 +1,3 @@
-// compile-flags:-Zborrowck=compare
-
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 
@@ -11,14 +9,11 @@ fn nll_fail() {
     let slice = &mut data;
     capitalize(slice);
     data.push('d');
-    //~^ ERROR (Ast) [E0499]
-    //~| ERROR (Mir) [E0499]
+    //~^ ERROR [E0499]
     data.push('e');
-    //~^ ERROR (Ast) [E0499]
-    //~| ERROR (Mir) [E0499]
+    //~^ ERROR [E0499]
     data.push('f');
-    //~^ ERROR (Ast) [E0499]
-    //~| ERROR (Mir) [E0499]
+    //~^ ERROR [E0499]
     capitalize(slice);
 }
 
@@ -27,11 +22,8 @@ fn nll_ok() {
     let slice = &mut data;
     capitalize(slice);
     data.push('d');
-    //~^ ERROR (Ast) [E0499]
     data.push('e');
-    //~^ ERROR (Ast) [E0499]
     data.push('f');
-    //~^ ERROR (Ast) [E0499]
 }
 
 fn capitalize(_: &mut [char]) {

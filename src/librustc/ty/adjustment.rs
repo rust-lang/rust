@@ -5,6 +5,34 @@ use crate::ty::subst::SubstsRef;
 use rustc_macros::HashStable;
 
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+pub enum PointerCast {
+    /// Go from a fn-item type to a fn-pointer type.
+    ReifyFnPointer,
+
+    /// Go from a safe fn pointer to an unsafe fn pointer.
+    UnsafeFnPointer,
+
+    /// Go from a non-capturing closure to an fn pointer or an unsafe fn pointer.
+    /// It cannot convert a closure that requires unsafe.
+    ClosureFnPointer(hir::Unsafety),
+
+    /// Go from a mut raw pointer to a const raw pointer.
+    MutToConstPointer,
+
+    /// Unsize a pointer/reference value, e.g., `&[T; n]` to
+    /// `&[T]`. Note that the source could be a thin or fat pointer.
+    /// This will do things like convert thin pointers to fat
+    /// pointers, or convert structs containing thin pointers to
+    /// structs containing fat pointers, or convert between fat
+    /// pointers. We don't store the details of how the transform is
+    /// done (in fact, we don't know that, because it might depend on
+    /// the precise type parameters). We just store the target
+    /// type. Codegen backends and miri figure out what has to be done
+    /// based on the precise source/target type at hand.
+    Unsize,
+}
+
 /// Represents coercing a value to a different type of value.
 ///
 /// We transform values by following a number of `Adjust` steps in order.
@@ -56,35 +84,13 @@ pub enum Adjust<'tcx> {
     /// Go from ! to any type.
     NeverToAny,
 
-    /// Go from a fn-item type to a fn-pointer type.
-    ReifyFnPointer,
-
-    /// Go from a safe fn pointer to an unsafe fn pointer.
-    UnsafeFnPointer,
-
-    /// Go from a non-capturing closure to an fn pointer.
-    ClosureFnPointer,
-
-    /// Go from a mut raw pointer to a const raw pointer.
-    MutToConstPointer,
-
     /// Dereference once, producing a place.
     Deref(Option<OverloadedDeref<'tcx>>),
 
     /// Take the address and produce either a `&` or `*` pointer.
     Borrow(AutoBorrow<'tcx>),
 
-    /// Unsize a pointer/reference value, e.g., `&[T; n]` to
-    /// `&[T]`. Note that the source could be a thin or fat pointer.
-    /// This will do things like convert thin pointers to fat
-    /// pointers, or convert structs containing thin pointers to
-    /// structs containing fat pointers, or convert between fat
-    /// pointers. We don't store the details of how the transform is
-    /// done (in fact, we don't know that, because it might depend on
-    /// the precise type parameters). We just store the target
-    /// type. Codegen backends and miri figure out what has to be done
-    /// based on the precise source/target type at hand.
-    Unsize,
+    Pointer(PointerCast),
 }
 
 /// An overloaded autoderef step, representing a `Deref(Mut)::deref(_mut)`
@@ -97,15 +103,14 @@ pub struct OverloadedDeref<'tcx> {
     pub mutbl: hir::Mutability,
 }
 
-impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
-    pub fn method_call(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, source: Ty<'tcx>)
-                       -> (DefId, SubstsRef<'tcx>) {
+impl<'tcx> OverloadedDeref<'tcx> {
+    pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
         let trait_def_id = match self.mutbl {
             hir::MutImmutable => tcx.lang_items().deref_trait(),
             hir::MutMutable => tcx.lang_items().deref_mut_trait()
         };
         let method_def_id = tcx.associated_items(trait_def_id.unwrap())
-            .find(|m| m.kind == ty::AssociatedKind::Method).unwrap().def_id;
+            .find(|m| m.kind == ty::AssocKind::Method).unwrap().def_id;
         (method_def_id, tcx.mk_substs_trait(source, &[]))
     }
 }

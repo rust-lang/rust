@@ -1,0 +1,41 @@
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/polonius-smoke-test.rs:7:5
+   |
+LL |     &x
+   |     ^^ returns a reference to data owned by the current function
+
+error[E0503]: cannot use `x` because it was mutably borrowed
+  --> $DIR/polonius-smoke-test.rs:13:13
+   |
+LL |     let y = &mut x;
+   |             ------ borrow of `x` occurs here
+LL |     let z = x;
+   |             ^ use of borrowed `x`
+LL |     let w = y;
+   |             - borrow later used here
+
+error[E0505]: cannot move out of `x` because it is borrowed
+  --> $DIR/polonius-smoke-test.rs:19:13
+   |
+LL |     let y = &mut *x;
+   |             ------- borrow of `*x` occurs here
+LL |     let z = x;
+   |             ^ move out of `x` occurs here
+LL |     y
+   |     - borrow later used here
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/polonius-smoke-test.rs:43:5
+   |
+LL |     let r = &mut *s;
+   |             ------- borrow of `*s` occurs here
+LL |     let tmp = foo(&r);
+LL |     s;
+   |     ^ move out of `s` occurs here
+LL |     tmp;
+   |     --- borrow later used here
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0503, E0505, E0515.
+For more information about an error, try `rustc --explain E0503`.

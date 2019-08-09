@@ -162,8 +162,15 @@ if (!DOMTokenList.prototype.remove) {
         var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
             from = parseInt(match[1], 10);
-            to = Math.min(50000, parseInt(match[2] || match[1], 10));
-            from = Math.min(from, to);
+            to = from;
+            if (typeof match[2] !== "undefined") {
+                to = parseInt(match[2], 10);
+            }
+            if (to < from) {
+                var tmp = to;
+                to = from;
+                from = tmp;
+            }
             elem = document.getElementById(from);
             if (!elem) {
                 return;
@@ -180,7 +187,11 @@ if (!DOMTokenList.prototype.remove) {
                 });
             });
             for (i = from; i <= to; ++i) {
-                addClass(document.getElementById(i), "line-highlighted");
+                elem = document.getElementById(i);
+                if (!elem) {
+                    break;
+                }
+                addClass(elem, "line-highlighted");
             }
         } else if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
             addClass(search, "hidden");
@@ -714,7 +725,10 @@ if (!DOMTokenList.prototype.remove) {
                 }
                 lev_distance = Math.min(levenshtein(obj[NAME], val.name), lev_distance);
                 if (lev_distance <= MAX_LEV_DISTANCE) {
-                    lev_distance = Math.min(checkGenerics(obj, val), lev_distance);
+                    // The generics didn't match but the name kinda did so we give it
+                    // a levenshtein distance value that isn't *this* good so it goes
+                    // into the search results but not too high.
+                    lev_distance = Math.ceil((checkGenerics(obj, val) + lev_distance) / 2);
                 } else if (obj.length > GENERICS_DATA && obj[GENERICS_DATA].length > 0) {
                     // We can check if the type we're looking for is inside the generics!
                     var olength = obj[GENERICS_DATA].length;
@@ -752,13 +766,26 @@ if (!DOMTokenList.prototype.remove) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
 
                 if (obj && obj.type && obj.type.length > OUTPUT_DATA) {
-                    var tmp = checkType(obj.type[OUTPUT_DATA], val, literalSearch);
-                    if (literalSearch === true && tmp === true) {
-                        return true;
+                    var ret = obj.type[OUTPUT_DATA];
+                    if (!obj.type[OUTPUT_DATA].length) {
+                        ret = [ret];
                     }
-                    lev_distance = Math.min(tmp, lev_distance);
-                    if (lev_distance === 0) {
-                        return 0;
+                    for (var x = 0; x < ret.length; ++x) {
+                        var r = ret[x];
+                        if (typeof r === "string") {
+                            r = [r];
+                        }
+                        var tmp = checkType(r, val, literalSearch);
+                        if (literalSearch === true) {
+                            if (tmp === true) {
+                                return true;
+                            }
+                            continue;
+                        }
+                        lev_distance = Math.min(tmp, lev_distance);
+                        if (lev_distance === 0) {
+                            return 0;
+                        }
                     }
                 }
                 return literalSearch === true ? false : lev_distance;
@@ -914,10 +941,10 @@ if (!DOMTokenList.prototype.remove) {
                     returned = checkReturned(ty, output, true);
                     if (output.name === "*" || returned === true) {
                         in_args = false;
-                        var module = false;
+                        var is_module = false;
 
                         if (input === "*") {
-                            module = true;
+                            is_module = true;
                         } else {
                             var allFound = true;
                             for (var it = 0; allFound === true && it < inputs.length; it++) {
@@ -939,7 +966,7 @@ if (!DOMTokenList.prototype.remove) {
                                 dontValidate: true,
                             };
                         }
-                        if (module === true) {
+                        if (is_module === true) {
                             results[fullId] = {
                                 id: i,
                                 index: -1,
@@ -1057,6 +1084,10 @@ if (!DOMTokenList.prototype.remove) {
                     if (index !== -1 || lev <= MAX_LEV_DISTANCE) {
                         if (index !== -1 && paths.length < 2) {
                             lev = 0;
+                        } else if (searchWords[j] === val) {
+                            // Small trick to fix when you're looking for a one letter type
+                            // and there are other short named types.
+                            lev = -1;
                         }
                         if (results[fullId] === undefined) {
                             results[fullId] = {
@@ -2055,6 +2086,14 @@ if (!DOMTokenList.prototype.remove) {
                     collapser(e, collapse);
                 });
             }
+
+            var blanket_list = document.getElementById("blanket-implementations-list");
+
+            if (blanket_list !== null) {
+                onEachLazy(blanket_list.getElementsByClassName("collapse-toggle"), function(e) {
+                    collapser(e, collapse);
+                });
+            }
         }
     }
 
@@ -2077,16 +2116,22 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     var toggle = createSimpleToggle(false);
+    var hideMethodDocs = getCurrentValue("rustdoc-method-docs") === "true";
+    var pageId = getPageId();
 
     var func = function(e) {
         var next = e.nextElementSibling;
         if (!next) {
             return;
         }
-        if (hasClass(next, "docblock") ||
-            (hasClass(next, "stability") &&
-             hasClass(next.nextElementSibling, "docblock"))) {
-            insertAfter(toggle.cloneNode(true), e.childNodes[e.childNodes.length - 1]);
+        if (hasClass(next, "docblock") === true ||
+            (hasClass(next, "stability") === true &&
+             hasClass(next.nextElementSibling, "docblock") === true)) {
+            var newToggle = toggle.cloneNode(true);
+            insertAfter(newToggle, e.childNodes[e.childNodes.length - 1]);
+            if (hideMethodDocs === true && hasClass(e, "method") === true) {
+                collapseDocs(newToggle, "hide", pageId);
+            }
         }
     };
 
@@ -2107,17 +2152,16 @@ if (!DOMTokenList.prototype.remove) {
     onEachLazy(document.getElementsByClassName("associatedconstant"), func);
     onEachLazy(document.getElementsByClassName("impl"), funcImpl);
     var impl_call = function() {};
-    if (getCurrentValue("rustdoc-method-docs") !== "false") {
+    if (hideMethodDocs === true) {
         impl_call = function(e, newToggle, pageId) {
             if (e.id.match(/^impl(?:-\d+)?$/) === null) {
                 // Automatically minimize all non-inherent impls
-                if (hasClass(e, "impl")) {
+                if (hasClass(e, "impl") === true) {
                     collapseDocs(newToggle, "hide", pageId);
                 }
             }
         };
     }
-    var pageId = getPageId();
     var newToggle = document.createElement("a");
     newToggle.href = "javascript:void(0)";
     newToggle.className = "collapse-toggle hidden-default collapsed";
@@ -2163,7 +2207,7 @@ if (!DOMTokenList.prototype.remove) {
             var inner_toggle = newToggle.cloneNode(true);
             inner_toggle.onclick = toggleClicked;
             e.insertBefore(inner_toggle, e.firstChild);
-            impl_call(e, inner_toggle, pageId);
+            impl_call(e.previousSibling, inner_toggle, pageId);
         }
     });
 
@@ -2242,6 +2286,8 @@ if (!DOMTokenList.prototype.remove) {
                     otherMessage += "struct";
                 } else if (hasClass(e, "non-exhaustive-enum")) {
                     otherMessage += "enum";
+                } else if (hasClass(e, "non-exhaustive-variant")) {
+                    otherMessage += "enum variant";
                 } else if (hasClass(e, "non-exhaustive-type")) {
                     otherMessage += "type";
                 }
@@ -2259,35 +2305,14 @@ if (!DOMTokenList.prototype.remove) {
             if (hasClass(e, "type-decl") === true && showItemDeclarations === true) {
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
+            if (hasClass(e, "non-exhaustive") === true) {
+                collapseDocs(e.previousSibling.childNodes[0], "toggle");
+            }
         }
     }
 
     onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
     onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
-
-    // In the search display, allows to switch between tabs.
-    function printTab(nb) {
-        if (nb === 0 || nb === 1 || nb === 2) {
-            currentTab = nb;
-        }
-        var nb_copy = nb;
-        onEachLazy(document.getElementById("titles").childNodes, function(elem) {
-            if (nb_copy === 0) {
-                addClass(elem, "selected");
-            } else {
-                removeClass(elem, "selected");
-            }
-            nb_copy -= 1;
-        });
-        onEachLazy(document.getElementById("results").childNodes, function(elem) {
-            if (nb === 0) {
-                elem.style.display = "";
-            } else {
-                elem.style.display = "none";
-            }
-            nb -= 1;
-        });
-    }
 
     function createToggleWrapper(tog) {
         var span = document.createElement("span");
@@ -2311,7 +2336,11 @@ if (!DOMTokenList.prototype.remove) {
     }
     var attributesToggle = createToggleWrapper(createSimpleToggle(false));
     onEachLazy(main.getElementsByClassName("attributes"), function(i_e) {
-        i_e.parentNode.insertBefore(attributesToggle.cloneNode(true), i_e);
+        var attr_tog = attributesToggle.cloneNode(true);
+        if (hasClass(i_e, "top-attr") === true) {
+            addClass(attr_tog, "top-attr");
+        }
+        i_e.parentNode.insertBefore(attr_tog, i_e);
         itemAttributesFunc(i_e);
     });
 
@@ -2373,6 +2402,30 @@ if (!DOMTokenList.prototype.remove) {
             showModal(e.lastElementChild.innerHTML);
         };
     });
+
+    // In the search display, allows to switch between tabs.
+    function printTab(nb) {
+        if (nb === 0 || nb === 1 || nb === 2) {
+            currentTab = nb;
+        }
+        var nb_copy = nb;
+        onEachLazy(document.getElementById("titles").childNodes, function(elem) {
+            if (nb_copy === 0) {
+                addClass(elem, "selected");
+            } else {
+                removeClass(elem, "selected");
+            }
+            nb_copy -= 1;
+        });
+        onEachLazy(document.getElementById("results").childNodes, function(elem) {
+            if (nb === 0) {
+                elem.style.display = "";
+            } else {
+                elem.style.display = "none";
+            }
+            nb -= 1;
+        });
+    }
 
     function putBackSearch(search_input) {
         if (search_input.value !== "") {

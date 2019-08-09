@@ -19,4 +19,3 @@ LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

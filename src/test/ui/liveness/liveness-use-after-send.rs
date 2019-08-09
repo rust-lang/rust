@@ -13,7 +13,7 @@ struct Chan<T>(isize, marker::PhantomData<T>);
 // message after the send deinitializes it
 fn test00_start(ch: Chan<Box<isize>>, message: Box<isize>, _count: Box<isize>) {
     send(ch, message);
-    println!("{}", message); //~ ERROR use of moved value: `message`
+    println!("{}", message); //~ ERROR borrow of moved value: `message`
 }
 
 fn main() { panic!(); }

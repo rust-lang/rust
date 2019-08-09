@@ -117,6 +117,9 @@ use std::time::{UNIX_EPOCH, SystemTime, Duration};
 
 use rand::{RngCore, thread_rng};
 
+#[cfg(test)]
+mod tests;
+
 const LOCK_FILE_EXT: &str = ".lock";
 const DEP_GRAPH_FILENAME: &str = "dep-graph.bin";
 const WORK_PRODUCTS_FILENAME: &str = "work-products.bin";
@@ -538,7 +541,7 @@ fn find_source_directory_in_iter<I>(iter: I,
         if source_directories_already_tried.contains(&session_dir) ||
            !is_session_directory(&directory_name) ||
            !is_finalized(&directory_name) {
-            debug!("find_source_directory_in_iter - ignoring.");
+            debug!("find_source_directory_in_iter - ignoring");
             continue
         }
 
@@ -693,7 +696,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
             let timestamp = match extract_timestamp_from_session_dir(lock_file_name) {
                 Ok(timestamp) => timestamp,
                 Err(()) => {
-                    debug!("Found lock-file with malformed timestamp: {}",
+                    debug!("found lock-file with malformed timestamp: {}",
                         crate_directory.join(&lock_file_name).display());
                     // Ignore it
                     continue
@@ -746,7 +749,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
         let timestamp = match extract_timestamp_from_session_dir(directory_name) {
             Ok(timestamp) => timestamp,
             Err(()) => {
-                debug!("Found session-dir with malformed timestamp: {}",
+                debug!("found session-dir with malformed timestamp: {}",
                         crate_directory.join(directory_name).display());
                 // Ignore it
                 continue
@@ -886,72 +889,11 @@ fn safe_remove_dir_all(p: &Path) -> io::Result<()> {
 fn safe_remove_file(p: &Path) -> io::Result<()> {
     if p.exists() {
         let canonicalized = p.canonicalize()?;
-        std_fs::remove_file(canonicalized)
+        match std_fs::remove_file(canonicalized) {
+            Err(ref err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
+            result => result,
+        }
     } else {
         Ok(())
     }
-}
-
-#[test]
-fn test_all_except_most_recent() {
-    assert_eq!(all_except_most_recent(
-        vec![
-            (UNIX_EPOCH + Duration::new(4, 0), PathBuf::from("4"), None),
-            (UNIX_EPOCH + Duration::new(1, 0), PathBuf::from("1"), None),
-            (UNIX_EPOCH + Duration::new(5, 0), PathBuf::from("5"), None),
-            (UNIX_EPOCH + Duration::new(3, 0), PathBuf::from("3"), None),
-            (UNIX_EPOCH + Duration::new(2, 0), PathBuf::from("2"), None),
-        ]).keys().cloned().collect::<FxHashSet<PathBuf>>(),
-        vec![
-            PathBuf::from("1"),
-            PathBuf::from("2"),
-            PathBuf::from("3"),
-            PathBuf::from("4"),
-        ].into_iter().collect::<FxHashSet<PathBuf>>()
-    );
-
-    assert_eq!(all_except_most_recent(
-        vec![
-        ]).keys().cloned().collect::<FxHashSet<PathBuf>>(),
-        FxHashSet::default()
-    );
-}
-
-#[test]
-fn test_timestamp_serialization() {
-    for i in 0 .. 1_000u64 {
-        let time = UNIX_EPOCH + Duration::new(i * 1_434_578, (i as u32) * 239_000);
-        let s = timestamp_to_string(time);
-        assert_eq!(Ok(time), string_to_timestamp(&s));
-    }
-}
-
-#[test]
-fn test_find_source_directory_in_iter() {
-    let already_visited = FxHashSet::default();
-
-    // Find newest
-    assert_eq!(find_source_directory_in_iter(
-        vec![PathBuf::from("crate-dir/s-3234-0000-svh"),
-             PathBuf::from("crate-dir/s-2234-0000-svh"),
-             PathBuf::from("crate-dir/s-1234-0000-svh")].into_iter(), &already_visited),
-        Some(PathBuf::from("crate-dir/s-3234-0000-svh")));
-
-    // Filter out "-working"
-    assert_eq!(find_source_directory_in_iter(
-        vec![PathBuf::from("crate-dir/s-3234-0000-working"),
-             PathBuf::from("crate-dir/s-2234-0000-svh"),
-             PathBuf::from("crate-dir/s-1234-0000-svh")].into_iter(), &already_visited),
-        Some(PathBuf::from("crate-dir/s-2234-0000-svh")));
-
-    // Handle empty
-    assert_eq!(find_source_directory_in_iter(vec![].into_iter(), &already_visited),
-               None);
-
-    // Handle only working
-    assert_eq!(find_source_directory_in_iter(
-        vec![PathBuf::from("crate-dir/s-3234-0000-working"),
-             PathBuf::from("crate-dir/s-2234-0000-working"),
-             PathBuf::from("crate-dir/s-1234-0000-working")].into_iter(), &already_visited),
-        None);
 }

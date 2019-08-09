@@ -34,7 +34,7 @@ impl Drop for VecHolder {
 
 struct Container<'a> {
     v: VecHolder,
-    d: RefCell<Vec<Box<Obj+'a>>>,
+    d: RefCell<Vec<Box<dyn Obj+'a>>>,
 }
 
 impl<'a> Container<'a> {
@@ -71,5 +71,4 @@ fn main() {
     //~^ ERROR `container` does not live long enough
     println!("container.v[30]: {:?}", container.v.v[30]);
     container.store(test);
-    //~^ ERROR `container` does not live long enough
 }

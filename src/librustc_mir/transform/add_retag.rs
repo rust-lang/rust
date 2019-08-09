@@ -14,42 +14,37 @@ pub struct AddRetag;
 /// after the assignment, we can be sure to obtain the same place value.
 /// (Concurrent accesses by other threads are no problem as these are anyway non-atomic
 /// copies.  Data races are UB.)
-fn is_stable<'tcx>(
-    place: &Place<'tcx>,
+fn is_stable(
+    place: PlaceRef<'_, '_>,
 ) -> bool {
-    use rustc::mir::Place::*;
-
-    match *place {
-        // Locals and statics have stable addresses, for sure
-        Base(PlaceBase::Local { .. }) |
-        Base(PlaceBase::Promoted { .. }) |
-        Base(PlaceBase::Static { .. }) =>
-            true,
-        // Recurse for projections
-        Projection(ref proj) => {
-            match proj.elem {
-                // Which place this evaluates to can change with any memory write,
-                // so cannot assume this to be stable.
-                ProjectionElem::Deref =>
-                    false,
-                // Array indices are intersting, but MIR building generates a *fresh*
-                // temporary for every array access, so the index cannot be changed as
-                // a side-effect.
-                ProjectionElem::Index { .. } |
-                // The rest is completely boring, they just offset by a constant.
-                ProjectionElem::Field { .. } |
-                ProjectionElem::ConstantIndex { .. } |
-                ProjectionElem::Subslice { .. } |
-                ProjectionElem::Downcast { .. } =>
-                    is_stable(&proj.base),
-            }
+    if let Some(proj) = &place.projection {
+        match proj.elem {
+            // Which place this evaluates to can change with any memory write,
+            // so cannot assume this to be stable.
+            ProjectionElem::Deref =>
+                false,
+            // Array indices are intersting, but MIR building generates a *fresh*
+            // temporary for every array access, so the index cannot be changed as
+            // a side-effect.
+            ProjectionElem::Index { .. } |
+            // The rest is completely boring, they just offset by a constant.
+            ProjectionElem::Field { .. } |
+            ProjectionElem::ConstantIndex { .. } |
+            ProjectionElem::Subslice { .. } |
+            ProjectionElem::Downcast { .. } =>
+                is_stable(PlaceRef {
+                    base: place.base,
+                    projection: &proj.base,
+                }),
         }
+    } else {
+        true
     }
 }
 
 /// Determine whether this type may have a reference in it, recursing below compound types but
 /// not below references.
-fn may_have_reference<'a, 'gcx, 'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+fn may_have_reference<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
     match ty.sty {
         // Primitive types that are not references
         ty::Bool | ty::Char |
@@ -64,7 +59,7 @@ fn may_have_reference<'a, 'gcx, 'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
         ty::Array(ty, ..) | ty::Slice(ty) =>
             may_have_reference(ty, tcx),
         ty::Tuple(tys) =>
-            tys.iter().any(|ty| may_have_reference(ty, tcx)),
+            tys.iter().any(|ty| may_have_reference(ty.expect_ty(), tcx)),
         ty::Adt(adt, substs) =>
             adt.variants.iter().any(|v| v.fields.iter().any(|f|
                 may_have_reference(f.ty(tcx, substs), tcx)
@@ -75,20 +70,17 @@ fn may_have_reference<'a, 'gcx, 'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
 }
 
 impl MirPass for AddRetag {
-    fn run_pass<'a, 'tcx>(&self,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          _src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>)
-    {
+    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
         }
-        let (span, arg_count) = (mir.span, mir.arg_count);
-        let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
+        let (span, arg_count) = (body.span, body.arg_count);
+        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let needs_retag = |place: &Place<'tcx>| {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
-            is_stable(place) && may_have_reference(place.ty(&*local_decls, tcx).to_ty(tcx), tcx)
+            is_stable(place.as_ref())
+                && may_have_reference(place.ty(&*local_decls, tcx).ty, tcx)
         };
 
         // PART 1
@@ -101,7 +93,7 @@ impl MirPass for AddRetag {
             };
             // Gather all arguments, skip return value.
             let places = local_decls.iter_enumerated().skip(1).take(arg_count)
-                    .map(|(local, _)| Place::Base(PlaceBase::Local(local)))
+                    .map(|(local, _)| Place::from(local))
                     .filter(needs_retag)
                     .collect::<Vec<_>>();
             // Emit their retags.
@@ -165,7 +157,7 @@ impl MirPass for AddRetag {
                         if src_ty.is_region_ptr() {
                             // The only `Misc` casts on references are those creating raw pointers.
                             assert!(dest_ty.is_unsafe_ptr());
-                            (RetagKind::Raw, place)
+                            (RetagKind::Raw, place.clone())
                         } else {
                             // Some other cast, no retag
                             continue
@@ -183,7 +175,7 @@ impl MirPass for AddRetag {
                             _ =>
                                 RetagKind::Default,
                         };
-                        (kind, place)
+                        (kind, place.clone())
                     }
                     // Do nothing for the rest
                     _ => continue,
@@ -192,7 +184,7 @@ impl MirPass for AddRetag {
                 let source_info = block_data.statements[i].source_info;
                 block_data.statements.insert(i+1, Statement {
                     source_info,
-                    kind: StatementKind::Retag(retag_kind, place.clone()),
+                    kind: StatementKind::Retag(retag_kind, place),
                 });
             }
         }

@@ -1,17 +1,26 @@
 error[E0508]: cannot move out of type `[Foo]`, a non-copy slice
-  --> $DIR/borrowck-move-out-of-vec-tail.rs:20:18
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:19:19
    |
-LL |                   &[Foo { string: a },
-   |                    ^              - hint: to prevent move, use `ref a` or `ref mut a`
-   |  __________________|
-   | |
-LL | |
-LL | |
-LL | |
-LL | |                   Foo { string: b }] => {
-   | |_________________________________-__^ cannot move out of here
-   |                                   |
-   |                                   ...and here (use `ref b` or `ref mut b`)
+LL |             match tail {
+   |                   ^^^^ cannot move out of here
+LL |
+LL |                 &[Foo { string: a },
+   |                                 - data moved here
+LL |                   Foo { string: b }] => {
+   |                                 - ...and here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/borrowck-move-out-of-vec-tail.rs:21:33
+   |
+LL |                 &[Foo { string: a },
+   |                                 ^
+LL |                   Foo { string: b }] => {
+   |                                 ^
+help: consider removing the `&`
+   |
+LL |                 [Foo { string: a },
+LL |                   Foo { string: b }] => {
+   |
 
 error: aborting due to previous error
 

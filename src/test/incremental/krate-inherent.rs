@@ -1,6 +1,6 @@
 // revisions: cfail1 cfail2
 // compile-flags: -Z query-dep-graph
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -21,4 +21,3 @@ pub mod x {
 
 #[cfg(cfail1)]
 pub fn bar() { } // remove this unrelated fn in cfail2, which should not affect `x::method`
-

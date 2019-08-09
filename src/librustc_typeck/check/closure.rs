@@ -7,7 +7,7 @@ use crate::middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferOk, InferResult};
 use rustc::infer::LateBoundRegionConversionTime;
-use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::Obligation;
 use rustc::traits::error_reporting::ArgKind;
 use rustc::ty::{self, Ty, GenericParamDefKind};
@@ -32,12 +32,12 @@ struct ClosureSignatures<'tcx> {
     liberated_sig: ty::FnSig<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_closure(
         &self,
         expr: &hir::Expr,
         _capture: hir::CaptureClause,
-        decl: &'gcx hir::FnDecl,
+        decl: &'tcx hir::FnDecl,
         body_id: hir::BodyId,
         gen: Option<hir::GeneratorMovability>,
         expected: Expectation<'tcx>,
@@ -62,8 +62,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         expr: &hir::Expr,
         opt_kind: Option<ty::ClosureKind>,
-        decl: &'gcx hir::FnDecl,
-        body: &'gcx hir::Body,
+        decl: &'tcx hir::FnDecl,
+        body: &'tcx hir::Body,
         gen: Option<hir::GeneratorMovability>,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> Ty<'tcx> {
@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             opt_kind, expected_sig
         );
 
-        let expr_def_id = self.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
+        let expr_def_id = self.tcx.hir().local_def_id(expr.hir_id);
 
         let ClosureSignatures {
             bound_sig,
@@ -102,7 +102,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     span_bug!(expr.span, "closure has lifetime param")
                 }
                 GenericParamDefKind::Type { .. } => {
-                    self.infcx.next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span)).into()
+                    self.infcx.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::ClosureSynthetic,
+                        span: expr.span,
+                    }).into()
                 }
                 GenericParamDefKind::Const => {
                     span_bug!(expr.span, "closure has const param")
@@ -246,7 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given a projection like "<F as Fn(X)>::Result == Y", we can deduce
-    /// everything we need to know about a closure.
+    /// everything we need to know about a closure or generator.
     ///
     /// The `cause_span` should be the span that caused us to
     /// have this expected signature, or `None` if we can't readily
@@ -262,37 +265,50 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
-        if tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_none() {
+        let is_fn = tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_some();
+        let gen_trait = tcx.lang_items().gen_trait().unwrap();
+        let is_gen = gen_trait == trait_ref.def_id();
+        if !is_fn && !is_gen {
+            debug!("deduce_sig_from_projection: not fn or generator");
             return None;
         }
 
-        let arg_param_ty = trait_ref.skip_binder().substs.type_at(1);
-        let arg_param_ty = self.resolve_type_vars_if_possible(&arg_param_ty);
-        debug!(
-            "deduce_sig_from_projection: arg_param_ty {:?}",
-            arg_param_ty
-        );
+        if is_gen {
+            // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
+            // associated item and not yield.
+            let return_assoc_item = self.tcx.associated_items(gen_trait).nth(1).unwrap().def_id;
+            if return_assoc_item != projection.projection_def_id() {
+                debug!("deduce_sig_from_projection: not return assoc item of generator");
+                return None;
+            }
+        }
 
-        let input_tys = match arg_param_ty.sty {
-            ty::Tuple(tys) => tys.into_iter(),
-            _ => return None
+        let input_tys = if is_fn {
+            let arg_param_ty = trait_ref.skip_binder().substs.type_at(1);
+            let arg_param_ty = self.resolve_vars_if_possible(&arg_param_ty);
+            debug!("deduce_sig_from_projection: arg_param_ty={:?}", arg_param_ty);
+
+            match arg_param_ty.sty {
+                ty::Tuple(tys) => tys.into_iter().map(|k| k.expect_ty()).collect::<Vec<_>>(),
+                _ => return None,
+            }
+        } else {
+            // Generators cannot have explicit arguments.
+            vec![]
         };
 
         let ret_param_ty = projection.skip_binder().ty;
-        let ret_param_ty = self.resolve_type_vars_if_possible(&ret_param_ty);
-        debug!(
-            "deduce_sig_from_projection: ret_param_ty {:?}",
-            ret_param_ty
-        );
+        let ret_param_ty = self.resolve_vars_if_possible(&ret_param_ty);
+        debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
 
         let sig = self.tcx.mk_fn_sig(
-            input_tys.cloned(),
-            ret_param_ty,
+            input_tys.iter(),
+            &ret_param_ty,
             false,
             hir::Unsafety::Normal,
             Abi::Rust,
         );
-        debug!("deduce_sig_from_projection: sig {:?}", sig);
+        debug!("deduce_sig_from_projection: sig={:?}", sig);
 
         Some(ExpectedSig { cause_span, sig })
     }
@@ -576,13 +592,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         expr_def_id: DefId,
         decl: &hir::FnDecl,
     ) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv<'_, '_> = self;
+        let astconv: &dyn AstConv<'_> = self;
 
         // First, convert the types that the user supplied (if any).
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
         let supplied_return = match decl.output {
             hir::Return(ref output) => astconv.ast_ty_to_ty(&output),
-            hir::DefaultReturn(_) => astconv.ty_infer(decl.output.span()),
+            hir::DefaultReturn(_) => astconv.ty_infer(None, decl.output.span()),
         };
 
         let result = ty::Binder::bind(self.tcx.mk_fn_sig(
@@ -608,7 +624,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// so should yield an error, but returns back a signature where
     /// all parameters are of type `TyErr`.
     fn error_sig_of_closure(&self, decl: &hir::FnDecl) -> ty::PolyFnSig<'tcx> {
-        let astconv: &dyn AstConv<'_, '_> = self;
+        let astconv: &dyn AstConv<'_> = self;
 
         let supplied_arguments = decl.inputs.iter().map(|a| {
             // Convert the types that the user supplied (if any), but ignore them.

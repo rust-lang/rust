@@ -1,0 +1,22 @@
+error[E0119]: conflicting implementations of trait `complex_impl_support::External` for type `(Q, complex_impl_support::M<'_, '_, '_, std::boxed::Box<_>, _, _>)`:
+  --> $DIR/complex-impl.rs:9:1
+   |
+LL | impl<R> External for (Q, R) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `complex_impl_support`:
+           - impl<'a, 'b, 'c, T, U, V, W> complex_impl_support::External for (T, complex_impl_support::M<'a, 'b, 'c, std::boxed::Box<U>, V, W>)
+             where <U as std::ops::FnOnce<(T,)>>::Output == V, <V as std::iter::Iterator>::Item == T, 'b : 'a, T : 'a, U: std::ops::FnOnce<(T,)>, U : 'static, V: std::iter::Iterator, V: std::clone::Clone, W: std::ops::Add, <W as std::ops::Add>::Output: std::marker::Copy;
+
+error[E0210]: type parameter `R` must be used as the type parameter for some local type (e.g., `MyStruct<R>`)
+  --> $DIR/complex-impl.rs:9:1
+   |
+LL | impl<R> External for (Q, R) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ type parameter `R` must be used as the type parameter for some local type
+   |
+   = note: only traits defined in the current crate can be implemented for a type parameter
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0210.
+For more information about an error, try `rustc --explain E0119`.

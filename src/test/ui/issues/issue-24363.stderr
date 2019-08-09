@@ -5,14 +5,16 @@ LL |     1.create_a_type_error[
    |       ^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: binary operation `+` cannot be applied to type `()`
-  --> $DIR/issue-24363.rs:3:9
+  --> $DIR/issue-24363.rs:3:11
    |
 LL |         ()+()
-   |         ^^^^^
+   |         --^-- ()
+   |         |
+   |         ()
    |
    = note: an implementation of `std::ops::Add` might be missing for `()`
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0369, E0610.
+Some errors have detailed explanations: E0369, E0610.
 For more information about an error, try `rustc --explain E0369`.

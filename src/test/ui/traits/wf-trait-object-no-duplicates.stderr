@@ -1,0 +1,58 @@
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/wf-trait-object-no-duplicates.rs:8:21
+   |
+LL | type _0 = dyn Obj + Obj;
+   |               ---   ^^^
+   |               |     |
+   |               |     additional non-auto trait
+   |               |     trait alias used in trait object type (additional use)
+   |               first non-auto trait
+   |               trait alias used in trait object type (first use)
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/wf-trait-object-no-duplicates.rs:13:28
+   |
+LL | type _1 = dyn Send + Obj + Obj;
+   |                      ---   ^^^
+   |                      |     |
+   |                      |     additional non-auto trait
+   |                      |     trait alias used in trait object type (additional use)
+   |                      first non-auto trait
+   |                      trait alias used in trait object type (first use)
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/wf-trait-object-no-duplicates.rs:16:28
+   |
+LL | type _2 = dyn Obj + Send + Obj;
+   |               ---          ^^^
+   |               |            |
+   |               |            additional non-auto trait
+   |               |            trait alias used in trait object type (additional use)
+   |               first non-auto trait
+   |               trait alias used in trait object type (first use)
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/wf-trait-object-no-duplicates.rs:26:34
+   |
+LL | type _4 = dyn for<'a> ObjL<'a> + for<'b> ObjL<'b>;
+   |               ----------------   ^^^^^^^^^^^^^^^^
+   |               |                  |
+   |               |                  additional non-auto trait
+   |               |                  trait alias used in trait object type (additional use)
+   |               first non-auto trait
+   |               trait alias used in trait object type (first use)
+
+error[E0225]: only auto traits can be used as additional traits in a trait object
+  --> $DIR/wf-trait-object-no-duplicates.rs:30:42
+   |
+LL | type _5 = dyn ObjT<for<'a> fn(&'a u8)> + ObjT<for<'b> fn(&'b u8)>;
+   |               ------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^
+   |               |                          |
+   |               |                          additional non-auto trait
+   |               |                          trait alias used in trait object type (additional use)
+   |               first non-auto trait
+   |               trait alias used in trait object type (first use)
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0225`.

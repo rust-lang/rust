@@ -1,0 +1,35 @@
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `}`
+  --> $DIR/issue-60075.rs:6:10
+   |
+LL |         });
+   |          ^ expected one of `.`, `;`, `?`, `else`, or an operator here
+
+error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
+  --> $DIR/issue-60075.rs:6:11
+   |
+LL |     fn qux() -> Option<usize> {
+   |                               - unclosed delimiter
+LL |         let _ = if true {
+LL |         });
+   |           ^ help: `}` may belong here
+
+error: expected identifier, found `;`
+  --> $DIR/issue-60075.rs:6:11
+   |
+LL |         });
+   |           ^ expected identifier
+
+error: missing `fn`, `type`, or `const` for trait-item declaration
+  --> $DIR/issue-60075.rs:6:12
+   |
+LL |           });
+   |  ____________^
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         Some(4)
+   | |________^ missing `fn`, `type`, or `const`
+
+error: aborting due to 4 previous errors
+

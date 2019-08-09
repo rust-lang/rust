@@ -1,5 +1,4 @@
 #![feature(generators)]
-#![feature(nll)]
 
 fn main() {
     || {

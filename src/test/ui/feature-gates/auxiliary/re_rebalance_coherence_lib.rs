@@ -1,5 +1,4 @@
-
-pub trait Backend{}
+pub trait Backend {}
 pub trait SupportsDefaultKeyword {}
 
 impl SupportsDefaultKeyword for Postgres {}

@@ -1,4 +1,4 @@
-use rustc::mir::{BasicBlock, Location, Mir};
+use rustc::mir::{BasicBlock, Location, Body};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 /// Maps between a MIR Location, which identifies a particular
@@ -30,9 +30,9 @@ crate enum RichLocation {
 }
 
 impl LocationTable {
-    crate fn new(mir: &Mir<'_>) -> Self {
+    crate fn new(body: &Body<'_>) -> Self {
         let mut num_points = 0;
-        let statements_before_block = mir.basic_blocks()
+        let statements_before_block = body.basic_blocks()
             .iter()
             .map(|block_data| {
                 let v = num_points;

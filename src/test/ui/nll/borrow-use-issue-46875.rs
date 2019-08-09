@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // run-pass
 
 fn vec() {

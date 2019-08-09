@@ -58,12 +58,12 @@ struct S3<F>(F) where for<'xa, 'xb: 'xa> F: Fn(&'xa i32, &'xb i32) -> &'xa i32;
 struct S_fnty(for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32);
 //~^ ERROR lifetime bounds cannot be used in this context
 
-type T1 = Box<for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>;
+type T1 = Box<dyn for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>;
 //~^ ERROR lifetime bounds cannot be used in this context
 
 fn main() {
     let _ : Option<for<'xa, 'xb: 'xa> fn(&'xa i32, &'xb i32) -> &'xa i32> = None;
     //~^ ERROR lifetime bounds cannot be used in this context
-    let _ : Option<Box<for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>> = None;
+    let _ : Option<Box<dyn for<'xa, 'xb: 'xa> Fn(&'xa i32, &'xb i32) -> &'xa i32>> = None;
     //~^ ERROR lifetime bounds cannot be used in this context
 }

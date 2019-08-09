@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn main() {
     let ref my_ref @ _ = 0;
     *my_ref = 0;

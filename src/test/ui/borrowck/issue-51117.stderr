@@ -5,9 +5,8 @@ LL |         Some(baz) => {
    |              --- first mutable borrow occurs here
 LL |             bar.take();
    |             ^^^ second mutable borrow occurs here
-...
-LL |     }
-   |     - first borrow ends here
+LL |             drop(baz);
+   |                  --- first borrow later used here
 
 error: aborting due to previous error
 

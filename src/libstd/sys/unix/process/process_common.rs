@@ -12,6 +12,14 @@ use crate::collections::BTreeMap;
 
 use libc::{c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
 
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "redox")] {
+        const DEV_NULL: &'static str = "null:\0";
+    } else {
+        const DEV_NULL: &'static str = "/dev/null\0";
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,7 +306,7 @@ impl Stdio {
                 opts.read(readable);
                 opts.write(!readable);
                 let path = unsafe {
-                    CStr::from_ptr("/dev/null\0".as_ptr() as *const _)
+                    CStr::from_ptr(DEV_NULL.as_ptr() as *const _)
                 };
                 let fd = File::open_c(&path, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
@@ -330,7 +338,7 @@ impl ChildStdio {
 }
 
 impl fmt::Debug for Command {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.program)?;
         for arg in &self.args {
             write!(f, " {:?}", arg)?;
@@ -380,7 +388,7 @@ impl From<c_int> for ExitStatus {
 }
 
 impl fmt::Display for ExitStatus {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
             write!(f, "exit code: {}", code)
         } else {
@@ -437,7 +445,7 @@ mod tests {
 
     #[cfg(target_os = "android")]
     unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
-        libc::memset(set as *mut _, 0, mem::size_of::<libc::sigset_t>());
+        set.write_bytes(0u8, 1);
         return 0;
     }
 
@@ -466,11 +474,11 @@ mod tests {
             // Test to make sure that a signal mask does not get inherited.
             let mut cmd = Command::new(OsStr::new("cat"));
 
-            let mut set: libc::sigset_t = mem::uninitialized();
-            let mut old_set: libc::sigset_t = mem::uninitialized();
-            t!(cvt(sigemptyset(&mut set)));
-            t!(cvt(sigaddset(&mut set, libc::SIGINT)));
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set, &mut old_set)));
+            let mut set = mem::MaybeUninit::<libc::sigset_t>::uninit();
+            let mut old_set = mem::MaybeUninit::<libc::sigset_t>::uninit();
+            t!(cvt(sigemptyset(set.as_mut_ptr())));
+            t!(cvt(sigaddset(set.as_mut_ptr(), libc::SIGINT)));
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), old_set.as_mut_ptr())));
 
             cmd.stdin(Stdio::MakePipe);
             cmd.stdout(Stdio::MakePipe);
@@ -479,7 +487,7 @@ mod tests {
             let stdin_write = pipes.stdin.take().unwrap();
             let stdout_read = pipes.stdout.take().unwrap();
 
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &old_set,
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, old_set.as_ptr(),
                                          ptr::null_mut())));
 
             t!(cvt(libc::kill(cat.id() as libc::pid_t, libc::SIGINT)));

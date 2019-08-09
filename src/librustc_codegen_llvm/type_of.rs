@@ -1,11 +1,10 @@
-use crate::abi::{FnType, FnTypeExt};
+use crate::abi::{FnType};
 use crate::common::*;
 use crate::type_::Type;
-use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
-use rustc_target::abi::FloatTy;
-use rustc_mir::monomorphize::item::DefPathBasedNames;
+use rustc::ty::layout::{self, Align, LayoutOf, FnTypeExt, PointeeInfo, Size, TyLayout};
+use rustc_target::abi::{FloatTy, TyLayoutMethods};
+use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc_codegen_ssa::traits::*;
 
 use std::fmt::Write;
@@ -62,6 +61,11 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 if def.is_enum() && !def.variants.is_empty() {
                     write!(&mut name, "::{}", def.variants[index].ident).unwrap();
                 }
+            }
+            if let (&ty::Generator(_, substs, _), &layout::Variants::Single { index })
+                 = (&layout.ty.sty, &layout.variants)
+            {
+                write!(&mut name, "::{}", substs.variant_name(index)).unwrap();
             }
             Some(name)
         }
@@ -169,31 +173,9 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum PointerKind {
-    /// Most general case, we know no restrictions to tell LLVM.
-    Shared,
-
-    /// `&T` where `T` contains no `UnsafeCell`, is `noalias` and `readonly`.
-    Frozen,
-
-    /// `&mut T`, when we know `noalias` is safe for LLVM.
-    UniqueBorrowed,
-
-    /// `Box<T>`, unlike `UniqueBorrowed`, it also has `noalias` on returns.
-    UniqueOwned
-}
-
-#[derive(Copy, Clone)]
-pub struct PointeeInfo {
-    pub size: Size,
-    pub align: Align,
-    pub safe: Option<PointerKind>,
-}
-
 pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
-    fn is_llvm_scalar_pair<'a>(&self) -> bool;
+    fn is_llvm_scalar_pair(&self) -> bool;
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
@@ -216,7 +198,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn is_llvm_scalar_pair<'a>(&self) -> bool {
+    fn is_llvm_scalar_pair(&self) -> bool {
         match self.abi {
             layout::Abi::ScalarPair(..) => true,
             layout::Abi::Uninhabited |
@@ -401,110 +383,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             return pointee;
         }
 
-        let mut result = None;
-        match self.ty.sty {
-            ty::RawPtr(mt) if offset.bytes() == 0 => {
-                let (size, align) = cx.size_and_align_of(mt.ty);
-                result = Some(PointeeInfo {
-                    size,
-                    align,
-                    safe: None
-                });
-            }
-
-            ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
-                let (size, align) = cx.size_and_align_of(ty);
-
-                let kind = match mt {
-                    hir::MutImmutable => if cx.type_is_freeze(ty) {
-                        PointerKind::Frozen
-                    } else {
-                        PointerKind::Shared
-                    },
-                    hir::MutMutable => {
-                        // Previously we would only emit noalias annotations for LLVM >= 6 or in
-                        // panic=abort mode. That was deemed right, as prior versions had many bugs
-                        // in conjunction with unwinding, but later versions didn’t seem to have
-                        // said issues. See issue #31681.
-                        //
-                        // Alas, later on we encountered a case where noalias would generate wrong
-                        // code altogether even with recent versions of LLVM in *safe* code with no
-                        // unwinding involved. See #54462.
-                        //
-                        // For now, do not enable mutable_noalias by default at all, while the
-                        // issue is being figured out.
-                        let mutable_noalias = cx.tcx.sess.opts.debugging_opts.mutable_noalias
-                            .unwrap_or(false);
-                        if mutable_noalias {
-                            PointerKind::UniqueBorrowed
-                        } else {
-                            PointerKind::Shared
-                        }
-                    }
-                };
-
-                result = Some(PointeeInfo {
-                    size,
-                    align,
-                    safe: Some(kind)
-                });
-            }
-
-            _ => {
-                let mut data_variant = match self.variants {
-                    layout::Variants::NicheFilling { dataful_variant, .. } => {
-                        // Only the niche itself is always initialized,
-                        // so only check for a pointer at its offset.
-                        //
-                        // If the niche is a pointer, it's either valid
-                        // (according to its type), or null (which the
-                        // niche field's scalar validity range encodes).
-                        // This allows using `dereferenceable_or_null`
-                        // for e.g., `Option<&T>`, and this will continue
-                        // to work as long as we don't start using more
-                        // niches than just null (e.g., the first page
-                        // of the address space, or unaligned pointers).
-                        if self.fields.offset(0) == offset {
-                            Some(self.for_variant(cx, dataful_variant))
-                        } else {
-                            None
-                        }
-                    }
-                    _ => Some(*self)
-                };
-
-                if let Some(variant) = data_variant {
-                    // We're not interested in any unions.
-                    if let layout::FieldPlacement::Union(_) = variant.fields {
-                        data_variant = None;
-                    }
-                }
-
-                if let Some(variant) = data_variant {
-                    let ptr_end = offset + layout::Pointer.size(cx);
-                    for i in 0..variant.fields.count() {
-                        let field_start = variant.fields.offset(i);
-                        if field_start <= offset {
-                            let field = variant.field(cx, i);
-                            if ptr_end <= field_start + field.size {
-                                // We found the right field, look inside it.
-                                result = field.pointee_info_at(cx, offset - field_start);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
-                if let Some(ref mut pointee) = result {
-                    if let ty::Adt(def, _) = self.ty.sty {
-                        if def.is_box() && offset.bytes() == 0 {
-                            pointee.safe = Some(PointerKind::UniqueOwned);
-                        }
-                    }
-                }
-            }
-        }
+        let result = Ty::pointee_info_at(*self, cx, offset);
 
         cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
         result

@@ -1,5 +1,7 @@
+use crate::symbol::{Symbol, sym};
 use std::fmt;
 use std::str::FromStr;
+use crate::GLOBALS;
 
 /// The edition of the compiler (RFC 2052)
 #[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, RustcEncodable, RustcDecodable, Eq)]
@@ -37,6 +39,10 @@ impl fmt::Display for Edition {
 }
 
 impl Edition {
+    pub fn from_session() -> Edition {
+        GLOBALS.with(|globals| globals.edition)
+    }
+
     pub fn lint_name(&self) -> &'static str {
         match *self {
             Edition::Edition2015 => "rust_2015_compatibility",
@@ -44,10 +50,10 @@ impl Edition {
         }
     }
 
-    pub fn feature_name(&self) -> &'static str {
+    pub fn feature_name(&self) -> Symbol {
         match *self {
-            Edition::Edition2015 => "rust_2015_preview",
-            Edition::Edition2018 => "rust_2018_preview",
+            Edition::Edition2015 => sym::rust_2015_preview,
+            Edition::Edition2018 => sym::rust_2018_preview,
         }
     }
 

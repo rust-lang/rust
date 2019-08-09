@@ -26,6 +26,7 @@ pub fn target() -> Result<Target, String> {
         is_like_emscripten: true,
         max_atomic_width: Some(32),
         post_link_args,
+        limit_rdylib_exports: false,
         target_family: Some("unix".to_string()),
         codegen_backend: "emscripten".to_string(),
         .. Default::default()

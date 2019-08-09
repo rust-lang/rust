@@ -156,7 +156,7 @@ impl Iterator for Vars {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Vars {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Vars { .. }")
     }
 }
@@ -170,7 +170,7 @@ impl Iterator for VarsOs {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for VarsOs {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("VarsOs { .. }")
     }
 }
@@ -253,7 +253,7 @@ pub enum VarError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl fmt::Display for VarError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             VarError::NotPresent => write!(f, "environment variable not found"),
             VarError::NotUnicode(ref s) => {
@@ -359,9 +359,12 @@ fn _remove_var(k: &OsStr) {
 /// An iterator that splits an environment variable into paths according to
 /// platform-specific conventions.
 ///
+/// The iterator element type is [`PathBuf`].
+///
 /// This structure is created by the [`std::env::split_paths`] function. See its
 /// documentation for more.
 ///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
 /// [`std::env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
@@ -369,7 +372,8 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 /// Parses input according to platform conventions for the `PATH`
 /// environment variable.
 ///
-/// Returns an iterator over the paths contained in `unparsed`.
+/// Returns an iterator over the paths contained in `unparsed`. The iterator
+/// element type is [`PathBuf`].
 ///
 /// # Examples
 ///
@@ -386,8 +390,10 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
+///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
 #[stable(feature = "env", since = "1.0.0")]
-pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths {
+pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
 }
 
@@ -400,7 +406,7 @@ impl<'a> Iterator for SplitPaths<'a> {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for SplitPaths<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("SplitPaths { .. }")
     }
 }
@@ -459,7 +465,7 @@ pub struct JoinPathsError {
 /// # }
 /// ```
 ///
-/// Using `env::join_paths` with `env::spit_paths` to append an item to the `PATH` environment
+/// Using `env::join_paths` with [`env::split_paths`] to append an item to the `PATH` environment
 /// variable:
 ///
 /// ```
@@ -477,6 +483,8 @@ pub struct JoinPathsError {
 ///     Ok(())
 /// }
 /// ```
+///
+/// [`env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
     where I: IntoIterator<Item=T>, T: AsRef<OsStr>
@@ -488,7 +496,7 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 
 #[stable(feature = "env", since = "1.0.0")]
 impl fmt::Display for JoinPathsError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
 }
@@ -757,7 +765,7 @@ impl DoubleEndedIterator for Args {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Args")
             .field("inner", &self.inner.inner.inner_debug())
             .finish()
@@ -790,7 +798,7 @@ impl DoubleEndedIterator for ArgsOs {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ArgsOs")
             .field("inner", &self.inner.inner_debug())
             .finish()
@@ -839,7 +847,6 @@ pub mod consts {
     /// - ios
     /// - freebsd
     /// - dragonfly
-    /// - bitrig
     /// - netbsd
     /// - openbsd
     /// - solaris
@@ -968,6 +975,11 @@ mod arch {
     pub const ARCH: &str = "wasm32";
 }
 
+#[cfg(target_arch = "hexagon")]
+mod arch {
+    pub const ARCH: &'static str = "hexagon";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -975,7 +987,7 @@ mod tests {
     use crate::path::Path;
 
     #[test]
-    #[cfg_attr(target_os = "emscripten", ignore)]
+    #[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
     fn test_self_exe_path() {
         let path = current_exe();
         assert!(path.is_ok());
@@ -989,6 +1001,7 @@ mod tests {
     fn test() {
         assert!((!Path::new("test-path").is_absolute()));
 
+        #[cfg(not(target_env = "sgx"))]
         current_dir().unwrap();
     }
 

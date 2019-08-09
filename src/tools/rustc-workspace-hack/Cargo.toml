@@ -2,7 +2,7 @@
 name = "rustc-workspace-hack"
 version = "1.0.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
-license = 'MIT/Apache-2.0'
+license = 'MIT OR Apache-2.0'
 description = """
 Hack for the compiler's own build system
 """
@@ -26,6 +26,7 @@ features = [
   "basetsd",
   "consoleapi",
   "errhandlingapi",
+  "ioapiset",
   "jobapi",
   "jobapi2",
   "knownfolders",
@@ -33,11 +34,14 @@ features = [
   "memoryapi",
   "minschannel",
   "minwinbase",
+  "namedpipeapi",
+  "ntdef",
   "ntsecapi",
   "ntstatus",
   "objbase",
-  "profileapi",
   "processenv",
+  "processthreadsapi",
+  "profileapi",
   "psapi",
   "schannel",
   "securitybaseapi",
@@ -52,17 +56,23 @@ features = [
   "winbase",
   "wincon",
   "wincrypt",
+  "winsock2",
+  "ws2def",
+  "ws2ipdef",
+  "ws2tcpip",
 ]
 
 [dependencies]
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
+crossbeam-utils = { version = "0.6.5", features = ["nightly"] }
 parking_lot = { version = "0.7", features = ['nightly'] }
-rand = { version = "0.5.5", features = ["i128_support"] }
+rand = { version = "0.6.1", features = ["i128_support"] }
 serde = { version = "1.0.82", features = ['derive'] }
 serde_json = { version = "1.0.31", features = ["raw_value"] }
 smallvec = { version = "0.6", features = ['union', 'may_dangle'] }
-scopeguard = { version = "0.3.3", features = ["use_std", "default"]}
-byteorder = { version = "1.2.7", features = ["i128"]}
+scopeguard = { version = "0.3.3", features = ["use_std", "default"] }
+byteorder = { version = "1.2.7", features = ["i128"] }
+syn = { version = "0.15.35", features = ["extra-traits", "full"] }
 
 
 [target.'cfg(not(windows))'.dependencies]

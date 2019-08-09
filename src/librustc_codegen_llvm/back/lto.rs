@@ -1,4 +1,4 @@
-use crate::back::bytecode::{DecodedBytecode, RLIB_BYTECODE_EXTENSION};
+use crate::back::bytecode::DecodedBytecode;
 use crate::back::write::{self, DiagnosticHandlers, with_llvm_pmb, save_temp_bitcode,
     to_llvm_opt_settings};
 use crate::llvm::archive_ro::ArchiveRO;
@@ -15,9 +15,8 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
-use rustc::util::profiling::ProfileCategory;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, ModuleKind};
 
 use std::ffi::{CStr, CString};
 use std::ptr;
@@ -67,8 +66,7 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         .iter()
         .filter_map(symbol_filter)
         .collect::<Vec<CString>>();
-    let _timer = cgcx.profile_activity(ProfileCategory::Codegen,
-                                       "generate_symbol_white_list_for_thinlto");
+    let _timer = cgcx.profile_activity("generate_symbol_white_list_for_thinlto");
     info!("{} symbols to preserve in this crate", symbol_white_list.len());
 
     // If we're performing LTO for the entire crate graph, then for each of our
@@ -97,8 +95,7 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         }
 
         for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
-            let _timer = cgcx.profile_activity(ProfileCategory::Codegen,
-                                               format!("load: {}", path.display()));
+            let _timer = cgcx.profile_activity(format!("load: {}", path.display()));
             let exported_symbols = cgcx.exported_symbols
                 .as_ref().expect("needs exported symbols for LTO");
             symbol_white_list.extend(
@@ -282,7 +279,7 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             }
         }));
         serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
-            (buffer, CString::new(wp.cgu_name.clone()).unwrap())
+            (buffer, CString::new(wp.cgu_name).unwrap())
         }));
 
         // For all serialized bitcode files we parse them and link them in as we did
@@ -727,8 +724,7 @@ pub unsafe fn optimize_thin_module(
         // Like with "fat" LTO, get some better optimizations if landing pads
         // are disabled by removing all landing pads.
         if cgcx.no_landing_pads {
-            let _timer = cgcx.profile_activity(ProfileCategory::Codegen,
-                                               "LLVM_remove_landing_pads");
+            let _timer = cgcx.profile_activity("LLVM_remove_landing_pads");
             llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
             save_temp_bitcode(&cgcx, &module, "thin-lto-after-nounwind");
         }
