@@ -94,9 +94,9 @@ pub fn sqrt(x: f64) -> f64 {
     }
     #[cfg(target_feature = "sse2")]
     {
-        // Note(Lokathor): If compile time settings allow, we just use SSE2, since
-        // the sqrt in `std` on these platforms also compiles down to an SSE2
-        // instruction.
+        // Note: This path is unlikely since LLVM will usually have already
+        // optimized sqrt calls into hardware instructions if sse2 is available,
+        // but if someone does end up here they'll apprected the speed increase.
         #[cfg(target_arch = "x86")]
         use core::arch::x86::*;
         #[cfg(target_arch = "x86_64")]
