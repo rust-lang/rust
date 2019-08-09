@@ -14,6 +14,32 @@ pub async fn foo(x: &u32, y: u32) -> u32 {
     *x + y + *a
 }
 
+async fn add(x: u32, y: u32) -> u32 {
+    async { x + y }.await
+}
+
+async fn build_aggregate(a: u32, b: u32, c: u32, d: u32) -> u32 {
+    let x = (add(a, b).await, add(c, d).await);
+    x.0 + x.1
+}
+
+enum Never {}
+fn never() -> Never {
+    panic!()
+}
+
+async fn includes_never(crash: bool, x: u32) -> u32 {
+    let mut result = async { x * x }.await;
+    if !crash {
+        return result;
+    }
+    #[allow(unused)]
+    let bad = never();
+    result *= async { x + x }.await;
+    drop(bad);
+    result
+}
+
 fn raw_waker_clone(_this: *const ()) -> RawWaker {
     panic!("unimplemented");
 }
@@ -38,4 +64,14 @@ fn main() {
     let waker = unsafe { Waker::from_raw(RawWaker::new(ptr::null(), &RAW_WAKER)) };
     let mut context = Context::from_waker(&waker);
     assert_eq!(unsafe { Pin::new_unchecked(&mut fut) }.poll(&mut context), Poll::Ready(31));
+
+    let mut fut = build_aggregate(1, 2, 3, 4);
+    let waker = unsafe { Waker::from_raw(RawWaker::new(ptr::null(), &RAW_WAKER)) };
+    let mut context = Context::from_waker(&waker);
+    assert_eq!(unsafe { Pin::new_unchecked(&mut fut) }.poll(&mut context), Poll::Ready(10));
+
+    let mut fut = includes_never(false, 4);
+    let waker = unsafe { Waker::from_raw(RawWaker::new(ptr::null(), &RAW_WAKER)) };
+    let mut context = Context::from_waker(&waker);
+    assert_eq!(unsafe { Pin::new_unchecked(&mut fut) }.poll(&mut context), Poll::Ready(16));
 }
