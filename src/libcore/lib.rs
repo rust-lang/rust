@@ -132,6 +132,7 @@
 #![feature(maybe_uninit_slice, maybe_uninit_array)]
 #![feature(external_doc)]
 #![feature(mem_take)]
+#![feature(associated_type_bounds)]
 
 #[prelude_import]
 #[allow(unused)]

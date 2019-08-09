@@ -3901,7 +3901,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // each predicate must be preceded by the obligations required
         // to normalize it.
         // for example, if we have:
-        //    impl<U: Iterator, V: Iterator<Item=U>> Foo for V where U::Item: Copy
+        //    impl<U: Iterator<Item: Copy>, V: Iterator<Item = U>> Foo for V
         // the impl will have the following predicates:
         //    <V as Iterator>::Item = U,
         //    U: Iterator, U: Sized,

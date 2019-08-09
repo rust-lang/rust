@@ -13,6 +13,7 @@ Core encoding and decoding interfaces.
 #![feature(specialization)]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(associated_type_bounds)]
 #![cfg_attr(test, feature(test))]
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};

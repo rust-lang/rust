@@ -50,8 +50,8 @@ impl Command {
     }
 
     pub fn args<I>(&mut self, args: I) -> &mut Command
-        where I: IntoIterator,
-              I::Item: AsRef<OsStr>,
+    where
+        I: IntoIterator<Item: AsRef<OsStr>>,
     {
         for arg in args {
             self._arg(arg.as_ref());

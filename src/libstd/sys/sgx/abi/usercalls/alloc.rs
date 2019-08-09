@@ -522,7 +522,11 @@ impl<T: ?Sized> Drop for User<T> where T: UserSafe {
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<UserRef<U>> for UserRef<T> {}
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T, I: SliceIndex<[T]>> Index<I> for UserRef<[T]> where [T]: UserSafe, I::Output: UserSafe {
+impl<T, I> Index<I> for UserRef<[T]>
+where
+    [T]: UserSafe,
+    I: SliceIndex<[T], Output: UserSafe>,
+{
     type Output = UserRef<I::Output>;
 
     #[inline]
@@ -538,7 +542,11 @@ impl<T, I: SliceIndex<[T]>> Index<I> for UserRef<[T]> where [T]: UserSafe, I::Ou
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T, I: SliceIndex<[T]>> IndexMut<I> for UserRef<[T]> where [T]: UserSafe, I::Output: UserSafe {
+impl<T, I> IndexMut<I> for UserRef<[T]>
+where
+    [T]: UserSafe,
+    I: SliceIndex<[T], Output: UserSafe>,
+{
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut UserRef<I::Output> {
         unsafe {
