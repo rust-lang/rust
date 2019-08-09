@@ -1,0 +1,49 @@
+From a25405f1fc4a168c9c370524be48aff8c8ebc529 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Wed, 12 Jun 2019 18:07:23 +0200
+Subject: [PATCH] Fix libtest compilation
+
+---
+ src/libtest/lib.rs | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/src/libtest/lib.rs b/src/libtest/lib.rs
+index 810a98e..4fdde0e 100644
+--- a/src/libtest/lib.rs
++++ b/src/libtest/lib.rs
+@@ -1441,11 +1441,11 @@ pub fn run_test(
+         return;
+     }
+ 
+-    fn run_test_inner(
++    fn run_test_inner<F: FnOnce() + Send + 'static>(
+         desc: TestDesc,
+         monitor_ch: Sender<MonitorMsg>,
+         nocapture: bool,
+-        testfn: Box<dyn FnOnce() + Send>,
++        testfn: F,
+         concurrency: Concurrent,
+     ) {
+         // Buffer for capturing standard I/O
+@@ -1500,15 +1500,14 @@ pub fn run_test(
+                 (benchfn.clone())(harness)
+             });
+         }
+-        DynTestFn(f) => {
+-            let cb = move || __rust_begin_short_backtrace(f);
+-            run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb), concurrency)
++        DynTestFn(_f) => {
++            unimplemented!();
+         }
+         StaticTestFn(f) => run_test_inner(
+             desc,
+             monitor_ch,
+             opts.nocapture,
+-            Box::new(move || __rust_begin_short_backtrace(f)),
++            move || __rust_begin_short_backtrace(f),
+             concurrency,
+         ),
+     }
+-- 
+2.11.0
+

@@ -58,9 +58,8 @@ echo "[TEST] rust-lang/regex example shootout-regex-dna"
 cat examples/regexdna-input.txt | ../cargo.sh run --example shootout-regex-dna > res.txt
 diff -u res.txt examples/regexdna-output.txt
 
-# FIXME compile libtest
-# echo "[TEST] rust-lang/regex standalone tests"
-# ../cargo.sh test
+echo "[TEST] rust-lang/regex standalone tests"
+../cargo.sh test --tests -- --exclude-should-panic --test-threads 1 -Zunstable-options
 popd
 
 COMPILE_MOD_BENCH_INLINE="$RUSTC example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -O --crate-name mod_bench_inline"
