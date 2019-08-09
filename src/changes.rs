@@ -89,7 +89,7 @@ impl<'a> Serialize for RSpan<'a> {
         let hi = self.0.source_map().lookup_char_pos(self.1.hi());
 
         assert!(lo.file.name == hi.file.name);
-        let file_name = if let &FileName::Real(ref p) = &lo.file.name {
+        let file_name = if let FileName::Real(ref p) = lo.file.name {
             format!("{}", p.display())
         } else {
             "no file name".to_owned()

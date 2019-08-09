@@ -12,8 +12,7 @@ use rustc::{
         self,
         relate::{Relate, RelateResult, TypeRelation},
         subst::SubstsRef,
-        ParamEnv,
-        Ty, TyCtxt,
+        ParamEnv, Ty, TyCtxt,
         Visibility::Public,
     },
 };
