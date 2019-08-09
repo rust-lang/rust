@@ -112,7 +112,7 @@ fn shortest_random_equivalence_test() {
     #[cfg(not(miri))] // Miri is too slow
     const N: usize = 10_000;
     #[cfg(miri)]
-    const N: usize = 20;
+    const N: usize = 10;
 
     f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, N);
     f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, N);
@@ -146,7 +146,7 @@ fn exact_f32_random_equivalence_test() {
     #[cfg(not(miri))] // Miri is too slow
     const N: usize = 1_000;
     #[cfg(miri)]
-    const N: usize = 10;
+    const N: usize = 3;
 
     for k in 1..21 {
         f32_random_equivalence_test(|d, buf| format_exact_opt(d, buf, i16::MIN),
@@ -160,7 +160,7 @@ fn exact_f64_random_equivalence_test() {
     #[cfg(not(miri))] // Miri is too slow
     const N: usize = 1_000;
     #[cfg(miri)]
-    const N: usize = 5;
+    const N: usize = 3;
 
     for k in 1..21 {
         f64_random_equivalence_test(|d, buf| format_exact_opt(d, buf, i16::MIN),

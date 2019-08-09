@@ -45,7 +45,7 @@ fn test_estimate_scaling_factor() {
     #[cfg(not(miri))] // Miri is too slow
     let iter = -1074..972;
     #[cfg(miri)]
-    let iter = (-1074..972).step_by(11);
+    let iter = (-1074..972).step_by(37);
 
     for i in iter {
         let expected = super::ldexp_f64(1.0, i).log10().ceil();
