@@ -1,5 +1,4 @@
 use std::fmt::{Debug, Formatter, Error};
-use std::collections::HashMap;
 
 trait HasInventory {
     fn getInventory<'s>(&'s self) -> &'s mut Inventory;

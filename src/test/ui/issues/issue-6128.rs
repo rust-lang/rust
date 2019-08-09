@@ -2,7 +2,6 @@
 
 #![feature(box_syntax)]
 
-use std::collections::HashMap;
 
 trait Graph<Node, Edge> {
     fn f(&self, _: Edge);

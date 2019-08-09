@@ -1020,7 +1020,7 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
 where
     F: FnMut(TestEvent) -> io::Result<()>,
 {
-    use std::collections::{self, HashMap};
+    use std::collections;
     use std::hash::BuildHasherDefault;
     use std::sync::mpsc::RecvTimeoutError;
     // Use a deterministic hasher

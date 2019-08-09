@@ -13,7 +13,6 @@
 // ```
 // FIXME: ideally `LocalKind` would carry more information to more accurately explain the problem.
 
-use std::collections::HashMap;
 use std::hash::Hash;
 
 fn group_by<I, F, T>(xs: &mut I, f: F) -> HashMap<T, Vec<&I::Item>>

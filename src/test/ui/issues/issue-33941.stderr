@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, _> as std::iter::Iterator>::Item == &_`
-  --> $DIR/issue-33941.rs:4:36
+  --> $DIR/issue-33941.rs:2:36
    |
 LL |     for _ in HashMap::new().iter().cloned() {}
    |                                    ^^^^^^ expected tuple, found reference
@@ -8,7 +8,7 @@ LL |     for _ in HashMap::new().iter().cloned() {}
               found type `&_`
 
 error[E0271]: type mismatch resolving `<std::collections::hash_map::Iter<'_, _, _> as std::iter::Iterator>::Item == &_`
-  --> $DIR/issue-33941.rs:4:14
+  --> $DIR/issue-33941.rs:2:14
    |
 LL |     for _ in HashMap::new().iter().cloned() {}
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected tuple, found reference

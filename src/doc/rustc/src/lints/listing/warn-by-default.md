@@ -796,17 +796,17 @@ This lint detects imports that are never used. Some
 example code that triggers this lint:
 
 ```rust
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 ```
 
 This will produce:
 
 ```text
-warning: unused import: `std::collections::HashMap`
+warning: unused import: `std::collections::BTreeMap`
  --> src/main.rs:1:5
   |
-1 | use std::collections::HashMap;
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+1 | use std::collections::BTreeMap;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
 ```
 

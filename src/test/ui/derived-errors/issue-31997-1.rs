@@ -3,7 +3,7 @@
 // only emit the E0433 error below, but right now we emit two.
 
 use std::io::prelude::*;
-// use std::collections::HashMap;
+// use std::collections::BTreeMap;
 use std::io;
 
 #[derive(Debug)]
@@ -17,7 +17,7 @@ fn main() {
     let input = io::stdin();
     let mut input = input.lock();
 
-    let mut map = HashMap::new();
+    let mut map = BTreeMap::new();
     //~^ ERROR E0433
 
     for line in input.lines() {

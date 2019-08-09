@@ -1250,7 +1250,7 @@ An undeclared type or module was used.
 Erroneous code example:
 
 ```compile_fail,E0433
-let map = HashMap::new();
+let map = BTreeMap::new();
 // error: failed to resolve: use of undeclared type or module `HashMap`
 ```
 
@@ -1259,8 +1259,8 @@ forget to import it:
 
 
 ```
-use std::collections::HashMap; // HashMap has been imported.
-let map: HashMap<u32, u32> = HashMap::new(); // So it can be used!
+use std::collections::BTreeMap; // BTreeMap has been imported.
+let map: BTreeMap<u32, u32> = BTreeMap::new(); // So it can be used!
 ```
 "##,
 

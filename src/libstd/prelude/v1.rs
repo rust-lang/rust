@@ -104,3 +104,6 @@ pub use crate::string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::vec::Vec;
+#[unstable(feature = "hashmap_prelude", issue = "0")]
+#[doc(no_inline)]
+pub use crate::collections::HashMap;

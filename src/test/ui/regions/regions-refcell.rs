@@ -4,7 +4,6 @@
 // semantics.
 
 
-use std::collections::HashMap;
 use std::cell::RefCell;
 
 // This version does not yet work (associated type issues)...

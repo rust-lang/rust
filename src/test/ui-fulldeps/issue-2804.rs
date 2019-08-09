@@ -6,7 +6,6 @@
 
 extern crate serialize;
 
-use std::collections::HashMap;
 use serialize::json::{self, Json};
 use std::option;
 

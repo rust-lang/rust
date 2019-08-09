@@ -478,7 +478,6 @@ pub trait BuildHasher {
 /// [`HashMap`]:
 ///
 /// ```
-/// use std::collections::HashMap;
 /// use std::hash::{BuildHasherDefault, Hasher};
 ///
 /// #[derive(Default)]

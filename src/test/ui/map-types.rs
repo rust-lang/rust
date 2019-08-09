@@ -1,6 +1,5 @@
 #![feature(box_syntax)]
 
-use std::collections::HashMap;
 
 trait Map<K, V>
 {

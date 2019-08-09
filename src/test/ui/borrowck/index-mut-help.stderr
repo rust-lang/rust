@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow data in an index of `std::collections::HashMap<&str, std::string::String>` as mutable
-  --> $DIR/index-mut-help.rs:11:5
+  --> $DIR/index-mut-help.rs:10:5
    |
 LL |     map["peter"].clear();
    |     ^^^^^^^^^^^^ cannot borrow as mutable
@@ -7,7 +7,7 @@ LL |     map["peter"].clear();
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
 
 error[E0594]: cannot assign to data in an index of `std::collections::HashMap<&str, std::string::String>`
-  --> $DIR/index-mut-help.rs:12:5
+  --> $DIR/index-mut-help.rs:11:5
    |
 LL |     map["peter"] = "0".to_string();
    |     ^^^^^^^^^^^^ cannot assign
@@ -15,7 +15,7 @@ LL |     map["peter"] = "0".to_string();
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
 
 error[E0596]: cannot borrow data in an index of `std::collections::HashMap<&str, std::string::String>` as mutable
-  --> $DIR/index-mut-help.rs:13:13
+  --> $DIR/index-mut-help.rs:12:13
    |
 LL |     let _ = &mut map["peter"];
    |             ^^^^^^^^^^^^^^^^^ cannot borrow as mutable

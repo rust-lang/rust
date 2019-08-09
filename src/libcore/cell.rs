@@ -68,7 +68,6 @@
 //!
 //! ```
 //! use std::cell::{RefCell, RefMut};
-//! use std::collections::HashMap;
 //! use std::rc::Rc;
 //!
 //! fn main() {

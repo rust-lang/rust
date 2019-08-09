@@ -1,5 +1,4 @@
 // run-pass
-use std::collections::HashMap;
 use std::borrow::Cow;
 
 use std::borrow::Cow::Borrowed as B;

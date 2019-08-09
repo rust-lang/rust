@@ -16,7 +16,6 @@ pub fn map(filename: String, mut emit: map_reduce::putter) {
 }
 
 mod map_reduce {
-    use std::collections::HashMap;
     use std::sync::mpsc::{channel, Sender};
     use std::str;
     use std::thread;

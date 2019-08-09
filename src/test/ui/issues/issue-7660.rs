@@ -5,7 +5,6 @@
 
 // pretty-expanded FIXME #23616
 
-use std::collections::HashMap;
 
 struct A(isize, isize);
 

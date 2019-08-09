@@ -17,7 +17,6 @@ extern crate libc;
 use TypeStructure::{TypeInt, TypeFunction};
 use AstKind::{ExprInt, ExprVar, ExprLambda};
 use arena::TypedArena;
-use std::collections::HashMap;
 use std::mem;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;

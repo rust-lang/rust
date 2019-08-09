@@ -6,7 +6,6 @@
 // parameter to be invariant with respect to the overall type, not
 // covariant.
 
-use std::collections::HashMap;
 use std::ops::AddAssign;
 
 pub fn main() {

@@ -7,7 +7,6 @@
 
 // run-rustfix
 
-use std::collections::HashMap;
 
 fn main() {
     let mut m = HashMap::new();

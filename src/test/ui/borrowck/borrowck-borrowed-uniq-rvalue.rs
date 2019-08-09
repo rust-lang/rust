@@ -2,7 +2,6 @@
 
 #![feature(box_syntax)]
 
-use std::collections::HashMap;
 
 fn main() {
     let tmp: Box<_>;

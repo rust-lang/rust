@@ -6,7 +6,6 @@
 
 use std::process::Command;
 use std::env;
-use std::collections::HashMap;
 
 #[cfg(all(unix, not(target_os="android")))]
 pub fn env_cmd() -> Command {

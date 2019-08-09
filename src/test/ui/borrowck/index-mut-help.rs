@@ -3,7 +3,6 @@
 
 
 fn main() {
-    use std::collections::HashMap;
 
     let mut map = HashMap::new();
     map.insert("peter", "23".to_string());

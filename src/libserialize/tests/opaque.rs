@@ -263,7 +263,6 @@ fn test_sequence() {
 
 #[test]
 fn test_hash_map() {
-    use std::collections::HashMap;
     let mut map = HashMap::new();
     for i in -100i64..100i64 {
         map.insert(i * 100000, i * 10000);

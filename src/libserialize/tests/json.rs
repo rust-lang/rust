@@ -849,7 +849,6 @@ fn test_as_null(){
 #[test]
 fn test_encode_hashmap_with_numeric_key() {
     use std::str::from_utf8;
-    use std::collections::HashMap;
     let mut hm: HashMap<usize, bool> = HashMap::new();
     hm.insert(1, true);
     let mut mem_buf = Vec::new();
@@ -864,7 +863,6 @@ fn test_encode_hashmap_with_numeric_key() {
 #[test]
 fn test_prettyencode_hashmap_with_numeric_key() {
     use std::str::from_utf8;
-    use std::collections::HashMap;
     let mut hm: HashMap<usize, bool> = HashMap::new();
     hm.insert(1, true);
     let mut mem_buf = Vec::new();
@@ -930,7 +928,6 @@ fn test_prettyencoder_indent_level_param() {
 
 #[test]
 fn test_hashmap_with_enum_key() {
-    use std::collections::HashMap;
     #[derive(RustcEncodable, Eq, Hash, PartialEq, RustcDecodable, Debug)]
     enum Enum {
         Foo,
@@ -947,7 +944,6 @@ fn test_hashmap_with_enum_key() {
 
 #[test]
 fn test_hashmap_with_numeric_key_can_handle_double_quote_delimited_key() {
-    use std::collections::HashMap;
     let json_str = "{\"1\":true}";
     let json_obj = match from_str(json_str) {
         Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
@@ -959,7 +955,6 @@ fn test_hashmap_with_numeric_key_can_handle_double_quote_delimited_key() {
 
 #[test]
 fn test_hashmap_with_numeric_key_will_error_with_string_keys() {
-    use std::collections::HashMap;
     let json_str = "{\"a\":true}";
     let json_obj = match from_str(json_str) {
         Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
@@ -1267,7 +1262,6 @@ fn test_to_json() {
 
 #[test]
 fn test_encode_hashmap_with_arbitrary_key() {
-    use std::collections::HashMap;
     #[derive(PartialEq, Eq, Hash, RustcEncodable)]
     struct ArbitraryType(usize);
     let mut hm: HashMap<ArbitraryType, bool> = HashMap::new();

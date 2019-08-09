@@ -4,7 +4,6 @@ mod owning_ref {
     use std::cmp::{PartialEq, Ord, PartialOrd, Ordering};
     use std::hash::{Hash, Hasher};
     use std::collections::hash_map::DefaultHasher;
-    use std::collections::HashMap;
     use std::rc::Rc;
 
     #[derive(Debug, PartialEq)]
@@ -379,7 +378,6 @@ mod owning_ref_mut {
     use std::cmp::{PartialEq, Ord, PartialOrd, Ordering};
     use std::hash::{Hash, Hasher};
     use std::collections::hash_map::DefaultHasher;
-    use std::collections::HashMap;
 
     #[derive(Debug, PartialEq)]
     struct Example(u32, String, [u8; 3]);

@@ -2,7 +2,6 @@
 #![crate_type = "lib"]
 
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 pub type header_map = HashMap<String, Rc<RefCell<Vec<Rc<String>>>>>;

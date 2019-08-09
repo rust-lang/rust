@@ -1,7 +1,6 @@
 // run-pass
 
 use std::cell::UnsafeCell;
-use std::collections::HashMap;
 
 struct OnceCell<T> {
     _value: UnsafeCell<Option<T>>,

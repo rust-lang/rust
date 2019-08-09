@@ -1,6 +1,5 @@
 // build-pass (FIXME(62277): could be check-pass?)
 
-use std::collections::HashMap;
 use std::sync::Mutex;
 
 fn i_used_to_be_able_to(foo: &Mutex<HashMap<usize, usize>>) -> Vec<(usize, usize)> {

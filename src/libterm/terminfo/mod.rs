@@ -1,6 +1,5 @@
 //! Terminfo database interface.
 
-use std::collections::HashMap;
 use std::env;
 use std::error;
 use std::fmt;

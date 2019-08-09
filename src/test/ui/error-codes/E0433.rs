@@ -1,3 +1,3 @@
 fn main () {
-    let map = HashMap::new(); //~ ERROR E0433
+    let map = BTreeMap::new(); //~ ERROR E0433
 }

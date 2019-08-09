@@ -1,5 +1,4 @@
 // run-pass
-use std::collections::HashMap;
 
 pub fn main() {
     let mut m = HashMap::new();

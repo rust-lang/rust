@@ -24,5 +24,5 @@ fn main() {
 }
 
 fn foo() {
-    type Dict<K, V> = HashMap<K, V>; //~ ERROR cannot find
+    type Dict<K, V> = BTreeMap<K, V>; //~ ERROR cannot find
 }

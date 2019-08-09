@@ -2,7 +2,6 @@
 
 extern crate issue_31702_1;
 
-use std::collections::HashMap;
 use issue_31702_1::U256;
 
 pub struct Ethash {

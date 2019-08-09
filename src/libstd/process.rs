@@ -575,7 +575,6 @@ impl Command {
     /// ```no_run
     /// use std::process::{Command, Stdio};
     /// use std::env;
-    /// use std::collections::HashMap;
     ///
     /// let filtered_env : HashMap<String, String> =
     ///     env::vars().filter(|&(ref k, _)|

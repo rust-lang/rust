@@ -6,7 +6,6 @@ extern crate req;
 
 use req::request;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 pub fn main() {

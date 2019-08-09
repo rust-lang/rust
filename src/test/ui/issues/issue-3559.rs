@@ -1,5 +1,4 @@
 // run-pass
-use std::collections::HashMap;
 
 fn check_strs(actual: &str, expected: &str) -> bool {
     if actual != expected {

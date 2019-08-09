@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 // pretty-expanded FIXME #23616
 
-use std::collections::HashMap;
 
 fn copy<T: Copy>(&x: &T) -> T {
     x

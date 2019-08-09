@@ -1,6 +1,5 @@
 // run-pass
 
-use std::collections::HashMap;
 
 fn process_or_insert_default(map: &mut HashMap<usize, String>, key: usize) {
     match map.get_mut(&key) {

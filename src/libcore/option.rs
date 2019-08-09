@@ -993,7 +993,6 @@ impl<T: fmt::Debug> Option<T> {
     /// ```
     /// #![feature(option_expect_none)]
     ///
-    /// use std::collections::HashMap;
     /// let mut squares = HashMap::new();
     /// for i in -10..=10 {
     ///     // This will not panic, since all keys are unique.
@@ -1004,7 +1003,6 @@ impl<T: fmt::Debug> Option<T> {
     /// ```{.should_panic}
     /// #![feature(option_expect_none)]
     ///
-    /// use std::collections::HashMap;
     /// let mut sqrts = HashMap::new();
     /// for i in -10..=10 {
     ///     // This will panic, since both negative and positive `i` will
@@ -1035,7 +1033,6 @@ impl<T: fmt::Debug> Option<T> {
     /// ```
     /// #![feature(option_unwrap_none)]
     ///
-    /// use std::collections::HashMap;
     /// let mut squares = HashMap::new();
     /// for i in -10..=10 {
     ///     // This will not panic, since all keys are unique.
@@ -1046,7 +1043,6 @@ impl<T: fmt::Debug> Option<T> {
     /// ```{.should_panic}
     /// #![feature(option_unwrap_none)]
     ///
-    /// use std::collections::HashMap;
     /// let mut sqrts = HashMap::new();
     /// for i in -10..=10 {
     ///     // This will panic, since both negative and positive `i` will
