@@ -386,47 +386,47 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     let mut store = reg.sess.lint_store.borrow_mut();
     // begin deprecated lints, do not remove this comment, it’s used in `update_lints`
     store.register_removed(
-        "should_assert_eq",
+        "clippy::should_assert_eq",
         "`assert!()` will be more flexible with RFC 2011",
     );
     store.register_removed(
-        "extend_from_slice",
+        "clippy::extend_from_slice",
         "`.extend_from_slice(_)` is a faster way to extend a Vec by a slice",
     );
     store.register_removed(
-        "range_step_by_zero",
+        "clippy::range_step_by_zero",
         "`iterator.step_by(0)` panics nowadays",
     );
     store.register_removed(
-        "unstable_as_slice",
+        "clippy::unstable_as_slice",
         "`Vec::as_slice` has been stabilized in 1.7",
     );
     store.register_removed(
-        "unstable_as_mut_slice",
+        "clippy::unstable_as_mut_slice",
         "`Vec::as_mut_slice` has been stabilized in 1.7",
     );
     store.register_removed(
-        "str_to_string",
+        "clippy::str_to_string",
         "using `str::to_string` is common even today and specialization will likely happen soon",
     );
     store.register_removed(
-        "string_to_string",
+        "clippy::string_to_string",
         "using `string::to_string` is common even today and specialization will likely happen soon",
     );
     store.register_removed(
-        "misaligned_transmute",
+        "clippy::misaligned_transmute",
         "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr",
     );
     store.register_removed(
-        "assign_ops",
+        "clippy::assign_ops",
         "using compound assignment operators (e.g., `+=`) is harmless",
     );
     store.register_removed(
-        "if_let_redundant_pattern_matching",
+        "clippy::if_let_redundant_pattern_matching",
         "this lint has been changed to redundant_pattern_matching",
     );
     store.register_removed(
-        "unsafe_vector_initialization",
+        "clippy::unsafe_vector_initialization",
         "the replacement suggested by this lint had substantially different behavior",
     );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
