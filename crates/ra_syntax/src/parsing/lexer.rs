@@ -15,16 +15,16 @@ pub struct Token {
 macro_rules! match_literal_kind {
     ($kind:expr) => {
         match $kind {
-                ra_rustc_lexer::LiteralKind::Int { .. } => INT_NUMBER,
-                ra_rustc_lexer::LiteralKind::Float { .. } => FLOAT_NUMBER,
-                ra_rustc_lexer::LiteralKind::Char { .. } => CHAR,
-                ra_rustc_lexer::LiteralKind::Byte { .. } => BYTE,
-                ra_rustc_lexer::LiteralKind::Str { .. } => STRING,
-                ra_rustc_lexer::LiteralKind::ByteStr { .. } => BYTE_STRING,
-                ra_rustc_lexer::LiteralKind::RawStr { .. } => RAW_STRING,
-                ra_rustc_lexer::LiteralKind::RawByteStr { .. } => RAW_BYTE_STRING,
-            }
-    }
+            ra_rustc_lexer::LiteralKind::Int { .. } => INT_NUMBER,
+            ra_rustc_lexer::LiteralKind::Float { .. } => FLOAT_NUMBER,
+            ra_rustc_lexer::LiteralKind::Char { .. } => CHAR,
+            ra_rustc_lexer::LiteralKind::Byte { .. } => BYTE,
+            ra_rustc_lexer::LiteralKind::Str { .. } => STRING,
+            ra_rustc_lexer::LiteralKind::ByteStr { .. } => BYTE_STRING,
+            ra_rustc_lexer::LiteralKind::RawStr { .. } => RAW_STRING,
+            ra_rustc_lexer::LiteralKind::RawByteStr { .. } => RAW_BYTE_STRING,
+        }
+    };
 }
 
 /// Break a string up into its component tokens
