@@ -458,7 +458,7 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth(2) == T![::]));
     let m = lhs.precede(p);
     p.bump();
-    name_ref(p);
+    name_ref(p, false);
     type_args::opt_type_arg_list(p, true);
     if p.at(T!['(']) {
         arg_list(p);
@@ -485,7 +485,7 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     let m = lhs.precede(p);
     p.bump();
     if p.at(IDENT) {
-        name_ref(p)
+        name_ref(p, false)
     } else if p.at(INT_NUMBER) {
         p.bump();
     } else if p.at(FLOAT_NUMBER) {
@@ -572,6 +572,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
 //     S {};
 //     S { x, y: 32, };
 //     S { x, y: 32, ..Default::default() };
+//     TupleStruct { 0: 1 };
 // }
 pub(crate) fn named_field_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
@@ -583,10 +584,10 @@ pub(crate) fn named_field_list(p: &mut Parser) {
             // fn main() {
             //     S { #[cfg(test)] field: 1 }
             // }
-            IDENT | T![#] => {
+            IDENT | INT_NUMBER | T![#] => {
                 let m = p.start();
                 attributes::outer_attributes(p);
-                name_ref(p);
+                name_ref(p, true);
                 if p.eat(T![:]) {
                     expr(p);
                 }
