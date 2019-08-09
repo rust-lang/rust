@@ -1,13 +1,12 @@
 mod block;
-mod field_expr;
 
 use ra_rustc_lexer::unescape;
 
 use crate::{
     algo::visit::{visitor_ctx, VisitorCtx},
-    ast, SyntaxError, SyntaxErrorKind,
-    SyntaxKind::{BYTE, BYTE_STRING, CHAR, STRING},
-    SyntaxNode, TextUnit, T,
+    ast, AstNode, SyntaxError, SyntaxErrorKind,
+    SyntaxKind::{BYTE, BYTE_STRING, CHAR, INT_NUMBER, STRING},
+    SyntaxNode, SyntaxToken, TextUnit, T,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -101,7 +100,8 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
         let _ = visitor_ctx(&mut errors)
             .visit::<ast::Literal, _>(validate_literal)
             .visit::<ast::Block, _>(block::validate_block_node)
-            .visit::<ast::FieldExpr, _>(field_expr::validate_field_expr_node)
+            .visit::<ast::FieldExpr, _>(|it, errors| validate_numeric_name(it.name_ref(), errors))
+            .visit::<ast::NamedField, _>(|it, errors| validate_numeric_name(it.name_ref(), errors))
             .accept(&node);
     }
     errors
@@ -187,5 +187,20 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
             }
             _ => (),
         }
+    }
+}
+
+fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<SyntaxError>) {
+    if let Some(int_token) = int_token(name_ref) {
+        if int_token.text().chars().any(|c| !c.is_digit(10)) {
+            errors.push(SyntaxError::new(
+                SyntaxErrorKind::InvalidTupleIndexFormat,
+                int_token.text_range(),
+            ));
+        }
+    }
+
+    fn int_token(name_ref: Option<ast::NameRef>) -> Option<SyntaxToken> {
+        name_ref?.syntax().first_child_or_token()?.into_token().filter(|it| it.kind() == INT_NUMBER)
     }
 }
