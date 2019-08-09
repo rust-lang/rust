@@ -287,7 +287,7 @@ impl<'hir> Map<'hir> {
         self.definitions.def_index_to_hir_id(def_id.to_def_id().index)
     }
 
-    fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
+    pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
         let node = if let Some(node) = self.find(hir_id) {
             node
         } else {

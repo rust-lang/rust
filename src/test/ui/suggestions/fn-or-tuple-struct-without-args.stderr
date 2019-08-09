@@ -1,0 +1,220 @@
+error[E0423]: expected value, found struct variant `E::B`
+  --> $DIR/fn-or-tuple-struct-without-args.rs:36:16
+   |
+LL |     let _: E = E::B;
+   |                ^^^-
+   |                |  |
+   |                |  help: a tuple variant with a similar name exists: `A`
+   |                did you mean `E::B { /* fields */ }`?
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:29:20
+   |
+LL | fn foo(a: usize, b: usize) -> usize { a }
+   | ----------------------------------- fn(usize, usize) -> usize {foo} defined here
+...
+LL |     let _: usize = foo;
+   |                    ^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `foo(a, b)`
+   |
+   = note: expected type `usize`
+              found type `fn(usize, usize) -> usize {foo}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:30:16
+   |
+LL | struct S(usize, usize);
+   | ----------------------- fn(usize, usize) -> S {S} defined here
+...
+LL |     let _: S = S;
+   |                ^
+   |                |
+   |                expected struct `S`, found fn item
+   |                help: use parentheses to instantiate this tuple struct: `S(_, _)`
+   |
+   = note: expected type `S`
+              found type `fn(usize, usize) -> S {S}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:31:20
+   |
+LL | fn bar() -> usize { 42 }
+   | ----------------- fn() -> usize {bar} defined here
+...
+LL |     let _: usize = bar;
+   |                    ^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `bar()`
+   |
+   = note: expected type `usize`
+              found type `fn() -> usize {bar}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:32:16
+   |
+LL | struct V();
+   | ----------- fn() -> V {V} defined here
+...
+LL |     let _: V = V;
+   |                ^
+   |                |
+   |                expected struct `V`, found fn item
+   |                help: use parentheses to instantiate this tuple struct: `V()`
+   |
+   = note: expected type `V`
+              found type `fn() -> V {V}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:33:20
+   |
+LL |     fn baz(x: usize, y: usize) -> usize { x }
+   |     ----------------------------------- fn(usize, usize) -> usize {<_ as T>::baz} defined here
+...
+LL |     let _: usize = T::baz;
+   |                    ^^^^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `T::baz(x, y)`
+   |
+   = note: expected type `usize`
+              found type `fn(usize, usize) -> usize {<_ as T>::baz}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:34:20
+   |
+LL |     fn bat(x: usize) -> usize { 42 }
+   |     ------------------------- fn(usize) -> usize {<_ as T>::bat} defined here
+...
+LL |     let _: usize = T::bat;
+   |                    ^^^^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `T::bat(x)`
+   |
+   = note: expected type `usize`
+              found type `fn(usize) -> usize {<_ as T>::bat}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:35:16
+   |
+LL |     A(usize),
+   |     -------- fn(usize) -> E {E::A} defined here
+...
+LL |     let _: E = E::A;
+   |                ^^^^
+   |                |
+   |                expected enum `E`, found fn item
+   |                help: use parentheses to instantiate this tuple variant: `E::A(_)`
+   |
+   = note: expected type `E`
+              found type `fn(usize) -> E {E::A}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:37:20
+   |
+LL |     fn baz(x: usize, y: usize) -> usize { x }
+   |     ----------------------------------- fn(usize, usize) -> usize {<X as T>::baz} defined here
+...
+LL |     let _: usize = X::baz;
+   |                    ^^^^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `X::baz(x, y)`
+   |
+   = note: expected type `usize`
+              found type `fn(usize, usize) -> usize {<X as T>::baz}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:38:20
+   |
+LL |     fn bat(x: usize) -> usize { 42 }
+   |     ------------------------- fn(usize) -> usize {<X as T>::bat} defined here
+...
+LL |     let _: usize = X::bat;
+   |                    ^^^^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `X::bat(x)`
+   |
+   = note: expected type `usize`
+              found type `fn(usize) -> usize {<X as T>::bat}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:39:20
+   |
+LL |     fn bax(x: usize) -> usize { 42 }
+   |     ------------------------- fn(usize) -> usize {<X as T>::bax} defined here
+...
+LL |     let _: usize = X::bax;
+   |                    ^^^^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `X::bax(x)`
+   |
+   = note: expected type `usize`
+              found type `fn(usize) -> usize {<X as T>::bax}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:40:20
+   |
+LL |     fn bach(x: usize) -> usize;
+   |     --------------------------- fn(usize) -> usize {<X as T>::bach} defined here
+...
+LL |     let _: usize = X::bach;
+   |                    ^^^^^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `X::bach(x)`
+   |
+   = note: expected type `usize`
+              found type `fn(usize) -> usize {<X as T>::bach}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:41:20
+   |
+LL |     fn ban(&self) -> usize { 42 }
+   |     ---------------------- for<'r> fn(&'r X) -> usize {<X as T>::ban} defined here
+...
+LL |     let _: usize = X::ban;
+   |                    ^^^^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `X::ban(_)`
+   |
+   = note: expected type `usize`
+              found type `for<'r> fn(&'r X) -> usize {<X as T>::ban}`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-or-tuple-struct-without-args.rs:42:20
+   |
+LL |     fn bal(&self) -> usize;
+   |     ----------------------- for<'r> fn(&'r X) -> usize {<X as T>::bal} defined here
+...
+LL |     let _: usize = X::bal;
+   |                    ^^^^^^
+   |                    |
+   |                    expected usize, found fn item
+   |                    help: use parentheses to call this function: `X::bal(_)`
+   |
+   = note: expected type `usize`
+              found type `for<'r> fn(&'r X) -> usize {<X as T>::bal}`
+
+error[E0615]: attempted to take value of method `ban` on type `X`
+  --> $DIR/fn-or-tuple-struct-without-args.rs:43:22
+   |
+LL |     let _: usize = X.ban;
+   |                      ^^^ help: use parentheses to call the method: `ban()`
+
+error[E0615]: attempted to take value of method `bal` on type `X`
+  --> $DIR/fn-or-tuple-struct-without-args.rs:44:22
+   |
+LL |     let _: usize = X.bal;
+   |                      ^^^ help: use parentheses to call the method: `bal()`
+
+error: aborting due to 16 previous errors
+
+Some errors have detailed explanations: E0308, E0423, E0615.
+For more information about an error, try `rustc --explain E0308`.
