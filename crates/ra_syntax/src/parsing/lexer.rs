@@ -12,6 +12,19 @@ pub struct Token {
     pub len: TextUnit,
 }
 
+fn match_literal_kind(kind: ra_rustc_lexer::LiteralKind) -> SyntaxKind {
+    match kind {
+        ra_rustc_lexer::LiteralKind::Int { .. } => INT_NUMBER,
+        ra_rustc_lexer::LiteralKind::Float { .. } => FLOAT_NUMBER,
+        ra_rustc_lexer::LiteralKind::Char { .. } => CHAR,
+        ra_rustc_lexer::LiteralKind::Byte { .. } => BYTE,
+        ra_rustc_lexer::LiteralKind::Str { .. } => STRING,
+        ra_rustc_lexer::LiteralKind::ByteStr { .. } => BYTE_STRING,
+        ra_rustc_lexer::LiteralKind::RawStr { .. } => RAW_STRING,
+        ra_rustc_lexer::LiteralKind::RawByteStr { .. } => RAW_BYTE_STRING,
+    }
+}
+
 /// Break a string up into its component tokens
 pub fn tokenize(text: &str) -> Vec<Token> {
     if text.is_empty() {
@@ -53,16 +66,7 @@ pub fn tokenize(text: &str) -> Vec<Token> {
                 }
             }
             ra_rustc_lexer::TokenKind::RawIdent => IDENT,
-            ra_rustc_lexer::TokenKind::Literal { kind, .. } => match kind {
-                ra_rustc_lexer::LiteralKind::Int { .. } => INT_NUMBER,
-                ra_rustc_lexer::LiteralKind::Float { .. } => FLOAT_NUMBER,
-                ra_rustc_lexer::LiteralKind::Char { .. } => CHAR,
-                ra_rustc_lexer::LiteralKind::Byte { .. } => BYTE,
-                ra_rustc_lexer::LiteralKind::Str { .. } => STRING,
-                ra_rustc_lexer::LiteralKind::ByteStr { .. } => BYTE_STRING,
-                ra_rustc_lexer::LiteralKind::RawStr { .. } => RAW_STRING,
-                ra_rustc_lexer::LiteralKind::RawByteStr { .. } => RAW_BYTE_STRING,
-            },
+            ra_rustc_lexer::TokenKind::Literal { kind, .. } => match_literal_kind(kind),
             ra_rustc_lexer::TokenKind::Lifetime { .. } => LIFETIME,
             ra_rustc_lexer::TokenKind::Semi => SEMI,
             ra_rustc_lexer::TokenKind::Comma => COMMA,
@@ -131,16 +135,7 @@ pub fn classify_literal(text: &str) -> Option<Token> {
         return None;
     }
     let kind = match t.kind {
-        ra_rustc_lexer::TokenKind::Literal { kind, .. } => match kind {
-            ra_rustc_lexer::LiteralKind::Int { .. } => INT_NUMBER,
-            ra_rustc_lexer::LiteralKind::Float { .. } => FLOAT_NUMBER,
-            ra_rustc_lexer::LiteralKind::Char { .. } => CHAR,
-            ra_rustc_lexer::LiteralKind::Byte { .. } => BYTE,
-            ra_rustc_lexer::LiteralKind::Str { .. } => STRING,
-            ra_rustc_lexer::LiteralKind::ByteStr { .. } => BYTE_STRING,
-            ra_rustc_lexer::LiteralKind::RawStr { .. } => RAW_STRING,
-            ra_rustc_lexer::LiteralKind::RawByteStr { .. } => RAW_BYTE_STRING,
-        },
+        ra_rustc_lexer::TokenKind::Literal { kind, .. } => match_literal_kind(kind),
         _ => return None,
     };
     Some(Token { kind, len: TextUnit::from_usize(t.len) })
