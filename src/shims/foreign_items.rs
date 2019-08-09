@@ -1,3 +1,6 @@
+use std::convert::TryInto;
+
+use rustc_apfloat::Float;
 use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
@@ -591,14 +594,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             // underscore case for windows
             "_ldexp" | "ldexp" => {
-                // FIXME: Using host floats.
-                let x = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+                let x = this.read_scalar(args[0])?.to_f64()?;
                 let exp = this.read_scalar(args[1])?.to_i32()?;
-                extern {
-                    fn ldexp(x: f64, n: i32) -> f64;
-                }
-                let n = unsafe { ldexp(x, exp) };
-                this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
+                // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
+                let res = x.scalbn(exp.try_into().unwrap());
+                this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
             // Some things needed for `sys::thread` initialization to go through.
