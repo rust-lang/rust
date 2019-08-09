@@ -136,9 +136,9 @@ language: rust
 before_script:
 - rustup component add rustfmt
 script:
-- cargo fmt --all -- --check
 - cargo build
 - cargo test
+- cargo fmt --all -- --check
 ```
 
 See [this blog post](https://medium.com/@ag_dubs/enforcing-style-in-ci-for-rust-projects-18f6b09ec69d)
