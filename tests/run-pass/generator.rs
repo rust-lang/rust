@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(generators, generator_trait, never_type)]
 
 use std::ops::{GeneratorState, Generator};
 use std::pin::Pin;
@@ -26,6 +26,7 @@ fn never() -> Never {
 
 fn main() {
     finish(1, || yield 1);
+
     finish(3, || {
         let mut x = 0;
         yield 1;
@@ -35,23 +36,27 @@ fn main() {
         yield 1;
         assert_eq!(x, 2);
     });
+
     finish(7*8/2, || {
         for i in 0..8 {
             yield i;
         }
     });
+
     finish(1, || {
         if true {
             yield 1;
         } else {
         }
     });
+
     finish(1, || {
         if false {
         } else {
             yield 1;
         }
     });
+
     finish(2, || {
         if { yield 1; false } {
             yield 1;
@@ -59,6 +64,7 @@ fn main() {
         }
         yield 1;
     });
+
     // also test a self-referential generator
     assert_eq!(
         finish(5, || {
@@ -71,6 +77,7 @@ fn main() {
         }),
         10
     );
+
     let b = true;
     finish(1, || {
         yield 1;
@@ -79,5 +86,11 @@ fn main() {
         let x = never();
         yield 2;
         drop(x);
+    });
+
+    finish(3, || {
+        yield 1;
+        #[allow(unreachable_code)]
+        let _x: (String, !) = (String::new(), { yield 2; return });
     });
 }
