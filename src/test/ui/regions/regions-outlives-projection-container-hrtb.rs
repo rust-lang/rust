@@ -6,9 +6,6 @@
 
 #![allow(dead_code)]
 
-
-///////////////////////////////////////////////////////////////////////////
-
 pub trait TheTrait<'b> {
     type TheAssocType;
 }
@@ -20,8 +17,6 @@ pub struct TheType<'b> {
 impl<'a,'b> TheTrait<'a> for TheType<'b> {
     type TheAssocType = &'b ();
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 pub struct WithHrAssoc<T>
     where for<'a> T : TheTrait<'a>
@@ -36,8 +31,6 @@ fn with_assoc<'a,'b>() {
     //[migrate]~^ ERROR reference has a longer lifetime
     //[nll]~^^ ERROR lifetime may not live long enough
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 pub trait TheSubTrait : for<'a> TheTrait<'a> {
 }
