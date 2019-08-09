@@ -232,8 +232,9 @@ impl<'a> Resolver<'a> {
                     }
                 }
 
+                let scopes = ScopeSet::All(ns, true);
                 let binding = self.early_resolve_ident_in_lexical_scope(
-                    ident, ScopeSet::Import(ns), parent_scope, record_used, record_used, path_span
+                    ident, scopes, parent_scope, record_used, record_used, path_span
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -1217,7 +1218,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             match this.early_resolve_ident_in_lexical_scope(
                 target,
-                ScopeSet::Import(ns),
+                ScopeSet::All(ns, false),
                 &directive.parent_scope,
                 false,
                 false,

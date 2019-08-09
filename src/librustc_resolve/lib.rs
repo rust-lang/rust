@@ -17,7 +17,7 @@ use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::lint;
-use rustc::hir::def::{self, DefKind, PartialRes, CtorOf, NonMacroAttrKind, ExportMap};
+use rustc::hir::def::{self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap};
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::{TraitMap, GlobMap};
@@ -37,7 +37,7 @@ use syntax::visit::{self, Visitor};
 use syntax::attr;
 use syntax::ast::{CRATE_NODE_ID, Crate};
 use syntax::ast::{ItemKind, Path};
-use syntax::{span_err, struct_span_err, unwrap_or};
+use syntax::{struct_span_err, unwrap_or};
 
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{Applicability, DiagnosticBuilder};
@@ -110,10 +110,12 @@ enum Scope<'a> {
 /// This enum is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
 enum ScopeSet {
-    Import(Namespace),
+    /// All scopes with the given namespace.
+    All(Namespace, /*is_import*/ bool),
+    /// Crate root, then extern prelude (used for mixed 2015-2018 mode in macros).
     AbsolutePath(Namespace),
+    /// All scopes with macro namespace and the given macro kind restriction.
     Macro(MacroKind),
-    Module,
 }
 
 /// Everything you need to know about a name's location to resolve it.
@@ -1330,10 +1332,9 @@ impl<'a> Resolver<'a> {
 
         let rust_2015 = ident.span.rust_2015();
         let (ns, is_absolute_path) = match scope_set {
-            ScopeSet::Import(ns) => (ns, false),
+            ScopeSet::All(ns, _) => (ns, false),
             ScopeSet::AbsolutePath(ns) => (ns, true),
             ScopeSet::Macro(_) => (MacroNS, false),
-            ScopeSet::Module => (TypeNS, false),
         };
         let mut scope = match ns {
             _ if is_absolute_path => Scope::CrateRoot,
@@ -1858,9 +1859,7 @@ impl<'a> Resolver<'a> {
                     module, ident, ns, parent_scope, record_used, path_span
                 )
             } else if ribs.is_none() || opt_ns.is_none() || opt_ns == Some(MacroNS) {
-                // FIXME: Decouple the import property from `ScopeSet`.
-                let is_import = opt_ns.is_none() || ns != TypeNS;
-                let scopes = if is_import { ScopeSet::Import(ns) } else { ScopeSet::Module };
+                let scopes = ScopeSet::All(ns, opt_ns.is_none());
                 self.early_resolve_ident_in_lexical_scope(ident, scopes, parent_scope, record_used,
                                                           record_used, path_span)
             } else {

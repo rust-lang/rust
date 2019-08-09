@@ -16,17 +16,17 @@ error: visibilities can only be restricted to ancestor modules
 LL | pub(in std::vec) struct F;
    |        ^^^^^^^^
 
-error[E0433]: failed to resolve: maybe a missing `extern crate nonexistent;`?
+error[E0433]: failed to resolve: maybe a missing crate `nonexistent`?
   --> $DIR/resolve-bad-visibility.rs:7:8
    |
 LL | pub(in nonexistent) struct G;
-   |        ^^^^^^^^^^^ maybe a missing `extern crate nonexistent;`?
+   |        ^^^^^^^^^^^ maybe a missing crate `nonexistent`?
 
-error[E0433]: failed to resolve: maybe a missing `extern crate too_soon;`?
+error[E0433]: failed to resolve: maybe a missing crate `too_soon`?
   --> $DIR/resolve-bad-visibility.rs:8:8
    |
 LL | pub(in too_soon) struct H;
-   |        ^^^^^^^^ maybe a missing `extern crate too_soon;`?
+   |        ^^^^^^^^ maybe a missing crate `too_soon`?
 
 error: aborting due to 5 previous errors
 

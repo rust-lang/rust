@@ -374,8 +374,7 @@ impl<'a> Resolver<'a> {
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
             res
         } else {
-            // Macro without a specific kind restriction is equvalent to a macro import.
-            let scope_set = kind.map_or(ScopeSet::Import(MacroNS), ScopeSet::Macro);
+            let scope_set = kind.map_or(ScopeSet::All(MacroNS, false), ScopeSet::Macro);
             let binding = self.early_resolve_ident_in_lexical_scope(
                 path[0].ident, scope_set, parent_scope, false, force, path_span
             );
@@ -430,10 +429,9 @@ impl<'a> Resolver<'a> {
         }
 
         let (ns, macro_kind, is_import) = match scope_set {
-            ScopeSet::Import(ns) => (ns, None, true),
+            ScopeSet::All(ns, is_import) => (ns, None, is_import),
             ScopeSet::AbsolutePath(ns) => (ns, None, false),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
-            ScopeSet::Module => (TypeNS, None, false),
         };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
