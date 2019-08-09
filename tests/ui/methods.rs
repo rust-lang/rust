@@ -5,7 +5,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
     clippy::blacklisted_name,
-    dead_code,
+    unused,
     clippy::print_stdout,
     clippy::non_ascii_literal,
     clippy::new_without_default,
@@ -13,7 +13,6 @@
     clippy::needless_pass_by_value,
     clippy::default_trait_access,
     clippy::use_self,
-    clippy::new_ret_no_self,
     clippy::useless_format,
     clippy::wrong_self_convention
 )]
@@ -145,6 +144,14 @@ struct AsyncNew;
 impl AsyncNew {
     async fn new() -> Option<Self> {
         None
+    }
+}
+
+struct BadNew;
+
+impl BadNew {
+    fn new() -> i32 {
+        0
     }
 }
 
