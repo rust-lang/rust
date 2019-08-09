@@ -60,27 +60,19 @@ build_sysroot() {
 # Prepare and set MIRI_SYSROOT.  Respects `MIRI_TEST_TARGET` and takes into account
 # locally built vs. distributed rustc.
 find_sysroot() {
-    # Get ourselves a sysroot
     if [ -n "$MIRI_SYSROOT" ]; then
         # Sysroot already set, use that.
-        true
-    elif echo "$SYSROOT" | egrep -q 'build/[^/]+/stage'; then
-        # A local rustc build.
-        if [ -n "$MIRI_TEST_TARGET" ]; then
-            # Foreign targets still need a build.  Use the rustc sources.
-            export XARGO_RUST_SRC="$SYSROOT/../../../src"
-            build_sysroot --target "$MIRI_TEST_TARGET"
-        else
-            # Assume we have a proper host libstd in $SYSROOT.
-            MIRI_SYSROOT="$SYSROOT"
-        fi
+        return 0
+    fi
+    # We need to build a sysroot.
+    if echo "$SYSROOT" | egrep -q 'build/[^/]+/stage'; then
+        # A local rustc build. Use its source dir.
+        export XARGO_RUST_SRC="$SYSROOT/../../../src"
+    fi
+    if [ -n "$MIRI_TEST_TARGET" ]; then
+        build_sysroot --target "$MIRI_TEST_TARGET"
     else
-        # A normal toolchain.  We have to build a sysroot either way.
-        if [ -n "$MIRI_TEST_TARGET" ]; then
-            build_sysroot --target "$MIRI_TEST_TARGET"
-        else
-            build_sysroot
-        fi
+        build_sysroot
     fi
     export MIRI_SYSROOT
 }
