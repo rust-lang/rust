@@ -37,7 +37,7 @@ fn main() {
             let mut new = None;
             if let Some(current_as_str) = args[i].to_str() {
                 if (&*args[i - 1] == "-C" && current_as_str.starts_with("metadata")) ||
-                   current_as_str.starts_with("-Cmetadata") {
+                    current_as_str.starts_with("-Cmetadata") {
                     new = Some(format!("{}-{}", current_as_str, s));
                 }
             }
@@ -89,7 +89,7 @@ fn main() {
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
             if target == "all" ||
-               target.into_string().unwrap().split(",").any(|c| c.trim() == crate_name)
+                target.into_string().unwrap().split(",").any(|c| c.trim() == crate_name)
             {
                 cmd.arg("-Ztime");
             }

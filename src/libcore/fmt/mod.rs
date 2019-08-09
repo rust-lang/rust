@@ -549,7 +549,7 @@ pub trait Debug {
 pub(crate) mod macros {
     /// Derive macro generating an impl of the trait `Debug`.
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
+    #[cfg_attr(boostrap_stdarch_ignore_this, rustc_macro_transparency = "semitransparent")]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics)]
     pub macro Debug($item:item) { /* compiler built-in */ }
