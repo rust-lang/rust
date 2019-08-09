@@ -12,6 +12,7 @@ use rustc::{
         self,
         relate::{Relate, RelateResult, TypeRelation},
         subst::SubstsRef,
+        ParamEnv,
         Ty, TyCtxt,
         Visibility::Public,
     },
@@ -103,6 +104,10 @@ impl<'a, 'tcx> MismatchRelation<'a, 'tcx> {
 impl<'a, 'tcx> TypeRelation<'tcx> for MismatchRelation<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        ParamEnv::empty()
     }
 
     fn tag(&self) -> &'static str {

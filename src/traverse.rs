@@ -239,9 +239,7 @@ fn diff_structure<'tcx>(
                             | (Macro(_), Macro(_))
                             | (TraitAlias, TraitAlias)
                             | (ForeignTy, ForeignTy)
-                            | (ConstParam, ConstParam)
-                            | (AssocExistential, AssocExistential)
-                            | (Existential, Existential) => {}
+                            | (ConstParam, ConstParam) => {}
                             // statics are subject to mutability comparison
                             (Static, Static) => {
                                 let old_mut = tcx.is_mutable_static(o_def_id);

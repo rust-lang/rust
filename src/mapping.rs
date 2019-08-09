@@ -323,13 +323,13 @@ impl NameMapping {
                 Enum |
                 Variant |
                 Trait |
-                Existential |
                 TyAlias |
                 ForeignTy |
                 TraitAlias | // TODO: will need some handling later on
                 AssocTy |
-                AssocExistential |
-                TyParam => Some(&mut self.type_map),
+                TyParam |
+                OpaqueTy |
+                AssocOpaqueTy => Some(&mut self.type_map),
                 Fn |
                 Const |
                 ConstParam |
