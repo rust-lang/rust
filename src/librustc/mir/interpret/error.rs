@@ -220,7 +220,7 @@ impl From<ErrorHandled> for InterpErrorInfo<'tcx> {
         match err {
             ErrorHandled::Reported => err_inval!(ReferencedConstant),
             ErrorHandled::TooGeneric => err_inval!(TooGeneric),
-        }
+        }.into()
     }
 }
 
