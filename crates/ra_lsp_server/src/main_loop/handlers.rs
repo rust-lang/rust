@@ -325,13 +325,7 @@ pub fn handle_runnables(
                 continue;
             }
         }
-        let label = match &runnable.kind {
-            RunnableKind::Test { name } => format!("test {}", name),
-            RunnableKind::TestMod { path } => format!("test-mod {}", path),
-            RunnableKind::Bench { name } => format!("bench {}", name),
-            RunnableKind::Bin => "run binary".to_string(),
-        };
-        res.push(to_lsp_runnable(&world, file_id, runnable, label)?);
+        res.push(to_lsp_runnable(&world, file_id, runnable)?);
     }
     let mut check_args = vec!["check".to_string()];
     let label;
@@ -686,12 +680,13 @@ pub fn handle_code_lens(
             RunnableKind::Test { .. } | RunnableKind::TestMod { .. } => "▶️Run Test",
             RunnableKind::Bench { .. } => "Run Bench",
             RunnableKind::Bin => "Run",
-        };
-        let r = to_lsp_runnable(&world, file_id, runnable, title.to_string())?;
+        }
+        .to_string();
+        let r = to_lsp_runnable(&world, file_id, runnable)?;
         let lens = CodeLens {
             range: r.range,
             command: Some(Command {
-                title: title.to_string(),
+                title,
                 command: "rust-analyzer.runSingle".into(),
                 arguments: Some(vec![to_value(r).unwrap()]),
             }),
@@ -830,10 +825,15 @@ fn to_lsp_runnable(
     world: &WorldSnapshot,
     file_id: FileId,
     runnable: Runnable,
-    label: String,
 ) -> Result<req::Runnable> {
     let args = runnable_args(world, file_id, &runnable.kind)?;
     let line_index = world.analysis().file_line_index(file_id)?;
+    let label = match &runnable.kind {
+        RunnableKind::Test { name } => format!("test {}", name),
+        RunnableKind::TestMod { path } => format!("test-mod {}", path),
+        RunnableKind::Bench { name } => format!("bench {}", name),
+        RunnableKind::Bin => "run binary".to_string(),
+    };
     Ok(req::Runnable {
         range: runnable.range.conv_with(&line_index),
         label,
