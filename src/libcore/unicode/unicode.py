@@ -606,7 +606,7 @@ def compute_trie(raw_data, chunk_size):
     return root, child_data
 
 
-def generate_bool_trie(name, codepoint_ranges, is_pub=True):
+def generate_bool_trie(name, codepoint_ranges, is_pub=False):
     # type: (str, List[Tuple[int, int]], bool) -> Iterator[str]
     """
     Generate Rust code for BoolTrie struct.
@@ -681,7 +681,7 @@ def generate_bool_trie(name, codepoint_ranges, is_pub=True):
     yield "    };\n\n"
 
 
-def generate_small_bool_trie(name, codepoint_ranges, is_pub=True):
+def generate_small_bool_trie(name, codepoint_ranges, is_pub=False):
     # type: (str, List[Tuple[int, int]], bool) -> Iterator[str]
     """
     Generate Rust code for `SmallBoolTrie` struct.
@@ -726,7 +726,7 @@ def generate_property_module(mod, grouped_categories, category_subset):
     Generate Rust code for module defining properties.
     """
 
-    yield "pub mod %s {\n" % mod
+    yield "pub(crate) mod %s {\n" % mod
     for cat in sorted(category_subset):
         if cat in ("Cc", "White_Space", "Pattern_White_Space"):
             generator = generate_small_bool_trie("%s_table" % cat, grouped_categories[cat])
@@ -749,7 +749,7 @@ def generate_conversions_module(unicode_data):
     Generate Rust code for module defining conversions.
     """
 
-    yield "pub mod conversions {"
+    yield "pub(crate) mod conversions {"
     yield """
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {

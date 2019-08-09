@@ -768,7 +768,6 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
     pub macro format_args {
         ($fmt:expr) => ({ /* compiler built-in */ }),
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -780,7 +779,6 @@ pub(crate) mod builtin {
                          language use and is subject to change")]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
     pub macro format_args_nl {
         ($fmt:expr) => ({ /* compiler built-in */ }),
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
