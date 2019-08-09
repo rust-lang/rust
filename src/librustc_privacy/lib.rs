@@ -33,7 +33,9 @@ use std::marker::PhantomData;
 
 mod error_codes;
 
+////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
+////////////////////////////////////////////////////////////////////////////////
 
 /// Implemented to visit all `DefId`s in a type.
 /// Visiting `DefId`s is useful because visibilities and reachabilities are attached to them.
@@ -343,10 +345,12 @@ fn min(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'_>) -> ty::Visib
     if vis1.is_at_least(vis2, tcx) { vis2 } else { vis1 }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// Visitor used to determine if pub(restricted) is used anywhere in the crate.
 ///
 /// This is done so that `private_in_public` warnings can be turned into hard errors
 /// in crates that have been updated to use pub(restricted).
+////////////////////////////////////////////////////////////////////////////////
 struct PubRestrictedVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     has_pub_restricted: bool,
@@ -361,7 +365,9 @@ impl Visitor<'tcx> for PubRestrictedVisitor<'tcx> {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// Visitor used to determine impl visibility and reachability.
+////////////////////////////////////////////////////////////////////////////////
 
 struct FindMin<'a, 'tcx, VL: VisibilityLike> {
     tcx: TyCtxt<'tcx>,
@@ -427,7 +433,9 @@ impl VisibilityLike for Option<AccessLevel> {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 /// The embargo visitor, used to determine the exports of the AST.
+////////////////////////////////////////////////////////////////////////////////
 
 struct EmbargoVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -951,10 +959,13 @@ impl DefIdVisitor<'tcx> for ReachEverythingInTheInterfaceVisitor<'_, 'tcx> {
     }
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
 /// Name privacy visitor, checks privacy and reports violations.
 /// Most of name privacy checks are performed during the main resolution phase,
 /// or later in type checking when field accesses and associated items are resolved.
 /// This pass performs remaining checks for fields in struct expressions and patterns.
+//////////////////////////////////////////////////////////////////////////////////////
+
 struct NamePrivacyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -1076,9 +1087,12 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
 /// Type privacy visitor, checks types for privacy and reports violations.
 /// Both explicitly written types and inferred types of expressions and patters are checked.
 /// Checks are performed on "semantic" types regardless of names and their hygiene.
+////////////////////////////////////////////////////////////////////////////////////////////
+
 struct TypePrivacyVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
@@ -1310,10 +1324,13 @@ impl DefIdVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
 /// Obsolete visitors for checking for private items in public interfaces.
 /// These visitors are supposed to be kept in frozen state and produce an
 /// "old error node set". For backward compatibility the new visitor reports
 /// warnings instead of hard errors when the erroneous node is not in this old set.
+///////////////////////////////////////////////////////////////////////////////
+
 struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     access_levels: &'a AccessLevels,
@@ -1651,10 +1668,13 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, _: &'tcx hir::Expr) {}
 }
 
+///////////////////////////////////////////////////////////////////////////////
 /// SearchInterfaceForPrivateItemsVisitor traverses an item's interface and
 /// finds any private components in it.
 /// PrivateItemsInPublicInterfacesVisitor ensures there are no private types
 /// and traits in public interfaces.
+///////////////////////////////////////////////////////////////////////////////
+
 struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_id: hir::HirId,
