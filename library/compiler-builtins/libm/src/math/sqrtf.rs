@@ -29,9 +29,9 @@ pub fn sqrtf(x: f32) -> f32 {
     }
     #[cfg(target_feature = "sse")]
     {
-        // Note(Lokathor): If compile time settings allow, we just use SSE, since
-        // the sqrt in `std` on these platforms also compiles down to an SSE
-        // instruction.
+        // Note: This path is unlikely since LLVM will usually have already
+        // optimized sqrt calls into hardware instructions if sse is available,
+        // but if someone does end up here they'll apprected the speed increase.
         #[cfg(target_arch = "x86")]
         use core::arch::x86::*;
         #[cfg(target_arch = "x86_64")]
