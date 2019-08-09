@@ -135,6 +135,7 @@ struct BindingError {
     name: Name,
     origin: BTreeSet<Span>,
     target: BTreeSet<Span>,
+    could_be_variant: bool
 }
 
 impl PartialOrd for BindingError {
