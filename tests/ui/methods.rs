@@ -5,7 +5,7 @@
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
     clippy::blacklisted_name,
-    unused,
+    dead_code,
     clippy::print_stdout,
     clippy::non_ascii_literal,
     clippy::new_without_default,
@@ -25,13 +25,11 @@ use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
-use std::future::Future;
 use std::iter::FromIterator;
 use std::ops::Mul;
 use std::pin::Pin;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};
-use std::task::{Context, Poll};
 
 use option_helpers::IteratorFalsePositives;
 
