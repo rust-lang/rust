@@ -572,6 +572,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
 //     S {};
 //     S { x, y: 32, };
 //     S { x, y: 32, ..Default::default() };
+//     TupleStruct { 0: 1 };
 // }
 pub(crate) fn named_field_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
@@ -583,7 +584,7 @@ pub(crate) fn named_field_list(p: &mut Parser) {
             // fn main() {
             //     S { #[cfg(test)] field: 1 }
             // }
-            IDENT | T![#] => {
+            IDENT | INT_NUMBER | T![#] => {
                 let m = p.start();
                 attributes::outer_attributes(p);
                 name_ref(p);

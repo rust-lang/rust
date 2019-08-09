@@ -274,7 +274,7 @@ fn name(p: &mut Parser) {
 }
 
 fn name_ref(p: &mut Parser) {
-    if p.at(IDENT) {
+    if p.at(IDENT) || p.at(INT_NUMBER) {
         let m = p.start();
         p.bump();
         m.complete(p, NAME_REF);

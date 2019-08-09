@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 86)
-  FN_DEF@[0; 85)
+SOURCE_FILE@[0; 112)
+  FN_DEF@[0; 111)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 6)
@@ -8,7 +8,7 @@ SOURCE_FILE@[0; 86)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 85)
+    BLOCK@[9; 111)
       L_CURLY@[9; 10) "{"
       WHITESPACE@[10; 15) "\n    "
       EXPR_STMT@[15; 20)
@@ -92,6 +92,27 @@ SOURCE_FILE@[0; 86)
             WHITESPACE@[80; 81) " "
             R_CURLY@[81; 82) "}"
         SEMI@[82; 83) ";"
-      WHITESPACE@[83; 84) "\n"
-      R_CURLY@[84; 85) "}"
-  WHITESPACE@[85; 86) "\n"
+      WHITESPACE@[83; 88) "\n    "
+      EXPR_STMT@[88; 109)
+        STRUCT_LIT@[88; 108)
+          PATH@[88; 99)
+            PATH_SEGMENT@[88; 99)
+              NAME_REF@[88; 99)
+                IDENT@[88; 99) "TupleStruct"
+          WHITESPACE@[99; 100) " "
+          NAMED_FIELD_LIST@[100; 108)
+            L_CURLY@[100; 101) "{"
+            WHITESPACE@[101; 102) " "
+            NAMED_FIELD@[102; 106)
+              NAME_REF@[102; 103)
+                INT_NUMBER@[102; 103) "0"
+              COLON@[103; 104) ":"
+              WHITESPACE@[104; 105) " "
+              LITERAL@[105; 106)
+                INT_NUMBER@[105; 106) "1"
+            WHITESPACE@[106; 107) " "
+            R_CURLY@[107; 108) "}"
+        SEMI@[108; 109) ";"
+      WHITESPACE@[109; 110) "\n"
+      R_CURLY@[110; 111) "}"
+  WHITESPACE@[111; 112) "\n"
