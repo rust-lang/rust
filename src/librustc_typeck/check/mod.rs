@@ -3709,7 +3709,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.consider_hint_about_removing_semicolon(blk, expected_ty, err);
                         }
                         if let Some(fn_span) = fn_span {
-                            err.span_label(fn_span, "this function's body doesn't return");
+                            err.span_label(
+                                fn_span,
+                                "implicitly returns `()` as its body has no tail or `return` \
+                                 expression",
+                            );
                         }
                     }, false);
                 }
@@ -3819,6 +3823,101 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pointing_at_return_type
     }
 
+    /// When encountering an fn-like ctor that needs to unify with a value, check whether calling
+    /// the ctor would successfully solve the type mismatch and if so, suggest it:
+    /// ```
+    /// fn foo(x: usize) -> usize { x }
+    /// let x: usize = foo;  // suggest calling the `foo` function: `foo(42)`
+    /// ```
+    fn suggest_fn_call(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) -> bool {
+        match found.sty {
+            ty::FnDef(..) | ty::FnPtr(_) => {}
+            _ => return false,
+        }
+        let hir = self.tcx.hir();
+
+        let sig = found.fn_sig(self.tcx);
+        let sig = self
+            .replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, &sig)
+            .0;
+        let sig = self.normalize_associated_types_in(expr.span, &sig);
+        if let Ok(_) = self.try_coerce(expr, sig.output(), expected, AllowTwoPhase::No) {
+            let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
+                (String::new(), Applicability::MachineApplicable)
+            } else {
+                ("...".to_string(), Applicability::HasPlaceholders)
+            };
+            let mut msg = "call this function";
+            if let ty::FnDef(def_id, ..) = found.sty {
+                match hir.get_if_local(def_id) {
+                    Some(Node::Item(hir::Item {
+                        node: ItemKind::Fn(.., body_id),
+                        ..
+                    })) |
+                    Some(Node::ImplItem(hir::ImplItem {
+                        node: hir::ImplItemKind::Method(_, body_id),
+                        ..
+                    })) |
+                    Some(Node::TraitItem(hir::TraitItem {
+                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
+                        ..
+                    })) => {
+                        let body = hir.body(*body_id);
+                        sugg_call = body.arguments.iter()
+                            .map(|arg| match &arg.pat.node {
+                                hir::PatKind::Binding(_, _, ident, None)
+                                if ident.name != kw::SelfLower => ident.to_string(),
+                                _ => "_".to_string(),
+                            }).collect::<Vec<_>>().join(", ");
+                    }
+                    Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
+                        sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                        match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
+                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
+                                msg = "instantiate this tuple variant";
+                            }
+                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
+                                msg = "instantiate this tuple struct";
+                            }
+                            _ => {}
+                        }
+                    }
+                    Some(Node::ForeignItem(hir::ForeignItem {
+                        node: hir::ForeignItemKind::Fn(_, idents, _),
+                        ..
+                    })) |
+                    Some(Node::TraitItem(hir::TraitItem {
+                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
+                        ..
+                    })) => sugg_call = idents.iter()
+                            .map(|ident| if ident.name != kw::SelfLower {
+                                ident.to_string()
+                            } else {
+                                "_".to_string()
+                            }).collect::<Vec<_>>()
+                            .join(", "),
+                    _ => {}
+                }
+            };
+            if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
+                err.span_suggestion(
+                    expr.span,
+                    &format!("use parentheses to {}", msg),
+                    format!("{}({})", code, sugg_call),
+                    applicability,
+                );
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn suggest_ref_or_into(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -3833,6 +3932,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggestion,
                 Applicability::MachineApplicable,
             );
+        } else if let (ty::FnDef(def_id, ..), true) = (
+            &found.sty,
+            self.suggest_fn_call(err, expr, expected, found),
+        ) {
+            if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
+                let sp = self.sess().source_map().def_span(sp);
+                err.span_label(sp, &format!("{} defined here", found));
+            }
         } else if !self.check_for_cast(err, expr, found, expected) {
             let is_struct_pat_shorthand_field = self.is_hir_id_from_struct_pattern_shorthand_field(
                 expr.hir_id,

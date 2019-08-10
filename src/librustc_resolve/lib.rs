@@ -50,7 +50,7 @@ use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItem, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::ptr::P;
-use syntax::{span_err, struct_span_err, unwrap_or, walk_list};
+use syntax::{struct_span_err, unwrap_or, walk_list};
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
@@ -4789,8 +4789,33 @@ impl<'a> Resolver<'a> {
         let mut reported_spans = FxHashSet::default();
         for &PrivacyError(dedup_span, ident, binding) in &self.privacy_errors {
             if reported_spans.insert(dedup_span) {
-                span_err!(self.session, ident.span, E0603, "{} `{}` is private",
-                          binding.descr(), ident.name);
+                let mut err = struct_span_err!(
+                    self.session,
+                    ident.span,
+                    E0603,
+                    "{} `{}` is private",
+                    binding.descr(),
+                    ident.name,
+                );
+                // FIXME: use the ctor's `def_id` to check wether any of the fields is not visible
+                match binding.kind {
+                    NameBindingKind::Res(Res::Def(DefKind::Ctor(
+                        CtorOf::Struct,
+                        CtorKind::Fn,
+                    ), _def_id), _) => {
+                        err.note("a tuple struct constructor is private if any of its fields \
+                                  is private");
+                    }
+                    NameBindingKind::Res(Res::Def(DefKind::Ctor(
+                        CtorOf::Variant,
+                        CtorKind::Fn,
+                    ), _def_id), _) => {
+                        err.note("a tuple variant constructor is private if any of its fields \
+                                  is private");
+                    }
+                    _ => {}
+                }
+                err.emit();
             }
         }
     }

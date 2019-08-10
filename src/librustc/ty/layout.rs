@@ -2027,9 +2027,9 @@ impl ty::query::TyCtxtAt<'tcx> {
 
 impl<'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 where
-    C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
-    C::TyLayout: MaybeResult<TyLayout<'tcx>>,
-    C: HasParamEnv<'tcx>,
+    C: LayoutOf<Ty = Ty<'tcx>, TyLayout: MaybeResult<TyLayout<'tcx>>>
+        + HasTyCtxt<'tcx>
+        + HasParamEnv<'tcx>,
 {
     fn for_variant(this: TyLayout<'tcx>, cx: &C, variant_index: VariantIdx) -> TyLayout<'tcx> {
         let details = match this.variants {

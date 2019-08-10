@@ -589,10 +589,8 @@ impl<E:Idx> GenKillSet<E> {
         self.gen_set.insert(e);
         self.kill_set.remove(e);
     }
-    fn gen_all<I>(&mut self, i: I)
-        where I: IntoIterator,
-              I::Item: Borrow<E>
-    {
+
+    fn gen_all(&mut self, i: impl IntoIterator<Item: Borrow<E>>) {
         for j in i {
             self.gen(*j.borrow());
         }
@@ -603,10 +601,7 @@ impl<E:Idx> GenKillSet<E> {
         self.kill_set.insert(e);
     }
 
-    fn kill_all<I>(&mut self, i: I)
-        where I: IntoIterator,
-              I::Item: Borrow<E>
-    {
+    fn kill_all(&mut self, i: impl IntoIterator<Item: Borrow<E>>) {
         for j in i {
             self.kill(*j.borrow());
         }

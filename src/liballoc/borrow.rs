@@ -329,8 +329,8 @@ impl<'a, B: ?Sized> PartialOrd for Cow<'a, B>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized> fmt::Debug for Cow<'_, B>
-    where B: fmt::Debug + ToOwned,
-          <B as ToOwned>::Owned: fmt::Debug
+where
+    B: fmt::Debug + ToOwned<Owned: fmt::Debug>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -342,8 +342,8 @@ impl<B: ?Sized> fmt::Debug for Cow<'_, B>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized> fmt::Display for Cow<'_, B>
-    where B: fmt::Display + ToOwned,
-          <B as ToOwned>::Owned: fmt::Display
+where
+    B: fmt::Display + ToOwned<Owned: fmt::Display>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
@@ -355,8 +355,8 @@ impl<B: ?Sized> fmt::Display for Cow<'_, B>
 
 #[stable(feature = "default", since = "1.11.0")]
 impl<B: ?Sized> Default for Cow<'_, B>
-    where B: ToOwned,
-          <B as ToOwned>::Owned: Default
+where
+    B: ToOwned<Owned: Default>,
 {
     /// Creates an owned Cow<'a, B> with the default value for the contained owned value.
     fn default() -> Self {

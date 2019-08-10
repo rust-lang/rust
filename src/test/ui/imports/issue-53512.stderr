@@ -1,8 +1,8 @@
-error[E0432]: unresolved import `std::assert`
-  --> $DIR/issue-53512.rs:3:5
+error[E0432]: unresolved import `m::assert`
+  --> $DIR/issue-53512.rs:4:5
    |
-LL | use std::assert;
-   |     ^^^^^^^^^^^ no `assert` in the root
+LL | use m::assert;
+   |     ^^^^^^^^^ no `assert` in `m`
 
 error: aborting due to previous error
 

@@ -238,6 +238,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
+#![feature(associated_type_bounds)]
 #![feature(bind_by_move_pattern_guards)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
@@ -325,16 +326,6 @@ use prelude::v1::*;
 
 // Access to Bencher, etc.
 #[cfg(test)] extern crate test;
-
-// Re-export a few macros from core
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{unreachable, unimplemented, write, writeln, todo};
-// FIXME: change this to `#[allow(deprecated)]` when we update nightly compiler.
-#[allow(deprecated_in_future)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::r#try;
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
@@ -520,33 +511,52 @@ mod std_detect;
 #[cfg(not(test))]
 pub use std_detect::detect;
 
-// Document built-in macros in the crate root for consistency with libcore and existing tradition.
-// FIXME: Attribute and derive macros are not reexported because rustdoc renders them
-// as reexports rather than as macros, and that's not what we want.
-#[cfg(rustdoc)]
+// Re-export macros defined in libcore.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+pub use core::{
+    // Stable
+    assert_eq,
+    assert_ne,
+    debug_assert_eq,
+    debug_assert_ne,
+    debug_assert,
+    r#try,
+    unimplemented,
+    unreachable,
+    write,
+    writeln,
+    // Unstable
+    todo,
+};
+
+// Re-export built-in macros defined through libcore.
+#[cfg(not(bootstrap))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-pub use crate::prelude::v1::{
-    __rust_unstable_column,
-    asm,
+pub use core::{
+    // Stable
     assert,
     cfg,
     column,
     compile_error,
     concat,
-    concat_idents,
     env,
     file,
     format_args,
-    format_args_nl,
-    global_asm,
     include,
     include_bytes,
     include_str,
     line,
-    log_syntax,
     module_path,
     option_env,
     stringify,
+    // Unstable
+    __rust_unstable_column,
+    asm,
+    concat_idents,
+    format_args_nl,
+    global_asm,
+    log_syntax,
     trace_macros,
 };
 
