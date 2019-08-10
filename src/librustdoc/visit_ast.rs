@@ -15,9 +15,26 @@ use syntax_pos::{self, Span};
 use std::mem;
 
 use crate::core;
-use crate::clean::{self, AttributesExt, NestedAttributesExt, def_id_to_path};
+use crate::clean::{self, AttributesExt, NestedAttributesExt};
 use crate::doctree::*;
 
+fn def_id_to_path(
+    cx: &core::DocContext<'_>,
+    did: DefId,
+    name: Option<String>
+) -> Vec<String> {
+    let crate_name = name.unwrap_or_else(|| cx.tcx.crate_name(did.krate).to_string());
+    let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
+        // extern blocks have an empty name
+        let s = elem.data.to_string();
+        if !s.is_empty() {
+            Some(s)
+        } else {
+            None
+        }
+    });
+    std::iter::once(crate_name).chain(relative).collect()
+}
 
 // Also, is there some reason that this doesn't use the 'visit'
 // framework from syntax?.

@@ -39,7 +39,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
 use std::{mem, slice, vec};
-use std::iter::{FromIterator, once};
+use std::iter::FromIterator;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::sync::Arc;
@@ -4396,24 +4396,6 @@ impl Clean<TypeBindingKind> for hir::TypeBindingKind {
                 },
         }
     }
-}
-
-pub fn def_id_to_path(
-    cx: &DocContext<'_>,
-    did: DefId,
-    name: Option<String>
-) -> Vec<String> {
-    let crate_name = name.unwrap_or_else(|| cx.tcx.crate_name(did.krate).to_string());
-    let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
-        // extern blocks have an empty name
-        let s = elem.data.to_string();
-        if !s.is_empty() {
-            Some(s)
-        } else {
-            None
-        }
-    });
-    once(crate_name).chain(relative).collect()
 }
 
 pub fn enter_impl_trait<F, R>(cx: &DocContext<'_>, f: F) -> R
