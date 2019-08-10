@@ -581,13 +581,11 @@ pub fn record_extern_trait(cx: &DocContext<'_>, did: DefId) {
         }
     }
 
-    cx.active_extern_traits.borrow_mut().push(did);
+    cx.active_extern_traits.borrow_mut().insert(did);
 
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
-    {
-        cx.external_traits.borrow_mut().insert(did, trait_);
-    }
-    cx.active_extern_traits.borrow_mut().remove_item(&did);
+    cx.external_traits.borrow_mut().insert(did, trait_);
+    cx.active_extern_traits.borrow_mut().remove(&did);
 }

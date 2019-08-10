@@ -51,7 +51,7 @@ pub struct DocContext<'tcx> {
     pub external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
-    pub active_extern_traits: RefCell<Vec<DefId>>,
+    pub active_extern_traits: RefCell<FxHashSet<DefId>>,
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
