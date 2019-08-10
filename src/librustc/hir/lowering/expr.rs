@@ -208,6 +208,40 @@ impl LoweringContext<'_> {
         }
     }
 
+    fn lower_unop(&mut self, u: UnOp) -> hir::UnOp {
+        match u {
+            UnOp::Deref => hir::UnDeref,
+            UnOp::Not => hir::UnNot,
+            UnOp::Neg => hir::UnNeg,
+        }
+    }
+
+    fn lower_binop(&mut self, b: BinOp) -> hir::BinOp {
+        Spanned {
+            node: match b.node {
+                BinOpKind::Add => hir::BinOpKind::Add,
+                BinOpKind::Sub => hir::BinOpKind::Sub,
+                BinOpKind::Mul => hir::BinOpKind::Mul,
+                BinOpKind::Div => hir::BinOpKind::Div,
+                BinOpKind::Rem => hir::BinOpKind::Rem,
+                BinOpKind::And => hir::BinOpKind::And,
+                BinOpKind::Or => hir::BinOpKind::Or,
+                BinOpKind::BitXor => hir::BinOpKind::BitXor,
+                BinOpKind::BitAnd => hir::BinOpKind::BitAnd,
+                BinOpKind::BitOr => hir::BinOpKind::BitOr,
+                BinOpKind::Shl => hir::BinOpKind::Shl,
+                BinOpKind::Shr => hir::BinOpKind::Shr,
+                BinOpKind::Eq => hir::BinOpKind::Eq,
+                BinOpKind::Lt => hir::BinOpKind::Lt,
+                BinOpKind::Le => hir::BinOpKind::Le,
+                BinOpKind::Ne => hir::BinOpKind::Ne,
+                BinOpKind::Ge => hir::BinOpKind::Ge,
+                BinOpKind::Gt => hir::BinOpKind::Gt,
+            },
+            span: b.span,
+        }
+    }
+
     /// Emit an error and lower `ast::ExprKind::Let(pats, scrutinee)` into:
     /// ```rust
     /// match scrutinee { pats => true, _ => false }
