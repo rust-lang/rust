@@ -337,7 +337,7 @@ fn mk_decls(
     let doc = cx.meta_list(span, sym::doc, vec![hidden]);
     let doc_hidden = cx.attribute(doc);
 
-    let proc_macro = Ident::with_empty_ctxt(sym::proc_macro);
+    let proc_macro = Ident::with_dummy_span(sym::proc_macro);
     let krate = cx.item(span,
                         proc_macro,
                         Vec::new(),
@@ -349,7 +349,7 @@ fn mk_decls(
     let custom_derive = Ident::from_str("custom_derive");
     let attr = Ident::from_str("attr");
     let bang = Ident::from_str("bang");
-    let crate_kw = Ident::with_empty_ctxt(kw::Crate);
+    let crate_kw = Ident::with_dummy_span(kw::Crate);
 
     let decls = {
         let local_path = |sp: Span, name| {

@@ -1457,7 +1457,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) {
-        self.print_ident(ast::Ident::with_empty_ctxt(name))
+        self.print_ident(ast::Ident::with_dummy_span(name))
     }
 
     pub fn print_for_decl(&mut self, loc: &hir::Local, coll: &hir::Expr) {

@@ -48,7 +48,7 @@ pub fn inject(
             [sym::rustc_attrs][..].into(),
         ));
         for (name, ext) in named_exts {
-            resolver.register_builtin_macro(Ident::with_empty_ctxt(name), ext);
+            resolver.register_builtin_macro(Ident::with_dummy_span(name), ext);
             extra_items.push(plugin_macro_def(name, span));
         }
         // The `macro_rules` items must be inserted before any other items.

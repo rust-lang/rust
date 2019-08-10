@@ -129,7 +129,7 @@ fn cs_clone_shallow(name: &str,
     if is_union {
         // let _: AssertParamIsCopy<Self>;
         let self_ty =
-            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_empty_ctxt(kw::SelfUpper)));
+            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_dummy_span(kw::SelfUpper)));
         assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, "AssertParamIsCopy");
     } else {
         match *substr.fields {

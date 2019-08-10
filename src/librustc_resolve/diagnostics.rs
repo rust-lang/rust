@@ -595,7 +595,7 @@ impl<'a> Resolver<'a> {
         where FilterFn: Fn(Res) -> bool
     {
         let mut suggestions = self.lookup_import_candidates_from_module(
-            lookup_ident, namespace, self.graph_root, Ident::with_empty_ctxt(kw::Crate), &filter_fn
+            lookup_ident, namespace, self.graph_root, Ident::with_dummy_span(kw::Crate), &filter_fn
         );
 
         if lookup_ident.span.rust_2018() {

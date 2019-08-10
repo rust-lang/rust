@@ -1249,21 +1249,21 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             let include_info = vec![
                                 ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
-                                        Ident::with_empty_ctxt(sym::file),
+                                        Ident::with_dummy_span(sym::file),
                                         file,
                                         DUMMY_SP,
                                     ),
                                 ),
                                 ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
-                                        Ident::with_empty_ctxt(sym::contents),
+                                        Ident::with_dummy_span(sym::contents),
                                         src_interned,
                                         DUMMY_SP,
                                     ),
                                 ),
                             ];
 
-                            let include_ident = Ident::with_empty_ctxt(sym::include);
+                            let include_ident = Ident::with_dummy_span(sym::include);
                             let item = attr::mk_list_item(include_ident, include_info);
                             items.push(ast::NestedMetaItem::MetaItem(item));
                         }
@@ -1325,7 +1325,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 }
             }
 
-            let meta = attr::mk_list_item(Ident::with_empty_ctxt(sym::doc), items);
+            let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = attr::Attribute {
                 span: at.span,
                 id: at.id,

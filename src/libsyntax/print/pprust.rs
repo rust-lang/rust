@@ -123,13 +123,13 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let pi_nested = attr::mk_nested_word_item(ast::Ident::with_empty_ctxt(sym::prelude_import));
-        let list = attr::mk_list_item(ast::Ident::with_empty_ctxt(sym::feature), vec![pi_nested]);
+        let pi_nested = attr::mk_nested_word_item(ast::Ident::with_dummy_span(sym::prelude_import));
+        let list = attr::mk_list_item(ast::Ident::with_dummy_span(sym::feature), vec![pi_nested]);
         let fake_attr = attr::mk_attr_inner(list);
         s.print_attribute(&fake_attr);
 
         // #![no_std]
-        let no_std_meta = attr::mk_word_item(ast::Ident::with_empty_ctxt(sym::no_std));
+        let no_std_meta = attr::mk_word_item(ast::Ident::with_dummy_span(sym::no_std));
         let fake_attr = attr::mk_attr_inner(no_std_meta);
         s.print_attribute(&fake_attr);
     }

@@ -352,7 +352,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }
             TyKind::ImplicitSelf => {
-                let self_ty = Ident::with_empty_ctxt(kw::SelfUpper);
+                let self_ty = Ident::with_dummy_span(kw::SelfUpper);
                 let res = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.id), ty.span)
                               .map_or(Res::Err, |d| d.res());
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
@@ -442,7 +442,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 GenericParamKind::Type { ref default, .. } => {
                     found_default |= default.is_some();
                     if found_default {
-                        Some((Ident::with_empty_ctxt(param.ident.name), Res::Err))
+                        Some((Ident::with_dummy_span(param.ident.name), Res::Err))
                     } else {
                         None
                     }
@@ -459,7 +459,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                     false
                 }
             })
-            .map(|param| (Ident::with_empty_ctxt(param.ident.name), Res::Err)));
+            .map(|param| (Ident::with_dummy_span(param.ident.name), Res::Err)));
 
         for param in &generics.params {
             match param.kind {
@@ -476,7 +476,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                     }
 
                     // Allow all following defaults to refer to this type parameter.
-                    default_ban_rib.bindings.remove(&Ident::with_empty_ctxt(param.ident.name));
+                    default_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
                 }
                 GenericParamKind::Const { ref ty } => {
                     self.ribs[TypeNS].push(const_ty_param_ban_rib);
@@ -965,7 +965,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // Plain insert (no renaming, since types are not currently hygienic)
-        self_type_rib.bindings.insert(Ident::with_empty_ctxt(kw::SelfUpper), self_res);
+        self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
         self.ribs[TypeNS].push(self_type_rib);
         f(self);
         self.ribs[TypeNS].pop();
@@ -976,7 +976,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     {
         let self_res = Res::SelfCtor(impl_id);
         let mut self_type_rib = Rib::new(NormalRibKind);
-        self_type_rib.bindings.insert(Ident::with_empty_ctxt(kw::SelfUpper), self_res);
+        self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
         self.ribs[ValueNS].push(self_type_rib);
         f(self);
         self.ribs[ValueNS].pop();
@@ -1476,7 +1476,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                     self.r.trait_map.insert(id, traits);
                 }
 
-                let mut std_path = vec![Segment::from_ident(Ident::with_empty_ctxt(sym::std))];
+                let mut std_path = vec![Segment::from_ident(Ident::with_dummy_span(sym::std))];
                 std_path.extend(path);
                 if self.r.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
                     let cl = CrateLint::No;
@@ -1507,7 +1507,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
         let binding = self.resolve_ident_in_lexical_scope(
-            Ident::with_empty_ctxt(kw::SelfUpper),
+            Ident::with_dummy_span(kw::SelfUpper),
             TypeNS,
             None,
             span,

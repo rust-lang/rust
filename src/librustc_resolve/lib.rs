@@ -985,11 +985,11 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         } else {
             kw::Crate
         };
-        let segments = iter::once(Ident::with_empty_ctxt(root))
+        let segments = iter::once(Ident::with_dummy_span(root))
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
-                    .map(Ident::with_empty_ctxt)
+                    .map(Ident::with_dummy_span)
             ).map(|i| self.new_ast_path_segment(i)).collect::<Vec<_>>();
 
         let path = ast::Path {
@@ -1060,11 +1060,11 @@ impl<'a> Resolver<'a> {
                                        .collect();
 
         if !attr::contains_name(&krate.attrs, sym::no_core) {
-            extern_prelude.insert(Ident::with_empty_ctxt(sym::core), Default::default());
+            extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
             if !attr::contains_name(&krate.attrs, sym::no_std) {
-                extern_prelude.insert(Ident::with_empty_ctxt(sym::std), Default::default());
+                extern_prelude.insert(Ident::with_dummy_span(sym::std), Default::default());
                 if session.rust_2018() {
-                    extern_prelude.insert(Ident::with_empty_ctxt(sym::meta), Default::default());
+                    extern_prelude.insert(Ident::with_dummy_span(sym::meta), Default::default());
                 }
             }
         }
@@ -2624,7 +2624,7 @@ impl<'a> Resolver<'a> {
         let path = if path_str.starts_with("::") {
             ast::Path {
                 span,
-                segments: iter::once(Ident::with_empty_ctxt(kw::PathRoot))
+                segments: iter::once(Ident::with_dummy_span(kw::PathRoot))
                     .chain({
                         path_str.split("::").skip(1).map(Ident::from_str)
                     })
@@ -2713,7 +2713,7 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
     fn collect_mod(names: &mut Vec<Ident>, module: Module<'_>) {
         if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
-                names.push(Ident::with_empty_ctxt(name));
+                names.push(Ident::with_dummy_span(name));
                 collect_mod(names, parent);
             }
         } else {
