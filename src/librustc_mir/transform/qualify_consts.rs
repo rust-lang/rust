@@ -70,8 +70,6 @@ impl fmt::Display for Mode {
     }
 }
 
-const QUALIF_COUNT: usize = 4;
-
 // FIXME(eddyb) once we can use const generics, replace this array with
 // something like `IndexVec` but for fixed-size arrays (`IndexArray`?).
 #[derive(Copy, Clone, Default)]
@@ -153,15 +151,17 @@ enum ValueSource<'a, 'tcx> {
     },
 }
 
+trait QualifIdx {
+    const IDX: usize;
+}
+
 /// A "qualif"(-ication) is a way to look for something "bad" in the MIR that would disqualify some
 /// code for promotion or prevent it from evaluating at compile time. So `return true` means
 /// "I found something bad, no reason to go on searching". `false` is only returned if we
 /// definitely cannot find anything bad anywhere.
 ///
 /// The default implementations proceed structurally.
-trait Qualif {
-    const IDX: usize;
-
+trait Qualif: QualifIdx {
     /// Return the qualification that is (conservatively) correct for any value
     /// of the type, or `None` if the qualification is not value/type-based.
     fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> Option<bool> {
@@ -343,8 +343,6 @@ trait Qualif {
 struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
-    const IDX: usize = 0;
-
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<bool> {
         Some(!ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP))
     }
@@ -404,8 +402,6 @@ impl Qualif for HasMutInterior {
 struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
-    const IDX: usize = 1;
-
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<bool> {
         Some(ty.needs_drop(cx.tcx, cx.param_env))
     }
@@ -432,8 +428,6 @@ impl Qualif for NeedsDrop {
 struct IsNotPromotable;
 
 impl Qualif for IsNotPromotable {
-    const IDX: usize = 2;
-
     fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
         match static_.kind {
             StaticKind::Promoted(_, _) => unreachable!(),
@@ -584,8 +578,6 @@ impl Qualif for IsNotPromotable {
 struct IsNotImplicitlyPromotable;
 
 impl Qualif for IsNotImplicitlyPromotable {
-    const IDX: usize = 3;
-
     fn in_call(
         cx: &ConstCx<'_, 'tcx>,
         callee: &Operand<'tcx>,
@@ -607,21 +599,23 @@ impl Qualif for IsNotImplicitlyPromotable {
 }
 
 // Ensure the `IDX` values are sequential (`0..QUALIF_COUNT`).
-macro_rules! static_assert_seq_qualifs {
+macro_rules! define_qualif_indices {
     ($i:expr => $first:ident $(, $rest:ident)*) => {
-        static_assert!({
-            static_assert_seq_qualifs!($i + 1 => $($rest),*);
+        impl QualifIdx for $first {
+            const IDX: usize = $i;
+        }
 
-            $first::IDX == $i
-        });
+        define_qualif_indices!($i + 1 => $($rest),*);
     };
     ($i:expr =>) => {
-        static_assert!(QUALIF_COUNT == $i);
+        const QUALIF_COUNT: usize = $i;
     };
 }
-static_assert_seq_qualifs!(
+
+define_qualif_indices!(
     0 => HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable
 );
+static_assert!(QUALIF_COUNT == 4);
 
 impl ConstCx<'_, 'tcx> {
     fn qualifs_in_any_value_of_ty(&self, ty: Ty<'tcx>) -> PerQualif<bool> {
