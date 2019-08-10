@@ -1176,7 +1176,6 @@ impl<'a> Parser<'a> {
         Ok(P(FnDecl {
             inputs: inputs_captures,
             output,
-            c_variadic: false
         }))
     }
 

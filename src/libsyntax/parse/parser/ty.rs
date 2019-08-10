@@ -292,12 +292,11 @@ impl<'a> Parser<'a> {
         };
 
         self.expect_keyword(kw::Fn)?;
-        let (inputs, c_variadic) = self.parse_fn_params(false, true)?;
+        let inputs = self.parse_fn_params(false, true)?;
         let ret_ty = self.parse_ret_ty(false)?;
         let decl = P(FnDecl {
             inputs,
             output: ret_ty,
-            c_variadic,
         });
         Ok(TyKind::BareFn(P(BareFnTy {
             abi,

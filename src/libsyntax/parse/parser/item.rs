@@ -1292,13 +1292,12 @@ impl<'a> Parser<'a> {
 
     /// Parses the argument list and result type of a function declaration.
     fn parse_fn_decl(&mut self, allow_c_variadic: bool) -> PResult<'a, P<FnDecl>> {
-        let (args, c_variadic) = self.parse_fn_params(true, allow_c_variadic)?;
+        let args = self.parse_fn_params(true, allow_c_variadic)?;
         let ret_ty = self.parse_ret_ty(true)?;
 
         Ok(P(FnDecl {
             inputs: args,
             output: ret_ty,
-            c_variadic,
         }))
     }
 

@@ -562,7 +562,6 @@ impl<'a> ExtCtxt<'a> {
         P(ast::FnDecl {
             inputs,
             output,
-            c_variadic: false
         })
     }
 
