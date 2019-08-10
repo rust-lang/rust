@@ -319,11 +319,12 @@ impl<'a> Resolver<'a> {
                 err
             }
             ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
-                let shadows_what = binding.descr();
+                let res = binding.res();
+                let shadows_what = res.descr();
                 let mut err = struct_span_err!(self.session, span, E0530, "{}s cannot shadow {}s",
                                             what_binding, shadows_what);
                 err.span_label(span, format!("cannot be named the same as {} {}",
-                                            binding.article(), shadows_what));
+                                            res.article(), shadows_what));
                 let participle = if binding.is_import() { "imported" } else { "defined" };
                 let msg = format!("the {} `{}` is {} here", shadows_what, name, participle);
                 err.span_label(binding.span, msg);

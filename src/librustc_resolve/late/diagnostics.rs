@@ -88,10 +88,9 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 let mod_prefix = match self.resolve_path(
                     mod_path, Some(TypeNS), false, span, CrateLint::No
                 ) {
-                    PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
-                        module.def_kind(),
+                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
                     _ => None,
-                }.map_or(String::new(), |kind| format!("{} ", kind.descr()));
+                }.map_or(String::new(), |res| format!("{} ", res.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)))
             };
             (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
