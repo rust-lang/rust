@@ -2168,7 +2168,7 @@ impl<'a> LoweringContext<'a> {
         P(hir::FnDecl {
             inputs,
             output,
-            c_variadic: decl.c_variadic,
+            c_variadic: decl.c_variadic(),
             implicit_self: decl.inputs.get(0).map_or(
                 hir::ImplicitSelfKind::None,
                 |arg| {

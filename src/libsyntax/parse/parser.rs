@@ -1194,7 +1194,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_fn_params(&mut self, named_params: bool, allow_c_variadic: bool)
-                     -> PResult<'a, (Vec<Param> , bool)> {
+                     -> PResult<'a, Vec<Param>> {
         let sp = self.token.span;
         let mut c_variadic = false;
         let (params, _): (Vec<Option<Param>>, _) = self.parse_paren_comma_seq(|p| {
@@ -1218,6 +1218,8 @@ impl<'a> Parser<'a> {
                             let span = p.token.span;
                             p.span_err(span,
                                 "`...` must be the last argument of a C-variadic function");
+                            // FIXME(eddyb) this should probably still push `CVarArgs`.
+                            // Maybe AST validation/HIR lowering should emit the above error?
                             Ok(None)
                         } else {
                             Ok(Some(param))
@@ -1245,7 +1247,7 @@ impl<'a> Parser<'a> {
                           "C-variadic function must be declared with at least one named argument");
         }
 
-        Ok((params, c_variadic))
+        Ok(params)
     }
 
     /// Returns the parsed optional self parameter and whether a self shortcut was used.
@@ -1414,7 +1416,6 @@ impl<'a> Parser<'a> {
         Ok(P(FnDecl {
             inputs: fn_inputs,
             output: self.parse_ret_ty(true)?,
-            c_variadic: false
         }))
     }
 
