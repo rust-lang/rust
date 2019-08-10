@@ -362,18 +362,8 @@ impl LoweringContext<'_> {
             ExprKind::Index(ref el, ref er) => {
                 hir::ExprKind::Index(P(self.lower_expr(el)), P(self.lower_expr(er)))
             }
-            // Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.
             ExprKind::Range(Some(ref e1), Some(ref e2), RangeLimits::Closed) => {
-                let id = self.next_id();
-                let e1 = self.lower_expr(e1);
-                let e2 = self.lower_expr(e2);
-                self.expr_call_std_assoc_fn(
-                    id,
-                    e.span,
-                    &[sym::ops, sym::RangeInclusive],
-                    "new",
-                    hir_vec![e1, e2],
-                )
+                self.lower_expr_range_closed(e.span, e1, e2)
             }
             ExprKind::Range(ref e1, ref e2, lims) => {
                 self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
@@ -457,6 +447,20 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.
+    fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind {
+        let id = self.next_id();
+        let e1 = self.lower_expr(e1);
+        let e2 = self.lower_expr(e2);
+        self.expr_call_std_assoc_fn(
+            id,
+            span,
+            &[sym::ops, sym::RangeInclusive],
+            "new",
+            hir_vec![e1, e2],
+        )
     }
 
     fn lower_expr_range(
