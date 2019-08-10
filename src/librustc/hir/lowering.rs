@@ -1316,20 +1316,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
-        hir::Arm {
-            hir_id: self.next_id(),
-            attrs: self.lower_attrs(&arm.attrs),
-            pats: arm.pats.iter().map(|x| self.lower_pat(x)).collect(),
-            guard: match arm.guard {
-                Some(ref x) => Some(hir::Guard::If(P(self.lower_expr(x)))),
-                _ => None,
-            },
-            body: P(self.lower_expr(&arm.body)),
-            span: arm.span,
-        }
-    }
-
     /// Given an associated type constraint like one of these:
     ///
     /// ```
@@ -4471,17 +4457,6 @@ impl<'a> LoweringContext<'a> {
     }
 
     // Helper methods for building HIR.
-
-    fn arm(&mut self, pats: hir::HirVec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
-        hir::Arm {
-            hir_id: self.next_id(),
-            attrs: hir_vec![],
-            pats,
-            guard: None,
-            span: expr.span,
-            body: expr,
-        }
-    }
 
     fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
         hir::Stmt { span, node, hir_id: self.next_id() }

@@ -436,6 +436,20 @@ impl LoweringContext<'_> {
         P(self.expr_call(e.span, from_err, hir_vec![e]))
     }
 
+    fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
+        hir::Arm {
+            hir_id: self.next_id(),
+            attrs: self.lower_attrs(&arm.attrs),
+            pats: arm.pats.iter().map(|x| self.lower_pat(x)).collect(),
+            guard: match arm.guard {
+                Some(ref x) => Some(hir::Guard::If(P(self.lower_expr(x)))),
+                _ => None,
+            },
+            body: P(self.lower_expr(&arm.body)),
+            span: arm.span,
+        }
+    }
+
     pub(super) fn make_async_expr(
         &mut self,
         capture_clause: CaptureBy,
@@ -1180,6 +1194,10 @@ impl LoweringContext<'_> {
         )
     }
 
+    // =========================================================================
+    // Helper methods for building HIR.
+    // =========================================================================
+
     /// Constructs a `true` or `false` literal expression.
     pub(super) fn expr_bool(&mut self, span: Span, val: bool) -> hir::Expr {
         let lit = Spanned { span, node: LitKind::Bool(val) };
@@ -1358,6 +1376,17 @@ impl LoweringContext<'_> {
             span,
             expr,
             is_shorthand: false,
+        }
+    }
+
+    fn arm(&mut self, pats: hir::HirVec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
+        hir::Arm {
+            hir_id: self.next_id(),
+            attrs: hir_vec![],
+            pats,
+            guard: None,
+            span: expr.span,
+            body: expr,
         }
     }
 }
