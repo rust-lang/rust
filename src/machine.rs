@@ -10,7 +10,7 @@ use rand::rngs::StdRng;
 use syntax::attr;
 use syntax::symbol::sym;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, layout::{Size, LayoutOf}, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, layout::{Size, LayoutOf}};
 use rustc::mir;
 
 use crate::*;
@@ -191,7 +191,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, (Scalar<Tag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)> {
         ecx.binary_ptr_op(bin_op, left, right)
     }
 

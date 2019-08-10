@@ -5,7 +5,7 @@ use rustc::ty::layout::{self, LayoutOf, Size, Align};
 use rustc::ty;
 
 use crate::{
-    PlaceTy, OpTy, ImmTy, Immediate, Scalar, Tag,
+    PlaceTy, OpTy, Immediate, Scalar, Tag,
     OperatorEvalContextExt
 };
 
@@ -120,7 +120,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.memory().check_ptr_access(place.ptr, place.layout.size, align)?;
 
                 // binary_op will bail if either of them is not a scalar
-                let (eq, _) = this.binary_op(mir::BinOp::Eq, old, expect_old)?;
+                let eq = this.overflowing_binary_op(mir::BinOp::Eq, old, expect_old)?.0;
                 let res = Immediate::ScalarPair(old.to_scalar_or_undef(), eq.into());
                 this.write_immediate(res, dest)?; // old value is returned
                 // update ptr depending on comparison
@@ -183,13 +183,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     _ => bug!(),
                 };
                 // Atomics wrap around on overflow.
-                let (val, _overflowed) = this.binary_op(op, old, rhs)?;
+                let val = this.binary_op(op, old, rhs)?;
                 let val = if neg {
-                    this.unary_op(mir::UnOp::Not, ImmTy::from_scalar(val, old.layout))?
+                    this.unary_op(mir::UnOp::Not, val)?
                 } else {
                     val
                 };
-                this.write_scalar(val, place.into())?;
+                this.write_immediate(*val, place.into())?;
             }
 
             "breakpoint" => unimplemented!(), // halt miri
@@ -312,7 +312,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let a = this.read_immediate(args[0])?;
                 let b = this.read_immediate(args[1])?;
                 // check x % y != 0
-                if this.binary_op(mir::BinOp::Rem, a, b)?.0.to_bits(dest.layout.size)? != 0 {
+                if this.overflowing_binary_op(mir::BinOp::Rem, a, b)?.0.to_bits(dest.layout.size)? != 0 {
                     // Check if `b` is -1, which is the "min_value / -1" case.
                     let minus1 = Scalar::from_int(-1, dest.layout.size);
                     return Err(if b.to_scalar().unwrap() == minus1 {
@@ -515,7 +515,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "unchecked_mul" => mir::BinOp::Mul,
                     _ => bug!(),
                 };
-                let (res, overflowed) = this.binary_op(op, l, r)?;
+                let (res, overflowed, _ty) = this.overflowing_binary_op(op, l, r)?;
                 if overflowed {
                     throw_ub_format!("Overflowing arithmetic in {}", intrinsic_name.get());
                 }
