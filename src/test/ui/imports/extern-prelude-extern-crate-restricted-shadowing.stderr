@@ -13,8 +13,7 @@ error[E0659]: `Vec` is ambiguous (macro-expanded name vs less macro-expanded nam
 LL |         Vec::panic!();
    |         ^^^ ambiguous name
    |
-   = note: `Vec` could refer to a struct from prelude
-note: `Vec` could also refer to the extern crate imported here
+note: `Vec` could refer to the extern crate imported here
   --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:5:9
    |
 LL |         extern crate std as Vec;
@@ -22,6 +21,11 @@ LL |         extern crate std as Vec;
 ...
 LL | define_vec!();
    | -------------- in this macro invocation
+note: `Vec` could also refer to the struct defined here
+  --> $SRC_DIR/libstd/prelude/v1.rs:LL:COL
+   |
+LL | pub use crate::vec::Vec;
+   |         ^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -365,7 +365,6 @@ impl<'a> Resolver<'a> {
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
                 };
 
-                self.populate_module_if_necessary(module);
                 if let Some(name) = self.session.parse_sess.injected_crate_name.try_get() {
                     if name.as_str() == ident.name.as_str() {
                         self.injected_crate = Some(module);
@@ -632,7 +631,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(
+    crate fn build_reduced_graph_for_external_crate_res(
         &mut self,
         parent: Module<'a>,
         child: Export<ast::NodeId>,
@@ -643,75 +642,62 @@ impl<'a> Resolver<'a> {
         // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
         let ident = ident.gensym_if_underscore();
         let expansion = ExpnId::root(); // FIXME(jseyfried) intercrate hygiene
+        // Record primary definitions.
         match res {
             Res::Def(kind @ DefKind::Mod, def_id)
-            | Res::Def(kind @ DefKind::Enum, def_id) => {
+            | Res::Def(kind @ DefKind::Enum, def_id)
+            | Res::Def(kind @ DefKind::Trait, def_id) => {
                 let module = self.new_module(parent,
                                              ModuleKind::Def(kind, def_id, ident.name),
                                              def_id,
                                              expansion,
                                              span);
-                self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
+                self.define(parent, ident, TypeNS, (module, vis, span, expansion));
             }
-            Res::Def(DefKind::Variant, _)
+            Res::Def(DefKind::Struct, _)
+            | Res::Def(DefKind::Union, _)
+            | Res::Def(DefKind::Variant, _)
             | Res::Def(DefKind::TyAlias, _)
             | Res::Def(DefKind::ForeignTy, _)
             | Res::Def(DefKind::OpaqueTy, _)
             | Res::Def(DefKind::TraitAlias, _)
+            | Res::Def(DefKind::AssocTy, _)
+            | Res::Def(DefKind::AssocOpaqueTy, _)
             | Res::PrimTy(..)
-            | Res::ToolMod => {
-                self.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
-            }
+            | Res::ToolMod =>
+                self.define(parent, ident, TypeNS, (res, vis, span, expansion)),
             Res::Def(DefKind::Fn, _)
+            | Res::Def(DefKind::Method, _)
             | Res::Def(DefKind::Static, _)
             | Res::Def(DefKind::Const, _)
-            | Res::Def(DefKind::Ctor(CtorOf::Variant, ..), _) => {
-                self.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
-            }
-            Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
-                self.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
-
-                if let Some(struct_def_id) =
-                        self.cstore.def_key(def_id).parent
-                            .map(|index| DefId { krate: def_id.krate, index: index }) {
-                    self.struct_constructors.insert(struct_def_id, (res, vis));
-                }
-            }
-            Res::Def(DefKind::Trait, def_id) => {
-                let module_kind = ModuleKind::Def(DefKind::Trait, def_id, ident.name);
-                let module = self.new_module(parent,
-                                             module_kind,
-                                             parent.normal_ancestor_id,
-                                             expansion,
-                                             span);
-                self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
-
-                for child in self.cstore.item_children_untracked(def_id, self.session) {
-                    let res = child.res.map_id(|_| panic!("unexpected id"));
-                    let ns = if let Res::Def(DefKind::AssocTy, _) = res {
-                        TypeNS
-                    } else { ValueNS };
-                    self.define(module, child.ident, ns,
-                                (res, ty::Visibility::Public, DUMMY_SP, expansion));
-
-                    if self.cstore.associated_item_cloned_untracked(child.res.def_id())
-                           .method_has_self_argument {
-                        self.has_self.insert(res.def_id());
-                    }
-                }
-                module.populated.set(true);
-            }
+            | Res::Def(DefKind::AssocConst, _)
+            | Res::Def(DefKind::Ctor(..), _) =>
+                self.define(parent, ident, ValueNS, (res, vis, span, expansion)),
+            Res::Def(DefKind::Macro(..), _)
+            | Res::NonMacroAttr(..) =>
+                self.define(parent, ident, MacroNS, (res, vis, span, expansion)),
+            Res::Def(DefKind::TyParam, _) | Res::Def(DefKind::ConstParam, _)
+            | Res::Local(..) | Res::SelfTy(..) | Res::SelfCtor(..) | Res::Err =>
+                bug!("unexpected resolution: {:?}", res)
+        }
+        // Record some extra data for better diagnostics.
+        match res {
             Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
-                self.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
-
-                // Record field names for error reporting.
                 let field_names = self.cstore.struct_field_names_untracked(def_id);
                 self.insert_field_names(def_id, field_names);
             }
-            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                self.define(parent, ident, MacroNS, (res, vis, DUMMY_SP, expansion));
+            Res::Def(DefKind::Method, def_id) => {
+                if self.cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
+                    self.has_self.insert(def_id);
+                }
             }
-            _ => bug!("unexpected resolution: {:?}", res)
+            Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
+                let parent = self.cstore.def_key(def_id).parent;
+                if let Some(struct_def_id) = parent.map(|index| DefId { index, ..def_id }) {
+                    self.struct_constructors.insert(struct_def_id, (res, vis));
+                }
+            }
+            _ => {}
         }
     }
 
@@ -778,18 +764,6 @@ impl<'a> Resolver<'a> {
         let ext = self.compile_macro(&macro_def, self.cstore.crate_edition_untracked(def_id.krate));
         self.macro_map.insert(def_id, ext.clone());
         Some(ext)
-    }
-
-    /// Ensures that the reduced graph rooted at the given external module
-    /// is built, building it if it is not.
-    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
-        if module.populated.get() { return }
-        let def_id = module.def_id().unwrap();
-        for child in self.cstore.item_children_untracked(def_id, self.session) {
-            let child = child.map_id(|_| panic!("unexpected id"));
-            self.build_reduced_graph_for_external_crate_res(module, child);
-        }
-        module.populated.set(true)
     }
 
     fn legacy_import_macro(&mut self,
@@ -863,9 +837,9 @@ impl<'a> Resolver<'a> {
         if let Some(span) = import_all {
             let directive = macro_use_directive(span);
             self.potentially_unused_imports.push(directive);
-            module.for_each_child(|ident, ns, binding| if ns == MacroNS {
-                let imported_binding = self.import(binding, directive);
-                self.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
+            self.for_each_child(module, |this, ident, ns, binding| if ns == MacroNS {
+                let imported_binding = this.import(binding, directive);
+                this.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
             });
         } else {
             for ident in single_imports.iter().cloned() {

@@ -36,7 +36,7 @@ use syntax_pos::{MultiSpan, Span};
 
 use log::*;
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::{mem, ptr};
 
 type Res = def::Res<NodeId>;
@@ -156,12 +156,6 @@ impl<'a> NameResolution<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    fn resolution(&self, module: Module<'a>, ident: Ident, ns: Namespace)
-                  -> &'a RefCell<NameResolution<'a>> {
-        *module.resolutions.borrow_mut().entry((ident.modern(), ns))
-               .or_insert_with(|| self.arenas.alloc_name_resolution())
-    }
-
     crate fn resolve_ident_in_module_unadjusted(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -238,8 +232,6 @@ impl<'a> Resolver<'a> {
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
         };
-
-        self.populate_module_if_necessary(module);
 
         let resolution = self.resolution(module, ident, ns)
             .try_borrow_mut()
@@ -1079,7 +1071,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             return if all_ns_failed {
                 let resolutions = match module {
-                    ModuleOrUniformRoot::Module(module) => Some(module.resolutions.borrow()),
+                    ModuleOrUniformRoot::Module(module) => Some(self.resolutions(module).borrow()),
                     _ => None,
                 };
                 let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
@@ -1317,8 +1309,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             }
         };
 
-        self.populate_module_if_necessary(module);
-
         if module.is_trait() {
             self.session.span_err(directive.span, "items in traits are not importable.");
             return;
@@ -1334,7 +1324,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
-        let bindings = module.resolutions.borrow().iter().filter_map(|(&ident, resolution)| {
+        let bindings = self.resolutions(module).borrow().iter().filter_map(|(&ident, resolution)| {
             resolution.borrow().binding().map(|binding| (ident, binding))
         }).collect::<Vec<_>>();
         for ((mut ident, ns), binding) in bindings {
@@ -1361,7 +1351,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         let mut reexports = Vec::new();
 
-        for (&(ident, ns), resolution) in module.resolutions.borrow().iter() {
+        for (&(ident, ns), resolution) in self.resolutions(module).borrow().iter() {
             let resolution = &mut *resolution.borrow_mut();
             let binding = match resolution.binding {
                 Some(binding) => binding,
@@ -1420,8 +1410,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             Some(ModuleOrUniformRoot::Module(module)) => module,
                             _ => bug!("module should exist"),
                         };
-                        let resolutions = imported_module.parent.expect("parent should exist")
-                            .resolutions.borrow();
+                        let parent_module = imported_module.parent.expect("parent should exist");
+                        let resolutions = self.resolutions(parent_module).borrow();
                         let enum_path_segment_index = directive.module_path.len() - 1;
                         let enum_ident = directive.module_path[enum_path_segment_index].ident;
 

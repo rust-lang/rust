@@ -65,20 +65,23 @@ fn add_typo_suggestion(
     false
 }
 
-fn add_module_candidates(
-    module: Module<'_>, names: &mut Vec<TypoSuggestion>, filter_fn: &impl Fn(Res) -> bool
-) {
-    for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
-        if let Some(binding) = resolution.borrow().binding {
-            let res = binding.res();
-            if filter_fn(res) {
-                names.push(TypoSuggestion::from_res(ident.name, res));
+impl<'a> Resolver<'a> {
+    fn add_module_candidates(
+        &mut self,
+        module: Module<'a>,
+        names: &mut Vec<TypoSuggestion>,
+        filter_fn: &impl Fn(Res) -> bool,
+    ) {
+        for (&(ident, _), resolution) in self.resolutions(module).borrow().iter() {
+            if let Some(binding) = resolution.borrow().binding {
+                let res = binding.res();
+                if filter_fn(res) {
+                    names.push(TypoSuggestion::from_res(ident.name, res));
+                }
             }
         }
     }
-}
 
-impl<'a> Resolver<'a> {
     /// Handles error reporting for `smart_resolve_path_fragment` function.
     /// Creates base error and amends it with one short label and possibly some longer helps/notes.
     pub(crate) fn smart_resolve_report_errors(
@@ -593,10 +596,10 @@ impl<'a> Resolver<'a> {
                 Scope::CrateRoot => {
                     let root_ident = Ident::new(kw::PathRoot, ident.span);
                     let root_module = this.resolve_crate_root(root_ident);
-                    add_module_candidates(root_module, &mut suggestions, filter_fn);
+                    this.add_module_candidates(root_module, &mut suggestions, filter_fn);
                 }
                 Scope::Module(module) => {
-                    add_module_candidates(module, &mut suggestions, filter_fn);
+                    this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(|(name, binding)| {
@@ -644,7 +647,7 @@ impl<'a> Resolver<'a> {
                 Scope::StdLibPrelude => {
                     if let Some(prelude) = this.prelude {
                         let mut tmp_suggestions = Vec::new();
-                        add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
+                        this.add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
                         suggestions.extend(tmp_suggestions.into_iter().filter(|s| {
                             use_prelude || this.is_builtin_macro(s.res.opt_def_id())
                         }));
@@ -694,7 +697,9 @@ impl<'a> Resolver<'a> {
         if path.len() == 1 {
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.
-            for rib in self.ribs[ns].iter().rev() {
+            // Ribs have to be cloned to avoid borrowing the resolver.
+            let ribs = self.ribs[ns].clone();
+            for rib in ribs.iter().rev() {
                 // Locals and type parameters
                 for (ident, &res) in &rib.bindings {
                     if filter_fn(res) {
@@ -704,7 +709,7 @@ impl<'a> Resolver<'a> {
                 // Items in scope
                 if let RibKind::ModuleRibKind(module) = rib.kind {
                     // Items from this module
-                    add_module_candidates(module, &mut names, &filter_fn);
+                    self.add_module_candidates(module, &mut names, &filter_fn);
 
                     if let ModuleKind::Block(..) = module.kind {
                         // We can see through blocks
@@ -732,7 +737,7 @@ impl<'a> Resolver<'a> {
                             }));
 
                             if let Some(prelude) = self.prelude {
-                                add_module_candidates(prelude, &mut names, &filter_fn);
+                                self.add_module_candidates(prelude, &mut names, &filter_fn);
                             }
                         }
                         break;
@@ -754,7 +759,7 @@ impl<'a> Resolver<'a> {
                 mod_path, Some(TypeNS), false, span, CrateLint::No
             ) {
                 if let ModuleOrUniformRoot::Module(module) = module {
-                    add_module_candidates(module, &mut names, &filter_fn);
+                    self.add_module_candidates(module, &mut names, &filter_fn);
                 }
             }
         }
@@ -792,11 +797,9 @@ impl<'a> Resolver<'a> {
         while let Some((in_module,
                         path_segments,
                         in_module_is_extern)) = worklist.pop() {
-            self.populate_module_if_necessary(in_module);
-
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
-            in_module.for_each_child_stable(|ident, ns, name_binding| {
+            self.for_each_child_stable(in_module, |this, ident, ns, name_binding| {
                 // avoid imports entirely
                 if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
                 // avoid non-importable candidates as well
@@ -830,7 +833,7 @@ impl<'a> Resolver<'a> {
                         // outside crate private modules => no need to check this)
                         if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                             let did = match res {
-                                Res::Def(DefKind::Ctor(..), did) => self.parent(did),
+                                Res::Def(DefKind::Ctor(..), did) => this.parent(did),
                                 _ => res.opt_def_id(),
                             };
                             candidates.push(ImportSuggestion { did, path });
@@ -890,8 +893,6 @@ impl<'a> Resolver<'a> {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
                     });
-                    self.populate_module_if_necessary(&crate_root);
-
                     suggestions.extend(self.lookup_import_candidates_from_module(
                         lookup_ident, namespace, crate_root, ident, &filter_fn));
                 }
@@ -910,9 +911,7 @@ impl<'a> Resolver<'a> {
             // abort if the module is already found
             if result.is_some() { break; }
 
-            self.populate_module_if_necessary(in_module);
-
-            in_module.for_each_child_stable(|ident, _, name_binding| {
+            self.for_each_child_stable(in_module, |_, ident, _, name_binding| {
                 // abort if the module is already found or if name_binding is private external
                 if result.is_some() || !name_binding.vis.is_visible_locally() {
                     return
@@ -943,10 +942,8 @@ impl<'a> Resolver<'a> {
 
     fn collect_enum_variants(&mut self, def_id: DefId) -> Option<Vec<Path>> {
         self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
-            self.populate_module_if_necessary(enum_module);
-
             let mut variants = Vec::new();
-            enum_module.for_each_child_stable(|ident, _, name_binding| {
+            self.for_each_child_stable(enum_module, |_, ident, _, name_binding| {
                 if let Res::Def(DefKind::Variant, _) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
                     segms.push(ast::PathSegment::from_ident(ident));
@@ -1147,7 +1144,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ///            at the root of the crate instead of the module where it is defined
     /// ```
     pub(crate) fn check_for_module_export_macro(
-        &self,
+        &mut self,
         directive: &'b ImportDirective<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
@@ -1168,7 +1165,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             return None;
         }
 
-        let resolutions = crate_module.resolutions.borrow();
+        let resolutions = self.resolutions(crate_module).borrow();
         let resolution = resolutions.get(&(ident, MacroNS))?;
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
