@@ -957,14 +957,11 @@ fn print_flag_list<T>(cmdline_opt: &str,
 /// otherwise returns `None`.
 ///
 /// The compiler's handling of options is a little complicated as it ties into
-/// our stability story, and it's even *more* complicated by historical
-/// accidents. The current intention of each compiler option is to have one of
-/// three modes:
+/// our stability story. The current intention of each compiler option is to
+/// have one of two modes:
 ///
 /// 1. An option is stable and can be used everywhere.
-/// 2. An option is unstable, but was historically allowed on the stable
-///    channel.
-/// 3. An option is unstable, and can only be used on nightly.
+/// 2. An option is unstable, and can only be used on nightly.
 ///
 /// Like unstable library and language features, however, unstable options have
 /// always required a form of "opt in" to indicate that you're using them. This
@@ -1007,19 +1004,13 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   this option that was passed.
     // * If we're a nightly compiler, then unstable options are now unlocked, so
     //   we're good to go.
-    // * Otherwise, if we're a truly unstable option then we generate an error
+    // * Otherwise, if we're an unstable option then we generate an error
     //   (unstable option being used on stable)
-    // * If we're a historically stable-but-should-be-unstable option then we
-    //   emit a warning that we're going to turn this into an error soon.
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        // Only show unstable options in --help if we *really* accept unstable
-        // options, which catches the case where we got `-Z unstable-options` on
-        // the stable channel of Rust which was accidentally allowed
-        // historically.
-        usage(matches.opt_present("verbose"),
-              nightly_options::is_unstable_enabled(&matches));
+        // Only show unstable options in --help if we accept unstable options.
+        usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
         return None;
     }
 

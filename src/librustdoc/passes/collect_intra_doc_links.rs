@@ -61,15 +61,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     {
         let cx = self.cx;
 
-        // In case we're in a module, try to resolve the relative
-        // path.
-        if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
-            // FIXME: `with_scope` requires the `NodeId` of a module.
-            let node_id = cx.tcx.hir().hir_to_node_id(id);
+        // In case we're in a module, try to resolve the relative path.
+        if let Some(module_id) = parent_id.or(self.mod_ids.last().cloned()) {
+            let module_id = cx.tcx.hir().hir_to_node_id(module_id);
             let result = cx.enter_resolver(|resolver| {
-                resolver.with_scope(node_id, |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns == ValueNS)
-                })
+                resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns, module_id)
             });
             let result = match result {
                 Ok((_, Res::Err)) => Err(()),
@@ -85,6 +81,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     Res::Def(DefKind::AssocTy, _) => false,
                     Res::Def(DefKind::Variant, _) => return handle_variant(cx, res),
                     // Not a trait item; just return what we found.
+                    Res::PrimTy(..) => return Ok((res, Some(path_str.to_owned()))),
                     _ => return Ok((res, None))
                 };
 
@@ -133,11 +130,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     .ok_or(());
             }
 
-            // FIXME: `with_scope` requires the `NodeId` of a module.
-            let node_id = cx.tcx.hir().hir_to_node_id(id);
-            let (_, ty_res) = cx.enter_resolver(|resolver| resolver.with_scope(node_id, |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP, &path, false)
-            }))?;
+            let (_, ty_res) = cx.enter_resolver(|resolver| {
+                resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
+            })?;
             if let Res::Err = ty_res {
                 return Err(());
             }

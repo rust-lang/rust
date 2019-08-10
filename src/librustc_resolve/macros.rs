@@ -1,18 +1,16 @@
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
 use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, Weak};
 use crate::{Module, ModuleKind, NameBinding, PathResult, Segment, ToNameBinding};
-use crate::{resolve_error, KNOWN_TOOLS};
-use crate::ModuleOrUniformRoot;
+use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
 use crate::Namespace::*;
-use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
+use crate::build_reduced_graph::BuildReducedGraphVisitor;
 use crate::resolve_imports::ImportResolver;
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::DefCollector;
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
-use syntax::ast::{self, Ident, ItemKind};
-use syntax::attr::{self, StabilityLevel};
+use syntax::ast::{self, Ident};
+use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
 use syntax::ext::base::{self, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
@@ -116,21 +114,6 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
     }
 }
 
-fn proc_macro_stub(item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
-    if attr::contains_name(&item.attrs, sym::proc_macro) {
-        return Some((MacroKind::Bang, item.ident, item.span));
-    } else if attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
-        return Some((MacroKind::Attr, item.ident, item.span));
-    } else if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
-        if let Some(nested_meta) = attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
-            if let Some(ident) = nested_meta.ident() {
-                return Some((MacroKind::Derive, ident, ident.span));
-            }
-        }
-    }
-    None
-}
-
 impl<'a> base::Resolver for Resolver<'a> {
     fn next_node_id(&mut self) -> ast::NodeId {
         self.session.next_node_id()
@@ -166,21 +149,24 @@ impl<'a> base::Resolver for Resolver<'a> {
         fragment.visit_with(&mut DefCollector::new(&mut self.definitions, expn_id));
 
         let invocation = self.invocations[&expn_id];
-        self.current_module = invocation.module;
-        self.current_module.unresolved_invocations.borrow_mut().remove(&expn_id);
-        self.current_module.unresolved_invocations.borrow_mut().extend(derives);
+        invocation.module.unresolved_invocations.borrow_mut().remove(&expn_id);
+        invocation.module.unresolved_invocations.borrow_mut().extend(derives);
         let parent_def = self.definitions.invocation_parent(expn_id);
         for &derive_invoc_id in derives {
             self.definitions.set_invocation_parent(derive_invoc_id, parent_def);
         }
         self.invocations.extend(derives.iter().map(|&derive| (derive, invocation)));
         let mut visitor = BuildReducedGraphVisitor {
-            resolver: self,
-            current_legacy_scope: invocation.parent_legacy_scope,
-            expansion: expn_id,
+            r: self,
+            parent_scope: ParentScope {
+                module: invocation.module,
+                expansion: expn_id,
+                legacy: invocation.parent_legacy_scope,
+                derives: Vec::new(),
+            },
         };
         fragment.visit_with(&mut visitor);
-        invocation.output_legacy_scope.set(Some(visitor.current_legacy_scope));
+        invocation.output_legacy_scope.set(Some(visitor.parent_scope.legacy));
     }
 
     fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension) {
@@ -191,7 +177,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn resolve_imports(&mut self) {
-        ImportResolver { resolver: self }.resolve_imports()
+        ImportResolver { r: self }.resolve_imports()
     }
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
@@ -210,10 +196,10 @@ impl<'a> base::Resolver for Resolver<'a> {
                 // will automatically knows about itself.
                 let mut result = Ok(None);
                 if derives.len() > 1 {
-                    let parent_scope = self.invoc_parent_scope(invoc_id, Vec::new());
+                    let parent_scope = &self.invoc_parent_scope(invoc_id, Vec::new());
                     for path in derives {
                         match self.resolve_macro_path(path, Some(MacroKind::Derive),
-                                                      &parent_scope, true, force) {
+                                                      parent_scope, true, force) {
                             Ok((Some(ref ext), _)) if ext.is_derive_copy => {
                                 self.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
                                 return Ok(None);
@@ -227,8 +213,8 @@ impl<'a> base::Resolver for Resolver<'a> {
             }
         };
 
-        let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        let (ext, res) = self.smart_resolve_macro_path(path, kind, &parent_scope, force)?;
+        let parent_scope = &self.invoc_parent_scope(invoc_id, derives_in_scope);
+        let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, force)?;
 
         let span = invoc.span();
         invoc.expansion_data.id.set_expn_info(ext.expn_info(span, fast_print_path(path)));
@@ -388,8 +374,7 @@ impl<'a> Resolver<'a> {
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
             res
         } else {
-            // Macro without a specific kind restriction is equvalent to a macro import.
-            let scope_set = kind.map_or(ScopeSet::Import(MacroNS), ScopeSet::Macro);
+            let scope_set = kind.map_or(ScopeSet::All(MacroNS, false), ScopeSet::Macro);
             let binding = self.early_resolve_ident_in_lexical_scope(
                 path[0].ident, scope_set, parent_scope, false, force, path_span
             );
@@ -444,10 +429,9 @@ impl<'a> Resolver<'a> {
         }
 
         let (ns, macro_kind, is_import) = match scope_set {
-            ScopeSet::Import(ns) => (ns, None, true),
+            ScopeSet::All(ns, is_import) => (ns, None, is_import),
             ScopeSet::AbsolutePath(ns) => (ns, None, false),
             ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
-            ScopeSet::Module => (TypeNS, None, false),
         };
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -471,9 +455,9 @@ impl<'a> Resolver<'a> {
                 Scope::DeriveHelpers => {
                     let mut result = Err(Determinacy::Determined);
                     for derive in &parent_scope.derives {
-                        let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
+                        let parent_scope = &ParentScope { derives: Vec::new(), ..*parent_scope };
                         match this.resolve_macro_path(derive, Some(MacroKind::Derive),
-                                                      &parent_scope, true, force) {
+                                                      parent_scope, true, force) {
                             Ok((Some(ext), _)) => if ext.helper_attrs.contains(&ident.name) {
                                 let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
                                                ty::Visibility::Public, derive.span, ExpnId::root())
@@ -502,7 +486,7 @@ impl<'a> Resolver<'a> {
                         ModuleOrUniformRoot::Module(root_module),
                         ident,
                         ns,
-                        None,
+                        parent_scope,
                         record_used,
                         path_span,
                     );
@@ -516,17 +500,16 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::Module(module) => {
-                    let orig_current_module = mem::replace(&mut this.current_module, module);
+                    let adjusted_parent_scope = &ParentScope { module, ..parent_scope.clone() };
                     let binding = this.resolve_ident_in_module_unadjusted_ext(
                         ModuleOrUniformRoot::Module(module),
                         ident,
                         ns,
-                        None,
+                        adjusted_parent_scope,
                         true,
                         record_used,
                         path_span,
                     );
-                    this.current_module = orig_current_module;
                     match binding {
                         Ok(binding) => {
                             let misc_flags = if ptr::eq(module, this.graph_root) {
@@ -588,6 +571,7 @@ impl<'a> Resolver<'a> {
                             ModuleOrUniformRoot::Module(prelude),
                             ident,
                             ns,
+                            parent_scope,
                             false,
                             path_span,
                         ) {
@@ -710,9 +694,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn finalize_current_module_macro_resolutions(&mut self) {
-        let module = self.current_module;
-
+    pub fn finalize_current_module_macro_resolutions(&mut self, module: Module<'a>) {
         let check_consistency = |this: &mut Self, path: &[Segment], span, kind: MacroKind,
                                  initial_res: Option<Res>, res: Res| {
             if let Some(initial_res) = initial_res {
@@ -753,8 +735,9 @@ impl<'a> Resolver<'a> {
         for (mut path, path_span, kind, parent_scope, initial_res) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path { seg.id = None; }
-            match self.resolve_path(&path, Some(MacroNS), &parent_scope,
-                                    true, path_span, CrateLint::No) {
+            match self.resolve_path(
+                &path, Some(MacroNS), &parent_scope, true, path_span, CrateLint::No
+            ) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                     let res = path_res.base_res();
                     check_consistency(self, &path, path_span, kind, initial_res, res);
@@ -766,7 +749,7 @@ impl<'a> Resolver<'a> {
                         (path_span, format!("partially resolved path in {} {}",
                                             kind.article(), kind.descr()))
                     };
-                    resolve_error(self, span, ResolutionError::FailedToResolve {
+                    self.report_error(span, ResolutionError::FailedToResolve {
                         label,
                         suggestion: None
                     });
@@ -885,63 +868,5 @@ impl<'a> Resolver<'a> {
         }
 
         Lrc::new(result)
-    }
-
-    pub fn define_macro(&mut self,
-                        item: &ast::Item,
-                        expansion: ExpnId,
-                        current_legacy_scope: &mut LegacyScope<'a>) {
-        let (ext, ident, span, is_legacy) = match &item.node {
-            ItemKind::MacroDef(def) => {
-                let ext = self.compile_macro(item, self.session.edition());
-                (ext, item.ident, item.span, def.legacy)
-            }
-            ItemKind::Fn(..) => match proc_macro_stub(item) {
-                Some((macro_kind, ident, span)) => {
-                    self.proc_macro_stubs.insert(item.id);
-                    (self.dummy_ext(macro_kind), ident, span, false)
-                }
-                None => return,
-            }
-            _ => unreachable!(),
-        };
-
-        let def_id = self.definitions.local_def_id(item.id);
-        let res = Res::Def(DefKind::Macro(ext.macro_kind()), def_id);
-        self.macro_map.insert(def_id, ext);
-        self.local_macro_def_scopes.insert(item.id, self.current_module);
-
-        if is_legacy {
-            let ident = ident.modern();
-            self.macro_names.insert(ident);
-            let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
-            let vis = if is_macro_export {
-                ty::Visibility::Public
-            } else {
-                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
-            };
-            let binding = (res, vis, span, expansion).to_name_binding(self.arenas);
-            self.set_binding_parent_module(binding, self.current_module);
-            let legacy_binding = self.arenas.alloc_legacy_binding(LegacyBinding {
-                parent_legacy_scope: *current_legacy_scope, binding, ident
-            });
-            *current_legacy_scope = LegacyScope::Binding(legacy_binding);
-            self.all_macros.insert(ident.name, res);
-            if is_macro_export {
-                let module = self.graph_root;
-                self.define(module, ident, MacroNS,
-                            (res, vis, span, expansion, IsMacroExport));
-            } else {
-                self.check_reserved_macro_name(ident, res);
-                self.unused_macros.insert(item.id, span);
-            }
-        } else {
-            let module = self.current_module;
-            let vis = self.resolve_visibility(&item.vis);
-            if vis != ty::Visibility::Public {
-                self.unused_macros.insert(item.id, span);
-            }
-            self.define(module, ident, MacroNS, (res, vis, span, expansion));
-        }
     }
 }
