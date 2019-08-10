@@ -58,7 +58,6 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::mem;
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     sess.diagnostic()
@@ -204,15 +203,16 @@ impl ExpansionResult {
 
 impl BoxedResolver {
     pub fn to_expansion_result(
-        mut resolver: Rc<Option<RefCell<BoxedResolver>>>,
+        resolver: Rc<RefCell<BoxedResolver>>,
     ) -> ExpansionResult {
-        if let Some(resolver) = Rc::get_mut(&mut resolver) {
-            mem::replace(resolver, None).unwrap().into_inner().complete()
-        } else {
-            let resolver = &*resolver;
-            resolver.as_ref().unwrap().borrow_mut().access(|resolver| {
-                ExpansionResult::from_resolver_ref(resolver)
-            })
+        match Rc::try_unwrap(resolver) {
+            Ok(resolver) => resolver.into_inner().complete(),
+            Err(resolver) => {
+                let resolver = &*resolver;
+                resolver.borrow_mut().access(|resolver| {
+                    ExpansionResult::from_resolver_ref(resolver)
+                })
+            }
         }
     }
 }

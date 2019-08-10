@@ -14,7 +14,7 @@ use rustc_metadata::cstore::LoadedMacro;
 use rustc::ty;
 use rustc::util::nodemap::FxHashSet;
 
-use crate::core::{DocContext, DocAccessLevels};
+use crate::core::DocContext;
 use crate::doctree;
 use crate::clean::{
     self,
@@ -326,7 +326,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
-            if !cx.renderinfo.borrow().access_levels.is_doc_reachable(traitref.def_id) {
+            if !cx.renderinfo.borrow().access_levels.is_public(traitref.def_id) {
                 return
             }
         }
@@ -347,7 +347,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, attrs: Option<Attrs<'_>>,
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id() {
-            if !cx.renderinfo.borrow().access_levels.is_doc_reachable(did) {
+            if !cx.renderinfo.borrow().access_levels.is_public(did) {
                 return
             }
         }

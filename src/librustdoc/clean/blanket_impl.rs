@@ -5,8 +5,6 @@ use rustc::ty::subst::Subst;
 use rustc::infer::InferOk;
 use syntax_pos::DUMMY_SP;
 
-use crate::core::DocAccessLevels;
-
 use super::*;
 
 pub struct BlanketImplFinder<'a, 'tcx> {
@@ -30,7 +28,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
         debug!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
         for &trait_def_id in self.cx.all_traits.iter() {
-            if !self.cx.renderinfo.borrow().access_levels.is_doc_reachable(trait_def_id) ||
+            if !self.cx.renderinfo.borrow().access_levels.is_public(trait_def_id) ||
                self.cx.generated_synthetics
                       .borrow_mut()
                       .get(&(ty, trait_def_id))

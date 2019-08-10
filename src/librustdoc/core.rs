@@ -16,6 +16,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
 use syntax::source_map;
+use syntax::attr;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
 use syntax::symbol::sym;
@@ -29,7 +30,6 @@ use rustc_data_structures::sync::{self, Lrc};
 use std::sync::Arc;
 use std::rc::Rc;
 
-use crate::visit_ast::RustdocVisitor;
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::clean;
 use crate::clean::{Clean, MAX_DEF_ID, AttributesExt};
@@ -45,7 +45,7 @@ pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 pub struct DocContext<'tcx> {
 
     pub tcx: TyCtxt<'tcx>,
-    pub resolver: Rc<Option<RefCell<interface::BoxedResolver>>>,
+    pub resolver: Rc<RefCell<interface::BoxedResolver>>,
     /// The stack of module NodeIds up till this point
     pub crate_name: Option<String>,
     pub cstore: Lrc<CStore>,
@@ -83,9 +83,7 @@ impl<'tcx> DocContext<'tcx> {
 
     pub fn enter_resolver<F, R>(&self, f: F) -> R
     where F: FnOnce(&mut resolve::Resolver<'_>) -> R {
-        let resolver = &*self.resolver;
-        let resolver = resolver.as_ref().unwrap();
-        resolver.borrow_mut().access(f)
+        self.resolver.borrow_mut().access(f)
     }
 
     /// Call the closure with the given parameters set as
@@ -167,15 +165,15 @@ impl<'tcx> DocContext<'tcx> {
             self.tcx.hir().as_local_hir_id(def_id)
         }
     }
-}
 
-pub trait DocAccessLevels {
-    fn is_doc_reachable(&self, did: DefId) -> bool;
-}
+    pub fn stability(&self, id: HirId) -> Option<attr::Stability> {
+        self.tcx.hir().opt_local_def_id(id)
+            .and_then(|def_id| self.tcx.lookup_stability(def_id)).cloned()
+    }
 
-impl DocAccessLevels for AccessLevels<DefId> {
-    fn is_doc_reachable(&self, did: DefId) -> bool {
-        self.is_public(did)
+    pub fn deprecation(&self, id: HirId) -> Option<attr::Deprecation> {
+        self.tcx.hir().opt_local_def_id(id)
+            .and_then(|def_id| self.tcx.lookup_deprecation(def_id))
     }
 }
 
@@ -344,7 +342,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // We need to hold on to the complete resolver, so we cause everything to be
         // cloned for the analysis passes to use. Suboptimal, but necessary in the
         // current architecture.
-        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.clone();
+        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.borrow().clone();
 
         if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");
@@ -393,11 +391,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             };
             debug!("crate: {:?}", tcx.hir().krate());
 
-            let mut krate = {
-                let mut v = RustdocVisitor::new(&ctxt);
-                v.visit(tcx.hir().krate());
-                v.clean(&ctxt)
-            };
+            let mut krate = tcx.hir().krate().clean(&ctxt);
 
             fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
                 let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
