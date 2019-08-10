@@ -26,7 +26,6 @@ use errors::emitter::{Emitter, EmitterWriter};
 use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
-use std::sync::Arc;
 use std::rc::Rc;
 
 use crate::config::{Options as RustdocOptions, RenderOptions};
@@ -49,7 +48,7 @@ pub struct DocContext<'tcx> {
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
-    pub external_traits: Arc<RefCell<FxHashMap<DefId, clean::Trait>>>,
+    pub external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
     pub active_extern_traits: RefCell<Vec<DefId>>,
