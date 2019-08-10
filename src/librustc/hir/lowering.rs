@@ -5113,18 +5113,6 @@ impl<'a> LoweringContext<'a> {
             )
         }
     }
-
-    fn wrap_in_try_constructor(
-        &mut self,
-        method: Symbol,
-        e: hir::Expr,
-        unstable_span: Span,
-    ) -> P<hir::Expr> {
-        let path = &[sym::ops, sym::Try, method];
-        let from_err = P(self.expr_std_path(unstable_span, path, None,
-                                            ThinVec::new()));
-        P(self.expr_call(e.span, from_err, hir_vec![e]))
-    }
 }
 
 fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
