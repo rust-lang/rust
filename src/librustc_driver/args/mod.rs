@@ -4,9 +4,16 @@ use std::fmt;
 use std::fs;
 use std::io::{self, BufRead};
 use std::str;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(test)]
 mod tests;
+
+static USED_ARGSFILE_FEATURE: AtomicBool = AtomicBool::new(false);
+
+pub fn used_unstable_argsfile() -> bool {
+    USED_ARGSFILE_FEATURE.load(Ordering::Relaxed)
+}
 
 struct FileArgs {
     path: String,
@@ -60,7 +67,10 @@ impl Iterator for ArgsIter {
                 Some(Ok(ref arg)) if arg.starts_with("@") => {
                     let path = &arg[1..];
                     let lines = match fs::read(path) {
-                        Ok(file) => FileArgs::new(path.to_string(), file).lines(),
+                        Ok(file) => {
+                            USED_ARGSFILE_FEATURE.store(true, Ordering::Relaxed);
+                            FileArgs::new(path.to_string(), file).lines()
+                        }
                         Err(err) => return Some(Err(Error::IOError(path.to_string(), err))),
                     };
                     self.file = Some(Box::new(lines));
