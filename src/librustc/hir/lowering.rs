@@ -4483,16 +4483,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn field(&mut self, ident: Ident, expr: P<hir::Expr>, span: Span) -> hir::Field {
-        hir::Field {
-            hir_id: self.next_id(),
-            ident,
-            span,
-            expr,
-            is_shorthand: false,
-        }
-    }
-
     fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
         hir::Stmt { span, node, hir_id: self.next_id() }
     }
