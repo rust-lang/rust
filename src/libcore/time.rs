@@ -505,15 +505,14 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.as_secs_f64(), 2.7);
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub const fn as_secs_f64(&self) -> f64 {
+    pub fn as_secs_f64(&self) -> f64 {
         (self.secs as f64) + (self.nanos as f64) / (NANOS_PER_SEC as f64)
     }
 
@@ -523,15 +522,14 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.as_secs_f32(), 2.7);
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
-    pub const fn as_secs_f32(&self) -> f32 {
+    pub fn as_secs_f32(&self) -> f32 {
         (self.secs as f32) + (self.nanos as f32) / (NANOS_PER_SEC as f32)
     }
 
@@ -543,13 +541,12 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::from_secs_f64(2.7);
     /// assert_eq!(dur, Duration::new(2, 700_000_000));
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
     pub fn from_secs_f64(secs: f64) -> Duration {
         const MAX_NANOS_F64: f64 =
@@ -579,13 +576,12 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::from_secs_f32(2.7);
     /// assert_eq!(dur, Duration::new(2, 700_000_000));
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
     pub fn from_secs_f32(secs: f32) -> Duration {
         const MAX_NANOS_F32: f32 =
@@ -614,14 +610,13 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.mul_f64(3.14), Duration::new(8, 478_000_000));
     /// assert_eq!(dur.mul_f64(3.14e5), Duration::new(847_800, 0));
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
     pub fn mul_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(rhs * self.as_secs_f64())
@@ -634,7 +629,6 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
@@ -643,7 +637,7 @@ impl Duration {
     /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_640));
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847799, 969_120_256));
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
     pub fn mul_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(rhs * self.as_secs_f32())
@@ -656,7 +650,6 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
@@ -664,7 +657,7 @@ impl Duration {
     /// // note that truncation is used, not rounding
     /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
     pub fn div_f64(self, rhs: f64) -> Duration {
         Duration::from_secs_f64(self.as_secs_f64() / rhs)
@@ -677,7 +670,6 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
@@ -687,7 +679,7 @@ impl Duration {
     /// // note that truncation is used, not rounding
     /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_598));
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[stable(feature = "duration_float", since = "1.38.0")]
     #[inline]
     pub fn div_f32(self, rhs: f32) -> Duration {
         Duration::from_secs_f32(self.as_secs_f32() / rhs)
@@ -697,14 +689,14 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
+    /// #![feature(div_duration)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration_f64(dur2), 0.5);
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[unstable(feature = "div_duration", issue = "63139")]
     #[inline]
     pub fn div_duration_f64(self, rhs: Duration) -> f64 {
         self.as_secs_f64() / rhs.as_secs_f64()
@@ -714,14 +706,14 @@ impl Duration {
     ///
     /// # Examples
     /// ```
-    /// #![feature(duration_float)]
+    /// #![feature(div_duration)]
     /// use std::time::Duration;
     ///
     /// let dur1 = Duration::new(2, 700_000_000);
     /// let dur2 = Duration::new(5, 400_000_000);
     /// assert_eq!(dur1.div_duration_f32(dur2), 0.5);
     /// ```
-    #[unstable(feature = "duration_float", issue = "54361")]
+    #[unstable(feature = "div_duration", issue = "63139")]
     #[inline]
     pub fn div_duration_f32(self, rhs: Duration) -> f32 {
         self.as_secs_f32() / rhs.as_secs_f32()
