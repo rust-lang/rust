@@ -68,7 +68,6 @@ pub struct DocContext<'tcx> {
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
-    pub all_traits: Vec<DefId>,
     pub auto_traits: Vec<DefId>,
 }
 
@@ -364,7 +363,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut renderinfo = RenderInfo::default();
             renderinfo.access_levels = access_levels;
 
-            let all_traits = tcx.all_traits(LOCAL_CRATE).to_vec();
             let ctxt = DocContext {
                 tcx,
                 resolver,
@@ -379,10 +377,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 fake_def_ids: Default::default(),
                 all_fake_def_ids: Default::default(),
                 generated_synthetics: Default::default(),
-                auto_traits: all_traits.iter().cloned().filter(|trait_def_id| {
+                auto_traits: tcx.all_traits(LOCAL_CRATE).iter().cloned().filter(|trait_def_id| {
                     tcx.trait_is_auto(*trait_def_id)
                 }).collect(),
-                all_traits,
             };
             debug!("crate: {:?}", tcx.hir().krate());
 

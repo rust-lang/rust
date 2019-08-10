@@ -3,6 +3,7 @@ use rustc::traits;
 use rustc::ty::ToPredicate;
 use rustc::ty::subst::Subst;
 use rustc::infer::InferOk;
+use rustc::hir::def_id::LOCAL_CRATE;
 use syntax_pos::DUMMY_SP;
 
 use super::*;
@@ -27,7 +28,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
         debug!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
-        for &trait_def_id in self.cx.all_traits.iter() {
+        for &trait_def_id in self.cx.tcx.all_traits(LOCAL_CRATE).iter() {
             if !self.cx.renderinfo.borrow().access_levels.is_public(trait_def_id) ||
                self.cx.generated_synthetics
                       .borrow_mut()
