@@ -266,42 +266,10 @@ impl LoweringContext<'_> {
             ExprKind::Await(ref expr) => self.lower_await(e.span, expr),
             ExprKind::Closure(
                 capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
-            ) => {
-                if let IsAsync::Async { closure_id, .. } = asyncness {
-                    self.lower_expr_async_closure(
-                        capture_clause,
-                        closure_id,
-                        decl,
-                        body,
-                        fn_decl_span,
-                    )
-                } else {
-                    // Lower outside new scope to preserve `is_in_loop_condition`.
-                    let fn_decl = self.lower_fn_decl(decl, None, false, None);
-
-                    self.with_new_scopes(|this| {
-                        this.current_item = Some(fn_decl_span);
-                        let mut generator_kind = None;
-                        let body_id = this.lower_fn_body(decl, |this| {
-                            let e = this.lower_expr(body);
-                            generator_kind = this.generator_kind;
-                            e
-                        });
-                        let generator_option = this.generator_movability_for_fn(
-                            &decl,
-                            fn_decl_span,
-                            generator_kind,
-                            movability,
-                        );
-                        hir::ExprKind::Closure(
-                            this.lower_capture_clause(capture_clause),
-                            fn_decl,
-                            body_id,
-                            fn_decl_span,
-                            generator_option,
-                        )
-                    })
-                }
+            ) => if let IsAsync::Async { closure_id, .. } = asyncness {
+                self.lower_expr_async_closure(capture_clause, closure_id, decl, body, fn_decl_span)
+            } else {
+                self.lower_expr_closure(capture_clause, movability, decl, body, fn_decl_span)
             }
             ExprKind::Block(ref blk, opt_label) => {
                 hir::ExprKind::Block(self.lower_block(blk,
@@ -405,6 +373,41 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    fn lower_expr_closure(
+        &mut self,
+        capture_clause: CaptureBy,
+        movability: Movability,
+        decl: &FnDecl,
+        body: &Expr,
+        fn_decl_span: Span,
+    ) -> hir::ExprKind {
+        // Lower outside new scope to preserve `is_in_loop_condition`.
+        let fn_decl = self.lower_fn_decl(decl, None, false, None);
+
+        self.with_new_scopes(|this| {
+            this.current_item = Some(fn_decl_span);
+            let mut generator_kind = None;
+            let body_id = this.lower_fn_body(decl, |this| {
+                let e = this.lower_expr(body);
+                generator_kind = this.generator_kind;
+                e
+            });
+            let generator_option = this.generator_movability_for_fn(
+                &decl,
+                fn_decl_span,
+                generator_kind,
+                movability,
+            );
+            hir::ExprKind::Closure(
+                this.lower_capture_clause(capture_clause),
+                fn_decl,
+                body_id,
+                fn_decl_span,
+                generator_option,
+            )
+        })
     }
 
     fn lower_expr_async_closure(
