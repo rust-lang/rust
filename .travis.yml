@@ -12,7 +12,12 @@ rust:
   - nightly
 
 script:
-  - ./prepare.sh && ./test.sh
+  - ./prepare.sh
+  - ./test.sh --release
 
 env:
-  - RUST_BACKTRACE=1
+  global:
+    # Enable backtraces for easier debugging.
+    - RUST_BACKTRACE=1
+    # Reduce amount of benchmark runs as they are slow.
+    - COMPILE_RUNS=2 RUN_RUNS=2
