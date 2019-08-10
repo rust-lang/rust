@@ -44,7 +44,6 @@ use std::default::Default;
 use std::env;
 use std::panic;
 use std::process;
-use std::sync::mpsc::channel;
 
 use rustc::session::{early_warn, early_error};
 use rustc::session::config::{ErrorOutputType, RustcOptGroup};
@@ -452,8 +451,6 @@ where R: 'static + Send,
     // First, parse the crate and extract all relevant information.
     info!("starting to run rustc");
 
-    let (tx, rx) = channel();
-
     let result = rustc_driver::report_ices_to_stderr_if_any(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
@@ -467,15 +464,15 @@ where R: 'static + Send,
 
         krate.version = crate_version;
 
-        tx.send(f(Output {
+        f(Output {
             krate: krate,
             renderinfo: renderinfo,
             renderopts,
-        })).unwrap();
+        })
     });
 
     match result {
-        Ok(()) => rx.recv().unwrap(),
+        Ok(output) => output,
         Err(_) => panic::resume_unwind(Box::new(errors::FatalErrorMarker)),
     }
 }
