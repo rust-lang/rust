@@ -3252,7 +3252,6 @@ name = "rustdoc"
 version = "0.0.0"
 dependencies = [
  "minifier 0.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",

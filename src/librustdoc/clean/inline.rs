@@ -574,8 +574,7 @@ pub fn record_extern_trait(cx: &DocContext<'_>, did: DefId) {
     }
 
     {
-        let external_traits = cx.external_traits.lock();
-        if external_traits.borrow().contains_key(&did) ||
+        if cx.external_traits.borrow().contains_key(&did) ||
             cx.active_extern_traits.borrow().contains(&did)
         {
             return;
@@ -588,8 +587,7 @@ pub fn record_extern_trait(cx: &DocContext<'_>, did: DefId) {
     let trait_ = build_external_trait(cx, did);
 
     {
-        let external_traits = cx.external_traits.lock();
-        external_traits.borrow_mut().insert(did, trait_);
+        cx.external_traits.borrow_mut().insert(did, trait_);
     }
     cx.active_extern_traits.borrow_mut().remove_item(&did);
 }

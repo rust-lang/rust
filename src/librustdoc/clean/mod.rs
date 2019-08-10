@@ -45,8 +45,6 @@ use std::cell::RefCell;
 use std::sync::Arc;
 use std::u32;
 
-use parking_lot::ReentrantMutex;
-
 use crate::core::{self, DocContext};
 use crate::doctree;
 use crate::html::render::{cache, ExternalLocation};
@@ -133,7 +131,7 @@ pub struct Crate {
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    pub external_traits: Arc<ReentrantMutex<RefCell<FxHashMap<DefId, Trait>>>>,
+    pub external_traits: Arc<RefCell<FxHashMap<DefId, Trait>>>,
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
