@@ -1523,6 +1523,7 @@ fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
 fn calc_result(desc: &TestDesc, task_result: Result<(), Box<dyn Any + Send>>) -> TestResult {
     match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TrOk,
+        (&ShouldPanic::Yes, Ok(())) => TrFailedMsg("test did not panic as expected".to_string()),
         (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
             if err
                 .downcast_ref::<String>()
@@ -1561,6 +1562,7 @@ impl MetricMap {
     ///
     /// If `noise` is positive, then it means this metric is of a value
     /// you want to see grow smaller, so a change larger than `noise` in the
+
     /// positive direction represents a regression.
     ///
     /// If `noise` is negative, then it means this metric is of a value
