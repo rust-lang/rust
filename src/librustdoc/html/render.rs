@@ -2349,7 +2349,7 @@ impl Context {
             };
             let short = short.to_string();
             map.entry(short).or_default()
-                .push((myname, Some(plain_summary_line(item.doc_value()))));
+                .push((myname, Some(plain_summary_line(item.doc_value()).0)));
         }
 
         if self.shared.sort_modules_alphabetically {
@@ -2563,9 +2563,24 @@ fn shorter(s: Option<&str>) -> String {
 }
 
 #[inline]
-fn plain_summary_line(s: Option<&str>) -> String {
+fn get_links<'a, T: Iterator<Item = &'a str>>(it: T) -> Vec<(String, String)> {
+    it.filter(|line| line.starts_with('[') && line.split("]: ").count() == 2)
+      .map(|line| {
+          let parts = line.split("]: ").collect::<Vec<_>>();
+          ((&parts[0][1..]).to_owned(), parts[1].trim().to_owned())
+      })
+      .collect::<Vec<_>>()
+}
+
+#[inline]
+fn plain_summary_line(s: Option<&str>) -> (String, Vec<(String, String)>) {
     let line = shorter(s).replace("\n", " ");
-    markdown::plain_summary_line_full(&line[..], false)
+    let links = if let Some(ref s) = s {
+        get_links(s.split('\n').skip(1))
+    } else {
+        Vec::new()
+    };
+    (markdown::plain_summary_line_full(&line[..], false), links)
 }
 
 #[inline]
@@ -2607,13 +2622,16 @@ fn document_short(
     prefix: &str, is_hidden: bool
 ) -> fmt::Result {
     if let Some(s) = item.doc_value() {
-        let markdown = if s.contains('\n') {
-            format!("{} [Read more]({})",
-                    &plain_summary_line(Some(s)), naive_assoc_href(item, link))
+        let (markdown, mut links) = if s.contains('\n') {
+            let (text, links) = plain_summary_line(Some(s));
+            (format!("{} [Read more]({})", &text, naive_assoc_href(item, link)), links)
         } else {
             plain_summary_line(Some(s))
         };
-        render_markdown(w, cx, &markdown, item.links(), prefix, is_hidden)?;
+        for link in item.links() {
+            links.push(link.clone());
+        }
+        render_markdown(w, cx, &markdown, links, prefix, is_hidden)?;
     } else if !prefix.is_empty() {
         write!(w, "<div class='docblock{}'>{}</div>",
                if is_hidden { " hidden" } else { "" },
