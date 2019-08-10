@@ -28,7 +28,7 @@ fi
 
 # Copy files to sysroot
 mkdir -p sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
-cp target/$TARGET_TRIPLE/$sysroot_channel/deps/*.rlib sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
+cp target/$TARGET_TRIPLE/$sysroot_channel/deps/* sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
 
 if [[ "$1" == "--release" ]]; then
     channel='release'
@@ -39,4 +39,4 @@ else
 fi
 
 # Copy files to sysroot
-cp sysroot_src/src/libtest/target/$TARGET_TRIPLE/$sysroot_channel/deps/*.rlib sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
+cp sysroot_src/src/libtest/target/$TARGET_TRIPLE/$sysroot_channel/deps/*  sysroot/lib/rustlib/$TARGET_TRIPLE/lib/
