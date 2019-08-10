@@ -6,11 +6,12 @@ use ra_syntax::ast::{AstNode, RecordLit};
 use super::{Expr, ExprId, RecordLitField};
 use crate::{
     adt::AdtDef,
-    diagnostics::{DiagnosticSink, MissingFields},
+    diagnostics::{DiagnosticSink, MissingFields, MissingOkInTailExpr},
     expr::AstPtr,
-    ty::InferenceResult,
+    ty::{InferenceResult, Ty, TypeCtor},
     Function, HasSource, HirDatabase, Name, Path,
 };
+use ra_syntax::ast;
 
 pub(crate) struct ExprValidator<'a, 'b: 'a> {
     func: Function,
@@ -29,10 +30,22 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
     pub(crate) fn validate_body(&mut self, db: &impl HirDatabase) {
         let body = self.func.body(db);
+
+        // The final expr in the function body is the whole body,
+        // so the expression being returned is the penultimate expr.
+        let mut penultimate_expr = None;
+        let mut final_expr = None;
+
         for e in body.exprs() {
+            penultimate_expr = final_expr;
+            final_expr = Some(e);
+
             if let (id, Expr::RecordLit { path, fields, spread }) = e {
                 self.validate_record_literal(id, path, fields, *spread, db);
             }
+        }
+        if let Some(e) = penultimate_expr {
+            self.validate_results_in_tail_expr(e.0, db);
         }
     }
 
@@ -85,6 +98,45 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 field_list: field_list_ptr,
                 missed_fields,
             })
+        }
+    }
+
+    fn validate_results_in_tail_expr(&mut self, id: ExprId, db: &impl HirDatabase) {
+        let expr_ty = &self.infer[id];
+        let func_ty = self.func.ty(db);
+        let func_sig = func_ty.callable_sig(db).unwrap();
+        let ret = func_sig.ret();
+        let ret = match ret {
+            Ty::Apply(t) => t,
+            _ => return,
+        };
+        let ret_enum = match ret.ctor {
+            TypeCtor::Adt(AdtDef::Enum(e)) => e,
+            _ => return,
+        };
+        let enum_name = ret_enum.name(db);
+        if enum_name.is_none() || enum_name.unwrap().to_string() != "Result" {
+            return;
+        }
+        let params = &ret.parameters;
+        if params.len() == 2 && &params[0] == expr_ty {
+            let source_map = self.func.body_source_map(db);
+            let file_id = self.func.source(db).file_id;
+            let parse = db.parse(file_id.original_file(db));
+            let source_file = parse.tree();
+            let expr_syntax = source_map.expr_syntax(id);
+            if expr_syntax.is_none() {
+                return;
+            }
+            let expr_syntax = expr_syntax.unwrap();
+            let node = expr_syntax.to_node(source_file.syntax());
+            let ast = ast::Expr::cast(node);
+            if ast.is_none() {
+                return;
+            }
+            let ast = ast.unwrap();
+
+            self.sink.push(MissingOkInTailExpr { file: file_id, expr: AstPtr::new(&ast) });
         }
     }
 }

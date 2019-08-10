@@ -75,6 +75,19 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             severity: Severity::Error,
             fix: Some(fix),
         })
+    })
+    .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
+        let node = d.ast(db);
+        let mut builder = TextEditBuilder::default();
+        let replacement = format!("Ok({})", node.syntax().text());
+        builder.replace(node.syntax().text_range(), replacement);
+        let fix = SourceChange::source_file_edit_from("wrap with ok", file_id, builder.finish());
+        res.borrow_mut().push(Diagnostic {
+            range: d.highlight_range(),
+            message: d.message(),
+            severity: Severity::Error,
+            fix: Some(fix),
+        })
     });
     if let Some(m) = source_binder::module_from_file_id(db, file_id) {
         m.diagnostics(db, &mut sink);
@@ -216,6 +229,43 @@ mod tests {
         let (analysis, file_id) = single_file(content);
         let diagnostics = analysis.diagnostics(file_id).unwrap();
         assert_eq!(diagnostics.len(), 0);
+    }
+
+    #[test]
+    fn test_wrap_return_type() {
+        let before = r#"
+            enum Result<T, E> { Ok(T), Err(E) }
+            struct String { }
+
+            fn div(x: i32, y: i32) -> Result<i32, String> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                x / y
+            }
+        "#;
+        let after = r#"
+            enum Result<T, E> { Ok(T), Err(E) }
+            struct String { }
+
+            fn div(x: i32, y: i32) -> Result<i32, String> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                Ok(x / y)
+            }
+        "#;
+        check_apply_diagnostic_fix(before, after);
+    }
+
+    #[test]
+    fn test_wrap_return_type_not_applicable() {
+        let content = r#"
+            fn foo() -> Result<String, i32> {
+                0
+            }
+        "#;
+        check_no_diagnostic(content);
     }
 
     #[test]

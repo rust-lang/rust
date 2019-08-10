@@ -143,3 +143,34 @@ impl AstDiagnostic for MissingFields {
         ast::RecordFieldList::cast(node).unwrap()
     }
 }
+
+#[derive(Debug)]
+pub struct MissingOkInTailExpr {
+    pub file: HirFileId,
+    pub expr: AstPtr<ast::Expr>,
+}
+
+impl Diagnostic for MissingOkInTailExpr {
+    fn message(&self) -> String {
+        "wrap return expression in Ok".to_string()
+    }
+    fn file(&self) -> HirFileId {
+        self.file
+    }
+    fn syntax_node_ptr(&self) -> SyntaxNodePtr {
+        self.expr.into()
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
+        self
+    }
+}
+
+impl AstDiagnostic for MissingOkInTailExpr {
+    type AST = ast::Expr;
+
+    fn ast(&self, db: &impl HirDatabase) -> Self::AST {
+        let root = db.parse_or_expand(self.file()).unwrap();
+        let node = self.syntax_node_ptr().to_node(&root);
+        ast::Expr::cast(node).unwrap()
+    }
+}
