@@ -25,7 +25,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 pub use rustc_target::abi::*;
 use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};
 use rustc_target::abi::call::{
-    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, IgnoreMode, PassMode, Reg, RegKind
+    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, PassMode, Reg, RegKind
 };
 
 pub trait IntegerExt {
@@ -2722,14 +2722,6 @@ where
             }
         };
 
-        // Store the index of the last argument. This is useful for working with
-        // C-compatible variadic arguments.
-        let last_arg_idx = if sig.inputs().is_empty() {
-            None
-        } else {
-            Some(sig.inputs().len() - 1)
-        };
-
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
             let is_return = arg_idx.is_none();
             let mut arg = mk_arg_type(ty, arg_idx);
@@ -2739,30 +2731,7 @@ where
                 // The same is true for s390x-unknown-linux-gnu
                 // and sparc64-unknown-linux-gnu.
                 if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
-                    arg.mode = PassMode::Ignore(IgnoreMode::Zst);
-                }
-            }
-
-            // If this is a C-variadic function, this is not the return value,
-            // and there is one or more fixed arguments; ensure that the `VaListImpl`
-            // is ignored as an argument.
-            if sig.c_variadic {
-                match (last_arg_idx, arg_idx) {
-                    (Some(last_idx), Some(cur_idx)) if last_idx == cur_idx => {
-                        let va_list_did = match cx.tcx().lang_items().va_list() {
-                            Some(did) => did,
-                            None => bug!("`va_list` lang item required for C-variadic functions"),
-                        };
-                        match ty.kind {
-                            ty::Adt(def, _) if def.did == va_list_did => {
-                                // This is the "spoofed" `VaListImpl`. Set the arguments mode
-                                // so that it will be ignored.
-                                arg.mode = PassMode::Ignore(IgnoreMode::CVarArgs);
-                            }
-                            _ => (),
-                        }
-                    }
-                    _ => {}
+                    arg.mode = PassMode::Ignore;
                 }
             }
 

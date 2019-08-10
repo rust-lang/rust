@@ -16,8 +16,9 @@ use either::Either;
 use rustc::hir::def_id::DefId;
 use rustc::hir::{self, BodyOwnerKind, HirId};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
+use rustc::middle::lang_items;
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{InternalSubsts, SubstsRef};
+use rustc::ty::subst::{InternalSubsts, SubstsRef, Subst};
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -425,11 +426,32 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 .replace_late_bound_regions_with_nll_infer_vars(self.mir_def_id, &mut indices);
         }
 
+        let (unnormalized_output_ty, mut unnormalized_input_tys) =
+            inputs_and_output.split_last().unwrap();
+
+        // C-variadic fns also have a `VaList` input that's not listed in the signature
+        // (as it's created inside the body itself, not passed in from outside).
+        if let DefiningTy::FnDef(def_id, _) = defining_ty {
+            if self.infcx.tcx.fn_sig(def_id).c_variadic() {
+                let va_list_did = self.infcx.tcx.require_lang_item(
+                    lang_items::VaListTypeLangItem,
+                    Some(self.infcx.tcx.def_span(self.mir_def_id),),
+                );
+                let region = self.infcx.tcx.mk_region(ty::ReVar(
+                    self.infcx.next_nll_region_var(FR).to_region_vid(),
+                ));
+                let va_list_ty = self.infcx.tcx.type_of(va_list_did)
+                    .subst(self.infcx.tcx, &[region.into()]);
+
+                unnormalized_input_tys = self.infcx.tcx.mk_type_list(
+                    unnormalized_input_tys.iter().copied()
+                        .chain(iter::once(va_list_ty)),
+                );
+            }
+        }
+
         let fr_fn_body = self.infcx.next_nll_region_var(FR).to_region_vid();
         let num_universals = self.infcx.num_region_vars();
-
-        let (unnormalized_output_ty, unnormalized_input_tys) =
-            inputs_and_output.split_last().unwrap();
 
         debug!(
             "build: global regions = {}..{}",
