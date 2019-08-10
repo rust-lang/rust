@@ -6,6 +6,7 @@ use crate::config::StripUnconfigured;
 use crate::ext::base::*;
 use crate::ext::proc_macro::collect_derives;
 use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind};
+use crate::ext::tt::macro_rules::annotate_err_with_kind;
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
@@ -686,12 +687,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         );
     }
 
-    fn parse_ast_fragment(&mut self,
-                          toks: TokenStream,
-                          kind: AstFragmentKind,
-                          path: &Path,
-                          span: Span)
-                          -> AstFragment {
+    fn parse_ast_fragment(
+        &mut self,
+        toks: TokenStream,
+        kind: AstFragmentKind,
+        path: &Path,
+        span: Span,
+    ) -> AstFragment {
         let mut parser = self.cx.new_parser_from_tts(&toks.into_trees().collect::<Vec<_>>());
         match parser.parse_ast_fragment(kind, false) {
             Ok(fragment) => {
@@ -700,6 +702,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             Err(mut err) => {
                 err.set_span(span);
+                annotate_err_with_kind(&mut err, kind, span);
                 err.emit();
                 self.cx.trace_macros_diag();
                 kind.dummy(span)

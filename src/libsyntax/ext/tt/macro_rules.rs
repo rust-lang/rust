@@ -17,7 +17,7 @@ use crate::symbol::{kw, sym, Symbol};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use crate::{ast, attr, attr::TransparencyError};
 
-use errors::FatalError;
+use errors::{DiagnosticBuilder, FatalError};
 use log::debug;
 use syntax_pos::Span;
 
@@ -41,6 +41,18 @@ pub struct ParserAnyMacro<'a> {
     /// The ident of the macro we're parsing
     macro_ident: ast::Ident,
     arm_span: Span,
+}
+
+pub fn annotate_err_with_kind(err: &mut DiagnosticBuilder<'_>, kind: AstFragmentKind, span: Span) {
+    match kind {
+        AstFragmentKind::Ty => {
+            err.span_label(span, "this macro call doesn't expand to a type");
+        }
+        AstFragmentKind::Pat => {
+            err.span_label(span, "this macro call doesn't expand to a pattern");
+        }
+        _ => {}
+    };
 }
 
 impl<'a> ParserAnyMacro<'a> {
@@ -70,6 +82,32 @@ impl<'a> ParserAnyMacro<'a> {
             } else if !parser.sess.source_map().span_to_filename(parser.token.span).is_real() {
                 e.span_label(site_span, "in this macro invocation");
             }
+            match kind {
+                AstFragmentKind::Pat if macro_ident.name == sym::vec => {
+                    let mut suggestion = None;
+                    if let Ok(code) = parser.sess.source_map().span_to_snippet(site_span) {
+                        if let Some(bang) = code.find('!') {
+                            suggestion = Some(code[bang + 1..].to_string());
+                        }
+                    }
+                    if let Some(suggestion) = suggestion {
+                        e.span_suggestion(
+                            site_span,
+                            "use a slice pattern here instead",
+                            suggestion,
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        e.span_label(
+                            site_span,
+                            "use a slice pattern here instead",
+                        );
+                    }
+                    e.help("for more information, see https://doc.rust-lang.org/edition-guide/\
+                            rust-2018/slice-patterns.html");
+                }
+                _ => annotate_err_with_kind(&mut e, kind, site_span),
+            };
             e
         }));
 
