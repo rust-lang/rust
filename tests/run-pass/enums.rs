@@ -40,8 +40,9 @@ fn discriminant_overflow() {
     }
 
     let x = Foo::B;
-    if let Foo::C(_) = x {
-        panic!();
+    match x {
+        Foo::B => {},
+        _ => panic!(),
     }
 }
 
