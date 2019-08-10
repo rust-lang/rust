@@ -580,7 +580,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
             }
-            // underscore case for windows
+            // underscore case for windows, here and below
+            // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
             "_hypot" | "hypot" | "atan2" => {
                 // FIXME: Using host floats.
                 let f1 = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
@@ -592,11 +593,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
-            // underscore case for windows
-            "_ldexp" | "ldexp" => {
+            // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
+            "_ldexp" | "ldexp" | "scalbn" => {
                 let x = this.read_scalar(args[0])?.to_f64()?;
                 let exp = this.read_scalar(args[1])?.to_i32()?;
-                // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
                 let res = x.scalbn(exp.try_into().unwrap());
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
