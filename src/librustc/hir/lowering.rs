@@ -1173,6 +1173,13 @@ impl<'a> LoweringContext<'a> {
         ))
     }
 
+    fn lower_fn_body_block(&mut self, decl: &FnDecl, body: &Block) -> hir::BodyId {
+        self.lower_fn_body(decl, |this| {
+            let body = this.lower_block(body, false);
+            this.expr_block(body, ThinVec::new())
+        })
+    }
+
     fn lower_const_body(&mut self, expr: &Expr) -> hir::BodyId {
         self.lower_body(|this| (hir_vec![], this.lower_expr(expr)))
     }
@@ -3181,10 +3188,7 @@ impl<'a> LoweringContext<'a> {
     ) -> hir::BodyId {
         let closure_id = match asyncness {
             IsAsync::Async { closure_id, .. } => closure_id,
-            IsAsync::NotAsync => return self.lower_fn_body(&decl, |this| {
-                let body = this.lower_block(body, false);
-                this.expr_block(body, ThinVec::new())
-            }),
+            IsAsync::NotAsync => return self.lower_fn_body_block(decl, body),
         };
 
         self.lower_body(|this| {
@@ -3786,10 +3790,7 @@ impl<'a> LoweringContext<'a> {
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
             TraitItemKind::Method(ref sig, Some(ref body)) => {
-                let body_id = self.lower_fn_body(&sig.decl, |this| {
-                    let body = this.lower_block(body, false);
-                    this.expr_block(body, ThinVec::new())
-                });
+                let body_id = self.lower_fn_body_block(&sig.decl, body);
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
                     sig,
@@ -4566,144 +4567,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn expr_break(&mut self, span: Span, attrs: ThinVec<Attribute>) -> P<hir::Expr> {
-        let expr_break = hir::ExprKind::Break(self.lower_loop_destination(None), None);
-        P(self.expr(span, expr_break, attrs))
-    }
-
-    fn expr_call(
-        &mut self,
-        span: Span,
-        e: P<hir::Expr>,
-        args: hir::HirVec<hir::Expr>,
-    ) -> hir::Expr {
-        self.expr(span, hir::ExprKind::Call(e, args), ThinVec::new())
-    }
-
-    // Note: associated functions must use `expr_call_std_path`.
-    fn expr_call_std_path(
-        &mut self,
-        span: Span,
-        path_components: &[Symbol],
-        args: hir::HirVec<hir::Expr>,
-    ) -> hir::Expr {
-        let path = P(self.expr_std_path(span, path_components, None, ThinVec::new()));
-        self.expr_call(span, path, args)
-    }
-
-    // Create an expression calling an associated function of an std type.
-    //
-    // Associated functions cannot be resolved through the normal `std_path` function,
-    // as they are resolved differently and so cannot use `expr_call_std_path`.
-    //
-    // This function accepts the path component (`ty_path_components`) separately from
-    // the name of the associated function (`assoc_fn_name`) in order to facilitate
-    // separate resolution of the type and creation of a path referring to its associated
-    // function.
-    fn expr_call_std_assoc_fn(
-        &mut self,
-        ty_path_id: hir::HirId,
-        span: Span,
-        ty_path_components: &[Symbol],
-        assoc_fn_name: &str,
-        args: hir::HirVec<hir::Expr>,
-    ) -> hir::ExprKind {
-        let ty_path = P(self.std_path(span, ty_path_components, None, false));
-        let ty = P(self.ty_path(ty_path_id, span, hir::QPath::Resolved(None, ty_path)));
-        let fn_seg = P(hir::PathSegment::from_ident(Ident::from_str(assoc_fn_name)));
-        let fn_path = hir::QPath::TypeRelative(ty, fn_seg);
-        let fn_expr = P(self.expr(span, hir::ExprKind::Path(fn_path), ThinVec::new()));
-        hir::ExprKind::Call(fn_expr, args)
-    }
-
-    fn expr_ident(&mut self, span: Span, ident: Ident, binding: hir::HirId) -> hir::Expr {
-        self.expr_ident_with_attrs(span, ident, binding, ThinVec::new())
-    }
-
-    fn expr_ident_with_attrs(
-        &mut self,
-        span: Span,
-        ident: Ident,
-        binding: hir::HirId,
-        attrs: ThinVec<Attribute>,
-    ) -> hir::Expr {
-        let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
-            None,
-            P(hir::Path {
-                span,
-                res: Res::Local(binding),
-                segments: hir_vec![hir::PathSegment::from_ident(ident)],
-            }),
-        ));
-
-        self.expr(span, expr_path, attrs)
-    }
-
-    fn expr_mut_addr_of(&mut self, span: Span, e: P<hir::Expr>) -> hir::Expr {
-        self.expr(span, hir::ExprKind::AddrOf(hir::MutMutable, e), ThinVec::new())
-    }
-
-    fn expr_std_path(
-        &mut self,
-        span: Span,
-        components: &[Symbol],
-        params: Option<P<hir::GenericArgs>>,
-        attrs: ThinVec<Attribute>,
-    ) -> hir::Expr {
-        let path = self.std_path(span, components, params, true);
-        self.expr(
-            span,
-            hir::ExprKind::Path(hir::QPath::Resolved(None, P(path))),
-            attrs,
-        )
-    }
-
-    /// Wrap the given `expr` in a terminating scope using `hir::ExprKind::DropTemps`.
-    ///
-    /// In terms of drop order, it has the same effect as wrapping `expr` in
-    /// `{ let _t = $expr; _t }` but should provide better compile-time performance.
-    ///
-    /// The drop order can be important in e.g. `if expr { .. }`.
-    fn expr_drop_temps(
-        &mut self,
-        span: Span,
-        expr: P<hir::Expr>,
-        attrs: ThinVec<Attribute>
-    ) -> hir::Expr {
-        self.expr(span, hir::ExprKind::DropTemps(expr), attrs)
-    }
-
-    fn expr_match(
-        &mut self,
-        span: Span,
-        arg: P<hir::Expr>,
-        arms: hir::HirVec<hir::Arm>,
-        source: hir::MatchSource,
-    ) -> hir::Expr {
-        self.expr(span, hir::ExprKind::Match(arg, arms, source), ThinVec::new())
-    }
-
-    fn expr_block(&mut self, b: P<hir::Block>, attrs: ThinVec<Attribute>) -> hir::Expr {
-        self.expr(b.span, hir::ExprKind::Block(b, None), attrs)
-    }
-
-    fn expr_unit(&mut self, sp: Span) -> hir::Expr {
-        self.expr_tuple(sp, hir_vec![])
-    }
-
-    fn expr_tuple(&mut self, sp: Span, exprs: hir::HirVec<hir::Expr>) -> hir::Expr {
-        self.expr(sp, hir::ExprKind::Tup(exprs), ThinVec::new())
-    }
-
-    fn expr(&mut self, span: Span, node: hir::ExprKind, attrs: ThinVec<Attribute>) -> hir::Expr {
-        hir::Expr {
-            hir_id: self.next_id(),
-            node,
-            span,
-            attrs,
-        }
-    }
-
     fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
         hir::Stmt { span, node, hir_id: self.next_id() }
     }
@@ -4732,11 +4595,6 @@ impl<'a> LoweringContext<'a> {
         self.stmt(span, hir::StmtKind::Local(P(local)))
     }
 
-    fn expr_block_empty(&mut self, span: Span) -> hir::Expr {
-        let blk = self.block_all(span, hir_vec![], None);
-        self.expr_block(P(blk), ThinVec::new())
-    }
-
     fn block_expr(&mut self, expr: P<hir::Expr>) -> hir::Block {
         self.block_all(expr.span, hir::HirVec::new(), Some(expr))
     }
@@ -4755,29 +4613,6 @@ impl<'a> LoweringContext<'a> {
             span,
             targeted_by_break: false,
         }
-    }
-
-    fn expr_unsafe(&mut self, expr: P<hir::Expr>) -> hir::Expr {
-        let hir_id = self.next_id();
-        let span = expr.span;
-        self.expr(
-            span,
-            hir::ExprKind::Block(P(hir::Block {
-                stmts: hir_vec![],
-                expr: Some(expr),
-                hir_id,
-                rules: hir::UnsafeBlock(hir::CompilerGenerated),
-                span,
-                targeted_by_break: false,
-            }), None),
-            ThinVec::new(),
-        )
-    }
-
-    /// Constructs a `true` or `false` literal expression.
-    fn expr_bool(&mut self, span: Span, val: bool) -> hir::Expr {
-        let lit = Spanned { span, node: LitKind::Bool(val) };
-        self.expr(span, hir::ExprKind::Lit(lit), ThinVec::new())
     }
 
     /// Constructs a `true` or `false` literal pattern.
