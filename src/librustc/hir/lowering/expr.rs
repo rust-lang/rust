@@ -143,80 +143,8 @@ impl LoweringContext<'_> {
 
                 hir::ExprKind::Match(P(scrutinee), vec![then_arm, else_arm].into(), desugar)
             }
-            // FIXME(#53667): handle lowering of && and parens.
             ExprKind::While(ref cond, ref body, opt_label) => self.with_loop_scope(e.id, |this| {
-                // Note that the block AND the condition are evaluated in the loop scope.
-                // This is done to allow `break` from inside the condition of the loop.
-
-                // `_ => break`:
-                let else_arm = {
-                    let else_pat = this.pat_wild(e.span);
-                    let else_expr = this.expr_break(e.span, ThinVec::new());
-                    this.arm(hir_vec![else_pat], else_expr)
-                };
-
-                // Handle then + scrutinee:
-                let then_blk = this.lower_block(body, false);
-                let then_expr = this.expr_block(then_blk, ThinVec::new());
-                let (then_pats, scrutinee, desugar, source) = match cond.node {
-                    ExprKind::Let(ref pats, ref scrutinee) => {
-                        // to:
-                        //
-                        //   [opt_ident]: loop {
-                        //     match <sub_expr> {
-                        //       <pat> => <body>,
-                        //       _ => break
-                        //     }
-                        //   }
-                        let scrutinee = this.with_loop_condition_scope(|t| t.lower_expr(scrutinee));
-                        let pats = pats.iter().map(|pat| this.lower_pat(pat)).collect();
-                        let desugar = hir::MatchSource::WhileLetDesugar;
-                        (pats, scrutinee, desugar, hir::LoopSource::WhileLet)
-                    }
-                    _ => {
-                        // We desugar: `'label: while $cond $body` into:
-                        //
-                        // ```
-                        // 'label: loop {
-                        //     match DropTemps($cond) {
-                        //         true => $body,
-                        //         _ => break,
-                        //     }
-                        // }
-                        // ```
-
-                        // Lower condition:
-                        let cond = this.with_loop_condition_scope(|this| this.lower_expr(cond));
-                        let span_block = this.mark_span_with_reason(
-                            DesugaringKind::CondTemporary, cond.span, None
-                        );
-                        // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
-                        // to preserve drop semantics since `while cond { ... }` does not
-                        // let temporaries live outside of `cond`.
-                        let cond = this.expr_drop_temps(span_block, P(cond), ThinVec::new());
-
-                        let desugar = hir::MatchSource::WhileDesugar;
-                        // `true => <then>`:
-                        let pats = hir_vec![this.pat_bool(e.span, true)];
-                        (pats, cond, desugar, hir::LoopSource::While)
-                    }
-                };
-                let then_arm = this.arm(then_pats, P(then_expr));
-
-                // `match <scrutinee> { ... }`
-                let match_expr = this.expr_match(
-                    scrutinee.span,
-                    P(scrutinee),
-                    hir_vec![then_arm, else_arm],
-                    desugar,
-                );
-
-                // `[opt_ident]: loop { ... }`
-                hir::ExprKind::Loop(
-                    P(this.block_expr(P(match_expr))),
-                    this.lower_label(opt_label),
-                    source
-                )
+                this.lower_expr_while_in_loop_scope(e.span, cond, body, opt_label)
             }),
             ExprKind::Loop(ref body, opt_label) => self.with_loop_scope(e.id, |this| {
                 hir::ExprKind::Loop(
@@ -349,6 +277,91 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    fn lower_expr_while_in_loop_scope(
+        &mut self,
+        span: Span,
+        cond: &Expr,
+        body: &Block,
+        opt_label: Option<Label>
+    ) -> hir::ExprKind {
+        // FIXME(#53667): handle lowering of && and parens.
+
+        // Note that the block AND the condition are evaluated in the loop scope.
+        // This is done to allow `break` from inside the condition of the loop.
+
+        // `_ => break`:
+        let else_arm = {
+            let else_pat = self.pat_wild(span);
+            let else_expr = self.expr_break(span, ThinVec::new());
+            self.arm(hir_vec![else_pat], else_expr)
+        };
+
+        // Handle then + scrutinee:
+        let then_blk = self.lower_block(body, false);
+        let then_expr = self.expr_block(then_blk, ThinVec::new());
+        let (then_pats, scrutinee, desugar, source) = match cond.node {
+            ExprKind::Let(ref pats, ref scrutinee) => {
+                // to:
+                //
+                //   [opt_ident]: loop {
+                //     match <sub_expr> {
+                //       <pat> => <body>,
+                //       _ => break
+                //     }
+                //   }
+                let scrutinee = self.with_loop_condition_scope(|t| t.lower_expr(scrutinee));
+                let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+                let desugar = hir::MatchSource::WhileLetDesugar;
+                (pats, scrutinee, desugar, hir::LoopSource::WhileLet)
+            }
+            _ => {
+                // We desugar: `'label: while $cond $body` into:
+                //
+                // ```
+                // 'label: loop {
+                //     match DropTemps($cond) {
+                //         true => $body,
+                //         _ => break,
+                //     }
+                // }
+                // ```
+
+                // Lower condition:
+                let cond = self.with_loop_condition_scope(|this| this.lower_expr(cond));
+                let span_block = self.mark_span_with_reason(
+                    DesugaringKind::CondTemporary,
+                    cond.span,
+                    None,
+                );
+                // Wrap in a construct equivalent to `{ let _t = $cond; _t }`
+                // to preserve drop semantics since `while cond { ... }` does not
+                // let temporaries live outside of `cond`.
+                let cond = self.expr_drop_temps(span_block, P(cond), ThinVec::new());
+
+                let desugar = hir::MatchSource::WhileDesugar;
+                // `true => <then>`:
+                let pats = hir_vec![self.pat_bool(span, true)];
+                (pats, cond, desugar, hir::LoopSource::While)
+            }
+        };
+        let then_arm = self.arm(then_pats, P(then_expr));
+
+        // `match <scrutinee> { ... }`
+        let match_expr = self.expr_match(
+            scrutinee.span,
+            P(scrutinee),
+            hir_vec![then_arm, else_arm],
+            desugar,
+        );
+
+        // `[opt_ident]: loop { ... }`
+        hir::ExprKind::Loop(
+            P(self.block_expr(P(match_expr))),
+            self.lower_label(opt_label),
+            source
+        )
     }
 
     fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind {
