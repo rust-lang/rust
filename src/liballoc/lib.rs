@@ -122,6 +122,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
 #![feature(mem_take)]
+#![feature(associated_type_bounds)]
 
 // Allow testing this library
 
