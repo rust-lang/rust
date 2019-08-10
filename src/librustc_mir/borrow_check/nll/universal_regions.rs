@@ -72,6 +72,8 @@ pub struct UniversalRegions<'tcx> {
     pub unnormalized_input_tys: &'tcx [Ty<'tcx>],
 
     pub yield_ty: Option<Ty<'tcx>>,
+
+    pub c_variadic: bool,
 }
 
 /// The "defining type" for this MIR. The key feature of the "defining
@@ -451,6 +453,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             _ => None,
         };
 
+        let c_variadic = match defining_ty {
+            DefiningTy::FnDef(def_id, _) => {
+                self.infcx.tcx.fn_sig(def_id).c_variadic()
+            }
+            _ => false,
+        };
+
         UniversalRegions {
             indices,
             fr_static,
@@ -462,6 +471,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             unnormalized_output_ty,
             unnormalized_input_tys,
             yield_ty: yield_ty,
+            c_variadic,
         }
     }
 
