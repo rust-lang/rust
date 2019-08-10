@@ -2547,6 +2547,22 @@ enum SelfKind {
 
 impl SelfKind {
     fn matches<'a>(self, cx: &LateContext<'_, 'a>, parent_ty: Ty<'a>, ty: Ty<'a>) -> bool {
+        fn matches_value(parent_ty: Ty<'_>, ty: Ty<'_>) -> bool {
+            if ty == parent_ty {
+                true
+            } else if ty.is_box() {
+                ty.boxed_ty() == parent_ty
+            } else if ty.is_rc() || ty.is_arc() {
+                if let ty::Adt(_, substs) = ty.sty {
+                    substs.types().next().map_or(false, |t| t == parent_ty)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        }
+
         fn matches_ref<'a>(
             cx: &LateContext<'_, 'a>,
             mutability: hir::Mutability,
@@ -2567,7 +2583,7 @@ impl SelfKind {
         }
 
         match self {
-            Self::Value => ty == parent_ty,
+            Self::Value => matches_value(parent_ty, ty),
             Self::Ref => {
                 matches_ref(cx, hir::Mutability::MutImmutable, parent_ty, ty) || ty == parent_ty && is_copy(cx, ty)
             },

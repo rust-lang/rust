@@ -56,3 +56,22 @@ impl Bar {
     fn from_(self) {}
     fn to_mut(&mut self) {}
 }
+
+// Allow Box<Self>, Rc<Self>, Arc<Self> for methods that take conventionally take Self by value
+#[allow(clippy::boxed_local)]
+mod issue4293 {
+    use std::rc::Rc;
+    use std::sync::Arc;
+
+    struct T;
+
+    impl T {
+        fn into_s1(self: Box<Self>) {}
+        fn into_s2(self: Rc<Self>) {}
+        fn into_s3(self: Arc<Self>) {}
+
+        fn into_t1(self: Box<T>) {}
+        fn into_t2(self: Rc<T>) {}
+        fn into_t3(self: Arc<T>) {}
+    }
+}
