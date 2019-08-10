@@ -369,9 +369,6 @@ pub trait FnMut<Args>: FnOnce<Args> {
 }
 
 #[lang = "panic"]
-// Make it available to jited mini_core_hello_world
-// FIXME remove next line when jit supports linking rlibs
-#[inline(always)]
 pub fn panic(&(_msg, _file, _line, _col): &(&'static str, &'static str, u32, u32)) -> ! {
     unsafe {
         libc::puts("Panicking\0" as *const str as *const u8);
@@ -419,15 +416,11 @@ impl<T> Deref for Box<T> {
 }
 
 #[lang = "exchange_malloc"]
-// Make it available to jited mini_core_hello_world
-// FIXME remove next line when jit supports linking rlibs
-#[inline(always)]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     libc::malloc(size)
 }
 
 #[lang = "box_free"]
-#[inline(always)]
 unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     libc::free(ptr as *mut u8);
 }

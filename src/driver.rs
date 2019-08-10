@@ -48,9 +48,64 @@ pub fn codegen_crate(
 fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
-    let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new(
+    let mut dylib_paths = Vec::new();
+
+    {
+        use rustc::middle::dependency_format::Linkage;
+
+        let crate_info = CrateInfo::new(tcx);
+        let formats = tcx.sess.dependency_formats.borrow();
+        let data = formats.get(&CrateType::Executable).unwrap();
+        for &(cnum, _) in &crate_info.used_crates_dynamic {
+            let src = &crate_info.used_crate_source[&cnum];
+            match data[cnum.as_usize() - 1] {
+                _ if crate_info.profiler_runtime == Some(cnum) =>  unimplemented!(),
+                _ if crate_info.sanitizer_runtime == Some(cnum) => unimplemented!(),
+
+                // compiler-builtins are always placed last to ensure that they're
+                // linked correctly.
+                _ if crate_info.compiler_builtins == Some(cnum) => {
+                    unimplemented!();
+                }
+                Linkage::NotLinked |
+                Linkage::IncludedFromDylib => {}
+                Linkage::Static => {
+                    let name = tcx.crate_name(cnum);
+                    let mut err = tcx.sess.struct_fatal(&format!("Can't load static lib {}", name.as_str()));
+                    err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
+                    err.emit();
+                }
+                Linkage::Dynamic => {
+                    dylib_paths.push(src.dylib.as_ref().unwrap().0.clone());
+                }
+            }
+        }
+    }
+
+    let mut imported_symbols = Vec::new();
+    for path in dylib_paths {
+        use object::Object;
+        let lib = libloading::Library::new(&path).unwrap();
+        let obj = std::fs::read(path).unwrap();
+        let obj = object::File::parse(&obj).unwrap();
+        imported_symbols.extend(obj.dynamic_symbols().filter_map(|(_idx, symbol)| {
+            let name = symbol.name().unwrap().to_string();
+            if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
+                return None;
+            }
+            println!("name: {:?}", name);
+            let symbol: libloading::Symbol<*const u8> =
+                unsafe { lib.get(name.as_bytes()) }.unwrap();
+            Some((name, *symbol))
+        }));
+        std::mem::forget(lib)
+    }
+
+    let mut jit_builder = SimpleJITBuilder::new(
         cranelift_module::default_libcall_names(),
-    ));
+    );
+    jit_builder.symbols(imported_symbols);
+    let mut jit_module: Module<SimpleJITBackend> = Module::new(jit_builder);
     assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
 
     let sig = Signature {
