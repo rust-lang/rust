@@ -268,55 +268,13 @@ impl LoweringContext<'_> {
                 capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
             ) => {
                 if let IsAsync::Async { closure_id, .. } = asyncness {
-                    let outer_decl = FnDecl {
-                        inputs: decl.inputs.clone(),
-                        output: FunctionRetTy::Default(fn_decl_span),
-                        c_variadic: false,
-                    };
-                    // We need to lower the declaration outside the new scope, because we
-                    // have to conserve the state of being inside a loop condition for the
-                    // closure argument types.
-                    let fn_decl = self.lower_fn_decl(&outer_decl, None, false, None);
-
-                    self.with_new_scopes(|this| {
-                        // FIXME(cramertj): allow `async` non-`move` closures with arguments.
-                        if capture_clause == CaptureBy::Ref &&
-                            !decl.inputs.is_empty()
-                        {
-                            struct_span_err!(
-                                this.sess,
-                                fn_decl_span,
-                                E0708,
-                                "`async` non-`move` closures with arguments \
-                                are not currently supported",
-                            )
-                                .help("consider using `let` statements to manually capture \
-                                       variables by reference before entering an \
-                                       `async move` closure")
-                                .emit();
-                        }
-
-                        // Transform `async |x: u8| -> X { ... }` into
-                        // `|x: u8| future_from_generator(|| -> X { ... })`.
-                        let body_id = this.lower_fn_body(&outer_decl, |this| {
-                            let async_ret_ty = if let FunctionRetTy::Ty(ty) = &decl.output {
-                                Some(ty.clone())
-                            } else { None };
-                            let async_body = this.make_async_expr(
-                                capture_clause, closure_id, async_ret_ty, body.span,
-                                |this| {
-                                    this.with_new_scopes(|this| this.lower_expr(body))
-                                });
-                            this.expr(fn_decl_span, async_body, ThinVec::new())
-                        });
-                        hir::ExprKind::Closure(
-                            this.lower_capture_clause(capture_clause),
-                            fn_decl,
-                            body_id,
-                            fn_decl_span,
-                            None,
-                        )
-                    })
+                    self.lower_expr_async_closure(
+                        capture_clause,
+                        closure_id,
+                        decl,
+                        body,
+                        fn_decl_span,
+                    )
                 } else {
                     // Lower outside new scope to preserve `is_in_loop_condition`.
                     let fn_decl = self.lower_fn_decl(decl, None, false, None);
@@ -447,6 +405,66 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    fn lower_expr_async_closure(
+        &mut self,
+        capture_clause: CaptureBy,
+        closure_id: NodeId,
+        decl: &FnDecl,
+        body: &Expr,
+        fn_decl_span: Span,
+    ) -> hir::ExprKind {
+        let outer_decl = FnDecl {
+            inputs: decl.inputs.clone(),
+            output: FunctionRetTy::Default(fn_decl_span),
+            c_variadic: false,
+        };
+        // We need to lower the declaration outside the new scope, because we
+        // have to conserve the state of being inside a loop condition for the
+        // closure argument types.
+        let fn_decl = self.lower_fn_decl(&outer_decl, None, false, None);
+
+        self.with_new_scopes(|this| {
+            // FIXME(cramertj): allow `async` non-`move` closures with arguments.
+            if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
+                struct_span_err!(
+                    this.sess,
+                    fn_decl_span,
+                    E0708,
+                    "`async` non-`move` closures with arguments are not currently supported",
+                )
+                .help(
+                    "consider using `let` statements to manually capture \
+                    variables by reference before entering an `async move` closure"
+                )
+                .emit();
+            }
+
+            // Transform `async |x: u8| -> X { ... }` into
+            // `|x: u8| future_from_generator(|| -> X { ... })`.
+            let body_id = this.lower_fn_body(&outer_decl, |this| {
+                let async_ret_ty = if let FunctionRetTy::Ty(ty) = &decl.output {
+                    Some(ty.clone())
+                } else {
+                    None
+                };
+                let async_body = this.make_async_expr(
+                    capture_clause, closure_id, async_ret_ty, body.span,
+                    |this| {
+                        this.with_new_scopes(|this| this.lower_expr(body))
+                    }
+                );
+                this.expr(fn_decl_span, async_body, ThinVec::new())
+            });
+            hir::ExprKind::Closure(
+                this.lower_capture_clause(capture_clause),
+                fn_decl,
+                body_id,
+                fn_decl_span,
+                None,
+            )
+        })
     }
 
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.
