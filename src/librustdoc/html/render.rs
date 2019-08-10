@@ -170,6 +170,7 @@ struct Context {
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
+    playground: Option<markdown::Playground>,
 }
 
 struct SharedContext {
@@ -574,9 +575,11 @@ pub fn run(mut krate: clean::Crate,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
+    let mut playground = None;
     if let Some(url) = playground_url {
-        markdown::PLAYGROUND.with(|slot| {
-            *slot.borrow_mut() = Some((Some(krate.name.clone()), url));
+        playground = Some(markdown::Playground {
+            crate_name: Some(krate.name.clone()),
+            url,
         });
     }
 
@@ -592,9 +595,9 @@ pub fn run(mut krate: clean::Crate,
                     scx.layout.logo = s.to_string();
                 }
                 (sym::html_playground_url, Some(s)) => {
-                    markdown::PLAYGROUND.with(|slot| {
-                        let name = krate.name.clone();
-                        *slot.borrow_mut() = Some((Some(name), s.to_string()));
+                    playground = Some(markdown::Playground {
+                        crate_name: Some(krate.name.clone()),
+                        url: s.to_string(),
                     });
                 }
                 (sym::issue_tracker_base_url, Some(s)) => {
@@ -618,6 +621,7 @@ pub fn run(mut krate: clean::Crate,
         edition,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
+        playground,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -2592,7 +2596,7 @@ fn render_markdown(w: &mut fmt::Formatter<'_>,
            if is_hidden { " hidden" } else { "" },
            prefix,
            Markdown(md_text, &links, RefCell::new(&mut ids),
-           cx.codes, cx.edition))
+           cx.codes, cx.edition, &cx.playground))
 }
 
 fn document_short(
@@ -2957,7 +2961,8 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes, cx.edition);
+            let html = MarkdownHtml(
+                &note, RefCell::new(&mut ids), error_codes, cx.edition, &cx.playground);
             message.push_str(&format!(": {}", html));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
@@ -3006,7 +3011,13 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
                 message,
-                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes, cx.edition)
+                MarkdownHtml(
+                    &unstable_reason,
+                    RefCell::new(&mut ids),
+                    error_codes,
+                    cx.edition,
+                    &cx.playground,
+                )
             );
         }
 
@@ -4237,7 +4248,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
                    Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids),
-                            cx.codes, cx.edition))?;
+                            cx.codes, cx.edition, &cx.playground))?;
         }
     }
 

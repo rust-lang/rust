@@ -17,7 +17,7 @@
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
 //! let html = format!("{}", Markdown(s, &[], RefCell::new(&mut id_map),
-//!                                   ErrorCodes::Yes, Edition::Edition2015));
+//!                                   ErrorCodes::Yes, Edition::Edition2015, None));
 //! // ... something using html
 //! ```
 
@@ -59,6 +59,7 @@ pub struct Markdown<'a>(
     pub ErrorCodes,
     /// Default edition to use when parsing doctests (to add a `fn main`).
     pub Edition,
+    pub &'a Option<Playground>,
 );
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
 pub struct MarkdownWithToc<'a>(
@@ -66,9 +67,16 @@ pub struct MarkdownWithToc<'a>(
     pub RefCell<&'a mut IdMap>,
     pub ErrorCodes,
     pub Edition,
+    pub &'a Option<Playground>,
 );
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
-pub struct MarkdownHtml<'a>(pub &'a str, pub RefCell<&'a mut IdMap>, pub ErrorCodes, pub Edition);
+pub struct MarkdownHtml<'a>(
+    pub &'a str,
+    pub RefCell<&'a mut IdMap>,
+    pub ErrorCodes,
+    pub Edition,
+    pub &'a Option<Playground>,
+);
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 pub struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [(String, String)]);
 
@@ -155,30 +163,39 @@ fn slugify(c: char) -> Option<char> {
     }
 }
 
-// Information about the playground if a URL has been specified, containing an
-// optional crate name and the URL.
-thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> = {
-    RefCell::new(None)
-});
+#[derive(Clone, Debug)]
+pub struct Playground {
+    pub crate_name: Option<String>,
+    pub url: String,
+}
 
 /// Adds syntax highlighting and playground Run buttons to Rust code blocks.
-struct CodeBlocks<'a, I: Iterator<Item = Event<'a>>> {
+struct CodeBlocks<'p, 'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
     check_error_codes: ErrorCodes,
     edition: Edition,
+    // Information about the playground if a URL has been specified, containing an
+    // optional crate name and the URL.
+    playground: &'p Option<Playground>,
 }
 
-impl<'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'a, I> {
-    fn new(iter: I, error_codes: ErrorCodes, edition: Edition) -> Self {
+impl<'p, 'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'p, 'a, I> {
+    fn new(
+        iter: I,
+        error_codes: ErrorCodes,
+        edition: Edition,
+        playground: &'p Option<Playground>,
+    ) -> Self {
         CodeBlocks {
             inner: iter,
             check_error_codes: error_codes,
             edition,
+            playground,
         }
     }
 }
 
-impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
     type Item = Event<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -213,86 +230,86 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
         }
         let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.collect::<Vec<Cow<'_, str>>>().join("\n");
-        PLAYGROUND.with(|play| {
-            // insert newline to clearly separate it from the
-            // previous block so we can shorten the html output
-            let mut s = String::from("\n");
-            let playground_button = play.borrow().as_ref().and_then(|&(ref krate, ref url)| {
-                if url.is_empty() {
-                    return None;
-                }
-                let test = origtext.lines()
-                    .map(|l| map_line(l).for_code())
-                    .collect::<Vec<Cow<'_, str>>>().join("\n");
-                let krate = krate.as_ref().map(|s| &**s);
-                let (test, _) = test::make_test(&test, krate, false,
-                                           &Default::default(), edition);
-                let channel = if test.contains("#![feature(") {
-                    "&amp;version=nightly"
-                } else {
-                    ""
-                };
-
-                let edition_string = format!("&amp;edition={}", edition);
-
-                // These characters don't need to be escaped in a URI.
-                // FIXME: use a library function for percent encoding.
-                fn dont_escape(c: u8) -> bool {
-                    (b'a' <= c && c <= b'z') ||
-                    (b'A' <= c && c <= b'Z') ||
-                    (b'0' <= c && c <= b'9') ||
-                    c == b'-' || c == b'_' || c == b'.' ||
-                    c == b'~' || c == b'!' || c == b'\'' ||
-                    c == b'(' || c == b')' || c == b'*'
-                }
-                let mut test_escaped = String::new();
-                for b in test.bytes() {
-                    if dont_escape(b) {
-                        test_escaped.push(char::from(b));
-                    } else {
-                        write!(test_escaped, "%{:02X}", b).unwrap();
-                    }
-                }
-                Some(format!(
-                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}{}">Run</a>"#,
-                    url, test_escaped, channel, edition_string
-                ))
-            });
-
-            let tooltip = if ignore {
-                Some(("This example is not tested".to_owned(), "ignore"))
-            } else if compile_fail {
-                Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
-            } else if explicit_edition {
-                Some((format!("This code runs with edition {}", edition), "edition"))
+        // insert newline to clearly separate it from the
+        // previous block so we can shorten the html output
+        let mut s = String::from("\n");
+        let playground_button = self.playground.as_ref().and_then(|playground| {
+            let krate = &playground.crate_name;
+            let url = &playground.url;
+            if url.is_empty() {
+                return None;
+            }
+            let test = origtext.lines()
+                .map(|l| map_line(l).for_code())
+                .collect::<Vec<Cow<'_, str>>>().join("\n");
+            let krate = krate.as_ref().map(|s| &**s);
+            let (test, _) = test::make_test(&test, krate, false,
+                                        &Default::default(), edition);
+            let channel = if test.contains("#![feature(") {
+                "&amp;version=nightly"
             } else {
-                None
+                ""
             };
 
-            if let Some((s1, s2)) = tooltip {
-                s.push_str(&highlight::render_with_highlighting(
-                    &text,
-                    Some(&format!("rust-example-rendered{}",
-                                  if ignore { " ignore" }
-                                  else if compile_fail { " compile_fail" }
-                                  else if explicit_edition { " edition " }
-                                  else { "" })),
-                    playground_button.as_ref().map(String::as_str),
-                    Some((s1.as_str(), s2))));
-                Some(Event::Html(s.into()))
-            } else {
-                s.push_str(&highlight::render_with_highlighting(
-                    &text,
-                    Some(&format!("rust-example-rendered{}",
-                                  if ignore { " ignore" }
-                                  else if compile_fail { " compile_fail" }
-                                  else if explicit_edition { " edition " }
-                                  else { "" })),
-                    playground_button.as_ref().map(String::as_str),
-                    None));
-                Some(Event::Html(s.into()))
+            let edition_string = format!("&amp;edition={}", edition);
+
+            // These characters don't need to be escaped in a URI.
+            // FIXME: use a library function for percent encoding.
+            fn dont_escape(c: u8) -> bool {
+                (b'a' <= c && c <= b'z') ||
+                (b'A' <= c && c <= b'Z') ||
+                (b'0' <= c && c <= b'9') ||
+                c == b'-' || c == b'_' || c == b'.' ||
+                c == b'~' || c == b'!' || c == b'\'' ||
+                c == b'(' || c == b')' || c == b'*'
             }
-        })
+            let mut test_escaped = String::new();
+            for b in test.bytes() {
+                if dont_escape(b) {
+                    test_escaped.push(char::from(b));
+                } else {
+                    write!(test_escaped, "%{:02X}", b).unwrap();
+                }
+            }
+            Some(format!(
+                r#"<a class="test-arrow" target="_blank" href="{}?code={}{}{}">Run</a>"#,
+                url, test_escaped, channel, edition_string
+            ))
+        });
+
+        let tooltip = if ignore {
+            Some(("This example is not tested".to_owned(), "ignore"))
+        } else if compile_fail {
+            Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
+        } else if explicit_edition {
+            Some((format!("This code runs with edition {}", edition), "edition"))
+        } else {
+            None
+        };
+
+        if let Some((s1, s2)) = tooltip {
+            s.push_str(&highlight::render_with_highlighting(
+                &text,
+                Some(&format!("rust-example-rendered{}",
+                                if ignore { " ignore" }
+                                else if compile_fail { " compile_fail" }
+                                else if explicit_edition { " edition " }
+                                else { "" })),
+                playground_button.as_ref().map(String::as_str),
+                Some((s1.as_str(), s2))));
+            Some(Event::Html(s.into()))
+        } else {
+            s.push_str(&highlight::render_with_highlighting(
+                &text,
+                Some(&format!("rust-example-rendered{}",
+                                if ignore { " ignore" }
+                                else if compile_fail { " compile_fail" }
+                                else if explicit_edition { " edition " }
+                                else { "" })),
+                playground_button.as_ref().map(String::as_str),
+                None));
+            Some(Event::Html(s.into()))
+        }
     }
 }
 
@@ -676,7 +693,7 @@ impl LangString {
 
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Markdown(md, links, ref ids, codes, edition) = *self;
+        let Markdown(md, links, ref ids, codes, edition, playground) = *self;
         let mut ids = ids.borrow_mut();
 
         // This is actually common enough to special-case
@@ -695,7 +712,7 @@ impl<'a> fmt::Display for Markdown<'a> {
 
         let p = HeadingLinks::new(p, None, &mut ids);
         let p = LinkReplacer::new(p, links);
-        let p = CodeBlocks::new(p, codes, edition);
+        let p = CodeBlocks::new(p, codes, edition, playground);
         let p = Footnotes::new(p);
         html::push_html(&mut s, p);
 
@@ -705,7 +722,7 @@ impl<'a> fmt::Display for Markdown<'a> {
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let MarkdownWithToc(md, ref ids, codes, edition) = *self;
+        let MarkdownWithToc(md, ref ids, codes, edition, playground) = *self;
         let mut ids = ids.borrow_mut();
 
         let p = Parser::new_ext(md, opts());
@@ -716,7 +733,7 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
 
         {
             let p = HeadingLinks::new(p, Some(&mut toc), &mut ids);
-            let p = CodeBlocks::new(p, codes, edition);
+            let p = CodeBlocks::new(p, codes, edition, playground);
             let p = Footnotes::new(p);
             html::push_html(&mut s, p);
         }
@@ -729,7 +746,7 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
 
 impl<'a> fmt::Display for MarkdownHtml<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let MarkdownHtml(md, ref ids, codes, edition) = *self;
+        let MarkdownHtml(md, ref ids, codes, edition, playground) = *self;
         let mut ids = ids.borrow_mut();
 
         // This is actually common enough to special-case
@@ -745,7 +762,7 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
         let p = HeadingLinks::new(p, None, &mut ids);
-        let p = CodeBlocks::new(p, codes, edition);
+        let p = CodeBlocks::new(p, codes, edition, playground);
         let p = Footnotes::new(p);
         html::push_html(&mut s, p);
 

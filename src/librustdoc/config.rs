@@ -378,7 +378,7 @@ impl Options {
                 &matches.opt_strs("html-after-content"),
                 &matches.opt_strs("markdown-before-content"),
                 &matches.opt_strs("markdown-after-content"),
-                &diag, &mut id_map, edition) {
+                &diag, &mut id_map, edition, &None) {
             Some(eh) => eh,
             None => return Err(3),
         };

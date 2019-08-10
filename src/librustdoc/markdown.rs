@@ -60,9 +60,10 @@ pub fn render(
     };
     let playground_url = options.markdown_playground_url
                             .or(options.playground_url);
-    if let Some(playground) = playground_url {
-        markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
-    }
+    let playground = playground_url.map(|url| markdown::Playground {
+        crate_name: None,
+        url,
+    });
 
     let mut out = match File::create(&output) {
         Err(e) => {
@@ -82,9 +83,9 @@ pub fn render(
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, RefCell::new(&mut ids), error_codes, edition).to_string()
+        MarkdownWithToc(text, RefCell::new(&mut ids), error_codes, edition, &playground).to_string()
     } else {
-        Markdown(text, &[], RefCell::new(&mut ids), error_codes, edition).to_string()
+        Markdown(text, &[], RefCell::new(&mut ids), error_codes, edition, &playground).to_string()
     };
 
     let err = write!(
