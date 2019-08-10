@@ -376,45 +376,7 @@ impl LoweringContext<'_> {
                 )
             }
             ExprKind::Range(ref e1, ref e2, lims) => {
-                use syntax::ast::RangeLimits::*;
-
-                let path = match (e1, e2, lims) {
-                    (&None, &None, HalfOpen) => sym::RangeFull,
-                    (&Some(..), &None, HalfOpen) => sym::RangeFrom,
-                    (&None, &Some(..), HalfOpen) => sym::RangeTo,
-                    (&Some(..), &Some(..), HalfOpen) => sym::Range,
-                    (&None, &Some(..), Closed) => sym::RangeToInclusive,
-                    (&Some(..), &Some(..), Closed) => unreachable!(),
-                    (_, &None, Closed) => self.diagnostic()
-                        .span_fatal(e.span, "inclusive range with no end")
-                        .raise(),
-                };
-
-                let fields = e1.iter()
-                    .map(|e| ("start", e))
-                    .chain(e2.iter().map(|e| ("end", e)))
-                    .map(|(s, e)| {
-                        let expr = P(self.lower_expr(&e));
-                        let ident = Ident::new(Symbol::intern(s), e.span);
-                        self.field(ident, expr, e.span)
-                    })
-                    .collect::<P<[hir::Field]>>();
-
-                let is_unit = fields.is_empty();
-                let struct_path = [sym::ops, path];
-                let struct_path = self.std_path(e.span, &struct_path, None, is_unit);
-                let struct_path = hir::QPath::Resolved(None, P(struct_path));
-
-                return hir::Expr {
-                    hir_id: self.lower_node_id(e.id),
-                    node: if is_unit {
-                        hir::ExprKind::Path(struct_path)
-                    } else {
-                        hir::ExprKind::Struct(P(struct_path), fields, None)
-                    },
-                    span: e.span,
-                    attrs: e.attrs.clone(),
-                };
+                self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), lims)
             }
             ExprKind::Path(ref qself, ref path) => {
                 let qpath = self.lower_qpath(
@@ -494,6 +456,49 @@ impl LoweringContext<'_> {
             node: kind,
             span: e.span,
             attrs: e.attrs.clone(),
+        }
+    }
+
+    fn lower_expr_range(
+        &mut self,
+        span: Span,
+        e1: Option<&Expr>,
+        e2: Option<&Expr>,
+        lims: RangeLimits,
+    ) -> hir::ExprKind {
+        use syntax::ast::RangeLimits::*;
+
+        let path = match (e1, e2, lims) {
+            (None, None, HalfOpen) => sym::RangeFull,
+            (Some(..), None, HalfOpen) => sym::RangeFrom,
+            (None, Some(..), HalfOpen) => sym::RangeTo,
+            (Some(..), Some(..), HalfOpen) => sym::Range,
+            (None, Some(..), Closed) => sym::RangeToInclusive,
+            (Some(..), Some(..), Closed) => unreachable!(),
+            (_, None, Closed) => self.diagnostic()
+                .span_fatal(span, "inclusive range with no end")
+                .raise(),
+        };
+
+        let fields = e1.iter()
+            .map(|e| ("start", e))
+            .chain(e2.iter().map(|e| ("end", e)))
+            .map(|(s, e)| {
+                let expr = P(self.lower_expr(&e));
+                let ident = Ident::new(Symbol::intern(s), e.span);
+                self.field(ident, expr, e.span)
+            })
+            .collect::<P<[hir::Field]>>();
+
+        let is_unit = fields.is_empty();
+        let struct_path = [sym::ops, path];
+        let struct_path = self.std_path(span, &struct_path, None, is_unit);
+        let struct_path = hir::QPath::Resolved(None, P(struct_path));
+
+        if is_unit {
+            hir::ExprKind::Path(struct_path)
+        } else {
+            hir::ExprKind::Struct(P(struct_path), fields, None)
         }
     }
 
