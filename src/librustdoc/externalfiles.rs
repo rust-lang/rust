@@ -36,7 +36,7 @@ impl ExternalHtml {
                 load_external_files(md_before_content, diag)
                     .map(|m_bc| (ih,
                             format!("{}{}", bc, Markdown(&m_bc, &[], RefCell::new(id_map),
-                                    codes, edition, playground))))
+                                    codes, edition, playground).to_string())))
             )
             .and_then(|(ih, bc)|
                 load_external_files(after_content, diag)
@@ -46,7 +46,7 @@ impl ExternalHtml {
                 load_external_files(md_after_content, diag)
                     .map(|m_ac| (ih, bc,
                             format!("{}{}", ac, Markdown(&m_ac, &[], RefCell::new(id_map),
-                                    codes, edition, playground))))
+                                    codes, edition, playground).to_string())))
             )
             .map(|(ih, bc, ac)|
                 ExternalHtml {

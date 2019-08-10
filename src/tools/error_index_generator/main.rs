@@ -101,7 +101,7 @@ impl Formatter for HTMLFormatter {
                 };
                 write!(output, "{}",
                     Markdown(desc, &[], RefCell::new(&mut id_map),
-                             ErrorCodes::Yes, DEFAULT_EDITION, &Some(playground)))?
+                             ErrorCodes::Yes, DEFAULT_EDITION, &Some(playground)).to_string())?
             },
             None => write!(output, "<p>No description.</p>\n")?,
         }

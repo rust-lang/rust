@@ -1,9 +1,6 @@
 //! Markdown formatting for rustdoc.
 //!
-//! This module implements markdown formatting through the pulldown-cmark
-//! rust-library. This module exposes all of the
-//! functionality through a unit struct, `Markdown`, which has an implementation
-//! of `fmt::Display`. Example usage:
+//! This module implements markdown formatting through the pulldown-cmark library.
 //!
 //! ```
 //! #![feature(rustc_private)]
@@ -16,8 +13,9 @@
 //!
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
-//! let html = format!("{}", Markdown(s, &[], RefCell::new(&mut id_map),
-//!                                   ErrorCodes::Yes, Edition::Edition2015, None));
+//! let md = Markdown(s, &[], RefCell::new(&mut id_map),
+//!                                   ErrorCodes::Yes, Edition::Edition2015, None);
+//! let html = md.to_string();
 //! // ... something using html
 //! ```
 
@@ -27,7 +25,7 @@ use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::default::Default;
-use std::fmt::{self, Write};
+use std::fmt::Write;
 use std::borrow::Cow;
 use std::ops::Range;
 use std::str;
@@ -46,9 +44,8 @@ fn opts() -> Options {
     Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES
 }
 
-/// A tuple struct that has the `fmt::Display` trait implemented.
-/// When formatted, this struct will emit the HTML corresponding to the rendered
-/// version of the contained markdown string.
+/// When `to_string` is called, this struct will emit the HTML corresponding to
+/// the rendered version of the contained markdown string.
 pub struct Markdown<'a>(
     pub &'a str,
     /// A list of link replacements.
@@ -691,13 +688,13 @@ impl LangString {
     }
 }
 
-impl<'a> fmt::Display for Markdown<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Markdown(md, links, ref ids, codes, edition, playground) = *self;
+impl Markdown<'_> {
+    pub fn to_string(self) -> String {
+        let Markdown(md, links, ids, codes, edition, playground) = self;
         let mut ids = ids.borrow_mut();
 
         // This is actually common enough to special-case
-        if md.is_empty() { return Ok(()) }
+        if md.is_empty() { return String::new(); }
         let replacer = |_: &str, s: &str| {
             if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
                 Some((replace.clone(), s.to_owned()))
@@ -716,13 +713,13 @@ impl<'a> fmt::Display for Markdown<'a> {
         let p = Footnotes::new(p);
         html::push_html(&mut s, p);
 
-        fmt.write_str(&s)
+        s
     }
 }
 
-impl<'a> fmt::Display for MarkdownWithToc<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let MarkdownWithToc(md, ref ids, codes, edition, playground) = *self;
+impl MarkdownWithToc<'_> {
+    pub fn to_string(self) -> String {
+        let MarkdownWithToc(md, ref ids, codes, edition, playground) = self;
         let mut ids = ids.borrow_mut();
 
         let p = Parser::new_ext(md, opts());
@@ -738,19 +735,17 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
             html::push_html(&mut s, p);
         }
 
-        write!(fmt, "<nav id=\"TOC\">{}</nav>", toc.into_toc())?;
-
-        fmt.write_str(&s)
+        format!("<nav id=\"TOC\">{}</nav>{}", toc.into_toc(), s)
     }
 }
 
-impl<'a> fmt::Display for MarkdownHtml<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let MarkdownHtml(md, ref ids, codes, edition, playground) = *self;
+impl MarkdownHtml<'_> {
+    pub fn to_string(self) -> String {
+        let MarkdownHtml(md, ref ids, codes, edition, playground) = self;
         let mut ids = ids.borrow_mut();
 
         // This is actually common enough to special-case
-        if md.is_empty() { return Ok(()) }
+        if md.is_empty() { return String::new(); }
         let p = Parser::new_ext(md, opts());
 
         // Treat inline HTML as plain text.
@@ -766,15 +761,15 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
         let p = Footnotes::new(p);
         html::push_html(&mut s, p);
 
-        fmt.write_str(&s)
+        s
     }
 }
 
-impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let MarkdownSummaryLine(md, links) = *self;
+impl MarkdownSummaryLine<'_> {
+    pub fn to_string(self) -> String {
+        let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
-        if md.is_empty() { return Ok(()) }
+        if md.is_empty() { return String::new(); }
 
         let replacer = |_: &str, s: &str| {
             if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
@@ -790,7 +785,7 @@ impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
 
         html::push_html(&mut s, LinkReplacer::new(SummaryLine::new(p), links));
 
-        fmt.write_str(&s)
+        s
     }
 }
 

@@ -2596,7 +2596,7 @@ fn render_markdown(w: &mut fmt::Formatter<'_>,
            if is_hidden { " hidden" } else { "" },
            prefix,
            Markdown(md_text, &links, RefCell::new(&mut ids),
-           cx.codes, cx.edition, &cx.playground))
+           cx.codes, cx.edition, &cx.playground).to_string())
 }
 
 fn document_short(
@@ -2866,7 +2866,7 @@ fn item_module(w: &mut fmt::Formatter<'_>, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_tags = stability_tags(myitem),
-                       docs = MarkdownSummaryLine(doc_value, &myitem.links()),
+                       docs = MarkdownSummaryLine(doc_value, &myitem.links()).to_string(),
                        class = myitem.type_(),
                        add = add,
                        stab = stab.unwrap_or_else(|| String::new()),
@@ -2963,7 +2963,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             let mut ids = cx.id_map.borrow_mut();
             let html = MarkdownHtml(
                 &note, RefCell::new(&mut ids), error_codes, cx.edition, &cx.playground);
-            message.push_str(&format!(": {}", html));
+            message.push_str(&format!(": {}", html.to_string()));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
     }
@@ -3017,7 +3017,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
                     error_codes,
                     cx.edition,
                     &cx.playground,
-                )
+                ).to_string()
             );
         }
 
@@ -4248,7 +4248,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
                    Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids),
-                            cx.codes, cx.edition, &cx.playground))?;
+                            cx.codes, cx.edition, &cx.playground).to_string())?;
         }
     }
 
