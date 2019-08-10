@@ -14,7 +14,6 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
 
-use crate::hygiene::SyntaxContext;
 use crate::{Span, DUMMY_SP, GLOBALS};
 
 #[cfg(test)]
@@ -851,7 +850,7 @@ impl fmt::Display for Ident {
 
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        if self.span.ctxt().modern() == SyntaxContext::empty() {
+        if !self.span.modern().from_expansion() {
             s.emit_str(&self.as_str())
         } else { // FIXME(jseyfried): intercrate hygiene
             let mut string = "#".to_owned();

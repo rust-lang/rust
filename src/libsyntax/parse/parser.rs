@@ -1101,7 +1101,7 @@ impl<'a> Parser<'a> {
 
     crate fn process_potential_macro_variable(&mut self) {
         self.token = match self.token.kind {
-            token::Dollar if self.token.span.ctxt() != SyntaxContext::empty() &&
+            token::Dollar if self.token.span.from_expansion() &&
                              self.look_ahead(1, |t| t.is_ident()) => {
                 self.bump();
                 let name = match self.token.kind {

@@ -288,6 +288,12 @@ impl Span {
         span.lo.0 == 0 && span.hi.0 == 0
     }
 
+    /// Returns `true` if this span comes from a macro or desugaring.
+    #[inline]
+    pub fn from_expansion(self) -> bool {
+        self.ctxt() != SyntaxContext::empty()
+    }
+
     /// Returns a new span representing an empty span at the beginning of this span
     #[inline]
     pub fn shrink_to_lo(self) -> Span {

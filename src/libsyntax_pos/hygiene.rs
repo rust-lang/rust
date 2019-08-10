@@ -255,7 +255,7 @@ impl HygieneData {
     }
 
     fn walk_chain(&self, mut span: Span, to: SyntaxContext) -> Span {
-        while span.ctxt() != crate::NO_EXPANSION && span.ctxt() != to {
+        while span.from_expansion() && span.ctxt() != to {
             if let Some(info) = self.expn_info(self.outer_expn(span.ctxt())) {
                 span = info.call_site;
             } else {
