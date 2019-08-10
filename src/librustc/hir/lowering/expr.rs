@@ -225,31 +225,7 @@ impl LoweringContext<'_> {
                     hir::LoopSource::Loop,
                 )
             }),
-            ExprKind::TryBlock(ref body) => {
-                self.with_catch_scope(body.id, |this| {
-                    let unstable_span = this.mark_span_with_reason(
-                        DesugaringKind::TryBlock,
-                        body.span,
-                        this.allow_try_trait.clone(),
-                    );
-                    let mut block = this.lower_block(body, true).into_inner();
-                    let tail = block.expr.take().map_or_else(
-                        || {
-                            let span = this.sess.source_map().end_point(unstable_span);
-                            hir::Expr {
-                                span,
-                                node: hir::ExprKind::Tup(hir_vec![]),
-                                attrs: ThinVec::new(),
-                                hir_id: this.next_id(),
-                            }
-                        },
-                        |x: P<hir::Expr>| x.into_inner(),
-                    );
-                    block.expr = Some(this.wrap_in_try_constructor(
-                        sym::from_ok, tail, unstable_span));
-                    hir::ExprKind::Block(P(block), None)
-                })
-            }
+            ExprKind::TryBlock(ref body) => self.lower_expr_try_block(body),
             ExprKind::Match(ref expr, ref arms) => hir::ExprKind::Match(
                 P(self.lower_expr(expr)),
                 arms.iter().map(|x| self.lower_arm(x)).collect(),
@@ -373,6 +349,23 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind {
+        self.with_catch_scope(body.id, |this| {
+            let unstable_span = this.mark_span_with_reason(
+                DesugaringKind::TryBlock,
+                body.span,
+                this.allow_try_trait.clone(),
+            );
+            let mut block = this.lower_block(body, true).into_inner();
+            let tail = block.expr.take().map_or_else(
+                || this.expr_unit(this.sess.source_map().end_point(unstable_span)),
+                |x: P<hir::Expr>| x.into_inner(),
+            );
+            block.expr = Some(this.wrap_in_try_constructor(sym::from_ok, tail, unstable_span));
+            hir::ExprKind::Block(P(block), None)
+        })
     }
 
     /// Desugar `<expr>.await` into:
