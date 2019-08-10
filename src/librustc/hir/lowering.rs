@@ -3124,16 +3124,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_field(&mut self, f: &Field) -> hir::Field {
-        hir::Field {
-            hir_id: self.next_id(),
-            ident: f.ident,
-            expr: P(self.lower_expr(&f.expr)),
-            span: f.span,
-            is_shorthand: f.is_shorthand,
-        }
-    }
-
     fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext<'_>) -> hir::MutTy {
         hir::MutTy {
             ty: self.lower_ty(&mt.ty, itctx),

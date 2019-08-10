@@ -818,6 +818,16 @@ impl LoweringContext<'_> {
         hir::ExprKind::InlineAsm(P(hir_asm), outputs, inputs)
     }
 
+    fn lower_field(&mut self, f: &Field) -> hir::Field {
+        hir::Field {
+            hir_id: self.next_id(),
+            ident: f.ident,
+            expr: P(self.lower_expr(&f.expr)),
+            span: f.span,
+            is_shorthand: f.is_shorthand,
+        }
+    }
+
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind {
         match self.generator_kind {
             Some(hir::GeneratorKind::Gen) => {},
