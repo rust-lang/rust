@@ -100,7 +100,7 @@ impl Formatter for HTMLFormatter {
                     url: String::from("https://play.rust-lang.org/"),
                 };
                 write!(output, "{}",
-                    Markdown(desc, &[], RefCell::new(&mut id_map),
+                    Markdown(desc, &[], &mut id_map,
                              ErrorCodes::Yes, DEFAULT_EDITION, &Some(playground)).to_string())?
             },
             None => write!(output, "<p>No description.</p>\n")?,

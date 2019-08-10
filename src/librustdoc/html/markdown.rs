@@ -9,12 +9,10 @@
 //!
 //! use syntax::edition::Edition;
 //! use rustdoc::html::markdown::{IdMap, Markdown, ErrorCodes};
-//! use std::cell::RefCell;
 //!
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
-//! let md = Markdown(s, &[], RefCell::new(&mut id_map),
-//!                                   ErrorCodes::Yes, Edition::Edition2015, None);
+//! let md = Markdown(s, &[], &mut id_map, ErrorCodes::Yes, Edition::Edition2015, &None);
 //! let html = md.to_string();
 //! // ... something using html
 //! ```
@@ -51,7 +49,7 @@ pub struct Markdown<'a>(
     /// A list of link replacements.
     pub &'a [(String, String)],
     /// The current list of used header IDs.
-    pub RefCell<&'a mut IdMap>,
+    pub &'a mut IdMap,
     /// Whether to allow the use of explicit error codes in doctest lang strings.
     pub ErrorCodes,
     /// Default edition to use when parsing doctests (to add a `fn main`).
@@ -61,7 +59,7 @@ pub struct Markdown<'a>(
 /// A tuple struct like `Markdown` that renders the markdown with a table of contents.
 pub struct MarkdownWithToc<'a>(
     pub &'a str,
-    pub RefCell<&'a mut IdMap>,
+    pub &'a mut IdMap,
     pub ErrorCodes,
     pub Edition,
     pub &'a Option<Playground>,
@@ -69,7 +67,7 @@ pub struct MarkdownWithToc<'a>(
 /// A tuple struct like `Markdown` that renders the markdown escaping HTML tags.
 pub struct MarkdownHtml<'a>(
     pub &'a str,
-    pub RefCell<&'a mut IdMap>,
+    pub &'a mut IdMap,
     pub ErrorCodes,
     pub Edition,
     pub &'a Option<Playground>,
@@ -690,8 +688,7 @@ impl LangString {
 
 impl Markdown<'_> {
     pub fn to_string(self) -> String {
-        let Markdown(md, links, ids, codes, edition, playground) = self;
-        let mut ids = ids.borrow_mut();
+        let Markdown(md, links, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() { return String::new(); }
@@ -719,8 +716,7 @@ impl Markdown<'_> {
 
 impl MarkdownWithToc<'_> {
     pub fn to_string(self) -> String {
-        let MarkdownWithToc(md, ref ids, codes, edition, playground) = self;
-        let mut ids = ids.borrow_mut();
+        let MarkdownWithToc(md, mut ids, codes, edition, playground) = self;
 
         let p = Parser::new_ext(md, opts());
 
@@ -741,8 +737,7 @@ impl MarkdownWithToc<'_> {
 
 impl MarkdownHtml<'_> {
     pub fn to_string(self) -> String {
-        let MarkdownHtml(md, ref ids, codes, edition, playground) = self;
-        let mut ids = ids.borrow_mut();
+        let MarkdownHtml(md, mut ids, codes, edition, playground) = self;
 
         // This is actually common enough to special-case
         if md.is_empty() { return String::new(); }

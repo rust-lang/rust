@@ -2595,7 +2595,7 @@ fn render_markdown(w: &mut fmt::Formatter<'_>,
     write!(w, "<div class='docblock{}'>{}{}</div>",
            if is_hidden { " hidden" } else { "" },
            prefix,
-           Markdown(md_text, &links, RefCell::new(&mut ids),
+           Markdown(md_text, &links, &mut ids,
            cx.codes, cx.edition, &cx.playground).to_string())
 }
 
@@ -2961,8 +2961,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(
-                &note, RefCell::new(&mut ids), error_codes, cx.edition, &cx.playground);
+            let html = MarkdownHtml(&note, &mut ids, error_codes, cx.edition, &cx.playground);
             message.push_str(&format!(": {}", html.to_string()));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
@@ -3013,7 +3012,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
                 message,
                 MarkdownHtml(
                     &unstable_reason,
-                    RefCell::new(&mut ids),
+                    &mut ids,
                     error_codes,
                     cx.edition,
                     &cx.playground,
@@ -4247,7 +4246,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
-                   Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids),
+                   Markdown(&*dox, &i.impl_item.links(), &mut ids,
                             cx.codes, cx.edition, &cx.playground).to_string())?;
         }
     }

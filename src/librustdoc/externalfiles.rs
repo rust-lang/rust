@@ -6,8 +6,6 @@ use crate::syntax::feature_gate::UnstableFeatures;
 use crate::syntax::edition::Edition;
 use crate::html::markdown::{IdMap, ErrorCodes, Markdown, Playground};
 
-use std::cell::RefCell;
-
 #[derive(Clone, Debug)]
 pub struct ExternalHtml {
     /// Content that will be included inline in the <head> section of a
@@ -35,7 +33,7 @@ impl ExternalHtml {
             .and_then(|(ih, bc)|
                 load_external_files(md_before_content, diag)
                     .map(|m_bc| (ih,
-                            format!("{}{}", bc, Markdown(&m_bc, &[], RefCell::new(id_map),
+                            format!("{}{}", bc, Markdown(&m_bc, &[], id_map,
                                     codes, edition, playground).to_string())))
             )
             .and_then(|(ih, bc)|
@@ -45,7 +43,7 @@ impl ExternalHtml {
             .and_then(|(ih, bc, ac)|
                 load_external_files(md_after_content, diag)
                     .map(|m_ac| (ih, bc,
-                            format!("{}{}", ac, Markdown(&m_ac, &[], RefCell::new(id_map),
+                            format!("{}{}", ac, Markdown(&m_ac, &[], id_map,
                                     codes, edition, playground).to_string())))
             )
             .map(|(ih, bc, ac)|
