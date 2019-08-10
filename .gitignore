@@ -27,6 +27,7 @@ __pycache__/
 /inst/
 /llvm/
 /mingw-build/
+# Created by default with `src/ci/docker/run.sh`:
 /obj/
 /rustllvm/
 /src/libcore/unicode/DerivedCoreProperties.txt
