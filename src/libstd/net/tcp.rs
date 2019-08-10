@@ -547,7 +547,7 @@ impl TcpStream {
     /// loop {
     ///     match stream.read_to_end(&mut buf) {
     ///         Ok(_) => break,
-    ///         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///         Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
     ///             // wait until network socket is ready, typically implemented
     ///             // via platform-specific APIs such as epoll or IOCP
     ///             wait_for_fd();
@@ -880,7 +880,7 @@ impl TcpListener {
     ///             // do something with the TcpStream
     ///             handle_connection(s);
     ///         }
-    ///         Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///         Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
     ///             // wait until network socket is ready, typically implemented
     ///             // via platform-specific APIs such as epoll or IOCP
     ///             wait_for_fd();
