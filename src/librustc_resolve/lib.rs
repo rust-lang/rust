@@ -1430,7 +1430,7 @@ impl<'a> Resolver<'a> {
         }
         let (general_span, modern_span) = if ident.name == kw::SelfUpper {
             // FIXME(jseyfried) improve `Self` hygiene
-            let empty_span = ident.span.with_ctxt(SyntaxContext::empty());
+            let empty_span = ident.span.with_ctxt(SyntaxContext::root());
             (empty_span, empty_span)
         } else if ns == TypeNS {
             let modern_span = ident.span.modern();

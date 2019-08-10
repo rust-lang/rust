@@ -592,7 +592,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
         // `SyntaxContextData::prev_ctxt` or `SyntaxContextData::opaque`. These things
         // don't seem to be used after HIR lowering, so everything should be fine
         // as long as incremental compilation does not kick in before that.
-        let location = || Span::new(lo, hi, SyntaxContext::empty());
+        let location = || Span::with_root_ctxt(lo, hi);
         let recover_from_expn_info = |this: &Self, expn_info, pos| {
             let span = location().fresh_expansion(ExpnId::root(), expn_info);
             this.synthetic_expansion_infos.borrow_mut().insert(pos, span.ctxt());
@@ -816,7 +816,7 @@ where
         col_lo.encode(self)?;
         len.encode(self)?;
 
-        if span_data.ctxt == SyntaxContext::empty() {
+        if span_data.ctxt == SyntaxContext::root() {
             TAG_NO_EXPANSION_INFO.encode(self)
         } else {
             let (expn_id, expn_info) = span_data.ctxt.outer_expn_with_info();

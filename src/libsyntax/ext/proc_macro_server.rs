@@ -365,7 +365,7 @@ impl<'a> Rustc<'a> {
         let location = cx.current_expansion.id.expn_info().unwrap().call_site;
         let to_span = |transparency| {
             location.with_ctxt(
-                SyntaxContext::empty()
+                SyntaxContext::root()
                     .apply_mark_with_transparency(cx.current_expansion.id, transparency),
             )
         };

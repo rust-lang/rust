@@ -12,7 +12,7 @@ use crate::symbol::{kw, sym};
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
 use crate::tokenstream::{DelimSpan, TokenTree, TokenStream};
 use crate::with_default_globals;
-use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
+use syntax_pos::{Span, BytePos, Pos};
 
 use std::path::PathBuf;
 
@@ -27,7 +27,7 @@ fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
 
 // produce a syntax_pos::span
 fn sp(a: u32, b: u32) -> Span {
-    Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
+    Span::with_root_ctxt(BytePos(a), BytePos(b))
 }
 
 /// Parse a string, return an expr

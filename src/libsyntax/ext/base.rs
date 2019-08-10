@@ -762,7 +762,7 @@ impl<'a> ExtCtxt<'a> {
         }
     }
     pub fn backtrace(&self) -> SyntaxContext {
-        SyntaxContext::empty().apply_mark(self.current_expansion.id)
+        SyntaxContext::root().apply_mark(self.current_expansion.id)
     }
 
     /// Returns span for the macro which originally caused the current expansion to happen.

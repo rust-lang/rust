@@ -32,7 +32,7 @@ use syntax::source_map;
 use syntax::symbol::{Symbol, sym};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::hygiene::ExpnId;
-use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
+use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
 use log::debug;
 
 pub struct DecodeContext<'a, 'tcx> {
@@ -344,7 +344,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let hi = (hi + source_file.translated_source_file.start_pos)
                  - source_file.original_start_pos;
 
-        Ok(Span::new(lo, hi, NO_EXPANSION))
+        Ok(Span::with_root_ctxt(lo, hi))
     }
 }
 

@@ -9,7 +9,7 @@ use crate::diagnostics::plugin::ErrorMap;
 use crate::with_default_globals;
 use std::io;
 use std::path::PathBuf;
-use syntax_pos::{BytePos, Span, NO_EXPANSION, edition::Edition};
+use syntax_pos::{BytePos, Span, edition::Edition};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_data_structures::sync::{Lock, Once};
 
@@ -61,7 +61,7 @@ fn t1() {
         let tok1 = string_reader.next_token();
         let tok2 = Token::new(
             mk_ident("fn"),
-            Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
+            Span::with_root_ctxt(BytePos(21), BytePos(23)),
         );
         assert_eq!(tok1.kind, tok2.kind);
         assert_eq!(tok1.span, tok2.span);
@@ -71,7 +71,7 @@ fn t1() {
         assert_eq!(string_reader.pos.clone(), BytePos(28));
         let tok4 = Token::new(
             mk_ident("main"),
-            Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
+            Span::with_root_ctxt(BytePos(24), BytePos(28)),
         );
         assert_eq!(tok3.kind, tok4.kind);
         assert_eq!(tok3.span, tok4.span);

@@ -246,7 +246,7 @@ impl HygieneData {
 
     fn marks(&self, mut ctxt: SyntaxContext) -> Vec<(ExpnId, Transparency)> {
         let mut marks = Vec::new();
-        while ctxt != SyntaxContext::empty() {
+        while ctxt != SyntaxContext::root() {
             marks.push((self.outer_expn(ctxt), self.outer_transparency(ctxt)));
             ctxt = self.parent_ctxt(ctxt);
         }
@@ -286,14 +286,14 @@ impl HygieneData {
         }
 
         let call_site_ctxt =
-            self.expn_info(expn_id).map_or(SyntaxContext::empty(), |info| info.call_site.ctxt());
+            self.expn_info(expn_id).map_or(SyntaxContext::root(), |info| info.call_site.ctxt());
         let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
             self.modern(call_site_ctxt)
         } else {
             self.modern_and_legacy(call_site_ctxt)
         };
 
-        if call_site_ctxt == SyntaxContext::empty() {
+        if call_site_ctxt == SyntaxContext::root() {
             return self.apply_mark_internal(ctxt, expn_id, transparency);
         }
 
@@ -400,7 +400,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
 
 impl SyntaxContext {
     #[inline]
-    pub const fn empty() -> Self {
+    pub const fn root() -> Self {
         SyntaxContext(0)
     }
 
@@ -615,7 +615,7 @@ impl Span {
     pub fn fresh_expansion(self, parent: ExpnId, expn_info: ExpnInfo) -> Span {
         HygieneData::with(|data| {
             let expn_id = data.fresh_expn(parent, Some(expn_info));
-            self.with_ctxt(data.apply_mark(SyntaxContext::empty(), expn_id))
+            self.with_ctxt(data.apply_mark(SyntaxContext::root(), expn_id))
         })
     }
 }
@@ -775,6 +775,6 @@ impl Encodable for SyntaxContext {
 
 impl Decodable for SyntaxContext {
     fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
-        Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
+        Ok(SyntaxContext::root()) // FIXME(jseyfried) intercrate hygiene
     }
 }

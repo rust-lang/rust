@@ -350,7 +350,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         let line_col_len = col | line | len;
         std_hash::Hash::hash(&line_col_len, hasher);
 
-        if span.ctxt == SyntaxContext::empty() {
+        if span.ctxt == SyntaxContext::root() {
             TAG_NO_EXPANSION.hash_stable(hcx, hasher);
         } else {
             TAG_EXPANSION.hash_stable(hcx, hasher);

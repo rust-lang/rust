@@ -29,7 +29,7 @@ pub fn expand(
     };
 
     // Generate a bunch of new items using the AllocFnFactory
-    let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(ecx.current_expansion.id));
+    let span = item.span.with_ctxt(SyntaxContext::root().apply_mark(ecx.current_expansion.id));
     let f = AllocFnFactory {
         span,
         kind: AllocatorKind::Global,

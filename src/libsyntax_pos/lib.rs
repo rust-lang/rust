@@ -291,7 +291,12 @@ impl Span {
     /// Returns `true` if this span comes from a macro or desugaring.
     #[inline]
     pub fn from_expansion(self) -> bool {
-        self.ctxt() != SyntaxContext::empty()
+        self.ctxt() != SyntaxContext::root()
+    }
+
+    #[inline]
+    pub fn with_root_ctxt(lo: BytePos, hi: BytePos) -> Span {
+        Span::new(lo, hi, SyntaxContext::root())
     }
 
     /// Returns a new span representing an empty span at the beginning of this span
@@ -474,9 +479,9 @@ impl Span {
         // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
         // have an incomplete span than a completely nonsensical one.
         if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt == SyntaxContext::empty() {
+            if span_data.ctxt == SyntaxContext::root() {
                 return end;
-            } else if end_data.ctxt == SyntaxContext::empty() {
+            } else if end_data.ctxt == SyntaxContext::root() {
                 return self;
             }
             // Both spans fall within a macro.
@@ -485,7 +490,7 @@ impl Span {
         Span::new(
             cmp::min(span_data.lo, end_data.lo),
             cmp::max(span_data.hi, end_data.hi),
-            if span_data.ctxt == SyntaxContext::empty() { end_data.ctxt } else { span_data.ctxt },
+            if span_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
         )
     }
 
@@ -496,7 +501,7 @@ impl Span {
         Span::new(
             span.hi,
             end.lo,
-            if end.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
+            if end.ctxt == SyntaxContext::root() { end.ctxt } else { span.ctxt },
         )
     }
 
@@ -507,7 +512,7 @@ impl Span {
         Span::new(
             span.lo,
             end.lo,
-            if end.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
+            if end.ctxt == SyntaxContext::root() { end.ctxt } else { span.ctxt },
         )
     }
 
@@ -617,7 +622,7 @@ impl rustc_serialize::UseSpecializedDecodable for Span {
         d.read_struct("Span", 2, |d| {
             let lo = d.read_struct_field("lo", 0, Decodable::decode)?;
             let hi = d.read_struct_field("hi", 1, Decodable::decode)?;
-            Ok(Span::new(lo, hi, NO_EXPANSION))
+            Ok(Span::with_root_ctxt(lo, hi))
         })
     }
 }
@@ -760,8 +765,6 @@ impl From<Vec<Span>> for MultiSpan {
         MultiSpan::from_spans(spans)
     }
 }
-
-pub const NO_EXPANSION: SyntaxContext = SyntaxContext::empty();
 
 /// Identifies an offset of a multi-byte character in a `SourceFile`.
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq, Debug)]

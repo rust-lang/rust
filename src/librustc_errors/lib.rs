@@ -43,8 +43,7 @@ use syntax_pos::{BytePos,
                  SourceFile,
                  FileName,
                  MultiSpan,
-                 Span,
-                 NO_EXPANSION};
+                 Span};
 
 /// Indicates the confidence in the correctness of a suggestion.
 ///
@@ -189,7 +188,7 @@ impl CodeSuggestion {
             // Find the bounding span.
             let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
             let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
-            let bounding_span = Span::new(lo, hi, NO_EXPANSION);
+            let bounding_span = Span::with_root_ctxt(lo, hi);
             let lines = cm.span_to_lines(bounding_span).unwrap();
             assert!(!lines.lines.is_empty());
 
