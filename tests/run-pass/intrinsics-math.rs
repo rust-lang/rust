@@ -16,6 +16,13 @@ macro_rules! assert_approx_eq {
     })
 }
 
+fn ldexp(a: f64, b: i32) -> f64 {
+    extern {
+        fn ldexp(x: f64, n: i32) -> f64;
+    }
+    unsafe { ldexp(a, b) }
+}
+
 pub fn main() {
     use std::f32;
     use std::f64;
@@ -88,8 +95,7 @@ pub fn main() {
     assert_eq!(3.3_f32.round(), 3.0);
     assert_eq!(3.3_f64.round(), 3.0);
 
-    extern {
-        fn ldexp(x: f64, n: i32) -> f64;
-    }
-    unsafe { assert_approx_eq!(ldexp(0.65f64, 3i32), 5.2f64); }
+    assert_eq!(ldexp(0.65f64, 3i32), 5.2f64);
+    assert_eq!(ldexp(1.42, 0xFFFF), f64::INFINITY);
+    assert_eq!(ldexp(1.42, -0xFFFF), 0f64);
 }
