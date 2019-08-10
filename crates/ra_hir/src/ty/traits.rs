@@ -7,7 +7,7 @@ use parking_lot::Mutex;
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
-use super::{Canonical, GenericPredicate, ProjectionTy, TraitRef, Ty};
+use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty};
 use crate::{db::HirDatabase, Crate, ImplBlock, Trait};
 
 use self::chalk::{from_chalk, ToChalk};
@@ -61,7 +61,6 @@ fn solve(
 ) -> Option<chalk_solve::Solution> {
     let context = ChalkContext { db, krate };
     let solver = db.trait_solver(krate);
-    debug!("solve goal: {:?}", goal);
     let solution = solver.lock().solve(&context, goal);
     debug!("solve({:?}) => {:?}", goal, solution);
     solution
@@ -120,10 +119,11 @@ pub struct ProjectionPredicate {
 pub(crate) fn trait_solve_query(
     db: &impl HirDatabase,
     krate: Crate,
-    trait_ref: Canonical<InEnvironment<Obligation>>,
+    goal: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
     let _p = profile("trait_solve_query");
-    let canonical = trait_ref.to_chalk(db).cast();
+    debug!("trait_solve_query({})", goal.value.value.display(db));
+    let canonical = goal.to_chalk(db).cast();
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };

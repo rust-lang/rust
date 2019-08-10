@@ -692,3 +692,17 @@ impl HirDisplay for TraitRef {
         Ok(())
     }
 }
+
+impl HirDisplay for Obligation {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        match self {
+            Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db)),
+            Obligation::Projection(proj) => write!(
+                f,
+                "Normalize({} => {})",
+                proj.projection_ty.display(f.db),
+                proj.ty.display(f.db)
+            ),
+        }
+    }
+}
