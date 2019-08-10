@@ -22,6 +22,8 @@ This crate is [on crates.io] and can be used today in stable `#![no_std]` progra
 
 The API documentation can be found [here](https://docs.rs/libm).
 
+[on crates.io]: https://crates.io/crates/libm
+
 ## Benchmark
 [benchmark]: #benchmark
 
