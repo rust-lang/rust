@@ -505,28 +505,7 @@ impl LoweringContext<'_> {
                 return ex;
             }
 
-            ExprKind::Yield(ref opt_expr) => {
-                match self.generator_kind {
-                    Some(hir::GeneratorKind::Gen) => {},
-                    Some(hir::GeneratorKind::Async) => {
-                        span_err!(
-                            self.sess,
-                            e.span,
-                            E0727,
-                            "`async` generators are not yet supported",
-                        );
-                        self.sess.abort_if_errors();
-                    },
-                    None => {
-                        self.generator_kind = Some(hir::GeneratorKind::Gen);
-                    }
-                }
-                let expr = opt_expr
-                    .as_ref()
-                    .map(|x| self.lower_expr(x))
-                    .unwrap_or_else(|| self.expr_unit(e.span));
-                hir::ExprKind::Yield(P(expr), hir::YieldSource::Yield)
-            }
+            ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
 
             ExprKind::Err => hir::ExprKind::Err,
 
@@ -545,6 +524,29 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind {
+        match self.generator_kind {
+            Some(hir::GeneratorKind::Gen) => {},
+            Some(hir::GeneratorKind::Async) => {
+                span_err!(
+                    self.sess,
+                    span,
+                    E0727,
+                    "`async` generators are not yet supported",
+                );
+                self.sess.abort_if_errors();
+            },
+            None => self.generator_kind = Some(hir::GeneratorKind::Gen),
+        }
+
+        let expr = opt_expr
+            .as_ref()
+            .map(|x| self.lower_expr(x))
+            .unwrap_or_else(|| self.expr_unit(span));
+
+        hir::ExprKind::Yield(P(expr), hir::YieldSource::Yield)
     }
 
     /// Desugar `ExprForLoop` from: `[opt_ident]: for <pat> in <head> <body>` into:
