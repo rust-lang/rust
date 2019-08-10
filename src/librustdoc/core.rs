@@ -46,8 +46,6 @@ pub struct DocContext<'tcx> {
 
     pub tcx: TyCtxt<'tcx>,
     pub resolver: Rc<RefCell<interface::BoxedResolver>>,
-    /// The stack of module NodeIds up till this point
-    pub crate_name: Option<String>,
     pub cstore: Lrc<CStore>,
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
@@ -332,7 +330,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
-        crate_name: crate_name.clone(),
+        crate_name,
         lint_caps,
     };
 
@@ -372,7 +370,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let ctxt = DocContext {
                 tcx,
                 resolver,
-                crate_name,
                 cstore: compiler.cstore().clone(),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),

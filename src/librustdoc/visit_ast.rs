@@ -6,6 +6,7 @@ use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::ty::TyCtxt;
 use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::Spanned;
@@ -18,13 +19,13 @@ use crate::core;
 use crate::clean::{self, AttributesExt, NestedAttributesExt};
 use crate::doctree::*;
 
+// FIXME: Should this be replaced with tcx.def_path_str?
 fn def_id_to_path(
-    cx: &core::DocContext<'_>,
+    tcx: TyCtxt<'_>,
     did: DefId,
-    name: Option<String>
 ) -> Vec<String> {
-    let crate_name = name.unwrap_or_else(|| cx.tcx.crate_name(did.krate).to_string());
-    let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
+    let crate_name = tcx.crate_name(did.krate).to_string();
+    let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
         let s = elem.data.to_string();
         if !s.is_empty() {
@@ -68,7 +69,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // We can't use the entry API, as that keeps the mutable borrow of `self` active
         // when we try to use `cx`.
         if self.exact_paths.get(&did).is_none() {
-            let path = def_id_to_path(self.cx, did, self.cx.crate_name.clone());
+            let path = def_id_to_path(self.cx.tcx, did);
             self.exact_paths.insert(did, path);
         }
     }
