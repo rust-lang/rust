@@ -700,6 +700,46 @@ impl LoweringContext<'_> {
         })
     }
 
+    fn generator_movability_for_fn(
+        &mut self,
+        decl: &ast::FnDecl,
+        fn_decl_span: Span,
+        generator_kind: Option<hir::GeneratorKind>,
+        movability: Movability,
+    ) -> Option<hir::GeneratorMovability> {
+        match generator_kind {
+            Some(hir::GeneratorKind::Gen) =>  {
+                if !decl.inputs.is_empty() {
+                    span_err!(
+                        self.sess,
+                        fn_decl_span,
+                        E0628,
+                        "generators cannot have explicit arguments"
+                    );
+                    self.sess.abort_if_errors();
+                }
+                Some(match movability {
+                    Movability::Movable => hir::GeneratorMovability::Movable,
+                    Movability::Static => hir::GeneratorMovability::Static,
+                })
+            },
+            Some(hir::GeneratorKind::Async) => {
+                bug!("non-`async` closure body turned `async` during lowering");
+            },
+            None => {
+                if movability == Movability::Static {
+                    span_err!(
+                        self.sess,
+                        fn_decl_span,
+                        E0697,
+                        "closures cannot be static"
+                    );
+                }
+                None
+            },
+        }
+    }
+
     fn lower_expr_async_closure(
         &mut self,
         capture_clause: CaptureBy,
