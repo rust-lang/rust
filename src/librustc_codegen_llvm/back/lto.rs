@@ -265,7 +265,7 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         // and we want to move everything to the same LLVM context. Currently the
         // way we know of to do that is to serialize them to a string and them parse
         // them later. Not great but hey, that's why it's "fat" LTO, right?
-        serialized_modules.extend(modules.into_iter().map(|module| {
+        let mut new_modules = modules.into_iter().map(|module| {
             match module {
                 FatLTOInput::InMemory(module) => {
                     let buffer = ModuleBuffer::new(module.module_llvm.llmod());
@@ -277,7 +277,10 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
                     (SerializedModule::Local(buffer), llmod_id)
                 }
             }
-        }));
+        }).collect::<Vec<_>>();
+        // Sort the modules to ensure we produce deterministic results.
+        new_modules.sort_by(|module1, module2| module1.1.partial_cmp(&module2.1).unwrap());
+        serialized_modules.extend(new_modules);
         serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
             (buffer, CString::new(wp.cgu_name).unwrap())
         }));
