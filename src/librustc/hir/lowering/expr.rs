@@ -138,28 +138,13 @@ impl LoweringContext<'_> {
                 hir::ExprKind::Path(qpath)
             }
             ExprKind::Break(opt_label, ref opt_expr) => {
-                let destination = if self.is_in_loop_condition && opt_label.is_none() {
-                    hir::Destination {
-                        label: None,
-                        target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
-                    }
-                } else {
-                    self.lower_loop_destination(opt_label.map(|label| (e.id, label)))
-                };
                 hir::ExprKind::Break(
-                    destination,
+                    self.lower_jump_destination(e.id, opt_label),
                     opt_expr.as_ref().map(|x| P(self.lower_expr(x))),
                 )
             }
             ExprKind::Continue(opt_label) => {
-                hir::ExprKind::Continue(if self.is_in_loop_condition && opt_label.is_none() {
-                    hir::Destination {
-                        label: None,
-                        target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
-                    }
-                } else {
-                    self.lower_loop_destination(opt_label.map(|label| (e.id, label)))
-                })
+                hir::ExprKind::Continue(self.lower_jump_destination(e.id, opt_label))
             }
             ExprKind::Ret(ref e) => hir::ExprKind::Ret(e.as_ref().map(|x| P(self.lower_expr(x)))),
             ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(asm),
@@ -815,6 +800,47 @@ impl LoweringContext<'_> {
             hir::ExprKind::Path(struct_path)
         } else {
             hir::ExprKind::Struct(P(struct_path), fields, None)
+        }
+    }
+
+    fn lower_label(&mut self, label: Option<Label>) -> Option<hir::Label> {
+        label.map(|label| hir::Label {
+            ident: label.ident,
+        })
+    }
+
+    fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
+        let target_id = match destination {
+            Some((id, _)) => {
+                if let Some(loop_id) = self.resolver.get_label_res(id) {
+                    Ok(self.lower_node_id(loop_id))
+                } else {
+                    Err(hir::LoopIdError::UnresolvedLabel)
+                }
+            }
+            None => {
+                self.loop_scopes
+                    .last()
+                    .cloned()
+                    .map(|id| Ok(self.lower_node_id(id)))
+                    .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
+                    .into()
+            }
+        };
+        hir::Destination {
+            label: self.lower_label(destination.map(|(_, label)| label)),
+            target_id,
+        }
+    }
+
+    fn lower_jump_destination(&mut self, id: NodeId, opt_label: Option<Label>) -> hir::Destination {
+        if self.is_in_loop_condition && opt_label.is_none() {
+            hir::Destination {
+                label: None,
+                target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
+            }
+        } else {
+            self.lower_loop_destination(opt_label.map(|label| (id, label)))
         }
     }
 

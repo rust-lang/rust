@@ -1263,36 +1263,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_label(&mut self, label: Option<Label>) -> Option<hir::Label> {
-        label.map(|label| hir::Label {
-            ident: label.ident,
-        })
-    }
-
-    fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
-        let target_id = match destination {
-            Some((id, _)) => {
-                if let Some(loop_id) = self.resolver.get_label_res(id) {
-                    Ok(self.lower_node_id(loop_id))
-                } else {
-                    Err(hir::LoopIdError::UnresolvedLabel)
-                }
-            }
-            None => {
-                self.loop_scopes
-                    .last()
-                    .cloned()
-                    .map(|id| Ok(self.lower_node_id(id)))
-                    .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
-                    .into()
-            }
-        };
-        hir::Destination {
-            label: self.lower_label(destination.map(|(_, label)| label)),
-            target_id,
-        }
-    }
-
     fn lower_attrs_extendable(&mut self, attrs: &[Attribute]) -> Vec<Attribute> {
         attrs
             .iter()
