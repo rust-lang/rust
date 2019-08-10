@@ -263,7 +263,7 @@ impl LoweringContext<'_> {
                     })
                 })
             }
-            ExprKind::Await(ref expr) => self.lower_await(e.span, expr),
+            ExprKind::Await(ref expr) => self.lower_expr_await(e.span, expr),
             ExprKind::Closure(
                 capture_clause, asyncness, movability, ref decl, ref body, fn_decl_span
             ) => if let IsAsync::Async { closure_id, .. } = asyncness {
@@ -373,6 +373,165 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    /// Desugar `<expr>.await` into:
+    /// ```rust
+    /// {
+    ///     let mut pinned = <expr>;
+    ///     loop {
+    ///         match ::std::future::poll_with_tls_context(unsafe {
+    ///             ::std::pin::Pin::new_unchecked(&mut pinned)
+    ///         }) {
+    ///             ::std::task::Poll::Ready(result) => break result,
+    ///             ::std::task::Poll::Pending => {},
+    ///         }
+    ///         yield ();
+    ///     }
+    /// }
+    /// ```
+    fn lower_expr_await(&mut self, await_span: Span, expr: &Expr) -> hir::ExprKind {
+        match self.generator_kind {
+            Some(hir::GeneratorKind::Async) => {},
+            Some(hir::GeneratorKind::Gen) |
+            None => {
+                let mut err = struct_span_err!(
+                    self.sess,
+                    await_span,
+                    E0728,
+                    "`await` is only allowed inside `async` functions and blocks"
+                );
+                err.span_label(await_span, "only allowed inside `async` functions and blocks");
+                if let Some(item_sp) = self.current_item {
+                    err.span_label(item_sp, "this is not `async`");
+                }
+                err.emit();
+            }
+        }
+        let span = self.mark_span_with_reason(
+            DesugaringKind::Await,
+            await_span,
+            None,
+        );
+        let gen_future_span = self.mark_span_with_reason(
+            DesugaringKind::Await,
+            await_span,
+            self.allow_gen_future.clone(),
+        );
+
+        // let mut pinned = <expr>;
+        let expr = P(self.lower_expr(expr));
+        let pinned_ident = Ident::with_empty_ctxt(sym::pinned);
+        let (pinned_pat, pinned_pat_hid) = self.pat_ident_binding_mode(
+            span,
+            pinned_ident,
+            hir::BindingAnnotation::Mutable,
+        );
+        let pinned_let = self.stmt_let_pat(
+            ThinVec::new(),
+            span,
+            Some(expr),
+            pinned_pat,
+            hir::LocalSource::AwaitDesugar,
+        );
+
+        // ::std::future::poll_with_tls_context(unsafe {
+        //     ::std::pin::Pin::new_unchecked(&mut pinned)
+        // })`
+        let poll_expr = {
+            let pinned = P(self.expr_ident(span, pinned_ident, pinned_pat_hid));
+            let ref_mut_pinned = self.expr_mut_addr_of(span, pinned);
+            let pin_ty_id = self.next_id();
+            let new_unchecked_expr_kind = self.expr_call_std_assoc_fn(
+                pin_ty_id,
+                span,
+                &[sym::pin, sym::Pin],
+                "new_unchecked",
+                hir_vec![ref_mut_pinned],
+            );
+            let new_unchecked = P(self.expr(span, new_unchecked_expr_kind, ThinVec::new()));
+            let unsafe_expr = self.expr_unsafe(new_unchecked);
+            P(self.expr_call_std_path(
+                gen_future_span,
+                &[sym::future, sym::poll_with_tls_context],
+                hir_vec![unsafe_expr],
+            ))
+        };
+
+        // `::std::task::Poll::Ready(result) => break result`
+        let loop_node_id = self.sess.next_node_id();
+        let loop_hir_id = self.lower_node_id(loop_node_id);
+        let ready_arm = {
+            let x_ident = Ident::with_empty_ctxt(sym::result);
+            let (x_pat, x_pat_hid) = self.pat_ident(span, x_ident);
+            let x_expr = P(self.expr_ident(span, x_ident, x_pat_hid));
+            let ready_pat = self.pat_std_enum(
+                span,
+                &[sym::task, sym::Poll, sym::Ready],
+                hir_vec![x_pat],
+            );
+            let break_x = self.with_loop_scope(loop_node_id, |this| {
+                let expr_break = hir::ExprKind::Break(
+                    this.lower_loop_destination(None),
+                    Some(x_expr),
+                );
+                P(this.expr(await_span, expr_break, ThinVec::new()))
+            });
+            self.arm(hir_vec![ready_pat], break_x)
+        };
+
+        // `::std::task::Poll::Pending => {}`
+        let pending_arm = {
+            let pending_pat = self.pat_std_enum(
+                span,
+                &[sym::task, sym::Poll, sym::Pending],
+                hir_vec![],
+            );
+            let empty_block = P(self.expr_block_empty(span));
+            self.arm(hir_vec![pending_pat], empty_block)
+        };
+
+        let match_stmt = {
+            let match_expr = self.expr_match(
+                span,
+                poll_expr,
+                hir_vec![ready_arm, pending_arm],
+                hir::MatchSource::AwaitDesugar,
+            );
+            self.stmt_expr(span, match_expr)
+        };
+
+        let yield_stmt = {
+            let unit = self.expr_unit(span);
+            let yield_expr = self.expr(
+                span,
+                hir::ExprKind::Yield(P(unit), hir::YieldSource::Await),
+                ThinVec::new(),
+            );
+            self.stmt_expr(span, yield_expr)
+        };
+
+        let loop_block = P(self.block_all(
+            span,
+            hir_vec![match_stmt, yield_stmt],
+            None,
+        ));
+
+        let loop_expr = P(hir::Expr {
+            hir_id: loop_hir_id,
+            node: hir::ExprKind::Loop(
+                loop_block,
+                None,
+                hir::LoopSource::Loop,
+            ),
+            span,
+            attrs: ThinVec::new(),
+        });
+
+        hir::ExprKind::Block(
+            P(self.block_all(span, hir_vec![pinned_let], Some(loop_expr))),
+            None,
+        )
     }
 
     fn lower_expr_closure(
