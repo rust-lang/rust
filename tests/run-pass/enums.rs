@@ -23,6 +23,28 @@ fn test(me: MyEnum) {
     }
 }
 
+fn discriminant_overflow() {
+    // Tests for https://github.com/rust-lang/rust/issues/62138.
+    #[repr(u8)]
+    #[allow(dead_code)]
+    enum WithWraparoundInvalidValues {
+        X = 1,
+        Y = 254,
+    }
+
+    #[allow(dead_code)]
+    enum Foo {
+        A,
+        B,
+        C(WithWraparoundInvalidValues),
+    }
+
+    let x = Foo::B;
+    if let Foo::C(_) = x {
+        panic!();
+    }
+}
+
 fn main() {
     test(MyEnum::MyEmptyVariant);
     test(MyEnum::MyNewtypeVariant(42));
@@ -31,4 +53,6 @@ fn main() {
         my_first_field: 45,
         my_second_field: 46,
     });
+
+    discriminant_overflow();
 }
