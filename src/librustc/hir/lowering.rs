@@ -1151,47 +1151,6 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
-    fn make_async_expr(
-        &mut self,
-        capture_clause: CaptureBy,
-        closure_node_id: NodeId,
-        ret_ty: Option<AstP<Ty>>,
-        span: Span,
-        body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
-    ) -> hir::ExprKind {
-        let capture_clause = self.lower_capture_clause(capture_clause);
-        let output = match ret_ty {
-            Some(ty) => FunctionRetTy::Ty(ty),
-            None => FunctionRetTy::Default(span),
-        };
-        let ast_decl = FnDecl {
-            inputs: vec![],
-            output,
-            c_variadic: false
-        };
-        let decl = self.lower_fn_decl(&ast_decl, None, /* impl trait allowed */ false, None);
-        let body_id = self.lower_fn_body(&ast_decl, |this| {
-            this.generator_kind = Some(hir::GeneratorKind::Async);
-            body(this)
-        });
-        let generator = hir::Expr {
-            hir_id: self.lower_node_id(closure_node_id),
-            node: hir::ExprKind::Closure(capture_clause, decl, body_id, span,
-                Some(hir::GeneratorMovability::Static)),
-            span,
-            attrs: ThinVec::new(),
-        };
-
-        let unstable_span = self.mark_span_with_reason(
-            DesugaringKind::Async,
-            span,
-            self.allow_gen_future.clone(),
-        );
-        let gen_future = self.expr_std_path(
-            unstable_span, &[sym::future, sym::from_generator], None, ThinVec::new());
-        hir::ExprKind::Call(P(gen_future), hir_vec![generator])
-    }
-
     fn lower_body(
         &mut self,
         f: impl FnOnce(&mut LoweringContext<'_>) -> (HirVec<hir::Arg>, hir::Expr),
