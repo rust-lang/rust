@@ -597,8 +597,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "_ldexp" | "ldexp" | "scalbn" => {
                 let x = this.read_scalar(args[0])?.to_f64()?;
                 let exp = this.read_scalar(args[1])?.to_i32()?;
+
                 // Saturating cast to i16. Even those are outside the valid exponent range to
-                // `scalbn` below will to its over/underflow handling.
+                // `scalbn` below will do its over/underflow handling.
                 let exp = if exp > i16::max_value() as i32 {
                     i16::max_value()
                 } else if exp < i16::min_value() as i32 {
@@ -606,6 +607,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 } else {
                     exp.try_into().unwrap()
                 };
+
                 let res = x.scalbn(exp);
                 this.write_scalar(Scalar::from_f64(res), dest)?;
             }
