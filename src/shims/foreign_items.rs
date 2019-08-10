@@ -1,3 +1,6 @@
+use std::convert::TryInto;
+
+use rustc_apfloat::Float;
 use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
@@ -577,7 +580,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
             }
-            // underscore case for windows
+            // underscore case for windows, here and below
+            // (see https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/floating-point-primitives?view=vs-2019)
             "_hypot" | "hypot" | "atan2" => {
                 // FIXME: Using host floats.
                 let f1 = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
@@ -589,16 +593,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 };
                 this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
             }
-            // underscore case for windows
-            "_ldexp" | "ldexp" => {
-                // FIXME: Using host floats.
-                let x = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
+            // For radix-2 (binary) systems, `ldexp` and `scalbn` are the same.
+            "_ldexp" | "ldexp" | "scalbn" => {
+                let x = this.read_scalar(args[0])?.to_f64()?;
                 let exp = this.read_scalar(args[1])?.to_i32()?;
-                extern {
-                    fn ldexp(x: f64, n: i32) -> f64;
-                }
-                let n = unsafe { ldexp(x, exp) };
-                this.write_scalar(Scalar::from_u64(n.to_bits()), dest)?;
+
+                // Saturating cast to i16. Even those are outside the valid exponent range to
+                // `scalbn` below will do its over/underflow handling.
+                let exp = if exp > i16::max_value() as i32 {
+                    i16::max_value()
+                } else if exp < i16::min_value() as i32 {
+                    i16::min_value()
+                } else {
+                    exp.try_into().unwrap()
+                };
+
+                let res = x.scalbn(exp);
+                this.write_scalar(Scalar::from_f64(res), dest)?;
             }
 
             // Some things needed for `sys::thread` initialization to go through.
