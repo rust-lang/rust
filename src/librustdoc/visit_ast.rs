@@ -66,12 +66,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     fn store_path(&mut self, did: DefId) {
-        // We can't use the entry API, as that keeps the mutable borrow of `self` active
-        // when we try to use `cx`.
-        if self.exact_paths.get(&did).is_none() {
-            let path = def_id_to_path(self.cx.tcx, did);
-            self.exact_paths.insert(did, path);
-        }
+        let tcx = self.cx.tcx;
+        self.exact_paths.entry(did).or_insert_with(|| def_id_to_path(tcx, did));
     }
 
     pub fn visit(mut self, krate: &'tcx hir::Crate) -> Module<'tcx> {
