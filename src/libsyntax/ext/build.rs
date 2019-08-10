@@ -495,7 +495,7 @@ impl<'a> ExtCtxt<'a> {
         let expr_loc_ptr = self.expr_addr_of(span, expr_loc_tuple);
         self.expr_call_global(
             span,
-            self.std_path(&[sym::rt, sym::begin_panic]),
+            [sym::std, sym::rt, sym::begin_panic].iter().map(|s| Ident::new(*s, span)).collect(),
             vec![
                 self.expr_str(span, msg),
                 expr_loc_ptr])

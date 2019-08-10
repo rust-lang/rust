@@ -929,8 +929,6 @@ pub struct Resolver<'a> {
     /// it's not used during normal resolution, only for better error reporting.
     struct_constructors: DefIdMap<(Res, ty::Visibility)>,
 
-    injected_crate: Option<Module<'a>>,
-
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
 }
@@ -1168,7 +1166,6 @@ impl<'a> Resolver<'a> {
             unused_macros: Default::default(),
             proc_macro_stubs: Default::default(),
             special_derives: Default::default(),
-            injected_crate: None,
             active_features:
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
                     .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
