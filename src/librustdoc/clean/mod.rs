@@ -137,12 +137,14 @@ pub struct Crate {
     pub masked_crates: FxHashSet<CrateNum>,
 }
 
-// The `()` here is rather ugly and would be great to remove. Unfortunately, we
-// already have a different Clean impl for `doctree::Module` which makes this
-// the only way to easily disambiguate.
-impl<'tcx> Clean<Crate> for ((), doctree::Module<'tcx>) {
+impl Clean<Crate> for hir::Crate {
+    // note that self here is ignored in favor of `cx.tcx.hir().krate()` since
+    // that gets around tying self's lifetime to the '_ in cx.
     fn clean(&self, cx: &DocContext<'_>) -> Crate {
         use crate::visit_lib::LibEmbargoVisitor;
+
+        let v = crate::visit_ast::RustdocVisitor::new(&cx);
+        let module = v.visit(cx.tcx.hir().krate());
 
         {
             let mut r = cx.renderinfo.borrow_mut();
@@ -161,7 +163,7 @@ impl<'tcx> Clean<Crate> for ((), doctree::Module<'tcx>) {
 
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
-        let mut module = self.1.clean(cx);
+        let mut module = module.clean(cx);
         let mut masked_crates = FxHashSet::default();
 
         match module.inner {

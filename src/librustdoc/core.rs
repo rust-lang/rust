@@ -30,7 +30,6 @@ use rustc_data_structures::sync::{self, Lrc};
 use std::sync::Arc;
 use std::rc::Rc;
 
-use crate::visit_ast::RustdocVisitor;
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::clean;
 use crate::clean::{Clean, MAX_DEF_ID, AttributesExt};
@@ -392,11 +391,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             };
             debug!("crate: {:?}", tcx.hir().krate());
 
-            let mut krate = {
-                let v = RustdocVisitor::new(&ctxt);
-                let module = v.visit(tcx.hir().krate());
-                ((), module).clean(&ctxt)
-            };
+            let mut krate = tcx.hir().krate().clean(&ctxt);
 
             fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
                 let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
