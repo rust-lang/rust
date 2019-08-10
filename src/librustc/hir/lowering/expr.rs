@@ -700,9 +700,16 @@ impl LoweringContext<'_> {
         })
     }
 
+    fn lower_capture_clause(&mut self, c: CaptureBy) -> hir::CaptureClause {
+        match c {
+            CaptureBy::Value => hir::CaptureByValue,
+            CaptureBy::Ref => hir::CaptureByRef,
+        }
+    }
+
     fn generator_movability_for_fn(
         &mut self,
-        decl: &ast::FnDecl,
+        decl: &FnDecl,
         fn_decl_span: Span,
         generator_kind: Option<hir::GeneratorKind>,
         movability: Movability,
@@ -896,6 +903,64 @@ impl LoweringContext<'_> {
         } else {
             self.lower_loop_destination(opt_label.map(|label| (id, label)))
         }
+    }
+
+    fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
+    where
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
+    {
+        let len = self.catch_scopes.len();
+        self.catch_scopes.push(catch_id);
+
+        let result = f(self);
+        assert_eq!(
+            len + 1,
+            self.catch_scopes.len(),
+            "catch scopes should be added and removed in stack order"
+        );
+
+        self.catch_scopes.pop().unwrap();
+
+        result
+    }
+
+    fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
+    where
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
+    {
+        // We're no longer in the base loop's condition; we're in another loop.
+        let was_in_loop_condition = self.is_in_loop_condition;
+        self.is_in_loop_condition = false;
+
+        let len = self.loop_scopes.len();
+        self.loop_scopes.push(loop_id);
+
+        let result = f(self);
+        assert_eq!(
+            len + 1,
+            self.loop_scopes.len(),
+            "loop scopes should be added and removed in stack order"
+        );
+
+        self.loop_scopes.pop().unwrap();
+
+        self.is_in_loop_condition = was_in_loop_condition;
+
+        result
+    }
+
+    fn with_loop_condition_scope<T, F>(&mut self, f: F) -> T
+    where
+        F: FnOnce(&mut LoweringContext<'_>) -> T,
+    {
+        let was_in_loop_condition = self.is_in_loop_condition;
+        self.is_in_loop_condition = true;
+
+        let result = f(self);
+
+        self.is_in_loop_condition = was_in_loop_condition;
+
+        result
     }
 
     fn lower_expr_asm(&mut self, asm: &InlineAsm) -> hir::ExprKind {
