@@ -2101,15 +2101,6 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_arg(&mut self, arg: &Arg) -> hir::Arg {
-        hir::Arg {
-            attrs: self.lower_attrs(&arg.attrs),
-            hir_id: self.lower_node_id(arg.id),
-            pat: self.lower_pat(&arg.pat),
-            span: arg.span,
-        }
-    }
-
     fn lower_fn_args_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
         decl.inputs
             .iter()

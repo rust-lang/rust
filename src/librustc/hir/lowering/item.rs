@@ -1031,6 +1031,15 @@ impl LoweringContext<'_> {
         body_id
     }
 
+    fn lower_arg(&mut self, arg: &Arg) -> hir::Arg {
+        hir::Arg {
+            attrs: self.lower_attrs(&arg.attrs),
+            hir_id: self.lower_node_id(arg.id),
+            pat: self.lower_pat(&arg.pat),
+            span: arg.span,
+        }
+    }
+
     pub(super) fn lower_fn_body(
         &mut self,
         decl: &FnDecl,
