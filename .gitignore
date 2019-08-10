@@ -38,6 +38,7 @@ __pycache__/
 /src/libcore/unicode/UnicodeData.txt
 /src/libcore/unicode/downloaded
 /target/
+/tmp/
 tags
 tags.*
 TAGS
