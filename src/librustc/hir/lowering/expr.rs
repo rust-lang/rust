@@ -533,164 +533,8 @@ impl LoweringContext<'_> {
             // Desugar `ExprForLoop`
             // from: `[opt_ident]: for <pat> in <head> <body>`
             ExprKind::ForLoop(ref pat, ref head, ref body, opt_label) => {
-                // to:
-                //
-                //   {
-                //     let result = match ::std::iter::IntoIterator::into_iter(<head>) {
-                //       mut iter => {
-                //         [opt_ident]: loop {
-                //           let mut __next;
-                //           match ::std::iter::Iterator::next(&mut iter) {
-                //             ::std::option::Option::Some(val) => __next = val,
-                //             ::std::option::Option::None => break
-                //           };
-                //           let <pat> = __next;
-                //           StmtKind::Expr(<body>);
-                //         }
-                //       }
-                //     };
-                //     result
-                //   }
-
-                // expand <head>
-                let mut head = self.lower_expr(head);
-                let head_sp = head.span;
-                let desugared_span = self.mark_span_with_reason(
-                    DesugaringKind::ForLoop,
-                    head_sp,
-                    None,
-                );
-                head.span = desugared_span;
-
-                let iter = Ident::with_empty_ctxt(sym::iter);
-
-                let next_ident = Ident::with_empty_ctxt(sym::__next);
-                let (next_pat, next_pat_hid) = self.pat_ident_binding_mode(
-                    desugared_span,
-                    next_ident,
-                    hir::BindingAnnotation::Mutable,
-                );
-
-                // `::std::option::Option::Some(val) => __next = val`
-                let pat_arm = {
-                    let val_ident = Ident::with_empty_ctxt(sym::val);
-                    let (val_pat, val_pat_hid) = self.pat_ident(pat.span, val_ident);
-                    let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat_hid));
-                    let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_hid));
-                    let assign = P(self.expr(
-                        pat.span,
-                        hir::ExprKind::Assign(next_expr, val_expr),
-                        ThinVec::new(),
-                    ));
-                    let some_pat = self.pat_some(pat.span, val_pat);
-                    self.arm(hir_vec![some_pat], assign)
-                };
-
-                // `::std::option::Option::None => break`
-                let break_arm = {
-                    let break_expr =
-                        self.with_loop_scope(e.id, |this| this.expr_break(e.span, ThinVec::new()));
-                    let pat = self.pat_none(e.span);
-                    self.arm(hir_vec![pat], break_expr)
-                };
-
-                // `mut iter`
-                let (iter_pat, iter_pat_nid) = self.pat_ident_binding_mode(
-                    desugared_span,
-                    iter,
-                    hir::BindingAnnotation::Mutable
-                );
-
-                // `match ::std::iter::Iterator::next(&mut iter) { ... }`
-                let match_expr = {
-                    let iter = P(self.expr_ident(head_sp, iter, iter_pat_nid));
-                    let ref_mut_iter = self.expr_mut_addr_of(head_sp, iter);
-                    let next_path = &[sym::iter, sym::Iterator, sym::next];
-                    let next_expr = P(self.expr_call_std_path(
-                        head_sp,
-                        next_path,
-                        hir_vec![ref_mut_iter],
-                    ));
-                    let arms = hir_vec![pat_arm, break_arm];
-
-                    self.expr_match(head_sp, next_expr, arms, hir::MatchSource::ForLoopDesugar)
-                };
-                let match_stmt = self.stmt_expr(head_sp, match_expr);
-
-                let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_hid));
-
-                // `let mut __next`
-                let next_let = self.stmt_let_pat(
-                    ThinVec::new(),
-                    desugared_span,
-                    None,
-                    next_pat,
-                    hir::LocalSource::ForLoopDesugar,
-                );
-
-                // `let <pat> = __next`
-                let pat = self.lower_pat(pat);
-                let pat_let = self.stmt_let_pat(
-                    ThinVec::new(),
-                    head_sp,
-                    Some(next_expr),
-                    pat,
-                    hir::LocalSource::ForLoopDesugar,
-                );
-
-                let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
-                let body_expr = self.expr_block(body_block, ThinVec::new());
-                let body_stmt = self.stmt_expr(body.span, body_expr);
-
-                let loop_block = P(self.block_all(
-                    e.span,
-                    hir_vec![next_let, match_stmt, pat_let, body_stmt],
-                    None,
-                ));
-
-                // `[opt_ident]: loop { ... }`
-                let loop_expr = hir::ExprKind::Loop(
-                    loop_block,
-                    self.lower_label(opt_label),
-                    hir::LoopSource::ForLoop,
-                );
-                let loop_expr = P(hir::Expr {
-                    hir_id: self.lower_node_id(e.id),
-                    node: loop_expr,
-                    span: e.span,
-                    attrs: ThinVec::new(),
-                });
-
-                // `mut iter => { ... }`
-                let iter_arm = self.arm(hir_vec![iter_pat], loop_expr);
-
-                // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
-                let into_iter_expr = {
-                    let into_iter_path =
-                        &[sym::iter, sym::IntoIterator, sym::into_iter];
-                    P(self.expr_call_std_path(
-                        head_sp,
-                        into_iter_path,
-                        hir_vec![head],
-                    ))
-                };
-
-                let match_expr = P(self.expr_match(
-                    head_sp,
-                    into_iter_expr,
-                    hir_vec![iter_arm],
-                    hir::MatchSource::ForLoopDesugar,
-                ));
-
-                // This is effectively `{ let _result = ...; _result }`.
-                // The construct was introduced in #21984 and is necessary to make sure that
-                // temporaries in the `head` expression are dropped and do not leak to the
-                // surrounding scope of the `match` since the `match` is not a terminating scope.
-                //
-                // Also, add the attributes to the outer returned expr node.
-                return self.expr_drop_temps(head_sp, match_expr, e.attrs.clone())
+                return self.lower_expr_for(e, pat, head, body, opt_label);
             }
-
             ExprKind::Try(ref sub_expr) => self.lower_expr_try(e.span, sub_expr),
             ExprKind::Mac(_) => panic!("Shouldn't exist here"),
         };
@@ -701,6 +545,172 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    /// Desugar `ExprForLoop` from: `[opt_ident]: for <pat> in <head> <body>` into:
+    /// ```rust
+    /// {
+    ///     let result = match ::std::iter::IntoIterator::into_iter(<head>) {
+    ///         mut iter => {
+    ///             [opt_ident]: loop {
+    ///                 let mut __next;
+    ///                 match ::std::iter::Iterator::next(&mut iter) {
+    ///                     ::std::option::Option::Some(val) => __next = val,
+    ///                     ::std::option::Option::None => break
+    ///                 };
+    ///                 let <pat> = __next;
+    ///                 StmtKind::Expr(<body>);
+    ///             }
+    ///         }
+    ///     };
+    ///     result
+    /// }
+    /// ```
+    fn lower_expr_for(
+        &mut self,
+        e: &Expr,
+        pat: &Pat,
+        head: &Expr,
+        body: &Block,
+        opt_label: Option<Label>,
+    ) -> hir::Expr {
+        // expand <head>
+        let mut head = self.lower_expr(head);
+        let head_sp = head.span;
+        let desugared_span = self.mark_span_with_reason(
+            DesugaringKind::ForLoop,
+            head_sp,
+            None,
+        );
+        head.span = desugared_span;
+
+        let iter = Ident::with_empty_ctxt(sym::iter);
+
+        let next_ident = Ident::with_empty_ctxt(sym::__next);
+        let (next_pat, next_pat_hid) = self.pat_ident_binding_mode(
+            desugared_span,
+            next_ident,
+            hir::BindingAnnotation::Mutable,
+        );
+
+        // `::std::option::Option::Some(val) => __next = val`
+        let pat_arm = {
+            let val_ident = Ident::with_empty_ctxt(sym::val);
+            let (val_pat, val_pat_hid) = self.pat_ident(pat.span, val_ident);
+            let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat_hid));
+            let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_hid));
+            let assign = P(self.expr(
+                pat.span,
+                hir::ExprKind::Assign(next_expr, val_expr),
+                ThinVec::new(),
+            ));
+            let some_pat = self.pat_some(pat.span, val_pat);
+            self.arm(hir_vec![some_pat], assign)
+        };
+
+        // `::std::option::Option::None => break`
+        let break_arm = {
+            let break_expr =
+                self.with_loop_scope(e.id, |this| this.expr_break(e.span, ThinVec::new()));
+            let pat = self.pat_none(e.span);
+            self.arm(hir_vec![pat], break_expr)
+        };
+
+        // `mut iter`
+        let (iter_pat, iter_pat_nid) = self.pat_ident_binding_mode(
+            desugared_span,
+            iter,
+            hir::BindingAnnotation::Mutable
+        );
+
+        // `match ::std::iter::Iterator::next(&mut iter) { ... }`
+        let match_expr = {
+            let iter = P(self.expr_ident(head_sp, iter, iter_pat_nid));
+            let ref_mut_iter = self.expr_mut_addr_of(head_sp, iter);
+            let next_path = &[sym::iter, sym::Iterator, sym::next];
+            let next_expr = P(self.expr_call_std_path(
+                head_sp,
+                next_path,
+                hir_vec![ref_mut_iter],
+            ));
+            let arms = hir_vec![pat_arm, break_arm];
+
+            self.expr_match(head_sp, next_expr, arms, hir::MatchSource::ForLoopDesugar)
+        };
+        let match_stmt = self.stmt_expr(head_sp, match_expr);
+
+        let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_hid));
+
+        // `let mut __next`
+        let next_let = self.stmt_let_pat(
+            ThinVec::new(),
+            desugared_span,
+            None,
+            next_pat,
+            hir::LocalSource::ForLoopDesugar,
+        );
+
+        // `let <pat> = __next`
+        let pat = self.lower_pat(pat);
+        let pat_let = self.stmt_let_pat(
+            ThinVec::new(),
+            head_sp,
+            Some(next_expr),
+            pat,
+            hir::LocalSource::ForLoopDesugar,
+        );
+
+        let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
+        let body_expr = self.expr_block(body_block, ThinVec::new());
+        let body_stmt = self.stmt_expr(body.span, body_expr);
+
+        let loop_block = P(self.block_all(
+            e.span,
+            hir_vec![next_let, match_stmt, pat_let, body_stmt],
+            None,
+        ));
+
+        // `[opt_ident]: loop { ... }`
+        let loop_expr = hir::ExprKind::Loop(
+            loop_block,
+            self.lower_label(opt_label),
+            hir::LoopSource::ForLoop,
+        );
+        let loop_expr = P(hir::Expr {
+            hir_id: self.lower_node_id(e.id),
+            node: loop_expr,
+            span: e.span,
+            attrs: ThinVec::new(),
+        });
+
+        // `mut iter => { ... }`
+        let iter_arm = self.arm(hir_vec![iter_pat], loop_expr);
+
+        // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
+        let into_iter_expr = {
+            let into_iter_path =
+                &[sym::iter, sym::IntoIterator, sym::into_iter];
+            P(self.expr_call_std_path(
+                head_sp,
+                into_iter_path,
+                hir_vec![head],
+            ))
+        };
+
+        let match_expr = P(self.expr_match(
+            head_sp,
+            into_iter_expr,
+            hir_vec![iter_arm],
+            hir::MatchSource::ForLoopDesugar,
+        ));
+
+        // This is effectively `{ let _result = ...; _result }`.
+        // The construct was introduced in #21984 and is necessary to make sure that
+        // temporaries in the `head` expression are dropped and do not leak to the
+        // surrounding scope of the `match` since the `match` is not a terminating scope.
+        //
+        // Also, add the attributes to the outer returned expr node.
+        self.expr_drop_temps(head_sp, match_expr, e.attrs.clone())
     }
 
     /// Desugar `ExprKind::Try` from: `<expr>?` into:
