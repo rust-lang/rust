@@ -991,29 +991,29 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, implitem: &'tcx hir::ImplItem) {
-        if in_external_macro(cx.sess(), implitem.span) {
+    fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem) {
+        if in_external_macro(cx.sess(), impl_item.span) {
             return;
         }
-        let name = implitem.ident.name.as_str();
-        let parent = cx.tcx.hir().get_parent_item(implitem.hir_id);
+        let name = impl_item.ident.name.as_str();
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id);
         let item = cx.tcx.hir().expect_item(parent);
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
         let ty = cx.tcx.type_of(def_id);
         if_chain! {
-            if let hir::ImplItemKind::Method(ref sig, id) = implitem.node;
+            if let hir::ImplItemKind::Method(ref sig, id) = impl_item.node;
             if let Some(first_arg_ty) = sig.decl.inputs.get(0);
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
             if let hir::ItemKind::Impl(_, _, _, _, None, ref self_ty, _) = item.node;
             then {
-                if cx.access_levels.is_exported(implitem.hir_id) {
+                if cx.access_levels.is_exported(impl_item.hir_id) {
                 // check missing trait implementations
                     for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if name == method_name &&
                         sig.decl.inputs.len() == n_args &&
                         out_type.matches(cx, &sig.decl.output) &&
-                        self_kind.matches(cx, first_arg_ty, first_arg, self_ty, false, &implitem.generics) {
-                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
+                        self_kind.matches(cx, first_arg_ty, first_arg, self_ty, false, &impl_item.generics) {
+                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
                                 "defining a method called `{}` on this type; consider implementing \
                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
                         }
@@ -1026,7 +1026,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                     if conv.check(&name) {
                         if !self_kinds
                                 .iter()
-                                .any(|k| k.matches(cx, first_arg_ty, first_arg, self_ty, is_copy, &implitem.generics)) {
+                                .any(|k| k.matches(cx, first_arg_ty, first_arg, self_ty, is_copy, &impl_item.generics)) {
                             let lint = if item.vis.node.is_pub() {
                                 WRONG_PUB_SELF_CONVENTION
                             } else {
@@ -1052,8 +1052,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             }
         }
 
-        if let hir::ImplItemKind::Method(_, _) = implitem.node {
-            let ret_ty = return_ty(cx, implitem.hir_id);
+        if let hir::ImplItemKind::Method(_, _) = impl_item.node {
+            let ret_ty = return_ty(cx, impl_item.hir_id);
 
             // walk the return type and check for Self (this does not check associated types)
             for inner_type in ret_ty.walk() {
@@ -1086,7 +1086,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
-                    implitem.span,
+                    impl_item.span,
                     "methods called `new` usually return `Self`",
                 );
             }
