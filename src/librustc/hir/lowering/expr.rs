@@ -67,40 +67,7 @@ impl LoweringContext<'_> {
                 let ohs = P(self.lower_expr(ohs));
                 hir::ExprKind::AddrOf(m, ohs)
             }
-            ExprKind::Let(ref pats, ref scrutinee) => {
-                // If we got here, the `let` expression is not allowed.
-                self.sess
-                    .struct_span_err(e.span, "`let` expressions are not supported here")
-                    .note("only supported directly in conditions of `if`- and `while`-expressions")
-                    .note("as well as when nested within `&&` and parenthesis in those conditions")
-                    .emit();
-
-                // For better recovery, we emit:
-                // ```
-                // match scrutinee { pats => true, _ => false }
-                // ```
-                // While this doesn't fully match the user's intent, it has key advantages:
-                // 1. We can avoid using `abort_if_errors`.
-                // 2. We can typeck both `pats` and `scrutinee`.
-                // 3. `pats` is allowed to be refutable.
-                // 4. The return type of the block is `bool` which seems like what the user wanted.
-                let scrutinee = self.lower_expr(scrutinee);
-                let then_arm = {
-                    let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
-                    let expr = self.expr_bool(e.span, true);
-                    self.arm(pats, P(expr))
-                };
-                let else_arm = {
-                    let pats = hir_vec![self.pat_wild(e.span)];
-                    let expr = self.expr_bool(e.span, false);
-                    self.arm(pats, P(expr))
-                };
-                hir::ExprKind::Match(
-                    P(scrutinee),
-                    vec![then_arm, else_arm].into(),
-                    hir::MatchSource::Normal,
-                )
-            }
+            ExprKind::Let(ref pats, ref scrutinee) => self.lower_expr_let(e.span, pats, scrutinee),
             ExprKind::If(ref cond, ref then, ref else_opt) => {
                 self.lower_expr_if(e.span, cond, then, else_opt.as_deref())
             }
@@ -238,6 +205,50 @@ impl LoweringContext<'_> {
             span: e.span,
             attrs: e.attrs.clone(),
         }
+    }
+
+    /// Emit an error and lower `ast::ExprKind::Let(pats, scrutinee)` into:
+    /// ```rust
+    /// match scrutinee { pats => true, _ => false }
+    /// ```
+    fn lower_expr_let(
+        &mut self,
+        span: Span,
+        pats: &[AstP<Pat>],
+        scrutinee: &Expr
+    ) -> hir::ExprKind {
+        // If we got here, the `let` expression is not allowed.
+        self.sess
+            .struct_span_err(span, "`let` expressions are not supported here")
+            .note("only supported directly in conditions of `if`- and `while`-expressions")
+            .note("as well as when nested within `&&` and parenthesis in those conditions")
+            .emit();
+
+        // For better recovery, we emit:
+        // ```
+        // match scrutinee { pats => true, _ => false }
+        // ```
+        // While this doesn't fully match the user's intent, it has key advantages:
+        // 1. We can avoid using `abort_if_errors`.
+        // 2. We can typeck both `pats` and `scrutinee`.
+        // 3. `pats` is allowed to be refutable.
+        // 4. The return type of the block is `bool` which seems like what the user wanted.
+        let scrutinee = self.lower_expr(scrutinee);
+        let then_arm = {
+            let pats = pats.iter().map(|pat| self.lower_pat(pat)).collect();
+            let expr = self.expr_bool(span, true);
+            self.arm(pats, P(expr))
+        };
+        let else_arm = {
+            let pats = hir_vec![self.pat_wild(span)];
+            let expr = self.expr_bool(span, false);
+            self.arm(pats, P(expr))
+        };
+        hir::ExprKind::Match(
+            P(scrutinee),
+            vec![then_arm, else_arm].into(),
+            hir::MatchSource::Normal,
+        )
     }
 
     fn lower_expr_if(
