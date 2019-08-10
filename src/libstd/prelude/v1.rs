@@ -86,8 +86,8 @@ pub use core::prelude::v1::{
     test_case,
 };
 
-// The file so far is equivalent to src/libcore/prelude/v1.rs,
-// and below to src/liballoc/prelude.rs.
+// The file so far is equivalent to `src/libcore/prelude/v1.rs`,
+// and below to `src/liballoc/prelude/v1.rs` (except `HashMap`).
 // Those files are duplicated rather than using glob imports
 // because we want docs to show these re-exports as pointing to within `std`.
 
