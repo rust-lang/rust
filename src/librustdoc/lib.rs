@@ -80,7 +80,6 @@ struct Output {
     krate: clean::Crate,
     renderinfo: html::render::RenderInfo,
     renderopts: config::RenderOptions,
-    passes: Vec<String>,
 }
 
 pub fn main() {
@@ -419,14 +418,13 @@ fn main_options(options: config::Options) -> i32 {
             return rustc_driver::EXIT_SUCCESS;
         }
 
-        let Output { krate, passes, renderinfo, renderopts } = out;
+        let Output { krate, renderinfo, renderopts } = out;
         info!("going to format");
         let (error_format, treat_err_as_bug, ui_testing, edition) = diag_opts;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
         match html::render::run(
             krate,
             renderopts,
-            passes.into_iter().collect(),
             renderinfo,
             &diag,
             edition,
@@ -459,7 +457,7 @@ where R: 'static + Send,
     let result = rustc_driver::report_ices_to_stderr_if_any(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
-        let (mut krate, renderinfo, renderopts, passes) = core::run_core(options);
+        let (mut krate, renderinfo, renderopts) = core::run_core(options);
 
         info!("finished with rustc");
 
@@ -473,7 +471,6 @@ where R: 'static + Send,
             krate: krate,
             renderinfo: renderinfo,
             renderopts,
-            passes: passes
         })).unwrap();
     });
 

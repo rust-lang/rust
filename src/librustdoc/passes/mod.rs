@@ -57,8 +57,9 @@ pub struct Pass {
     pub description: &'static str,
 }
 
+
 /// The full list of passes.
-pub const PASSES: &'static [Pass] = &[
+pub const PASSES: &[Pass] = &[
     CHECK_PRIVATE_ITEMS_DOC_TESTS,
     STRIP_HIDDEN,
     UNINDENT_COMMENTS,
@@ -73,43 +74,43 @@ pub const PASSES: &'static [Pass] = &[
 ];
 
 /// The list of passes run by default.
-pub const DEFAULT_PASSES: &[&str] = &[
-    "collect-trait-impls",
-    "collapse-docs",
-    "unindent-comments",
-    "check-private-items-doc-tests",
-    "strip-hidden",
-    "strip-private",
-    "collect-intra-doc-links",
-    "check-code-block-syntax",
-    "propagate-doc-cfg",
+pub const DEFAULT_PASSES: &[Pass] = &[
+    COLLECT_TRAIT_IMPLS,
+    COLLAPSE_DOCS,
+    UNINDENT_COMMENTS,
+    CHECK_PRIVATE_ITEMS_DOC_TESTS,
+    STRIP_HIDDEN,
+    STRIP_PRIVATE,
+    COLLECT_INTRA_DOC_LINKS,
+    CHECK_CODE_BLOCK_SYNTAX,
+    PROPAGATE_DOC_CFG,
 ];
 
 /// The list of default passes run with `--document-private-items` is passed to rustdoc.
-pub const DEFAULT_PRIVATE_PASSES: &[&str] = &[
-    "collect-trait-impls",
-    "collapse-docs",
-    "unindent-comments",
-    "check-private-items-doc-tests",
-    "strip-priv-imports",
-    "collect-intra-doc-links",
-    "check-code-block-syntax",
-    "propagate-doc-cfg",
+pub const DEFAULT_PRIVATE_PASSES: &[Pass] = &[
+    COLLECT_TRAIT_IMPLS,
+    COLLAPSE_DOCS,
+    UNINDENT_COMMENTS,
+    CHECK_PRIVATE_ITEMS_DOC_TESTS,
+    STRIP_PRIV_IMPORTS,
+    COLLECT_INTRA_DOC_LINKS,
+    CHECK_CODE_BLOCK_SYNTAX,
+    PROPAGATE_DOC_CFG,
 ];
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-pub const DEFAULT_COVERAGE_PASSES: &'static [&'static str] = &[
-    "collect-trait-impls",
-    "strip-hidden",
-    "strip-private",
-    "calculate-doc-coverage",
+pub const DEFAULT_COVERAGE_PASSES: &[Pass] = &[
+    COLLECT_TRAIT_IMPLS,
+    STRIP_HIDDEN,
+    STRIP_PRIVATE,
+    CALCULATE_DOC_COVERAGE,
 ];
 
 /// The list of default passes run when `--doc-coverage --document-private-items` is passed to
 /// rustdoc.
-pub const PRIVATE_COVERAGE_PASSES: &'static [&'static str] = &[
-    "collect-trait-impls",
-    "calculate-doc-coverage",
+pub const PRIVATE_COVERAGE_PASSES: &[Pass] = &[
+    COLLECT_TRAIT_IMPLS,
+    CALCULATE_DOC_COVERAGE,
 ];
 
 /// A shorthand way to refer to which set of passes to use, based on the presence of
@@ -124,7 +125,7 @@ pub enum DefaultPassOption {
 }
 
 /// Returns the given default set of passes.
-pub fn defaults(default_set: DefaultPassOption) -> &'static [&'static str] {
+pub fn defaults(default_set: DefaultPassOption) -> &'static [Pass] {
     match default_set {
         DefaultPassOption::Default => DEFAULT_PASSES,
         DefaultPassOption::Private => DEFAULT_PRIVATE_PASSES,

@@ -223,7 +223,7 @@ pub fn new_handler(error_format: ErrorOutputType,
     )
 }
 
-pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions, Vec<String>) {
+pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions) {
     // Parse, resolve, and typecheck the given crate.
 
     let RustdocOptions {
@@ -427,8 +427,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         },
                         _ => continue,
                     };
-                    for p in value.as_str().split_whitespace() {
-                        sink.push(p.to_string());
+                    for name in value.as_str().split_whitespace() {
+                        sink.push(name.to_string());
                     }
                 }
 
@@ -439,25 +439,26 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 }
             }
 
-            let mut passes: Vec<String> =
-                passes::defaults(default_passes).iter().map(|p| p.to_string()).collect();
-            passes.extend(manual_passes);
+            let passes = passes::defaults(default_passes).iter().chain(manual_passes.into_iter()
+                .flat_map(|name| {
+                    if let Some(pass) = passes::find_pass(&name) {
+                        Some(pass)
+                    } else {
+                        error!("unknown pass {}, skipping", name);
+                        None
+                    }
+                }));
 
             info!("Executing passes");
 
-            for pass_name in &passes {
-                match passes::find_pass(pass_name).map(|p| p.pass) {
-                    Some(pass) => {
-                        debug!("running pass {}", pass_name);
-                        krate = pass(krate, &ctxt);
-                    }
-                    None => error!("unknown pass {}, skipping", *pass_name),
-                }
+            for pass in passes {
+                debug!("running pass {}", pass.name);
+                krate = (pass.pass)(krate, &ctxt);
             }
 
             ctxt.sess().abort_if_errors();
 
-            (krate, ctxt.renderinfo.into_inner(), render_options, passes)
+            (krate, ctxt.renderinfo.into_inner(), render_options)
         })
     })
 }

@@ -185,8 +185,8 @@ struct SharedContext {
     pub include_sources: bool,
     /// The local file sources we've emitted and their respective url-paths.
     pub local_sources: FxHashMap<PathBuf, String>,
-    /// All the passes that were run on this crate.
-    pub passes: FxHashSet<String>,
+    /// Whether the collapsed pass ran
+    pub collapsed: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
     /// an issue number.
     pub issue_tracker_base_url: Option<String>,
@@ -229,15 +229,10 @@ impl SharedContext {
 }
 
 impl SharedContext {
-    /// Returns `true` if the `collapse-docs` pass was run on this crate.
-    pub fn was_collapsed(&self) -> bool {
-        self.passes.contains("collapse-docs")
-    }
-
     /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
     /// `collapsed_doc_value` of the given item.
     pub fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<Cow<'a, str>> {
-        if self.was_collapsed() {
+        if self.collapsed {
             item.collapsed_doc_value().map(|s| s.into())
         } else {
             item.doc_value().map(|s| s.into())
@@ -526,7 +521,6 @@ pub fn initial_ids() -> Vec<String> {
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
            options: RenderOptions,
-           passes: FxHashSet<String>,
            renderinfo: RenderInfo,
            diag: &errors::Handler,
            edition: Edition) -> Result<(), Error> {
@@ -557,8 +551,8 @@ pub fn run(mut krate: clean::Crate,
     };
     let mut errors = Arc::new(ErrorStorage::new());
     let mut scx = SharedContext {
+        collapsed: krate.collapsed,
         src_root,
-        passes,
         include_sources: true,
         local_sources: Default::default(),
         issue_tracker_base_url: None,

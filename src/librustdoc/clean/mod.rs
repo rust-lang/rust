@@ -133,6 +133,7 @@ pub struct Crate {
     // Only here so that they can be filtered through the rustdoc passes.
     pub external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
     pub masked_crates: FxHashSet<CrateNum>,
+    pub collapsed: bool,
 }
 
 impl Clean<Crate> for hir::Crate {
@@ -221,6 +222,7 @@ impl Clean<Crate> for hir::Crate {
             primitives,
             external_traits: cx.external_traits.clone(),
             masked_crates,
+            collapsed: false,
         }
     }
 }
