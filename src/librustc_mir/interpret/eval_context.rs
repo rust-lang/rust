@@ -385,15 +385,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         local: mir::Local,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, TyLayout<'tcx>> {
-        match frame.locals[local].layout.get() {
+        // `const_prop` runs into this with an invalid (empty) frame, so we
+        // have to support that case (mostly by skipping all caching).
+        match frame.locals.get(local).and_then(|state| state.layout.get()) {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs)?;
                     self.layout_of(local_ty)
                 })?;
-                // Layouts of locals are requested a lot, so we cache them.
-                frame.locals[local].layout.set(Some(layout));
+                if let Some(state) = frame.locals.get(local) {
+                    // Layouts of locals are requested a lot, so we cache them.
+                    state.layout.set(Some(layout));
+                }
                 Ok(layout)
             }
             Some(layout) => Ok(layout),
