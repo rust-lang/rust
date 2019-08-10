@@ -980,8 +980,7 @@ EnumTypeFoldableImpl! {
         (chalk_engine::DelayedLiteral::Negative)(a),
         (chalk_engine::DelayedLiteral::Positive)(a, b),
     } where
-        C: chalk_engine::context::Context + Clone,
-        C::CanonicalConstrainedSubst: TypeFoldable<'tcx>,
+        C: chalk_engine::context::Context<CanonicalConstrainedSubst: TypeFoldable<'tcx>> + Clone,
 }
 
 EnumTypeFoldableImpl! {
@@ -989,8 +988,7 @@ EnumTypeFoldableImpl! {
         (chalk_engine::Literal::Negative)(a),
         (chalk_engine::Literal::Positive)(a),
     } where
-        C: chalk_engine::context::Context + Clone,
-        C::GoalInEnvironment: Clone + TypeFoldable<'tcx>,
+        C: chalk_engine::context::Context<GoalInEnvironment: Clone + TypeFoldable<'tcx>> + Clone,
 }
 
 CloneTypeFoldableAndLiftImpls! {

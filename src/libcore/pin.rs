@@ -440,10 +440,7 @@ where
     }
 }
 
-impl<P: Deref> Pin<P>
-where
-    P::Target: Unpin,
-{
+impl<P: Deref<Target: Unpin>> Pin<P> {
     /// Construct a new `Pin<P>` around a pointer to some data of a type that
     /// implements [`Unpin`].
     ///
@@ -731,10 +728,7 @@ impl<P: Deref> Deref for Pin<P> {
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P: DerefMut> DerefMut for Pin<P>
-where
-    P::Target: Unpin
-{
+impl<P: DerefMut<Target: Unpin>> DerefMut for Pin<P> {
     fn deref_mut(&mut self) -> &mut P::Target {
         Pin::get_mut(Pin::as_mut(self))
     }

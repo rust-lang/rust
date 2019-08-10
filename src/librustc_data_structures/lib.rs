@@ -23,6 +23,7 @@
 #![feature(core_intrinsics)]
 #![feature(integer_atomics)]
 #![feature(test)]
+#![feature(associated_type_bounds)]
 
 #![cfg_attr(unix, feature(libc))]
 
