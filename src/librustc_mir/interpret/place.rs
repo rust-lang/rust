@@ -45,7 +45,7 @@ pub enum Place<Tag=(), Id=AllocId> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceTy<'tcx, Tag=()> {
-    place: Place<Tag>,
+    place: Place<Tag>, // Keep this private, it helps enforce invariants
     pub layout: TyLayout<'tcx>,
 }
 

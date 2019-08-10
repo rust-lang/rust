@@ -11,9 +11,8 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
-use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
 
@@ -415,7 +414,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (Scalar, bool)> {
+    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
         )

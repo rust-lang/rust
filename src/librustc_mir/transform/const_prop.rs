@@ -452,11 +452,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // Now run the actual operation.
                     this.ecx.unary_op(op, prim)
                 })?;
-                let res = ImmTy {
-                    imm: Immediate::Scalar(val.into()),
-                    layout: place_layout,
-                };
-                Some(res.into())
+                Some(val.into())
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
@@ -510,8 +506,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     this.ecx.read_immediate(left)
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
-                let (val, overflow) = self.use_ecx(source_info, |this| {
-                    this.ecx.binary_op(op, l, r)
+                let (val, overflow, _ty) = self.use_ecx(source_info, |this| {
+                    this.ecx.overflowing_binary_op(op, l, r)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Immediate::ScalarPair(

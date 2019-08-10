@@ -137,7 +137,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let l = self.read_immediate(args[0])?;
                 let r = self.read_immediate(args[1])?;
                 let is_add = intrinsic_name == "saturating_add";
-                let (val, overflowed) = self.binary_op(if is_add {
+                let (val, overflowed, _ty) = self.overflowing_binary_op(if is_add {
                     BinOp::Add
                 } else {
                     BinOp::Sub
@@ -184,7 +184,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     "unchecked_shr" => BinOp::Shr,
                     _ => bug!("Already checked for int ops")
                 };
-                let (val, overflowed) = self.binary_op(bin_op, l, r)?;
+                let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, l, r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
                     let r_val = r.to_scalar()?.to_bits(layout.size)?;

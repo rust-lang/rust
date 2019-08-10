@@ -108,7 +108,7 @@ impl<'tcx, Tag> Immediate<Tag> {
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
 pub struct ImmTy<'tcx, Tag=()> {
-    pub imm: Immediate<Tag>,
+    pub(crate) imm: Immediate<Tag>,
     pub layout: TyLayout<'tcx>,
 }
 
@@ -155,7 +155,7 @@ impl<Tag> Operand<Tag> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct OpTy<'tcx, Tag=()> {
-    op: Operand<Tag>,
+    op: Operand<Tag>, // Keep this private, it helps enforce invariants
     pub layout: TyLayout<'tcx>,
 }
 
