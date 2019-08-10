@@ -4447,23 +4447,23 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
+    fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> HirVec<hir::Expr> {
+        exprs.iter().map(|x| self.lower_expr(x)).collect()
+    }
+
     fn lower_expr(&mut self, e: &Expr) -> hir::Expr {
         let kind = match e.node {
             ExprKind::Box(ref inner) => hir::ExprKind::Box(P(self.lower_expr(inner))),
-            ExprKind::Array(ref exprs) => {
-                hir::ExprKind::Array(exprs.iter().map(|x| self.lower_expr(x)).collect())
-            }
+            ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
             ExprKind::Repeat(ref expr, ref count) => {
                 let expr = P(self.lower_expr(expr));
                 let count = self.lower_anon_const(count);
                 hir::ExprKind::Repeat(expr, count)
             }
-            ExprKind::Tup(ref elts) => {
-                hir::ExprKind::Tup(elts.iter().map(|x| self.lower_expr(x)).collect())
-            }
+            ExprKind::Tup(ref elts) => hir::ExprKind::Tup(self.lower_exprs(elts)),
             ExprKind::Call(ref f, ref args) => {
                 let f = P(self.lower_expr(f));
-                hir::ExprKind::Call(f, args.iter().map(|x| self.lower_expr(x)).collect())
+                hir::ExprKind::Call(f, self.lower_exprs(args))
             }
             ExprKind::MethodCall(ref seg, ref args) => {
                 let hir_seg = P(self.lower_path_segment(
@@ -4475,7 +4475,7 @@ impl<'a> LoweringContext<'a> {
                     ImplTraitContext::disallowed(),
                     None,
                 ));
-                let args = args.iter().map(|x| self.lower_expr(x)).collect();
+                let args = self.lower_exprs(args);
                 hir::ExprKind::MethodCall(hir_seg, seg.ident.span, args)
             }
             ExprKind::Binary(binop, ref lhs, ref rhs) => {
@@ -5049,17 +5049,9 @@ impl<'a> LoweringContext<'a> {
                     ));
                     let arms = hir_vec![pat_arm, break_arm];
 
-                    P(self.expr(
-                        head_sp,
-                        hir::ExprKind::Match(
-                            next_expr,
-                            arms,
-                            hir::MatchSource::ForLoopDesugar
-                        ),
-                        ThinVec::new(),
-                    ))
+                    self.expr_match(head_sp, next_expr, arms, hir::MatchSource::ForLoopDesugar)
                 };
-                let match_stmt = self.stmt(head_sp, hir::StmtKind::Expr(match_expr));
+                let match_stmt = self.stmt_expr(head_sp, match_expr);
 
                 let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_hid));
 
@@ -5083,8 +5075,8 @@ impl<'a> LoweringContext<'a> {
                 );
 
                 let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
-                let body_expr = P(self.expr_block(body_block, ThinVec::new()));
-                let body_stmt = self.stmt(body.span, hir::StmtKind::Expr(body_expr));
+                let body_expr = self.expr_block(body_block, ThinVec::new());
+                let body_stmt = self.stmt_expr(body.span, body_expr);
 
                 let loop_block = P(self.block_all(
                     e.span,
@@ -5127,8 +5119,10 @@ impl<'a> LoweringContext<'a> {
                 ));
 
                 // This is effectively `{ let _result = ...; _result }`.
-                // The construct was introduced in #21984.
-                // FIXME(60253): Is this still necessary?
+                // The construct was introduced in #21984 and is necessary to make sure that
+                // temporaries in the `head` expression are dropped and do not leak to the
+                // surrounding scope of the `match` since the `match` is not a terminating scope.
+                //
                 // Also, add the attributes to the outer returned expr node.
                 return self.expr_drop_temps(head_sp, match_expr, e.attrs.clone())
             }
@@ -5254,7 +5248,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt; 1]> {
-        smallvec![match s.node {
+        let node = match s.node {
             StmtKind::Local(ref l) => {
                 let (l, item_ids) = self.lower_local(l);
                 let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
@@ -5291,21 +5285,14 @@ impl<'a> LoweringContext<'a> {
                     })
                     .collect();
             }
-            StmtKind::Expr(ref e) => {
-                hir::Stmt {
-                    hir_id: self.lower_node_id(s.id),
-                    node: hir::StmtKind::Expr(P(self.lower_expr(e))),
-                    span: s.span,
-                }
-            },
-            StmtKind::Semi(ref e) => {
-                hir::Stmt {
-                    hir_id: self.lower_node_id(s.id),
-                    node: hir::StmtKind::Semi(P(self.lower_expr(e))),
-                    span: s.span,
-                }
-            },
+            StmtKind::Expr(ref e) => hir::StmtKind::Expr(P(self.lower_expr(e))),
+            StmtKind::Semi(ref e) => hir::StmtKind::Semi(P(self.lower_expr(e))),
             StmtKind::Mac(..) => panic!("Shouldn't exist here"),
+        };
+        smallvec![hir::Stmt {
+            hir_id: self.lower_node_id(s.id),
+            node,
+            span: s.span,
         }]
     }
 
@@ -5565,6 +5552,10 @@ impl<'a> LoweringContext<'a> {
 
     fn stmt(&mut self, span: Span, node: hir::StmtKind) -> hir::Stmt {
         hir::Stmt { span, node, hir_id: self.next_id() }
+    }
+
+    fn stmt_expr(&mut self, span: Span, expr: hir::Expr) -> hir::Stmt {
+        self.stmt(span, hir::StmtKind::Expr(P(expr)))
     }
 
     fn stmt_let_pat(
@@ -6060,23 +6051,23 @@ impl<'a> LoweringContext<'a> {
         };
 
         let match_stmt = {
-            let match_expr = P(self.expr_match(
+            let match_expr = self.expr_match(
                 span,
                 poll_expr,
                 hir_vec![ready_arm, pending_arm],
                 hir::MatchSource::AwaitDesugar,
-            ));
-            self.stmt(span, hir::StmtKind::Expr(match_expr))
+            );
+            self.stmt_expr(span, match_expr)
         };
 
         let yield_stmt = {
             let unit = self.expr_unit(span);
-            let yield_expr = P(self.expr(
+            let yield_expr = self.expr(
                 span,
                 hir::ExprKind::Yield(P(unit), hir::YieldSource::Await),
                 ThinVec::new(),
-            ));
-            self.stmt(span, hir::StmtKind::Expr(yield_expr))
+            );
+            self.stmt_expr(span, yield_expr)
         };
 
         let loop_block = P(self.block_all(
