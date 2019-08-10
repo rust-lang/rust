@@ -252,7 +252,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let largest_niche = Niche::from_scalar(dl, b_offset, b.clone())
             .into_iter()
             .chain(Niche::from_scalar(dl, Size::ZERO, a.clone()))
-            .max_by_key(|niche| niche.available(dl));
+            .max_by_key(|niche| niche.available());
 
         LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
@@ -367,7 +367,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             offsets[i as usize] = offset;
 
             if let Some(mut niche) = field.largest_niche.clone() {
-                let available = niche.available(dl);
+                let available = niche.available();
                 if available > largest_niche_available {
                     largest_niche_available = available;
                     niche.offset += offset;
@@ -887,7 +887,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     Some(largest_niche) => {
                                         // Replace the existing niche even if they're equal,
                                         // because this one is at a lower offset.
-                                        if largest_niche.available(dl) <= niche.available(dl) {
+                                        if largest_niche.available() <= niche.available() {
                                             st.largest_niche = Some(niche);
                                         }
                                     }
@@ -947,12 +947,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         // FIXME(#62691) use the largest niche across all fields,
                         // not just the first one.
                         for (field_index, &field) in variants[i].iter().enumerate() {
-                            let niche = match &field.largest_niche {
+                            let mut niche = match field.largest_niche.clone() {
                                 Some(niche) => niche,
-                                _ => continue,
+                                None => continue,
                             };
-                            let (niche_start, niche_scalar) = match niche.reserve(self, count) {
-                                Some(pair) => pair,
+                            let niche_start = match niche.reserve(count) {
+                                Some(start) => start,
                                 None => continue,
                             };
 
@@ -970,9 +970,16 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             let offset = st[i].fields.offset(field_index) + niche.offset;
                             let size = st[i].size;
 
+                            let use_valid_range_from_niche = |scalar: &Scalar| {
+                                assert_eq!(scalar.value.size(dl), niche.scalar.value.size());
+                                Scalar {
+                                    value: scalar.value.clone(),
+                                    valid_range: niche.scalar.valid_range.clone(),
+                                }
+                            };
                             let mut abi = match st[i].abi {
-                                Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
-                                Abi::ScalarPair(ref first, ref second) => {
+                                Abi::Scalar(ref x) => Abi::Scalar(use_valid_range_from_niche(x)),
+                                Abi::ScalarPair(ref a, ref b) => {
                                     // We need to use scalar_unit to reset the
                                     // valid range to the maximal one for that
                                     // primitive, because only the niche is
@@ -980,13 +987,13 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     // other primitive.
                                     if offset.bytes() == 0 {
                                         Abi::ScalarPair(
-                                            niche_scalar.clone(),
-                                            scalar_unit(second.value),
+                                            use_valid_range_from_niche(a),
+                                            scalar_unit(b.value),
                                         )
                                     } else {
                                         Abi::ScalarPair(
-                                            scalar_unit(first.value),
-                                            niche_scalar.clone(),
+                                            scalar_unit(a.value),
+                                            use_valid_range_from_niche(b),
                                         )
                                     }
                                 }
@@ -999,11 +1006,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
 
                             let largest_niche =
-                                Niche::from_scalar(dl, offset, niche_scalar.clone());
+                                Niche::from_int(niche.offset, niche.scalar.clone());
 
                             return Ok(tcx.intern_layout(LayoutDetails {
                                 variants: Variants::Multiple {
-                                    discr: niche_scalar,
+                                    discr: niche.scalar,
                                     discr_kind: DiscriminantKind::Niche {
                                         dataful_variant: i,
                                         niche_variants,
@@ -1156,12 +1163,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 let tag_mask = !0u128 >> (128 - ity.size().bits());
                 let tag = Scalar {
-                    value: Int(ity, signed),
+                    value: ity,
                     valid_range: (min as u128 & tag_mask)..=(max as u128 & tag_mask),
                 };
                 let mut abi = Abi::Aggregate { sized: true };
-                if tag.value.size(dl) == size {
-                    abi = Abi::Scalar(tag.clone());
+                if tag.value.size() == size {
+                    abi = Abi::Scalar(Scalar {
+                        value: Int(tag.value, signed),
+                        valid_range: tag.valid_range.clone(),
+                    });
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
                     let mut common_prim = None;
@@ -1203,7 +1213,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         }
                     }
                     if let Some((prim, offset)) = common_prim {
-                        let pair = self.scalar_pair(tag.clone(), scalar_unit(prim));
+                        let pair = self.scalar_pair(Scalar {
+                            value: Int(tag.value, signed),
+                            valid_range: tag.valid_range.clone(),
+                        }, scalar_unit(prim));
                         let pair_offsets = match pair.fields {
                             FieldPlacement::Arbitrary {
                                 ref offsets,
@@ -1229,7 +1242,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     abi = Abi::Uninhabited;
                 }
 
-                let largest_niche = Niche::from_scalar(dl, Size::ZERO, tag.clone());
+                let largest_niche = Niche::from_int(Size::ZERO, tag.clone());
 
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Multiple {
@@ -1423,8 +1436,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let discr_index = substs.prefix_tys(def_id, tcx).count();
         // FIXME(eddyb) set the correct vaidity range for the discriminant.
         let discr_layout = self.layout_of(substs.discr_ty(tcx))?;
-        let discr = match &discr_layout.abi {
-            Abi::Scalar(s) => s.clone(),
+        let discr = match discr_layout.abi.clone() {
+            Abi::Scalar(Scalar {
+                value: Int(value, false),
+                valid_range,
+            }) => Scalar { value, valid_range },
             _ => bug!(),
         };
         let promoted_layouts = ineligible_locals.iter()
@@ -1716,7 +1732,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     })
                     .collect();
                 record(adt_kind.into(), adt_packed, match discr_kind {
-                    DiscriminantKind::Tag => Some(discr.value.size(self)),
+                    DiscriminantKind::Tag => Some(discr.value.size()),
                     _ => None
                 }, variant_infos);
             }
@@ -2071,7 +2087,10 @@ where
 
     fn field(this: TyLayout<'tcx>, cx: &C, i: usize) -> C::TyLayout {
         let tcx = cx.tcx();
-        let discr_layout = |discr: &Scalar| -> C::TyLayout {
+        let discr_layout = |discr: &Scalar<Integer>| -> C::TyLayout {
+            let Scalar { value, valid_range } = discr.clone();
+            let discr = Scalar { value: Int(value, false), valid_range };
+
             let layout = LayoutDetails::scalar(cx, discr.clone());
             MaybeResult::from(Ok(TyLayout {
                 details: tcx.intern_layout(layout),
@@ -2433,6 +2452,18 @@ impl<'a> HashStable<StableHashingContext<'a>> for Abi {
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        let Scalar { value, ref valid_range } = *self;
+        value.hash_stable(hcx, hasher);
+        valid_range.start().hash_stable(hcx, hasher);
+        valid_range.end().hash_stable(hcx, hasher);
+    }
+}
+
+// FIXME(eddyb) derive this in `rustc_target` (can't be generic here).
+impl<'a> HashStable<StableHashingContext<'a>> for Scalar<Integer> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {

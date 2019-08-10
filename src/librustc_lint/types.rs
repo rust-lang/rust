@@ -963,7 +963,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 _ => return,
             };
 
-            let discr_size = tag.value.size(&cx.tcx).bytes();
+            let discr_size = tag.value.size().bytes();
 
             debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
                    t, layout.size.bytes(), layout);

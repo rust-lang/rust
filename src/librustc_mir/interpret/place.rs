@@ -1010,7 +1010,7 @@ where
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = discr.value.size(self);
+                let size = discr.value.size();
                 let discr_val = truncate(discr_val, size);
 
                 let discr_dest = self.place_field(dest, discr_index as u64)?;

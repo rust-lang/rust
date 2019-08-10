@@ -213,12 +213,7 @@ impl TargetDataLayout {
     }
 
     pub fn ptr_sized_integer(&self) -> Integer {
-        match self.pointer_size.bits() {
-            16 => I16,
-            32 => I32,
-            64 => I64,
-            bits => panic!("ptr_sized_integer: unknown pointer bit size {}", bits)
-        }
+        Integer::for_size(self.pointer_size).unwrap()
     }
 
     pub fn vector_align(&self, vec_size: Size) -> AbiAndPrefAlign {
@@ -516,6 +511,18 @@ impl Integer {
         }
     }
 
+    /// Finds the integer with the given size.
+    pub fn for_size(wanted: Size) -> Option<Integer> {
+        Some(match wanted.bits() {
+            8 => I8,
+            16 => I16,
+            32 => I32,
+            64 => I64,
+            128 => I128,
+            _ => return None,
+        })
+    }
+
     /// Finds the smallest integer with the given alignment.
     pub fn for_align<C: HasDataLayout>(cx: &C, wanted: Align) -> Option<Integer> {
         let dl = cx.data_layout();
@@ -601,6 +608,8 @@ pub enum Primitive {
 }
 
 impl Primitive {
+    // FIXME(eddyb) maybe put enough information into `Primitive::Pointer`
+    // to not require `cx` to compute its size?
     pub fn size<C: HasDataLayout>(self, cx: &C) -> Size {
         let dl = cx.data_layout();
 
@@ -640,8 +649,8 @@ impl Primitive {
 
 /// Information about one scalar component of a Rust type.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Scalar {
-    pub value: Primitive,
+pub struct Scalar<V = Primitive> {
+    pub value: V,
 
     /// Inclusive wrap-around range of valid values, that is, if
     /// start > end, it represents `start..=max_value()`,
@@ -684,6 +693,20 @@ impl Scalar {
         assert_eq!(start, start & mask);
         assert_eq!(end, end & mask);
         start..(end.wrapping_add(1) & mask)
+    }
+}
+
+// FIXME(eddyb) make the main impl generic instead of wrapping it like this.
+impl Scalar<Integer> {
+    pub fn is_bool(&self) -> bool {
+        let Scalar { value, valid_range } = self.clone();
+        Scalar { value: Int(value, false), valid_range }.is_bool()
+    }
+
+    // FIXME(eddyb) this doesn't really need to take a `cx`.
+    pub fn valid_range_exclusive<C: HasDataLayout>(&self, cx: &C) -> Range<u128> {
+        let Scalar { value, valid_range } = self.clone();
+        Scalar { value: Int(value, false), valid_range }.valid_range_exclusive(cx)
     }
 }
 
@@ -866,7 +889,7 @@ pub enum Variants {
     /// a struct, and they all have space reserved for the discriminant.
     /// For enums this is the sole field of the layout.
     Multiple {
-        discr: Scalar,
+        discr: Scalar<Integer>,
         discr_kind: DiscriminantKind,
         discr_index: usize,
         variants: IndexVec<VariantIdx, LayoutDetails>,
@@ -897,25 +920,31 @@ pub enum DiscriminantKind {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Niche {
     pub offset: Size,
-    pub scalar: Scalar,
+    pub scalar: Scalar<Integer>,
 }
 
 impl Niche {
-    pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
-        let niche = Niche {
-            offset,
-            scalar,
-        };
-        if niche.available(cx) > 0 {
+    pub fn from_int(offset: Size, scalar: Scalar<Integer>) -> Option<Self> {
+        let niche = Niche { offset, scalar };
+        if niche.available() > 0 {
             Some(niche)
         } else {
             None
         }
     }
 
-    pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
+    pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
+        let Scalar { value, valid_range } = scalar;
+        let scalar = Scalar {
+            value: Integer::for_size(value.size(cx)).unwrap(),
+            valid_range,
+        };
+        Niche::from_int(offset, scalar)
+    }
+
+    pub fn available(&self) -> u128 {
         let Scalar { value, valid_range: ref v } = self.scalar;
-        let bits = value.size(cx).bits();
+        let bits = value.size().bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
 
@@ -924,11 +953,11 @@ impl Niche {
         niche.end.wrapping_sub(niche.start) & max_value
     }
 
-    pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
+    pub fn reserve(&mut self, count: u128) -> Option<u128> {
         assert!(count > 0);
 
         let Scalar { value, valid_range: ref v } = self.scalar;
-        let bits = value.size(cx).bits();
+        let bits = value.size().bits();
         assert!(bits <= 128);
         let max_value = !0u128 >> (128 - bits);
 
@@ -954,7 +983,10 @@ impl Niche {
             return None;
         }
 
-        Some((start, Scalar { value, valid_range: *v.start()..=end }))
+        // Remove the newly reserved values from our valid range.
+        self.scalar.valid_range = *v.start()..=end;
+
+        Some(start)
     }
 }
 

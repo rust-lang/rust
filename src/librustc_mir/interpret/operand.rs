@@ -619,18 +619,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Err(_) =>
                         throw_unsup!(InvalidDiscriminant(raw_discr.erase_tag())),
                 };
-                let real_discr = if discr_val.layout.ty.is_signed() {
+                let (discr_ty_signed, discr_ty_size) = match &rval.layout.ty.sty {
+                    ty::Adt(adt, _) => {
+                        let discr_ty = adt.repr.discr_type();
+                        (discr_ty.is_signed(), layout::Integer::from_attr(self, discr_ty).size())
+                    }
+                    ty::Generator(..) => {
+                        (false, discr_val.layout.size)
+                    }
+                    _ => bug!("tagged layout for non-adt non-generator"),
+                };
+                let real_discr = if discr_ty_signed {
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the layout discriminant
                     let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
                     // and then zeroing with the typeck discriminant type
-                    let discr_ty = rval.layout.ty
-                        .ty_adt_def().expect("tagged layout corresponds to adt")
-                        .repr
-                        .discr_type();
-                    let size = layout::Integer::from_attr(self, discr_ty).size();
                     let truncatee = sexted as u128;
-                    truncate(truncatee, size)
+                    truncate(truncatee, discr_ty_size)
                 } else {
                     bits_discr
                 };

@@ -213,15 +213,16 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         cast_to: Ty<'tcx>
     ) -> V {
-        let cast_to = bx.cx().immediate_backend_type(bx.cx().layout_of(cast_to));
+        let cast_to = bx.cx().layout_of(cast_to);
+        let cast_to_llty = bx.cx().immediate_backend_type(cast_to);
         if self.layout.abi.is_uninhabited() {
-            return bx.cx().const_undef(cast_to);
+            return bx.cx().const_undef(cast_to_llty);
         }
         let (discr_scalar, discr_kind, discr_index) = match self.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = self.layout.ty.discriminant_for_variant(bx.cx().tcx(), index)
                     .map_or(index.as_u32() as u128, |discr| discr.val);
-                return bx.cx().const_uint_big(cast_to, discr_val);
+                return bx.cx().const_uint_big(cast_to_llty, discr_val);
             }
             layout::Variants::Multiple { ref discr, ref discr_kind, discr_index, .. } => {
                 (discr, discr_kind, discr_index)
@@ -235,15 +236,22 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // Decode the discriminant (specifically if it's niche-encoded).
         match *discr_kind {
             layout::DiscriminantKind::Tag => {
-                let signed = match discr_scalar.value {
+                let signed_cast = if discr_scalar.is_bool() {
                     // We use `i1` for bytes that are always `0` or `1`,
                     // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                     // let LLVM interpret the `i1` as signed, because
                     // then `i1 1` (i.e., `E::B`) is effectively `i8 -1`.
-                    layout::Int(_, signed) => !discr_scalar.is_bool() && signed,
-                    _ => false
+                    false
+                } else {
+                    match cast_to.abi {
+                        layout::Abi::Scalar(layout::Scalar {
+                            value: layout::Int(_, signed),
+                            ..
+                        }) => signed,
+                        _ => false
+                    }
                 };
-                bx.intcast(encoded_discr.immediate(), cast_to, signed)
+                bx.intcast(encoded_discr.immediate(), cast_to_llty, signed_cast)
             }
             layout::DiscriminantKind::Niche {
                 dataful_variant,
@@ -264,22 +272,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 // and check that it is in the range `niche_variants`, because
                 // that might not fit in the same type, on top of needing an extra
                 // comparison (see also the comment on `let niche_discr`).
-                let relative_discr = if niche_start == 0 {
-                    // Avoid subtracting `0`, which wouldn't work for pointers.
-                    // FIXME(eddyb) check the actual primitive type here.
-                    encoded_discr
-                } else {
-                    bx.sub(encoded_discr, bx.cx().const_uint_big(niche_llty, niche_start))
-                };
+                let relative_discr =
+                    bx.sub(encoded_discr, bx.cx().const_uint_big(niche_llty, niche_start));
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
                 let is_niche = {
-                    let relative_max = if relative_max == 0 {
-                        // Avoid calling `const_uint`, which wouldn't work for pointers.
-                        // FIXME(eddyb) check the actual primitive type here.
-                        bx.cx().const_null(niche_llty)
-                    } else {
-                        bx.cx().const_uint(niche_llty, relative_max as u64)
-                    };
+                    let relative_max = bx.cx().const_uint(niche_llty, relative_max as u64);
                     bx.icmp(IntPredicate::IntULE, relative_discr, relative_max)
                 };
 
@@ -295,20 +292,20 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     let relative_discr = if relative_max == 0 {
                         // HACK(eddyb) since we have only one niche, we know which
                         // one it is, and we can avoid having a dynamic value here.
-                        bx.cx().const_uint(cast_to, 0)
+                        bx.cx().const_uint(cast_to_llty, 0)
                     } else {
-                        bx.intcast(relative_discr, cast_to, false)
+                        bx.intcast(relative_discr, cast_to_llty, false)
                     };
                     bx.add(
                         relative_discr,
-                        bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64),
+                        bx.cx().const_uint(cast_to_llty, niche_variants.start().as_u32() as u64),
                     )
                 };
 
                 bx.select(
                     is_niche,
                     niche_discr,
-                    bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64),
+                    bx.cx().const_uint(cast_to_llty, dataful_variant.as_u32() as u64),
                 )
             }
         }

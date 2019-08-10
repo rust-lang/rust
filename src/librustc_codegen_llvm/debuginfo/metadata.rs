@@ -29,13 +29,12 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf,
-                        PrimitiveExt, Size, TyLayout, VariantIdx};
+                        Size, TyLayout, VariantIdx};
 use rustc::ty::subst::UnpackedKind;
 use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::FxHashMap;
 use rustc_fs_util::path_to_c_string;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_target::abi::HasDataLayout;
 
 use libc::{c_uint, c_longlong};
 use std::collections::hash_map::Entry;
@@ -1537,7 +1536,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             let value = (i.as_u32() as u128)
                                 .wrapping_sub(niche_variants.start().as_u32() as u128)
                                 .wrapping_add(niche_start);
-                            let value = truncate(value, discr.value.size(cx));
+                            let value = truncate(value, discr.value.size());
                             // NOTE(eddyb) do *NOT* remove this assert, until
                             // we pass the full 128-bit value to LLVM, otherwise
                             // truncation will be silent and remain undetected.
@@ -1742,7 +1741,7 @@ fn prepare_enum_metadata(
     // <unknown>
     let file_metadata = unknown_file_metadata(cx);
 
-    let discriminant_type_metadata = |discr: layout::Primitive| {
+    let discriminant_type_metadata = |discr: Integer| {
         let enumerators_metadata: Vec<_> = match enum_type.sty {
             ty::Adt(def, _) => def
                 .discriminants(cx.tcx)
@@ -1782,9 +1781,9 @@ fn prepare_enum_metadata(
             Some(discriminant_type_metadata) => discriminant_type_metadata,
             None => {
                 let (discriminant_size, discriminant_align) =
-                    (discr.size(cx), discr.align(cx));
+                    (discr.size(), discr.align(cx));
                 let discriminant_base_type_metadata =
-                    type_metadata(cx, discr.to_ty(cx.tcx), syntax_pos::DUMMY_SP);
+                    type_metadata(cx, discr.to_ty(cx.tcx, false), syntax_pos::DUMMY_SP);
 
                 let discriminant_name = match enum_type.sty {
                     ty::Adt(..) => SmallCStr::new(&cx.tcx.item_name(enum_def_id).as_str()),
@@ -1893,16 +1892,10 @@ fn prepare_enum_metadata(
             ..
         } => {
             // Find the integer type of the correct size.
-            let size = discr.value.size(cx);
+            let size = discr.value.size();
             let align = discr.value.align(cx);
 
-            let discr_type = match discr.value {
-                layout::Int(t, _) => t,
-                layout::Float(layout::FloatTy::F32) => Integer::I32,
-                layout::Float(layout::FloatTy::F64) => Integer::I64,
-                layout::Pointer => cx.data_layout().ptr_sized_integer(),
-            }.to_ty(cx.tcx, false);
-
+            let discr_type = discr.value.to_ty(cx.tcx, false);
             let discr_metadata = basic_type_metadata(cx, discr_type);
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateMemberType(
@@ -1925,7 +1918,7 @@ fn prepare_enum_metadata(
             discr_index,
             ..
         } => {
-            let discr_type = discr.value.to_ty(cx.tcx);
+            let discr_type = discr.value.to_ty(cx.tcx, false);
             let (size, align) = cx.size_and_align_of(discr_type);
 
             let discr_metadata = basic_type_metadata(cx, discr_type);
