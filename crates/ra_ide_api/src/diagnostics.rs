@@ -217,7 +217,8 @@ mod tests {
     }
 
     fn check_apply_diagnostic_fix_for_target_file(target_file: &str, fixture: &str, after: &str) {
-        let (analysis, file_id, target_file_contents) = fixture_with_target_file(fixture, target_file);
+        let (analysis, file_id, target_file_contents) =
+            fixture_with_target_file(fixture, target_file);
         let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_file_edits.pop().unwrap().edit;
@@ -267,9 +268,9 @@ mod tests {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-// The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
-// it strips empty lines and leading whitespace. The important part of this test is that the final
-// `x / y` expr is now wrapped in `Ok(..)`
+        // The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
+        // it strips empty lines and leading whitespace. The important part of this test is that the final
+        // `x / y` expr is now wrapped in `Ok(..)`
         let after = r#"use std::{string::String, result::Result::{self, Ok, Err}};
 fn div(x: i32, y: i32) -> Result<i32, String> {
     if y == 0 {
@@ -299,9 +300,9 @@ fn div(x: i32, y: i32) -> Result<i32, String> {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-// The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
-// it strips empty lines and leading whitespace. The important part of this test is that the final
-// expr is now wrapped in `Ok(..)`
+        // The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
+        // it strips empty lines and leading whitespace. The important part of this test is that the final
+        // expr is now wrapped in `Ok(..)`
         let after = r#"use std::result::Result::{self, Ok, Err};
 fn div<T>(x: T) -> Result<T, i32> {
     if x == 0 {
@@ -336,9 +337,9 @@ fn div<T>(x: T) -> Result<T, i32> {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-// The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
-// it strips empty lines and leading whitespace. The important part of this test is that the final
-// `x / y` expr is now wrapped in `Ok(..)`
+        // The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
+        // it strips empty lines and leading whitespace. The important part of this test is that the final
+        // `x / y` expr is now wrapped in `Ok(..)`
         let after = r#"use std::{string::String, result::Result::{self, Ok, Err}};
 type MyResult<T> = Result<T, String>;
 fn div(x: i32, y: i32) -> MyResult<i32> {

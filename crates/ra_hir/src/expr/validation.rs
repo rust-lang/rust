@@ -12,7 +12,7 @@ use crate::{
     name,
     path::{PathKind, PathSegment},
     ty::{InferenceResult, Ty, TypeCtor},
-    Function, HasSource, HirDatabase, ModuleDef, Name, Path, PerNs, Resolution
+    Function, HasSource, HirDatabase, ModuleDef, Name, Path, PerNs, Resolution,
 };
 use ra_syntax::ast;
 
@@ -116,26 +116,25 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 PathSegment { name: name::STD, args_and_bindings: None },
                 PathSegment { name: name::RESULT_MOD, args_and_bindings: None },
                 PathSegment { name: name::RESULT_TYPE, args_and_bindings: None },
-            ]
+            ],
         };
 
         let resolver = self.func.resolver(db);
-        let std_result_enum = match resolver.resolve_path_segments(db, &std_result_path).into_fully_resolved() {
-            PerNs { types: Some(Resolution::Def(ModuleDef::Enum(e))), .. } => e,
-            _ => return,
-        };
+        let std_result_enum =
+            match resolver.resolve_path_segments(db, &std_result_path).into_fully_resolved() {
+                PerNs { types: Some(Resolution::Def(ModuleDef::Enum(e))), .. } => e,
+                _ => return,
+            };
 
         let std_result_type = std_result_enum.ty(db);
 
         fn enum_from_type(ty: &Ty) -> Option<Enum> {
             match ty {
-                Ty::Apply(t) => {
-                    match t.ctor {
-                        TypeCtor::Adt(AdtDef::Enum(e)) => Some(e),
-                        _ => None,
-                    }
-                }
-                _ => None
+                Ty::Apply(t) => match t.ctor {
+                    TypeCtor::Adt(AdtDef::Enum(e)) => Some(e),
+                    _ => None,
+                },
+                _ => None,
             }
         }
 
