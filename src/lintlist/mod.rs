@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 310] = [
+pub const ALL_LINTS: [Lint; 309] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -790,13 +790,6 @@ pub const ALL_LINTS: [Lint; 310] = [
         desc: "using `.into_iter()` on a reference",
         deprecation: None,
         module: "methods",
-    },
-    Lint {
-        name: "invalid_ref",
-        group: "correctness",
-        desc: "creation of invalid reference",
-        deprecation: None,
-        module: "invalid_ref",
     },
     Lint {
         name: "invalid_regex",

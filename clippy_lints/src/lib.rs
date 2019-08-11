@@ -200,7 +200,6 @@ pub mod inherent_to_string;
 pub mod inline_fn_without_body;
 pub mod int_plus_one;
 pub mod integer_division;
-pub mod invalid_ref;
 pub mod items_after_statements;
 pub mod large_enum_variant;
 pub mod len_zero;
@@ -558,7 +557,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box bytecount::ByteCount);
     reg.register_late_lint_pass(box infinite_iter::InfiniteIter);
     reg.register_late_lint_pass(box inline_fn_without_body::InlineFnWithoutBody);
-    reg.register_late_lint_pass(box invalid_ref::InvalidRef);
     reg.register_late_lint_pass(box identity_conversion::IdentityConversion::default());
     reg.register_late_lint_pass(box types::ImplicitHasher);
     reg.register_early_lint_pass(box redundant_static_lifetimes::RedundantStaticLifetimes);
@@ -736,7 +734,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY,
         inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
         int_plus_one::INT_PLUS_ONE,
-        invalid_ref::INVALID_REF,
         large_enum_variant::LARGE_ENUM_VARIANT,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
@@ -1094,7 +1091,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         infinite_iter::INFINITE_ITER,
         inherent_to_string::INHERENT_TO_STRING_SHADOW_DISPLAY,
         inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
-        invalid_ref::INVALID_REF,
         literal_representation::MISTYPED_LITERAL_SUFFIXES,
         loops::FOR_LOOP_OVER_OPTION,
         loops::FOR_LOOP_OVER_RESULT,

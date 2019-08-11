@@ -113,3 +113,12 @@ declare_deprecated_lint! {
     pub UNSAFE_VECTOR_INITIALIZATION,
     "the replacement suggested by this lint had substantially different behavior"
 }
+
+/// **What it does:** Nothing. This lint has been deprecated.
+///
+/// **Deprecation reason:** This lint has been superseded by the warn-by-default
+/// `invalid_value` rustc lint.
+declare_clippy_lint! {
+    pub INVALID_REF,
+    "superseded by rustc lint `invalid_value`"
+}
