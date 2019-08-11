@@ -1,10 +1,16 @@
 error: called `flat_map(|x| x)` on an `Iterator`. This can be simplified by calling `flatten().`
-  --> $DIR/unnecessary_flat_map.rs:5:5
+  --> $DIR/unnecessary_flat_map.rs:7:5
    |
 LL |     iterator.flat_map(|x| x);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::flat-map` implied by `-D warnings`
 
-error: aborting due to previous error
+error: called `flat_map(std::convert::identity)` on an `Iterator`. This can be simplified by calling `flatten().`
+  --> $DIR/unnecessary_flat_map.rs:10:23
+   |
+LL |     iterator.flat_map(convert::identity);
+   |                       ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

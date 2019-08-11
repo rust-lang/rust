@@ -2186,6 +2186,24 @@ fn lint_flat_map<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, fl
             span_lint(cx, FLAT_MAP, expr.span, msg);
         }
     }
+
+    if_chain! {
+        if match_trait_method(cx, expr, &paths::ITERATOR);
+
+        if flat_map_args.len() == 2;
+
+        let expr = &flat_map_args[1];
+
+        if let hir::ExprKind::Path(ref qpath) = expr.node;
+
+        if match_qpath(qpath, &paths::STD_CONVERT_IDENTITY);
+
+        then {
+            let msg = "called `flat_map(std::convert::identity)` on an `Iterator`. \
+                       This can be simplified by calling `flatten().`";
+            span_lint(cx, FLAT_MAP, expr.span, msg);
+        }
+    }
 }
 
 /// lint searching an Iterator followed by `is_some()`
