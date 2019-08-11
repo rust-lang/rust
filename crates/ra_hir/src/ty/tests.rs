@@ -3594,3 +3594,107 @@ fn no_such_field_diagnostics() {
 "###
     );
 }
+
+#[cfg(test)]
+mod match_with_never_tests {
+    use super::type_at;
+
+    #[test]
+    fn match_compex_arm_ty() {
+        let t = type_at(
+            r#"
+//- /main.rs
+enum Option<T> {
+    Some(T),
+    None
+}
+
+fn test(a: i32) {
+    let i = match a {
+        2 => Option::Some(2.0),
+        _ => loop {},
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "Option<f64>");
+    }
+
+    #[test]
+    fn match_first_arm_never() {
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test(a: i32) {
+    let i = match a {
+        1 => return,
+        2 => 2.0,
+        3 => loop {},
+        _ => 3.0,
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "f64");
+    }
+
+    #[test]
+    fn match_second_arm_never() {
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test(a: i32) {
+    let i = match a {
+        1 => 3.0,
+        2 => loop {},
+        3 => 3.0,
+        _ => return,
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "f64");
+    }
+
+    #[test]
+    fn match_all_arms_never() {
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test(a: i32) {
+    let i = match a {
+        2 => return,
+        _ => loop {},
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "!");
+    }
+
+    #[test]
+    fn match_no_never_arms() {
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test(a: i32) {
+    let i = match a {
+        2 => 2.0,
+        _ => 3.0,
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "f64");
+    }
+}
