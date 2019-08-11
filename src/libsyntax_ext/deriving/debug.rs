@@ -62,7 +62,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     // We want to make sure we have the ctxt set so that we can use unstable methods
     let span = span.with_ctxt(cx.backtrace());
     let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
-    let builder = Ident::from_str("debug_trait_builder").gensym();
+    let builder = Ident::from_str_and_span("debug_trait_builder", span);
     let builder_expr = cx.expr_ident(span, builder.clone());
 
     let fmt = substr.nonself_args[0].clone();
@@ -73,7 +73,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             // tuple struct/"normal" variant
             let expr =
                 cx.expr_method_call(span, fmt, Ident::from_str("debug_tuple"), vec![name]);
-            stmts.push(cx.stmt_let(DUMMY_SP, true, builder, expr));
+            stmts.push(cx.stmt_let(span, true, builder, expr));
 
             for field in fields {
                 // Use double indirection to make sure this works for unsized types
@@ -82,7 +82,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
 
                 let expr = cx.expr_method_call(span,
                                                 builder_expr.clone(),
-                                                Ident::with_dummy_span(sym::field),
+                                                Ident::new(sym::field, span),
                                                 vec![field]);
 
                 // Use `let _ = expr;` to avoid triggering the
@@ -106,7 +106,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 let field = cx.expr_addr_of(field.span, field);
                 let expr = cx.expr_method_call(span,
                                                 builder_expr.clone(),
-                                                Ident::with_dummy_span(sym::field),
+                                                Ident::new(sym::field, span),
                                                 vec![name, field]);
                 stmts.push(stmt_let_undescore(cx, span, expr));
             }
