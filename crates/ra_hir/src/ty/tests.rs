@@ -2515,10 +2515,10 @@ fn test<T: Iterable>() {
         @r###"
    ⋮
    ⋮[108; 227) '{     ...ter; }': ()
-   ⋮[118; 119) 'x': <S as Iterable>::Item
-   ⋮[145; 146) '1': <S as Iterable>::Item
-   ⋮[156; 157) 'y': <T as Iterable>::Item
-   ⋮[183; 192) 'no_matter': <T as Iterable>::Item
+   ⋮[118; 119) 'x': u32
+   ⋮[145; 146) '1': u32
+   ⋮[156; 157) 'y': {unknown}
+   ⋮[183; 192) 'no_matter': {unknown}
    ⋮[202; 203) 'z': {unknown}
    ⋮[215; 224) 'no_matter': {unknown}
     "###
@@ -2552,9 +2552,9 @@ fn test() {
    ⋮[205; 209) 'foo1': fn foo1<S>(T) -> {unknown}
    ⋮[205; 212) 'foo1(S)': {unknown}
    ⋮[210; 211) 'S': S
-   ⋮[222; 223) 'y': <S as Iterable>::Item
+   ⋮[222; 223) 'y': u32
    ⋮[226; 230) 'foo2': fn foo2<S>(T) -> <T as Iterable>::Item
-   ⋮[226; 233) 'foo2(S)': <S as Iterable>::Item
+   ⋮[226; 233) 'foo2(S)': u32
    ⋮[231; 232) 'S': S
     "###
     );
