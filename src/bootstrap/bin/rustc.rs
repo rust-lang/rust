@@ -132,10 +132,7 @@ fn main() {
         cmd.arg("-Dwarnings");
         cmd.arg("-Drust_2018_idioms");
         cmd.arg("-Dunused_lifetimes");
-        // cfg(not(bootstrap)): Remove this during the next stage 0 compiler update.
-        // `-Drustc::internal` is a new feature and `rustc_version` mis-reports the `stage`.
-        let cfg_not_bootstrap = stage != "0" && crate_name != Some("rustc_version");
-        if cfg_not_bootstrap && use_internal_lints(crate_name) {
+        if use_internal_lints(crate_name) {
             cmd.arg("-Zunstable-options");
             cmd.arg("-Drustc::internal");
         }

@@ -7,10 +7,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 // Re-exported core operators
-#[cfg(bootstrap)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)]
-pub use crate::marker::Copy;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::marker::{Send, Sized, Sync, Unpin};
@@ -24,21 +20,9 @@ pub use crate::ops::{Drop, Fn, FnMut, FnOnce};
 pub use crate::mem::drop;
 
 // Re-exported types and traits
-#[cfg(bootstrap)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)]
-pub use crate::clone::Clone;
-#[cfg(bootstrap)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)]
-pub use crate::cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::convert::{AsRef, AsMut, Into, From};
-#[cfg(bootstrap)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)]
-pub use crate::default::Default;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)]
 pub use crate::iter::{Iterator, Extend, IntoIterator};
@@ -53,7 +37,6 @@ pub use crate::option::Option::{self, Some, None};
 pub use crate::result::Result::{self, Ok, Err};
 
 // Re-exported built-in macros
-#[cfg(not(bootstrap))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use core::prelude::v1::{
@@ -83,7 +66,6 @@ pub use core::prelude::v1::{
 
 // FIXME: Attribute and derive macros are not documented because for them rustdoc generates
 // dead links which fail link checker testing.
-#[cfg(not(bootstrap))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
 #[doc(hidden)]
