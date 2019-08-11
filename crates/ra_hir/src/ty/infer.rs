@@ -280,8 +280,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
         match (&*ty1, &*ty2) {
-            (Ty::Unknown, ..) => true,
-            (.., Ty::Unknown) => true,
+            (Ty::Unknown, _) | (_, Ty::Unknown) => true,
             (Ty::Apply(a_ty1), Ty::Apply(a_ty2)) if a_ty1.ctor == a_ty2.ctor => {
                 self.unify_substs(&a_ty1.parameters, &a_ty2.parameters, depth + 1)
             }
@@ -297,7 +296,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             | (Ty::Infer(InferTy::IntVar(tv)), other)
             | (other, Ty::Infer(InferTy::IntVar(tv)))
             | (Ty::Infer(InferTy::FloatVar(tv)), other)
-            | (other, Ty::Infer(InferTy::FloatVar(tv))) => {
+            | (other, Ty::Infer(InferTy::FloatVar(tv)))
+                if !Self::is_never(other) =>
+            {
                 // the type var is unknown since we tried to resolve it
                 self.var_unification_table.union_value(*tv, TypeVarValue::Known(other.clone()));
                 true
@@ -1080,6 +1081,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
+                let mut resulting_match_ty = None;
+                let mut all_arms_never = !arms.is_empty();
+
                 for arm in arms {
                     for &pat in &arm.pats {
                         let _pat_ty = self.infer_pat(pat, &input_ty, BindingMode::default());
@@ -1090,10 +1094,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             &Expectation::has_type(Ty::simple(TypeCtor::Bool)),
                         );
                     }
-                    self.infer_expr(arm.expr, &expected);
+                    let arm_ty = self.infer_expr(arm.expr, &expected);
+                    if all_arms_never && Self::is_never(&arm_ty) {
+                        resulting_match_ty = Some(arm_ty);
+                    } else {
+                        all_arms_never = false;
+                        resulting_match_ty = None;
+                    }
                 }
 
-                expected.ty
+                if let (Ty::Infer(expected_tv), Some(match_ty)) =
+                    (&expected.ty, &resulting_match_ty)
+                {
+                    self.var_unification_table
+                        .union_value(expected_tv.to_inner(), TypeVarValue::Known(match_ty.clone()));
+                    match_ty.clone()
+                } else {
+                    expected.ty
+                }
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
@@ -1366,6 +1384,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             );
         }
         ty
+    }
+
+    fn is_never(ty: &Ty) -> bool {
+        if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }) = ty {
+            true
+        } else {
+            false
+        }
     }
 
     fn infer_block(

@@ -3600,7 +3600,7 @@ mod match_with_never_tests {
     use super::type_at;
 
     #[test]
-    fn match_compex_arm_ty() {
+    fn match_complex_arm_ty() {
         let t = type_at(
             r#"
 //- /main.rs
