@@ -346,8 +346,7 @@ impl<'a> Resolver<'a> {
 
         // Possibly apply the macro helper hack
         if kind == Some(MacroKind::Bang) && path.len() == 1 &&
-           path[0].ident.span.ctxt().outer_expn_info()
-               .map_or(false, |info| info.local_inner_macros) {
+           path[0].ident.span.ctxt().outer_expn_info().local_inner_macros {
             let root = Ident::new(kw::DollarCrate, path[0].ident.span);
             path.insert(0, Segment::from_ident(root));
         }

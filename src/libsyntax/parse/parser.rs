@@ -13,7 +13,6 @@ mod generics;
 use crate::ast::{self, AttrStyle, Attribute, Arg, BindingMode, StrStyle, SelfKind};
 use crate::ast::{FnDecl, Ident, IsAsync, MacDelimiter, Mutability, TyKind};
 use crate::ast::{Visibility, VisibilityKind, Unsafety, CrateSugar};
-use crate::ext::hygiene::SyntaxContext;
 use crate::source_map::{self, respan};
 use crate::parse::{SeqSep, literal, token};
 use crate::parse::lexer::UnmatchedBrace;

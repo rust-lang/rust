@@ -31,12 +31,13 @@ mod tests;
 /// otherwise return the call site span up to the `enclosing_sp` by
 /// following the `expn_info` chain.
 pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
-    let call_site1 = sp.ctxt().outer_expn_info().map(|ei| ei.call_site);
-    let call_site2 = enclosing_sp.ctxt().outer_expn_info().map(|ei| ei.call_site);
-    match (call_site1, call_site2) {
-        (None, _) => sp,
-        (Some(call_site1), Some(call_site2)) if call_site1 == call_site2 => sp,
-        (Some(call_site1), _) => original_sp(call_site1, enclosing_sp),
+    let expn_info1 = sp.ctxt().outer_expn_info();
+    let expn_info2 = enclosing_sp.ctxt().outer_expn_info();
+    if expn_info1.is_root() ||
+       !expn_info2.is_root() && expn_info1.call_site == expn_info2.call_site {
+        sp
+    } else {
+        original_sp(expn_info1.call_site, enclosing_sp)
     }
 }
 

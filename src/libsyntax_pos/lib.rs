@@ -355,20 +355,20 @@ impl Span {
     /// Returns the source span -- this is either the supplied span, or the span for
     /// the macro callsite that expanded to it.
     pub fn source_callsite(self) -> Span {
-        self.ctxt().outer_expn_info().map(|info| info.call_site.source_callsite()).unwrap_or(self)
+        let expn_info = self.ctxt().outer_expn_info();
+        if !expn_info.is_root() { expn_info.call_site.source_callsite() } else { self }
     }
 
     /// The `Span` for the tokens in the previous macro expansion from which `self` was generated,
     /// if any.
     pub fn parent(self) -> Option<Span> {
-        self.ctxt().outer_expn_info().map(|i| i.call_site)
+        let expn_info = self.ctxt().outer_expn_info();
+        if !expn_info.is_root() { Some(expn_info.call_site) } else { None }
     }
 
     /// Edition of the crate from which this span came.
     pub fn edition(self) -> edition::Edition {
-        self.ctxt().outer_expn_info().map_or_else(|| {
-            Edition::from_session()
-        }, |einfo| einfo.edition)
+        self.ctxt().outer_expn_info().edition
     }
 
     #[inline]
@@ -387,49 +387,39 @@ impl Span {
     /// else returns the `ExpnInfo` for the macro definition
     /// corresponding to the source callsite.
     pub fn source_callee(self) -> Option<ExpnInfo> {
-        fn source_callee(info: ExpnInfo) -> ExpnInfo {
-            match info.call_site.ctxt().outer_expn_info() {
-                Some(info) => source_callee(info),
-                None => info,
-            }
+        fn source_callee(expn_info: ExpnInfo) -> ExpnInfo {
+            let next_expn_info = expn_info.call_site.ctxt().outer_expn_info();
+            if !next_expn_info.is_root() { source_callee(next_expn_info) } else { expn_info }
         }
-        self.ctxt().outer_expn_info().map(source_callee)
+        let expn_info = self.ctxt().outer_expn_info();
+        if !expn_info.is_root() { Some(source_callee(expn_info)) } else { None }
     }
 
     /// Checks if a span is "internal" to a macro in which `#[unstable]`
     /// items can be used (that is, a macro marked with
     /// `#[allow_internal_unstable]`).
     pub fn allows_unstable(&self, feature: Symbol) -> bool {
-        match self.ctxt().outer_expn_info() {
-            Some(info) => info
-                .allow_internal_unstable
-                .map_or(false, |features| features.iter().any(|&f|
-                    f == feature || f == sym::allow_internal_unstable_backcompat_hack
-                )),
-            None => false,
-        }
+        self.ctxt().outer_expn_info().allow_internal_unstable.map_or(false, |features| {
+            features.iter().any(|&f| {
+                f == feature || f == sym::allow_internal_unstable_backcompat_hack
+            })
+        })
     }
 
     /// Checks if this span arises from a compiler desugaring of kind `kind`.
     pub fn is_desugaring(&self, kind: DesugaringKind) -> bool {
-        match self.ctxt().outer_expn_info() {
-            Some(info) => match info.kind {
-                ExpnKind::Desugaring(k) => k == kind,
-                _ => false,
-            },
-            None => false,
+        match self.ctxt().outer_expn_info().kind {
+            ExpnKind::Desugaring(k) => k == kind,
+            _ => false,
         }
     }
 
     /// Returns the compiler desugaring that created this span, or `None`
     /// if this span is not from a desugaring.
     pub fn desugaring_kind(&self) -> Option<DesugaringKind> {
-        match self.ctxt().outer_expn_info() {
-            Some(info) => match info.kind {
-                ExpnKind::Desugaring(k) => Some(k),
-                _ => None
-            },
-            None => None
+        match self.ctxt().outer_expn_info().kind {
+            ExpnKind::Desugaring(k) => Some(k),
+            _ => None
         }
     }
 
@@ -437,16 +427,17 @@ impl Span {
     /// can be used without triggering the `unsafe_code` lint
     //  (that is, a macro marked with `#[allow_internal_unsafe]`).
     pub fn allows_unsafe(&self) -> bool {
-        match self.ctxt().outer_expn_info() {
-            Some(info) => info.allow_internal_unsafe,
-            None => false,
-        }
+        self.ctxt().outer_expn_info().allow_internal_unsafe
     }
 
     pub fn macro_backtrace(mut self) -> Vec<MacroBacktrace> {
         let mut prev_span = DUMMY_SP;
         let mut result = vec![];
-        while let Some(info) = self.ctxt().outer_expn_info() {
+        loop {
+            let info = self.ctxt().outer_expn_info();
+            if info.is_root() {
+                break;
+            }
             // Don't print recursive invocations.
             if !info.call_site.source_equal(&prev_span) {
                 let (pre, post) = match info.kind {

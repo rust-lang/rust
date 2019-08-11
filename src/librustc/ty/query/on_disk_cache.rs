@@ -820,18 +820,14 @@ where
             TAG_NO_EXPANSION_INFO.encode(self)
         } else {
             let (expn_id, expn_info) = span_data.ctxt.outer_expn_with_info();
-            if let Some(expn_info) = expn_info {
-                if let Some(pos) = self.expn_info_shorthands.get(&expn_id).cloned() {
-                    TAG_EXPANSION_INFO_SHORTHAND.encode(self)?;
-                    pos.encode(self)
-                } else {
-                    TAG_EXPANSION_INFO_INLINE.encode(self)?;
-                    let pos = AbsoluteBytePos::new(self.position());
-                    self.expn_info_shorthands.insert(expn_id, pos);
-                    expn_info.encode(self)
-                }
+            if let Some(pos) = self.expn_info_shorthands.get(&expn_id).cloned() {
+                TAG_EXPANSION_INFO_SHORTHAND.encode(self)?;
+                pos.encode(self)
             } else {
-                TAG_NO_EXPANSION_INFO.encode(self)
+                TAG_EXPANSION_INFO_INLINE.encode(self)?;
+                let pos = AbsoluteBytePos::new(self.position());
+                self.expn_info_shorthands.insert(expn_id, pos);
+                expn_info.encode(self)
             }
         }
     }

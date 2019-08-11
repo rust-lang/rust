@@ -112,8 +112,8 @@ impl ExpnId {
     }
 
     #[inline]
-    pub fn expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.expn_info(self).cloned())
+    pub fn expn_info(self) -> ExpnInfo {
+        HygieneData::with(|data| data.expn_info(self).clone())
     }
 
     #[inline]
@@ -139,12 +139,9 @@ impl ExpnId {
     #[inline]
     pub fn looks_like_proc_macro_derive(self) -> bool {
         HygieneData::with(|data| {
-            if data.default_transparency(self) == Transparency::Opaque {
-                if let Some(expn_info) = data.expn_info(self) {
-                    if let ExpnKind::Macro(MacroKind::Derive, _) = expn_info.kind {
-                        return true;
-                    }
-                }
+            let expn_info = data.expn_info(self);
+            if let ExpnKind::Macro(MacroKind::Derive, _) = expn_info.kind {
+                return expn_info.default_transparency == Transparency::Opaque;
             }
             false
         })
@@ -190,16 +187,9 @@ impl HygieneData {
         self.expn_data[expn_id.0 as usize].parent
     }
 
-    fn expn_info(&self, expn_id: ExpnId) -> Option<&ExpnInfo> {
-        if expn_id != ExpnId::root() {
-            Some(self.expn_data[expn_id.0 as usize].expn_info.as_ref()
-                     .expect("no expansion info for an expansion ID"))
-        } else {
-            // FIXME: Some code relies on `expn_info().is_none()` meaning "no expansion".
-            // Introduce a method for checking for "no expansion" instead and always return
-            // `ExpnInfo` from this function instead of the `Option`.
-            None
-        }
+    fn expn_info(&self, expn_id: ExpnId) -> &ExpnInfo {
+        self.expn_data[expn_id.0 as usize].expn_info.as_ref()
+            .expect("no expansion info for an expansion ID")
     }
 
     fn is_descendant_of(&self, mut expn_id: ExpnId, ancestor: ExpnId) -> bool {
@@ -210,12 +200,6 @@ impl HygieneData {
             expn_id = self.parent_expn(expn_id);
         }
         true
-    }
-
-    fn default_transparency(&self, expn_id: ExpnId) -> Transparency {
-        self.expn_info(expn_id).map_or(
-            Transparency::SemiTransparent, |einfo| einfo.default_transparency
-        )
     }
 
     fn modern(&self, ctxt: SyntaxContext) -> SyntaxContext {
@@ -256,11 +240,7 @@ impl HygieneData {
 
     fn walk_chain(&self, mut span: Span, to: SyntaxContext) -> Span {
         while span.from_expansion() && span.ctxt() != to {
-            if let Some(info) = self.expn_info(self.outer_expn(span.ctxt())) {
-                span = info.call_site;
-            } else {
-                break;
-            }
+            span = self.expn_info(self.outer_expn(span.ctxt())).call_site;
         }
         span
     }
@@ -275,7 +255,9 @@ impl HygieneData {
 
     fn apply_mark(&mut self, ctxt: SyntaxContext, expn_id: ExpnId) -> SyntaxContext {
         assert_ne!(expn_id, ExpnId::root());
-        self.apply_mark_with_transparency(ctxt, expn_id, self.default_transparency(expn_id))
+        self.apply_mark_with_transparency(
+            ctxt, expn_id, self.expn_info(expn_id).default_transparency
+        )
     }
 
     fn apply_mark_with_transparency(&mut self, ctxt: SyntaxContext, expn_id: ExpnId,
@@ -285,8 +267,7 @@ impl HygieneData {
             return self.apply_mark_internal(ctxt, expn_id, transparency);
         }
 
-        let call_site_ctxt =
-            self.expn_info(expn_id).map_or(SyntaxContext::root(), |info| info.call_site.ctxt());
+        let call_site_ctxt = self.expn_info(expn_id).call_site.ctxt();
         let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
             self.modern(call_site_ctxt)
         } else {
@@ -581,17 +562,17 @@ impl SyntaxContext {
     /// `ctxt.outer_expn_info()` is equivalent to but faster than
     /// `ctxt.outer_expn().expn_info()`.
     #[inline]
-    pub fn outer_expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.expn_info(data.outer_expn(self)).cloned())
+    pub fn outer_expn_info(self) -> ExpnInfo {
+        HygieneData::with(|data| data.expn_info(data.outer_expn(self)).clone())
     }
 
     /// `ctxt.outer_expn_with_info()` is equivalent to but faster than
     /// `{ let outer = ctxt.outer_expn(); (outer, outer.expn_info()) }`.
     #[inline]
-    pub fn outer_expn_with_info(self) -> (ExpnId, Option<ExpnInfo>) {
+    pub fn outer_expn_with_info(self) -> (ExpnId, ExpnInfo) {
         HygieneData::with(|data| {
             let outer = data.outer_expn(self);
-            (outer, data.expn_info(outer).cloned())
+            (outer, data.expn_info(outer).clone())
         })
     }
 
@@ -680,6 +661,11 @@ impl ExpnInfo {
             allow_internal_unstable: Some(allow_internal_unstable),
             ..ExpnInfo::default(kind, call_site, edition)
         }
+    }
+
+    #[inline]
+    pub fn is_root(&self) -> bool {
+        if let ExpnKind::Root = self.kind { true } else { false }
     }
 }
 

@@ -756,10 +756,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
-        match self.current_expansion.id.expn_info() {
-            Some(expn_info) => expn_info.call_site,
-            None => DUMMY_SP,
-        }
+        self.current_expansion.id.expn_info().call_site
     }
     pub fn backtrace(&self) -> SyntaxContext {
         SyntaxContext::root().apply_mark(self.current_expansion.id)
@@ -772,17 +769,13 @@ impl<'a> ExtCtxt<'a> {
         let mut ctxt = self.backtrace();
         let mut last_macro = None;
         loop {
-            if ctxt.outer_expn_info().map_or(None, |info| {
-                if info.kind.descr() == sym::include {
-                    // Stop going up the backtrace once include! is encountered
-                    return None;
-                }
-                ctxt = info.call_site.ctxt();
-                last_macro = Some(info.call_site);
-                Some(())
-            }).is_none() {
-                break
+            let expn_info = ctxt.outer_expn_info();
+            // Stop going up the backtrace once include! is encountered
+            if expn_info.is_root() || expn_info.kind.descr() == sym::include {
+                break;
             }
+            ctxt = expn_info.call_site.ctxt();
+            last_macro = Some(expn_info.call_site);
         }
         last_macro
     }
