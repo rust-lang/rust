@@ -232,7 +232,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                 return;
             }
             // Effectively no-ops
-            "forget" => {
+            "uninit" | "forget" => {
                 return;
             }
             "needs_drop" => {
