@@ -145,7 +145,7 @@ impl StepDescription {
             only_hosts: S::ONLY_HOSTS,
             should_run: S::should_run,
             make_run: S::make_run,
-            name: unsafe { ::std::intrinsics::type_name::<S>() },
+            name: std::any::type_name::<S>(),
         }
     }
 

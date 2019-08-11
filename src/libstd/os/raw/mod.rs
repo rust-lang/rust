@@ -8,8 +8,7 @@
 
 #![stable(feature = "raw_os", since = "1.1.0")]
 
-#[cfg_attr(bootstrap, doc(include = "os/raw/char.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "char.md"))]
+#[doc(include = "char.md")]
 #[cfg(any(all(target_os = "linux", any(target_arch = "aarch64",
                                        target_arch = "arm",
                                        target_arch = "hexagon",
@@ -33,8 +32,7 @@
                                          target_arch = "powerpc")),
           all(target_os = "fuchsia", target_arch = "aarch64")))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = u8;
-#[cfg_attr(bootstrap, doc(include = "os/raw/char.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "char.md"))]
+#[doc(include = "char.md")]
 #[cfg(not(any(all(target_os = "linux", any(target_arch = "aarch64",
                                            target_arch = "arm",
                                            target_arch = "hexagon",
@@ -58,51 +56,37 @@
                                              target_arch = "powerpc")),
               all(target_os = "fuchsia", target_arch = "aarch64"))))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_char = i8;
-#[cfg_attr(bootstrap, doc(include = "os/raw/schar.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "schar.md"))]
+#[doc(include = "schar.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_schar = i8;
-#[cfg_attr(bootstrap, doc(include = "os/raw/uchar.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "uchar.md"))]
+#[doc(include = "uchar.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_uchar = u8;
-#[cfg_attr(bootstrap, doc(include = "os/raw/short.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "short.md"))]
+#[doc(include = "short.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_short = i16;
-#[cfg_attr(bootstrap, doc(include = "os/raw/ushort.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "ushort.md"))]
+#[doc(include = "ushort.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_ushort = u16;
-#[cfg_attr(bootstrap, doc(include = "os/raw/int.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "int.md"))]
+#[doc(include = "int.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_int = i32;
-#[cfg_attr(bootstrap, doc(include = "os/raw/uint.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "uint.md"))]
+#[doc(include = "uint.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_uint = u32;
-#[cfg_attr(bootstrap, doc(include = "os/raw/long.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "long.md"))]
+#[doc(include = "long.md")]
 #[cfg(any(target_pointer_width = "32", windows))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_long = i32;
-#[cfg_attr(bootstrap, doc(include = "os/raw/ulong.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "ulong.md"))]
+#[doc(include = "ulong.md")]
 #[cfg(any(target_pointer_width = "32", windows))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_ulong = u32;
-#[cfg_attr(bootstrap, doc(include = "os/raw/long.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "long.md"))]
+#[doc(include = "long.md")]
 #[cfg(all(target_pointer_width = "64", not(windows)))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_long = i64;
-#[cfg_attr(bootstrap, doc(include = "os/raw/ulong.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "ulong.md"))]
+#[doc(include = "ulong.md")]
 #[cfg(all(target_pointer_width = "64", not(windows)))]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_ulong = u64;
-#[cfg_attr(bootstrap, doc(include = "os/raw/longlong.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "longlong.md"))]
+#[doc(include = "longlong.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_longlong = i64;
-#[cfg_attr(bootstrap, doc(include = "os/raw/ulonglong.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "ulonglong.md"))]
+#[doc(include = "ulonglong.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_ulonglong = u64;
-#[cfg_attr(bootstrap, doc(include = "os/raw/float.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "float.md"))]
+#[doc(include = "float.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_float = f32;
-#[cfg_attr(bootstrap, doc(include = "os/raw/double.md"))]
-#[cfg_attr(not(bootstrap), doc(include = "double.md"))]
+#[doc(include = "double.md")]
 #[stable(feature = "raw_os", since = "1.1.0")] pub type c_double = f64;
 
 #[stable(feature = "raw_os", since = "1.1.0")]

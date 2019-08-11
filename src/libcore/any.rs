@@ -470,10 +470,5 @@ impl TypeId {
 #[stable(feature = "type_name", since = "1.38.0")]
 #[rustc_const_unstable(feature = "const_type_name")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
-    #[cfg(bootstrap)]
-    unsafe {
-        intrinsics::type_name::<T>()
-    }
-    #[cfg(not(bootstrap))]
     intrinsics::type_name::<T>()
 }
