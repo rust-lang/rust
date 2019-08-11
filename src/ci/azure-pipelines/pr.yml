@@ -18,10 +18,8 @@ jobs:
     - template: steps/run.yml
   strategy:
     matrix:
-      x86_64-gnu-llvm-6.0:
-        IMAGE: x86_64-gnu-llvm-6.0
-      mingw-check:
-        IMAGE: mingw-check
+      x86_64-gnu:
+        IMAGE: x86_64-gnu
 
 - job: LinuxTools
   timeoutInMinutes: 600
