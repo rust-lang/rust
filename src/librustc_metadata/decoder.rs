@@ -348,6 +348,22 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
     }
 }
 
+impl SpecializedDecoder<Ident> for DecodeContext<'_, '_> {
+    fn specialized_decode(&mut self) -> Result<Ident, Self::Error> {
+        // FIXME(jseyfried): intercrate hygiene
+
+        Ok(Ident::with_dummy_span(Symbol::decode(self)?))
+    }
+}
+
+impl SpecializedDecoder<SyntaxContext> for DecodeContext<'_, '_> {
+    fn specialized_decode(&mut self) -> Result<SyntaxContext, Self::Error> {
+        // FIXME(jseyfried): intercrate hygiene
+
+        Ok(SyntaxContext::empty())
+    }
+}
+
 impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(&mut self.opaque)

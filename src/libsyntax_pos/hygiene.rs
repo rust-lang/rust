@@ -751,14 +751,6 @@ impl Decodable for ExpnId {
     }
 }
 
-impl Encodable for SyntaxContext {
-    fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
-        Ok(()) // FIXME(jseyfried) intercrate hygiene
-    }
-}
+impl UseSpecializedEncodable for SyntaxContext {}
 
-impl Decodable for SyntaxContext {
-    fn decode<D: Decoder>(_: &mut D) -> Result<Self, D::Error> {
-        Ok(SyntaxContext::root()) // FIXME(jseyfried) intercrate hygiene
-    }
-}
+impl UseSpecializedDecodable for SyntaxContext {}
