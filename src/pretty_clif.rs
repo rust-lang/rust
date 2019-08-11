@@ -218,7 +218,7 @@ pub fn write_clif_file<'tcx>(
         &mut clif,
         &func,
         &DisplayFunctionAnnotations {
-            isa: Some(&*crate::build_isa(tcx.sess)),
+            isa: Some(&*crate::build_isa(tcx.sess, true /* PIC doesn't matter here */)),
             value_ranges,
         },
     )
