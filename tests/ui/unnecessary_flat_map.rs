@@ -1,4 +1,4 @@
-#![warn(clippy::flat_map)]
+#![warn(clippy::flat_map_identity)]
 
 use std::convert;
 

@@ -357,7 +357,7 @@ declare_clippy_lint! {
     /// ```rust
     /// iter.flatten()
     /// ```
-    pub FLAT_MAP,
+    pub FLAT_MAP_IDENTITY,
     pedantic,
     "call to `flat_map` where `flatten` is sufficient"
 }
@@ -912,7 +912,7 @@ declare_lint_pass!(Methods => [
     FILTER_NEXT,
     FILTER_MAP,
     FILTER_MAP_NEXT,
-    FLAT_MAP,
+    FLAT_MAP_IDENTITY,
     FIND_MAP,
     MAP_FLATTEN,
     ITER_NTH,
@@ -953,7 +953,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["map", "find"] => lint_find_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
-            ["flat_map", ..] => lint_flat_map(cx, expr, arg_lists[0]),
+            ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0]),
             ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
             ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0]),
             ["is_some", "position"] => lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0]),
@@ -2165,7 +2165,11 @@ fn lint_filter_map_flat_map<'a, 'tcx>(
 }
 
 /// lint use of `flat_map` for `Iterators` where `flatten` would be sufficient
-fn lint_flat_map<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, flat_map_args: &'tcx [hir::Expr]) {
+fn lint_flat_map_identity<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx hir::Expr,
+    flat_map_args: &'tcx [hir::Expr],
+) {
     if_chain! {
         if match_trait_method(cx, expr, &paths::ITERATOR);
 
@@ -2183,7 +2187,7 @@ fn lint_flat_map<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, fl
         then {
             let msg = "called `flat_map(|x| x)` on an `Iterator`. \
                        This can be simplified by calling `flatten().`";
-            span_lint(cx, FLAT_MAP, expr.span, msg);
+            span_lint(cx, FLAT_MAP_IDENTITY, expr.span, msg);
         }
     }
 
@@ -2201,7 +2205,7 @@ fn lint_flat_map<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, fl
         then {
             let msg = "called `flat_map(std::convert::identity)` on an `Iterator`. \
                        This can be simplified by calling `flatten().`";
-            span_lint(cx, FLAT_MAP, expr.span, msg);
+            span_lint(cx, FLAT_MAP_IDENTITY, expr.span, msg);
         }
     }
 }
