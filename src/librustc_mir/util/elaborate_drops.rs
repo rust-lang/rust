@@ -804,8 +804,8 @@ where
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
-            ty::Tuple(tys) => {
-                let tys: Vec<_> = tys.iter().map(|k| k.expect_ty()).collect();
+            ty::Tuple(..) => {
+                let tys: Vec<_> = ty.tuple_fields().collect();
                 self.open_drop_for_tuple(&tys)
             }
             ty::Adt(def, substs) => {

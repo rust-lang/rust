@@ -13,6 +13,7 @@ use crate::mem::ManuallyDrop;
 /// ever gets used to access memory:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
@@ -27,6 +28,7 @@ use crate::mem::ManuallyDrop;
 /// always be `true` or `false`. Hence, creating an uninitialized `bool` is undefined behavior:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
@@ -40,6 +42,7 @@ use crate::mem::ManuallyDrop;
 /// which otherwise can hold any *fixed* bit pattern:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
