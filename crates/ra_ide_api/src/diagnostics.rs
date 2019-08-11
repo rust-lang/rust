@@ -282,6 +282,44 @@ fn div(x: i32, y: i32) -> Result<i32, String> {
     }
 
     #[test]
+    fn test_wrap_return_type_handles_type_aliases() {
+        let before = r#"
+            //- /main.rs
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            type MyResult<T> = Result<T, String>;
+
+            fn div(x: i32, y: i32) -> MyResult<i32> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                x / y
+            }
+
+            //- /std/lib.rs
+            pub mod string {
+                pub struct String { }
+            }
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
+        "#;
+// The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
+// it strips empty lines and leading whitespace. The important part of this test is that the final
+// `x / y` expr is now wrapped in `Ok(..)`
+        let after = r#"use std::{string::String, result::Result::{self, Ok, Err}};
+type MyResult<T> = Result<T, String>;
+fn div(x: i32, y: i32) -> MyResult<i32> {
+    if y == 0 {
+        return Err("div by zero".into());
+    }
+    Ok(x / y)
+}
+"#;
+        check_apply_diagnostic_fix_for_target_file("/main.rs", before, after);
+    }
+
+    #[test]
     fn test_wrap_return_type_not_applicable() {
         let content = r#"
             //- /main.rs
