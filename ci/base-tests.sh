@@ -7,8 +7,8 @@ if [ "$TRAVIS_OS_NAME" == "linux" ]; then
   remark -f *.md -f doc/*.md > /dev/null
 fi
 # build clippy in debug mode and run tests
-cargo build --features debugging
-cargo test --features debugging
+cargo build --features "debugging deny-warnings"
+cargo test --features "debugging deny-warnings"
 # for faster build, share target dir between subcrates
 export CARGO_TARGET_DIR=`pwd`/target/
 (cd clippy_lints && cargo test)
@@ -24,21 +24,23 @@ export CARGO_TARGET_DIR=`pwd`/target/
 # Perform various checks for lint registration
 ./util/dev update_lints --check
 ./util/dev --limit-stderr-length
-cargo +nightly fmt --all -- --check
 
 # Check running clippy-driver without cargo
 (
-  export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
-
   # Check sysroot handling
   sysroot=$(./target/debug/clippy-driver --print sysroot)
   test $sysroot = $(rustc --print sysroot)
 
-  sysroot=$(./target/debug/clippy-driver --sysroot /tmp --print sysroot)
-  test $sysroot = /tmp
+  if [ -z $OS_WINDOWS ]; then
+    desired_sysroot=/tmp
+  else
+    desired_sysroot=C:/tmp
+  fi
+  sysroot=$(./target/debug/clippy-driver --sysroot $desired_sysroot --print sysroot)
+  test $sysroot = $desired_sysroot
 
-  sysroot=$(SYSROOT=/tmp ./target/debug/clippy-driver --print sysroot)
-  test $sysroot = /tmp
+  sysroot=$(SYSROOT=$desired_sysroot ./target/debug/clippy-driver --print sysroot)
+  test $sysroot = $desired_sysroot
 
   # Make sure this isn't set - clippy-driver should cope without it
   unset CARGO_MANIFEST_DIR
@@ -50,32 +52,3 @@ cargo +nightly fmt --all -- --check
 
   # TODO: CLIPPY_CONF_DIR / CARGO_MANIFEST_DIR
 )
-
-# make sure tests are formatted
-
-# some lints are sensitive to formatting, exclude some files
-tests_need_reformatting="false"
-# switch to nightly
-rustup override set nightly
-# avoid loop spam and allow cmds with exit status != 0
-set +ex
-
-# Excluding `ice-3891.rs` because the code triggers a rustc parse error which
-# makes rustfmt fail.
-for file in `find tests -not -path "tests/ui/crashes/ice-3891.rs" | grep "\.rs$"` ; do
-  rustfmt ${file} --check
-  if [ $? -ne 0 ]; then
-    echo "${file} needs reformatting!"
-    tests_need_reformatting="true"
-  fi
-done
-
-set -ex # reset
-
-if [ "${tests_need_reformatting}" == "true" ] ; then
-    echo "Tests need reformatting!"
-    exit 2
-fi
-
-# switch back to master
-rustup override set master

@@ -41,7 +41,9 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # let src = vec![1];
+    /// # let mut dst = vec![0; 65];
     /// for i in 0..src.len() {
     ///     dst[i + 64] = src[i];
     /// }
@@ -89,16 +91,18 @@ declare_clippy_lint! {
     /// types.
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
     /// // with `y` a `Vec` or slice:
+    /// # let y = vec![1];
     /// for x in y.iter() {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     /// can be rewritten to
     /// ```rust
+    /// # let y = vec![1];
     /// for x in &y {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     pub EXPLICIT_ITER_LOOP,
@@ -115,16 +119,18 @@ declare_clippy_lint! {
     /// **Known problems:** None
     ///
     /// **Example:**
-    /// ```ignore
+    /// ```rust
+    /// # let y = vec![1];
     /// // with `y` a `Vec` or slice:
     /// for x in y.into_iter() {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     /// can be rewritten to
-    /// ```ignore
+    /// ```rust
+    /// # let y = vec![1];
     /// for x in y {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     pub EXPLICIT_INTO_ITER_LOOP,
@@ -217,18 +223,19 @@ declare_clippy_lint! {
     /// **Known problems:** Sometimes the wrong binding is displayed (#383).
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,no_run
+    /// # let y = Some(1);
     /// loop {
     ///     let x = match y {
     ///         Some(x) => x,
     ///         None => break,
-    ///     }
+    ///     };
     ///     // .. do something with x
     /// }
     /// // is easier written as
     /// while let Some(x) = y {
     ///     // .. do something with x
-    /// }
+    /// };
     /// ```
     pub WHILE_LET_LOOP,
     complexity,
@@ -264,8 +271,9 @@ declare_clippy_lint! {
     /// None
     ///
     /// **Example:**
-    /// ```ignore
-    /// let len = iterator.collect::<Vec<_>>().len();
+    /// ```rust
+    /// # let iterator = vec![1].into_iter();
+    /// let len = iterator.clone().collect::<Vec<_>>().len();
     /// // should be
     /// let len = iterator.count();
     /// ```
@@ -309,8 +317,11 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```ignore
-    /// for i in 0..v.len() { foo(v[i]);
+    /// ```rust
+    /// # let v = vec![1];
+    /// # fn foo(bar: usize) {}
+    /// # fn bar(bar: usize, baz: usize) {}
+    /// for i in 0..v.len() { foo(v[i]); }
     /// for i in 0..v.len() { bar(i, v[i]); }
     /// ```
     pub EXPLICIT_COUNTER_LOOP,
@@ -1242,7 +1253,7 @@ fn is_end_eq_array_len<'tcx>(
         if let ExprKind::Lit(ref lit) = end.node;
         if let ast::LitKind::Int(end_int, _) = lit.node;
         if let ty::Array(_, arr_len_const) = indexed_ty.sty;
-        if let Some(arr_len) = arr_len_const.assert_usize(cx.tcx);
+        if let Some(arr_len) = arr_len_const.try_eval_usize(cx.tcx, cx.param_env);
         then {
             return match limits {
                 ast::RangeLimits::Closed => end_int + 1 >= arr_len.into(),
@@ -1364,7 +1375,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                     match cx.tables.expr_ty(&args[0]).sty {
                         // If the length is greater than 32 no traits are implemented for array and
                         // therefore we cannot use `&`.
-                        ty::Array(_, size) if size.assert_usize(cx.tcx).expect("array size") > 32 => (),
+                        ty::Array(_, size) if size.eval_usize(cx.tcx, cx.param_env) > 32 => {},
                         _ => lint_iter_method(cx, args, arg, method_name),
                     };
                 } else {
@@ -1977,7 +1988,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 fn is_iterable_array<'tcx>(ty: Ty<'tcx>, cx: &LateContext<'_, 'tcx>) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
-        ty::Array(_, n) => (0..=32).contains(&n.assert_usize(cx.tcx).expect("array length")),
+        ty::Array(_, n) => (0..=32).contains(&n.eval_usize(cx.tcx, cx.param_env)),
         _ => false,
     }
 }

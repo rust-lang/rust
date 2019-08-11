@@ -17,6 +17,7 @@ branches:
 env:
  global:
    - RUST_BACKTRACE=1
+   - secure: "OKulfkA5OGd/d1IhvBKzRkHQwMcWjzrzbimo7+5NhkUkWxndAzl+719TB3wWvIh1i2wXXrEXsyZkXM5FtRrHm55v1VKQ5ibjEvFg1w3NIg81iDyoLq186fLqywvxGkOAFPrsePPsBj5USd5xvhwwbrjO6L7/RK6Z8shBwOSc41s="
 
 install:
   - |
@@ -45,7 +46,7 @@ matrix:
     - os: linux
       env: BASE_TESTS=true
     - os: windows
-      env: CARGO_INCREMENTAL=0 BASE_TESTS=true
+      env: CARGO_INCREMENTAL=0 BASE_TESTS=true OS_WINDOWS=true
 
     # Builds that are only executed when a PR is r+ed or a try build is started
     # We don't want to run these always because they go towards
@@ -81,9 +82,6 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=chronotope/chrono
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-  allow_failures:
-  - os: windows
-    env: CARGO_INCREMENTAL=0 BASE_TESTS=true
 # prevent these jobs with default env vars
   exclude:
     - os: linux
@@ -92,9 +90,27 @@ matrix:
 
 script:
   - |
+    if [ "$TRAVIS_BRANCH" == "auto" ] || [ "$TRAVIS_BRANCH" == "try" ]; then
+      pr=$(echo $TRAVIS_COMMIT_MESSAGE | grep -o "#[0-9]*" | head -1 | sed 's/^#//g')
+      output=$(curl -H "Authorization: token $GITHUB_API_TOKEN" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$pr" | \
+        python -c "import sys, json; print(json.load(sys.stdin)['body'])" | \
+        grep "^changelog: " | \
+        sed "s/changelog: //g")
+      if [ -z "$output" ]; then
+        echo "ERROR: PR body must contain 'changelog: ...'"
+        exit 1
+      elif [ "$output" = "none" ]; then
+        echo "WARNING: changelog is 'none'"
+      fi
+    fi
+  - |
       rm rust-toolchain
       ./setup-toolchain.sh
-      export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
+      if [ "$TRAVIS_OS_NAME" == "windows" ]; then
+        export PATH=$PATH:$(rustc --print sysroot)/bin
+      else
+        export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
+      fi
   - |
     if [ -z ${INTEGRATION} ]; then
       travis_wait 30 ./ci/base-tests.sh && sleep 5
@@ -104,7 +120,7 @@ script:
 
 after_success: |
   #!/bin/bash
-  if [ $(uname) == Linux ]; then
+  if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     set -ex
     if [ -z ${INTEGRATION} ]; then
       ./.github/deploy.sh

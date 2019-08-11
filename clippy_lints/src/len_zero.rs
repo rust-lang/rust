@@ -244,7 +244,7 @@ fn check_len(
                 LEN_ZERO,
                 span,
                 &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
-                "using `is_empty` is clearer and more explicit",
+                &format!("using `{}is_empty` is clearer and more explicit", op),
                 format!(
                     "{}{}.is_empty()",
                     op,

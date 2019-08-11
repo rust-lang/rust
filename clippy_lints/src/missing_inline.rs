@@ -33,7 +33,7 @@ declare_clippy_lint! {
     ///
     /// struct Baz;
     /// impl Baz {
-    ///    fn priv() {} // ok
+    ///    fn private() {} // ok
     /// }
     ///
     /// impl Bar for Baz {
@@ -42,8 +42,8 @@ declare_clippy_lint! {
     ///
     /// pub struct PubBaz;
     /// impl PubBaz {
-    ///    fn priv() {} // ok
-    ///    pub not_ptriv() {} // missing #[inline]
+    ///    fn private() {} // ok
+    ///    pub fn not_ptrivate() {} // missing #[inline]
     /// }
     ///
     /// impl Bar for PubBaz {
@@ -119,9 +119,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::TraitAlias(..)
             | hir::ItemKind::GlobalAsm(..)
-            | hir::ItemKind::Ty(..)
+            | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Union(..)
-            | hir::ItemKind::Existential(..)
+            | hir::ItemKind::OpaqueTy(..)
             | hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod(..)
             | hir::ItemKind::Impl(..)
@@ -142,7 +142,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
 
         let desc = match impl_item.node {
             hir::ImplItemKind::Method(..) => "a method",
-            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::Existential(_) => return,
+            hir::ImplItemKind::Const(..) | hir::ImplItemKind::TyAlias(_) | hir::ImplItemKind::OpaqueTy(_) => return,
         };
 
         let def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);

@@ -16,21 +16,32 @@ declare_clippy_lint! {
     ///
     /// **Known problems:** Some false negatives, eg.:
     /// ```rust
-    /// let k = &key;
-    /// if !m.contains_key(k) {
-    ///     m.insert(k.clone(), v);
+    /// # use std::collections::HashMap;
+    /// # let mut map = HashMap::new();
+    /// # let v = 1;
+    /// # let k = 1;
+    /// if !map.contains_key(&k) {
+    ///     map.insert(k.clone(), v);
     /// }
     /// ```
     ///
     /// **Example:**
     /// ```rust
-    /// if !m.contains_key(&k) {
-    ///     m.insert(k, v)
+    /// # use std::collections::HashMap;
+    /// # let mut map = HashMap::new();
+    /// # let k = 1;
+    /// # let v = 1;
+    /// if !map.contains_key(&k) {
+    ///     map.insert(k, v);
     /// }
     /// ```
-    /// can be rewritten as:
+    /// can both be rewritten as:
     /// ```rust
-    /// m.entry(k).or_insert(v);
+    /// # use std::collections::HashMap;
+    /// # let mut map = HashMap::new();
+    /// # let k = 1;
+    /// # let v = 1;
+    /// map.entry(k).or_insert(v);
     /// ```
     pub MAP_ENTRY,
     perf,

@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+
 use rustc_tools_util::*;
 
 const CARGO_CLIPPY_HELP: &str = r#"Checks a package to catch common mistakes and improve your Rust code.

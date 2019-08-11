@@ -70,7 +70,7 @@ error: unneeded return statement
   --> $DIR/needless_return.rs:64:14
    |
 LL |         _ => return,
-   |              ^^^^^^ help: replace `return` with the unit type: `()`
+   |              ^^^^^^ help: replace `return` with an empty block: `{}`
 
 error: aborting due to 12 previous errors
 

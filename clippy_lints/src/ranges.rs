@@ -40,7 +40,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.iter().zip(0..x.len())
+    /// # let x = vec![1];
+    /// x.iter().zip(0..x.len());
     /// ```
     pub RANGE_ZIP_WITH_LEN,
     complexity,
@@ -60,7 +61,7 @@ declare_clippy_lint! {
     /// I.e., `let _ = (f()+1)..(f()+1)` results in `let _ = ((f()+1)..=f())`.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// for x..(y+1) { .. }
     /// ```
     pub RANGE_PLUS_ONE,
@@ -78,7 +79,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// for x..=(y-1) { .. }
     /// ```
     pub RANGE_MINUS_ONE,

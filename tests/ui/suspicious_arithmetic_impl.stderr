@@ -12,7 +12,7 @@ error: Suspicious use of binary operator in `AddAssign` impl
 LL |         *self = *self - other;
    |                       ^
    |
-   = note: #[deny(clippy::suspicious_op_assign_impl)] on by default
+   = note: `#[deny(clippy::suspicious_op_assign_impl)]` on by default
 
 error: aborting due to 2 previous errors
 

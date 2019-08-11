@@ -30,7 +30,7 @@ error: you are iterating over `Iterator::next()` which is an Option; this will c
 LL |     for x in v.iter().next() {
    |              ^^^^^^^^^^^^^^^
    |
-   = note: #[deny(clippy::iter_next_loop)] on by default
+   = note: `#[deny(clippy::iter_next_loop)]` on by default
 
 error: for loop over `v.iter().next().and(Some(0))`, which is an `Option`. This is more readably written as an `if let` statement.
   --> $DIR/for_loop_over_option_result.rs:31:14
@@ -57,7 +57,7 @@ LL | |         break;
 LL | |     }
    | |_____^
    |
-   = note: #[deny(clippy::never_loop)] on by default
+   = note: `#[deny(clippy::never_loop)]` on by default
 
 error: this loop never actually loops
   --> $DIR/for_loop_over_option_result.rs:53:5

@@ -48,27 +48,25 @@ pub enum Constant {
 impl PartialEq for Constant {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Constant::Str(ref ls), &Constant::Str(ref rs)) => ls == rs,
-            (&Constant::Binary(ref l), &Constant::Binary(ref r)) => l == r,
-            (&Constant::Char(l), &Constant::Char(r)) => l == r,
-            (&Constant::Int(l), &Constant::Int(r)) => l == r,
-            (&Constant::F64(l), &Constant::F64(r)) => {
+            (&Self::Str(ref ls), &Self::Str(ref rs)) => ls == rs,
+            (&Self::Binary(ref l), &Self::Binary(ref r)) => l == r,
+            (&Self::Char(l), &Self::Char(r)) => l == r,
+            (&Self::Int(l), &Self::Int(r)) => l == r,
+            (&Self::F64(l), &Self::F64(r)) => {
                 // We want `Fw32 == FwAny` and `FwAny == Fw64`, and by transitivity we must have
                 // `Fw32 == Fw64`, so don’t compare them.
                 // `to_bits` is required to catch non-matching 0.0, -0.0, and NaNs.
                 l.to_bits() == r.to_bits()
             },
-            (&Constant::F32(l), &Constant::F32(r)) => {
+            (&Self::F32(l), &Self::F32(r)) => {
                 // We want `Fw32 == FwAny` and `FwAny == Fw64`, and by transitivity we must have
                 // `Fw32 == Fw64`, so don’t compare them.
                 // `to_bits` is required to catch non-matching 0.0, -0.0, and NaNs.
                 f64::from(l).to_bits() == f64::from(r).to_bits()
             },
-            (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
-            (&Constant::Vec(ref l), &Constant::Vec(ref r)) | (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => {
-                l == r
-            },
-            (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
+            (&Self::Bool(l), &Self::Bool(r)) => l == r,
+            (&Self::Vec(ref l), &Self::Vec(ref r)) | (&Self::Tuple(ref l), &Self::Tuple(ref r)) => l == r,
+            (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
             // TODO: are there inter-type equalities?
             _ => false,
         }
@@ -82,38 +80,38 @@ impl Hash for Constant {
     {
         std::mem::discriminant(self).hash(state);
         match *self {
-            Constant::Str(ref s) => {
+            Self::Str(ref s) => {
                 s.hash(state);
             },
-            Constant::Binary(ref b) => {
+            Self::Binary(ref b) => {
                 b.hash(state);
             },
-            Constant::Char(c) => {
+            Self::Char(c) => {
                 c.hash(state);
             },
-            Constant::Int(i) => {
+            Self::Int(i) => {
                 i.hash(state);
             },
-            Constant::F32(f) => {
+            Self::F32(f) => {
                 f64::from(f).to_bits().hash(state);
             },
-            Constant::F64(f) => {
+            Self::F64(f) => {
                 f.to_bits().hash(state);
             },
-            Constant::Bool(b) => {
+            Self::Bool(b) => {
                 b.hash(state);
             },
-            Constant::Vec(ref v) | Constant::Tuple(ref v) => {
+            Self::Vec(ref v) | Self::Tuple(ref v) => {
                 v.hash(state);
             },
-            Constant::Repeat(ref c, l) => {
+            Self::Repeat(ref c, l) => {
                 c.hash(state);
                 l.hash(state);
             },
-            Constant::RawPtr(u) => {
+            Self::RawPtr(u) => {
                 u.hash(state);
             },
-            Constant::Err(ref s) => {
+            Self::Err(ref s) => {
                 s.hash(state);
             },
         }
@@ -123,25 +121,25 @@ impl Hash for Constant {
 impl Constant {
     pub fn partial_cmp(tcx: TyCtxt<'_>, cmp_type: Ty<'_>, left: &Self, right: &Self) -> Option<Ordering> {
         match (left, right) {
-            (&Constant::Str(ref ls), &Constant::Str(ref rs)) => Some(ls.cmp(rs)),
-            (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
-            (&Constant::Int(l), &Constant::Int(r)) => {
+            (&Self::Str(ref ls), &Self::Str(ref rs)) => Some(ls.cmp(rs)),
+            (&Self::Char(ref l), &Self::Char(ref r)) => Some(l.cmp(r)),
+            (&Self::Int(l), &Self::Int(r)) => {
                 if let ty::Int(int_ty) = cmp_type.sty {
                     Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty)))
                 } else {
                     Some(l.cmp(&r))
                 }
             },
-            (&Constant::F64(l), &Constant::F64(r)) => l.partial_cmp(&r),
-            (&Constant::F32(l), &Constant::F32(r)) => l.partial_cmp(&r),
-            (&Constant::Bool(ref l), &Constant::Bool(ref r)) => Some(l.cmp(r)),
-            (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) | (&Constant::Vec(ref l), &Constant::Vec(ref r)) => l
+            (&Self::F64(l), &Self::F64(r)) => l.partial_cmp(&r),
+            (&Self::F32(l), &Self::F32(r)) => l.partial_cmp(&r),
+            (&Self::Bool(ref l), &Self::Bool(ref r)) => Some(l.cmp(r)),
+            (&Self::Tuple(ref l), &Self::Tuple(ref r)) | (&Self::Vec(ref l), &Self::Vec(ref r)) => l
                 .iter()
                 .zip(r.iter())
                 .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
                 .find(|r| r.map_or(true, |o| o != Ordering::Equal))
                 .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
-            (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => {
+            (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => {
                 match Self::partial_cmp(tcx, cmp_type, lv, rv) {
                     Some(Equal) => Some(ls.cmp(rs)),
                     x => x,
@@ -232,7 +230,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
-                    ty::Array(_, n) => n.assert_usize(self.lcx.tcx).expect("array length"),
+                    ty::Array(_, n) => n.eval_usize(self.lcx.tcx, self.lcx.param_env),
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))

@@ -16,6 +16,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # let mut y = 1;
     /// let x = &mut &mut y;
     /// ```
     pub MUT_MUT,

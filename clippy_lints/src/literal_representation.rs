@@ -115,8 +115,8 @@ impl Radix {
     /// Returns a reasonable digit group size for this radix.
     crate fn suggest_grouping(&self) -> usize {
         match *self {
-            Radix::Binary | Radix::Hexadecimal => 4,
-            Radix::Octal | Radix::Decimal => 3,
+            Self::Binary | Self::Hexadecimal => 4,
+            Self::Octal | Self::Decimal => 3,
         }
     }
 }
@@ -285,7 +285,7 @@ enum WarningType {
 impl WarningType {
     crate fn display(&self, grouping_hint: &str, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
         match self {
-            WarningType::MistypedLiteralSuffix => span_lint_and_sugg(
+            Self::MistypedLiteralSuffix => span_lint_and_sugg(
                 cx,
                 MISTYPED_LITERAL_SUFFIXES,
                 span,
@@ -294,7 +294,7 @@ impl WarningType {
                 grouping_hint.to_string(),
                 Applicability::MaybeIncorrect,
             ),
-            WarningType::UnreadableLiteral => span_lint_and_sugg(
+            Self::UnreadableLiteral => span_lint_and_sugg(
                 cx,
                 UNREADABLE_LITERAL,
                 span,
@@ -303,7 +303,7 @@ impl WarningType {
                 grouping_hint.to_owned(),
                 Applicability::MachineApplicable,
             ),
-            WarningType::LargeDigitGroups => span_lint_and_sugg(
+            Self::LargeDigitGroups => span_lint_and_sugg(
                 cx,
                 LARGE_DIGIT_GROUPS,
                 span,
@@ -312,7 +312,7 @@ impl WarningType {
                 grouping_hint.to_owned(),
                 Applicability::MachineApplicable,
             ),
-            WarningType::InconsistentDigitGrouping => span_lint_and_sugg(
+            Self::InconsistentDigitGrouping => span_lint_and_sugg(
                 cx,
                 INCONSISTENT_DIGIT_GROUPING,
                 span,
@@ -321,7 +321,7 @@ impl WarningType {
                 grouping_hint.to_owned(),
                 Applicability::MachineApplicable,
             ),
-            WarningType::DecimalRepresentation => span_lint_and_sugg(
+            Self::DecimalRepresentation => span_lint_and_sugg(
                 cx,
                 DECIMAL_LITERAL_REPRESENTATION,
                 span,

@@ -7,7 +7,7 @@ use std::io::prelude::*;
 // The maximum length allowed for stderr files.
 //
 // We limit this because small files are easier to deal with than bigger files.
-const LIMIT: usize = 320;
+const LIMIT: usize = 275;
 
 pub fn check() {
     let stderr_files = stderr_files();
@@ -23,16 +23,15 @@ pub fn check() {
 }
 
 fn exceeding_stderr_files(files: impl Iterator<Item = walkdir::DirEntry>) -> impl Iterator<Item = String> {
-    files
-        .filter_map(|file| {
-            let path = file.path().to_str().expect("Could not convert path to str").to_string();
-            let linecount = count_linenumbers(&path);
-            if linecount > LIMIT {
-                Some(path)
-            } else {
-                None
-            }
-        })
+    files.filter_map(|file| {
+        let path = file.path().to_str().expect("Could not convert path to str").to_string();
+        let linecount = count_linenumbers(&path);
+        if linecount > LIMIT {
+            Some(path)
+        } else {
+            None
+        }
+    })
 }
 
 fn stderr_files() -> impl Iterator<Item = walkdir::DirEntry> {

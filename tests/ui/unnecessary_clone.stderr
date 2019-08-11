@@ -68,7 +68,7 @@ error: using `clone` on a double-reference; this will copy the reference instead
 LL |     let z: &Vec<_> = y.clone();
    |                      ^^^^^^^^^
    |
-   = note: #[deny(clippy::clone_double_ref)] on by default
+   = note: `#[deny(clippy::clone_double_ref)]` on by default
 help: try dereferencing it
    |
 LL |     let z: &Vec<_> = &(*y).clone();

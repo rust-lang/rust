@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// **Known problems:** Hopefully none.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,no_run
     /// // Vector
     /// let x = vec![0; 5];
     ///
@@ -94,7 +94,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
             if let Some(range) = higher::range(cx, index) {
                 // Ranged indexes, i.e., &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.sty {
-                    let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
+                    let size: u128 = s.eval_usize(cx.tcx, cx.param_env).into();
 
                     let const_range = to_const_range(cx, range, size);
 

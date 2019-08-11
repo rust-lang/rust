@@ -1,6 +1,6 @@
 [package]
 name = "clippy_dummy" # rename to clippy before publishing
-version = "0.0.302"
+version = "0.0.303"
 authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 edition = "2018"
 readme = "crates-readme.md"

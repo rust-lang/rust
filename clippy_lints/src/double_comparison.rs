@@ -18,13 +18,17 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x == y || x < y
+    /// # let x = 1;
+    /// # let y = 2;
+    /// if x == y || x < y {}
     /// ```
     ///
     /// Could be written as:
     ///
     /// ```rust
-    /// x <= y
+    /// # let x = 1;
+    /// # let y = 2;
+    /// if x <= y {}
     /// ```
     pub DOUBLE_COMPARISONS,
     complexity,
@@ -63,6 +67,7 @@ impl<'a, 'tcx> DoubleComparisons {
                 );
             }};
         }
+        #[rustfmt::skip]
         match (op, lkind, rkind) {
             (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Lt) | (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Eq) => {
                 lint_double_comparison!(<=)

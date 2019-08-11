@@ -25,7 +25,7 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro_or_desugar, int_bits, last_path_segment,
     match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
-    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
+    snippet_with_macro_callsite, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -133,7 +133,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = LinkedList::new();
+    /// # use std::collections::LinkedList;
+    /// let x: LinkedList<usize> = LinkedList::new();
     /// ```
     pub LINKEDLIST,
     pedantic,
@@ -467,15 +468,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
                 if higher::is_from_for_desugar(local) {
                     return;
                 }
-                span_lint(
-                    cx,
-                    LET_UNIT_VALUE,
-                    stmt.span,
-                    &format!(
-                        "this let-binding has unit value. Consider omitting `let {} =`",
-                        snippet(cx, local.pat.span, "..")
-                    ),
-                );
+                span_lint_and_then(cx, LET_UNIT_VALUE, stmt.span, "this let-binding has unit value", |db| {
+                    if let Some(expr) = &local.init {
+                        let snip = snippet_with_macro_callsite(cx, expr.span, "()");
+                        db.span_suggestion(
+                            stmt.span,
+                            "omit the `let` binding",
+                            format!("{};", snip),
+                            Applicability::MachineApplicable, // snippet
+                        );
+                    }
+                });
             }
         }
     }
@@ -557,7 +560,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// foo({
     ///     let a = bar();
     ///     baz(a);
@@ -621,9 +624,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
 }
 
 fn is_questionmark_desugar_marked_call(expr: &Expr) -> bool {
-    use syntax_pos::hygiene::CompilerDesugaringKind;
+    use syntax_pos::hygiene::DesugaringKind;
     if let ExprKind::Call(ref callee, _) = expr.node {
-        callee.span.is_compiler_desugaring(CompilerDesugaringKind::QuestionMark)
+        callee.span.is_desugaring(DesugaringKind::QuestionMark)
     } else {
         false
     }
@@ -660,8 +663,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x = u64::MAX;
-    /// x as f64
+    /// let x = std::u64::MAX;
+    /// x as f64;
     /// ```
     pub CAST_PRECISION_LOSS,
     pedantic,
@@ -682,7 +685,7 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let y: i8 = -1;
-    /// y as u128 // will return 18446744073709551615
+    /// y as u128; // will return 18446744073709551615
     /// ```
     pub CAST_SIGN_LOSS,
     pedantic,
@@ -690,7 +693,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for on casts between numerical types that may
+    /// **What it does:** Checks for casts between numerical types that may
     /// truncate large values. This is expected behavior, so the cast is `Allow` by
     /// default.
     ///
@@ -727,7 +730,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// u32::MAX as i32 // will yield a value of `-1`
+    /// std::u32::MAX as i32; // will yield a value of `-1`
     /// ```
     pub CAST_POSSIBLE_WRAP,
     pedantic,
@@ -735,7 +738,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for on casts between numerical types that may
+    /// **What it does:** Checks for casts between numerical types that may
     /// be replaced by safe conversion functions.
     ///
     /// **Why is this bad?** Rust's `as` keyword will perform many kinds of
@@ -775,7 +778,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let _ = 2i32 as i32
+    /// let _ = 2i32 as i32;
     /// ```
     pub UNNECESSARY_CAST,
     complexity,
@@ -789,7 +792,8 @@ declare_clippy_lint! {
     /// **Why is this bad?** Dereferencing the resulting pointer may be undefined
     /// behavior.
     ///
-    /// **Known problems:** None.
+    /// **Known problems:** Using `std::ptr::read_unaligned` and `std::ptr::write_unaligned` or similar
+    /// on the resulting pointer is fine.
     ///
     /// **Example:**
     /// ```rust
@@ -1210,17 +1214,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
             if_chain! {
                 if let ty::RawPtr(from_ptr_ty) = &cast_from.sty;
                 if let ty::RawPtr(to_ptr_ty) = &cast_to.sty;
-                if let Some(from_align) = cx.layout_of(from_ptr_ty.ty).ok().map(|a| a.align.abi);
-                if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi);
-                if from_align < to_align;
+                if let Ok(from_layout) = cx.layout_of(from_ptr_ty.ty);
+                if let Ok(to_layout) = cx.layout_of(to_ptr_ty.ty);
+                if from_layout.align.abi < to_layout.align.abi;
                 // with c_void, we inherently need to trust the user
                 if !is_c_void(cx, from_ptr_ty.ty);
+                // when casting from a ZST, we don't know enough to properly lint
+                if !from_layout.is_zst();
                 then {
                     span_lint(
                         cx,
                         CAST_PTR_ALIGNMENT,
                         expr.span,
-                        &format!("casting from `{}` to a more-strictly-aligned pointer (`{}`)", cast_from, cast_to)
+                        &format!(
+                            "casting from `{}` to a more-strictly-aligned pointer (`{}`) ({} < {} bytes)",
+                            cast_from,
+                            cast_to,
+                            from_layout.align.abi.bytes(),
+                            to_layout.align.abi.bytes(),
+                        ),
                     );
                 }
             }
@@ -1242,7 +1254,7 @@ fn lint_fn_to_numeric_cast(
     }
     match cast_from.sty {
         ty::FnDef(..) | ty::FnPtr(_) => {
-            let mut applicability = Applicability::MachineApplicable;
+            let mut applicability = Applicability::MaybeIncorrect;
             let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
 
             let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
@@ -1286,6 +1298,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # use std::rc::Rc;
     /// struct Foo {
     ///     inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,
     /// }
@@ -1344,7 +1357,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeComplexity {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         match item.node {
-            ImplItemKind::Const(ref ty, _) | ImplItemKind::Type(ref ty) => self.check_type(cx, ty),
+            ImplItemKind::Const(ref ty, _) | ImplItemKind::TyAlias(ref ty) => self.check_type(cx, ty),
             // methods are covered by check_fn
             _ => (),
         }
@@ -1449,13 +1462,13 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// 'x' as u8
     /// ```
     ///
     /// A better version, using the byte literal:
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// b'x'
     /// ```
     pub CHAR_LIT_AS_U8,
@@ -1679,7 +1692,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// let x : u8 = ...; (x as u32) > 300
+    /// let x: u8 = 1;
+    /// (x as u32) > 300;
     /// ```
     pub INVALID_UPCAST_COMPARISONS,
     pedantic,
@@ -1716,10 +1730,10 @@ impl PartialEq for FullInt {
 impl PartialOrd for FullInt {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(match (self, other) {
-            (&FullInt::S(s), &FullInt::S(o)) => s.cmp(&o),
-            (&FullInt::U(s), &FullInt::U(o)) => s.cmp(&o),
-            (&FullInt::S(s), &FullInt::U(o)) => Self::cmp_s_u(s, o),
-            (&FullInt::U(s), &FullInt::S(o)) => Self::cmp_s_u(o, s).reverse(),
+            (&Self::S(s), &Self::S(o)) => s.cmp(&o),
+            (&Self::U(s), &Self::U(o)) => s.cmp(&o),
+            (&Self::S(s), &Self::U(o)) => Self::cmp_s_u(s, o),
+            (&Self::U(s), &Self::S(o)) => Self::cmp_s_u(o, s).reverse(),
         })
     }
 }
@@ -1914,11 +1928,20 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// # use std::collections::HashMap;
-    /// # use std::hash::Hash;
+    /// # use std::hash::{Hash, BuildHasher};
     /// # trait Serialize {};
     /// impl<K: Hash + Eq, V> Serialize for HashMap<K, V> { }
     ///
     /// pub fn foo(map: &mut HashMap<i32, i32>) { }
+    /// ```
+    /// could be rewritten as
+    /// ```rust
+    /// # use std::collections::HashMap;
+    /// # use std::hash::{Hash, BuildHasher};
+    /// # trait Serialize {};
+    /// impl<K: Hash + Eq, V, S: BuildHasher> Serialize for HashMap<K, V, S> { }
+    ///
+    /// pub fn foo<S: BuildHasher>(map: &mut HashMap<i32, i32, S>) { }
     /// ```
     pub IMPLICIT_HASHER,
     style,
@@ -2029,6 +2052,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                     vis.visit_ty(ty);
 
                     for target in &vis.found {
+                        if in_external_macro(cx.sess(), generics.span) {
+                            continue;
+                        }
                         let generics_suggestion_span = generics.span.substitute_dummy({
                             let pos = snippet_opt(cx, item.span.until(body.arguments[0].pat.span))
                                 .and_then(|snip| {

@@ -1,4 +1,13 @@
+// run-rustfix
+
 #![warn(clippy::needless_bool)]
+#![allow(
+    unused,
+    dead_code,
+    clippy::no_effect,
+    clippy::if_same_then_else,
+    clippy::needless_return
+)]
 
 use std::cell::Cell;
 
@@ -24,20 +33,9 @@ macro_rules! bool_comparison_trigger {
     )
 }
 
-#[allow(clippy::if_same_then_else)]
 fn main() {
     let x = true;
     let y = false;
-    if x {
-        true
-    } else {
-        true
-    };
-    if x {
-        false
-    } else {
-        false
-    };
     if x {
         true
     } else {
@@ -58,36 +56,15 @@ fn main() {
     } else {
         false
     }; // would also be questionable, but we don't catch this yet
-    bool_ret(x);
-    bool_ret2(x);
     bool_ret3(x);
-    bool_ret5(x, x);
     bool_ret4(x);
+    bool_ret5(x, x);
     bool_ret6(x, x);
     needless_bool(x);
     needless_bool2(x);
     needless_bool3(x);
 }
 
-#[allow(clippy::if_same_then_else, clippy::needless_return)]
-fn bool_ret(x: bool) -> bool {
-    if x {
-        return true;
-    } else {
-        return true;
-    };
-}
-
-#[allow(clippy::if_same_then_else, clippy::needless_return)]
-fn bool_ret2(x: bool) -> bool {
-    if x {
-        return false;
-    } else {
-        return false;
-    };
-}
-
-#[allow(clippy::needless_return)]
 fn bool_ret3(x: bool) -> bool {
     if x {
         return true;
@@ -96,16 +73,6 @@ fn bool_ret3(x: bool) -> bool {
     };
 }
 
-#[allow(clippy::needless_return)]
-fn bool_ret5(x: bool, y: bool) -> bool {
-    if x && y {
-        return true;
-    } else {
-        return false;
-    };
-}
-
-#[allow(clippy::needless_return)]
 fn bool_ret4(x: bool) -> bool {
     if x {
         return false;
@@ -114,7 +81,14 @@ fn bool_ret4(x: bool) -> bool {
     };
 }
 
-#[allow(clippy::needless_return)]
+fn bool_ret5(x: bool, y: bool) -> bool {
+    if x && y {
+        return true;
+    } else {
+        return false;
+    };
+}
+
 fn bool_ret6(x: bool, y: bool) -> bool {
     if x && y {
         return false;

@@ -3,7 +3,7 @@ extern crate term;
 fn main() {
     if let Err(_) = foo() {
         eprintln!("error: Clippy is no longer available via crates.io\n");
-        eprintln!("help: please run `rustup component add clippy-preview` instead");
+        eprintln!("help: please run `rustup component add clippy` instead");
     }
     std::process::exit(1);
 }
@@ -31,7 +31,7 @@ fn foo() -> Result<(), ()> {
     write!(t, "please run `").map_err(|_| ())?;
 
     t.attr(term::Attr::Bold).map_err(|_| ())?;
-    write!(t, "rustup component add clippy-preview").map_err(|_| ())?;
+    write!(t, "rustup component add clippy").map_err(|_| ())?;
 
     t.reset().map_err(|_| ())?;
     t.fg(term::color::WHITE).map_err(|_| ())?;

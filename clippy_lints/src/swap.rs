@@ -20,12 +20,17 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// let mut a = 42;
+    /// let mut b = 1337;
+    ///
     /// let t = b;
     /// b = a;
     /// a = t;
     /// ```
     /// Use std::mem::swap():
     /// ```rust
+    /// let mut a = 1;
+    /// let mut b = 2;
     /// std::mem::swap(&mut a, &mut b);
     /// ```
     pub MANUAL_SWAP,

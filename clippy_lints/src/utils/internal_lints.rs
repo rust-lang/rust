@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// `declare_lint_pass!`, `impl_lint_pass!`, and `lint_array!` macros.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// declare_lint! { pub LINT_1, ... }
     /// declare_lint! { pub LINT_2, ... }
     /// declare_lint! { pub FORGOTTEN_LINT, ... }
@@ -62,12 +62,12 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// Bad:
-    /// ```rust
+    /// ```rust,ignore
     /// cx.span_lint(LINT_NAME, "message");
     /// ```
     ///
     /// Good:
-    /// ```rust
+    /// ```rust,ignore
     /// utils::span_lint(cx, LINT_NAME, "message");
     /// ```
     pub COMPILER_LINT_FUNCTIONS,
@@ -85,17 +85,17 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// Bad:
-    /// ```rust
+    /// ```rust,ignore
     /// expr.span.ctxt().outer().expn_info()
     /// ```
     ///
     /// Good:
-    /// ```rust
+    /// ```rust,ignore
     /// expr.span.ctxt().outer_expn_info()
     /// ```
-    pub OUTER_EXPN_INFO,
+    pub OUTER_EXPN_EXPN_INFO,
     internal,
-    "using `cx.outer().expn_info()` instead of `cx.outer_expn_info()`"
+    "using `cx.outer_expn().expn_info()` instead of `cx.outer_expn_info()`"
 }
 
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
@@ -280,7 +280,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
 
 pub struct OuterExpnInfoPass;
 
-impl_lint_pass!(OuterExpnInfoPass => [OUTER_EXPN_INFO]);
+impl_lint_pass!(OuterExpnInfoPass => [OUTER_EXPN_EXPN_INFO]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnInfoPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
@@ -288,7 +288,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnInfoPass {
         let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
         let method_names: Vec<&str> = method_names.iter().map(std::convert::AsRef::as_ref).collect();
         if_chain! {
-            if let ["expn_info", "outer"] = method_names.as_slice();
+            if let ["expn_info", "outer_expn"] = method_names.as_slice();
             let args = arg_lists[1];
             if args.len() == 1;
             let self_arg = &args[0];
@@ -297,9 +297,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnInfoPass {
             then {
                 span_lint_and_sugg(
                     cx,
-                    OUTER_EXPN_INFO,
+                    OUTER_EXPN_EXPN_INFO,
                     expr.span.trim_start(self_arg.span).unwrap_or(expr.span),
-                    "usage of `outer().expn_info()`",
+                    "usage of `outer_expn().expn_info()`",
                     "try",
                     ".outer_expn_info()".to_string(),
                     Applicability::MachineApplicable,

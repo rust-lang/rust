@@ -16,12 +16,14 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # use core::sync::atomic::{ATOMIC_ISIZE_INIT, AtomicIsize};
     /// static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
     /// ```
     ///
     /// Could be written:
     ///
     /// ```rust
+    /// # use core::sync::atomic::AtomicIsize;
     /// static FOO: AtomicIsize = AtomicIsize::new(0);
     /// ```
     pub REPLACE_CONSTS,

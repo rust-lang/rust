@@ -345,16 +345,18 @@ list][lint_list].
 
 ### Running rustfmt
 
-[Rustfmt](https://github.com/rust-lang/rustfmt) is a tool for formatting Rust code according
-to style guidelines. Your code has to be formatted by `rustfmt` before a PR can be merged.
+[Rustfmt](https://github.com/rust-lang/rustfmt) is a tool for formatting Rust
+code according to style guidelines. Your code has to be formatted by `rustfmt`
+before a PR can be merged. Clippy uses nightly `rustfmt` in the CI.
 
 It can be installed via `rustup`:
 
 ```bash
-rustup component add rustfmt
+rustup component add rustfmt --toolchain=nightly
 ```
 
-Use `cargo fmt --all` to format the whole codebase.
+Use `./util/dev fmt` to format the whole codebase. Make sure that `rustfmt` is
+installed for the nightly toolchain.
 
 ### Debugging
 
@@ -366,12 +368,14 @@ output in the `stdout` part.
 
 Before submitting your PR make sure you followed all of the basic requirements:
 
+<!-- Sync this with `.github/PULL_REQUEST_TEMPLATE` -->
+
 - [ ] Followed [lint naming conventions][lint_naming]
 - [ ] Added passing UI tests (including committed `.stderr` file)
 - [ ] `cargo test` passes locally
-- [ ] Executed `util/dev update_lints`
+- [ ] Executed `./util/dev update_lints`
 - [ ] Added lint documentation
-- [ ] Run `cargo fmt`
+- [ ] Run `./util/dev fmt`
 
 ### Cheatsheet
 

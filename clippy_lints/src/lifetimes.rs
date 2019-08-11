@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// fn unused_lifetime<'a>(x: u8) {
-    ///     ..
+    ///     // ..
     /// }
     /// ```
     pub EXTRA_UNUSED_LIFETIMES,
@@ -283,6 +283,8 @@ impl<'v, 't> RefVisitor<'v, 't> {
         if let Some(ref lt) = *lifetime {
             if lt.name == LifetimeName::Static {
                 self.lts.push(RefLt::Static);
+            } else if let LifetimeName::Param(ParamName::Fresh(_)) = lt.name {
+                // Fresh lifetimes generated should be ignored.
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
             } else {
@@ -346,7 +348,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             },
             TyKind::Def(item, _) => {
                 let map = self.cx.tcx.hir();
-                if let ItemKind::Existential(ref exist_ty) = map.expect_item(item.id).node {
+                if let ItemKind::OpaqueTy(ref exist_ty) = map.expect_item(item.id).node {
                     for bound in &exist_ty.bounds {
                         if let GenericBound::Outlives(_) = *bound {
                             self.record(&None);

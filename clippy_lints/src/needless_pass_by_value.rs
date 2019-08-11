@@ -40,6 +40,9 @@ declare_clippy_lint! {
     /// fn foo(v: Vec<i32>) {
     ///     assert_eq!(v.len(), 42);
     /// }
+    /// ```
+    ///
+    /// ```rust
     /// // should be
     /// fn foo(v: &[i32]) {
     ///     assert_eq!(v.len(), 42);
@@ -193,7 +196,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
             if_chain! {
                 if !is_self(arg);
-                if !ty.is_mutable_pointer();
+                if !ty.is_mutable_ptr();
                 if !is_copy(cx, ty);
                 if !whitelisted_traits.iter().any(|&t| implements_trait(cx, ty, t, &[]));
                 if !implements_borrow_trait;

@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// /// Do something with the foo_bar parameter. See also
     /// /// that::other::module::foo.
     /// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
-    /// fn doit(foo_bar) { .. }
+    /// fn doit(foo_bar: usize) {}
     /// ```
     pub DOC_MARKDOWN,
     pedantic,

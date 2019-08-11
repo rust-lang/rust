@@ -19,6 +19,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # use core::iter::repeat;
+    /// # let len = 4;
     /// let mut vec1 = Vec::with_capacity(len);
     /// vec1.resize(len, 0);
     ///

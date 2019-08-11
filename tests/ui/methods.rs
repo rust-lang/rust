@@ -12,7 +12,8 @@
     clippy::default_trait_access,
     clippy::use_self,
     clippy::new_ret_no_self,
-    clippy::useless_format
+    clippy::useless_format,
+    clippy::wrong_self_convention
 )]
 
 #[macro_use]

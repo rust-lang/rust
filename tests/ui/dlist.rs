@@ -7,7 +7,7 @@ use alloc::collections::linked_list::LinkedList;
 
 trait Foo {
     type Baz = LinkedList<u8>;
-    fn foo(LinkedList<u8>);
+    fn foo(_: LinkedList<u8>);
     const BAR: Option<LinkedList<u8>>;
 }
 

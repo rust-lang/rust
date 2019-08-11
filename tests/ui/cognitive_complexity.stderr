@@ -216,7 +216,7 @@ LL | | }
 error: the function has a cognitive complexity of 1
   --> $DIR/cognitive_complexity.rs:316:1
    |
-LL | / fn try() -> Result<i32, &'static str> {
+LL | / fn try_() -> Result<i32, &'static str> {
 LL | |     match 5 {
 LL | |         5 => Ok(5),
 LL | |         _ => return Err("bla"),
@@ -230,9 +230,9 @@ error: the function has a cognitive complexity of 1
   --> $DIR/cognitive_complexity.rs:324:1
    |
 LL | / fn try_again() -> Result<i32, &'static str> {
-LL | |     let _ = try!(Ok(42));
-LL | |     let _ = try!(Ok(43));
-LL | |     let _ = try!(Ok(44));
+LL | |     let _ = r#try!(Ok(42));
+LL | |     let _ = r#try!(Ok(43));
+LL | |     let _ = r#try!(Ok(44));
 ...  |
 LL | |     }
 LL | | }

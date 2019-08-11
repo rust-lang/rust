@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 306] = [
+pub const ALL_LINTS: [Lint; 309] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -736,6 +736,20 @@ pub const ALL_LINTS: [Lint; 306] = [
         module: "infinite_iter",
     },
     Lint {
+        name: "inherent_to_string",
+        group: "style",
+        desc: "type implements inherent method `to_string()`, but should instead implement the `Display` trait",
+        deprecation: None,
+        module: "inherent_to_string",
+    },
+    Lint {
+        name: "inherent_to_string_shadow_display",
+        group: "correctness",
+        desc: "type implements inherent method `to_string()`, which gets shadowed by the implementation of the `Display` trait ",
+        deprecation: None,
+        module: "inherent_to_string",
+    },
+    Lint {
         name: "inline_always",
         group: "pedantic",
         desc: "use of `#[inline(always)]`",
@@ -783,13 +797,6 @@ pub const ALL_LINTS: [Lint; 306] = [
         desc: "using `.into_iter()` on a reference",
         deprecation: None,
         module: "methods",
-    },
-    Lint {
-        name: "invalid_ref",
-        group: "correctness",
-        desc: "creation of invalid reference",
-        deprecation: None,
-        module: "invalid_ref",
     },
     Lint {
         name: "invalid_regex",
@@ -909,6 +916,13 @@ pub const ALL_LINTS: [Lint; 306] = [
         desc: "boolean expressions that contain terminals which can be eliminated",
         deprecation: None,
         module: "booleans",
+    },
+    Lint {
+        name: "main_recursion",
+        group: "style",
+        desc: "recursion using the entrypoint",
+        deprecation: None,
+        module: "main_recursion",
     },
     Lint {
         name: "manual_memcpy",
@@ -1374,7 +1388,7 @@ pub const ALL_LINTS: [Lint; 306] = [
     },
     Lint {
         name: "panicking_unwrap",
-        group: "nursery",
+        group: "correctness",
         desc: "checks for calls of unwrap[_err]() that will always fail",
         deprecation: None,
         module: "unwrap",
@@ -1842,6 +1856,13 @@ pub const ALL_LINTS: [Lint; 306] = [
         module: "types",
     },
     Lint {
+        name: "type_repetition_in_bounds",
+        group: "complexity",
+        desc: "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`",
+        deprecation: None,
+        module: "trait_bounds",
+    },
+    Lint {
         name: "unicode_not_nfc",
         group: "pedantic",
         desc: "using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)",
@@ -1913,7 +1934,7 @@ pub const ALL_LINTS: [Lint; 306] = [
     },
     Lint {
         name: "unnecessary_unwrap",
-        group: "nursery",
+        group: "complexity",
         desc: "checks for calls of unwrap[_err]() that cannot fail",
         deprecation: None,
         module: "unwrap",

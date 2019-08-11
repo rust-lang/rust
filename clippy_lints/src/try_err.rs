@@ -1,4 +1,4 @@
-use crate::utils::{match_qpath, paths, snippet, span_lint_and_sugg};
+use crate::utils::{in_macro_or_desugar, match_qpath, paths, snippet, snippet_with_macro_callsite, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -67,10 +67,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TryErr {
 
             then {
                 let err_type = cx.tables.expr_ty(err_arg);
-                let suggestion = if err_type == return_type {
-                    format!("return Err({})", snippet(cx, err_arg.span, "_"))
+                let origin_snippet = if in_macro_or_desugar(err_arg.span) {
+                    snippet_with_macro_callsite(cx, err_arg.span, "_")
                 } else {
-                    format!("return Err({}.into())", snippet(cx, err_arg.span, "_"))
+                    snippet(cx, err_arg.span, "_")
+                };
+                let suggestion = if err_type == return_type {
+                    format!("return Err({})", origin_snippet)
+                } else {
+                    format!("return Err({}.into())", origin_snippet)
                 };
 
                 span_lint_and_sugg(

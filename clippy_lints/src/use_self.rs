@@ -51,9 +51,11 @@ declare_lint_pass!(UseSelf => [USE_SELF]);
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
-fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
+fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path, last_segment: Option<&PathSegment>) {
+    let last_segment = last_segment.unwrap_or_else(|| path.segments.last().expect(SEGMENTS_MSG));
+
     // Path segments only include actual path, no methods or fields.
-    let last_path_span = path.segments.last().expect(SEGMENTS_MSG).ident.span;
+    let last_path_span = last_segment.ident.span;
     // Only take path up to the end of last_path_span.
     let span = path.span.with_hi(last_path_span.hi());
 
@@ -80,22 +82,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
         let trait_ty = self.trait_type_walker.next();
         let impl_ty = self.impl_type_walker.next();
 
-        if let TyKind::Path(QPath::Resolved(_, path)) = &t.node {
+        if_chain! {
+            if let TyKind::Path(QPath::Resolved(_, path)) = &t.node;
+
             // The implementation and trait types don't match which means that
             // the concrete type was specified by the implementation
-            if impl_ty != trait_ty {
-                if let Some(impl_ty) = impl_ty {
-                    if self.item_type == impl_ty {
-                        let is_self_ty = if let def::Res::SelfTy(..) = path.res {
-                            true
-                        } else {
-                            false
-                        };
-
-                        if !is_self_ty {
-                            span_use_self_lint(self.cx, path);
-                        }
-                    }
+            if impl_ty != trait_ty;
+            if let Some(impl_ty) = impl_ty;
+            if self.item_type == impl_ty;
+            then {
+                match path.res {
+                    def::Res::SelfTy(..) => {},
+                    _ => span_use_self_lint(self.cx, path, None)
                 }
             }
         }
@@ -220,15 +218,34 @@ struct UseSelfVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
-        if path.segments.last().expect(SEGMENTS_MSG).ident.name != kw::SelfUpper {
-            if self.item_path.res == path.res {
-                span_use_self_lint(self.cx, path);
-            } else if let Res::Def(DefKind::Ctor(def::CtorOf::Struct, CtorKind::Fn), ctor_did) = path.res {
-                if self.item_path.res.opt_def_id() == self.cx.tcx.parent(ctor_did) {
-                    span_use_self_lint(self.cx, path);
+        if path.segments.len() >= 2 {
+            let last_but_one = &path.segments[path.segments.len() - 2];
+            if last_but_one.ident.name != kw::SelfUpper {
+                let enum_def_id = match path.res {
+                    Res::Def(DefKind::Variant, variant_def_id) => self.cx.tcx.parent(variant_def_id),
+                    Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), ctor_def_id) => {
+                        let variant_def_id = self.cx.tcx.parent(ctor_def_id);
+                        variant_def_id.and_then(|def_id| self.cx.tcx.parent(def_id))
+                    },
+                    _ => None,
+                };
+
+                if self.item_path.res.opt_def_id() == enum_def_id {
+                    span_use_self_lint(self.cx, path, Some(last_but_one));
                 }
             }
         }
+
+        if path.segments.last().expect(SEGMENTS_MSG).ident.name != kw::SelfUpper {
+            if self.item_path.res == path.res {
+                span_use_self_lint(self.cx, path, None);
+            } else if let Res::Def(DefKind::Ctor(def::CtorOf::Struct, CtorKind::Fn), ctor_def_id) = path.res {
+                if self.item_path.res.opt_def_id() == self.cx.tcx.parent(ctor_def_id) {
+                    span_use_self_lint(self.cx, path, None);
+                }
+            }
+        }
+
         walk_path(self, path);
     }
 

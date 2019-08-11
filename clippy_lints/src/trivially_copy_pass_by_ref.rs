@@ -39,14 +39,15 @@ declare_clippy_lint! {
     /// each other.
     ///
     /// **Example:**
+    ///
     /// ```rust
-    /// fn foo(v: &u32) {
-    ///     assert_eq!(v, 42);
-    /// }
-    /// // should be
-    /// fn foo(v: u32) {
-    ///     assert_eq!(v, 42);
-    /// }
+    /// // Bad
+    /// fn foo(v: &u32) {}
+    /// ```
+    ///
+    /// ```rust
+    /// // Better
+    /// fn foo(v: u32) {}
     /// ```
     pub TRIVIALLY_COPY_PASS_BY_REF,
     perf,

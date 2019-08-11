@@ -40,8 +40,19 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    ///
+    /// Using unwrap on an `Option`:
+    ///
     /// ```rust
-    /// x.unwrap()
+    /// let opt = Some(1);
+    /// opt.unwrap();
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// let opt = Some(1);
+    /// opt.expect("more helpful message");
     /// ```
     pub OPTION_UNWRAP_USED,
     restriction,
@@ -62,8 +73,18 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
+    /// Using unwrap on an `Option`:
+    ///
     /// ```rust
-    /// x.unwrap()
+    /// let res: Result<usize, ()> = Ok(1);
+    /// res.unwrap();
+    /// ```
+    ///
+    /// Better:
+    ///
+    /// ```rust
+    /// let res: Result<usize, ()> = Ok(1);
+    /// res.expect("more helpful message");
     /// ```
     pub RESULT_UNWRAP_USED,
     restriction,
@@ -141,9 +162,10 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// impl X {
-    ///     pub fn as_str(self) -> &str {
-    ///         ..
+    /// # struct X;
+    /// impl<'a> X {
+    ///     pub fn as_str(self) -> &'a str {
+    ///         "foo"
     ///     }
     /// }
     /// ```
@@ -179,7 +201,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or(0)
+    /// # let x = Some(1);
+    /// x.map(|a| a + 1).unwrap_or(0);
     /// ```
     pub OPTION_MAP_UNWRAP_OR,
     pedantic,
@@ -196,7 +219,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or_else(some_function)
+    /// # let x = Some(1);
+    /// # fn some_function() -> usize { 1 }
+    /// x.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     pub OPTION_MAP_UNWRAP_OR_ELSE,
     pedantic,
@@ -213,7 +238,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.map(|a| a + 1).unwrap_or_else(some_function)
+    /// # let x: Result<usize, ()> = Ok(1);
+    /// # fn some_function(foo: ()) -> usize { 1 }
+    /// x.map(|a| a + 1).unwrap_or_else(some_function);
     /// ```
     pub RESULT_MAP_UNWRAP_OR_ELSE,
     pedantic,
@@ -247,7 +274,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.filter(|x| x == 0).next()
+    /// # let vec = vec![1];
+    /// vec.iter().filter(|x| **x == 0).next();
     /// ```
     pub FILTER_NEXT,
     complexity,
@@ -264,7 +292,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.map(|x| x.iter()).flatten()
+    /// let vec = vec![vec![1]];
+    /// vec.iter().map(|x| x.iter()).flatten();
     /// ```
     pub MAP_FLATTEN,
     pedantic,
@@ -283,7 +312,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.filter(|x| x == 0).map(|x| x * 2)
+    /// let vec = vec![1];
+    /// vec.iter().filter(|x| **x == 0).map(|x| *x * 2);
     /// ```
     pub FILTER_MAP,
     pedantic,
@@ -343,7 +373,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    ///  (0..3).find(|x| x == 2).map(|x| x * 2);
+    ///  (0..3).find(|x| *x == 2).map(|x| x * 2);
     /// ```
     /// Can be written as
     /// ```rust
@@ -365,7 +395,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.find(|x| x == 0).is_some()
+    /// # let vec = vec![1];
+    /// vec.iter().find(|x| **x == 0).is_some();
     /// ```
     pub SEARCH_IS_SOME,
     complexity,
@@ -383,7 +414,8 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// name.chars().next() == Some('_')
+    /// let name = "foo";
+    /// name.chars().next() == Some('_');
     /// ```
     pub CHARS_NEXT_CMP,
     complexity,
@@ -403,15 +435,18 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// foo.unwrap_or(String::new())
+    /// # let foo = Some(String::new());
+    /// foo.unwrap_or(String::new());
     /// ```
     /// this can instead be written:
     /// ```rust
-    /// foo.unwrap_or_else(String::new)
+    /// # let foo = Some(String::new());
+    /// foo.unwrap_or_else(String::new);
     /// ```
     /// or
     /// ```rust
-    /// foo.unwrap_or_default()
+    /// # let foo = Some(String::new());
+    /// foo.unwrap_or_default();
     /// ```
     pub OR_FUN_CALL,
     perf,
@@ -429,15 +464,24 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// foo.expect(&format!("Err {}: {}", err_code, err_msg))
+    /// # let foo = Some(String::new());
+    /// # let err_code = "418";
+    /// # let err_msg = "I'm a teapot";
+    /// foo.expect(&format!("Err {}: {}", err_code, err_msg));
     /// ```
     /// or
     /// ```rust
-    /// foo.expect(format!("Err {}: {}", err_code, err_msg).as_str())
+    /// # let foo = Some(String::new());
+    /// # let err_code = "418";
+    /// # let err_msg = "I'm a teapot";
+    /// foo.expect(format!("Err {}: {}", err_code, err_msg).as_str());
     /// ```
     /// this can instead be written:
     /// ```rust
-    /// foo.unwrap_or_else(|_| panic!("Err {}: {}", err_code, err_msg))
+    /// # let foo = Some(String::new());
+    /// # let err_code = "418";
+    /// # let err_msg = "I'm a teapot";
+    /// foo.unwrap_or_else(|| panic!("Err {}: {}", err_code, err_msg));
     /// ```
     pub EXPECT_FUN_CALL,
     perf,
@@ -454,7 +498,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// 42u64.clone()
+    /// 42u64.clone();
     /// ```
     pub CLONE_ON_COPY,
     complexity,
@@ -472,7 +516,9 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// x.clone()
+    /// # use std::rc::Rc;
+    /// let x = Rc::new(1);
+    /// x.clone();
     /// ```
     pub CLONE_ON_REF_PTR,
     restriction,
@@ -728,11 +774,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # fn do_stuff(x: &[i32]) {}
     /// let x: &[i32] = &[1, 2, 3, 4, 5];
     /// do_stuff(x.as_ref());
     /// ```
     /// The correct use would be:
     /// ```rust
+    /// # fn do_stuff(x: &[i32]) {}
     /// let x: &[i32] = &[1, 2, 3, 4, 5];
     /// do_stuff(x);
     /// ```
@@ -911,7 +959,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["is_some", "position"] => lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0]),
             ["is_some", "rposition"] => lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0]),
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
-            ["as_ptr", "unwrap"] => lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0]),
+            ["as_ptr", "unwrap"] | ["as_ptr", "expect"] => {
+                lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0])
+            },
             ["nth", "iter"] => lint_iter_nth(cx, expr, arg_lists[1], false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, arg_lists[1], true),
             ["next", "skip"] => lint_iter_skip_next(cx, expr),
@@ -1799,7 +1849,7 @@ fn derefs_to_slice<'a, 'tcx>(
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::Adt(..) => match_type(cx, ty, &paths::VEC),
-            ty::Array(_, size) => size.assert_usize(cx.tcx).expect("array length") < 32,
+            ty::Array(_, size) => size.eval_usize(cx.tcx, cx.param_env) < 32,
             ty::Ref(_, inner, _) => may_slice(cx, inner),
             _ => false,
         }
@@ -2327,13 +2377,20 @@ fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &
 fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx hir::Expr, arg: &'tcx hir::Expr) {
     if_chain! {
         if let hir::ExprKind::Lit(lit) = &arg.node;
-        if let ast::LitKind::Str(r, _) = lit.node;
+        if let ast::LitKind::Str(r, style) = lit.node;
         if r.as_str().len() == 1;
         then {
             let mut applicability = Applicability::MachineApplicable;
             let snip = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
-            let c = &snip[1..snip.len() - 1];
-            let hint = format!("'{}'", if c == "'" { "\\'" } else { c });
+            let ch = if let ast::StrStyle::Raw(nhash) = style {
+                let nhash = nhash as usize;
+                // for raw string: r##"a"##
+                &snip[(nhash + 2)..(snip.len() - 1 - nhash)]
+            } else {
+                // for regular string: "a"
+                &snip[1..(snip.len() - 1)]
+            };
+            let hint = format!("'{}'", if ch == "'" { "\\'" } else { ch });
             span_lint_and_sugg(
                 cx,
                 SINGLE_CHAR_PATTERN,
@@ -2551,14 +2608,14 @@ impl SelfKind {
         let is_actually_self = |ty| is_self_ty(ty) || SpanlessEq::new(cx).eq_ty(ty, self_ty);
         if is_self(arg) {
             match self {
-                SelfKind::Value => is_actually_self(ty),
-                SelfKind::Ref | SelfKind::RefMut => {
+                Self::Value => is_actually_self(ty),
+                Self::Ref | Self::RefMut => {
                     if allow_value_for_ref && is_actually_self(ty) {
                         return true;
                     }
                     match ty.node {
                         hir::TyKind::Rptr(_, ref mt_ty) => {
-                            let mutability_match = if self == SelfKind::Ref {
+                            let mutability_match = if self == Self::Ref {
                                 mt_ty.mutbl == hir::MutImmutable
                             } else {
                                 mt_ty.mutbl == hir::MutMutable
@@ -2572,20 +2629,20 @@ impl SelfKind {
             }
         } else {
             match self {
-                SelfKind::Value => false,
-                SelfKind::Ref => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASREF_TRAIT),
-                SelfKind::RefMut => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
-                SelfKind::No => true,
+                Self::Value => false,
+                Self::Ref => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASREF_TRAIT),
+                Self::RefMut => is_as_ref_or_mut_trait(ty, self_ty, generics, &paths::ASMUT_TRAIT),
+                Self::No => true,
             }
         }
     }
 
     fn description(self) -> &'static str {
         match self {
-            SelfKind::Value => "self by value",
-            SelfKind::Ref => "self by reference",
-            SelfKind::RefMut => "self by mutable reference",
-            SelfKind::No => "no self",
+            Self::Value => "self by value",
+            Self::Ref => "self by reference",
+            Self::RefMut => "self by mutable reference",
+            Self::No => "no self",
         }
     }
 }
@@ -2655,8 +2712,8 @@ fn single_segment_ty(ty: &hir::Ty) -> Option<&hir::PathSegment> {
 impl Convention {
     fn check(&self, other: &str) -> bool {
         match *self {
-            Convention::Eq(this) => this == other,
-            Convention::StartsWith(this) => other.starts_with(this) && this != other,
+            Self::Eq(this) => this == other,
+            Self::StartsWith(this) => other.starts_with(this) && this != other,
         }
     }
 }
@@ -2664,8 +2721,8 @@ impl Convention {
 impl fmt::Display for Convention {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match *self {
-            Convention::Eq(this) => this.fmt(f),
-            Convention::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
+            Self::Eq(this) => this.fmt(f),
+            Self::StartsWith(this) => this.fmt(f).and_then(|_| '*'.fmt(f)),
         }
     }
 }
@@ -2682,11 +2739,11 @@ impl OutType {
     fn matches(self, cx: &LateContext<'_, '_>, ty: &hir::FunctionRetTy) -> bool {
         let is_unit = |ty: &hir::Ty| SpanlessEq::new(cx).eq_ty_kind(&ty.node, &hir::TyKind::Tup(vec![].into()));
         match (self, ty) {
-            (OutType::Unit, &hir::DefaultReturn(_)) => true,
-            (OutType::Unit, &hir::Return(ref ty)) if is_unit(ty) => true,
-            (OutType::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
-            (OutType::Any, &hir::Return(ref ty)) if !is_unit(ty) => true,
-            (OutType::Ref, &hir::Return(ref ty)) => matches!(ty.node, hir::TyKind::Rptr(_, _)),
+            (Self::Unit, &hir::DefaultReturn(_)) => true,
+            (Self::Unit, &hir::Return(ref ty)) if is_unit(ty) => true,
+            (Self::Bool, &hir::Return(ref ty)) if is_bool(ty) => true,
+            (Self::Any, &hir::Return(ref ty)) if !is_unit(ty) => true,
+            (Self::Ref, &hir::Return(ref ty)) => matches!(ty.node, hir::TyKind::Rptr(_, _)),
             _ => false,
         }
     }

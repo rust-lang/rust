@@ -28,5 +28,11 @@ error: returning an `Err(_)` with the `?` operator
 LL |                 Err(err)?;
    |                 ^^^^^^^^^ help: try this: `return Err(err.into())`
 
-error: aborting due to 4 previous errors
+error: returning an `Err(_)` with the `?` operator
+  --> $DIR/try_err.rs:96:9
+   |
+LL |         Err(foo!())?;
+   |         ^^^^^^^^^^^^ help: try this: `return Err(foo!())`
+
+error: aborting due to 5 previous errors
 

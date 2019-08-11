@@ -141,7 +141,7 @@ error: <-comparison of unit values detected. This will always be false
 LL |     () < {};
    |     ^^^^^^^
    |
-   = note: #[deny(clippy::unit_cmp)] on by default
+   = note: `#[deny(clippy::unit_cmp)]` on by default
 
 error: aborting due to 18 previous errors
 

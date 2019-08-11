@@ -197,7 +197,7 @@ error: this `if` has identical blocks
 LL |       } else {
    |  ____________^
 LL | |         //~ ERROR same body as `if` block
-LL | |         try!(Ok("foo"));
+LL | |         r#try!(Ok("foo"));
 LL | |     }
    | |_____^
    |
@@ -206,7 +206,7 @@ note: same as this
    |
 LL |       if true {
    |  _____________^
-LL | |         try!(Ok("foo"));
+LL | |         r#try!(Ok("foo"));
 LL | |     } else {
    | |_____^
 
@@ -236,7 +236,7 @@ error: this `if` has the same condition as a previous if
 LL |     } else if true {
    |               ^^^^
    |
-   = note: #[deny(clippy::ifs_same_cond)] on by default
+   = note: `#[deny(clippy::ifs_same_cond)]` on by default
 note: same as this
   --> $DIR/if_same_then_else.rs:235:8
    |

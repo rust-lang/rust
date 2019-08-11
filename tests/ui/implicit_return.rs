@@ -5,6 +5,7 @@ fn test_end_of_fn() -> bool {
         // no error!
         return true;
     }
+
     true
 }
 
@@ -76,6 +77,14 @@ fn test_closure() {
     let _ = || true;
 }
 
+fn test_panic() -> bool {
+    panic!()
+}
+
+fn test_return_macro() -> String {
+    format!("test {}", "test")
+}
+
 fn main() {
     let _ = test_end_of_fn();
     let _ = test_if_block();
@@ -86,4 +95,5 @@ fn main() {
     let _ = test_loop_with_nests();
     let _ = test_loop_with_if_let();
     test_closure();
+    let _ = test_return_macro();
 }

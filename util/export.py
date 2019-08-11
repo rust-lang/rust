@@ -2,6 +2,7 @@
 
 # Build the gh-pages
 
+from collections import OrderedDict
 import re
 import sys
 import json
@@ -21,33 +22,29 @@ def parse_lint_def(lint):
     lint_dict['id'] = lint.name
     lint_dict['group'] = lint.group
     lint_dict['level'] = lint.level
-    lint_dict['docs'] = {}
+    lint_dict['docs'] = OrderedDict()
 
     last_section = None
 
     for line in lint.doc:
-        if len(line.strip()) == 0 and not last_section.startswith("Example"):
-            continue
-
         match = re.match(lint_subheadline, line)
         if match:
             last_section = match.groups()[0]
-        if match:
             text = match.groups()[1]
         else:
             text = line
 
         if not last_section:
-            log.warn("Skipping comment line as it was not preceded by a heading")
+            log.warning("Skipping comment line as it was not preceded by a heading")
             log.debug("in lint `%s`, line `%s`", lint.name, line)
 
-        fragment = lint_dict['docs'].get(last_section, "")
-        if text == "\n":
-            line = fragment + text
-        else:
-            line = (fragment + "\n" + text).strip()
+        if last_section not in lint_dict['docs']:
+            lint_dict['docs'][last_section] = ""
 
-        lint_dict['docs'][last_section] = line
+        lint_dict['docs'][last_section] += text + "\n"
+
+    for section in lint_dict['docs']:
+        lint_dict['docs'][section] = lint_dict['docs'][section].strip()
 
     return lint_dict
 

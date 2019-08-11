@@ -1,3 +1,5 @@
+// run-rustfix
+
 #[warn(clippy::decimal_literal_representation)]
 #[allow(unused_variables)]
 #[rustfmt::skip]
@@ -17,6 +19,7 @@ fn main() {
         65_280,        // 0xFF00
         2_131_750_927, // 0x7F0F_F00F
         2_147_483_647, // 0x7FFF_FFFF
+        #[allow(overflowing_literals)]
         4_042_322_160, // 0xF0F0_F0F0
     );
 }

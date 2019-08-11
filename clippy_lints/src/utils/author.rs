@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// **What it does:** Generates clippy code that detects the offending pattern
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// // ./tests/ui/my_lint.rs
     /// fn foo() {
     ///     // detect the following pattern
@@ -24,13 +24,14 @@ declare_clippy_lint! {
     ///         // but ignore everything from here on
     ///         #![clippy::author = "ignore"]
     ///     }
+    ///     ()
     /// }
     /// ```
     ///
     /// Running `TESTNAME=ui/my_lint cargo uitest` will produce
     /// a `./tests/ui/new_lint.stdout` file with the generated code:
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// // ./tests/ui/new_lint.stdout
     /// if_chain! {
     ///     if let ExprKind::If(ref cond, ref then, None) = item.node,

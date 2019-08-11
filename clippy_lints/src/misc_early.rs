@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// **Known problems:** None.
     ///
     /// **Example:**
-    /// ```rust
+    /// ```rust,ignore
     /// (|| 42)()
     /// ```
     pub REDUNDANT_CLOSURE_CALL,
@@ -305,7 +305,7 @@ impl EarlyLintPass for MiscEarlyLints {
                                  name makes code comprehension and documentation more difficult",
                                 arg_name[1..].to_owned()
                             ),
-                        );;
+                        );
                     }
                 } else {
                     registered_names.insert(arg_name, arg.pat.span);
