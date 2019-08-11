@@ -73,7 +73,7 @@ declare_clippy_lint! {
     /// lint is to catch debugging remnants.
     ///
     /// **Why is this bad?** The purpose of the `Debug` trait is to facilitate
-    /// debugging Rust code. It should not be used in in user-facing output.
+    /// debugging Rust code. It should not be used in user-facing output.
     ///
     /// **Example:**
     /// ```rust
