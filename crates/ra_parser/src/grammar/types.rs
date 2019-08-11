@@ -205,6 +205,7 @@ pub(super) fn for_binder(p: &mut Parser) {
 // type A = for<'a> fn() -> ();
 // fn foo<T>(_t: &T) where for<'a> &'a T: Iterator {}
 // fn bar<T>(_t: &T) where for<'a> &'a mut T: Iterator {}
+// fn baz<T>(_t: &T) where for<'a> <&'a T as Baz>::Foo: Iterator {}
 pub(super) fn for_type(p: &mut Parser) {
     assert!(p.at(T![for]));
     let m = p.start();
@@ -212,7 +213,7 @@ pub(super) fn for_type(p: &mut Parser) {
     match p.current() {
         T![fn] | T![unsafe] | T![extern] => fn_pointer_type(p),
         T![&] => reference_type(p),
-        _ if paths::is_path_start(p) => path_type_(p, false),
+        _ if paths::is_path_start(p) || p.at(T![<]) => path_type_(p, false),
         _ => p.error("expected a path"),
     }
     m.complete(p, FOR_TYPE);
