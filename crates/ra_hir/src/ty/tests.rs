@@ -3181,6 +3181,55 @@ fn test<T: Trait>(t: T) { (*t)<|>; }
     assert_eq!(t, "i128");
 }
 
+#[test]
+fn associated_type_placeholder() {
+    let t = type_at(
+        r#"
+//- /main.rs
+pub trait ApplyL {
+    type Out;
+}
+
+pub struct RefMutL<T>;
+
+impl<T> ApplyL for RefMutL<T> {
+    type Out = <T as ApplyL>::Out;
+}
+
+fn test<T: ApplyL>() {
+    let y: <RefMutL<T> as ApplyL>::Out = no_matter;
+    y<|>;
+}
+"#,
+    );
+    // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/rustc-guide/traits/associated-types.html#placeholder-associated-types].
+    // FIXME: fix type parameter names going missing when going through Chalk
+    assert_eq!(t, "ApplyL::Out<[missing name]>");
+}
+
+#[test]
+fn associated_type_placeholder_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+pub trait ApplyL {
+    type Out;
+}
+fn foo<T: ApplyL>(t: T) -> <T as ApplyL>::Out;
+
+fn test<T: ApplyL>(t: T) {
+    let y = foo(t);
+    y<|>;
+}
+"#,
+    );
+    // FIXME here Chalk doesn't normalize the type to a placeholder. I think we
+    // need to add a rule like Normalize(<T as ApplyL>::Out -> ApplyL::Out<T>)
+    // to the trait env ourselves here; probably Chalk can't do this by itself.
+    // assert_eq!(t, "ApplyL::Out<[missing name]>");
+    assert_eq!(t, "{unknown}");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

@@ -45,8 +45,17 @@ impl ToChalk for Ty {
     fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Ty {
         match self {
             Ty::Apply(apply_ty) => {
-                let struct_id = apply_ty.ctor.to_chalk(db);
-                let name = TypeName::TypeKindId(struct_id.into());
+                let name = match apply_ty.ctor {
+                    TypeCtor::AssociatedType(type_alias) => {
+                        let type_id = type_alias.to_chalk(db);
+                        TypeName::AssociatedType(type_id)
+                    }
+                    _ => {
+                        // other TypeCtors get interned and turned into a chalk StructId
+                        let struct_id = apply_ty.ctor.to_chalk(db);
+                        TypeName::TypeKindId(struct_id.into())
+                    }
+                };
                 let parameters = apply_ty.parameters.to_chalk(db);
                 chalk_ir::ApplicationTy { name, parameters }.cast()
             }
@@ -79,15 +88,21 @@ impl ToChalk for Ty {
     fn from_chalk(db: &impl HirDatabase, chalk: chalk_ir::Ty) -> Self {
         match chalk {
             chalk_ir::Ty::Apply(apply_ty) => {
+                // FIXME this is kind of hacky due to the fact that
+                // TypeName::Placeholder is a Ty::Param on our side
                 match apply_ty.name {
                     TypeName::TypeKindId(TypeKindId::StructId(struct_id)) => {
                         let ctor = from_chalk(db, struct_id);
                         let parameters = from_chalk(db, apply_ty.parameters);
                         Ty::Apply(ApplicationTy { ctor, parameters })
                     }
+                    TypeName::AssociatedType(type_id) => {
+                        let ctor = TypeCtor::AssociatedType(from_chalk(db, type_id));
+                        let parameters = from_chalk(db, apply_ty.parameters);
+                        Ty::Apply(ApplicationTy { ctor, parameters })
+                    }
                     // FIXME handle TypeKindId::Trait/Type here
                     TypeName::TypeKindId(_) => unimplemented!(),
-                    TypeName::AssociatedType(_) => unimplemented!(),
                     TypeName::Placeholder(idx) => {
                         assert_eq!(idx.ui, UniverseIndex::ROOT);
                         Ty::Param { idx: idx.idx as u32, name: crate::Name::missing() }
