@@ -102,14 +102,16 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     }
 
     fn validate_results_in_tail_expr(&mut self, id: ExprId, db: &impl HirDatabase) {
-        let expr_ty = &self.infer[id];
-        let func_ty = self.func.ty(db);
-        let func_sig = func_ty.callable_sig(db).unwrap();
-        let ret = func_sig.ret();
-        let ret = match ret {
+        let mismatch = match self.infer.type_mismatch_for_expr(id) {
+            Some(m) => m,
+            None => return,
+        };
+
+        let ret = match &mismatch.expected {
             Ty::Apply(t) => t,
             _ => return,
         };
+
         let ret_enum = match ret.ctor {
             TypeCtor::Adt(AdtDef::Enum(e)) => e,
             _ => return,
@@ -119,7 +121,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             return;
         }
         let params = &ret.parameters;
-        if params.len() == 2 && &params[0] == expr_ty {
+        if params.len() == 2 && &params[0] == &mismatch.actual {
             let source_map = self.func.body_source_map(db);
             let file_id = self.func.source(db).file_id;
             let parse = db.parse(file_id.original_file(db));

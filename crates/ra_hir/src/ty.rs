@@ -516,7 +516,7 @@ impl Ty {
         }
     }
 
-    pub fn callable_sig(&self, db: &impl HirDatabase) -> Option<FnSig> {
+    fn callable_sig(&self, db: &impl HirDatabase) -> Option<FnSig> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::FnPtr { .. } => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),
