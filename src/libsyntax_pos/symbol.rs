@@ -8,13 +8,13 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::newtype_index;
 use rustc_macros::symbols;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
 
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
 
-use crate::hygiene::SyntaxContext;
 use crate::{Span, DUMMY_SP, GLOBALS};
 
 #[cfg(test)]
@@ -849,28 +849,9 @@ impl fmt::Display for Ident {
     }
 }
 
-impl Encodable for Ident {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        if self.span.ctxt().modern() == SyntaxContext::empty() {
-            s.emit_str(&self.as_str())
-        } else { // FIXME(jseyfried): intercrate hygiene
-            let mut string = "#".to_owned();
-            string.push_str(&self.as_str());
-            s.emit_str(&string)
-        }
-    }
-}
+impl UseSpecializedEncodable for Ident {}
 
-impl Decodable for Ident {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        let string = d.read_str()?;
-        Ok(if !string.starts_with('#') {
-            Ident::from_str(&string)
-        } else { // FIXME(jseyfried): intercrate hygiene
-            Ident::from_str(&string[1..]).gensym()
-        })
-    }
-}
+impl UseSpecializedDecodable for Ident {}
 
 /// A symbol is an interned or gensymed string. A gensym is a symbol that is
 /// never equal to any other symbol.

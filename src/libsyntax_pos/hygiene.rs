@@ -30,7 +30,7 @@ use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
 use crate::symbol::{kw, Symbol};
 
-use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_serialize::{UseSpecializedEncodable, UseSpecializedDecodable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
@@ -767,14 +767,6 @@ impl DesugaringKind {
     }
 }
 
-impl Encodable for SyntaxContext {
-    fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
-        Ok(()) // FIXME(jseyfried) intercrate hygiene
-    }
-}
+impl UseSpecializedEncodable for SyntaxContext {}
 
-impl Decodable for SyntaxContext {
-    fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
-        Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
-    }
-}
+impl UseSpecializedDecodable for SyntaxContext {}

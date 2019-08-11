@@ -31,7 +31,7 @@ use syntax::ast::{self, Ident};
 use syntax::source_map;
 use syntax::symbol::{Symbol, sym};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
-use syntax::ext::hygiene::ExpnId;
+use syntax::ext::hygiene::{ExpnId, SyntaxContext};
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 use log::debug;
 
@@ -345,6 +345,22 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
                  - source_file.original_start_pos;
 
         Ok(Span::new(lo, hi, NO_EXPANSION))
+    }
+}
+
+impl SpecializedDecoder<Ident> for DecodeContext<'_, '_> {
+    fn specialized_decode(&mut self) -> Result<Ident, Self::Error> {
+        // FIXME(jseyfried): intercrate hygiene
+
+        Ok(Ident::with_empty_ctxt(Symbol::decode(self)?))
+    }
+}
+
+impl SpecializedDecoder<SyntaxContext> for DecodeContext<'_, '_> {
+    fn specialized_decode(&mut self) -> Result<SyntaxContext, Self::Error> {
+        // FIXME(jseyfried): intercrate hygiene
+
+        Ok(SyntaxContext::empty())
     }
 }
 
