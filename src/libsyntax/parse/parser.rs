@@ -19,7 +19,7 @@ use crate::ast::{Mutability};
 use crate::ast::StrStyle;
 use crate::ast::SelfKind;
 use crate::ast::{GenericParam, GenericParamKind, WhereClause};
-use crate::ast::{Ty, TyKind,  GenericBounds};
+use crate::ast::{TyKind,  GenericBounds};
 use crate::ast::{Visibility, VisibilityKind, Unsafety, CrateSugar};
 use crate::ext::base::DummyResult;
 use crate::ext::hygiene::SyntaxContext;
@@ -1053,30 +1053,6 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.token.span);
 
         Ok(Arg { attrs: attrs.into(), id: ast::DUMMY_NODE_ID, pat, span, ty })
-    }
-
-    /// Parses an argument in a lambda header (e.g., `|arg, arg|`).
-    fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
-        let lo = self.token.span;
-        let attrs = self.parse_arg_attributes()?;
-        let pat = self.parse_pat(Some("argument name"))?;
-        let t = if self.eat(&token::Colon) {
-            self.parse_ty()?
-        } else {
-            P(Ty {
-                id: ast::DUMMY_NODE_ID,
-                node: TyKind::Infer,
-                span: self.prev_span,
-            })
-        };
-        let span = lo.to(self.token.span);
-        Ok(Arg {
-            attrs: attrs.into(),
-            ty: t,
-            pat,
-            span,
-            id: ast::DUMMY_NODE_ID
-        })
     }
 
     crate fn check_lifetime(&mut self) -> bool {
@@ -2144,32 +2120,6 @@ impl<'a> Parser<'a> {
         Ok(P(FnDecl {
             inputs: fn_inputs,
             output: self.parse_ret_ty(true)?,
-            c_variadic: false
-        }))
-    }
-
-    /// Parses the `|arg, arg|` header of a closure.
-    fn parse_fn_block_decl(&mut self) -> PResult<'a, P<FnDecl>> {
-        let inputs_captures = {
-            if self.eat(&token::OrOr) {
-                Vec::new()
-            } else {
-                self.expect(&token::BinOp(token::Or))?;
-                let args = self.parse_seq_to_before_tokens(
-                    &[&token::BinOp(token::Or), &token::OrOr],
-                    SeqSep::trailing_allowed(token::Comma),
-                    TokenExpectType::NoExpect,
-                    |p| p.parse_fn_block_arg()
-                )?.0;
-                self.expect_or()?;
-                args
-            }
-        };
-        let output = self.parse_ret_ty(true)?;
-
-        Ok(P(FnDecl {
-            inputs: inputs_captures,
-            output,
             c_variadic: false
         }))
     }

@@ -1,15 +1,13 @@
 use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle};
 use super::{BlockCheckMode, BlockMode, SemiColonMode};
-use super::SeqSep;
+use super::{SeqSep, TokenExpectType};
 
-use crate::{maybe_recover_from_interpolated_ty_qpath};
-
+use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::ptr::P;
-use crate::ast;
-use crate::ast::{Attribute, AttrStyle};
+use crate::ast::{self, Attribute, AttrStyle};
 use crate::ast::{Ident, CaptureBy};
 use crate::ast::{Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm};
-use crate::ast::{Ty, TyKind, FunctionRetTy};
+use crate::ast::{Ty, TyKind, FunctionRetTy, Arg, FnDecl};
 use crate::ast::{BinOpKind, BinOp, UnOp};
 use crate::ast::{Mac_, AnonConst, Field};
 
@@ -22,9 +20,7 @@ use crate::symbol::{kw, sym};
 use crate::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
 
 use std::mem;
-
-use errors::{Applicability};
-
+use errors::Applicability;
 use rustc_data_structures::thin_vec::ThinVec;
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
@@ -1140,6 +1136,56 @@ impl<'a> Parser<'a> {
         } else {
             CaptureBy::Ref
         }
+    }
+
+    /// Parses the `|arg, arg|` header of a closure.
+    fn parse_fn_block_decl(&mut self) -> PResult<'a, P<FnDecl>> {
+        let inputs_captures = {
+            if self.eat(&token::OrOr) {
+                Vec::new()
+            } else {
+                self.expect(&token::BinOp(token::Or))?;
+                let args = self.parse_seq_to_before_tokens(
+                    &[&token::BinOp(token::Or), &token::OrOr],
+                    SeqSep::trailing_allowed(token::Comma),
+                    TokenExpectType::NoExpect,
+                    |p| p.parse_fn_block_arg()
+                )?.0;
+                self.expect_or()?;
+                args
+            }
+        };
+        let output = self.parse_ret_ty(true)?;
+
+        Ok(P(FnDecl {
+            inputs: inputs_captures,
+            output,
+            c_variadic: false
+        }))
+    }
+
+    /// Parses an argument in a lambda header (e.g., `|arg, arg|`).
+    fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
+        let lo = self.token.span;
+        let attrs = self.parse_arg_attributes()?;
+        let pat = self.parse_pat(Some("argument name"))?;
+        let t = if self.eat(&token::Colon) {
+            self.parse_ty()?
+        } else {
+            P(Ty {
+                id: ast::DUMMY_NODE_ID,
+                node: TyKind::Infer,
+                span: self.prev_span,
+            })
+        };
+        let span = lo.to(self.token.span);
+        Ok(Arg {
+            attrs: attrs.into(),
+            ty: t,
+            pat,
+            span,
+            id: ast::DUMMY_NODE_ID
+        })
     }
 
     /// Parses an `if` expression (`if` token already eaten).
