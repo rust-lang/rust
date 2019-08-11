@@ -1499,7 +1499,7 @@ impl<'a> Resolver<'a> {
             debug!("walk rib\n{:?}", ribs[i].bindings);
             // Use the rib kind to determine whether we are resolving parameters
             // (modern hygiene) or local variables (legacy hygiene).
-            let rib_ident = if let AssocItemRibKind | ItemRibKind = ribs[i].kind {
+            let rib_ident = if ribs[i].kind.contains_params() {
                 modern_ident
             } else {
                 ident

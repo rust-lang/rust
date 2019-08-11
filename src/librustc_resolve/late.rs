@@ -111,6 +111,24 @@ crate enum RibKind<'a> {
     TyParamAsConstParamTy,
 }
 
+impl RibKind<'_> {
+    // Whether this rib kind contains generic parameters, as opposed to local
+    // variables.
+    crate fn contains_params(&self) -> bool {
+        match self {
+            NormalRibKind
+            | FnItemRibKind
+            | ConstantItemRibKind
+            | ModuleRibKind(_)
+            | MacroDefinition(_) => false,
+            AssocItemRibKind
+            | ItemRibKind
+            | ForwardTyParamBanRibKind
+            | TyParamAsConstParamTy => true,
+        }
+    }
+}
+
 /// A single local scope.
 ///
 /// A rib represents a scope names can live in. Note that these appear in many places, not just
@@ -798,6 +816,19 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut function_value_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap::default();
+                // We also can't shadow bindings from the parent item
+                if let AssocItemRibKind = rib_kind {
+                    let mut add_bindings_for_ns = |ns| {
+                        let parent_rib = self.ribs[ns].iter()
+                            .rfind(|rib| if let ItemRibKind = rib.kind { true } else { false })
+                            .expect("associated item outside of an item");
+                        seen_bindings.extend(
+                            parent_rib.bindings.iter().map(|(ident, _)| (*ident, ident.span)),
+                        );
+                    };
+                    add_bindings_for_ns(ValueNS);
+                    add_bindings_for_ns(TypeNS);
+                }
                 for param in &generics.params {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {}
