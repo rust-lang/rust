@@ -584,7 +584,7 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
+    /// use core::f32;
     ///
     /// let positive = 4.0_f32;
     /// let negative = -4.0_f32;
