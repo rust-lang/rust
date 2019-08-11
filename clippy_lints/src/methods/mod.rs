@@ -2174,38 +2174,39 @@ fn lint_flat_map_identity<'a, 'tcx>(
         if match_trait_method(cx, expr, &paths::ITERATOR);
 
         if flat_map_args.len() == 2;
-        if let hir::ExprKind::Closure(_, _, body_id, _, _) = flat_map_args[1].node;
-        let body = cx.tcx.hir().body(body_id);
-
-        if body.arguments.len() == 1;
-        if let hir::PatKind::Binding(_, _, binding_ident, _) = body.arguments[0].pat.node;
-        if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.node;
-
-        if path.segments.len() == 1;
-        if path.segments[0].ident.as_str() == binding_ident.as_str();
 
         then {
-            let msg = "called `flat_map(|x| x)` on an `Iterator`. \
-                       This can be simplified by calling `flatten().`";
-            span_lint(cx, FLAT_MAP_IDENTITY, expr.span, msg);
-        }
-    }
+            if_chain! {
+                if let hir::ExprKind::Closure(_, _, body_id, _, _) = flat_map_args[1].node;
+                let body = cx.tcx.hir().body(body_id);
 
-    if_chain! {
-        if match_trait_method(cx, expr, &paths::ITERATOR);
+                if body.arguments.len() == 1;
+                if let hir::PatKind::Binding(_, _, binding_ident, _) = body.arguments[0].pat.node;
+                if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.node;
 
-        if flat_map_args.len() == 2;
+                if path.segments.len() == 1;
+                if path.segments[0].ident.as_str() == binding_ident.as_str();
 
-        let expr = &flat_map_args[1];
+                then {
+                    let msg = "called `flat_map(|x| x)` on an `Iterator`. \
+                               This can be simplified by calling `flatten().`";
+                    span_lint(cx, FLAT_MAP_IDENTITY, expr.span, msg);
+                }
+            }
 
-        if let hir::ExprKind::Path(ref qpath) = expr.node;
+            if_chain! {
+                let expr = &flat_map_args[1];
 
-        if match_qpath(qpath, &paths::STD_CONVERT_IDENTITY);
+                if let hir::ExprKind::Path(ref qpath) = expr.node;
 
-        then {
-            let msg = "called `flat_map(std::convert::identity)` on an `Iterator`. \
-                       This can be simplified by calling `flatten().`";
-            span_lint(cx, FLAT_MAP_IDENTITY, expr.span, msg);
+                if match_qpath(qpath, &paths::STD_CONVERT_IDENTITY);
+
+                then {
+                    let msg = "called `flat_map(std::convert::identity)` on an `Iterator`. \
+                               This can be simplified by calling `flatten().`";
+                    span_lint(cx, FLAT_MAP_IDENTITY, expr.span, msg);
+                }
+            }
         }
     }
 }
