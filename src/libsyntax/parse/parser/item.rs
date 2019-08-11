@@ -1182,6 +1182,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
+        match self.token.kind {
+            token::Ident(name, false) if name == kw::Underscore => {
+                let span = self.token.span;
+                self.bump();
+                Ok(Ident::new(name, span))
+            }
+            _ => self.parse_ident(),
+        }
+    }
+
     /// Parses `extern crate` links.
     ///
     /// # Examples

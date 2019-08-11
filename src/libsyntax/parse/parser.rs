@@ -1079,17 +1079,6 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_ident_or_underscore(&mut self) -> PResult<'a, ast::Ident> {
-        match self.token.kind {
-            token::Ident(name, false) if name == kw::Underscore => {
-                let span = self.token.span;
-                self.bump();
-                Ok(Ident::new(name, span))
-            }
-            _ => self.parse_ident(),
-        }
-    }
-
     crate fn check_lifetime(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Lifetime);
         self.token.is_lifetime()
