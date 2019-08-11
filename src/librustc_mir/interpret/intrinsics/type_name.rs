@@ -214,7 +214,7 @@ impl Write for AbsolutePathPrinter<'_> {
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
-pub(crate) fn alloc_type_name<'tcx>(
+crate fn alloc_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>
 ) -> &'tcx Allocation {

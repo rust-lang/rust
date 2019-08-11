@@ -36,4 +36,4 @@ pub use self::validity::RefTracking;
 
 pub use self::intern::intern_const_alloc_recursive;
 
-pub(crate) use self::intrinsics::eval_nulary_intrinsic;
+crate use self::intrinsics::eval_nullary_intrinsic;
