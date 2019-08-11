@@ -589,4 +589,29 @@ impl f64 {
     pub fn from_ne_bytes(bytes: [u8; 8]) -> Self {
         Self::from_bits(u64::from_ne_bytes(bytes))
     }
+
+    /// Takes the square root of a number.
+    ///
+    /// Returns NaN if `self` is a negative number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let positive = 4.0_f64;
+    /// let negative = -4.0_f64;
+    ///
+    /// let abs_difference = (positive.sqrt() - 2.0).abs();
+    ///
+    /// assert!(abs_difference < 1e-10);
+    /// assert!(negative.sqrt().is_nan());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn sqrt(self) -> f64 {
+        if self < 0.0 {
+            NAN
+        } else {
+            unsafe { intrinsics::sqrtf64(self) }
+        }
+    }
 }
