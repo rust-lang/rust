@@ -303,9 +303,9 @@ fn rewrite_macro_inner(
 
     if DelimToken::Brace != style {
         loop {
-            if let Some(arg) = parse_macro_arg(&mut parser) {
+            if let Some(arg) = check_keyword(&mut parser) {
                 arg_vec.push(arg);
-            } else if let Some(arg) = check_keyword(&mut parser) {
+            } else if let Some(arg) = parse_macro_arg(&mut parser) {
                 arg_vec.push(arg);
             } else {
                 return return_macro_parse_failure_fallback(context, shape.indent, mac.span);

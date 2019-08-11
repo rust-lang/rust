@@ -122,6 +122,7 @@ impl<'a> OverflowableItem<'a> {
     pub(crate) fn is_simple(&self) -> bool {
         match self {
             OverflowableItem::Expr(expr) => is_simple_expr(expr),
+            OverflowableItem::MacroArg(MacroArg::Keyword(..)) => true,
             OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_simple_expr(expr),
             OverflowableItem::NestedMetaItem(nested_meta_item) => match nested_meta_item {
                 ast::NestedMetaItem::Literal(..) => true,
