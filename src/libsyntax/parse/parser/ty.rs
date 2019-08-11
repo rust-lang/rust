@@ -1,8 +1,8 @@
-use super::{Parser, PResult, PathStyle, PrevTokenKind};
+use super::{Parser, PResult, PathStyle, PrevTokenKind, TokenType};
 
 use crate::{maybe_whole, maybe_recover_from_interpolated_ty_qpath};
 use crate::ptr::P;
-use crate::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam};
+use crate::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
 use crate::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
 use crate::ast::{Mutability, AnonConst, FnDecl, Mac_};
 use crate::parse::token::{self, Token};
@@ -440,6 +440,22 @@ impl<'a> Parser<'a> {
             Ok(params)
         } else {
             Ok(Vec::new())
+        }
+    }
+
+    crate fn check_lifetime(&mut self) -> bool {
+        self.expected_tokens.push(TokenType::Lifetime);
+        self.token.is_lifetime()
+    }
+
+    /// Parses a single lifetime `'a` or panics.
+    crate fn expect_lifetime(&mut self) -> Lifetime {
+        if let Some(ident) = self.token.lifetime() {
+            let span = self.token.span;
+            self.bump();
+            Lifetime { ident: Ident::new(ident.name, span), id: ast::DUMMY_NODE_ID }
+        } else {
+            self.span_bug(self.token.span, "not a lifetime")
         }
     }
 }

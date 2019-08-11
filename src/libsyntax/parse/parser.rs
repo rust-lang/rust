@@ -11,7 +11,7 @@ mod stmt;
 mod generics;
 
 use crate::ast::{self, AttrStyle, Attribute, Arg, BindingMode, StrStyle, SelfKind};
-use crate::ast::{FnDecl, Ident, IsAsync, Lifetime, MacDelimiter, Mutability, TyKind};
+use crate::ast::{FnDecl, Ident, IsAsync, MacDelimiter, Mutability, TyKind};
 use crate::ast::{Visibility, VisibilityKind, Unsafety, CrateSugar};
 use crate::ext::hygiene::SyntaxContext;
 use crate::source_map::{self, respan};
@@ -1044,22 +1044,6 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.token.span);
 
         Ok(Arg { attrs: attrs.into(), id: ast::DUMMY_NODE_ID, pat, span, ty })
-    }
-
-    crate fn check_lifetime(&mut self) -> bool {
-        self.expected_tokens.push(TokenType::Lifetime);
-        self.token.is_lifetime()
-    }
-
-    /// Parses a single lifetime `'a` or panics.
-    crate fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some(ident) = self.token.lifetime() {
-            let span = self.token.span;
-            self.bump();
-            Lifetime { ident: Ident::new(ident.name, span), id: ast::DUMMY_NODE_ID }
-        } else {
-            self.span_bug(self.token.span, "not a lifetime")
-        }
     }
 
     /// Parses mutability (`mut` or nothing).
