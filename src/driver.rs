@@ -18,13 +18,6 @@ pub fn codegen_crate(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<dyn Any> {
-    if !tcx.sess.crate_types.get().contains(&CrateType::Executable)
-        && std::env::var("SHOULD_RUN").is_ok()
-    {
-        tcx.sess
-            .err("Can't JIT run non executable (SHOULD_RUN env var is set)");
-    }
-
     tcx.sess.abort_if_errors();
 
     let mut log = if cfg!(debug_assertions) {
@@ -33,7 +26,9 @@ pub fn codegen_crate(
         None
     };
 
-    if std::env::var("SHOULD_RUN").is_ok() {
+    if std::env::var("SHOULD_RUN").is_ok()
+        && tcx.sess.crate_types.get().contains(&CrateType::Executable)
+    {
         #[cfg(not(target_arch = "wasm32"))]
         let _: ! = run_jit(tcx, &mut log);
 
