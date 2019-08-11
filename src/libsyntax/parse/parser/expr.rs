@@ -1,11 +1,10 @@
 use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle};
-use super::{BlockCheckMode, BlockMode, SemiColonMode};
+use super::{BlockMode, SemiColonMode};
 use super::{SeqSep, TokenExpectType};
 
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::ptr::P;
-use crate::ast::{self, Attribute, AttrStyle};
-use crate::ast::{Ident, CaptureBy};
+use crate::ast::{self, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode};
 use crate::ast::{Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm};
 use crate::ast::{Ty, TyKind, FunctionRetTy, Arg, FnDecl};
 use crate::ast::{BinOpKind, BinOp, UnOp};

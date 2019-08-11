@@ -1,11 +1,11 @@
-use super::{Parser, PResult, TokenType, BlockCheckMode};
+use super::{Parser, PResult, TokenType};
 
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
-use crate::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind};
+use crate::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
 use crate::parse::token::{self, Token};
 use crate::source_map::{Span, BytePos};
-use crate::symbol::{kw};
+use crate::symbol::kw;
 
 use std::mem;
 use log::debug;

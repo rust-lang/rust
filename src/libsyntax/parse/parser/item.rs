@@ -569,6 +569,11 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
+    pub(super) fn is_async_fn(&self) -> bool {
+        self.token.is_keyword(kw::Async) &&
+            self.is_keyword_ahead(1, &[kw::Fn])
+    }
+
     /// Parses a macro invocation inside a `trait`, `impl` or `extern` block.
     fn parse_assoc_macro_invoc(&mut self, item_kind: &str, vis: Option<&Visibility>,
                                at_end: &mut bool) -> PResult<'a, Option<Mac>>
