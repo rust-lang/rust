@@ -304,7 +304,7 @@ impl_stable_hash_for!(enum crate::interpret::eval_context::StackPopCleanup {
 
 #[derive(Eq, PartialEq)]
 struct FrameSnapshot<'a, 'tcx> {
-    instance: &'a ty::Instance<'tcx>,
+    instance: ty::Instance<'tcx>,
     span: Span,
     return_to_block: &'a StackPopCleanup,
     return_place: Option<Place<(), AllocIdSnapshot<'a>>>,
@@ -344,7 +344,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
         } = self;
 
         FrameSnapshot {
-            instance,
+            instance: *instance,
             span: *span,
             return_to_block,
             block,
