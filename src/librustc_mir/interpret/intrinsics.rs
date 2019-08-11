@@ -38,8 +38,9 @@ fn numeric_intrinsic<'tcx, Tag>(
     Ok(Scalar::from_uint(bits_out, size))
 }
 
-
-crate fn eval_nulary_intrinsic<'tcx>(
+/// The logic for all nullary intrinsics is implemented here. These intrinsics don't get evaluated
+/// inside an `InterpCx` and instead have their value computed directly from rustc internal info.
+crate fn eval_nullary_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     def_id: DefId,
