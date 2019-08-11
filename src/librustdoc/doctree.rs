@@ -13,7 +13,7 @@ use rustc::hir::ptr::P;
 
 pub struct Module<'hir> {
     pub name: Option<Name>,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub where_outer: Span,
     pub where_inner: Span,
     pub extern_crates: Vec<ExternCrate<'hir>>,
@@ -41,7 +41,7 @@ pub struct Module<'hir> {
 impl Module<'hir> {
     pub fn new(
         name: Option<Name>,
-        attrs: &'hir hir::HirVec<ast::Attribute>,
+        attrs: &'hir [ast::Attribute],
         vis: &'hir hir::Visibility,
     ) -> Module<'hir> {
         Module {
@@ -89,7 +89,7 @@ pub struct Struct<'hir> {
     pub struct_type: StructType,
     pub name: Name,
     pub generics: &'hir hir::Generics,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub fields: &'hir [hir::StructField],
     pub whence: Span,
 }
@@ -100,7 +100,7 @@ pub struct Union<'hir> {
     pub struct_type: StructType,
     pub name: Name,
     pub generics: &'hir hir::Generics,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub fields: &'hir [hir::StructField],
     pub whence: Span,
 }
@@ -109,7 +109,7 @@ pub struct Enum<'hir> {
     pub vis: &'hir hir::Visibility,
     pub variants: Vec<Variant<'hir>>,
     pub generics: &'hir hir::Generics,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub id: hir::HirId,
     pub whence: Span,
     pub name: Name,
@@ -118,14 +118,14 @@ pub struct Enum<'hir> {
 pub struct Variant<'hir> {
     pub name: Name,
     pub id: hir::HirId,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub def: &'hir hir::VariantData,
     pub whence: Span,
 }
 
 pub struct Function<'hir> {
     pub decl: &'hir hir::FnDecl,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub id: hir::HirId,
     pub name: Name,
     pub vis: &'hir hir::Visibility,
@@ -140,7 +140,7 @@ pub struct Typedef<'hir> {
     pub gen: &'hir hir::Generics,
     pub name: Name,
     pub id: hir::HirId,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
 }
@@ -149,7 +149,7 @@ pub struct OpaqueTy<'hir> {
     pub opaque_ty: &'hir hir::OpaqueTy,
     pub name: Name,
     pub id: hir::HirId,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
 }
@@ -160,7 +160,7 @@ pub struct Static<'hir> {
     pub mutability: hir::Mutability,
     pub expr: hir::BodyId,
     pub name: Name,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub vis: &'hir hir::Visibility,
     pub id: hir::HirId,
     pub whence: Span,
@@ -170,7 +170,7 @@ pub struct Constant<'hir> {
     pub type_: &'hir P<hir::Ty>,
     pub expr: hir::BodyId,
     pub name: Name,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub vis: &'hir hir::Visibility,
     pub id: hir::HirId,
     pub whence: Span,
@@ -182,8 +182,8 @@ pub struct Trait<'hir> {
     pub name: Name,
     pub items: Vec<&'hir hir::TraitItem>,
     pub generics: &'hir hir::Generics,
-    pub bounds: &'hir hir::HirVec<hir::GenericBound>,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub bounds: &'hir [hir::GenericBound],
+    pub attrs: &'hir [ast::Attribute],
     pub id: hir::HirId,
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
@@ -192,8 +192,8 @@ pub struct Trait<'hir> {
 pub struct TraitAlias<'hir> {
     pub name: Name,
     pub generics: &'hir hir::Generics,
-    pub bounds: &'hir hir::HirVec<hir::GenericBound>,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub bounds: &'hir [hir::GenericBound],
+    pub attrs: &'hir [ast::Attribute],
     pub id: hir::HirId,
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
@@ -208,7 +208,7 @@ pub struct Impl<'hir> {
     pub trait_: &'hir Option<hir::TraitRef>,
     pub for_: &'hir P<hir::Ty>,
     pub items: Vec<&'hir hir::ImplItem>,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
     pub vis: &'hir hir::Visibility,
     pub id: hir::HirId,
@@ -219,7 +219,7 @@ pub struct ForeignItem<'hir> {
     pub id: hir::HirId,
     pub name: Name,
     pub kind: &'hir hir::ForeignItemKind,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
 }
 
@@ -229,7 +229,7 @@ pub struct Macro<'hir> {
     pub name: Name,
     pub hid: hir::HirId,
     pub def_id: hir::def_id::DefId,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
     pub matchers: hir::HirVec<Span>,
     pub imported_from: Option<Name>,
@@ -240,7 +240,7 @@ pub struct ExternCrate<'hir> {
     pub cnum: CrateNum,
     pub path: Option<String>,
     pub vis: &'hir hir::Visibility,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
 }
 
@@ -248,7 +248,7 @@ pub struct Import<'hir> {
     pub name: Name,
     pub id: hir::HirId,
     pub vis: &'hir hir::Visibility,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub path: &'hir hir::Path,
     pub glob: bool,
     pub whence: Span,
@@ -259,7 +259,7 @@ pub struct ProcMacro<'hir> {
     pub id: hir::HirId,
     pub kind: MacroKind,
     pub helpers: Vec<Name>,
-    pub attrs: &'hir hir::HirVec<ast::Attribute>,
+    pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
 }
 

@@ -220,22 +220,22 @@ impl Options {
                 println!("{:>20} - {}", pass.name, pass.description);
             }
             println!("\nDefault passes for rustdoc:");
-            for &name in passes::DEFAULT_PASSES {
-                println!("{:>20}", name);
+            for pass in passes::DEFAULT_PASSES {
+                println!("{:>20}", pass.name);
             }
             println!("\nPasses run with `--document-private-items`:");
-            for &name in passes::DEFAULT_PRIVATE_PASSES {
-                println!("{:>20}", name);
+            for pass in passes::DEFAULT_PRIVATE_PASSES {
+                println!("{:>20}", pass.name);
             }
 
             if nightly_options::is_nightly_build() {
                 println!("\nPasses run with `--show-coverage`:");
-                for &name in passes::DEFAULT_COVERAGE_PASSES {
-                    println!("{:>20}", name);
+                for pass in passes::DEFAULT_COVERAGE_PASSES {
+                    println!("{:>20}", pass.name);
                 }
                 println!("\nPasses run with `--show-coverage --document-private-items`:");
-                for &name in passes::PRIVATE_COVERAGE_PASSES {
-                    println!("{:>20}", name);
+                for pass in passes::PRIVATE_COVERAGE_PASSES {
+                    println!("{:>20}", pass.name);
                 }
             }
 
@@ -378,7 +378,7 @@ impl Options {
                 &matches.opt_strs("html-after-content"),
                 &matches.opt_strs("markdown-before-content"),
                 &matches.opt_strs("markdown-after-content"),
-                &diag, &mut id_map, edition) {
+                &diag, &mut id_map, edition, &None) {
             Some(eh) => eh,
             None => return Err(3),
         };

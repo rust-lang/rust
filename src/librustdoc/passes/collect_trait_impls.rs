@@ -4,7 +4,7 @@ use crate::fold::DocFolder;
 use super::Pass;
 
 use rustc::util::nodemap::FxHashSet;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{LOCAL_CRATE, DefId};
 use syntax::symbol::sym;
 
 pub const COLLECT_TRAIT_IMPLS: Pass = Pass {
@@ -116,7 +116,7 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
     // `tcx.crates()` doesn't include the local crate, and `tcx.all_trait_implementations`
     // doesn't work with it anyway, so pull them from the HIR map instead
-    for &trait_did in cx.all_traits.iter() {
+    for &trait_did in cx.tcx.all_traits(LOCAL_CRATE).iter() {
         for &impl_node in cx.tcx.hir().trait_impls(trait_did) {
             let impl_did = cx.tcx.hir().local_def_id(impl_node);
             inline::build_impl(cx, impl_did, None, &mut new_items);

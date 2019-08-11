@@ -163,10 +163,7 @@ pub fn load_attrs<'hir>(cx: &DocContext<'hir>, did: DefId) -> Attrs<'hir> {
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext<'_>, did: DefId, kind: clean::TypeKind) {
-    let mut crate_name = cx.tcx.crate_name(did.krate).to_string();
-    if did.is_local() {
-        crate_name = cx.crate_name.clone().unwrap_or(crate_name);
-    }
+    let crate_name = cx.tcx.crate_name(did.krate).to_string();
 
     let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
         // extern blocks have an empty name
@@ -577,22 +574,18 @@ pub fn record_extern_trait(cx: &DocContext<'_>, did: DefId) {
     }
 
     {
-        let external_traits = cx.external_traits.lock();
-        if external_traits.borrow().contains_key(&did) ||
+        if cx.external_traits.borrow().contains_key(&did) ||
             cx.active_extern_traits.borrow().contains(&did)
         {
             return;
         }
     }
 
-    cx.active_extern_traits.borrow_mut().push(did);
+    cx.active_extern_traits.borrow_mut().insert(did);
 
     debug!("record_extern_trait: {:?}", did);
     let trait_ = build_external_trait(cx, did);
 
-    {
-        let external_traits = cx.external_traits.lock();
-        external_traits.borrow_mut().insert(did, trait_);
-    }
-    cx.active_extern_traits.borrow_mut().remove_item(&did);
+    cx.external_traits.borrow_mut().insert(did, trait_);
+    cx.active_extern_traits.borrow_mut().remove(&did);
 }

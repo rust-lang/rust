@@ -39,13 +39,11 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
 use std::{mem, slice, vec};
-use std::iter::{FromIterator, once};
+use std::iter::FromIterator;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::sync::Arc;
 use std::u32;
-
-use parking_lot::ReentrantMutex;
 
 use crate::core::{self, DocContext};
 use crate::doctree;
@@ -133,8 +131,9 @@ pub struct Crate {
     pub primitives: Vec<(DefId, PrimitiveType, Attributes)>,
     // These are later on moved into `CACHEKEY`, leaving the map empty.
     // Only here so that they can be filtered through the rustdoc passes.
-    pub external_traits: Arc<ReentrantMutex<RefCell<FxHashMap<DefId, Trait>>>>,
+    pub external_traits: Rc<RefCell<FxHashMap<DefId, Trait>>>,
     pub masked_crates: FxHashSet<CrateNum>,
+    pub collapsed: bool,
 }
 
 impl Clean<Crate> for hir::Crate {
@@ -223,6 +222,7 @@ impl Clean<Crate> for hir::Crate {
             primitives,
             external_traits: cx.external_traits.clone(),
             masked_crates,
+            collapsed: false,
         }
     }
 }
@@ -4396,24 +4396,6 @@ impl Clean<TypeBindingKind> for hir::TypeBindingKind {
                 },
         }
     }
-}
-
-pub fn def_id_to_path(
-    cx: &DocContext<'_>,
-    did: DefId,
-    name: Option<String>
-) -> Vec<String> {
-    let crate_name = name.unwrap_or_else(|| cx.tcx.crate_name(did.krate).to_string());
-    let relative = cx.tcx.def_path(did).data.into_iter().filter_map(|elem| {
-        // extern blocks have an empty name
-        let s = elem.data.to_string();
-        if !s.is_empty() {
-            Some(s)
-        } else {
-            None
-        }
-    });
-    once(crate_name).chain(relative).collect()
 }
 
 pub fn enter_impl_trait<F, R>(cx: &DocContext<'_>, f: F) -> R
