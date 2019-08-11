@@ -430,8 +430,6 @@ impl<'a> Parser<'a> {
         return Ok(bounds);
     }
 
-    // TODO remove super below.
-
     pub(super) fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
         if self.eat_keyword(kw::For) {
             self.expect_lt()?;
