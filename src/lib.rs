@@ -239,10 +239,14 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     target.parse().unwrap()
 }
 
-fn build_isa(sess: &Session) -> Box<dyn isa::TargetIsa + 'static> {
+fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'static> {
     let mut flags_builder = settings::builder();
-    flags_builder.enable("is_pic").unwrap();
-    flags_builder.set("probestack_enabled", "false").unwrap(); // ___cranelift_probestack is not provided
+    if enable_pic {
+        flags_builder.enable("is_pic").unwrap();
+    } else {
+        flags_builder.set("is_pic", "false").unwrap();
+    }
+    flags_builder.set("probestack_enabled", "false").unwrap(); // __cranelift_probestack is not provided
         flags_builder.set("enable_verifier", if cfg!(debug_assertions) {
         "true"
     } else {

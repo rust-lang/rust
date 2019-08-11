@@ -18,13 +18,6 @@ pub fn codegen_crate(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<dyn Any> {
-    if !tcx.sess.crate_types.get().contains(&CrateType::Executable)
-        && std::env::var("SHOULD_RUN").is_ok()
-    {
-        tcx.sess
-            .err("Can't JIT run non executable (SHOULD_RUN env var is set)");
-    }
-
     tcx.sess.abort_if_errors();
 
     let mut log = if cfg!(debug_assertions) {
@@ -33,7 +26,9 @@ pub fn codegen_crate(
         None
     };
 
-    if std::env::var("SHOULD_RUN").is_ok() {
+    if std::env::var("SHOULD_RUN").is_ok()
+        && tcx.sess.crate_types.get().contains(&CrateType::Executable)
+    {
         #[cfg(not(target_arch = "wasm32"))]
         let _: ! = run_jit(tcx, &mut log);
 
@@ -48,9 +43,14 @@ pub fn codegen_crate(
 fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
-    let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new(
+    let imported_symbols = load_imported_symbols_for_jit(tcx);
+
+    let mut jit_builder = SimpleJITBuilder::with_isa(
+        crate::build_isa(tcx.sess, false),
         cranelift_module::default_libcall_names(),
-    ));
+    );
+    jit_builder.symbols(imported_symbols);
+    let mut jit_module: Module<SimpleJITBackend> = Module::new(jit_builder);
     assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
 
     let sig = Signature {
@@ -95,6 +95,53 @@ fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
     std::process::exit(ret);
 }
 
+fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
+    use rustc::middle::dependency_format::Linkage;
+
+    let mut dylib_paths = Vec::new();
+
+    let crate_info = CrateInfo::new(tcx);
+    let formats = tcx.sess.dependency_formats.borrow();
+    let data = formats.get(&CrateType::Executable).unwrap();
+    for &(cnum, _) in &crate_info.used_crates_dynamic {
+        let src = &crate_info.used_crate_source[&cnum];
+        match data[cnum.as_usize() - 1] {
+            Linkage::NotLinked | Linkage::IncludedFromDylib => {}
+            Linkage::Static => {
+                let name = tcx.crate_name(cnum);
+                let mut err = tcx.sess.struct_err(&format!("Can't load static lib {}", name.as_str()));
+                err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
+                err.emit();
+            }
+            Linkage::Dynamic => {
+                dylib_paths.push(src.dylib.as_ref().unwrap().0.clone());
+            }
+        }
+    }
+
+    let mut imported_symbols = Vec::new();
+    for path in dylib_paths {
+        use object::Object;
+        let lib = libloading::Library::new(&path).unwrap();
+        let obj = std::fs::read(path).unwrap();
+        let obj = object::File::parse(&obj).unwrap();
+        imported_symbols.extend(obj.dynamic_symbols().filter_map(|(_idx, symbol)| {
+            let name = symbol.name().unwrap().to_string();
+            if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
+                return None;
+            }
+            let symbol: libloading::Symbol<*const u8> =
+                unsafe { lib.get(name.as_bytes()) }.unwrap();
+            Some((name, *symbol))
+        }));
+        std::mem::forget(lib)
+    }
+
+    tcx.sess.abort_if_errors();
+
+    imported_symbols
+}
+
 fn run_aot(
     tcx: TyCtxt<'_>,
     metadata: EncodedMetadata,
@@ -104,7 +151,7 @@ fn run_aot(
     let new_module = |name: String| {
         let module: Module<FaerieBackend> = Module::new(
             FaerieBuilder::new(
-                crate::build_isa(tcx.sess),
+                crate::build_isa(tcx.sess, true),
                 name + ".o",
                 FaerieTrapCollection::Disabled,
                 cranelift_module::default_libcall_names(),
@@ -176,7 +223,7 @@ fn run_aot(
             .to_string();
 
         let mut metadata_artifact =
-            faerie::Artifact::new(crate::build_isa(tcx.sess).triple().clone(), metadata_cgu_name.clone());
+            faerie::Artifact::new(crate::build_isa(tcx.sess, true).triple().clone(), metadata_cgu_name.clone());
         crate::metadata::write_metadata(tcx, &mut metadata_artifact);
 
         let tmp_file = tcx
