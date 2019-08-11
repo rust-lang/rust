@@ -23,7 +23,7 @@
 
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, layout::VariantIdx};
 use rustc::{lint, util};
 use hir::Node;
 use util::nodemap::HirIdSet;
@@ -1860,5 +1860,94 @@ impl EarlyLintPass for IncompleteFeatures {
                 )
                 .emit();
             });
+    }
+}
+
+declare_lint! {
+    pub INVALID_VALUE,
+    Warn,
+    "an invalid value is being created (such as a NULL reference)"
+}
+
+declare_lint_pass!(InvalidValue => [INVALID_VALUE]);
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &hir::Expr) {
+
+        const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
+        const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
+
+        /// Return `false` only if we are sure this type does *not*
+        /// allow zero initialization.
+        fn ty_maybe_allows_zero_init<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+            use rustc::ty::TyKind::*;
+            match ty.sty {
+                // Primitive types that don't like 0 as a value.
+                Ref(..) | FnPtr(..) | Never => false,
+                Adt(..) if ty.is_box() => false,
+                // Recurse for some compound types.
+                Adt(adt_def, substs) if !adt_def.is_union() => {
+                    match adt_def.variants.len() {
+                        0 => false, // Uninhabited enum!
+                        1 => {
+                            // Struct, or enum with exactly one variant.
+                            // Proceed recursively, check all fields.
+                            let variant = &adt_def.variants[VariantIdx::from_u32(0)];
+                            variant.fields.iter().all(|field| {
+                                ty_maybe_allows_zero_init(
+                                    tcx,
+                                    field.ty(tcx, substs),
+                                )
+                            })
+                        }
+                        _ => true, // Conservative fallback for multi-variant enum.
+                    }
+                }
+                Tuple(..) => {
+                    // Proceed recursively, check all fields.
+                    ty.tuple_fields().all(|field| ty_maybe_allows_zero_init(tcx, field))
+                }
+                // FIXME: Would be nice to also warn for `NonNull`/`NonZero*`.
+                // FIXME: *Only for `mem::uninitialized`*, we could also warn for `bool`,
+                //        `char`, and any multivariant enum.
+                // Conservative fallback.
+                _ => true,
+            }
+        }
+
+        if let hir::ExprKind::Call(ref path_expr, ref _args) = expr.node {
+            if let hir::ExprKind::Path(ref qpath) = path_expr.node {
+                if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
+                    if cx.match_def_path(def_id, &ZEROED_PATH) ||
+                        cx.match_def_path(def_id, &UININIT_PATH)
+                    {
+                        // This conjures an instance of a type out of nothing,
+                        // using zeroed or uninitialized memory.
+                        // We are extremely conservative with what we warn about.
+                        let conjured_ty = cx.tables.expr_ty(expr);
+
+                        if !ty_maybe_allows_zero_init(cx.tcx, conjured_ty) {
+                            cx.struct_span_lint(
+                                INVALID_VALUE,
+                                expr.span,
+                                &format!(
+                                    "the type `{}` does not permit {}",
+                                    conjured_ty,
+                                    if cx.match_def_path(def_id, &ZEROED_PATH) {
+                                        "zero-initialization"
+                                    } else {
+                                        "being left uninitialized"
+                                    }
+                                ),
+                            )
+                            .note("this means that this code causes undefined behavior \
+                                when executed")
+                            .help("use `MaybeUninit` instead")
+                            .emit();
+                        }
+                    }
+                }
+            }
+        }
     }
 }

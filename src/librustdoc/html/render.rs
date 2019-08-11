@@ -170,6 +170,7 @@ struct Context {
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
+    playground: Option<markdown::Playground>,
 }
 
 struct SharedContext {
@@ -185,8 +186,8 @@ struct SharedContext {
     pub include_sources: bool,
     /// The local file sources we've emitted and their respective url-paths.
     pub local_sources: FxHashMap<PathBuf, String>,
-    /// All the passes that were run on this crate.
-    pub passes: FxHashSet<String>,
+    /// Whether the collapsed pass ran
+    pub collapsed: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
     /// an issue number.
     pub issue_tracker_base_url: Option<String>,
@@ -229,15 +230,10 @@ impl SharedContext {
 }
 
 impl SharedContext {
-    /// Returns `true` if the `collapse-docs` pass was run on this crate.
-    pub fn was_collapsed(&self) -> bool {
-        self.passes.contains("collapse-docs")
-    }
-
     /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
     /// `collapsed_doc_value` of the given item.
     pub fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<Cow<'a, str>> {
-        if self.was_collapsed() {
+        if self.collapsed {
             item.collapsed_doc_value().map(|s| s.into())
         } else {
             item.doc_value().map(|s| s.into())
@@ -526,7 +522,6 @@ pub fn initial_ids() -> Vec<String> {
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
            options: RenderOptions,
-           passes: FxHashSet<String>,
            renderinfo: RenderInfo,
            diag: &errors::Handler,
            edition: Edition) -> Result<(), Error> {
@@ -557,8 +552,8 @@ pub fn run(mut krate: clean::Crate,
     };
     let mut errors = Arc::new(ErrorStorage::new());
     let mut scx = SharedContext {
+        collapsed: krate.collapsed,
         src_root,
-        passes,
         include_sources: true,
         local_sources: Default::default(),
         issue_tracker_base_url: None,
@@ -580,9 +575,11 @@ pub fn run(mut krate: clean::Crate,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
+    let mut playground = None;
     if let Some(url) = playground_url {
-        markdown::PLAYGROUND.with(|slot| {
-            *slot.borrow_mut() = Some((Some(krate.name.clone()), url));
+        playground = Some(markdown::Playground {
+            crate_name: Some(krate.name.clone()),
+            url,
         });
     }
 
@@ -598,9 +595,9 @@ pub fn run(mut krate: clean::Crate,
                     scx.layout.logo = s.to_string();
                 }
                 (sym::html_playground_url, Some(s)) => {
-                    markdown::PLAYGROUND.with(|slot| {
-                        let name = krate.name.clone();
-                        *slot.borrow_mut() = Some((Some(name), s.to_string()));
+                    playground = Some(markdown::Playground {
+                        crate_name: Some(krate.name.clone()),
+                        url: s.to_string(),
                     });
                 }
                 (sym::issue_tracker_base_url, Some(s)) => {
@@ -624,6 +621,7 @@ pub fn run(mut krate: clean::Crate,
         edition,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
+        playground,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -659,7 +657,7 @@ pub fn run(mut krate: clean::Crate,
         crate_version: krate.version.take(),
         orphan_impl_items: Vec::new(),
         orphan_trait_impls: Vec::new(),
-        traits: krate.external_traits.lock().replace(Default::default()),
+        traits: krate.external_traits.replace(Default::default()),
         deref_trait_did,
         deref_mut_trait_did,
         owned_box_did,
@@ -2597,8 +2595,8 @@ fn render_markdown(w: &mut fmt::Formatter<'_>,
     write!(w, "<div class='docblock{}'>{}{}</div>",
            if is_hidden { " hidden" } else { "" },
            prefix,
-           Markdown(md_text, &links, RefCell::new(&mut ids),
-           cx.codes, cx.edition))
+           Markdown(md_text, &links, &mut ids,
+           cx.codes, cx.edition, &cx.playground).to_string())
 }
 
 fn document_short(
@@ -2868,7 +2866,7 @@ fn item_module(w: &mut fmt::Formatter<'_>, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_tags = stability_tags(myitem),
-                       docs = MarkdownSummaryLine(doc_value, &myitem.links()),
+                       docs = MarkdownSummaryLine(doc_value, &myitem.links()).to_string(),
                        class = myitem.type_(),
                        add = add,
                        stab = stab.unwrap_or_else(|| String::new()),
@@ -2963,8 +2961,8 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes, cx.edition);
-            message.push_str(&format!(": {}", html));
+            let html = MarkdownHtml(&note, &mut ids, error_codes, cx.edition, &cx.playground);
+            message.push_str(&format!(": {}", html.to_string()));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
     }
@@ -3012,7 +3010,13 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
                 message,
-                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes, cx.edition)
+                MarkdownHtml(
+                    &unstable_reason,
+                    &mut ids,
+                    error_codes,
+                    cx.edition,
+                    &cx.playground,
+                ).to_string()
             );
         }
 
@@ -4242,8 +4246,8 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
-                   Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids),
-                            cx.codes, cx.edition))?;
+                   Markdown(&*dox, &i.impl_item.links(), &mut ids,
+                            cx.codes, cx.edition, &cx.playground).to_string())?;
         }
     }
 

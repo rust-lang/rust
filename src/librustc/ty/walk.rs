@@ -119,8 +119,8 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::GeneratorWitness(ts) => {
             stack.extend(ts.skip_binder().iter().cloned().rev());
         }
-        ty::Tuple(ts) => {
-            stack.extend(ts.iter().map(|k| k.expect_ty()).rev());
+        ty::Tuple(..) => {
+            stack.extend(parent_ty.tuple_fields().rev());
         }
         ty::FnDef(_, substs) => {
             stack.extend(substs.types().rev());

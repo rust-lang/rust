@@ -1,11 +1,11 @@
 // compile-fail
 
 pub const unsafe fn fake_type<T>() -> T {
-    hint_unreachable()
+    hint_unreachable() //~ ERROR any use of this value will cause an error
 }
 
 pub const unsafe fn hint_unreachable() -> ! {
-    fake_type() //~ ERROR any use of this value will cause an error
+    fake_type()
 }
 
 trait Const {

@@ -22,12 +22,10 @@ use syntax::json::JsonEmitter;
 use syntax::symbol::sym;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
-use parking_lot::ReentrantMutex;
 
 use std::cell::RefCell;
 use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
-use std::sync::Arc;
 use std::rc::Rc;
 
 use crate::config::{Options as RustdocOptions, RenderOptions};
@@ -46,16 +44,14 @@ pub struct DocContext<'tcx> {
 
     pub tcx: TyCtxt<'tcx>,
     pub resolver: Rc<RefCell<interface::BoxedResolver>>,
-    /// The stack of module NodeIds up till this point
-    pub crate_name: Option<String>,
     pub cstore: Lrc<CStore>,
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
-    pub external_traits: Arc<ReentrantMutex<RefCell<FxHashMap<DefId, clean::Trait>>>>,
+    pub external_traits: Rc<RefCell<FxHashMap<DefId, clean::Trait>>>,
     /// Used while populating `external_traits` to ensure we don't process the same trait twice at
     /// the same time.
-    pub active_extern_traits: RefCell<Vec<DefId>>,
+    pub active_extern_traits: RefCell<FxHashSet<DefId>>,
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
@@ -72,7 +68,6 @@ pub struct DocContext<'tcx> {
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
-    pub all_traits: Vec<DefId>,
     pub auto_traits: Vec<DefId>,
 }
 
@@ -227,7 +222,7 @@ pub fn new_handler(error_format: ErrorOutputType,
     )
 }
 
-pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions, Vec<String>) {
+pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions) {
     // Parse, resolve, and typecheck the given crate.
 
     let RustdocOptions {
@@ -332,7 +327,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
         stderr: None,
-        crate_name: crate_name.clone(),
+        crate_name,
         lint_caps,
     };
 
@@ -368,11 +363,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut renderinfo = RenderInfo::default();
             renderinfo.access_levels = access_levels;
 
-            let all_traits = tcx.all_traits(LOCAL_CRATE).to_vec();
             let ctxt = DocContext {
                 tcx,
                 resolver,
-                crate_name,
                 cstore: compiler.cstore().clone(),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),
@@ -384,10 +377,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 fake_def_ids: Default::default(),
                 all_fake_def_ids: Default::default(),
                 generated_synthetics: Default::default(),
-                auto_traits: all_traits.iter().cloned().filter(|trait_def_id| {
+                auto_traits: tcx.all_traits(LOCAL_CRATE).iter().cloned().filter(|trait_def_id| {
                     tcx.trait_is_auto(*trait_def_id)
                 }).collect(),
-                all_traits,
             };
             debug!("crate: {:?}", tcx.hir().krate());
 
@@ -432,8 +424,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         },
                         _ => continue,
                     };
-                    for p in value.as_str().split_whitespace() {
-                        sink.push(p.to_string());
+                    for name in value.as_str().split_whitespace() {
+                        sink.push(name.to_string());
                     }
                 }
 
@@ -444,25 +436,26 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 }
             }
 
-            let mut passes: Vec<String> =
-                passes::defaults(default_passes).iter().map(|p| p.to_string()).collect();
-            passes.extend(manual_passes);
+            let passes = passes::defaults(default_passes).iter().chain(manual_passes.into_iter()
+                .flat_map(|name| {
+                    if let Some(pass) = passes::find_pass(&name) {
+                        Some(pass)
+                    } else {
+                        error!("unknown pass {}, skipping", name);
+                        None
+                    }
+                }));
 
             info!("Executing passes");
 
-            for pass_name in &passes {
-                match passes::find_pass(pass_name).map(|p| p.pass) {
-                    Some(pass) => {
-                        debug!("running pass {}", pass_name);
-                        krate = pass(krate, &ctxt);
-                    }
-                    None => error!("unknown pass {}, skipping", *pass_name),
-                }
+            for pass in passes {
+                debug!("running pass {}", pass.name);
+                krate = (pass.pass)(krate, &ctxt);
             }
 
             ctxt.sess().abort_if_errors();
 
-            (krate, ctxt.renderinfo.into_inner(), render_options, passes)
+            (krate, ctxt.renderinfo.into_inner(), render_options)
         })
     })
 }

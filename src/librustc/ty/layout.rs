@@ -2518,7 +2518,7 @@ where
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
-    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self;
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>) -> Self;
     fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
     fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
     fn new_internal(
@@ -2538,7 +2538,7 @@ where
         + HasTyCtxt<'tcx>
         + HasParamEnv<'tcx>,
 {
-    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self {
+    fn of_instance(cx: &C, instance: ty::Instance<'tcx>) -> Self {
         let sig = instance.fn_sig(cx.tcx());
         let sig = cx
             .tcx()

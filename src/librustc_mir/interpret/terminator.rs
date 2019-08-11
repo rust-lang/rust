@@ -405,9 +405,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
                     } else {
                         let local = mir::RETURN_PLACE;
-                        let ty = self.frame().body.local_decls[local].ty;
-                        if !self.tcx.is_ty_uninhabited_from_any_module(ty) {
-                            throw_unsup!(FunctionRetMismatch(self.tcx.types.never, ty))
+                        let callee_layout = self.layout_of_local(self.frame(), local, None)?;
+                        if !callee_layout.abi.is_uninhabited() {
+                            throw_unsup!(FunctionRetMismatch(
+                                self.tcx.types.never, callee_layout.ty
+                            ))
                         }
                     }
                     Ok(())
