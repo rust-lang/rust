@@ -217,7 +217,7 @@ fn print_backtrace(backtrace: &mut Backtrace) {
 
 impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     fn from(kind: InterpError<'tcx>) -> Self {
-        let backtrace = match env::var("RUST_CTFE_BACKTRACE") {
+        let backtrace = match env::var("RUSTC_CTFE_BACKTRACE") {
             // Matching `RUST_BACKTRACE` -- we treat "0" the same as "not present".
             Ok(ref val) if val != "0" => {
                 let mut backtrace = Backtrace::new_unresolved();
