@@ -50,6 +50,7 @@ use std::collections::BTreeSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 
+use build_reduced_graph::BuildReducedGraphVisitor;
 use diagnostics::{Suggestion, ImportSuggestion};
 use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
 use late::{PathSource, Rib, RibKind::*};
@@ -408,6 +409,8 @@ impl ModuleKind {
     }
 }
 
+type Resolutions<'a> = RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>;
+
 /// One node in the tree of modules.
 pub struct ModuleData<'a> {
     parent: Option<Module<'a>>,
@@ -416,7 +419,11 @@ pub struct ModuleData<'a> {
     // The def id of the closest normal module (`mod`) ancestor (including this module).
     normal_ancestor_id: DefId,
 
-    resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
+    // Mapping between names and their (possibly in-progress) resolutions in this module.
+    // Resolutions in modules from other crates are not populated until accessed.
+    lazy_resolutions: Resolutions<'a>,
+    // True if this is a module from other crate that needs to be populated on access.
+    populate_on_access: Cell<bool>,
     single_segment_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
                                                    Option<&'a NameBinding<'a>>)>>,
     multi_segment_macro_resolutions: RefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>,
@@ -433,11 +440,6 @@ pub struct ModuleData<'a> {
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
-
-    // Whether this module is populated. If not populated, any attempt to
-    // access the children must be preceded with a
-    // `populate_module_if_necessary` call.
-    populated: Cell<bool>,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -457,7 +459,8 @@ impl<'a> ModuleData<'a> {
             parent,
             kind,
             normal_ancestor_id,
-            resolutions: Default::default(),
+            lazy_resolutions: Default::default(),
+            populate_on_access: Cell::new(!normal_ancestor_id.is_local()),
             single_segment_macro_resolutions: RefCell::new(Vec::new()),
             multi_segment_macro_resolutions: RefCell::new(Vec::new()),
             builtin_attrs: RefCell::new(Vec::new()),
@@ -466,24 +469,8 @@ impl<'a> ModuleData<'a> {
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new(Vec::new()),
             traits: RefCell::new(None),
-            populated: Cell::new(normal_ancestor_id.is_local()),
             span,
             expansion,
-        }
-    }
-
-    fn for_each_child<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
-        for (&(ident, ns), name_resolution) in self.resolutions.borrow().iter() {
-            name_resolution.borrow().binding.map(|binding| f(ident, ns, binding));
-        }
-    }
-
-    fn for_each_child_stable<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
-        let resolutions = self.resolutions.borrow();
-        let mut resolutions = resolutions.iter().collect::<Vec<_>>();
-        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.as_str(), ns));
-        for &(&(ident, ns), &resolution) in resolutions.iter() {
-            resolution.borrow().binding.map(|binding| f(ident, ns, binding));
         }
     }
 
@@ -1223,6 +1210,44 @@ impl<'a> Resolver<'a> {
     ) -> Module<'a> {
         let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expn_id, span);
         self.arenas.alloc_module(module)
+    }
+
+    fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
+        if module.populate_on_access.get() {
+            module.populate_on_access.set(false);
+            let def_id = module.def_id().expect("unpopulated module without a def-id");
+            for child in self.cstore.item_children_untracked(def_id, self.session) {
+                let child = child.map_id(|_| panic!("unexpected id"));
+                BuildReducedGraphVisitor { parent_scope: self.dummy_parent_scope(), r: self }
+                    .build_reduced_graph_for_external_crate_res(module, child);
+            }
+        }
+        &module.lazy_resolutions
+    }
+
+    fn resolution(&mut self, module: Module<'a>, ident: Ident, ns: Namespace)
+                  -> &'a RefCell<NameResolution<'a>> {
+        *self.resolutions(module).borrow_mut().entry((ident.modern(), ns))
+               .or_insert_with(|| self.arenas.alloc_name_resolution())
+    }
+
+    fn for_each_child<F>(&mut self, module: Module<'a>, mut f: F)
+        where F: FnMut(&mut Resolver<'a>, Ident, Namespace, &'a NameBinding<'a>)
+    {
+        for (&(ident, ns), name_resolution) in self.resolutions(module).borrow().iter() {
+            name_resolution.borrow().binding.map(|binding| f(self, ident, ns, binding));
+        }
+    }
+
+    fn for_each_child_stable<F>(&mut self, module: Module<'a>, mut f: F)
+        where F: FnMut(&mut Resolver<'a>, Ident, Namespace, &'a NameBinding<'a>)
+    {
+        let resolutions = self.resolutions(module).borrow();
+        let mut resolutions = resolutions.iter().collect::<Vec<_>>();
+        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.as_str(), ns));
+        for &(&(ident, ns), &resolution) in resolutions.iter() {
+            resolution.borrow().binding.map(|binding| f(self, ident, ns, binding));
+        }
     }
 
     fn record_use(&mut self, ident: Ident, ns: Namespace,
@@ -2608,7 +2633,6 @@ impl<'a> Resolver<'a> {
                     return None;
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                self.populate_module_if_necessary(&crate_root);
                 Some((crate_root, ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                     .to_name_binding(self.arenas))
             }
