@@ -72,7 +72,7 @@ impl<'a> Path<'a> {
                    self_ty: Ident,
                    self_generics: &Generics)
                    -> ast::Path {
-        let mut idents = self.path.iter().map(|s| cx.ident_of(*s)).collect();
+        let mut idents = self.path.iter().map(|s| Ident::from_str_and_span(*s, span)).collect();
         let lt = mk_lifetimes(cx, span, &self.lifetime);
         let tys: Vec<P<ast::Ty>> =
             self.params.iter().map(|t| t.to_ty(cx, span, self_ty, self_generics)).collect();
@@ -209,7 +209,7 @@ fn mk_ty_param(cx: &ExtCtxt<'_>,
             cx.trait_bound(path)
         })
         .collect();
-    cx.typaram(span, cx.ident_of(name), attrs.to_owned(), bounds, None)
+    cx.typaram(span, ast::Ident::from_str_and_span(name, span), attrs.to_owned(), bounds, None)
 }
 
 fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {

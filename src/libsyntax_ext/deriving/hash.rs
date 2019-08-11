@@ -16,7 +16,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
 
     let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
 
-    let typaram = &*deriving::hygienic_type_parameter(item, "__H");
+    let typaram = "__H";
 
     let arg = Path::new_local(typaram);
     let hash_trait_def = TraitDef {

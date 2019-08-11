@@ -94,11 +94,12 @@ pub enum OrderingOp {
     GeOp,
 }
 
-pub fn some_ordering_collapsed(cx: &mut ExtCtxt<'_>,
-                               span: Span,
-                               op: OrderingOp,
-                               self_arg_tags: &[ast::Ident])
-                               -> P<ast::Expr> {
+pub fn some_ordering_collapsed(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    op: OrderingOp,
+    self_arg_tags: &[ast::Ident],
+) -> P<ast::Expr> {
     let lft = cx.expr_ident(span, self_arg_tags[0]);
     let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
     let op_str = match op {
@@ -108,11 +109,11 @@ pub fn some_ordering_collapsed(cx: &mut ExtCtxt<'_>,
         GtOp => "gt",
         GeOp => "ge",
     };
-    cx.expr_method_call(span, lft, cx.ident_of(op_str), vec![rgt])
+    cx.expr_method_call(span, lft, ast::Ident::from_str_and_span(op_str, span), vec![rgt])
 }
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
-    let test_id = cx.ident_of("cmp").gensym();
+    let test_id = ast::Ident::new(sym::cmp, span);
     let ordering = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
     let ordering_expr = cx.expr_path(ordering.clone());
     let equals_expr = cx.expr_some(span, ordering_expr);

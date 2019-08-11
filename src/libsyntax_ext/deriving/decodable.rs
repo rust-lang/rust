@@ -1,6 +1,6 @@
-//! The compiler code necessary for `#[derive(Decodable)]`. See encodable.rs for more.
+//! The compiler code necessary for `#[derive(RustcDecodable)]`. See encodable.rs for more.
 
-use crate::deriving::{self, pathvec_std};
+use crate::deriving::pathvec_std;
 use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
@@ -17,7 +17,7 @@ pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt<'_>,
                                        item: &Annotatable,
                                        push: &mut dyn FnMut(Annotatable)) {
     let krate = "rustc_serialize";
-    let typaram = &*deriving::hygienic_type_parameter(item, "__D");
+    let typaram = "__D";
 
     let trait_def = TraitDef {
         span,
