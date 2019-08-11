@@ -67,6 +67,7 @@ pub mod html {
     crate mod render;
     crate mod static_files;
     crate mod toc;
+    crate mod sources;
 }
 mod markdown;
 mod passes;
