@@ -97,6 +97,8 @@ impl AssocOp {
             // DotDotDot is no longer supported, but we need some way to display the error
             token::DotDotDot => Some(DotDotEq),
             token::Colon => Some(Colon),
+            // `<-` should probably be `< -`
+            token::LArrow => Some(Less),
             _ if t.is_keyword(kw::As) => Some(As),
             _ => None
         }
