@@ -47,7 +47,7 @@ LL |     *ap0 = ap1;
    |
    = note: expected type `core::ffi::VaListImpl<'_>`
               found type `core::ffi::VaListImpl<'_>`
-note: the anonymous lifetime #3 defined on the function body at 19:1...
+note: the anonymous lifetime #124 defined on the function body at 19:1...
   --> $DIR/variadic-ffi-4.rs:19:1
    |
 LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
@@ -80,7 +80,7 @@ LL | |     *ap0 = ap1;
 LL | |
 LL | | }
    | |_^
-note: ...does not necessarily outlive the anonymous lifetime #3 defined on the function body at 19:1
+note: ...does not necessarily outlive the anonymous lifetime #124 defined on the function body at 19:1
   --> $DIR/variadic-ffi-4.rs:19:1
    |
 LL | / pub unsafe extern "C" fn no_escape3(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
@@ -106,7 +106,7 @@ LL | |
 LL | |
 LL | | }
    | |_^
-note: but the borrow lasts for the anonymous lifetime #3 defined on the function body at 24:1
+note: but the borrow lasts for the anonymous lifetime #124 defined on the function body at 24:1
   --> $DIR/variadic-ffi-4.rs:24:1
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
@@ -126,7 +126,7 @@ LL |     ap0 = &mut ap1;
    |
    = note: expected type `&mut core::ffi::VaListImpl<'_>`
               found type `&mut core::ffi::VaListImpl<'_>`
-note: the anonymous lifetime #3 defined on the function body at 24:1...
+note: the anonymous lifetime #124 defined on the function body at 24:1...
   --> $DIR/variadic-ffi-4.rs:24:1
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
@@ -168,7 +168,7 @@ LL | |
 LL | |
 LL | | }
    | |_^
-note: ...does not necessarily outlive the anonymous lifetime #3 defined on the function body at 24:1
+note: ...does not necessarily outlive the anonymous lifetime #124 defined on the function body at 24:1
   --> $DIR/variadic-ffi-4.rs:24:1
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
@@ -186,7 +186,7 @@ error[E0495]: cannot infer an appropriate lifetime for borrow expression due to 
 LL |     ap0 = &mut ap1;
    |           ^^^^^^^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #3 defined on the function body at 24:1...
+note: first, the lifetime cannot outlive the anonymous lifetime #124 defined on the function body at 24:1...
   --> $DIR/variadic-ffi-4.rs:24:1
    |
 LL | / pub unsafe extern "C" fn no_escape4(_: usize, ap0: &mut VaListImpl, mut ap1: ...) {
@@ -227,7 +227,7 @@ LL |     *ap0 = ap1.clone();
    |
    = note: expected type `core::ffi::VaListImpl<'_>`
               found type `core::ffi::VaListImpl<'_>`
-note: the anonymous lifetime #3 defined on the function body at 32:1...
+note: the anonymous lifetime #124 defined on the function body at 32:1...
   --> $DIR/variadic-ffi-4.rs:32:1
    |
 LL | / pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {
@@ -260,7 +260,7 @@ LL | |     *ap0 = ap1.clone();
 LL | |
 LL | | }
    | |_^
-note: ...does not necessarily outlive the anonymous lifetime #3 defined on the function body at 32:1
+note: ...does not necessarily outlive the anonymous lifetime #124 defined on the function body at 32:1
   --> $DIR/variadic-ffi-4.rs:32:1
    |
 LL | / pub unsafe extern "C" fn no_escape5(_: usize, mut ap0: &mut VaListImpl, mut ap1: ...) {

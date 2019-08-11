@@ -764,13 +764,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     });
                 }
             }
-            hir::TyKind::CVarArgs(ref lt) => {
-                // Resolve the generated lifetime for the C-variadic arguments.
-                // The lifetime is generated in AST -> HIR lowering.
-                if lt.name.is_elided() {
-                    self.resolve_elided_lifetimes(vec![lt])
-                }
-            }
             _ => intravisit::walk_ty(self, ty),
         }
     }
@@ -2378,7 +2371,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             self.visit_lifetime(lifetime);
                         }
                     }
-                    hir::TyKind::CVarArgs(_) => {}
                     _ => {
                         intravisit::walk_ty(self, ty);
                     }
