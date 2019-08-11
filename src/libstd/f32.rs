@@ -350,33 +350,6 @@ impl f32 {
         return unsafe { intrinsics::powf32(self, n) };
     }
 
-    /// Takes the square root of a number.
-    ///
-    /// Returns NaN if `self` is a negative number.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::f32;
-    ///
-    /// let positive = 4.0_f32;
-    /// let negative = -4.0_f32;
-    ///
-    /// let abs_difference = (positive.sqrt() - 2.0).abs();
-    ///
-    /// assert!(abs_difference <= f32::EPSILON);
-    /// assert!(negative.sqrt().is_nan());
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
-    pub fn sqrt(self) -> f32 {
-        if self < 0.0 {
-            NAN
-        } else {
-            unsafe { intrinsics::sqrtf32(self) }
-        }
-    }
-
     /// Returns `e^(self)`, (the exponential function).
     ///
     /// # Examples
