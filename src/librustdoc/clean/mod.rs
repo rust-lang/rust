@@ -3032,7 +3032,7 @@ impl Clean<Type> for hir::Ty {
             TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyKind::Infer | TyKind::Err => Infer,
             TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.kind),
-            TyKind::CVarArgs(_) => CVarArgs,
+            TyKind::CVarArgs => CVarArgs,
         }
     }
 }

@@ -2018,7 +2018,7 @@ pub enum TyKind {
     Err,
     /// Placeholder for C-variadic arguments. We "spoof" the `VaListImpl` created
     /// from the variadic arguments. This type is only valid up to typeck.
-    CVarArgs(Lifetime),
+    CVarArgs,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
