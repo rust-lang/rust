@@ -95,6 +95,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
             "min_align_of" |
+            "pref_align_of" |
             "needs_drop" |
             "size_of" |
             "type_id" |
