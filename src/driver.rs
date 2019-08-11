@@ -79,7 +79,6 @@ fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
             if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
                 return None;
             }
-            println!("name: {:?}", name);
             let symbol: libloading::Symbol<*const u8> =
                 unsafe { lib.get(name.as_bytes()) }.unwrap();
             Some((name, *symbol))
