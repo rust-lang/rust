@@ -445,7 +445,8 @@ pub const fn needs_drop<T>() -> bool {
 ///
 /// *Incorrect* usage of this function: initializing a reference with zero.
 ///
-/// ```no_run
+/// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem;
 ///
 /// let _x: &i32 = unsafe { mem::zeroed() }; // Undefined behavior!

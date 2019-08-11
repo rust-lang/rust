@@ -1842,7 +1842,8 @@ pub struct VariantDef {
     pub ctor_kind: CtorKind,
     /// Flags of the variant (e.g. is field list non-exhaustive)?
     flags: VariantFlags,
-    /// Recovered?
+    /// Variant is obtained as part of recovering from a syntactic error.
+    /// May be incomplete or bogus.
     pub recovered: bool,
 }
 
@@ -1949,7 +1950,7 @@ pub struct FieldDef {
 pub struct AdtDef {
     /// `DefId` of the struct, enum or union item.
     pub did: DefId,
-    /// Variants of the ADT. If this is a struct or enum, then there will be a single variant.
+    /// Variants of the ADT. If this is a struct or union, then there will be a single variant.
     pub variants: IndexVec<self::layout::VariantIdx, VariantDef>,
     /// Flags of the ADT (e.g. is this a struct? is this non-exhaustive?)
     flags: AdtFlags,
@@ -2565,6 +2566,8 @@ impl<'tcx> AdtDef {
 }
 
 impl<'tcx> FieldDef {
+    /// Returns the type of this field. The `subst` is typically obtained
+    /// via the second field of `TyKind::AdtDef`.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
         tcx.type_of(self.did).subst(tcx, subst)
     }
