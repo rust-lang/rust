@@ -187,7 +187,7 @@ mod tests {
     use ra_syntax::SourceFile;
     use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::single_file;
+    use crate::mock_analysis::{fixture_with_target_file, single_file};
 
     use super::*;
 
@@ -216,6 +216,15 @@ mod tests {
         assert_eq_text!(after, &actual);
     }
 
+    fn check_apply_diagnostic_fix_for_target_file(target_file: &str, fixture: &str, after: &str) {
+        let (analysis, file_id, target_file_contents) = fixture_with_target_file(fixture, target_file);
+        let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
+        let mut fix = diagnostic.fix.unwrap();
+        let edit = fix.source_file_edits.pop().unwrap().edit;
+        let actual = edit.apply(&target_file_contents);
+        assert_eq_text!(after, &actual);
+    }
+
     fn check_apply_diagnostic_fix(before: &str, after: &str) {
         let (analysis, file_id) = single_file(before);
         let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
@@ -223,6 +232,12 @@ mod tests {
         let edit = fix.source_file_edits.pop().unwrap().edit;
         let actual = edit.apply(&before);
         assert_eq_text!(after, &actual);
+    }
+
+    fn check_no_diagnostic_for_target_file(target_file: &str, fixture: &str) {
+        let (analysis, file_id, _) = fixture_with_target_file(fixture, target_file);
+        let diagnostics = analysis.diagnostics(file_id).unwrap();
+        assert_eq!(diagnostics.len(), 0);
     }
 
     fn check_no_diagnostic(content: &str) {
@@ -234,8 +249,8 @@ mod tests {
     #[test]
     fn test_wrap_return_type() {
         let before = r#"
-            enum Result<T, E> { Ok(T), Err(E) }
-            struct String { }
+            //- /main.rs
+            use std::{string::String, result::Result::{self, Ok, Err}};
 
             fn div(x: i32, y: i32) -> Result<i32, String> {
                 if y == 0 {
@@ -243,29 +258,48 @@ mod tests {
                 }
                 x / y
             }
-        "#;
-        let after = r#"
-            enum Result<T, E> { Ok(T), Err(E) }
-            struct String { }
 
-            fn div(x: i32, y: i32) -> Result<i32, String> {
-                if y == 0 {
-                    return Err("div by zero".into());
-                }
-                Ok(x / y)
+            //- /std/lib.rs
+            pub mod string {
+                pub struct String { }
+            }
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-        check_apply_diagnostic_fix(before, after);
+// The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
+// it strips empty lines and leading whitespace. The important part of this test is that the final
+// `x / y` expr is now wrapped in `Ok(..)`
+        let after = r#"use std::{string::String, result::Result::{self, Ok, Err}};
+fn div(x: i32, y: i32) -> Result<i32, String> {
+    if y == 0 {
+        return Err("div by zero".into());
+    }
+    Ok(x / y)
+}
+"#;
+        check_apply_diagnostic_fix_for_target_file("/main.rs", before, after);
     }
 
     #[test]
     fn test_wrap_return_type_not_applicable() {
         let content = r#"
+            //- /main.rs
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
             fn foo() -> Result<String, i32> {
                 0
             }
+
+            //- /std/lib.rs
+            pub mod string {
+                pub struct String { }
+            }
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
         "#;
-        check_no_diagnostic(content);
+        check_no_diagnostic_for_target_file("/main.rs", content);
     }
 
     #[test]

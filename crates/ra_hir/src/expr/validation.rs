@@ -106,12 +106,10 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             Some(m) => m,
             None => return,
         };
-
         let ret = match &mismatch.expected {
             Ty::Apply(t) => t,
             _ => return,
         };
-
         let ret_enum = match ret.ctor {
             TypeCtor::Adt(AdtDef::Enum(e)) => e,
             _ => return,
