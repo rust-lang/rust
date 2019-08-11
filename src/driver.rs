@@ -43,48 +43,7 @@ pub fn codegen_crate(
 fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
     use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
-    let mut dylib_paths = Vec::new();
-
-    {
-        use rustc::middle::dependency_format::Linkage;
-
-        let crate_info = CrateInfo::new(tcx);
-        let formats = tcx.sess.dependency_formats.borrow();
-        let data = formats.get(&CrateType::Executable).unwrap();
-        for &(cnum, _) in &crate_info.used_crates_dynamic {
-            let src = &crate_info.used_crate_source[&cnum];
-            match data[cnum.as_usize() - 1] {
-                Linkage::NotLinked | Linkage::IncludedFromDylib => {}
-                Linkage::Static => {
-                    let name = tcx.crate_name(cnum);
-                    let mut err = tcx.sess.struct_fatal(&format!("Can't load static lib {}", name.as_str()));
-                    err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
-                    err.emit();
-                }
-                Linkage::Dynamic => {
-                    dylib_paths.push(src.dylib.as_ref().unwrap().0.clone());
-                }
-            }
-        }
-    }
-
-    let mut imported_symbols = Vec::new();
-    for path in dylib_paths {
-        use object::Object;
-        let lib = libloading::Library::new(&path).unwrap();
-        let obj = std::fs::read(path).unwrap();
-        let obj = object::File::parse(&obj).unwrap();
-        imported_symbols.extend(obj.dynamic_symbols().filter_map(|(_idx, symbol)| {
-            let name = symbol.name().unwrap().to_string();
-            if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
-                return None;
-            }
-            let symbol: libloading::Symbol<*const u8> =
-                unsafe { lib.get(name.as_bytes()) }.unwrap();
-            Some((name, *symbol))
-        }));
-        std::mem::forget(lib)
-    }
+    let imported_symbols = load_imported_symbols_for_jit(tcx);
 
     let mut jit_builder = SimpleJITBuilder::with_isa(
         crate::build_isa(tcx.sess, false),
@@ -134,6 +93,53 @@ fn run_jit(tcx: TyCtxt<'_>, log: &mut Option<File>) -> ! {
 
     jit_module.finish();
     std::process::exit(ret);
+}
+
+fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
+    use rustc::middle::dependency_format::Linkage;
+
+    let mut dylib_paths = Vec::new();
+
+    let crate_info = CrateInfo::new(tcx);
+    let formats = tcx.sess.dependency_formats.borrow();
+    let data = formats.get(&CrateType::Executable).unwrap();
+    for &(cnum, _) in &crate_info.used_crates_dynamic {
+        let src = &crate_info.used_crate_source[&cnum];
+        match data[cnum.as_usize() - 1] {
+            Linkage::NotLinked | Linkage::IncludedFromDylib => {}
+            Linkage::Static => {
+                let name = tcx.crate_name(cnum);
+                let mut err = tcx.sess.struct_err(&format!("Can't load static lib {}", name.as_str()));
+                err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
+                err.emit();
+            }
+            Linkage::Dynamic => {
+                dylib_paths.push(src.dylib.as_ref().unwrap().0.clone());
+            }
+        }
+    }
+
+    let mut imported_symbols = Vec::new();
+    for path in dylib_paths {
+        use object::Object;
+        let lib = libloading::Library::new(&path).unwrap();
+        let obj = std::fs::read(path).unwrap();
+        let obj = object::File::parse(&obj).unwrap();
+        imported_symbols.extend(obj.dynamic_symbols().filter_map(|(_idx, symbol)| {
+            let name = symbol.name().unwrap().to_string();
+            if name.is_empty() || !symbol.is_global() || symbol.is_undefined() {
+                return None;
+            }
+            let symbol: libloading::Symbol<*const u8> =
+                unsafe { lib.get(name.as_bytes()) }.unwrap();
+            Some((name, *symbol))
+        }));
+        std::mem::forget(lib)
+    }
+
+    tcx.sess.abort_if_errors();
+
+    imported_symbols
 }
 
 fn run_aot(
