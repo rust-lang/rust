@@ -351,11 +351,13 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
-    /// iter.flat_map(|x| x)
+    /// # let iter = vec![vec![0]].into_iter();
+    /// iter.flat_map(|x| x);
     /// ```
     /// Can be written as
     /// ```rust
-    /// iter.flatten()
+    /// # let iter = vec![vec![0]].into_iter();
+    /// iter.flatten();
     /// ```
     pub FLAT_MAP_IDENTITY,
     pedantic,
