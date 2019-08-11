@@ -120,6 +120,8 @@ pub(crate) const TRY: Name = Name::new(SmolStr::new_inline_from_ascii(3, b"Try")
 pub(crate) const OK: Name = Name::new(SmolStr::new_inline_from_ascii(2, b"Ok"));
 pub(crate) const FUTURE_MOD: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"future"));
 pub(crate) const FUTURE_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Future"));
+pub(crate) const RESULT_MOD: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"result"));
+pub(crate) const RESULT_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Result"));
 pub(crate) const OUTPUT: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Output"));
 
 fn resolve_name(text: &SmolStr) -> SmolStr {

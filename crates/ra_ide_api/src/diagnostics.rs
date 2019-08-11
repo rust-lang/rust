@@ -282,6 +282,43 @@ fn div(x: i32, y: i32) -> Result<i32, String> {
     }
 
     #[test]
+    fn test_wrap_return_type_handles_generic_functions() {
+        let before = r#"
+            //- /main.rs
+            use std::{default::Default, result::Result::{self, Ok, Err}};
+
+            fn div<T: Default, i32>(x: i32) -> Result<T, i32> {
+                if x == 0 {
+                    return Err(7);
+                }
+                T::default()
+            }
+
+            //- /std/lib.rs
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
+            pub mod default {
+                pub trait Default {
+                    fn default() -> Self;
+                }
+            }
+        "#;
+// The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
+// it strips empty lines and leading whitespace. The important part of this test is that the final
+// `x / y` expr is now wrapped in `Ok(..)`
+        let after = r#"use std::{default::Default, result::Result::{self, Ok, Err}};
+fn div<T: Default>(x: i32) -> Result<T, i32> {
+    if x == 0 {
+        return Err(7);
+    }
+    Ok(T::default())
+}
+"#;
+        check_apply_diagnostic_fix_for_target_file("/main.rs", before, after);
+    }
+
+    #[test]
     fn test_wrap_return_type_handles_type_aliases() {
         let before = r#"
             //- /main.rs
