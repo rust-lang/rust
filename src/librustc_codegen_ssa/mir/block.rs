@@ -337,7 +337,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => {
                 (bx.get_fn(drop_fn),
-                 FnType::of_instance(&bx, &drop_fn))
+                 FnType::of_instance(&bx, drop_fn))
             }
         };
         helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
@@ -435,7 +435,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Obtain the panic entry point.
         let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_ty = FnType::of_instance(&bx, &instance);
+        let fn_ty = FnType::of_instance(&bx, instance);
         let llfn = bx.get_fn(instance);
 
         // Codegen the actual panic invoke/call.
@@ -552,7 +552,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let def_id =
                     common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_ty = FnType::of_instance(&bx, &instance);
+                let fn_ty = FnType::of_instance(&bx, instance);
                 let llfn = bx.get_fn(instance);
 
                 // Codegen the actual panic invoke/call.
