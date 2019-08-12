@@ -270,29 +270,34 @@ impl<'a> Parser<'a> {
         let pat = self.maybe_recover_from_bad_qpath(pat, true)?;
 
         if !allow_range_pat {
-            match pat.node {
-                PatKind::Range(
-                    _, _, Spanned { node: RangeEnd::Included(RangeSyntax::DotDotDot), .. }
-                ) => {},
-                PatKind::Range(..) => {
-                    let mut err = self.struct_span_err(
-                        pat.span,
-                        "the range pattern here has ambiguous interpretation",
-                    );
-                    err.span_suggestion(
-                        pat.span,
-                        "add parentheses to clarify the precedence",
-                        format!("({})", pprust::pat_to_string(&pat)),
-                        // "ambiguous interpretation" implies that we have to be guessing
-                        Applicability::MaybeIncorrect
-                    );
-                    return Err(err);
-                }
-                _ => {}
-            }
+            self.ban_pat_range_if_ambiguous(&pat)?
         }
 
         Ok(pat)
+    }
+
+    /// Ban a range pattern if it has an ambiguous interpretation.
+    fn ban_pat_range_if_ambiguous(&self, pat: &Pat) -> PResult<'a, ()> {
+        match pat.node {
+            PatKind::Range(
+                .., Spanned { node: RangeEnd::Included(RangeSyntax::DotDotDot), .. }
+            ) => return Ok(()),
+            PatKind::Range(..) => {}
+            _ => return Ok(()),
+        }
+
+        let mut err = self.struct_span_err(
+            pat.span,
+            "the range pattern here has ambiguous interpretation",
+        );
+        err.span_suggestion(
+            pat.span,
+            "add parentheses to clarify the precedence",
+            format!("({})", pprust::pat_to_string(&pat)),
+            // "ambiguous interpretation" implies that we have to be guessing
+            Applicability::MaybeIncorrect
+        );
+        Err(err)
     }
 
     /// Parse `&pat` / `&mut pat`.
