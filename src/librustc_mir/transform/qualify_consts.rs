@@ -249,7 +249,7 @@ trait Qualif {
                 if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
                     if cx.tcx.trait_of_item(def_id).is_some() {
-                        Self::in_any_value_of_ty(cx, constant.ty).unwrap_or(false)
+                        Self::in_any_value_of_ty(cx, constant.literal.ty).unwrap_or(false)
                     } else {
                         let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
 
@@ -258,7 +258,7 @@ trait Qualif {
                         // Just in case the type is more specific than
                         // the definition, e.g., impl associated const
                         // with type parameters, take it into account.
-                        qualif && Self::mask_for_ty(cx, constant.ty)
+                        qualif && Self::mask_for_ty(cx, constant.literal.ty)
                     }
                 } else {
                     false

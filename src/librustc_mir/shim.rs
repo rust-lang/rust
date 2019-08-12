@@ -445,7 +445,6 @@ impl CloneShimBuilder<'tcx> {
         let func_ty = tcx.mk_fn_def(self.def_id, substs);
         let func = Operand::Constant(box Constant {
             span: self.span,
-            ty: func_ty,
             user_ty: None,
             literal: ty::Const::zero_sized(tcx, func_ty),
         });
@@ -505,7 +504,6 @@ impl CloneShimBuilder<'tcx> {
     fn make_usize(&self, value: u64) -> Box<Constant<'tcx>> {
         box Constant {
             span: self.span,
-            ty: self.tcx.types.usize,
             user_ty: None,
             literal: ty::Const::from_usize(self.tcx, value),
         }
@@ -745,7 +743,6 @@ fn build_call_shim<'tcx>(
             let ty = tcx.type_of(def_id);
             (Operand::Constant(box Constant {
                 span,
-                ty,
                 user_ty: None,
                 literal: ty::Const::zero_sized(tcx, ty),
              }),
