@@ -23,7 +23,6 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
-use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
@@ -2004,8 +2003,6 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    #[stable_hasher(ignore)] // This is used for error reporting
-    pub ctxt: SyntaxContext,
 }
 
 /// Represents an argument in a function header.
@@ -2184,8 +2181,6 @@ pub struct ForeignMod {
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct GlobalAsm {
     pub asm: Symbol,
-    #[stable_hasher(ignore)] // This is used for error reporting
-    pub ctxt: SyntaxContext,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
