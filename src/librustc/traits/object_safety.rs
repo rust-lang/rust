@@ -92,9 +92,8 @@ impl<'tcx> TyCtxt<'tcx> {
                                             -> Vec<ObjectSafetyViolation>
     {
         debug_assert!(self.generics_of(trait_def_id).has_self);
-        let self_ty = self.mk_self_type();
         let violations = traits::supertrait_def_ids(self, trait_def_id)
-            .filter(|&def_id| self.predicates_reference_self(def_id, self_ty, true))
+            .filter(|&def_id| self.predicates_reference_self(def_id, true))
             .map(|_| ObjectSafetyViolation::SupertraitSelf)
             .collect();
 
@@ -109,11 +108,10 @@ impl<'tcx> TyCtxt<'tcx> {
                                     -> Vec<ObjectSafetyViolation>
     {
         debug_assert!(self.generics_of(trait_def_id).has_self);
-        let self_ty = self.mk_self_type();
         debug!("object_safety_violations: {:?}", trait_def_id);
 
         traits::supertrait_def_ids(self, trait_def_id)
-            .flat_map(|def_id| self.object_safety_violations_for_trait(def_id, self_ty))
+            .flat_map(|def_id| self.object_safety_violations_for_trait(def_id))
             .collect()
     }
 
@@ -123,29 +121,24 @@ impl<'tcx> TyCtxt<'tcx> {
     /// otherwise ensure that they cannot be used when `Self=Trait`.
     pub fn is_vtable_safe_method(self, trait_def_id: DefId, method: &ty::AssocItem) -> bool {
         debug_assert!(self.generics_of(trait_def_id).has_self);
-        let self_ty = self.mk_self_type();
         debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
         // Any method that has a `Self : Sized` requisite can't be called.
-        if self.generics_require_sized_self(method.def_id, self_ty) {
+        if self.generics_require_sized_self(method.def_id) {
             return false;
         }
 
-        match self.virtual_call_violation_for_method(trait_def_id, self_ty, method) {
+        match self.virtual_call_violation_for_method(trait_def_id, method) {
             None | Some(MethodViolationCode::WhereClauseReferencesSelf(_)) => true,
             Some(_) => false,
         }
     }
 
-    fn object_safety_violations_for_trait(
-        self,
-        trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
-    ) -> Vec<ObjectSafetyViolation> {
+    fn object_safety_violations_for_trait(self, trait_def_id: DefId) -> Vec<ObjectSafetyViolation> {
         // Check methods for violations.
         let mut violations: Vec<_> = self.associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssocKind::Method)
             .filter_map(|item|
-                self.object_safety_violation_for_method(trait_def_id, self_ty, &item)
+                self.object_safety_violation_for_method(trait_def_id, &item)
                     .map(|code| ObjectSafetyViolation::Method(item.ident.name, code))
             ).filter(|violation| {
                 if let ObjectSafetyViolation::Method(_,
@@ -167,10 +160,10 @@ impl<'tcx> TyCtxt<'tcx> {
             }).collect();
 
         // Check the trait itself.
-        if self.trait_has_sized_self(trait_def_id, self_ty) {
+        if self.trait_has_sized_self(trait_def_id) {
             violations.push(ObjectSafetyViolation::SizedSelf);
         }
-        if self.predicates_reference_self(trait_def_id, self_ty, false) {
+        if self.predicates_reference_self(trait_def_id, false) {
             violations.push(ObjectSafetyViolation::SupertraitSelf);
         }
 
@@ -188,7 +181,6 @@ impl<'tcx> TyCtxt<'tcx> {
     fn predicates_reference_self(
         self,
         trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
         supertraits_only: bool,
     ) -> bool {
         let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(self, trait_def_id));
@@ -197,6 +189,7 @@ impl<'tcx> TyCtxt<'tcx> {
         } else {
             self.predicates_of(trait_def_id)
         };
+        let self_ty = self.types.self_param;
         let has_self_ty = |t: Ty<'tcx>| t.walk().any(|t| t == self_ty);
         predicates
             .predicates
@@ -241,11 +234,11 @@ impl<'tcx> TyCtxt<'tcx> {
             })
     }
 
-    fn trait_has_sized_self(self, trait_def_id: DefId, self_ty: Ty<'tcx>) -> bool {
-        self.generics_require_sized_self(trait_def_id, self_ty)
+    fn trait_has_sized_self(self, trait_def_id: DefId) -> bool {
+        self.generics_require_sized_self(trait_def_id)
     }
 
-    fn generics_require_sized_self(self, def_id: DefId, self_ty: Ty<'tcx>) -> bool {
+    fn generics_require_sized_self(self, def_id: DefId) -> bool {
         let sized_def_id = match self.lang_items().sized_trait() {
             Some(def_id) => def_id,
             None => { return false; /* No Sized trait, can't require it! */ }
@@ -258,7 +251,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .any(|predicate| match predicate {
                 ty::Predicate::Trait(ref trait_pred) => {
                     trait_pred.def_id() == sized_def_id
-                        && trait_pred.skip_binder().self_ty() == self_ty
+                        && trait_pred.skip_binder().self_ty().is_param(0)
                 }
                 ty::Predicate::Projection(..) |
                 ty::Predicate::Subtype(..) |
@@ -278,17 +271,16 @@ impl<'tcx> TyCtxt<'tcx> {
     fn object_safety_violation_for_method(
         self,
         trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
         method: &ty::AssocItem,
     ) -> Option<MethodViolationCode> {
         debug!("object_safety_violation_for_method({:?}, {:?})", trait_def_id, method);
         // Any method that has a `Self : Sized` requisite is otherwise
         // exempt from the regulations.
-        if self.generics_require_sized_self(method.def_id, self_ty) {
+        if self.generics_require_sized_self(method.def_id) {
             return None;
         }
 
-        self.virtual_call_violation_for_method(trait_def_id, self_ty, method)
+        self.virtual_call_violation_for_method(trait_def_id, method)
     }
 
     /// Returns `Some(_)` if this method cannot be called on a trait
@@ -298,7 +290,6 @@ impl<'tcx> TyCtxt<'tcx> {
     fn virtual_call_violation_for_method(
         self,
         trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
         method: &ty::AssocItem,
     ) -> Option<MethodViolationCode> {
         // The method's first parameter must be named `self`
@@ -309,15 +300,11 @@ impl<'tcx> TyCtxt<'tcx> {
         let sig = self.fn_sig(method.def_id);
 
         for input_ty in &sig.skip_binder().inputs()[1..] {
-            if self.contains_illegal_self_type_reference(trait_def_id, self_ty, input_ty) {
+            if self.contains_illegal_self_type_reference(trait_def_id, input_ty) {
                 return Some(MethodViolationCode::ReferencesSelf);
             }
         }
-        if self.contains_illegal_self_type_reference(
-            trait_def_id,
-            self_ty,
-            sig.output().skip_binder(),
-        ) {
+        if self.contains_illegal_self_type_reference(trait_def_id, sig.output().skip_binder()) {
             return Some(MethodViolationCode::ReferencesSelf);
         }
 
@@ -336,7 +323,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // Do a shallow visit so that `contains_illegal_self_type_reference`
                 // may apply it's custom visiting.
                 .visit_tys_shallow(|t| {
-                    self.contains_illegal_self_type_reference(trait_def_id, self_ty, t)
+                    self.contains_illegal_self_type_reference(trait_def_id, t)
                 }) {
             let span = self.def_span(method.def_id);
             return Some(MethodViolationCode::WhereClauseReferencesSelf(span));
@@ -351,7 +338,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // However, this is already considered object-safe. We allow it as a special case here.
         // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_dispatchable` allows
         // `Receiver: Unsize<Receiver[Self => dyn Trait]>`
-        if receiver_ty != self_ty {
+        if receiver_ty != self.types.self_param {
             if !self.receiver_is_dispatchable(method, receiver_ty) {
                 return Some(MethodViolationCode::UndispatchableReceiver);
             } else {
@@ -572,7 +559,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // Self: Unsize<U>
             let unsize_predicate = ty::TraitRef {
                 def_id: unsize_did,
-                substs: self.mk_substs_trait(self.mk_self_type(), &[unsized_self_ty.into()]),
+                substs: self.mk_substs_trait(self.types.self_param, &[unsized_self_ty.into()]),
             }.to_predicate();
 
             // U: Trait<Arg1, ..., ArgN>
@@ -628,7 +615,6 @@ impl<'tcx> TyCtxt<'tcx> {
     fn contains_illegal_self_type_reference(
         self,
         trait_def_id: DefId,
-        self_ty: Ty<'tcx>,
         ty: Ty<'tcx>,
      ) -> bool {
         // This is somewhat subtle. In general, we want to forbid
@@ -672,6 +658,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let mut supertraits: Option<Vec<ty::PolyTraitRef<'tcx>>> = None;
         let mut error = false;
+        let self_ty = self.types.self_param;
         ty.maybe_walk(|ty| {
             match ty.sty {
                 ty::Param(_) => {

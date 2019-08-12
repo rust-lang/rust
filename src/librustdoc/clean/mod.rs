@@ -2303,7 +2303,7 @@ impl Clean<Item> for ty::AssocItem {
                         ty::ImplContainer(def_id) => {
                             cx.tcx.type_of(def_id)
                         }
-                        ty::TraitContainer(_) => cx.tcx.mk_self_type()
+                        ty::TraitContainer(_) => cx.tcx.types.self_param,
                     };
                     let self_arg_ty = *sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {

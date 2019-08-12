@@ -191,7 +191,7 @@ fn check_associated_item(
         let item = fcx.tcx.associated_item(fcx.tcx.hir().local_def_id(item_id));
 
         let (mut implied_bounds, self_ty) = match item.container {
-            ty::TraitContainer(_) => (vec![], fcx.tcx.mk_self_type()),
+            ty::TraitContainer(_) => (vec![], fcx.tcx.types.self_param),
             ty::ImplContainer(def_id) => (fcx.impl_implied_bounds(def_id, span),
                                           fcx.tcx.type_of(def_id))
         };

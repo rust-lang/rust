@@ -211,7 +211,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                         substs,
                         required_predicates,
                         explicit_map,
-                        Some(tcx.mk_self_type()),
+                        Some(tcx.types.self_param),
                     );
                 }
             }

@@ -713,7 +713,7 @@ fn super_predicates_of(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
-    let self_param_ty = tcx.mk_self_type();
+    let self_param_ty = tcx.types.self_param;
     let superbounds1 = AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No,
         item.span);
 
