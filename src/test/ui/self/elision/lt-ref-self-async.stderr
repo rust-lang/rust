@@ -1,159 +1,56 @@
-error[E0106]: missing lifetime specifier
+error[E0623]: lifetime mismatch
   --> $DIR/lt-ref-self-async.rs:15:42
    |
 LL |     async fn ref_self(&self, f: &u32) -> &u32 {
-   |                                          ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+   |                       -----              ^^^^
+   |                       |                  |
+   |                       |                  ...but data from `f` is returned here
+   |                       this parameter and the return type are declared with different lifetimes...
 
-error[E0106]: missing lifetime specifier
-  --> $DIR/lt-ref-self-async.rs:23:48
+error[E0623]: lifetime mismatch
+  --> $DIR/lt-ref-self-async.rs:21:48
    |
 LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
-   |                                                ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+   |                             -----              ^^^^
+   |                             |                  |
+   |                             |                  ...but data from `f` is returned here
+   |                             this parameter and the return type are declared with different lifetimes...
 
-error[E0106]: missing lifetime specifier
+error[E0623]: lifetime mismatch
+  --> $DIR/lt-ref-self-async.rs:25:57
+   |
+LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
+   |                                     -----               ^^^^
+   |                                     |                   |
+   |                                     |                   ...but data from `f` is returned here
+   |                                     this parameter and the return type are declared with different lifetimes...
+
+error[E0623]: lifetime mismatch
   --> $DIR/lt-ref-self-async.rs:29:57
    |
-LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
-   |                                                         ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
-
-error[E0106]: missing lifetime specifier
-  --> $DIR/lt-ref-self-async.rs:35:57
-   |
 LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
-   |                                                         ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+   |                                     -----               ^^^^
+   |                                     |                   |
+   |                                     |                   ...but data from `f` is returned here
+   |                                     this parameter and the return type are declared with different lifetimes...
 
-error[E0106]: missing lifetime specifier
-  --> $DIR/lt-ref-self-async.rs:41:66
+error[E0623]: lifetime mismatch
+  --> $DIR/lt-ref-self-async.rs:33:66
    |
 LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
-   |                                                                  ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+   |                                             -----                ^^^^
+   |                                             |                    |
+   |                                             |                    ...but data from `f` is returned here
+   |                                             this parameter and the return type are declared with different lifetimes...
 
-error[E0106]: missing lifetime specifier
-  --> $DIR/lt-ref-self-async.rs:47:62
+error[E0623]: lifetime mismatch
+  --> $DIR/lt-ref-self-async.rs:37:62
    |
 LL |     async fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
-   |                                                              ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+   |                                         -----                ^^^^
+   |                                         |                    |
+   |                                         |                    ...but data from `f` is returned here
+   |                                         this parameter and the return type are declared with different lifetimes...
 
-error: cannot infer an appropriate lifetime
-  --> $DIR/lt-ref-self-async.rs:15:30
-   |
-LL |     async fn ref_self(&self, f: &u32) -> &u32 {
-   |                              ^           ---- this return type evaluates to the `'static` lifetime...
-   |                              |
-   |                              ...but this borrow...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 15:23
-  --> $DIR/lt-ref-self-async.rs:15:23
-   |
-LL |     async fn ref_self(&self, f: &u32) -> &u32 {
-   |                       ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 15:23
-   |
-LL |     async fn ref_self(&self, f: &u32) -> &u32 + '_ {
-   |                                          ^^^^^^^^^
+error: aborting due to 6 previous errors
 
-error: cannot infer an appropriate lifetime
-  --> $DIR/lt-ref-self-async.rs:23:36
-   |
-LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
-   |                                    ^           ---- this return type evaluates to the `'static` lifetime...
-   |                                    |
-   |                                    ...but this borrow...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 23:29
-  --> $DIR/lt-ref-self-async.rs:23:29
-   |
-LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
-   |                             ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 23:29
-   |
-LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 + '_ {
-   |                                                ^^^^^^^^^
-
-error: cannot infer an appropriate lifetime
-  --> $DIR/lt-ref-self-async.rs:29:45
-   |
-LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
-   |                                             ^           ---- this return type evaluates to the `'static` lifetime...
-   |                                             |
-   |                                             ...but this borrow...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 29:37
-  --> $DIR/lt-ref-self-async.rs:29:37
-   |
-LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
-   |                                     ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 29:37
-   |
-LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 + '_ {
-   |                                                         ^^^^^^^^^
-
-error: cannot infer an appropriate lifetime
-  --> $DIR/lt-ref-self-async.rs:35:45
-   |
-LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
-   |                                             ^           ---- this return type evaluates to the `'static` lifetime...
-   |                                             |
-   |                                             ...but this borrow...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 35:37
-  --> $DIR/lt-ref-self-async.rs:35:37
-   |
-LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
-   |                                     ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 35:37
-   |
-LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 + '_ {
-   |                                                         ^^^^^^^^^
-
-error: cannot infer an appropriate lifetime
-  --> $DIR/lt-ref-self-async.rs:41:54
-   |
-LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
-   |                                                      ^           ---- this return type evaluates to the `'static` lifetime...
-   |                                                      |
-   |                                                      ...but this borrow...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 41:45
-  --> $DIR/lt-ref-self-async.rs:41:45
-   |
-LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
-   |                                             ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 41:45
-   |
-LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 + '_ {
-   |                                                                  ^^^^^^^^^
-
-error: cannot infer an appropriate lifetime
-  --> $DIR/lt-ref-self-async.rs:47:50
-   |
-LL |     async fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
-   |                                                  ^           ---- this return type evaluates to the `'static` lifetime...
-   |                                                  |
-   |                                                  ...but this borrow...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 47:41
-  --> $DIR/lt-ref-self-async.rs:47:41
-   |
-LL |     async fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
-   |                                         ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 47:41
-   |
-LL |     async fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 + '_ {
-   |                                                              ^^^^^^^^^
-
-error: aborting due to 12 previous errors
-
-For more information about this error, try `rustc --explain E0106`.
