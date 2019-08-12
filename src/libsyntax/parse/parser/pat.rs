@@ -202,9 +202,13 @@ impl<'a> Parser<'a> {
             } else {
                 // Try to parse everything else as literal with optional minus
                 match self.parse_literal_maybe_minus() {
-                    Ok(begin) if self.check(&token::DotDot) || self.check(&token::DotDotEq)
-                        || self.check(&token::DotDotDot)
-                        => self.parse_pat_range_starting_with_lit(begin)?,
+                    Ok(begin)
+                        if self.check(&token::DotDot)
+                            || self.check(&token::DotDotEq)
+                            || self.check(&token::DotDotDot) =>
+                    {
+                        self.parse_pat_range_starting_with_lit(begin)?
+                    }
                     Ok(begin) => PatKind::Lit(begin),
                     Err(mut err) => {
                         self.cancel(&mut err);
@@ -446,11 +450,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `ident` or `ident @ pat`.
-    /// used by the copy foo and ref foo patterns to give a good
+    /// Used by the copy foo and ref foo patterns to give a good
     /// error message when parsing mistakes like `ref foo(a, b)`.
-    fn parse_pat_ident(&mut self,
-                       binding_mode: ast::BindingMode)
-                       -> PResult<'a, PatKind> {
+    fn parse_pat_ident(&mut self, binding_mode: BindingMode) -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
         let sub = if self.eat(&token::At) {
             Some(self.parse_pat(Some("binding pattern"))?)
@@ -458,16 +460,16 @@ impl<'a> Parser<'a> {
             None
         };
 
-        // just to be friendly, if they write something like
-        //   ref Some(i)
-        // we end up here with ( as the current token.  This shortly
-        // leads to a parse error.  Note that if there is no explicit
+        // Just to be friendly, if they write something like `ref Some(i)`,
+        // we end up here with `(` as the current token.
+        // This shortly leads to a parse error. Note that if there is no explicit
         // binding mode then we do not end up here, because the lookahead
-        // will direct us over to parse_enum_variant()
+        // will direct us over to `parse_enum_variant()`.
         if self.token == token::OpenDelim(token::Paren) {
             return Err(self.span_fatal(
                 self.prev_span,
-                "expected identifier, found enum pattern"))
+                "expected identifier, found enum pattern",
+            ))
         }
 
         Ok(PatKind::Ident(binding_mode, ident, sub))
