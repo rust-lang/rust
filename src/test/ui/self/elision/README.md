@@ -61,10 +61,10 @@ Legends:
 | `struct-async.rs`| ✓ | ✓ | N/A |
 | `alias-async.rs`| ✓ | ✓ | N/A |
 | `assoc-async.rs`| ✓ | ✓ | N/A |
-| `ref-self-async.rs` | ✓ | ✓ | N/A |
-| `ref-mut-self-async.rs` | ✓ | ✓ | N/A |
-| `ref-struct-async.rs` | ✓ | ✓ | N/A |
-| `ref-mut-struct-async.rs` | ✓ | ✓ | N/A |
+| `ref-self-async.rs` | X | ✓ | N/A |
+| `ref-mut-self-async.rs` | X | ✓ | N/A |
+| `ref-struct-async.rs` | X | ✓ | N/A |
+| `ref-mut-struct-async.rs` | X | ✓ | N/A |
 | `ref-alias-async.rs` | ✓ | ✓ | N/A |
 | `ref-assoc-async.rs` | ✓ | ✓ | N/A |
 | `ref-mut-alias-async.rs` | ✓ | ✓ | N/A |
@@ -72,4 +72,4 @@ Legends:
 | `lt-struct-async.rs` | ✓ | ✓ | N/A
 | `lt-alias-async.rs` | ✓ | ✓ | N/A
 | `lt-assoc-async.rs` | ✓ | ✓ | N/A
-| `lt-ref-self-async.rs` | ✓ | ✓ | N/A |
+| `lt-ref-self-async.rs` | X | ✓ | N/A |
