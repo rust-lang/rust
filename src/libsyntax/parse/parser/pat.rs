@@ -110,18 +110,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let pat = match self.token.kind {
             token::BinOp(token::And) | token::AndAnd => self.parse_pat_deref(expected)?,
-            token::OpenDelim(token::Paren) => {
-                // Parse a tuple or parenthesis pattern.
-                let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
-
-                // Here, `(pat,)` is a tuple pattern.
-                // For backward compatibility, `(..)` is a tuple pattern as well.
-                if fields.len() == 1 && !(trailing_comma || fields[0].is_rest()) {
-                    PatKind::Paren(fields.into_iter().nth(0).unwrap())
-                } else {
-                    PatKind::Tuple(fields)
-                }
-            }
+            token::OpenDelim(token::Paren) => self.parse_pat_tuple_or_parens()?,
             token::OpenDelim(token::Bracket) => {
                 // Parse `[pat, pat,...]` as a slice pattern.
                 PatKind::Slice(self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat(None))?.0)
@@ -334,6 +323,19 @@ impl<'a> Parser<'a> {
 
         let subpat = self.parse_pat_with_range_pat(false, expected)?;
         Ok(PatKind::Ref(subpat, mutbl))
+    }
+
+    /// Parse a tuple or parenthesis pattern.
+    fn parse_pat_tuple_or_parens(&mut self) -> PResult<'a, PatKind> {
+        let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
+
+        // Here, `(pat,)` is a tuple pattern.
+        // For backward compatibility, `(..)` is a tuple pattern as well.
+        Ok(if fields.len() == 1 && !(trailing_comma || fields[0].is_rest()) {
+            PatKind::Paren(fields.into_iter().nth(0).unwrap())
+        } else {
+            PatKind::Tuple(fields)
+        })
     }
 
     // Helper function to decide whether to parse as ident binding
