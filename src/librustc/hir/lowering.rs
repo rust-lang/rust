@@ -136,6 +136,9 @@ pub struct LoweringContext<'a> {
     /// When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
     /// against this list to see if it is already in-scope, or if a definition
     /// needs to be created for it.
+    ///
+    /// We always store a `modern()` version of the param-name in this
+    /// vector.
     in_scope_lifetimes: Vec<ParamName>,
 
     current_module: NodeId,
