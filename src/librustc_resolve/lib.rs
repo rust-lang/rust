@@ -1321,13 +1321,15 @@ impl<'a> Resolver<'a> {
             ScopeSet::AbsolutePath(ns) => (ns, true),
             ScopeSet::Macro(_) => (MacroNS, false),
         };
+        // Jump out of trait or enum modules, they do not act as scopes.
+        let module = parent_scope.module.nearest_item_scope();
         let mut scope = match ns {
             _ if is_absolute_path => Scope::CrateRoot,
-            TypeNS | ValueNS => Scope::Module(parent_scope.module),
+            TypeNS | ValueNS => Scope::Module(module),
             MacroNS => Scope::DeriveHelpers,
         };
         let mut ident = ident.modern();
-        let mut use_prelude = !parent_scope.module.no_implicit_prelude;
+        let mut use_prelude = !module.no_implicit_prelude;
 
         loop {
             let visit = match scope {
@@ -1360,7 +1362,7 @@ impl<'a> Resolver<'a> {
                     LegacyScope::Invocation(invoc) => Scope::MacroRules(
                         invoc.output_legacy_scope.get().unwrap_or(invoc.parent_legacy_scope)
                     ),
-                    LegacyScope::Empty => Scope::Module(parent_scope.module),
+                    LegacyScope::Empty => Scope::Module(module),
                 }
                 Scope::CrateRoot => match ns {
                     TypeNS => {

@@ -258,7 +258,7 @@ impl<'a> Resolver<'a> {
     fn invoc_parent_scope(&self, invoc_id: ExpnId, derives: Vec<ast::Path>) -> ParentScope<'a> {
         let invoc = self.invocations[&invoc_id];
         ParentScope {
-            module: invoc.module.nearest_item_scope(),
+            module: invoc.module,
             expansion: invoc_id.parent(),
             legacy: invoc.parent_legacy_scope,
             derives,
