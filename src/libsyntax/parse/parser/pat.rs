@@ -202,26 +202,10 @@ impl<'a> Parser<'a> {
             } else {
                 // Try to parse everything else as literal with optional minus
                 match self.parse_literal_maybe_minus() {
-                    Ok(begin) => {
-                        let op_span = self.token.span;
-                        if self.check(&token::DotDot) || self.check(&token::DotDotEq) ||
-                                self.check(&token::DotDotDot) {
-                            let (end_kind, form) = if self.eat(&token::DotDotDot) {
-                                (RangeEnd::Included(RangeSyntax::DotDotDot), "...")
-                            } else if self.eat(&token::DotDotEq) {
-                                (RangeEnd::Included(RangeSyntax::DotDotEq), "..=")
-                            } else if self.eat(&token::DotDot) {
-                                (RangeEnd::Excluded, "..")
-                            } else {
-                                panic!("impossible case: we already matched \
-                                        on a range-operator token")
-                            };
-                            let end = self.parse_pat_range_end_opt(&begin, form)?;
-                            PatKind::Range(begin, end, respan(op_span, end_kind))
-                        } else {
-                            PatKind::Lit(begin)
-                        }
-                    }
+                    Ok(begin) if self.check(&token::DotDot) || self.check(&token::DotDotEq)
+                        || self.check(&token::DotDotDot)
+                        => self.parse_pat_range_starting_with_lit(begin)?,
+                    Ok(begin) => PatKind::Lit(begin),
                     Err(mut err) => {
                         self.cancel(&mut err);
                         let expected = expected.unwrap_or("pattern");
@@ -356,6 +340,23 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.prev_span);
         let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
         self.bump();
+        let end = self.parse_pat_range_end_opt(&begin, form)?;
+        Ok(PatKind::Range(begin, end, respan(op_span, end_kind)))
+    }
+
+    /// Parse a range pattern `$literal $form $end?` where `$form = ".." | "..." | "..=" ;`.
+    /// The `$path` has already been parsed and the next token is the `$form`.
+    fn parse_pat_range_starting_with_lit(&mut self, begin: P<Expr>) -> PResult<'a, PatKind> {
+        let op_span = self.token.span;
+        let (end_kind, form) = if self.eat(&token::DotDotDot) {
+            (RangeEnd::Included(RangeSyntax::DotDotDot), "...")
+        } else if self.eat(&token::DotDotEq) {
+            (RangeEnd::Included(RangeSyntax::DotDotEq), "..=")
+        } else if self.eat(&token::DotDot) {
+            (RangeEnd::Excluded, "..")
+        } else {
+            panic!("impossible case: we already matched on a range-operator token")
+        };
         let end = self.parse_pat_range_end_opt(&begin, form)?;
         Ok(PatKind::Range(begin, end, respan(op_span, end_kind)))
     }
