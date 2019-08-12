@@ -555,7 +555,7 @@ pub const ALL_LINTS: [Lint; 310] = [
     },
     Lint {
         name: "flat_map_identity",
-        group: "pedantic",
+        group: "complexity",
         desc: "call to `flat_map` where `flatten` is sufficient",
         deprecation: None,
         module: "methods",
