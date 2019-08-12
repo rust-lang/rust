@@ -31,6 +31,13 @@ impl SyntaxNodePtr {
     pub fn kind(self) -> SyntaxKind {
         self.kind
     }
+
+    pub fn cast<N: AstNode>(self) -> Option<AstPtr<N>> {
+        if !N::can_cast(self.kind()) {
+            return None;
+        }
+        Some(AstPtr { raw: self, _ty: PhantomData })
+    }
 }
 
 /// Like `SyntaxNodePtr`, but remembers the type of node

@@ -145,21 +145,10 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         if params.len() == 2 && &params[0] == &mismatch.actual {
             let source_map = self.func.body_source_map(db);
             let file_id = self.func.source(db).file_id;
-            let parse = db.parse(file_id.original_file(db));
-            let source_file = parse.tree();
-            let expr_syntax = source_map.expr_syntax(id);
-            if expr_syntax.is_none() {
-                return;
-            }
-            let expr_syntax = expr_syntax.unwrap();
-            let node = expr_syntax.to_node(source_file.syntax());
-            let ast = ast::Expr::cast(node);
-            if ast.is_none() {
-                return;
-            }
-            let ast = ast.unwrap();
 
-            self.sink.push(MissingOkInTailExpr { file: file_id, expr: AstPtr::new(&ast) });
+            if let Some(expr) = source_map.expr_syntax(id).and_then(|n| n.cast::<ast::Expr>()) {
+                self.sink.push(MissingOkInTailExpr { file: file_id, expr });
+            }
         }
     }
 }
