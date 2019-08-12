@@ -1,4 +1,4 @@
-// revisions:rpass1 rpass2
+// revisions:cfail1 cfail2
 // check-pass
 // compile-flags: --crate-type staticlib
 
