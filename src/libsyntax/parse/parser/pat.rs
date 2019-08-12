@@ -210,22 +210,7 @@ impl<'a> Parser<'a> {
                         self.parse_pat_range_starting_with_lit(begin)?
                     }
                     Ok(begin) => PatKind::Lit(begin),
-                    Err(mut err) => {
-                        self.cancel(&mut err);
-                        let expected = expected.unwrap_or("pattern");
-                        let msg = format!(
-                            "expected {}, found {}",
-                            expected,
-                            self.this_token_descr(),
-                        );
-                        let mut err = self.fatal(&msg);
-                        err.span_label(self.token.span, format!("expected {}", expected));
-                        let sp = self.sess.source_map().start_point(self.token.span);
-                        if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
-                            self.sess.expr_parentheses_needed(&mut err, *sp, None);
-                        }
-                        return Err(err);
-                    }
+                    Err(err) => return self.fatal_unexpected_non_pat(err, expected),
                 }
             }
         };
@@ -363,6 +348,27 @@ impl<'a> Parser<'a> {
         };
         let end = self.parse_pat_range_end_opt(&begin, form)?;
         Ok(PatKind::Range(begin, end, respan(op_span, end_kind)))
+    }
+
+    fn fatal_unexpected_non_pat(
+        &mut self,
+        mut err: DiagnosticBuilder<'a>,
+        expected: Option<&'static str>,
+    ) -> PResult<'a, P<Pat>> {
+        self.cancel(&mut err);
+
+        let expected = expected.unwrap_or("pattern");
+        let msg = format!("expected {}, found {}", expected, self.this_token_descr());
+
+        let mut err = self.fatal(&msg);
+        err.span_label(self.token.span, format!("expected {}", expected));
+
+        let sp = self.sess.source_map().start_point(self.token.span);
+        if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
+            self.sess.expr_parentheses_needed(&mut err, *sp, None);
+        }
+
+        Err(err)
     }
 
     // Helper function to decide whether to parse as ident binding
