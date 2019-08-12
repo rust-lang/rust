@@ -122,12 +122,12 @@ enum ScopeSet {
 /// Serves as a starting point for the scope visitor.
 /// This struct is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct ParentScope<'a> {
     module: Module<'a>,
     expansion: ExpnId,
     legacy: LegacyScope<'a>,
-    derives: Vec<ast::Path>,
+    derives: &'a [ast::Path],
 }
 
 impl<'a> ParentScope<'a> {
@@ -136,7 +136,7 @@ impl<'a> ParentScope<'a> {
             module,
             expansion: ExpnId::root(),
             legacy: LegacyScope::Empty,
-            derives: Vec::new(),
+            derives: &[],
         }
     }
 }
@@ -940,6 +940,7 @@ pub struct ResolverArenas<'a> {
     import_directives: arena::TypedArena<ImportDirective<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
     legacy_bindings: arena::TypedArena<LegacyBinding<'a>>,
+    ast_paths: arena::TypedArena<ast::Path>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -965,6 +966,9 @@ impl<'a> ResolverArenas<'a> {
     }
     fn alloc_legacy_binding(&'a self, binding: LegacyBinding<'a>) -> &'a LegacyBinding<'a> {
         self.legacy_bindings.alloc(binding)
+    }
+    fn alloc_ast_paths(&'a self, paths: &[ast::Path]) -> &'a [ast::Path] {
+        self.ast_paths.alloc_from_iter(paths.iter().cloned())
     }
 }
 
@@ -1515,7 +1519,7 @@ impl<'a> Resolver<'a> {
                 self.hygienic_lexical_parent(module, &mut ident.span)
             };
             module = unwrap_or!(opt_module, break);
-            let adjusted_parent_scope = &ParentScope { module, ..parent_scope.clone() };
+            let adjusted_parent_scope = &ParentScope { module, ..*parent_scope };
             let result = self.resolve_ident_in_module_unadjusted(
                 ModuleOrUniformRoot::Module(module),
                 ident,
@@ -1651,7 +1655,7 @@ impl<'a> Resolver<'a> {
             ModuleOrUniformRoot::Module(m) => {
                 if let Some(def) = ident.span.modernize_and_adjust(m.expansion) {
                     tmp_parent_scope =
-                        ParentScope { module: self.macro_def_scope(def), ..parent_scope.clone() };
+                        ParentScope { module: self.macro_def_scope(def), ..*parent_scope };
                     adjusted_parent_scope = &tmp_parent_scope;
                 }
             }

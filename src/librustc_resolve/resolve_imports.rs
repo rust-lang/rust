@@ -394,7 +394,7 @@ impl<'a> Resolver<'a> {
             match ident.span.glob_adjust(module.expansion, glob_import.span) {
                 Some(Some(def)) => {
                     tmp_parent_scope =
-                        ParentScope { module: self.macro_def_scope(def), ..parent_scope.clone() };
+                        ParentScope { module: self.macro_def_scope(def), ..*parent_scope };
                     adjusted_parent_scope = &tmp_parent_scope;
                 }
                 Some(None) => {}

@@ -300,10 +300,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         root_id: NodeId,
         vis: ty::Visibility,
     ) {
-        let parent_scope = &self.parent_scope;
-        let current_module = parent_scope.module;
+        let current_module = self.parent_scope.module;
         let directive = self.r.arenas.alloc_import_directive(ImportDirective {
-            parent_scope: parent_scope.clone(),
+            parent_scope: self.parent_scope,
             module_path,
             imported_module: Cell::new(None),
             subclass,
@@ -601,7 +600,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let directive = self.r.arenas.alloc_import_directive(ImportDirective {
                     root_id: item.id,
                     id: item.id,
-                    parent_scope: self.parent_scope.clone(),
+                    parent_scope: self.parent_scope,
                     imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                     subclass: ImportDirectiveSubclass::ExternCrate {
                         source: orig_name,
@@ -994,7 +993,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 |this: &Self, span| this.r.arenas.alloc_import_directive(ImportDirective {
             root_id: item.id,
             id: item.id,
-            parent_scope: this.parent_scope.clone(),
+            parent_scope: this.parent_scope,
             imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
             subclass: ImportDirectiveSubclass::MacroUse,
             use_span_with_attributes: item.span_with_attributes(),
@@ -1066,11 +1065,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) -> LegacyScope<'a> {
         let invoc_id = id.placeholder_to_expn_id();
 
-        let parent_scope = self.parent_scope.clone();
-        parent_scope.module.unresolved_invocations.borrow_mut().insert(invoc_id);
+        self.parent_scope.module.unresolved_invocations.borrow_mut().insert(invoc_id);
 
-        let old_parent_scope =
-            self.r.invocation_parent_scopes.insert(invoc_id, parent_scope.clone());
+        let old_parent_scope = self.r.invocation_parent_scopes.insert(invoc_id, self.parent_scope);
         assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
 
         LegacyScope::Invocation(invoc_id)
@@ -1261,7 +1258,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
         if !attr.is_sugared_doc && is_builtin_attr(attr) {
-            self.r.builtin_attrs.push((attr.path.segments[0].ident, self.parent_scope.clone()));
+            self.r.builtin_attrs.push((attr.path.segments[0].ident, self.parent_scope));
         }
         visit::walk_attribute(self, attr);
     }

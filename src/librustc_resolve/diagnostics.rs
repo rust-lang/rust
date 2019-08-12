@@ -376,9 +376,9 @@ impl<'a> Resolver<'a> {
                 Scope::DeriveHelpers => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                     if filter_fn(res) {
-                        for derive in &parent_scope.derives {
+                        for derive in parent_scope.derives {
                             let parent_scope =
-                                &ParentScope { derives: Vec::new(), ..*parent_scope };
+                                &ParentScope { derives: &[], ..*parent_scope };
                             if let Ok((Some(ext), _)) = this.resolve_macro_path(
                                 derive, Some(MacroKind::Derive), parent_scope, false, false
                             ) {

@@ -118,11 +118,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         &mut self, expansion: ExpnId, fragment: &AstFragment, derives: &[ExpnId]
     ) {
         // Fill in some data for derives if the fragment is from a derive container.
-        let parent_scope = self.invocation_parent_scopes[&expansion].clone();
+        let parent_scope = self.invocation_parent_scopes[&expansion];
         let parent_def = self.definitions.invocation_parent(expansion);
-        self.invocation_parent_scopes.extend(
-            derives.iter().map(|&derive| (derive, parent_scope.clone()))
-        );
+        self.invocation_parent_scopes.extend(derives.iter().map(|&derive| (derive, parent_scope)));
         for &derive_invoc_id in derives {
             self.definitions.set_invocation_parent(derive_invoc_id, parent_def);
         }
@@ -152,14 +150,14 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate> {
-        let parent_scope = &self.invocation_parent_scopes[&invoc_id].clone();
+        let parent_scope = self.invocation_parent_scopes[&invoc_id];
         let (path, kind, derives, after_derive) = match invoc.kind {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
-                (&attr.path, MacroKind::Attr, derives.clone(), after_derive),
+                (&attr.path, MacroKind::Attr, self.arenas.alloc_ast_paths(derives), after_derive),
             InvocationKind::Bang { ref mac, .. } =>
-                (&mac.path, MacroKind::Bang, Vec::new(), false),
+                (&mac.path, MacroKind::Bang, &[][..], false),
             InvocationKind::Derive { ref path, .. } =>
-                (path, MacroKind::Derive, Vec::new(), false),
+                (path, MacroKind::Derive, &[][..], false),
             InvocationKind::DeriveContainer { ref derives, .. } => {
                 // Block expansion of derives in the container until we know whether one of them
                 // is a built-in `Copy`. Skip the resolution if there's only one derive - either
@@ -169,7 +167,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 if derives.len() > 1 {
                     for path in derives {
                         match self.resolve_macro_path(path, Some(MacroKind::Derive),
-                                                      parent_scope, true, force) {
+                                                      &parent_scope, true, force) {
                             Ok((Some(ref ext), _)) if ext.is_derive_copy => {
                                 self.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
                                 return Ok(None);
@@ -184,7 +182,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
 
         // Derives are not included when `invocations` are collected, so we have to add them here.
-        let parent_scope = &ParentScope { derives, ..parent_scope.clone() };
+        let parent_scope = &ParentScope { derives, ..parent_scope };
         let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, force)?;
 
         let span = invoc.span();
@@ -324,7 +322,7 @@ impl<'a> Resolver<'a> {
             if trace {
                 let kind = kind.expect("macro kind must be specified if tracing is enabled");
                 self.multi_segment_macro_resolutions
-                    .push((path, path_span, kind, parent_scope.clone(), res.ok()));
+                    .push((path, path_span, kind, *parent_scope, res.ok()));
             }
 
             self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
@@ -341,7 +339,7 @@ impl<'a> Resolver<'a> {
             if trace {
                 let kind = kind.expect("macro kind must be specified if tracing is enabled");
                 self.single_segment_macro_resolutions
-                    .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
+                    .push((path[0].ident, kind, *parent_scope, binding.ok()));
             }
 
             let res = binding.map(|binding| binding.res());
@@ -410,8 +408,8 @@ impl<'a> Resolver<'a> {
             let result = match scope {
                 Scope::DeriveHelpers => {
                     let mut result = Err(Determinacy::Determined);
-                    for derive in &parent_scope.derives {
-                        let parent_scope = &ParentScope { derives: Vec::new(), ..*parent_scope };
+                    for derive in parent_scope.derives {
+                        let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
                         match this.resolve_macro_path(derive, Some(MacroKind::Derive),
                                                       parent_scope, true, force) {
                             Ok((Some(ext), _)) => if ext.helper_attrs.contains(&ident.name) {
@@ -457,7 +455,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 Scope::Module(module) => {
-                    let adjusted_parent_scope = &ParentScope { module, ..parent_scope.clone() };
+                    let adjusted_parent_scope = &ParentScope { module, ..*parent_scope };
                     let binding = this.resolve_ident_in_module_unadjusted_ext(
                         ModuleOrUniformRoot::Module(module),
                         ident,
