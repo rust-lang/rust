@@ -1,3 +1,10 @@
+//! "Late resolution" is the pass that resolves most of names in a crate beside imports and macros.
+//! It runs when the crate is fully expanded and its module structure is fully built.
+//! So it just walks through the crate and resolves all the expressions, types, etc.
+//!
+//! If you wonder why there's no `early.rs`, that's because it's split into three files -
+//! `build_reduced_graph.rs`, `macros.rs` and `resolve_imports.rs`.
+
 use GenericParameters::*;
 use RibKind::*;
 

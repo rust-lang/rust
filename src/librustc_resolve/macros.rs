@@ -1,3 +1,6 @@
+//! A bunch of methods and structures more or less related to resolving macros and
+//! interface provided by `Resolver` to macro expander.
+
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
 use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, Weak};
 use crate::{ModuleKind, NameBinding, PathResult, Segment, ToNameBinding};

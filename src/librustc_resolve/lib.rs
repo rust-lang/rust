@@ -1,3 +1,12 @@
+//! This crate is responsible for the part of name resolution that doesn't require type checker.
+//!
+//! Module structure of the crate is built here.
+//! Paths in macros, imports, expressions, types, patterns are resolved here.
+//! Label names are resolved here as well.
+//!
+//! Type-relative name resolution (methods, fields, associated items) happens in `librustc_typeck`.
+//! Lifetime names are resolved in `librustc/middle/resolve_lifetime.rs`.
+
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(crate_visibility_modifier)]

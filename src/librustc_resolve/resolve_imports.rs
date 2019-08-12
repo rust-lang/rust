@@ -1,3 +1,5 @@
+//! A bunch of methods and structures more or less related to resolving imports.
+
 use ImportDirectiveSubclass::*;
 
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};

@@ -1,7 +1,9 @@
-//! Reduced graph building.
+//! After we obtain a fresh AST fragment from a macro, code in this module helps to integrate
+//! that fragment into the module structures that are already partially built.
 //!
-//! Here we build the "reduced graph": the graph of the module tree without
-//! any imports resolved.
+//! Items from the fragment are placed into modules,
+//! unexpanded macros in the fragment are visited and registered.
+//! Imports are also considered items and placed into modules here, but not resolved yet.
 
 use crate::macros::{LegacyBinding, LegacyScope};
 use crate::resolve_imports::ImportDirective;
