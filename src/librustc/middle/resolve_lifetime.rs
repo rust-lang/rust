@@ -558,6 +558,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
         debug!("visit_ty: id={:?} ty={:?}", ty.hir_id, ty);
+        debug!("visit_ty: ty.node={:?}", ty.node);
         match ty.node {
             hir::TyKind::BareFn(ref c) => {
                 let next_early_index = self.next_early_index();
@@ -1923,6 +1924,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_segment_args(&mut self, res: Res, depth: usize, generic_args: &'tcx hir::GenericArgs) {
+        debug!(
+            "visit_segment_args(res={:?}, depth={:?}, generic_args={:?})",
+            res,
+            depth,
+            generic_args,
+        );
+
         if generic_args.parenthesized {
             let was_in_fn_syntax = self.is_in_fn_syntax;
             self.is_in_fn_syntax = true;
@@ -1976,6 +1984,23 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             _ => None,
         };
 
+        debug!("visit_segment_args: type_def_id={:?}", type_def_id);
+
+        // Compute a vector of defaults, one for each type parameter,
+        // per the rules given in RFCs 599 and 1156. Example:
+        //
+        // ```rust
+        // struct Foo<'a, T: 'a, U> { }
+        // ```
+        //
+        // If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to default
+        // `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound)
+        // and `dyn Baz` to `dyn Baz + 'static` (because there is no
+        // such bound).
+        //
+        // Therefore, we would compute `object_lifetime_defaults` to a
+        // vector like `['x, 'static]`. Note that the vector only
+        // includes type parameters.
         let object_lifetime_defaults = type_def_id.map_or(vec![], |def_id| {
             let in_body = {
                 let mut scope = self.scope;
@@ -2015,6 +2040,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             .collect()
                     })
             };
+            debug!("visit_segment_args: unsubst={:?}", unsubst);
             unsubst
                 .iter()
                 .map(|set| match *set {
@@ -2034,6 +2060,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 })
                 .collect()
         });
+
+        debug!("visit_segment_args: object_lifetime_defaults={:?}", object_lifetime_defaults);
 
         let mut i = 0;
         for arg in &generic_args.args {
@@ -2057,8 +2085,49 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         }
 
+        // Hack: when resolving the type `XX` in binding like `dyn
+        // Foo<'b, Item = XX>`, the current object-lifetime default
+        // would be to examine the trait `Foo` to check whether it has
+        // a lifetime bound declared on `Item`. e.g., if `Foo` is
+        // declared like so, then the default object lifetime bound in
+        // `XX` should be `'b`:
+        //
+        // ```rust
+        // trait Foo<'a> {
+        //   type Item: 'a;
+        // }
+        // ```
+        //
+        // but if we just have `type Item;`, then it would be
+        // `'static`. However, we don't get all of this logic correct.
+        //
+        // Instead, we do something hacky: if there are no lifetime parameters
+        // to the trait, then we simply use a default object lifetime
+        // bound of `'static`, because there is no other possibility. On the other hand,
+        // if there ARE lifetime parameters, then we require the user to give an
+        // explicit bound for now.
+        //
+        // This is intended to leave room for us to implement the
+        // correct behavior in the future.
+        let has_lifetime_parameter = generic_args
+            .args
+            .iter()
+            .any(|arg| match arg {
+                GenericArg::Lifetime(_) => true,
+                _ => false,
+            });
+
+        // Resolve lifetimes found in the type `XX` from `Item = XX` bindings.
         for b in &generic_args.bindings {
-            self.visit_assoc_type_binding(b);
+            let scope = Scope::ObjectLifetimeDefault {
+                lifetime: if has_lifetime_parameter {
+                    None
+                } else {
+                    Some(Region::Static)
+                },
+                s: self.scope,
+            };
+            self.with(scope, |_, this| this.visit_assoc_type_binding(b));
         }
     }
 
