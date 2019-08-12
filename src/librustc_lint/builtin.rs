@@ -21,6 +21,8 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
+use std::fmt::Write;
+
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::{self, Ty, TyCtxt, layout::VariantIdx};
@@ -1877,41 +1879,57 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
         const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
         const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
 
-        /// Return `false` only if we are sure this type does *not*
+        /// Information about why a type cannot be initialized this way.
+        /// Contains an error message and optionally a span to point at.
+        type InitError = (String, Option<Span>);
+
+        /// Return `Some` only if we are sure this type does *not*
         /// allow zero initialization.
-        fn ty_maybe_allows_zero_init<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+        fn ty_find_init_error<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<InitError> {
             use rustc::ty::TyKind::*;
             match ty.sty {
                 // Primitive types that don't like 0 as a value.
-                Ref(..) | FnPtr(..) | Never => false,
-                Adt(..) if ty.is_box() => false,
+                Ref(..) => Some((format!("References must be non-null"), None)),
+                Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
+                FnPtr(..) => Some((format!("Function pointers must be non-null"), None)),
+                Never => Some((format!("The never type (`!`) has no valid value"), None)),
                 // Recurse for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
                     match adt_def.variants.len() {
-                        0 => false, // Uninhabited enum!
+                        0 => Some((format!("0-variant enums have no valid value"), None)),
                         1 => {
                             // Struct, or enum with exactly one variant.
                             // Proceed recursively, check all fields.
                             let variant = &adt_def.variants[VariantIdx::from_u32(0)];
-                            variant.fields.iter().all(|field| {
-                                ty_maybe_allows_zero_init(
+                            variant.fields.iter().find_map(|field| {
+                                ty_find_init_error(
                                     tcx,
                                     field.ty(tcx, substs),
-                                )
+                                ).map(|(mut msg, span)| if span.is_none() {
+                                    // Point to this field, should be helpful for figuring
+                                    // out where the source of the error is.
+                                    let span = tcx.def_span(field.did);
+                                    write!(&mut msg, " (in this {} field)", adt_def.descr())
+                                        .unwrap();
+                                    (msg, Some(span))
+                                } else {
+                                    // Just forward.
+                                    (msg, span)
+                                })
                             })
                         }
-                        _ => true, // Conservative fallback for multi-variant enum.
+                        _ => None, // Conservative fallback for multi-variant enum.
                     }
                 }
                 Tuple(..) => {
                     // Proceed recursively, check all fields.
-                    ty.tuple_fields().all(|field| ty_maybe_allows_zero_init(tcx, field))
+                    ty.tuple_fields().find_map(|field| ty_find_init_error(tcx, field))
                 }
                 // FIXME: Would be nice to also warn for `NonNull`/`NonZero*`.
                 // FIXME: *Only for `mem::uninitialized`*, we could also warn for `bool`,
                 //        `char`, and any multivariant enum.
                 // Conservative fallback.
-                _ => true,
+                _ => None,
             }
         }
 
@@ -1925,9 +1943,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                         // using zeroed or uninitialized memory.
                         // We are extremely conservative with what we warn about.
                         let conjured_ty = cx.tables.expr_ty(expr);
-
-                        if !ty_maybe_allows_zero_init(cx.tcx, conjured_ty) {
-                            cx.struct_span_lint(
+                        if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty) {
+                            let mut err = cx.struct_span_lint(
                                 INVALID_VALUE,
                                 expr.span,
                                 &format!(
@@ -1939,11 +1956,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                                         "being left uninitialized"
                                     }
                                 ),
-                            )
-                            .note("this means that this code causes undefined behavior \
-                                when executed")
-                            .help("use `MaybeUninit` instead")
-                            .emit();
+                            );
+                            err.span_label(expr.span,
+                                "this code causes undefined behavior when executed");
+                            err.span_label(expr.span, "help: use `MaybeUninit<T>` instead");
+                            if let Some(span) = span {
+                                err.span_note(span, &msg);
+                            } else {
+                                err.note(&msg);
+                            }
+                            err.emit();
                         }
                     }
                 }

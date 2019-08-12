@@ -11,8 +11,10 @@ use std::mem::{self, MaybeUninit};
 enum Void {}
 
 struct Ref(&'static i32);
+struct RefPair((&'static i32, i32));
 
 struct Wrap<T> { wrapped: T }
+enum WrapEnum<T> { Wrapped(T) }
 
 #[allow(unused)]
 fn generic<T: 'static>() {
@@ -47,6 +49,12 @@ fn main() {
 
         let _val: Wrap<fn()> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: Wrap<fn()> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        let _val: WrapEnum<fn()> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: WrapEnum<fn()> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        let _val: Wrap<(RefPair, i32)> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: Wrap<(RefPair, i32)> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
         // Some types that should work just fine.
         let _val: Option<&'static i32> = mem::zeroed();
