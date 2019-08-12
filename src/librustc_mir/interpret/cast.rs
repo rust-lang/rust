@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty, TypeAndMut};
+use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc::ty::layout::{self, TyLayout, Size};
 use rustc::ty::adjustment::{PointerCast};
 use syntax::ast::FloatTy;
@@ -36,6 +36,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
+                        // All reifications must be monomorphic, bail out otherwise.
+                        if src.layout.ty.needs_subst() {
+                            throw_inval!(TooGeneric);
+                        }
+
                         if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
                             bug!("reifying a fn ptr that requires const arguments");
                         }
@@ -62,6 +67,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::Closure(def_id, substs) => {
+                        // All reifications must be monomorphic, bail out otherwise.
+                        if src.layout.ty.needs_subst() {
+                            throw_inval!(TooGeneric);
+                        }
+
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
