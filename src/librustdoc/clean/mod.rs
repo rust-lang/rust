@@ -566,23 +566,6 @@ pub enum ItemEnum {
 }
 
 impl ItemEnum {
-    pub fn generics(&self) -> Option<&Generics> {
-        Some(match *self {
-            ItemEnum::StructItem(ref s) => &s.generics,
-            ItemEnum::EnumItem(ref e) => &e.generics,
-            ItemEnum::FunctionItem(ref f) => &f.generics,
-            ItemEnum::TypedefItem(ref t, _) => &t.generics,
-            ItemEnum::OpaqueTyItem(ref t, _) => &t.generics,
-            ItemEnum::TraitItem(ref t) => &t.generics,
-            ItemEnum::ImplItem(ref i) => &i.generics,
-            ItemEnum::TyMethodItem(ref i) => &i.generics,
-            ItemEnum::MethodItem(ref i) => &i.generics,
-            ItemEnum::ForeignFunctionItem(ref f) => &f.generics,
-            ItemEnum::TraitAliasItem(ref ta) => &ta.generics,
-            _ => return None,
-        })
-    }
-
     pub fn is_associated(&self) -> bool {
         match *self {
             ItemEnum::TypedefItem(_, _) |
@@ -1535,8 +1518,6 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
                 (self.name.to_string(), GenericParamDefKind::Lifetime)
             }
             ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
-                cx.renderinfo.borrow_mut().external_param_names
-                             .insert(self.def_id, self.name.clean(cx));
                 let default = if has_default {
                     Some(cx.tcx.type_of(self.def_id).clean(cx))
                 } else {

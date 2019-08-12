@@ -282,11 +282,6 @@ impl Impl {
 /// rendering threads.
 #[derive(Default)]
 pub struct Cache {
-    /// Mapping of typaram ids to the name of the type parameter. This is used
-    /// when pretty-printing a type (so pretty-printing doesn't have to
-    /// painfully maintain a context like this)
-    pub param_names: FxHashMap<DefId, String>,
-
     /// Maps a type ID to all known implementations for that type. This is only
     /// recognized for intra-crate `ResolvedPath` types, and is used to print
     /// out extra documentation on the page of an enum/struct.
@@ -382,7 +377,6 @@ pub struct Cache {
 pub struct RenderInfo {
     pub inlined: FxHashSet<DefId>,
     pub external_paths: crate::core::ExternalPaths,
-    pub external_param_names: FxHashMap<DefId, String>,
     pub exact_paths: FxHashMap<DefId, Vec<String>>,
     pub access_levels: AccessLevels<DefId>,
     pub deref_trait_did: Option<DefId>,
@@ -617,7 +611,6 @@ pub fn run(mut krate: clean::Crate,
     let RenderInfo {
         inlined: _,
         external_paths,
-        external_param_names,
         exact_paths,
         access_levels,
         deref_trait_did,
@@ -651,7 +644,6 @@ pub fn run(mut krate: clean::Crate,
         deref_mut_trait_did,
         owned_box_did,
         masked_crates: mem::take(&mut krate.masked_crates),
-        param_names: external_param_names,
         aliases: Default::default(),
     };
 
@@ -1419,12 +1411,6 @@ impl DocFolder for Cache {
             }
         }
 
-        // Register any generics to their corresponding string. This is used
-        // when pretty-printing types.
-        if let Some(generics) = item.inner.generics() {
-            self.generics(generics);
-        }
-
         // Propagate a trait method's documentation to all implementors of the
         // trait.
         if let clean::TraitItem(ref t) = item.inner {
@@ -1657,18 +1643,6 @@ impl DocFolder for Cache {
 }
 
 impl Cache {
-    fn generics(&mut self, generics: &clean::Generics) {
-        for param in &generics.params {
-            match param.kind {
-                clean::GenericParamDefKind::Lifetime => {}
-                clean::GenericParamDefKind::Type { did, .. } |
-                clean::GenericParamDefKind::Const { did, .. } => {
-                    self.param_names.insert(did, param.name.clone());
-                }
-            }
-        }
-    }
-
     fn add_aliases(&mut self, item: &clean::Item) {
         if item.def_id.index == CRATE_DEF_INDEX {
             return
