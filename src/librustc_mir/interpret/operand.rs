@@ -511,7 +511,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => self.eval_const_to_op(constant.literal, layout)?,
+            Constant(ref constant) => {
+                let lit = self.subst_and_normalize_erasing_regions_in_frame(constant.literal)?;
+                self.eval_const_to_op(lit, layout)?
+            },
         };
         trace!("{:?}: {:?}", mir_op, *op);
         Ok(op)
@@ -538,9 +541,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => Scalar::Ptr(self.tag_static_base_pointer(ptr)),
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
-        let value = self.subst_and_normalize_erasing_regions_in_frame(val.val)?;
         // Early-return cases.
-        match value {
+        match val.val {
             ConstValue::Param(_) => throw_inval!(TooGeneric),
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
@@ -552,14 +554,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => {}
         }
         // Other cases need layout.
-        let layout = from_known_layout(layout, || {
-            // Substituting is not a cached or O(1) operation. Substituting the type happens here,
-            // which may not happen if we already have a layout. Or if we use the early abort above.
-            // Thus we do not substitute and normalize `val` above, but only `val.val` and then
-            // substitute `val.ty` here.
-            self.layout_of(self.subst_and_normalize_erasing_regions_in_frame(val.ty)?)
-        })?;
-        let op = match value {
+        let layout = from_known_layout(layout, || self.layout_of(val.ty))?;
+        let op = match val.val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
