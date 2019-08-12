@@ -108,8 +108,7 @@ impl<'a> Parser<'a> {
         maybe_whole!(self, NtPat, |x| x);
 
         let lo = self.token.span;
-        let pat;
-        match self.token.kind {
+        let pat = match self.token.kind {
             token::BinOp(token::And) | token::AndAnd => {
                 // Parse &pat / &mut pat
                 self.expect_and()?;
@@ -120,7 +119,7 @@ impl<'a> Parser<'a> {
                     return Err(err);
                 }
                 let subpat = self.parse_pat_with_range_pat(false, expected)?;
-                pat = PatKind::Ref(subpat, mutbl);
+                PatKind::Ref(subpat, mutbl)
             }
             token::OpenDelim(token::Paren) => {
                 // Parse a tuple or parenthesis pattern.
@@ -128,41 +127,40 @@ impl<'a> Parser<'a> {
 
                 // Here, `(pat,)` is a tuple pattern.
                 // For backward compatibility, `(..)` is a tuple pattern as well.
-                pat = if fields.len() == 1 && !(trailing_comma || fields[0].is_rest()) {
+                if fields.len() == 1 && !(trailing_comma || fields[0].is_rest()) {
                     PatKind::Paren(fields.into_iter().nth(0).unwrap())
                 } else {
                     PatKind::Tuple(fields)
-                };
+                }
             }
             token::OpenDelim(token::Bracket) => {
                 // Parse `[pat, pat,...]` as a slice pattern.
-                let (slice, _) = self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat(None))?;
-                pat = PatKind::Slice(slice);
+                PatKind::Slice(self.parse_delim_comma_seq(token::Bracket, |p| p.parse_pat(None))?.0)
             }
             token::DotDot => {
                 self.bump();
-                pat = if self.is_pat_range_end_start() {
+                if self.is_pat_range_end_start() {
                     // Parse `..42` for recovery.
                     self.parse_pat_range_to(RangeEnd::Excluded, "..")?
                 } else {
                     // A rest pattern `..`.
                     PatKind::Rest
-                };
+                }
             }
             token::DotDotEq => {
                 // Parse `..=42` for recovery.
                 self.bump();
-                pat = self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotEq), "..=")?;
+                self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotEq), "..=")?
             }
             token::DotDotDot => {
                 // Parse `...42` for recovery.
                 self.bump();
-                pat = self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotDot), "...")?;
+                self.parse_pat_range_to(RangeEnd::Included(RangeSyntax::DotDotDot), "...")?
             }
             // At this point, token != &, &&, (, [
             _ => if self.eat_keyword(kw::Underscore) {
                 // Parse _
-                pat = PatKind::Wild;
+                PatKind::Wild
             } else if self.eat_keyword(kw::Mut) {
                 // Parse mut ident @ pat / mut ref ident @ pat
                 let mutref_span = self.prev_span.to(self.token.span);
@@ -179,22 +177,20 @@ impl<'a> Parser<'a> {
                 } else {
                     BindingMode::ByValue(Mutability::Mutable)
                 };
-                pat = self.parse_pat_ident(binding_mode)?;
+                self.parse_pat_ident(binding_mode)?
             } else if self.eat_keyword(kw::Ref) {
                 // Parse ref ident @ pat / ref mut ident @ pat
                 let mutbl = self.parse_mutability();
-                pat = self.parse_pat_ident(BindingMode::ByRef(mutbl))?;
+                self.parse_pat_ident(BindingMode::ByRef(mutbl))?
             } else if self.eat_keyword(kw::Box) {
-                // Parse box pat
-                let subpat = self.parse_pat_with_range_pat(false, None)?;
-                pat = PatKind::Box(subpat);
+                // Parse `box pat`
+                PatKind::Box(self.parse_pat_with_range_pat(false, None)?)
             } else if self.token.is_ident() && !self.token.is_reserved_ident() &&
                       self.parse_as_ident() {
-                // Parse ident @ pat
+                // Parse `ident @ pat`
                 // This can give false positives and parse nullary enums,
-                // they are dealt with later in resolve
-                let binding_mode = BindingMode::ByValue(Mutability::Immutable);
-                pat = self.parse_pat_ident(binding_mode)?;
+                // they are dealt with later in resolve.
+                self.parse_pat_ident(BindingMode::ByValue(Mutability::Immutable))?
             } else if self.token.is_path_start() {
                 // Parse pattern starting with a path
                 let (qself, path) = if self.eat_lt() {
@@ -216,7 +212,7 @@ impl<'a> Parser<'a> {
                             delim,
                             prior_type_ascription: self.last_type_ascription,
                         });
-                        pat = PatKind::Mac(mac);
+                        PatKind::Mac(mac)
                     }
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
                         let (end_kind, form) = match self.token.kind {
@@ -232,7 +228,7 @@ impl<'a> Parser<'a> {
                         let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
                         self.bump();
                         let end = self.parse_pat_range_end_opt(&begin, form)?;
-                        pat = PatKind::Range(begin, end, respan(op_span, end_kind));
+                        PatKind::Range(begin, end, respan(op_span, end_kind))
                     }
                     token::OpenDelim(token::Brace) => {
                         if qself.is_some() {
@@ -249,7 +245,7 @@ impl<'a> Parser<'a> {
                             (vec![], true)
                         });
                         self.bump();
-                        pat = PatKind::Struct(path, fields, etc);
+                        PatKind::Struct(path, fields, etc)
                     }
                     token::OpenDelim(token::Paren) => {
                         if qself.is_some() {
@@ -260,9 +256,9 @@ impl<'a> Parser<'a> {
                         }
                         // Parse tuple struct or enum pattern
                         let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
-                        pat = PatKind::TupleStruct(path, fields)
+                        PatKind::TupleStruct(path, fields)
                     }
-                    _ => pat = PatKind::Path(qself, path),
+                    _ => PatKind::Path(qself, path),
                 }
             } else {
                 // Try to parse everything else as literal with optional minus
@@ -282,9 +278,9 @@ impl<'a> Parser<'a> {
                                         on a range-operator token")
                             };
                             let end = self.parse_pat_range_end_opt(&begin, form)?;
-                            pat = PatKind::Range(begin, end, respan(op_span, end_kind))
+                            PatKind::Range(begin, end, respan(op_span, end_kind))
                         } else {
-                            pat = PatKind::Lit(begin);
+                            PatKind::Lit(begin)
                         }
                     }
                     Err(mut err) => {
@@ -305,7 +301,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-        }
+        };
 
         let pat = self.mk_pat(lo.to(self.prev_span), pat);
         let pat = self.maybe_recover_from_bad_qpath(pat, true)?;
