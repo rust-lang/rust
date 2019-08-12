@@ -19,7 +19,6 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             features: "+secure-plt".to_string(),
-            target_mcount: "_mcount".to_string(),
             .. base
         },
     })

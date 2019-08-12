@@ -6,6 +6,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(64);
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
     base.stack_probes = true;
+    base.disable_redzone = true;
 
     Ok(Target {
         llvm_target: "x86_64-unknown-linux-gnu".to_string(),

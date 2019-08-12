@@ -1,8 +1,5 @@
 use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
-// This target is for glibc Linux on ARMv7 without NEON or
-// thumb-mode. See the thumbv7neon variant for enabling both.
-
 pub fn target() -> TargetResult {
     let base = super::vxworks_base::opts();
     Ok(Target {
@@ -14,17 +11,14 @@ pub fn target() -> TargetResult {
         arch: "arm".to_string(),
         target_os: "vxworks".to_string(),
         target_env: "gnu".to_string(),
-        target_vendor: "unknown".to_string(),
+        target_vendor: "wrs".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
-
         options: TargetOptions {
             // Info about features at https://wiki.debian.org/ArmHardFloatPort
             features: "+v7,+vfp3,-d32,+thumb2,-neon".to_string(),
             cpu: "generic".to_string(),
             max_atomic_width: Some(64),
             abi_blacklist: super::arm_base::abi_blacklist(),
-            target_mcount: "\u{1}__gnu_mcount_nc".to_string(),
-            position_independent_executables: false,
             .. base
         }
     })

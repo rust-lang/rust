@@ -15,10 +15,9 @@ pub fn target() -> TargetResult {
         arch: "powerpc64".to_string(),
         target_os: "vxworks".to_string(),
         target_env: "gnu".to_string(),
-        target_vendor: "unknown".to_string(),
+        target_vendor: "wrs".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
-            target_mcount: "_mcount".to_string(),
             .. base
         },
     })
