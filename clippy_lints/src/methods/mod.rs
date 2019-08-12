@@ -2176,7 +2176,17 @@ fn lint_flat_map_identity<'a, 'tcx>(
         let arg_node = &flat_map_args[1].node;
 
         let apply_lint = |message: &str| {
-            span_lint(cx, FLAT_MAP_IDENTITY, expr.span, message);
+            if let hir::ExprKind::MethodCall(_, span, _) = &expr.node {
+                span_lint_and_sugg(
+                    cx,
+                    FLAT_MAP_IDENTITY,
+                    *span,
+                    message,
+                    "try",
+                    "flatten()".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
         };
 
         if_chain! {
@@ -2190,8 +2200,7 @@ fn lint_flat_map_identity<'a, 'tcx>(
             if path.segments[0].ident.as_str() == binding_ident.as_str();
 
             then {
-                apply_lint("called `flat_map(|x| x)` on an `Iterator`. \
-                            This can be simplified by calling `flatten().`");
+                apply_lint("called `flat_map(|x| x)` on an `Iterator`");
             }
         }
 
@@ -2201,8 +2210,7 @@ fn lint_flat_map_identity<'a, 'tcx>(
             if match_qpath(qpath, &paths::STD_CONVERT_IDENTITY);
 
             then {
-                apply_lint("called `flat_map(std::convert::identity)` on an `Iterator`. \
-                            This can be simplified by calling `flatten().`");
+                apply_lint("called `flat_map(std::convert::identity)` on an `Iterator`");
             }
         }
     }
