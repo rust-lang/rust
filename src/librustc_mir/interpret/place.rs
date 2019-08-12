@@ -643,7 +643,7 @@ where
                             layout: self.layout_of(
                                 self.subst_from_frame_and_normalize_erasing_regions(
                                     self.frame().body.return_ty()
-                                )?
+                                )
                             )?,
                         }
                     }

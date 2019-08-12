@@ -315,23 +315,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
-    /// stack rameframe), to bring it into the proper environment for this interpreter.
+    /// stack frame), to bring it into the proper environment for this interpreter.
     pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
-        t: T,
-    ) -> InterpResult<'tcx, T> {
-        match self.stack.last() {
-            Some(frame) => Ok(self.tcx.subst_and_normalize_erasing_regions(
-                frame.instance.substs,
-                self.param_env,
-                &t,
-            )),
-            None => if t.needs_subst() {
-                throw_inval!(TooGeneric)
-            } else {
-                Ok(t)
-            },
-        }
+        value: T,
+    ) -> T {
+        self.tcx.subst_and_normalize_erasing_regions(
+            self.frame().instance.substs,
+            self.param_env,
+            &value,
+        )
     }
 
     /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
