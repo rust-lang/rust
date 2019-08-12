@@ -3,7 +3,7 @@
 //! Here we build the "reduced graph": the graph of the module tree without
 //! any imports resolved.
 
-use crate::macros::{InvocationData, LegacyBinding, LegacyScope};
+use crate::macros::{LegacyBinding, LegacyScope};
 use crate::resolve_imports::ImportDirective;
 use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
@@ -1063,20 +1063,17 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         false
     }
 
-    fn visit_invoc(&mut self, id: ast::NodeId) -> &'a InvocationData<'a> {
+    fn visit_invoc(&mut self, id: ast::NodeId) -> LegacyScope<'a> {
         let invoc_id = id.placeholder_to_expn_id();
 
-        self.parent_scope.module.unresolved_invocations.borrow_mut().insert(invoc_id);
+        let parent_scope = self.parent_scope.clone();
+        parent_scope.module.unresolved_invocations.borrow_mut().insert(invoc_id);
 
-        let invocation_data = self.r.arenas.alloc_invocation_data(InvocationData {
-            module: self.parent_scope.module,
-            parent_legacy_scope: self.parent_scope.legacy,
-            output_legacy_scope: Cell::new(None),
-        });
-        let old_invocation_data = self.r.invocations.insert(invoc_id, invocation_data);
-        assert!(old_invocation_data.is_none(), "invocation data is reset for an invocation");
+        let old_parent_scope =
+            self.r.invocation_parent_scopes.insert(invoc_id, parent_scope.clone());
+        assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
 
-        invocation_data
+        LegacyScope::Invocation(invoc_id)
     }
 
     fn proc_macro_stub(item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
@@ -1177,7 +1174,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
                 return
             }
             ItemKind::Mac(..) => {
-                self.parent_scope.legacy = LegacyScope::Invocation(self.visit_invoc(item.id));
+                self.parent_scope.legacy = self.visit_invoc(item.id);
                 return
             }
             ItemKind::Mod(..) => self.contains_macro_use(&item.attrs),
@@ -1196,7 +1193,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_stmt(&mut self, stmt: &'b ast::Stmt) {
         if let ast::StmtKind::Mac(..) = stmt.node {
-            self.parent_scope.legacy = LegacyScope::Invocation(self.visit_invoc(stmt.id));
+            self.parent_scope.legacy = self.visit_invoc(stmt.id);
         } else {
             visit::walk_stmt(self, stmt);
         }
