@@ -1,3 +1,4 @@
+use rustc_data_structures::indexed_vec::Idx;
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
@@ -224,14 +225,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     fn codegen_return_terminator(&mut self, mut bx: Bx) {
+        // Call `va_end` if this is the definition of a C-variadic function.
         if self.fn_ty.c_variadic {
-            match self.va_list_ref {
-                Some(va_list) => {
+            // The `VaList` "spoofed" argument is just after all the real arguments.
+            let va_list_arg_idx = self.fn_ty.args.len();
+            match self.locals[mir::Local::new(1 + va_list_arg_idx)] {
+                LocalRef::Place(va_list) => {
                     bx.va_end(va_list.llval);
                 }
-                None => {
-                    bug!("C-variadic function must have a `va_list_ref`");
-                }
+                _ => bug!("C-variadic function must have a `VaList` place"),
             }
         }
         if self.fn_ty.ret.layout.abi.is_uninhabited() {

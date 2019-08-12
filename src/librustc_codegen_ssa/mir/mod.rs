@@ -81,10 +81,6 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Bx::DIScope>>,
-
-    /// If this function is a C-variadic function, this contains the `PlaceRef` of the
-    /// "spoofed" `VaListImpl`.
-    va_list_ref: Option<PlaceRef<'tcx, Bx::Value>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -236,18 +232,13 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         scopes,
         locals: IndexVec::new(),
         debug_context,
-        va_list_ref: None,
     };
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
     // Allocate variable and temp allocas
     fx.locals = {
-        // FIXME(dlrobertson): This is ugly. Find a better way of getting the `PlaceRef` or
-        // `LocalRef` from `arg_local_refs`
-        let mut va_list_ref = None;
-        let args = arg_local_refs(&mut bx, &fx, &memory_locals, &mut va_list_ref);
-        fx.va_list_ref = va_list_ref;
+        let args = arg_local_refs(&mut bx, &fx, &memory_locals);
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
@@ -426,7 +417,6 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &FunctionCx<'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,
-    va_list_ref: &mut Option<PlaceRef<'tcx, Bx::Value>>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
     let tcx = fx.cx.tcx();
@@ -500,8 +490,6 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let va_list = PlaceRef::alloca(bx, bx.layout_of(arg_ty));
             bx.set_var_name(va_list.llval, name);
             bx.va_start(va_list.llval);
-            // FIXME(eddyb) remove `va_list_ref`.
-            *va_list_ref = Some(va_list);
 
             arg_scope.map(|scope| {
                 let variable_access = VariableAccess::DirectVariable {
