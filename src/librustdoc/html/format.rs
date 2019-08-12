@@ -36,9 +36,6 @@ pub struct AsyncSpace(pub hir::IsAsync);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct MutableSpace(pub clean::Mutability);
-/// Similar to VisSpace, but used for mutability
-#[derive(Copy, Clone)]
-pub struct RawMutableSpace(pub clean::Mutability);
 /// Wrapper struct for emitting type parameter bounds.
 pub struct GenericBounds<'a>(pub &'a [clean::GenericBound]);
 /// Wrapper struct for emitting a comma-separated list of items
@@ -604,19 +601,22 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
         clean::Never => primitive_link(f, PrimitiveType::Never, "!"),
         clean::CVarArgs => primitive_link(f, PrimitiveType::CVarArgs, "..."),
         clean::RawPointer(m, ref t) => {
+            let m = match m {
+                clean::Immutable => "const",
+                clean::Mutable => "mut",
+            };
             match **t {
                 clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {
                     if f.alternate() {
                         primitive_link(f, clean::PrimitiveType::RawPointer,
-                                       &format!("*{}{:#}", RawMutableSpace(m), t))
+                                       &format!("*{} {:#}", m, t))
                     } else {
                         primitive_link(f, clean::PrimitiveType::RawPointer,
-                                       &format!("*{}{}", RawMutableSpace(m), t))
+                                       &format!("*{} {}", m, t))
                     }
                 }
                 _ => {
-                    primitive_link(f, clean::PrimitiveType::RawPointer,
-                                   &format!("*{}", RawMutableSpace(m)))?;
+                    primitive_link(f, clean::PrimitiveType::RawPointer, &format!("*{} ", m))?;
                     fmt::Display::fmt(t, f)
                 }
             }
@@ -1040,15 +1040,6 @@ impl fmt::Display for MutableSpace {
         match *self {
             MutableSpace(clean::Immutable) => Ok(()),
             MutableSpace(clean::Mutable) => write!(f, "mut "),
-        }
-    }
-}
-
-impl fmt::Display for RawMutableSpace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            RawMutableSpace(clean::Immutable) => write!(f, "const "),
-            RawMutableSpace(clean::Mutable) => write!(f, "mut "),
         }
     }
 }
