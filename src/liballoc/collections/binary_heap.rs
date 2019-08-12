@@ -1163,6 +1163,9 @@ impl<T> FusedIterator for Drain<'_, T> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]
 impl<T: Ord> From<Vec<T>> for BinaryHeap<T> {
+    /// Converts a `Vec` into a `BinaryHeap`.
+    ///
+    /// This conversion happens in-place, and has O(n) time complexity.
     fn from(vec: Vec<T>) -> BinaryHeap<T> {
         let mut heap = BinaryHeap { data: vec };
         heap.rebuild();
