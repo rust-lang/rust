@@ -3,7 +3,7 @@ use super::{Parser, PResult, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use crate::ptr::P;
 use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac_};
-use crate::ast::{BindingMode, Ident, Mutability, Path, Expr, ExprKind};
+use crate::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
 use crate::parse::token::{self};
 use crate::print::pprust;
 use crate::source_map::{respan, Span, Spanned};
@@ -167,20 +167,7 @@ impl<'a> Parser<'a> {
                 match self.token.kind {
                     token::Not if qself.is_none() => self.parse_pat_mac_invoc(lo, path)?,
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
-                        let (end_kind, form) = match self.token.kind {
-                            token::DotDot => (RangeEnd::Excluded, ".."),
-                            token::DotDotDot => (RangeEnd::Included(RangeSyntax::DotDotDot), "..."),
-                            token::DotDotEq => (RangeEnd::Included(RangeSyntax::DotDotEq), "..="),
-                            _ => panic!("can only parse `..`/`...`/`..=` for ranges \
-                                         (checked above)"),
-                        };
-                        let op_span = self.token.span;
-                        // Parse range
-                        let span = lo.to(self.prev_span);
-                        let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
-                        self.bump();
-                        let end = self.parse_pat_range_end_opt(&begin, form)?;
-                        PatKind::Range(begin, end, respan(op_span, end_kind))
+                        self.parse_pat_range_starting_with_path(lo, qself, path)?
                     }
                     token::OpenDelim(token::Brace) => {
                         if qself.is_some() {
@@ -348,6 +335,29 @@ impl<'a> Parser<'a> {
             prior_type_ascription: self.last_type_ascription,
         });
         Ok(PatKind::Mac(mac))
+    }
+
+    /// Parse a range pattern `$path $form $end?` where `$form = ".." | "..." | "..=" ;`.
+    /// The `$path` has already been parsed and the next token is the `$form`.
+    fn parse_pat_range_starting_with_path(
+        &mut self,
+        lo: Span,
+        qself: Option<QSelf>,
+        path: Path
+    ) -> PResult<'a, PatKind> {
+        let (end_kind, form) = match self.token.kind {
+            token::DotDot => (RangeEnd::Excluded, ".."),
+            token::DotDotDot => (RangeEnd::Included(RangeSyntax::DotDotDot), "..."),
+            token::DotDotEq => (RangeEnd::Included(RangeSyntax::DotDotEq), "..="),
+            _ => panic!("can only parse `..`/`...`/`..=` for ranges (checked above)"),
+        };
+        let op_span = self.token.span;
+        // Parse range
+        let span = lo.to(self.prev_span);
+        let begin = self.mk_expr(span, ExprKind::Path(qself, path), ThinVec::new());
+        self.bump();
+        let end = self.parse_pat_range_end_opt(&begin, form)?;
+        Ok(PatKind::Range(begin, end, respan(op_span, end_kind)))
     }
 
     // Helper function to decide whether to parse as ident binding
