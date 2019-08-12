@@ -110,7 +110,11 @@ fn main() {
 
     // Non-zero stages must all be treated uniformly to avoid problems when attempting to uplift
     // compiler libraries and such from stage 1 to 2.
-    if stage == "0" {
+    //
+    // FIXME: the fact that core here is excluded is due to core_arch from our stdarch submodule
+    // being broken on the beta compiler with bootstrap passed, so this is a temporary workaround
+    // (we've just snapped, so there are no cfg(bootstrap) related annotations in core).
+    if stage == "0" && crate_name != Some("core") {
         cmd.arg("--cfg").arg("bootstrap");
     }
 
