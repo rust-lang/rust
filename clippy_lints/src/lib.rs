@@ -431,6 +431,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         "clippy::unsafe_vector_initialization",
         "the replacement suggested by this lint had substantially different behavior",
     );
+    store.register_removed(
+        "clippy::invalid_ref",
+        "superseded by rustc lint `invalid_value`",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::SerdeAPI);
