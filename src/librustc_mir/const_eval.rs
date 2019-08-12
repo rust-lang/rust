@@ -47,9 +47,7 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
-    InterpCx::new(
-        tcx.at(span), param_env, CompileTimeInterpreter::new(), Default::default(),
-    )
+    InterpCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), Default::default())
 }
 
 pub(crate) fn eval_promoted<'mir, 'tcx>(
@@ -548,11 +546,7 @@ fn validate_and_turn_into_const<'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
-    let ecx = mk_eval_cx(
-        tcx,
-        tcx.def_span(key.value.instance.def_id()),
-        key.param_env,
-    );
+    let ecx = mk_eval_cx(tcx, tcx.def_span(key.value.instance.def_id()), key.param_env);
     let val = (|| {
         let mplace = ecx.raw_const_to_mplace(constant)?;
         let mut ref_tracking = RefTracking::new(mplace);
