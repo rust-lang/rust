@@ -1885,31 +1885,6 @@ impl Context {
         "../".repeat(self.current.len())
     }
 
-    /// Recurse in the directory structure and change the "root path" to make
-    /// sure it always points to the top (relatively).
-    fn recurse<T, F>(&mut self, s: String, f: F) -> T where
-        F: FnOnce(&mut Context) -> T,
-    {
-        if s.is_empty() {
-            panic!("Unexpected empty destination: {:?}", self.current);
-        }
-        let prev = self.dst.clone();
-        self.dst.push(&s);
-        self.current.push(s);
-
-        info!("Recursing into {}", self.dst.display());
-
-        let ret = f(self);
-
-        info!("Recursed; leaving {}", self.dst.display());
-
-        // Go back to where we were at
-        self.dst = prev;
-        self.current.pop().unwrap();
-
-        ret
-    }
-
     /// Main method for rendering a crate.
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
@@ -2090,42 +2065,50 @@ impl Context {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             let name = item.name.as_ref().unwrap().to_string();
-            let mut item = Some(item);
-            let scx = self.shared.clone();
-            self.recurse(name, |this| {
-                let item = item.take().unwrap();
+            let scx = &self.shared;
+            if name.is_empty() {
+                panic!("Unexpected empty destination: {:?}", self.current);
+            }
+            let prev = self.dst.clone();
+            self.dst.push(&name);
+            self.current.push(name);
 
-                let mut buf = Vec::new();
-                this.render_item(&mut buf, &item, false).unwrap();
-                // buf will be empty if the module is stripped and there is no redirect for it
-                if !buf.is_empty() {
-                    this.shared.ensure_dir(&this.dst)?;
-                    let joint_dst = this.dst.join("index.html");
-                    scx.fs.write(&joint_dst, buf)?;
-                }
+            info!("Recursing into {}", self.dst.display());
 
-                let m = match item.inner {
-                    clean::StrippedItem(box clean::ModuleItem(m)) |
-                    clean::ModuleItem(m) => m,
-                    _ => unreachable!()
-                };
+            let mut buf = Vec::new();
+            self.render_item(&mut buf, &item, false).unwrap();
+            // buf will be empty if the module is stripped and there is no redirect for it
+            if !buf.is_empty() {
+                self.shared.ensure_dir(&self.dst)?;
+                let joint_dst = self.dst.join("index.html");
+                scx.fs.write(&joint_dst, buf)?;
+            }
 
-                // Render sidebar-items.js used throughout this module.
-                if !this.render_redirect_pages {
-                    let items = this.build_sidebar_items(&m);
-                    let js_dst = this.dst.join("sidebar-items.js");
-                    let mut v = Vec::new();
-                    try_err!(write!(&mut v, "initSidebarItems({});",
-                                    as_json(&items)), &js_dst);
-                    scx.fs.write(&js_dst, &v)?;
-                }
+            let m = match item.inner {
+                clean::StrippedItem(box clean::ModuleItem(m)) |
+                clean::ModuleItem(m) => m,
+                _ => unreachable!()
+            };
 
-                for item in m.items {
-                    f(this, item);
-                }
+            // Render sidebar-items.js used throughout this module.
+            if !self.render_redirect_pages {
+                let items = self.build_sidebar_items(&m);
+                let js_dst = self.dst.join("sidebar-items.js");
+                let mut v = Vec::new();
+                try_err!(write!(&mut v, "initSidebarItems({});",
+                                as_json(&items)), &js_dst);
+                scx.fs.write(&js_dst, &v)?;
+            }
 
-                Ok(())
-            })?;
+            for item in m.items {
+                f(self, item);
+            }
+
+            info!("Recursed; leaving {}", self.dst.display());
+
+            // Go back to where we were at
+            self.dst = prev;
+            self.current.pop().unwrap();
         } else if item.name.is_some() {
             let mut buf = Vec::new();
             self.render_item(&mut buf, &item, true).unwrap();
