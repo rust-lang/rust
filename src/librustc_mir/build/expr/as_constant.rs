@@ -40,7 +40,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 });
                 Constant {
                     span,
-                    ty,
                     user_ty,
                     literal,
                 }

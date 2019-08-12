@@ -466,7 +466,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                let ty = self.monomorphize(&constant.ty);
                 self.eval_mir_constant(constant)
                     .map(|c| OperandRef::from_const(bx, c))
                     .unwrap_or_else(|err| {
@@ -481,6 +480,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // the above error (or silence it under some conditions) will not cause UB
                         bx.abort();
                         // We've errored, so we don't have to produce working code.
+                        let ty = self.monomorphize(&constant.literal.ty);
                         let layout = bx.cx().layout_of(ty);
                         bx.load_operand(PlaceRef::new_sized(
                             bx.cx().const_undef(bx.cx().type_ptr_to(bx.cx().backend_type(layout))),
