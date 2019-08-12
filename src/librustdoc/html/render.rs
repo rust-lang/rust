@@ -28,7 +28,7 @@
 pub use self::ExternalLocation::*;
 
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
@@ -479,7 +479,7 @@ impl ToJson for IndexItemFunctionType {
 }
 
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
-thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> = RefCell::new(Vec::new()));
+thread_local!(pub static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
 pub fn initial_ids() -> Vec<String> {
     [
@@ -695,7 +695,7 @@ pub fn run(mut krate: clean::Crate,
     // for future parallelization opportunities
     let cache = Arc::new(cache);
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
-    CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
+    CURRENT_DEPTH.with(|s| s.set(0));
 
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
@@ -2003,8 +2003,8 @@ impl Context {
                    -> io::Result<()> {
         // A little unfortunate that this is done like this, but it sure
         // does make formatting *a lot* nicer.
-        CURRENT_LOCATION_KEY.with(|slot| {
-            *slot.borrow_mut() = self.current.clone();
+        CURRENT_DEPTH.with(|slot| {
+            slot.set(self.current.len());
         });
 
         let mut title = if it.is_primitive() || it.is_keyword() {

@@ -15,7 +15,7 @@ use rustc::hir;
 
 use crate::clean::{self, PrimitiveType};
 use crate::html::item_type::ItemType;
-use crate::html::render::{self, cache, CURRENT_LOCATION_KEY};
+use crate::html::render::{self, cache, CURRENT_DEPTH};
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
@@ -407,16 +407,16 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
         return None
     }
 
-    let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
+    let depth = CURRENT_DEPTH.with(|l| l.get());
     let (fqp, shortty, mut url) = match cache.paths.get(&did) {
         Some(&(ref fqp, shortty)) => {
-            (fqp, shortty, "../".repeat(loc.len()))
+            (fqp, shortty, "../".repeat(depth))
         }
         None => {
             let &(ref fqp, shortty) = cache.external_paths.get(&did)?;
             (fqp, shortty, match cache.extern_locations[&did.krate] {
                 (.., render::Remote(ref s)) => s.to_string(),
-                (.., render::Local) => "../".repeat(loc.len()),
+                (.., render::Local) => "../".repeat(depth),
                 (.., render::Unknown) => return None,
             })
         }
@@ -479,7 +479,7 @@ fn primitive_link(f: &mut fmt::Formatter<'_>,
     if !f.alternate() {
         match m.primitive_locations.get(&prim) {
             Some(&def_id) if def_id.is_local() => {
-                let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
+                let len = CURRENT_DEPTH.with(|s| s.get());
                 let len = if len == 0 {0} else {len - 1};
                 write!(f, "<a class=\"primitive\" href=\"{}primitive.{}.html\">",
                        "../".repeat(len),
@@ -492,7 +492,7 @@ fn primitive_link(f: &mut fmt::Formatter<'_>,
                         Some((cname, s.to_string()))
                     }
                     (ref cname, _, render::Local) => {
-                        let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
+                        let len = CURRENT_DEPTH.with(|s| s.get());
                         Some((cname, "../".repeat(len)))
                     }
                     (.., render::Unknown) => None,
