@@ -36,7 +36,7 @@ steps:
     set -e
     mkdir -p citools
     cd citools
-    curl -f https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/LLVM-7.0.0-win64.tar.gz | tar xzf -
+    curl -f https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/LLVM-7.0.0-win64.tar.gz | tar xzf -
     echo "##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]$RUST_CONFIGURE_ARGS --set llvm.clang-cl=`pwd`/clang-rust/bin/clang-cl.exe"
   condition: and(succeeded(), eq(variables['Agent.OS'], 'Windows_NT'), eq(variables['MINGW_URL'],''))
   displayName: Install clang (Windows)
