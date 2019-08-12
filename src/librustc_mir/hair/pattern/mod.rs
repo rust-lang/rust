@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let mut adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
             let val = crate::const_eval::const_field(
-                self.tcx, self.param_env, self.substs, variant_opt, field, cv
+                self.tcx, self.param_env, variant_opt, field, cv
             );
             self.const_to_pat_inner(instance, val, id, span, saw_const_match_error)
         };
@@ -1099,7 +1099,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Wild
             }
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
-                let variant_index = const_variant_index(self.tcx, self.param_env, self.substs, cv);
+                let variant_index = const_variant_index(self.tcx, self.param_env, cv);
                 let subpatterns = adt_subpatterns(
                     adt_def.variants[variant_index].fields.len(),
                     Some(variant_index),

@@ -168,7 +168,6 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         MatchCheckCtxt::create_and_enter(
             self.tcx,
             self.param_env,
-            self.identity_substs,
             module,
             |ref mut cx| {
             let mut have_errors = false;
@@ -274,7 +273,6 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         MatchCheckCtxt::create_and_enter(
             self.tcx,
             self.param_env,
-            self.identity_substs,
             module,
             |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,

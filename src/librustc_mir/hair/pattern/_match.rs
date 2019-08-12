@@ -170,7 +170,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Const};
 use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
-use rustc::ty::subst::SubstsRef;
 
 use rustc::mir::Field;
 use rustc::mir::interpret::{ConstValue, Scalar, truncate, AllocId, Pointer};
@@ -363,7 +362,6 @@ pub struct MatchCheckCtxt<'a, 'tcx> {
     /// statement.
     pub module: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    identity_substs: SubstsRef<'tcx>,
     pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
     pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
 }
@@ -372,7 +370,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub fn create_and_enter<F, R>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        identity_substs: SubstsRef<'tcx>,
         module: DefId,
         f: F,
     ) -> R
@@ -385,7 +382,6 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
             tcx,
             param_env,
             module,
-            identity_substs,
             pattern_arena: &pattern_arena,
             byte_array_map: FxHashMap::default(),
         })
@@ -452,7 +448,7 @@ impl<'tcx> Constructor<'tcx> {
                 VariantIdx::new(0)
             }
             &ConstantValue(c) => crate::const_eval::const_variant_index(
-                cx.tcx, cx.param_env, cx.identity_substs, c,
+                cx.tcx, cx.param_env, c,
             ),
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt)
         }

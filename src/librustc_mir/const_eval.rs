@@ -13,7 +13,7 @@ use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
-use rustc::ty::subst::{Subst, SubstsRef};
+use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
 
@@ -45,11 +45,10 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
-    substs: SubstsRef<'tcx>,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
-        tcx.at(span), param_env, substs, CompileTimeInterpreter::new(), Default::default(),
+        tcx.at(span), param_env, CompileTimeInterpreter::new(), Default::default(),
     )
 }
 
@@ -60,7 +59,7 @@ pub(crate) fn eval_promoted<'mir, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     let span = tcx.def_span(cid.instance.def_id());
-    let mut ecx = mk_eval_cx(tcx, span, param_env, cid.instance.substs);
+    let mut ecx = mk_eval_cx(tcx, span, param_env);
     eval_body_using_ecx(&mut ecx, cid, body, param_env)
 }
 
@@ -501,13 +500,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 pub fn const_field<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    substs: SubstsRef<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
     value: &'tcx ty::Const<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, substs);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     // get the operand again
     let op = ecx.eval_const_to_op(value, None).unwrap();
     // downcast
@@ -527,11 +525,10 @@ pub fn const_field<'tcx>(
 pub fn const_variant_index<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    substs: SubstsRef<'tcx>,
     val: &'tcx ty::Const<'tcx>,
 ) -> VariantIdx {
     trace!("const_variant_index: {:?}", val);
-    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, substs);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     let op = ecx.eval_const_to_op(val, None).unwrap();
     ecx.read_discriminant(op).unwrap().1
 }
@@ -555,7 +552,6 @@ fn validate_and_turn_into_const<'tcx>(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
         key.param_env,
-        key.value.instance.substs,
     );
     let val = (|| {
         let mplace = ecx.raw_const_to_mplace(constant)?;
@@ -668,7 +664,6 @@ pub fn const_eval_raw_provider<'tcx>(
     let mut ecx = InterpCx::new(
         tcx.at(span),
         key.param_env,
-        key.value.instance.substs,
         CompileTimeInterpreter::new(),
         Default::default()
     );

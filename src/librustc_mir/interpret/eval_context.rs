@@ -35,11 +35,6 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Bounds in scope for polymorphic evaluations.
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 
-    /// Base substitutions for when there are no frames that we can grab them from.
-    // HACK(oli-obk): this is because we don't want to push stack frames for `const_field` and
-    // `const_variant_index`, because that would be expensive
-    pub(crate) substs: SubstsRef<'tcx>,
-
     /// The virtual memory system.
     pub(crate) memory: Memory<'mir, 'tcx, M>,
 
@@ -204,7 +199,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxtAt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        substs: SubstsRef<'tcx>,
         machine: M,
         memory_extra: M::MemoryExtra,
     ) -> Self {
@@ -212,7 +206,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             machine,
             tcx,
             param_env,
-            substs,
             memory: Memory::new(tcx, memory_extra),
             stack: Vec::new(),
             vtables: FxHashMap::default(),
@@ -306,7 +299,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         value: T,
     ) -> InterpResult<'tcx, T> {
         // HACK(oli-obk): see `self.substs` docs
-        let substs = self.stack.last().map_or(self.substs, |frame| frame.instance.substs);
+        let substs = self.stack.last().map(|frame| frame.instance.substs);
         self.subst_and_normalize_erasing_regions(substs, value)
     }
 
@@ -318,17 +311,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// substs.
     fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
-        param_substs: SubstsRef<'tcx>,
+        param_substs: Option<SubstsRef<'tcx>>,
         value: T,
     ) -> InterpResult<'tcx, T> {
-        let substituted = value.subst(self.tcx.tcx, param_substs);
+        let substituted = param_substs
+            .map(|param_substs| value.subst(self.tcx.tcx, param_substs))
+            .unwrap_or(value);
         // we duplicate the body of `TyCtxt::subst_and_normalize_erasing_regions` here, because
         // we can't normalize values with generic parameters. The difference between this function
         // and the `TyCtxt` version is this early abort
         if substituted.needs_subst() {
             // FIXME(oli-obk): This aborts evaluating `fn foo<T>() -> i32 { 42 }` inside an
             // associated constant of a generic trait, even though that should be doable.
-            return Err(InterpError::TooGeneric.into())
+            throw_inval!(TooGeneric);
         }
         Ok(self.tcx.normalize_erasing_regions(self.param_env, substituted))
     }
@@ -386,7 +381,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty = self.subst_and_normalize_erasing_regions(
-                        frame.instance.substs, local_ty,
+                        Some(frame.instance.substs), local_ty,
                     )?;
                     self.layout_of(local_ty)
                 })?;

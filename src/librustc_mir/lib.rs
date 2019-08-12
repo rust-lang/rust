@@ -57,8 +57,8 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.const_eval_raw = const_eval::const_eval_raw_provider;
     providers.check_match = hair::pattern::check_match;
     providers.const_field = |tcx, param_env_and_value| {
-        let (param_env, (value, field, substs)) = param_env_and_value.into_parts();
-        const_eval::const_field(tcx, param_env, substs, None, field, value)
+        let (param_env, (value, field)) = param_env_and_value.into_parts();
+        const_eval::const_field(tcx, param_env, None, field, value)
     };
     providers.type_name = interpret::type_name;
 }

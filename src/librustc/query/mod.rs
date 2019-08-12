@@ -443,7 +443,7 @@ rustc_queries! {
 
         /// Extracts a field of a (variant of a) const.
         query const_field(
-            key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field, SubstsRef<'tcx>)>
+            key: ty::ParamEnvAnd<'tcx, (&'tcx ty::Const<'tcx>, mir::Field)>
         ) -> &'tcx ty::Const<'tcx> {
             eval_always
             no_force
