@@ -3,7 +3,7 @@
 
 use std::convert::TryInto;
 
-use rustc::{mir, ty};
+use rustc::{mir, ty::{self, Ty}};
 use rustc::ty::layout::{
     self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx,
 };
@@ -512,8 +512,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                let lit = self.subst_and_normalize_erasing_regions_in_frame(constant.literal)?;
-                self.eval_const_to_op(lit, layout)?
+                let val = self.subst_and_normalize_erasing_regions_in_frame(constant.literal.val)?;
+                let ty = self.subst_and_normalize_erasing_regions_in_frame(constant.ty)?;
+                self.eval_const_to_op(val, ty, layout)?
             },
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -534,7 +535,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     // in patterns via the `const_eval` module
     crate fn eval_const_to_op(
         &self,
-        val: &'tcx ty::Const<'tcx>,
+        value: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let tag_scalar = |scalar| match scalar {
@@ -542,7 +544,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
         // Early-return cases.
-        match val.val {
+        match value {
             ConstValue::Param(_) => throw_inval!(TooGeneric),
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
@@ -554,8 +556,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => {}
         }
         // Other cases need layout.
-        let layout = from_known_layout(layout, || self.layout_of(val.ty))?;
-        let op = match val.val {
+        let layout = from_known_layout(layout, || self.layout_of(ty))?;
+        let op = match value {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
@@ -582,7 +584,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ConstValue::Infer(..) |
             ConstValue::Placeholder(..) |
             ConstValue::Unevaluated(..) =>
-                bug!("eval_const_to_op: Unexpected ConstValue {:?}", val),
+                bug!("eval_const_to_op: Unexpected ConstValue {:?}", value),
         };
         Ok(OpTy { op, layout })
     }

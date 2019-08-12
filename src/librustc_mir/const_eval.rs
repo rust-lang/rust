@@ -505,7 +505,7 @@ pub fn const_field<'tcx>(
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     // get the operand again
-    let op = ecx.eval_const_to_op(value, None).unwrap();
+    let op = ecx.eval_const_to_op(value.val, value.ty, None).unwrap();
     // downcast
     let down = match variant {
         None => op,
@@ -527,7 +527,7 @@ pub fn const_variant_index<'tcx>(
 ) -> VariantIdx {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
-    let op = ecx.eval_const_to_op(val, None).unwrap();
+    let op = ecx.eval_const_to_op(val.val, val.ty, None).unwrap();
     ecx.read_discriminant(op).unwrap().1
 }
 
