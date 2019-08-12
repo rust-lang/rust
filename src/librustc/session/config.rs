@@ -395,7 +395,8 @@ top_level_options!(
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
         libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
-        maybe_sysroot: Option<PathBuf> [TRACKED],
+        maybe_sysroot: Option<PathBuf> [UNTRACKED],
+        maybe_sysroot_remapped: Option<PathBuf> [TRACKED],
 
         target_triple: TargetTriple [TRACKED],
 
@@ -610,6 +611,7 @@ impl Default for Options {
             output_types: OutputTypes(BTreeMap::new()),
             search_paths: vec![],
             maybe_sysroot: None,
+            maybe_sysroot_remapped: None,
             target_triple: TargetTriple::from_triple(host_triple()),
             test: false,
             incremental: None,
@@ -2453,7 +2455,7 @@ pub fn build_session_options_and_crate_config(
 
     let crate_name = matches.opt_str("crate-name");
 
-    let remap_path_prefix = matches
+    let remap_path_prefix: Vec<(PathBuf, PathBuf)> = matches
         .opt_strs("remap-path-prefix")
         .into_iter()
         .map(|remap| {
@@ -2470,6 +2472,10 @@ pub fn build_session_options_and_crate_config(
         })
         .collect();
 
+    let sysroot_remapped_opt = sysroot_opt
+        .clone()
+        .map(|sysroot| FilePathMapping::new(remap_path_prefix.clone()).map_prefix(sysroot).0);
+
     (
         Options {
             crate_types,
@@ -2481,6 +2487,7 @@ pub fn build_session_options_and_crate_config(
             output_types: OutputTypes(output_types),
             search_paths,
             maybe_sysroot: sysroot_opt,
+            maybe_sysroot_remapped: sysroot_remapped_opt,
             target_triple,
             test,
             incremental,
