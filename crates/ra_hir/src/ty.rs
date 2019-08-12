@@ -94,6 +94,12 @@ pub enum TypeCtor {
 
     /// A tuple type.  For example, `(i32, bool)`.
     Tuple { cardinality: u16 },
+
+    /// Represents an associated item like `Iterator::Item`.  This is used
+    /// when we have tried to normalize a projection like `T::Item` but
+    /// couldn't find a better representation.  In that case, we generate
+    /// an **application type** like `(Iterator::Item)<T>`.
+    AssociatedType(TypeAlias),
 }
 
 /// A nominal type with (maybe 0) type parameters. This might be a primitive
@@ -114,6 +120,12 @@ pub struct ProjectionTy {
     pub parameters: Substs,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct UnselectedProjectionTy {
+    pub type_name: Name,
+    pub parameters: Substs,
+}
+
 /// A type.
 ///
 /// See also the `TyKind` enum in rustc (librustc/ty/sty.rs), which represents
@@ -126,6 +138,18 @@ pub enum Ty {
     /// type like `bool`, a struct, tuple, function pointer, reference or
     /// several other things.
     Apply(ApplicationTy),
+
+    /// A "projection" type corresponds to an (unnormalized)
+    /// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
+    /// trait and all its parameters are fully known.
+    Projection(ProjectionTy),
+
+    /// This is a variant of a projection in which the trait is
+    /// **not** known.  It corresponds to a case where people write
+    /// `T::Item` without specifying the trait. We would then try to
+    /// figure out the trait by looking at all the traits that are in
+    /// scope.
+    UnselectedProjection(UnselectedProjectionTy),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param {
@@ -352,6 +376,16 @@ impl Ty {
                     t.walk(f);
                 }
             }
+            Ty::Projection(p_ty) => {
+                for t in p_ty.parameters.iter() {
+                    t.walk(f);
+                }
+            }
+            Ty::UnselectedProjection(p_ty) => {
+                for t in p_ty.parameters.iter() {
+                    t.walk(f);
+                }
+            }
             Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
@@ -361,6 +395,12 @@ impl Ty {
         match self {
             Ty::Apply(a_ty) => {
                 a_ty.parameters.walk_mut(f);
+            }
+            Ty::Projection(p_ty) => {
+                p_ty.parameters.walk_mut(f);
+            }
+            Ty::UnselectedProjection(p_ty) => {
+                p_ty.parameters.walk_mut(f);
             }
             Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
@@ -572,7 +612,51 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ">")?;
                 }
             }
+            TypeCtor::AssociatedType(type_alias) => {
+                let trait_name = type_alias
+                    .parent_trait(f.db)
+                    .and_then(|t| t.name(f.db))
+                    .unwrap_or_else(Name::missing);
+                let name = type_alias.name(f.db);
+                write!(f, "{}::{}", trait_name, name)?;
+                if self.parameters.len() > 0 {
+                    write!(f, "<")?;
+                    f.write_joined(&*self.parameters.0, ", ")?;
+                    write!(f, ">")?;
+                }
+            }
         }
+        Ok(())
+    }
+}
+
+impl HirDisplay for ProjectionTy {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        let trait_name = self
+            .associated_ty
+            .parent_trait(f.db)
+            .and_then(|t| t.name(f.db))
+            .unwrap_or_else(Name::missing);
+        write!(f, "<{} as {}", self.parameters[0].display(f.db), trait_name,)?;
+        if self.parameters.len() > 1 {
+            write!(f, "<")?;
+            f.write_joined(&self.parameters[1..], ", ")?;
+            write!(f, ">")?;
+        }
+        write!(f, ">::{}", self.associated_ty.name(f.db))?;
+        Ok(())
+    }
+}
+
+impl HirDisplay for UnselectedProjectionTy {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        write!(f, "{}", self.parameters[0].display(f.db))?;
+        if self.parameters.len() > 1 {
+            write!(f, "<")?;
+            f.write_joined(&self.parameters[1..], ", ")?;
+            write!(f, ">")?;
+        }
+        write!(f, "::{}", self.type_name)?;
         Ok(())
     }
 }
@@ -581,6 +665,8 @@ impl HirDisplay for Ty {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
+            Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
+            Ty::UnselectedProjection(p_ty) => p_ty.hir_fmt(f)?,
             Ty::Param { name, .. } => write!(f, "{}", name)?,
             Ty::Bound(idx) => write!(f, "?{}", idx)?,
             Ty::Unknown => write!(f, "{{unknown}}")?,
@@ -604,5 +690,19 @@ impl HirDisplay for TraitRef {
             write!(f, ">")?;
         }
         Ok(())
+    }
+}
+
+impl HirDisplay for Obligation {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        match self {
+            Obligation::Trait(tr) => write!(f, "Implements({})", tr.display(f.db)),
+            Obligation::Projection(proj) => write!(
+                f,
+                "Normalize({} => {})",
+                proj.projection_ty.display(f.db),
+                proj.ty.display(f.db)
+            ),
+        }
     }
 }

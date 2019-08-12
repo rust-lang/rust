@@ -91,6 +91,7 @@ impl ast::Attr {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathSegmentKind {
     Name(ast::NameRef),
+    Type { type_ref: Option<ast::TypeRef>, trait_ref: Option<ast::PathType> },
     SelfKw,
     SuperKw,
     CrateKw,
@@ -112,6 +113,15 @@ impl ast::PathSegment {
                 T![self] => PathSegmentKind::SelfKw,
                 T![super] => PathSegmentKind::SuperKw,
                 T![crate] => PathSegmentKind::CrateKw,
+                T![<] => {
+                    // <T> or <T as Trait>
+                    // T is any TypeRef, Trait has to be a PathType
+                    let mut type_refs =
+                        self.syntax().children().filter(|node| ast::TypeRef::can_cast(node.kind()));
+                    let type_ref = type_refs.next().and_then(ast::TypeRef::cast);
+                    let trait_ref = type_refs.next().and_then(ast::PathType::cast);
+                    PathSegmentKind::Type { type_ref, trait_ref }
+                }
                 _ => return None,
             }
         };

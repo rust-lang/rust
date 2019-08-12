@@ -8,7 +8,7 @@
 use std::iter;
 use std::sync::Arc;
 
-use super::{FnSig, GenericPredicate, Substs, TraitRef, Ty, TypeCtor};
+use super::{FnSig, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor};
 use crate::{
     adt::VariantDef,
     generics::HasGenericParams,
@@ -64,7 +64,8 @@ impl Ty {
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Self {
         // Resolve the path (in type namespace)
-        let resolution = resolver.resolve_path_without_assoc_items(db, path).take_types();
+        let (resolution, remaining_index) = resolver.resolve_path_segments(db, path).into_inner();
+        let resolution = resolution.take_types();
 
         let def = match resolution {
             Some(Resolution::Def(def)) => def,
@@ -73,6 +74,10 @@ impl Ty {
                 panic!("path resolved to local binding in type ns");
             }
             Some(Resolution::GenericParam(idx)) => {
+                if remaining_index.is_some() {
+                    // e.g. T::Item
+                    return Ty::Unknown;
+                }
                 return Ty::Param {
                     idx,
                     // FIXME: maybe return name in resolution?
@@ -83,18 +88,54 @@ impl Ty {
                 };
             }
             Some(Resolution::SelfType(impl_block)) => {
+                if remaining_index.is_some() {
+                    // e.g. Self::Item
+                    return Ty::Unknown;
+                }
                 return impl_block.target_ty(db);
             }
-            None => return Ty::Unknown,
+            None => {
+                // path did not resolve
+                return Ty::Unknown;
+            }
         };
 
-        let typable: TypableDef = match def.into() {
-            None => return Ty::Unknown,
-            Some(it) => it,
-        };
-        let ty = db.type_for_def(typable, Namespace::Types);
-        let substs = Ty::substs_from_path(db, resolver, path, typable);
-        ty.subst(&substs)
+        if let ModuleDef::Trait(trait_) = def {
+            let segment = match remaining_index {
+                None => path.segments.last().expect("resolved path has at least one element"),
+                Some(i) => &path.segments[i - 1],
+            };
+            let trait_ref = TraitRef::from_resolved_path(db, resolver, trait_, segment, None);
+            if let Some(remaining_index) = remaining_index {
+                if remaining_index == path.segments.len() - 1 {
+                    let segment = &path.segments[remaining_index];
+                    let associated_ty =
+                        match trait_ref.trait_.associated_type_by_name(db, segment.name.clone()) {
+                            Some(t) => t,
+                            None => {
+                                // associated type not found
+                                return Ty::Unknown;
+                            }
+                        };
+                    // FIXME handle type parameters on the segment
+                    Ty::Projection(ProjectionTy { associated_ty, parameters: trait_ref.substs })
+                } else {
+                    // FIXME more than one segment remaining, is this possible?
+                    Ty::Unknown
+                }
+            } else {
+                // FIXME dyn Trait without the dyn
+                Ty::Unknown
+            }
+        } else {
+            let typable: TypableDef = match def.into() {
+                None => return Ty::Unknown,
+                Some(it) => it,
+            };
+            let ty = db.type_for_def(typable, Namespace::Types);
+            let substs = Ty::substs_from_path(db, resolver, path, typable);
+            ty.subst(&substs)
+        }
     }
 
     pub(super) fn substs_from_path_segment(
@@ -219,14 +260,25 @@ impl TraitRef {
             Resolution::Def(ModuleDef::Trait(tr)) => tr,
             _ => return None,
         };
-        let mut substs = Self::substs_from_path(db, resolver, path, resolved);
+        let segment = path.segments.last().expect("path should have at least one segment");
+        Some(TraitRef::from_resolved_path(db, resolver, resolved, segment, explicit_self_ty))
+    }
+
+    fn from_resolved_path(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        resolved: Trait,
+        segment: &PathSegment,
+        explicit_self_ty: Option<Ty>,
+    ) -> Self {
+        let mut substs = TraitRef::substs_from_path(db, resolver, segment, resolved);
         if let Some(self_ty) = explicit_self_ty {
             // FIXME this could be nicer
             let mut substs_vec = substs.0.to_vec();
             substs_vec[0] = self_ty;
             substs.0 = substs_vec.into();
         }
-        Some(TraitRef { trait_: resolved, substs })
+        TraitRef { trait_: resolved, substs }
     }
 
     pub(crate) fn from_hir(
@@ -245,11 +297,12 @@ impl TraitRef {
     fn substs_from_path(
         db: &impl HirDatabase,
         resolver: &Resolver,
-        path: &Path,
+        segment: &PathSegment,
         resolved: Trait,
     ) -> Substs {
-        let segment = path.segments.last().expect("path should have at least one segment");
-        substs_from_path_segment(db, resolver, segment, Some(resolved.into()), true)
+        let has_self_param =
+            segment.args_and_bindings.as_ref().map(|a| a.has_self_type).unwrap_or(false);
+        substs_from_path_segment(db, resolver, segment, Some(resolved.into()), !has_self_param)
     }
 
     pub(crate) fn for_trait(db: &impl HirDatabase, trait_: Trait) -> TraitRef {

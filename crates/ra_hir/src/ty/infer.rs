@@ -245,7 +245,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             &self.resolver,
             type_ref,
         );
-        self.insert_type_vars(ty)
+        let ty = self.insert_type_vars(ty);
+        self.normalize_associated_types_in(ty)
     }
 
     fn unify_substs(&mut self, substs1: &Substs, substs2: &Substs, depth: usize) -> bool {
@@ -411,6 +412,32 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
+    /// Recurses through the given type, normalizing associated types mentioned
+    /// in it by replacing them by type variables and registering obligations to
+    /// resolve later. This should be done once for every type we get from some
+    /// type annotation (e.g. from a let type annotation, field type or function
+    /// call). `make_ty` handles this already, but e.g. for field types we need
+    /// to do it as well.
+    fn normalize_associated_types_in(&mut self, ty: Ty) -> Ty {
+        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        ty.fold(&mut |ty| match ty {
+            Ty::Projection(proj_ty) => self.normalize_projection_ty(proj_ty),
+            Ty::UnselectedProjection(proj_ty) => {
+                // FIXME use Chalk's unselected projection support
+                Ty::UnselectedProjection(proj_ty)
+            }
+            _ => ty,
+        })
+    }
+
+    fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
+        let var = self.new_type_var();
+        let predicate = ProjectionPredicate { projection_ty: proj_ty.clone(), ty: var.clone() };
+        let obligation = Obligation::Projection(predicate);
+        self.obligations.push(obligation);
+        var
+    }
+
     /// Resolves the type completely; type variables without known type are
     /// replaced by Ty::Unknown.
     fn resolve_ty_completely(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
@@ -549,6 +576,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
                 let ty = ty.subst(&substs);
                 let ty = self.insert_type_vars(ty);
+                let ty = self.normalize_associated_types_in(ty);
                 Some(ty)
             }
             Resolution::LocalBinding(pat) => {
@@ -670,6 +698,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 .and_then(|d| d.field(self.db, &Name::tuple_field_name(i)))
                 .map_or(Ty::Unknown, |field| field.ty(self.db))
                 .subst(&substs);
+            let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat, &expected_ty, default_bm);
         }
 
@@ -697,6 +726,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             let matching_field = def.and_then(|it| it.field(self.db, &subpat.name));
             let expected_ty =
                 matching_field.map_or(Ty::Unknown, |field| field.ty(self.db)).subst(&substs);
+            let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat.pat, &expected_ty, default_bm);
         }
 
@@ -927,9 +957,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.unify(&expected_receiver_ty, &actual_receiver_ty);
 
         let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
-        for (arg, param) in args.iter().zip(param_iter) {
-            self.infer_expr(*arg, &Expectation::has_type(param));
+        for (arg, param_ty) in args.iter().zip(param_iter) {
+            let param_ty = self.normalize_associated_types_in(param_ty);
+            self.infer_expr(*arg, &Expectation::has_type(param_ty));
         }
+        let ret_ty = self.normalize_associated_types_in(ret_ty);
         ret_ty
     }
 
@@ -1020,9 +1052,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 self.register_obligations_for_call(&callee_ty);
                 let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
-                for (arg, param) in args.iter().zip(param_iter) {
-                    self.infer_expr(*arg, &Expectation::has_type(param));
+                for (arg, param_ty) in args.iter().zip(param_iter) {
+                    let param_ty = self.normalize_associated_types_in(param_ty);
+                    self.infer_expr(*arg, &Expectation::has_type(param_ty));
                 }
+                let ret_ty = self.normalize_associated_types_in(ret_ty);
                 ret_ty
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
@@ -1120,7 +1154,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     _ => None,
                 })
                 .unwrap_or(Ty::Unknown);
-                self.insert_type_vars(ty)
+                let ty = self.insert_type_vars(ty);
+                self.normalize_associated_types_in(ty)
             }
             Expr::Await { expr } => {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());

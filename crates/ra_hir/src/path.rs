@@ -25,6 +25,12 @@ pub struct PathSegment {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArgs {
     pub args: Vec<GenericArg>,
+    /// This specifies whether the args contain a Self type as the first
+    /// element. This is the case for path segments like `<T as Trait>`, where
+    /// `T` is actually a type parameter for the path `Trait` specifying the
+    /// Self type. Otherwise, when we have a path `Trait<X, Y>`, the Self type
+    /// is left out.
+    pub has_self_type: bool,
     // someday also bindings
 }
 
@@ -73,6 +79,28 @@ impl Path {
                         segment.type_arg_list().and_then(GenericArgs::from_ast).map(Arc::new);
                     let segment = PathSegment { name: name.as_name(), args_and_bindings: args };
                     segments.push(segment);
+                }
+                ast::PathSegmentKind::Type { type_ref, trait_ref } => {
+                    assert!(path.qualifier().is_none()); // this can only occur at the first segment
+
+                    // FIXME: handle <T> syntax (type segments without trait)
+
+                    // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
+                    let path = Path::from_ast(trait_ref?.path()?)?;
+                    kind = path.kind;
+                    let mut prefix_segments = path.segments;
+                    prefix_segments.reverse();
+                    segments.extend(prefix_segments);
+                    // Insert the type reference (T in the above example) as Self parameter for the trait
+                    let self_type = TypeRef::from_ast(type_ref?);
+                    let mut last_segment = segments.last_mut()?;
+                    if last_segment.args_and_bindings.is_none() {
+                        last_segment.args_and_bindings = Some(Arc::new(GenericArgs::empty()));
+                    };
+                    let args = last_segment.args_and_bindings.as_mut().unwrap();
+                    let mut args_inner = Arc::make_mut(args);
+                    args_inner.has_self_type = true;
+                    args_inner.args.insert(0, GenericArg::Type(self_type));
                 }
                 ast::PathSegmentKind::CrateKw => {
                     kind = PathKind::Crate;
@@ -144,10 +172,14 @@ impl GenericArgs {
         }
         // lifetimes and assoc type args ignored for now
         if !args.is_empty() {
-            Some(GenericArgs { args })
+            Some(GenericArgs { args, has_self_type: false })
         } else {
             None
         }
+    }
+
+    pub(crate) fn empty() -> GenericArgs {
+        GenericArgs { args: Vec::new(), has_self_type: false }
     }
 }
 
@@ -235,6 +267,10 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
                 return None;
             }
             Path { kind: PathKind::Super, segments: Vec::new() }
+        }
+        ast::PathSegmentKind::Type { .. } => {
+            // not allowed in imports
+            return None;
         }
     };
     Some(res)

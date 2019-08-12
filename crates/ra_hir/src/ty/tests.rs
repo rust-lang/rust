@@ -2508,15 +2508,55 @@ struct S;
 impl Iterable for S { type Item = u32; }
 fn test<T: Iterable>() {
     let x: <S as Iterable>::Item = 1;
-    let y: T::Item = no_matter;
+    let y: <T as Iterable>::Item = no_matter;
+    let z: T::Item = no_matter;
 }
 "#),
         @r###"
-[108; 181) '{     ...ter; }': ()
-[118; 119) 'x': i32
-[145; 146) '1': i32
-[156; 157) 'y': {unknown}
-[169; 178) 'no_matter': {unknown}"###
+   ⋮
+   ⋮[108; 227) '{     ...ter; }': ()
+   ⋮[118; 119) 'x': u32
+   ⋮[145; 146) '1': u32
+   ⋮[156; 157) 'y': {unknown}
+   ⋮[183; 192) 'no_matter': {unknown}
+   ⋮[202; 203) 'z': {unknown}
+   ⋮[215; 224) 'no_matter': {unknown}
+    "###
+    );
+}
+
+#[test]
+fn infer_return_associated_type() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Iterable {
+   type Item;
+}
+struct S;
+impl Iterable for S { type Item = u32; }
+fn foo1<T: Iterable>(t: T) -> T::Item {}
+fn foo2<T: Iterable>(t: T) -> <T as Iterable>::Item {}
+fn test() {
+    let x = foo1(S);
+    let y = foo2(S);
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[106; 107) 't': T
+   ⋮[123; 125) '{}': ()
+   ⋮[147; 148) 't': T
+   ⋮[178; 180) '{}': ()
+   ⋮[191; 236) '{     ...(S); }': ()
+   ⋮[201; 202) 'x': {unknown}
+   ⋮[205; 209) 'foo1': fn foo1<S>(T) -> {unknown}
+   ⋮[205; 212) 'foo1(S)': {unknown}
+   ⋮[210; 211) 'S': S
+   ⋮[222; 223) 'y': u32
+   ⋮[226; 230) 'foo2': fn foo2<S>(T) -> <T as Iterable>::Item
+   ⋮[226; 233) 'foo2(S)': u32
+   ⋮[231; 232) 'S': S
+    "###
     );
 }
 
@@ -3139,6 +3179,55 @@ fn test<T: Trait>(t: T) { (*t)<|>; }
 "#,
     );
     assert_eq!(t, "i128");
+}
+
+#[test]
+fn associated_type_placeholder() {
+    let t = type_at(
+        r#"
+//- /main.rs
+pub trait ApplyL {
+    type Out;
+}
+
+pub struct RefMutL<T>;
+
+impl<T> ApplyL for RefMutL<T> {
+    type Out = <T as ApplyL>::Out;
+}
+
+fn test<T: ApplyL>() {
+    let y: <RefMutL<T> as ApplyL>::Out = no_matter;
+    y<|>;
+}
+"#,
+    );
+    // inside the generic function, the associated type gets normalized to a placeholder `ApplL::Out<T>` [https://rust-lang.github.io/rustc-guide/traits/associated-types.html#placeholder-associated-types].
+    // FIXME: fix type parameter names going missing when going through Chalk
+    assert_eq!(t, "ApplyL::Out<[missing name]>");
+}
+
+#[test]
+fn associated_type_placeholder_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+pub trait ApplyL {
+    type Out;
+}
+fn foo<T: ApplyL>(t: T) -> <T as ApplyL>::Out;
+
+fn test<T: ApplyL>(t: T) {
+    let y = foo(t);
+    y<|>;
+}
+"#,
+    );
+    // FIXME here Chalk doesn't normalize the type to a placeholder. I think we
+    // need to add a rule like Normalize(<T as ApplyL>::Out -> ApplyL::Out<T>)
+    // to the trait env ourselves here; probably Chalk can't do this by itself.
+    // assert_eq!(t, "ApplyL::Out<[missing name]>");
+    assert_eq!(t, "{unknown}");
 }
 
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
