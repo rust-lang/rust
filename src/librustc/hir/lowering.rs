@@ -136,7 +136,7 @@ pub struct LoweringContext<'a> {
     /// When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
     /// against this list to see if it is already in-scope, or if a definition
     /// needs to be created for it.
-    in_scope_lifetimes: Vec<Ident>,
+    in_scope_lifetimes: Vec<ParamName>,
 
     current_module: NodeId,
 
@@ -865,7 +865,7 @@ impl<'a> LoweringContext<'a> {
             return;
         }
 
-        if self.in_scope_lifetimes.contains(&ident.modern()) {
+        if self.in_scope_lifetimes.contains(&ParamName::Plain(ident.modern())) {
             return;
         }
 
@@ -899,7 +899,7 @@ impl<'a> LoweringContext<'a> {
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            GenericParamKind::Lifetime { .. } => Some(param.ident.modern()),
+            GenericParamKind::Lifetime { .. } => Some(ParamName::Plain(param.ident.modern())),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -2267,9 +2267,13 @@ impl<'a> LoweringContext<'a> {
             let lifetime_params: Vec<(Span, ParamName)> =
                 this.in_scope_lifetimes
                     .iter().cloned()
-                    .map(|ident| (ident.span, ParamName::Plain(ident)))
+                    .map(|name| (name.ident().span, name))
                     .chain(this.lifetimes_to_define.iter().cloned())
                     .collect();
+
+            debug!("lower_async_fn_ret_ty: in_scope_lifetimes={:#?}", this.in_scope_lifetimes);
+            debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", this.lifetimes_to_define);
+            debug!("lower_async_fn_ret_ty: lifetime_params={:#?}", lifetime_params);
 
             let generic_params =
                 lifetime_params

@@ -123,7 +123,7 @@ impl LoweringContext<'_> {
             _ => &[],
         };
         let lt_def_names = parent_generics.iter().filter_map(|param| match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => Some(param.name.ident().modern()),
+            hir::GenericParamKind::Lifetime { .. } => Some(param.name),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
