@@ -34,21 +34,15 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     pub(crate) fn validate_body(&mut self, db: &impl HirDatabase) {
         let body = self.func.body(db);
 
-        // The final expr in the function body is the whole body,
-        // so the expression being returned is the penultimate expr.
-        let mut penultimate_expr = None;
-        let mut final_expr = None;
-
         for e in body.exprs() {
-            penultimate_expr = final_expr;
-            final_expr = Some(e);
-
             if let (id, Expr::RecordLit { path, fields, spread }) = e {
                 self.validate_record_literal(id, path, fields, *spread, db);
             }
         }
-        if let Some(e) = penultimate_expr {
-            self.validate_results_in_tail_expr(e.0, db);
+
+        let body_expr = &body[body.body_expr()];
+        if let Expr::Block { statements: _, tail: Some(t) } = body_expr {
+            self.validate_results_in_tail_expr(*t, db);
         }
     }
 
