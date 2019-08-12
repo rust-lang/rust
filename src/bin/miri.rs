@@ -92,11 +92,11 @@ fn init_late_loggers() {
         }
     }
 
-    // If `MIRI_BACKTRACE` is set and `RUST_CTFE_BACKTRACE` is not, set `RUST_CTFE_BACKTRACE`.
-    // Do this late, so we really only apply this to miri's errors.
+    // If `MIRI_BACKTRACE` is set and `RUSTC_CTFE_BACKTRACE` is not, set `RUSTC_CTFE_BACKTRACE`.
+    // Do this late, so we ideally only apply this to Miri's errors.
     if let Ok(var) = env::var("MIRI_BACKTRACE") {
-        if env::var("RUST_CTFE_BACKTRACE") == Err(env::VarError::NotPresent) {
-            env::set_var("RUST_CTFE_BACKTRACE", &var);
+        if env::var("RUSTC_CTFE_BACKTRACE") == Err(env::VarError::NotPresent) {
+            env::set_var("RUSTC_CTFE_BACKTRACE", &var);
         }
     }
 }
