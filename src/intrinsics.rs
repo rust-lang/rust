@@ -317,6 +317,8 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         powif64(a, x) -> f64 => __powidf2, // compiler-builtins
         logf32(flt) -> f32 => logf,
         logf64(flt) -> f64 => log,
+        log2f32(flt) -> f32 => log2f,
+        log2f64(flt) -> f64 => log2,
         fabsf32(flt) -> f32 => fabsf,
         fabsf64(flt) -> f64 => fabs,
         fmaf32(x, y, z) -> f32 => fmaf,
