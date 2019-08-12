@@ -9,7 +9,7 @@ use lsp_types::{
     TextEdit, WorkspaceEdit,
 };
 use ra_ide_api::{
-    AssistId, Cancelable, FileId, FilePosition, FileRange, FoldKind, Query, Runnable, RunnableKind,
+    AssistId, FileId, FilePosition, FileRange, FoldKind, Query, Runnable, RunnableKind,
 };
 use ra_prof::profile;
 use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
@@ -43,27 +43,6 @@ pub fn handle_syntax_tree(world: WorldSnapshot, params: req::SyntaxTreeParams) -
     let text_range = params.range.map(|p| p.conv_with(&line_index));
     let res = world.analysis().syntax_tree(id, text_range)?;
     Ok(res)
-}
-
-// FIXME: drop this API
-pub fn handle_extend_selection(
-    world: WorldSnapshot,
-    params: req::ExtendSelectionParams,
-) -> Result<req::ExtendSelectionResult> {
-    log::error!(
-        "extend selection is deprecated and will be removed soon,
-         use the new selection range API in LSP",
-    );
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id)?;
-    let selections = params
-        .selections
-        .into_iter()
-        .map_conv_with(&line_index)
-        .map(|range| FileRange { file_id, range })
-        .map(|frange| world.analysis().extend_selection(frange).map(|it| it.conv_with(&line_index)))
-        .collect::<Cancelable<Vec<_>>>()?;
-    Ok(req::ExtendSelectionResult { selections })
 }
 
 pub fn handle_selection_range(
