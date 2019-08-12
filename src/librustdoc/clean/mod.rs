@@ -136,24 +136,22 @@ pub struct Crate {
     pub collapsed: bool,
 }
 
-pub fn krate(cx: &mut DocContext<'a>) -> Crate {
+pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
 
-    let v = crate::visit_ast::RustdocVisitor::new(&cx);
-    let module = v.visit(cx.tcx.hir().krate());
+    let krate = cx.tcx.hir().krate();
+    let module = crate::visit_ast::RustdocVisitor::new(&mut cx).visit(krate);
 
-    {
-        let mut r = cx.renderinfo.borrow_mut();
-        r.deref_trait_did = cx.tcx.lang_items().deref_trait();
-        r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-        r.owned_box_did = cx.tcx.lang_items().owned_box();
-    }
+    let mut r = cx.renderinfo.get_mut();
+    r.deref_trait_did = cx.tcx.lang_items().deref_trait();
+    r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+    r.owned_box_did = cx.tcx.lang_items().owned_box();
 
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates().iter() {
         externs.push((cnum, cnum.clean(cx)));
         // Analyze doc-reachability for extern items
-        LibEmbargoVisitor::new(cx).visit_lib(cnum);
+        LibEmbargoVisitor::new(&mut cx).visit_lib(cnum);
     }
     externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
