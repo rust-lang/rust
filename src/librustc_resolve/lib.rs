@@ -1196,9 +1196,8 @@ impl<'a> Resolver<'a> {
         f(self, MacroNS);
     }
 
-    fn is_builtin_macro(&mut self, def_id: Option<DefId>) -> bool {
-        def_id.and_then(|def_id| self.get_macro_by_def_id(def_id))
-              .map_or(false, |ext| ext.is_builtin)
+    fn is_builtin_macro(&mut self, res: Res) -> bool {
+        self.get_macro(res).map_or(false, |ext| ext.is_builtin)
     }
 
     fn macro_def(&self, mut ctxt: SyntaxContext) -> DefId {

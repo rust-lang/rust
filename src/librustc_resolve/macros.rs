@@ -3,7 +3,6 @@ use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, 
 use crate::{ModuleKind, NameBinding, PathResult, Segment, ToNameBinding};
 use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
 use crate::Namespace::*;
-use crate::build_reduced_graph::BuildReducedGraphVisitor;
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::DefCollector;
@@ -131,9 +130,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         // We are inside the `expansion` new, but other parent scope components are still the same.
         fragment.visit_with(&mut DefCollector::new(&mut self.definitions, expansion));
         let parent_scope = ParentScope { expansion, ..parent_scope };
-        let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
-        fragment.visit_with(&mut visitor);
-        let output_legacy_scope = visitor.parent_scope.legacy;
+        let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_legacy_scopes.insert(expansion, output_legacy_scope);
     }
 
@@ -530,7 +527,7 @@ impl<'a> Resolver<'a> {
                             false,
                             path_span,
                         ) {
-                            if use_prelude || this.is_builtin_macro(binding.res().opt_def_id()) {
+                            if use_prelude || this.is_builtin_macro(binding.res()) {
                                 result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
                             }
                         }

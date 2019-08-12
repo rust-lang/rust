@@ -30,6 +30,7 @@ use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
+use syntax::ext::expand::AstFragment;
 use syntax::ext::hygiene::ExpnId;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
@@ -67,7 +68,7 @@ impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, ExpnId) {
     }
 }
 
-pub(crate) struct IsMacroExport;
+struct IsMacroExport;
 
 impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, ExpnId, IsMacroExport) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
@@ -84,7 +85,7 @@ impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, ExpnId, IsMacroExport
 impl<'a> Resolver<'a> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
-    pub fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
+    crate fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
         where T: ToNameBinding<'a>,
     {
         let binding = def.to_name_binding(self.arenas);
@@ -93,7 +94,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn get_module(&mut self, def_id: DefId) -> Module<'a> {
+    crate fn get_module(&mut self, def_id: DefId) -> Module<'a> {
         if def_id.krate == LOCAL_CRATE {
             return self.module_map[&def_id]
         }
@@ -119,7 +120,7 @@ impl<'a> Resolver<'a> {
         module
     }
 
-    pub fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
+    crate fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
         let def_id = match self.macro_defs.get(&expn_id) {
             Some(def_id) => *def_id,
             None => return self.graph_root,
@@ -141,7 +142,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
+    fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
         if let Some(ext) = self.macro_map.get(&def_id) {
             return Some(ext.clone());
         }
@@ -158,7 +159,7 @@ impl<'a> Resolver<'a> {
 
     /// Ensures that the reduced graph rooted at the given external module
     /// is built, building it if it is not.
-    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
+    crate fn populate_module_if_necessary(&mut self, module: Module<'a>) {
         if module.populated.get() { return }
         let def_id = module.def_id().unwrap();
         for child in self.cstore.item_children_untracked(def_id, self.session) {
@@ -168,11 +169,19 @@ impl<'a> Resolver<'a> {
         }
         module.populated.set(true)
     }
+
+    crate fn build_reduced_graph(
+        &mut self, fragment: &AstFragment, parent_scope: ParentScope<'a>
+    ) -> LegacyScope<'a> {
+        let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
+        fragment.visit_with(&mut visitor);
+        visitor.parent_scope.legacy
+    }
 }
 
-pub struct BuildReducedGraphVisitor<'a, 'b> {
-    pub r: &'b mut Resolver<'a>,
-    pub parent_scope: ParentScope<'a>,
+struct BuildReducedGraphVisitor<'a, 'b> {
+    r: &'b mut Resolver<'a>,
+    parent_scope: ParentScope<'a>,
 }
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {

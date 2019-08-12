@@ -455,7 +455,7 @@ impl<'a> Resolver<'a> {
                         let mut tmp_suggestions = Vec::new();
                         add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
                         suggestions.extend(tmp_suggestions.into_iter().filter(|s| {
-                            use_prelude || this.is_builtin_macro(s.res.opt_def_id())
+                            use_prelude || this.is_builtin_macro(s.res)
                         }));
                     }
                 }
