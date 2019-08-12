@@ -1,0 +1,51 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/lt-ref-self-async.rs:15:42
+   |
+LL |     async fn ref_self(&self, f: &u32) -> &u32 {
+   |                                          ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lt-ref-self-async.rs:23:48
+   |
+LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
+   |                                                ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lt-ref-self-async.rs:29:57
+   |
+LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
+   |                                                         ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lt-ref-self-async.rs:35:57
+   |
+LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
+   |                                                         ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lt-ref-self-async.rs:41:66
+   |
+LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
+   |                                                                  ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/lt-ref-self-async.rs:47:62
+   |
+LL |     async fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
+   |                                                              ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

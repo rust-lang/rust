@@ -1,0 +1,59 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-self-async.rs:24:42
+   |
+LL |     async fn ref_self(&self, f: &u32) -> &u32 {
+   |                                          ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-self-async.rs:32:48
+   |
+LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
+   |                                                ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-self-async.rs:38:57
+   |
+LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
+   |                                                         ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-self-async.rs:44:57
+   |
+LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
+   |                                                         ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-self-async.rs:50:66
+   |
+LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
+   |                                                                  ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-self-async.rs:56:66
+   |
+LL |     async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
+   |                                                                  ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-self-async.rs:62:69
+   |
+LL |     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
+   |                                                                     ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0106`.
