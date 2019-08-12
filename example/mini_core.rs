@@ -430,6 +430,7 @@ pub trait Drop {
     fn drop(&mut self);
 }
 
+#[allow(unions_with_drop_fields)]
 pub union MaybeUninit<T> {
     pub uninit: (),
     pub value: T,

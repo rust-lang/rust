@@ -2,12 +2,10 @@
 
 use std::arch::x86_64::*;
 use std::io::Write;
-use std::intrinsics;
-
 
 fn main() {
     let mutex = std::sync::Mutex::new(());
-    mutex.lock().unwrap();
+    let _guard = mutex.lock().unwrap();
 
     let _ = ::std::iter::repeat('a' as u8).take(10).collect::<Vec<_>>();
     let stderr = ::std::io::stderr();
@@ -19,10 +17,10 @@ fn main() {
 
     println!("cargo:rustc-link-lib=z");
 
-    static ONCE: std::sync::Once = std::sync::ONCE_INIT;
+    static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {});
 
-    LoopState::Continue(()) == LoopState::Break(());
+    let _eq = LoopState::Continue(()) == LoopState::Break(());
 
     // Make sure ByValPair values with differently sized components are correctly passed
     map(None::<(u8, Box<Instruction>)>);
@@ -41,8 +39,8 @@ fn main() {
     assert_eq!(0b0000000000000000000000000010000010000000000000000000000000000000_0000000000100000000000000000000000001000000000000100000000000000u128.leading_zeros(), 26);
     assert_eq!(0b0000000000000000000000000010000000000000000000000000000000000000_0000000000000000000000000000000000001000000000000000000010000000u128.trailing_zeros(), 7);
 
-    0i128.checked_div(2i128);
-    0u128.checked_div(2u128);
+    let _d = 0i128.checked_div(2i128);
+    let _d = 0u128.checked_div(2u128);
     assert_eq!(1u128 + 2, 3);
 
     assert_eq!(0b100010000000000000000000000000000u128 >> 10, 0b10001000000000000000000u128);
@@ -165,7 +163,7 @@ unsafe fn test_mm_add_pd() {
 
 fn assert_eq_m128i(x: std::arch::x86_64::__m128i, y: std::arch::x86_64::__m128i) {
     unsafe {
-        assert_eq!(std::mem::transmute::<_, [u8; 16]>(x), std::mem::transmute::<_, [u8; 16]>(x));
+        assert_eq!(std::mem::transmute::<_, [u8; 16]>(x), std::mem::transmute::<_, [u8; 16]>(y));
     }
 }
 

@@ -149,7 +149,7 @@ fn main() {
 
         let world: Box<&str> = box "World!\0";
         puts(*world as *const str as *const u8);
-        world as Box<SomeTrait>;
+        world as Box<dyn SomeTrait>;
 
         assert_eq!(intrinsics::bitreverse(0b10101000u8), 0b00010101u8);
 
@@ -212,7 +212,7 @@ fn main() {
     let _ = box NoisyDrop {
         text: "Boxed outer got dropped!\0",
         inner: NoisyDropInner,
-    } as Box<SomeTrait>;
+    } as Box<dyn SomeTrait>;
 
     const FUNC_REF: Option<fn()> = Some(main);
     match FUNC_REF {
@@ -249,5 +249,5 @@ fn main() {
 
     unsafe { assert_eq!(ABC as usize, 0); }
 
-    &mut (|| Some(0 as *const ())) as &mut FnMut() -> Option<*const ()>;
+    &mut (|| Some(0 as *const ())) as &mut dyn FnMut() -> Option<*const ()>;
 }

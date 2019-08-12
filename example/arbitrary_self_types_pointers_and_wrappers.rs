@@ -9,7 +9,6 @@
 extern crate mini_core;
 
 use mini_core::*;
-use mini_core::libc::*;
 
 macro_rules! assert_eq {
     ($l:expr, $r: expr) => {
