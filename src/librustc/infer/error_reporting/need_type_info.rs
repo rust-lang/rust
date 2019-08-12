@@ -151,12 +151,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         //   |         the type parameter `E` is specified
         // ```
         let (ty_msg, suffix) = match &local_visitor.found_ty {
-            Some(ty) if &ty.to_string() != "_" && name == "_" => {
+            Some(ty) if &ty.to_string() != "_" &&
+                name == "_" &&
+                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized.
+                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings) &&
+                !ty.is_closure() => // The suggestion doesn't make sense for closures.
+            {
                 let ty = ty_to_string(ty);
                 (format!(" for `{}`", ty),
                  format!("the explicit type `{}`, with the type parameters specified", ty))
             }
-            Some(ty) if &ty.to_string() != "_" && ty.to_string() != name => {
+            Some(ty) if &ty.to_string() != "_" &&
+                ty.to_string() != name &&
+                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized.
+                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings) &&
+                !ty.is_closure() => // The suggestion doesn't make sense for closures.
+            {
                 let ty = ty_to_string(ty);
                 (format!(" for `{}`", ty),
                  format!(
@@ -165,6 +175,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     name,
                  ))
             }
+            Some(ty) if ty.is_closure() => (
+                " for the closure".to_string(),
+                "a boxed closure type like `Box<Fn() -> _>`".to_string(),
+            ),
             _ => (String::new(), "a type".to_owned()),
         };
         let mut labels = vec![(span, InferCtxt::missing_type_msg(&name))];

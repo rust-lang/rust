@@ -1,0 +1,11 @@
+error[E0282]: type annotations needed for the closure
+  --> $DIR/cannot-infer-closure.rs:3:9
+   |
+LL |     let x = || {
+   |         - consider giving `x` a boxed closure type like `Box<Fn() -> _>`
+LL |         Err(())?;
+   |         ^^^^^^^^ cannot infer type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.
