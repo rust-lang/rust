@@ -854,8 +854,6 @@ impl<'a> Resolver<'a> {
                 if ext.is_builtin {
                     // The macro is a built-in, replace only the expander function.
                     result.kind = ext.kind;
-                    // Also reset its edition to the global one for compatibility.
-                    result.edition = self.session.edition();
                 } else {
                     // The macro is from a plugin, the in-source definition is dummy,
                     // take all the data from the resolver.

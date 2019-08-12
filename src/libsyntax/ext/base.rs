@@ -592,8 +592,8 @@ pub struct SyntaxExtension {
     pub helper_attrs: Vec<Symbol>,
     /// Edition of the crate in which this macro is defined.
     pub edition: Edition,
-    /// Built-in macros have a couple of special properties (meaning of `$crate`,
-    /// availability in `#[no_implicit_prelude]` modules), so we have to keep this flag.
+    /// Built-in macros have a couple of special properties like availability
+    /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
     pub is_builtin: bool,
     /// We have to identify macros providing a `Copy` impl early for compatibility reasons.
     pub is_derive_copy: bool,
