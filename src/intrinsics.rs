@@ -473,19 +473,13 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
 
-            let signed = match T.sty {
-                ty::Uint(_) => false,
-                ty::Int(_) => true,
-                _ => unimplemented!("{} for {:?}", intrinsic, T),
-            };
-
             let res = crate::base::trans_checked_int_binop(
                 fx,
                 bin_op,
                 x,
                 y,
                 ret.layout().ty,
-                signed,
+                type_sign(T),
             );
             ret.write_cvalue(fx, res);
         };
@@ -497,25 +491,14 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "overflowing_mul" => BinOp::Mul,
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
-            let res = match T.sty {
-                ty::Uint(_) => crate::base::trans_int_binop(
-                    fx,
-                    bin_op,
-                    x,
-                    y,
-                    ret.layout().ty,
-                    false,
-                ),
-                ty::Int(_) => crate::base::trans_int_binop(
-                    fx,
-                    bin_op,
-                    x,
-                    y,
-                    ret.layout().ty,
-                    true,
-                ),
-                _ => panic!(),
-            };
+            let res = crate::base::trans_int_binop(
+                fx,
+                bin_op,
+                x,
+                y,
+                ret.layout().ty,
+                type_sign(T),
+            );
             ret.write_cvalue(fx, res);
         };
         _ if intrinsic.starts_with("saturating_"), <T> (c x, c y) {
@@ -527,11 +510,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
 
-            let signed = match T.sty {
-                ty::Uint(_) => false,
-                ty::Int(_) => true,
-                _ => unimplemented!("{} for {:?}", intrinsic, T),
-            };
+            let signed = type_sign(T);
 
             let checked_res = crate::base::trans_checked_int_binop(
                 fx,
@@ -548,7 +527,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             // `select.i8` is not implemented by Cranelift.
             let has_overflow = fx.bcx.ins().uextend(types::I32, has_overflow);
 
-            let (min, max) = type_min_max_value(fx.tcx, T);
+            let (min, max) = type_min_max_value(clif_ty, signed);
             let min = fx.bcx.ins().iconst(clif_ty, min);
             let max = fx.bcx.ins().iconst(clif_ty, max);
 
@@ -879,18 +858,14 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
             let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
 
-            let signed = match lane_layout.ty.sty {
-                ty::Uint(..) => false,
-                ty::Int(..) => true,
-                ty::Float(..) => false, // `signed` is unused for floats
-                _ => panic!("{}", lane_layout.ty),
-            };
+            let from_signed = type_sign(lane_layout.ty);
+            let to_signed = type_sign(ret_lane_layout.ty);
 
             for lane in 0..lane_count {
                 let lane = mir::Field::new(lane.try_into().unwrap());
 
                 let a_lane = a.value_field(fx, lane).load_scalar(fx);
-                let res = clif_int_or_float_cast(fx, a_lane, ret_lane_ty, signed);
+                let res = clif_int_or_float_cast(fx, a_lane, from_signed, ret_lane_ty, to_signed);
                 ret.place_field(fx, lane).write_cvalue(fx, CValue::by_val(res, ret_lane_layout));
             }
         };

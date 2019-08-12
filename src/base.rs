@@ -334,11 +334,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let lhs = trans_operand(fx, lhs);
                     let rhs = trans_operand(fx, rhs);
 
-                    let signed = match ty.sty {
-                        ty::Uint(_) => false,
-                        ty::Int(_) => true,
-                        _ => unimplemented!("checked binop {:?} for {:?}", bin_op, ty),
-                    };
+                    let signed = type_sign(ty);
 
                     let res = if !fx.tcx.sess.overflow_checks() {
                         let val = trans_int_binop(fx, *bin_op, lhs, rhs, lhs.layout().ty, signed).load_scalar(fx);
@@ -444,14 +440,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
                         let from = operand.load_scalar(fx);
 
-                        let signed = match from_ty.sty {
-                            ty::Ref(..) | ty::RawPtr(..) | ty::FnPtr(..) | ty::Char | ty::Uint(..) | ty::Bool => false,
-                            ty::Int(..) => true,
-                            ty::Float(..) => false, // `signed` is unused for floats
-                            _ => panic!("{}", from_ty),
-                        };
-
-                        let res = clif_int_or_float_cast(fx, from, to_clif_ty, signed);
+                        let res = clif_int_or_float_cast(fx, from, type_sign(from_ty), to_clif_ty, type_sign(to_ty));
                         lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     }
                 }
@@ -808,6 +797,21 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
     if let Some(res) = crate::codegen_i128::maybe_codegen(fx, bin_op, false, signed, lhs, rhs, out_ty) {
         return res;
     }
+
+    let (lhs, rhs) = if
+        (bin_op == BinOp::Eq || bin_op == BinOp::Ne)
+        && (lhs.layout().ty.sty == fx.tcx.types.i8.sty || lhs.layout().ty.sty == fx.tcx.types.i16.sty)
+    {
+        // FIXME(CraneStation/cranelift#896) icmp_imm.i8/i16 with eq/ne for signed ints is implemented wrong.
+        let lhs = lhs.load_scalar(fx);
+        let rhs = rhs.load_scalar(fx);
+        (
+            CValue::by_val(fx.bcx.ins().sextend(types::I32, lhs), fx.layout_of(fx.tcx.types.i32)),
+            CValue::by_val(fx.bcx.ins().sextend(types::I32, rhs), fx.layout_of(fx.tcx.types.i32)),
+        )
+    } else {
+        (lhs, rhs)
+    };
 
     binop_match! {
         fx, bin_op, signed, lhs, rhs, out_ty, "int/uint";

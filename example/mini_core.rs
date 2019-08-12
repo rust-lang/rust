@@ -52,6 +52,7 @@ unsafe impl Copy for i8 {}
 unsafe impl Copy for i16 {}
 unsafe impl Copy for i32 {}
 unsafe impl Copy for isize {}
+unsafe impl Copy for f32 {}
 unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
@@ -277,6 +278,15 @@ impl PartialEq for usize {
     }
 }
 
+impl PartialEq for i8 {
+    fn eq(&self, other: &i8) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &i8) -> bool {
+        (*self) != (*other)
+    }
+}
+
 impl PartialEq for i32 {
     fn eq(&self, other: &i32) -> bool {
         (*self) == (*other)
@@ -340,6 +350,14 @@ impl Neg for isize {
     type Output = isize;
 
     fn neg(self) -> isize {
+        -self
+    }
+}
+
+impl Neg for f32 {
+    type Output = f32;
+
+    fn neg(self) -> f32 {
         -self
     }
 }

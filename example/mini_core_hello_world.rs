@@ -250,4 +250,10 @@ fn main() {
     unsafe { assert_eq!(ABC as usize, 0); }
 
     &mut (|| Some(0 as *const ())) as &mut dyn FnMut() -> Option<*const ()>;
+
+    let f = 1000.0;
+    assert_eq!(f as u8, 255);
+    let f2 = -1000.0;
+    assert_eq!(f2 as i8, -128);
+    assert_eq!(f2 as u8, 0);
 }
