@@ -334,9 +334,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         substs: SubstsRef<'tcx>
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         trace!("resolve: {:?}, {:#?}", def_id, substs);
-        trace!("param_env: {:#?}", self.param_env);
-        let substs = self.subst_and_normalize_erasing_regions_in_frame(substs)?;
-        trace!("substs: {:#?}", substs);
         ty::Instance::resolve(
             *self.tcx,
             self.param_env,
