@@ -574,7 +574,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
 
-            self.r.finalize_current_module_macro_resolutions(module);
             let ret = f(self);
 
             self.parent_scope.module = orig_module;
@@ -1227,7 +1226,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.parent_scope.module = anonymous_module;
-            self.r.finalize_current_module_macro_resolutions(anonymous_module);
         } else {
             self.ribs[ValueNS].push(Rib::new(NormalRibKind));
         }
@@ -1984,7 +1982,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
 impl<'a> Resolver<'a> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
-        self.finalize_current_module_macro_resolutions(self.graph_root);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.unused_labels.iter() {

@@ -418,11 +418,6 @@ pub struct ModuleData<'a> {
     normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    single_segment_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
-                                                   Option<&'a NameBinding<'a>>)>>,
-    multi_segment_macro_resolutions: RefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>,
-                                                  Option<Res>)>>,
-    builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
     unresolved_invocations: RefCell<FxHashSet<ExpnId>>,
@@ -459,9 +454,6 @@ impl<'a> ModuleData<'a> {
             kind,
             normal_ancestor_id,
             resolutions: Default::default(),
-            single_segment_macro_resolutions: RefCell::new(Vec::new()),
-            multi_segment_macro_resolutions: RefCell::new(Vec::new()),
-            builtin_attrs: RefCell::new(Vec::new()),
             unresolved_invocations: Default::default(),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
@@ -896,6 +888,12 @@ pub struct Resolver<'a> {
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
     unused_macros: NodeMap<Span>,
     proc_macro_stubs: NodeSet,
+    /// Traces collected during macro resolution and validated when it's complete.
+    single_segment_macro_resolutions: Vec<(Ident, MacroKind, ParentScope<'a>,
+                                           Option<&'a NameBinding<'a>>)>,
+    multi_segment_macro_resolutions: Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>,
+                                          Option<Res>)>,
+    builtin_attrs: Vec<(Ident, ParentScope<'a>)>,
     /// Some built-in derives mark items they are applied to so they are treated specially later.
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
@@ -1151,6 +1149,9 @@ impl<'a> Resolver<'a> {
             struct_constructors: Default::default(),
             unused_macros: Default::default(),
             proc_macro_stubs: Default::default(),
+            single_segment_macro_resolutions: Default::default(),
+            multi_segment_macro_resolutions: Default::default(),
+            builtin_attrs: Default::default(),
             special_derives: Default::default(),
             active_features:
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
@@ -1203,6 +1204,7 @@ impl<'a> Resolver<'a> {
     /// Entry point to crate resolution.
     pub fn resolve_crate(&mut self, krate: &Crate) {
         ImportResolver { r: self }.finalize_imports();
+        self.finalize_macro_resolutions();
 
         self.late_resolve_crate(krate);
 

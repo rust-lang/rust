@@ -366,7 +366,7 @@ impl<'a> Resolver<'a> {
 
             if trace {
                 let kind = kind.expect("macro kind must be specified if tracing is enabled");
-                parent_scope.module.multi_segment_macro_resolutions.borrow_mut()
+                self.multi_segment_macro_resolutions
                     .push((path, path_span, kind, parent_scope.clone(), res.ok()));
             }
 
@@ -383,7 +383,7 @@ impl<'a> Resolver<'a> {
 
             if trace {
                 let kind = kind.expect("macro kind must be specified if tracing is enabled");
-                parent_scope.module.single_segment_macro_resolutions.borrow_mut()
+                self.single_segment_macro_resolutions
                     .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
             }
 
@@ -693,7 +693,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn finalize_current_module_macro_resolutions(&mut self, module: Module<'a>) {
+    crate fn finalize_macro_resolutions(&mut self) {
         let check_consistency = |this: &mut Self, path: &[Segment], span, kind: MacroKind,
                                  initial_res: Option<Res>, res: Res| {
             if let Some(initial_res) = initial_res {
@@ -729,8 +729,7 @@ impl<'a> Resolver<'a> {
             }
         };
 
-        let macro_resolutions =
-            mem::take(&mut *module.multi_segment_macro_resolutions.borrow_mut());
+        let macro_resolutions = mem::take(&mut self.multi_segment_macro_resolutions);
         for (mut path, path_span, kind, parent_scope, initial_res) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path { seg.id = None; }
@@ -757,8 +756,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let macro_resolutions =
-            mem::take(&mut *module.single_segment_macro_resolutions.borrow_mut());
+        let macro_resolutions = mem::take(&mut self.single_segment_macro_resolutions);
         for (ident, kind, parent_scope, initial_binding) in macro_resolutions {
             match self.early_resolve_ident_in_lexical_scope(ident, ScopeSet::Macro(kind),
                                                             &parent_scope, true, true, ident.span) {
@@ -783,7 +781,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let builtin_attrs = mem::take(&mut *module.builtin_attrs.borrow_mut());
+        let builtin_attrs = mem::take(&mut self.builtin_attrs);
         for (ident, parent_scope) in builtin_attrs {
             let _ = self.early_resolve_ident_in_lexical_scope(
                 ident, ScopeSet::Macro(MacroKind::Attr), &parent_scope, true, true, ident.span
