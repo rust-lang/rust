@@ -140,22 +140,7 @@ impl<'a> Parser<'a> {
                 // Parse _
                 PatKind::Wild
             } else if self.eat_keyword(kw::Mut) {
-                // Parse mut ident @ pat / mut ref ident @ pat
-                let mutref_span = self.prev_span.to(self.token.span);
-                let binding_mode = if self.eat_keyword(kw::Ref) {
-                    self.diagnostic()
-                        .struct_span_err(mutref_span, "the order of `mut` and `ref` is incorrect")
-                        .span_suggestion(
-                            mutref_span,
-                            "try switching the order",
-                            "ref mut".into(),
-                            Applicability::MachineApplicable
-                        ).emit();
-                    BindingMode::ByRef(Mutability::Mutable)
-                } else {
-                    BindingMode::ByValue(Mutability::Mutable)
-                };
-                self.parse_pat_ident(binding_mode)?
+                self.recover_pat_ident_mut_first()?
             } else if self.eat_keyword(kw::Ref) {
                 // Parse ref ident @ pat / ref mut ident @ pat
                 let mutbl = self.parse_mutability();
@@ -336,6 +321,25 @@ impl<'a> Parser<'a> {
         } else {
             PatKind::Tuple(fields)
         })
+    }
+
+    // Recover on `mut ref? ident @ pat` and suggest that the order of `mut` and `ref` is incorrect.
+    fn recover_pat_ident_mut_first(&mut self) -> PResult<'a, PatKind> {
+        let mutref_span = self.prev_span.to(self.token.span);
+        let binding_mode = if self.eat_keyword(kw::Ref) {
+            self.struct_span_err(mutref_span, "the order of `mut` and `ref` is incorrect")
+                .span_suggestion(
+                    mutref_span,
+                    "try switching the order",
+                    "ref mut".into(),
+                    Applicability::MachineApplicable
+                )
+                .emit();
+            BindingMode::ByRef(Mutability::Mutable)
+        } else {
+            BindingMode::ByValue(Mutability::Mutable)
+        };
+        self.parse_pat_ident(binding_mode)
     }
 
     // Helper function to decide whether to parse as ident binding
