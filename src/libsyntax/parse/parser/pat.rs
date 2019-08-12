@@ -169,34 +169,8 @@ impl<'a> Parser<'a> {
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
                         self.parse_pat_range_starting_with_path(lo, qself, path)?
                     }
-                    token::OpenDelim(token::Brace) => {
-                        if qself.is_some() {
-                            let msg = "unexpected `{` after qualified path";
-                            let mut err = self.fatal(msg);
-                            err.span_label(self.token.span, msg);
-                            return Err(err);
-                        }
-                        // Parse struct pattern
-                        self.bump();
-                        let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
-                            e.emit();
-                            self.recover_stmt();
-                            (vec![], true)
-                        });
-                        self.bump();
-                        PatKind::Struct(path, fields, etc)
-                    }
-                    token::OpenDelim(token::Paren) => {
-                        if qself.is_some() {
-                            let msg = "unexpected `(` after qualified path";
-                            let mut err = self.fatal(msg);
-                            err.span_label(self.token.span, msg);
-                            return Err(err);
-                        }
-                        // Parse tuple struct or enum pattern
-                        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
-                        PatKind::TupleStruct(path, fields)
-                    }
+                    token::OpenDelim(token::Brace) => self.parse_pat_struct(qself, path)?,
+                    token::OpenDelim(token::Paren) => self.parse_pat_tuple_struct(qself, path)?,
                     _ => PatKind::Path(qself, path),
                 }
             } else {
@@ -481,6 +455,37 @@ impl<'a> Parser<'a> {
         Ok(PatKind::Ident(binding_mode, ident, sub))
     }
 
+    /// Parse a struct ("record") pattern (e.g. `Foo { ... }` or `Foo::Bar { ... }`).
+    fn parse_pat_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
+        if qself.is_some() {
+            let msg = "unexpected `{` after qualified path";
+            let mut err = self.fatal(msg);
+            err.span_label(self.token.span, msg);
+            return Err(err);
+        }
+
+        self.bump();
+        let (fields, etc) = self.parse_pat_fields().unwrap_or_else(|mut e| {
+            e.emit();
+            self.recover_stmt();
+            (vec![], true)
+        });
+        self.bump();
+        Ok(PatKind::Struct(path, fields, etc))
+    }
+
+    /// Parse tuple struct or tuple variant pattern (e.g. `Foo(...)` or `Foo::Bar(...)`).
+    fn parse_pat_tuple_struct(&mut self, qself: Option<QSelf>, path: Path) -> PResult<'a, PatKind> {
+        if qself.is_some() {
+            let msg = "unexpected `(` after qualified path";
+            let mut err = self.fatal(msg);
+            err.span_label(self.token.span, msg);
+            return Err(err);
+        }
+        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
+        Ok(PatKind::TupleStruct(path, fields))
+    }
+
     /// Parses the fields of a struct-like pattern.
     fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<Spanned<FieldPat>>, bool)> {
         let mut fields = Vec::new();
@@ -515,17 +520,7 @@ impl<'a> Parser<'a> {
                 etc = true;
                 let mut etc_sp = self.token.span;
 
-                if self.token == token::DotDotDot { // Issue #46718
-                    // Accept `...` as if it were `..` to avoid further errors
-                    self.struct_span_err(self.token.span, "expected field pattern, found `...`")
-                        .span_suggestion(
-                            self.token.span,
-                            "to omit remaining fields, use one fewer `.`",
-                            "..".to_owned(),
-                            Applicability::MachineApplicable
-                        )
-                        .emit();
-                }
+                self.recover_one_fewer_dotdot();
                 self.bump();  // `..` || `...`
 
                 if self.token == token::CloseDelim(token::Brace) {
@@ -605,6 +600,23 @@ impl<'a> Parser<'a> {
             err.emit();
         }
         return Ok((fields, etc));
+    }
+
+    /// Recover on `...` as if it were `..` to avoid further errors.
+    /// See issue #46718.
+    fn recover_one_fewer_dotdot(&self) {
+        if self.token != token::DotDotDot {
+            return;
+        }
+
+        self.struct_span_err(self.token.span, "expected field pattern, found `...`")
+            .span_suggestion(
+                self.token.span,
+                "to omit remaining fields, use one fewer `.`",
+                "..".to_owned(),
+                Applicability::MachineApplicable
+            )
+            .emit();
     }
 
     fn parse_pat_field(
