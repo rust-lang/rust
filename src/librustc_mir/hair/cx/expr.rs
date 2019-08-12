@@ -927,7 +927,7 @@ fn convert_path_expr<'a, 'tcx>(
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(ty::Const {
                     val: ConstValue::Unevaluated(def_id, substs),
-                    ty: cx.tcx.type_of(def_id),
+                    ty: cx.tables().node_type(expr.hir_id),
                 }),
                 user_ty,
             }
