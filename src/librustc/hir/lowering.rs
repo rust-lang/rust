@@ -2570,7 +2570,54 @@ impl<'a> LoweringContext<'a> {
 
         self.allocate_hir_id_counter(opaque_ty_node_id);
 
+        // When we create the opaque type for this async fn, it is going to have
+        // to capture all the lifetimes involved in the signature (including in the
+        // return type). This is done by introducing lifetime parameters for:
+        //
+        // - all the explicitly declared lifetimes from the impl and function itself;
+        // - all the elided lifetimes in the fn arguments;
+        // - all the elided lifetimes in the return type.
+        //
+        // So for example in this snippet:
+        //
+        // ```rust
+        // impl<'a> Foo<'a> {
+        //   async fn bar<'b>(&self, x: &'b Vec<f64>, y: &str) -> &u32 {
+        //   //               ^ '0                       ^ '1     ^ '2
+        //   // elided lifetimes used below
+        //   }
+        // }
+        // ```
+        //
+        // we would create an opaque type like:
+        //
+        // ```
+        // type Bar<'a, 'b, '0, '1, '2> = impl Future<Output = &'2 u32>;
+        // ```
+        //
+        // and we would then desugar `bar` to the equivalent of:
+        //
+        // ```rust
+        // impl<'a> Foo<'a> {
+        //   fn bar<'b, '0, '1>(&'0 self, x: &'b Vec<f64>, y: &'1 str) -> Bar<'a, 'b, '0, '1, '_>
+        // }
+        // ```
+        //
+        // Note that the final parameter to `Bar` is `'_`, not `'2` --
+        // this is because the elided lifetimes from the return type
+        // should be figured out using the ordinary elision rules, and
+        // this desugaring achieves that.
+        //
+        // The variable `input_lifetimes_count` tracks the number of
+        // lifetime parameters to the opaque type *not counting* those
+        // lifetimes elided in the return type. This includes those
+        // that are explicitly declared (`in_scope_lifetimes`) and
+        // those elided lifetimes we found in the arguments (current
+        // content of `lifetimes_to_define`). Next, we will process
+        // the return type, which will cause `lifetimes_to_define` to
+        // grow.
         let input_lifetimes_count = self.in_scope_lifetimes.len() + self.lifetimes_to_define.len();
+
         let (opaque_ty_id, lifetime_params) = self.with_hir_id_owner(opaque_ty_node_id, |this| {
             // We have to be careful to get elision right here. The
             // idea is that we create a lifetime parameter for each
@@ -2635,29 +2682,27 @@ impl<'a> LoweringContext<'a> {
             (opaque_ty_id, lifetime_params)
         });
 
-        // Create the generic lifetime arguments that we will supply
-        // to the opaque return type. Consider:
+        // As documented above on the variable
+        // `input_lifetimes_count`, we need to create the lifetime
+        // arguments to our opaque type. Continuing with our example,
+        // we're creating the type arguments for the return type:
         //
-        // ```rust
-        // async fn foo(x: &u32, ) -> &[&u32] { .. }
+        // ```
+        // Bar<'a, 'b, '0, '1, '_>
         // ```
         //
-        // Here, we would create something like:
+        // For the "input" lifetime parameters, we wish to create
+        // references to the parameters themselves, including the
+        // "implicit" ones created from parameter types (`'a`, `'b`,
+        // '`0`, `'1`).
         //
-        // ```rust
-        // type Foo<'a, 'b, 'c> = impl Future<Output = &'a [&'b u32]>;
-        // fn foo<'a>(x: &'a u32) -> Foo<'a, '_, '_>
-        // ```
-        //
-        // Note that for the lifetimes which came from the input
-        // (`'a`, here), we supply them as arguments to the return
-        // type `Foo`. But for those lifetime parameters (`'b`, `'c`)
-        // that we created from the return type, we want to use `'_`
-        // in the return type, so as to trigger elision.
+        // For the "output" lifetime parameters, we just want to
+        // generate `'_`.
         let mut generic_args: Vec<_> =
             lifetime_params[..input_lifetimes_count]
             .iter()
             .map(|&(span, hir_name)| {
+                // Input lifetime like `'a` or `'1`:
                 GenericArg::Lifetime(hir::Lifetime {
                     hir_id: self.next_id(),
                     span,
@@ -2669,6 +2714,7 @@ impl<'a> LoweringContext<'a> {
             lifetime_params[input_lifetimes_count..]
             .iter()
             .map(|&(span, _)| {
+                // Output lifetime like `'_`.
                 GenericArg::Lifetime(hir::Lifetime {
                     hir_id: self.next_id(),
                     span,
