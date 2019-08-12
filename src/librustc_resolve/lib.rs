@@ -130,6 +130,17 @@ pub struct ParentScope<'a> {
     derives: Vec<ast::Path>,
 }
 
+impl<'a> ParentScope<'a> {
+    pub fn default(module: Module<'a>) -> ParentScope<'a> {
+        ParentScope {
+            module,
+            expansion: ExpnId::root(),
+            legacy: LegacyScope::Empty,
+            derives: Vec::new(),
+        }
+    }
+}
+
 #[derive(Eq)]
 struct BindingError {
     name: Name,
@@ -799,7 +810,7 @@ pub struct Resolver<'a> {
 
     pub definitions: Definitions,
 
-    graph_root: Module<'a>,
+    pub graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
     pub extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'a>>,
@@ -995,7 +1006,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             segments,
         };
 
-        let parent_scope = &self.dummy_parent_scope();
+        let parent_scope = &ParentScope::default(self.graph_root);
         let res = match self.resolve_ast_path(&path, ns, parent_scope) {
             Ok(res) => res,
             Err((span, error)) => {
@@ -1069,7 +1080,7 @@ impl<'a> Resolver<'a> {
 
         let mut invocations = FxHashMap::default();
         invocations.insert(ExpnId::root(),
-                           arenas.alloc_invocation_data(InvocationData::root(graph_root)));
+                           arenas.alloc_invocation_data(InvocationData::default(graph_root)));
 
         let mut macro_defs = FxHashMap::default();
         macro_defs.insert(ExpnId::root(), root_def_id);
@@ -2649,7 +2660,7 @@ impl<'a> Resolver<'a> {
             let def_id = self.definitions.local_def_id(module_id);
             self.module_map.get(&def_id).copied().unwrap_or(self.graph_root)
         });
-        let parent_scope = &ParentScope { module, ..self.dummy_parent_scope() };
+        let parent_scope = &ParentScope::default(module);
         let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))
     }

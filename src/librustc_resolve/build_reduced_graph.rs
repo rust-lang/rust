@@ -163,8 +163,8 @@ impl<'a> Resolver<'a> {
         let def_id = module.def_id().unwrap();
         for child in self.cstore.item_children_untracked(def_id, self.session) {
             let child = child.map_id(|_| panic!("unexpected id"));
-            BuildReducedGraphVisitor { parent_scope: self.dummy_parent_scope(), r: self }
-                .build_reduced_graph_for_external_crate_res(module, child);
+            BuildReducedGraphVisitor { parent_scope: ParentScope::default(module), r: self }
+                .build_reduced_graph_for_external_crate_res(child);
         }
         module.populated.set(true)
     }
@@ -706,7 +706,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
 
                 for variant in &(*enum_definition).variants {
-                    self.build_reduced_graph_for_variant(variant, module, vis, expansion);
+                    self.build_reduced_graph_for_variant(variant, module, vis);
                 }
             }
 
@@ -797,8 +797,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
                                        parent: Module<'a>,
-                                       vis: ty::Visibility,
-                                       expn_id: ExpnId) {
+                                       vis: ty::Visibility) {
+        let expn_id = self.parent_scope.expansion;
         let ident = variant.ident;
 
         // Define a name in the type namespace.
@@ -861,11 +861,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(
-        &mut self,
-        parent: Module<'a>,
-        child: Export<ast::NodeId>,
-    ) {
+    fn build_reduced_graph_for_external_crate_res(&mut self, child: Export<ast::NodeId>) {
+        let parent = self.parent_scope.module;
         let Export { ident, res, vis, span } = child;
         // FIXME: We shouldn't create the gensym here, it should come from metadata,
         // but metadata cannot encode gensyms currently, so we create it here.

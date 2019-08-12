@@ -43,9 +43,9 @@ pub struct InvocationData<'a> {
 }
 
 impl<'a> InvocationData<'a> {
-    pub fn root(graph_root: Module<'a>) -> Self {
+    pub fn default(module: Module<'a>) -> Self {
         InvocationData {
-            module: graph_root,
+            module,
             parent_legacy_scope: LegacyScope::Empty,
             output_legacy_scope: Cell::new(None),
         }
@@ -120,17 +120,13 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> ExpnId {
-        let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::default(
+        let expn_id = ExpnId::fresh(ExpnId::root(), Some(ExpnInfo::default(
             ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
-        ));
-        let expn_id = span.ctxt().outer_expn();
+        )));
         let module = self.module_map[&self.definitions.local_def_id(id)];
+        let invocation_data = self.arenas.alloc_invocation_data(InvocationData::default(module));
         self.definitions.set_invocation_parent(expn_id, module.def_id().unwrap().index);
-        self.invocations.insert(expn_id, self.arenas.alloc_invocation_data(InvocationData {
-            module,
-            parent_legacy_scope: LegacyScope::Empty,
-            output_legacy_scope: Cell::new(None),
-        }));
+        self.invocations.insert(expn_id, invocation_data);
         expn_id
     }
 
@@ -251,10 +247,6 @@ impl<'a> base::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    pub fn dummy_parent_scope(&self) -> ParentScope<'a> {
-        self.invoc_parent_scope(ExpnId::root(), Vec::new())
-    }
-
     fn invoc_parent_scope(&self, invoc_id: ExpnId, derives: Vec<ast::Path>) -> ParentScope<'a> {
         let invoc = self.invocations[&invoc_id];
         ParentScope {

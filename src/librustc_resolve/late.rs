@@ -501,8 +501,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
-        let parent_scope = resolver.dummy_parent_scope();
         let graph_root = resolver.graph_root;
+        let parent_scope = ParentScope::default(graph_root);
         LateResolutionVisitor {
             r: resolver,
             parent_scope,
