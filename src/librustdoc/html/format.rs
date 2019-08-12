@@ -6,6 +6,7 @@
 //! them in the future to instead emit any format desired.
 
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::fmt;
 
 use rustc::hir::def_id::DefId;
@@ -38,8 +39,6 @@ pub struct AsyncSpace(pub hir::IsAsync);
 pub struct MutableSpace(pub clean::Mutability);
 /// Wrapper struct for emitting type parameter bounds.
 pub struct GenericBounds<'a>(pub &'a [clean::GenericBound]);
-/// Wrapper struct for emitting a comma-separated list of items
-pub struct CommaSep<'a, T>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
 pub struct DefaultSpace(pub bool);
 
@@ -68,11 +67,6 @@ pub struct WhereClause<'a>{
     pub end_newline: bool,
 }
 
-pub struct HRef<'a> {
-    did: DefId,
-    text: &'a str,
-}
-
 impl<'a> VisSpace<'a> {
     pub fn get(self) -> &'a Option<clean::Visibility> {
         let VisSpace(v) = self; v
@@ -91,14 +85,14 @@ impl ConstnessSpace {
     }
 }
 
-impl<'a, T: fmt::Display> fmt::Display for CommaSep<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, item) in self.0.iter().enumerate() {
+fn comma_sep<T: fmt::Display>(items: &[T]) -> impl fmt::Display + '_ {
+    display_fn(move |f| {
+        for (i, item) in items.iter().enumerate() {
             if i != 0 { write!(f, ", ")?; }
             fmt::Display::fmt(item, f)?;
         }
         Ok(())
-    }
+    })
 }
 
 impl<'a> fmt::Display for GenericBounds<'a> {
@@ -165,9 +159,9 @@ impl fmt::Display for clean::Generics {
             return Ok(());
         }
         if f.alternate() {
-            write!(f, "<{:#}>", CommaSep(&real_params))
+            write!(f, "<{:#}>", comma_sep(&real_params))
         } else {
-            write!(f, "&lt;{}&gt;", CommaSep(&real_params))
+            write!(f, "&lt;{}&gt;", comma_sep(&real_params))
         }
     }
 }
@@ -265,9 +259,9 @@ impl fmt::Display for clean::PolyTrait {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.generic_params.is_empty() {
             if f.alternate() {
-                write!(f, "for<{:#}> ", CommaSep(&self.generic_params))?;
+                write!(f, "for<{:#}> ", comma_sep(&self.generic_params))?;
             } else {
-                write!(f, "for&lt;{}&gt; ", CommaSep(&self.generic_params))?;
+                write!(f, "for&lt;{}&gt; ", comma_sep(&self.generic_params))?;
             }
         }
         if f.alternate() {
@@ -452,16 +446,15 @@ fn resolved_path(w: &mut fmt::Formatter<'_>, did: DefId, path: &clean::Path,
         write!(w, "{}{:#}", &last.name, last.args)?;
     } else {
         let path = if use_absolute {
-            match href(did) {
-                Some((_, _, fqp)) => {
-                    format!("{}::{}",
-                            fqp[..fqp.len() - 1].join("::"),
-                            HRef::new(did, fqp.last().unwrap()))
-                }
-                None => HRef::new(did, &last.name).to_string(),
+            if let Some((_, _, fqp)) = href(did) {
+                format!("{}::{}",
+                        fqp[..fqp.len() - 1].join("::"),
+                        anchor(did, fqp.last().unwrap()))
+            } else {
+                last.name.to_string()
             }
         } else {
-            HRef::new(did, &last.name).to_string()
+            anchor(did, &last.name).to_string()
         };
         write!(w, "{}{}", path, last.args)?;
     }
@@ -513,35 +506,30 @@ fn primitive_link(f: &mut fmt::Formatter<'_>,
 }
 
 /// Helper to render type parameters
-fn tybounds(w: &mut fmt::Formatter<'_>,
-            param_names: &Option<Vec<clean::GenericBound>>) -> fmt::Result {
-    match *param_names {
-        Some(ref params) => {
-            for param in params {
-                write!(w, " + ")?;
-                fmt::Display::fmt(param, w)?;
+fn tybounds(param_names: &Option<Vec<clean::GenericBound>>) -> impl fmt::Display + '_ {
+    display_fn(move |f| {
+        match *param_names {
+            Some(ref params) => {
+                for param in params {
+                    write!(f, " + ")?;
+                    fmt::Display::fmt(param, f)?;
+                }
+                Ok(())
             }
-            Ok(())
+            None => Ok(())
         }
-        None => Ok(())
-    }
+    })
 }
 
-impl<'a> HRef<'a> {
-    pub fn new(did: DefId, text: &'a str) -> HRef<'a> {
-        HRef { did: did, text: text }
-    }
-}
-
-impl<'a> fmt::Display for HRef<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some((url, short_ty, fqp)) = href(self.did) {
+pub fn anchor(did: DefId, text: &str) -> impl fmt::Display + '_ {
+    display_fn(move |f| {
+        if let Some((url, short_ty, fqp)) = href(did) {
             write!(f, r#"<a class="{}" href="{}" title="{} {}">{}</a>"#,
-                short_ty, url, short_ty, fqp.join("::"), self.text)
+                short_ty, url, short_ty, fqp.join("::"), text)
         } else {
-            write!(f, "{}", self.text)
+            write!(f, "{}", text)
         }
-    }
+    })
 }
 
 fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> fmt::Result {
@@ -555,7 +543,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
             }
             // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             resolved_path(f, did, path, is_generic, use_absolute)?;
-            tybounds(f, param_names)
+            fmt::Display::fmt(&tybounds(param_names), f)
         }
         clean::Infer => write!(f, "_"),
         clean::Primitive(prim) => primitive_link(f, prim, prim.as_str()),
@@ -564,12 +552,12 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 write!(f, "{}{:#}fn{:#}{:#}",
                        UnsafetySpace(decl.unsafety),
                        AbiSpace(decl.abi),
-                       CommaSep(&decl.generic_params),
+                       comma_sep(&decl.generic_params),
                        decl.decl)
             } else {
                 write!(f, "{}{}", UnsafetySpace(decl.unsafety), AbiSpace(decl.abi))?;
                 primitive_link(f, PrimitiveType::Fn, "fn")?;
-                write!(f, "{}{}", CommaSep(&decl.generic_params), decl.decl)
+                write!(f, "{}{}", comma_sep(&decl.generic_params), decl.decl)
             }
         }
         clean::Tuple(ref typs) => {
@@ -583,7 +571,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 }
                 many => {
                     primitive_link(f, PrimitiveType::Tuple, "(")?;
-                    fmt::Display::fmt(&CommaSep(many), f)?;
+                    fmt::Display::fmt(&comma_sep(many), f)?;
                     primitive_link(f, PrimitiveType::Tuple, ")")
                 }
             }
@@ -1061,5 +1049,21 @@ impl fmt::Display for DefaultSpace {
         } else {
             Ok(())
         }
+    }
+}
+
+crate fn display_fn(
+    f: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+) -> impl fmt::Display {
+    WithFormatter(Cell::new(Some(f)))
+}
+
+struct WithFormatter<F>(Cell<Option<F>>);
+
+impl<F> fmt::Display for WithFormatter<F>
+    where F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (self.0.take()).unwrap()(f)
     }
 }
