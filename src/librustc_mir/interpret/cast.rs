@@ -67,7 +67,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::Closure(def_id, substs) => {
-                        let substs = self.subst_from_frame_and_normalize_erasing_regions(substs)?;
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
