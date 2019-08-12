@@ -3595,12 +3595,13 @@ fn no_such_field_diagnostics() {
     );
 }
 
-#[cfg(test)]
 mod match_with_never_tests {
     use super::type_at;
+    use test_utils::covers;
 
     #[test]
     fn match_complex_arm_ty() {
+        covers!(match_complex_arm_ty);
         let t = type_at(
             r#"
 //- /main.rs
@@ -3624,6 +3625,7 @@ fn test(a: i32) {
 
     #[test]
     fn match_first_arm_never() {
+        covers!(match_first_arm_never);
         let t = type_at(
             r#"
 //- /main.rs
@@ -3644,6 +3646,7 @@ fn test(a: i32) {
 
     #[test]
     fn match_second_arm_never() {
+        covers!(match_second_arm_never);
         let t = type_at(
             r#"
 //- /main.rs
@@ -3664,6 +3667,7 @@ fn test(a: i32) {
 
     #[test]
     fn match_all_arms_never() {
+        covers!(match_all_arms_never);
         let t = type_at(
             r#"
 //- /main.rs
@@ -3682,6 +3686,7 @@ fn test(a: i32) {
 
     #[test]
     fn match_no_never_arms() {
+        covers!(match_no_never_arms);
         let t = type_at(
             r#"
 //- /main.rs

@@ -1096,8 +1096,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                     let arm_ty = self.infer_expr(arm.expr, &expected);
                     if all_arms_never && Self::is_never(&arm_ty) {
+                        tested_by!(match_first_arm_never);
                         resulting_match_ty = Some(arm_ty);
                     } else {
+                        tested_by!(match_second_arm_never);
                         all_arms_never = false;
                         resulting_match_ty = None;
                     }
@@ -1106,10 +1108,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 if let (Ty::Infer(expected_tv), Some(match_ty)) =
                     (&expected.ty, &resulting_match_ty)
                 {
+                    tested_by!(match_all_arms_never);
                     self.var_unification_table
                         .union_value(expected_tv.to_inner(), TypeVarValue::Known(match_ty.clone()));
                     match_ty.clone()
                 } else {
+                    tested_by!(match_no_never_arms);
+                    tested_by!(match_complex_arm_ty);
                     expected.ty
                 }
             }
