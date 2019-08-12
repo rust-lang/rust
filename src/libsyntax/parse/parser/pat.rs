@@ -109,18 +109,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.token.span;
         let pat = match self.token.kind {
-            token::BinOp(token::And) | token::AndAnd => {
-                // Parse &pat / &mut pat
-                self.expect_and()?;
-                let mutbl = self.parse_mutability();
-                if let token::Lifetime(name) = self.token.kind {
-                    let mut err = self.fatal(&format!("unexpected lifetime `{}` in pattern", name));
-                    err.span_label(self.token.span, "unexpected lifetime");
-                    return Err(err);
-                }
-                let subpat = self.parse_pat_with_range_pat(false, expected)?;
-                PatKind::Ref(subpat, mutbl)
-            }
+            token::BinOp(token::And) | token::AndAnd => self.parse_pat_deref(expected)?,
             token::OpenDelim(token::Paren) => {
                 // Parse a tuple or parenthesis pattern.
                 let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| p.parse_pat(None))?;
@@ -330,6 +319,21 @@ impl<'a> Parser<'a> {
         }
 
         Ok(pat)
+    }
+
+    /// Parse `&pat` / `&mut pat`.
+    fn parse_pat_deref(&mut self, expected: Option<&'static str>) -> PResult<'a, PatKind> {
+        self.expect_and()?;
+        let mutbl = self.parse_mutability();
+
+        if let token::Lifetime(name) = self.token.kind {
+            let mut err = self.fatal(&format!("unexpected lifetime `{}` in pattern", name));
+            err.span_label(self.token.span, "unexpected lifetime");
+            return Err(err);
+        }
+
+        let subpat = self.parse_pat_with_range_pat(false, expected)?;
+        Ok(PatKind::Ref(subpat, mutbl))
     }
 
     // Helper function to decide whether to parse as ident binding
