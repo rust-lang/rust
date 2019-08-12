@@ -23,8 +23,9 @@ REPOSITORIES = [
 HOST_OS = "linux"
 
 # Mirroring options
-MIRROR_BUCKET = "rust-lang-ci2"
-MIRROR_BASE_DIR = "rust-ci-mirror/android/"
+MIRROR_BUCKET = "rust-lang-ci-mirrors"
+MIRROR_BUCKET_REGION = "us-west-1"
+MIRROR_BASE_DIR = "rustc/android/"
 
 import argparse
 import hashlib
@@ -144,7 +145,8 @@ def cli_install(args):
     lockfile = Lockfile(args.lockfile)
     for package in lockfile.packages.values():
         # Download the file from the mirror into a temp file
-        url = "https://" + MIRROR_BUCKET + ".s3.amazonaws.com/" + MIRROR_BASE_DIR
+        url = "https://" + MIRROR_BUCKET + ".s3-" + MIRROR_BUCKET_REGION + \
+              ".amazonaws.com/" + MIRROR_BASE_DIR
         downloaded = package.download(url)
         # Extract the file in a temporary directory
         extract_dir = tempfile.mkdtemp()
