@@ -732,7 +732,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: plain_summary_line_short(item.doc_value()),
+                desc: shorten(plain_summary_line(item.doc_value())),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -770,7 +770,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     }
 
     let crate_doc = krate.module.as_ref().map(|module| {
-        plain_summary_line_short(module.doc_value())
+        shorten(plain_summary_line(module.doc_value()))
     }).unwrap_or(String::new());
 
     let mut crate_data = BTreeMap::new();
@@ -1482,7 +1482,7 @@ impl DocFolder for Cache {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::"),
-                            desc: plain_summary_line_short(item.doc_value()),
+                            desc: shorten(plain_summary_line(item.doc_value())),
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),
@@ -1664,7 +1664,7 @@ impl Cache {
                                 ty: item.type_(),
                                 name: item_name.to_string(),
                                 path: path.clone(),
-                                desc: plain_summary_line_short(item.doc_value()),
+                                desc: shorten(plain_summary_line(item.doc_value())),
                                 parent: None,
                                 parent_idx: None,
                                 search_type: get_index_search_type(&item),
@@ -2360,29 +2360,39 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     s
 }
 
-fn shorter(s: Option<&str>) -> String {
-    match s {
-        Some(s) => s.lines()
-            .skip_while(|s| s.chars().all(|c| c.is_whitespace()))
-            .take_while(|line|{
-            (*line).chars().any(|chr|{
-                !chr.is_whitespace()
-            })
-        }).collect::<Vec<_>>().join("\n"),
-        None => String::new()
-    }
-}
-
 #[inline]
 fn plain_summary_line(s: Option<&str>) -> String {
-    let line = shorter(s).replace("\n", " ");
-    markdown::plain_summary_line_full(&line[..], false)
+    let s = s.unwrap_or("");
+    // This essentially gets the first paragraph of text in one line.
+    let mut line = s.lines()
+        .skip_while(|line| line.chars().all(|c| c.is_whitespace()))
+        .take_while(|line| line.chars().any(|c| !c.is_whitespace()))
+        .fold(String::new(), |mut acc, line| {
+            acc.push_str(line);
+            acc.push(' ');
+            acc
+        });
+    // remove final whitespace
+    line.pop();
+    markdown::plain_summary_line(&line[..])
 }
 
-#[inline]
-fn plain_summary_line_short(s: Option<&str>) -> String {
-    let line = shorter(s).replace("\n", " ");
-    markdown::plain_summary_line_full(&line[..], true)
+fn shorten(s: String) -> String {
+    if s.chars().count() > 60 {
+        let mut len = 0;
+        let mut ret = s.split_whitespace()
+                        .take_while(|p| {
+                            // + 1 for the added character after the word.
+                            len += p.chars().count() + 1;
+                            len < 60
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+        ret.push('…');
+        ret
+    } else {
+        s
+    }
 }
 
 fn document(w: &mut fmt::Formatter<'_>, cx: &Context, item: &clean::Item) -> fmt::Result {

@@ -785,10 +785,6 @@ impl MarkdownSummaryLine<'_> {
 }
 
 pub fn plain_summary_line(md: &str) -> String {
-    plain_summary_line_full(md, false)
-}
-
-pub fn plain_summary_line_full(md: &str, limit_length: bool) -> String {
     struct ParserWrapper<'a> {
         inner: Parser<'a>,
         is_in: isize,
@@ -834,21 +830,7 @@ pub fn plain_summary_line_full(md: &str, limit_length: bool) -> String {
             s.push_str(&t);
         }
     }
-    if limit_length && s.chars().count() > 60 {
-        let mut len = 0;
-        let mut ret = s.split_whitespace()
-                       .take_while(|p| {
-                           // + 1 for the added character after the word.
-                           len += p.chars().count() + 1;
-                           len < 60
-                       })
-                       .collect::<Vec<_>>()
-                       .join(" ");
-        ret.push('…');
-        ret
-    } else {
-        s
-    }
+    s
 }
 
 pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
