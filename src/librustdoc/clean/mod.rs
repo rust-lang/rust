@@ -136,94 +136,90 @@ pub struct Crate {
     pub collapsed: bool,
 }
 
-impl Clean<Crate> for hir::Crate {
-    // note that self here is ignored in favor of `cx.tcx.hir().krate()` since
-    // that gets around tying self's lifetime to the '_ in cx.
-    fn clean(&self, cx: &DocContext<'_>) -> Crate {
-        use crate::visit_lib::LibEmbargoVisitor;
+pub fn krate(cx: &mut DocContext<'a>) -> Crate {
+    use crate::visit_lib::LibEmbargoVisitor;
 
-        let v = crate::visit_ast::RustdocVisitor::new(&cx);
-        let module = v.visit(cx.tcx.hir().krate());
+    let v = crate::visit_ast::RustdocVisitor::new(&cx);
+    let module = v.visit(cx.tcx.hir().krate());
 
-        {
-            let mut r = cx.renderinfo.borrow_mut();
-            r.deref_trait_did = cx.tcx.lang_items().deref_trait();
-            r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
-            r.owned_box_did = cx.tcx.lang_items().owned_box();
-        }
+    {
+        let mut r = cx.renderinfo.borrow_mut();
+        r.deref_trait_did = cx.tcx.lang_items().deref_trait();
+        r.deref_mut_trait_did = cx.tcx.lang_items().deref_mut_trait();
+        r.owned_box_did = cx.tcx.lang_items().owned_box();
+    }
 
-        let mut externs = Vec::new();
-        for &cnum in cx.tcx.crates().iter() {
-            externs.push((cnum, cnum.clean(cx)));
-            // Analyze doc-reachability for extern items
-            LibEmbargoVisitor::new(cx).visit_lib(cnum);
-        }
-        externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+    let mut externs = Vec::new();
+    for &cnum in cx.tcx.crates().iter() {
+        externs.push((cnum, cnum.clean(cx)));
+        // Analyze doc-reachability for extern items
+        LibEmbargoVisitor::new(cx).visit_lib(cnum);
+    }
+    externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
-        // Clean the crate, translating the entire libsyntax AST to one that is
-        // understood by rustdoc.
-        let mut module = module.clean(cx);
-        let mut masked_crates = FxHashSet::default();
+    // Clean the crate, translating the entire libsyntax AST to one that is
+    // understood by rustdoc.
+    let mut module = module.clean(cx);
+    let mut masked_crates = FxHashSet::default();
 
-        match module.inner {
-            ModuleItem(ref module) => {
-                for it in &module.items {
-                    // `compiler_builtins` should be masked too, but we can't apply
-                    // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
-                    if it.is_extern_crate()
-                        && (it.attrs.has_doc_flag(sym::masked)
-                            || cx.tcx.is_compiler_builtins(it.def_id.krate))
-                    {
-                        masked_crates.insert(it.def_id.krate);
-                    }
+    match module.inner {
+        ModuleItem(ref module) => {
+            for it in &module.items {
+                // `compiler_builtins` should be masked too, but we can't apply
+                // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
+                if it.is_extern_crate()
+                    && (it.attrs.has_doc_flag(sym::masked)
+                        || cx.tcx.is_compiler_builtins(it.def_id.krate))
+                {
+                    masked_crates.insert(it.def_id.krate);
                 }
             }
+        }
+        _ => unreachable!(),
+    }
+
+    let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
+    {
+        let m = match module.inner {
+            ModuleItem(ref mut m) => m,
             _ => unreachable!(),
-        }
+        };
+        m.items.extend(primitives.iter().map(|&(def_id, prim, ref attrs)| {
+            Item {
+                source: Span::empty(),
+                name: Some(prim.to_url_str().to_string()),
+                attrs: attrs.clone(),
+                visibility: Some(Public),
+                stability: get_stability(cx, def_id),
+                deprecation: get_deprecation(cx, def_id),
+                def_id,
+                inner: PrimitiveItem(prim),
+            }
+        }));
+        m.items.extend(keywords.into_iter().map(|(def_id, kw, attrs)| {
+            Item {
+                source: Span::empty(),
+                name: Some(kw.clone()),
+                attrs: attrs,
+                visibility: Some(Public),
+                stability: get_stability(cx, def_id),
+                deprecation: get_deprecation(cx, def_id),
+                def_id,
+                inner: KeywordItem(kw),
+            }
+        }));
+    }
 
-        let ExternalCrate { name, src, primitives, keywords, .. } = LOCAL_CRATE.clean(cx);
-        {
-            let m = match module.inner {
-                ModuleItem(ref mut m) => m,
-                _ => unreachable!(),
-            };
-            m.items.extend(primitives.iter().map(|&(def_id, prim, ref attrs)| {
-                Item {
-                    source: Span::empty(),
-                    name: Some(prim.to_url_str().to_string()),
-                    attrs: attrs.clone(),
-                    visibility: Some(Public),
-                    stability: get_stability(cx, def_id),
-                    deprecation: get_deprecation(cx, def_id),
-                    def_id,
-                    inner: PrimitiveItem(prim),
-                }
-            }));
-            m.items.extend(keywords.into_iter().map(|(def_id, kw, attrs)| {
-                Item {
-                    source: Span::empty(),
-                    name: Some(kw.clone()),
-                    attrs: attrs,
-                    visibility: Some(Public),
-                    stability: get_stability(cx, def_id),
-                    deprecation: get_deprecation(cx, def_id),
-                    def_id,
-                    inner: KeywordItem(kw),
-                }
-            }));
-        }
-
-        Crate {
-            name,
-            version: None,
-            src,
-            module: Some(module),
-            externs,
-            primitives,
-            external_traits: cx.external_traits.clone(),
-            masked_crates,
-            collapsed: false,
-        }
+    Crate {
+        name,
+        version: None,
+        src,
+        module: Some(module),
+        externs,
+        primitives,
+        external_traits: cx.external_traits.clone(),
+        masked_crates,
+        collapsed: false,
     }
 }
 
