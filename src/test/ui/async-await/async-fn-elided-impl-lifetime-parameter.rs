@@ -4,6 +4,7 @@
 // Regression test for #63500.
 //
 // check-pass
+// edition:2018
 
 #![feature(async_await)]
 
