@@ -21,7 +21,7 @@ be found in the [tools][tools] directory of the Rust repository.
 To find the Clippy commit hash for a specific Rust release you select the Rust
 release tag from the dropdown and then check the commit of the Clippy directory:
 
-TODO: Include screenshot
+![Explanation of how to find the commit hash](https://user-images.githubusercontent.com/2042399/62846160-1f8b0480-bcce-11e9-9da8-7964ca034e7a.png)
 
 ### 2. Fetching the PRs between those commits
 
