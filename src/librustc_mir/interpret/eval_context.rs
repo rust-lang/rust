@@ -298,9 +298,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         value: T,
     ) -> InterpResult<'tcx, T> {
-        // HACK(oli-obk): see `self.substs` docs
-        let substs = self.stack.last().map(|frame| frame.instance.substs);
-        self.subst_and_normalize_erasing_regions(substs, value)
+        self.subst_and_normalize_erasing_regions(self.frame().instance.substs, value)
     }
 
     /// Same thing as `subst_and_normalize_erasing_regions_in_frame` but not taking its substs
@@ -311,12 +309,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// substs.
     fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
-        param_substs: Option<SubstsRef<'tcx>>,
+        param_substs: SubstsRef<'tcx>,
         value: T,
     ) -> InterpResult<'tcx, T> {
-        let substituted = param_substs
-            .map(|param_substs| value.subst(self.tcx.tcx, param_substs))
-            .unwrap_or(value);
+        let substituted = value.subst(self.tcx.tcx, param_substs);
         // we duplicate the body of `TyCtxt::subst_and_normalize_erasing_regions` here, because
         // we can't normalize values with generic parameters. The difference between this function
         // and the `TyCtxt` version is this early abort
@@ -378,7 +374,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
                     let local_ty = self.subst_and_normalize_erasing_regions(
-                        Some(frame.instance.substs), local_ty,
+                        frame.instance.substs, local_ty,
                     )?;
                     self.layout_of(local_ty)
                 })?;
