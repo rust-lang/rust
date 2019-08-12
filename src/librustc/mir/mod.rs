@@ -3388,6 +3388,6 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
         }
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-         self.literal.visit_with(visitor)
+        self.literal.visit_with(visitor)
     }
 }
