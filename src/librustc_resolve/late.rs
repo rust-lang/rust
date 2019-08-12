@@ -1136,65 +1136,53 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     // Checks that all of the arms in an or-pattern have exactly the
     // same set of bindings, with the same binding modes for each.
     fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) {
-        if pats.is_empty() {
-            return;
-        }
-
         let mut missing_vars = FxHashMap::default();
         let mut inconsistent_vars = FxHashMap::default();
-        for (i, p) in pats.iter().enumerate() {
-            let map_i = self.binding_mode_map(&p);
 
-            for (j, q) in pats.iter().enumerate() {
-                if i == j {
-                    continue;
-                }
+        for pat_outer in pats.iter() {
+            let map_outer = self.binding_mode_map(&pat_outer);
 
-                let map_j = self.binding_mode_map(&q);
-                for (&key, &binding_i) in &map_i {
-                    if map_j.is_empty() {                   // Account for missing bindings when
-                        let binding_error = missing_vars    // `map_j` has none.
-                            .entry(key.name)
-                            .or_insert(BindingError {
-                                name: key.name,
-                                origin: BTreeSet::new(),
-                                target: BTreeSet::new(),
-                            });
-                        binding_error.origin.insert(binding_i.span);
-                        binding_error.target.insert(q.span);
-                    }
-                    for (&key_j, &binding_j) in &map_j {
-                        match map_i.get(&key_j) {
-                            None => {  // missing binding
-                                let binding_error = missing_vars
-                                    .entry(key_j.name)
-                                    .or_insert(BindingError {
-                                        name: key_j.name,
-                                        origin: BTreeSet::new(),
-                                        target: BTreeSet::new(),
-                                    });
-                                binding_error.origin.insert(binding_j.span);
-                                binding_error.target.insert(p.span);
-                            }
-                            Some(binding_i) => {  // check consistent binding
-                                if binding_i.binding_mode != binding_j.binding_mode {
-                                    inconsistent_vars
-                                        .entry(key.name)
-                                        .or_insert((binding_j.span, binding_i.span));
-                                }
+            for pat_inner in pats.iter().filter(|pat| pat.id != pat_outer.id) {
+                let map_inner = self.binding_mode_map(&pat_inner);
+
+                for (&key_inner, &binding_inner) in map_inner.iter() {
+                    match map_outer.get(&key_inner) {
+                        None => {  // missing binding
+                            let binding_error = missing_vars
+                                .entry(key_inner.name)
+                                .or_insert(BindingError {
+                                    name: key_inner.name,
+                                    origin: BTreeSet::new(),
+                                    target: BTreeSet::new(),
+                                    could_be_path:
+                                        key_inner.name.as_str().starts_with(char::is_uppercase)
+                                });
+                            binding_error.origin.insert(binding_inner.span);
+                            binding_error.target.insert(pat_outer.span);
+                        }
+                        Some(binding_outer) => {  // check consistent binding
+                            if binding_outer.binding_mode != binding_inner.binding_mode {
+                                inconsistent_vars
+                                    .entry(key_inner.name)
+                                    .or_insert((binding_inner.span, binding_outer.span));
                             }
                         }
                     }
                 }
             }
         }
-        let mut missing_vars = missing_vars.iter().collect::<Vec<_>>();
+
+        let mut missing_vars = missing_vars.iter_mut().collect::<Vec<_>>();
         missing_vars.sort();
-        for (_, v) in missing_vars {
+        for (name, mut v) in missing_vars {
+            if inconsistent_vars.contains_key(name) {
+                v.could_be_path = false;
+            }
             self.r.report_error(
-                *v.origin.iter().next().unwrap(), ResolutionError::VariableNotBoundInPattern(v)
-            );
+                *v.origin.iter().next().unwrap(),
+                ResolutionError::VariableNotBoundInPattern(v));
         }
+
         let mut inconsistent_vars = inconsistent_vars.iter().collect::<Vec<_>>();
         inconsistent_vars.sort();
         for (name, v) in inconsistent_vars {
@@ -1222,7 +1210,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             self.resolve_pattern(pat, source, &mut bindings_list);
         }
         // This has to happen *after* we determine which pat_idents are variants
-        self.check_consistent_bindings(pats);
+        if pats.len() > 1 {
+            self.check_consistent_bindings(pats);
+        }
     }
 
     fn resolve_block(&mut self, block: &Block) {

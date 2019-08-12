@@ -20,7 +20,7 @@ use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::{path_names_to_string, KNOWN_TOOLS};
-use crate::{CrateLint, LegacyScope, Module, ModuleOrUniformRoot};
+use crate::{BindingError, CrateLint, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
 type Res = def::Res<ast::NodeId>;
@@ -207,20 +207,31 @@ impl<'a> Resolver<'a> {
                 err
             }
             ResolutionError::VariableNotBoundInPattern(binding_error) => {
-                let target_sp = binding_error.target.iter().cloned().collect::<Vec<_>>();
+                let BindingError { name, target, origin, could_be_path } = binding_error;
+
+                let target_sp = target.iter().copied().collect::<Vec<_>>();
+                let origin_sp = origin.iter().copied().collect::<Vec<_>>();
+
                 let msp = MultiSpan::from_spans(target_sp.clone());
-                let msg = format!("variable `{}` is not bound in all patterns", binding_error.name);
+                let msg = format!("variable `{}` is not bound in all patterns", name);
                 let mut err = self.session.struct_span_err_with_code(
                     msp,
                     &msg,
                     DiagnosticId::Error("E0408".into()),
                 );
                 for sp in target_sp {
-                    err.span_label(sp, format!("pattern doesn't bind `{}`", binding_error.name));
+                    err.span_label(sp, format!("pattern doesn't bind `{}`", name));
                 }
-                let origin_sp = binding_error.origin.iter().cloned();
                 for sp in origin_sp {
                     err.span_label(sp, "variable not in all patterns");
+                }
+                if *could_be_path {
+                    let help_msg = format!(
+                        "if you meant to match on a variant or a `const` item, consider \
+                         making the path in the pattern qualified: `?::{}`",
+                         name,
+                     );
+                    err.span_help(span, &help_msg);
                 }
                 err
             }
