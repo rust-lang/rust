@@ -3,7 +3,7 @@ use super::{Parser, PResult, PathStyle};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use crate::ptr::P;
 use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac_};
-use crate::ast::{BindingMode, Ident, Mutability, Expr, ExprKind};
+use crate::ast::{BindingMode, Ident, Mutability, Path, Expr, ExprKind};
 use crate::parse::token::{self};
 use crate::print::pprust;
 use crate::source_map::{respan, Span, Spanned};
@@ -165,18 +165,7 @@ impl<'a> Parser<'a> {
                     (None, self.parse_path(PathStyle::Expr)?)
                 };
                 match self.token.kind {
-                    token::Not if qself.is_none() => {
-                        // Parse macro invocation
-                        self.bump();
-                        let (delim, tts) = self.expect_delimited_token_tree()?;
-                        let mac = respan(lo.to(self.prev_span), Mac_ {
-                            path,
-                            tts,
-                            delim,
-                            prior_type_ascription: self.last_type_ascription,
-                        });
-                        PatKind::Mac(mac)
-                    }
+                    token::Not if qself.is_none() => self.parse_pat_mac_invoc(lo, path)?,
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
                         let (end_kind, form) = match self.token.kind {
                             token::DotDot => (RangeEnd::Excluded, ".."),
@@ -328,7 +317,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    // Recover on `mut ref? ident @ pat` and suggest that the order of `mut` and `ref` is incorrect.
+    /// Recover on `mut ref? ident @ pat` and suggest
+    /// that the order of `mut` and `ref` is incorrect.
     fn recover_pat_ident_mut_first(&mut self) -> PResult<'a, PatKind> {
         let mutref_span = self.prev_span.to(self.token.span);
         let binding_mode = if self.eat_keyword(kw::Ref) {
@@ -345,6 +335,19 @@ impl<'a> Parser<'a> {
             BindingMode::ByValue(Mutability::Mutable)
         };
         self.parse_pat_ident(binding_mode)
+    }
+
+    /// Parse macro invocation
+    fn parse_pat_mac_invoc(&mut self, lo: Span, path: Path) -> PResult<'a, PatKind> {
+        self.bump();
+        let (delim, tts) = self.expect_delimited_token_tree()?;
+        let mac = respan(lo.to(self.prev_span), Mac_ {
+            path,
+            tts,
+            delim,
+            prior_type_ascription: self.last_type_ascription,
+        });
+        Ok(PatKind::Mac(mac))
     }
 
     // Helper function to decide whether to parse as ident binding
