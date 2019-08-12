@@ -119,7 +119,7 @@ macro_rules! print {
 /// Prints to the standard output, with a newline.
 ///
 /// On all platforms, the newline is the LINE FEED character (`\n`/`U+000A`) alone
-/// (no additional CARRIAGE RETURN (`\r`/`U+000D`).
+/// (no additional CARRIAGE RETURN (`\r`/`U+000D`)).
 ///
 /// Use the [`format!`] syntax to write data to the standard output.
 /// See [`std::fmt`] for more information.
