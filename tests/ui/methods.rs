@@ -1,5 +1,7 @@
 // aux-build:option_helpers.rs
+// compile-flags: --edition 2018
 
+#![feature(async_await)]
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
     clippy::blacklisted_name,
@@ -11,7 +13,6 @@
     clippy::needless_pass_by_value,
     clippy::default_trait_access,
     clippy::use_self,
-    clippy::new_ret_no_self,
     clippy::useless_format,
     clippy::wrong_self_convention
 )]
@@ -135,6 +136,22 @@ struct V<T> {
 impl<T> V<T> {
     fn new() -> Option<V<T>> {
         None
+    }
+}
+
+struct AsyncNew;
+
+impl AsyncNew {
+    async fn new() -> Option<Self> {
+        None
+    }
+}
+
+struct BadNew;
+
+impl BadNew {
+    fn new() -> i32 {
+        0
     }
 }
 

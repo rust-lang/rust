@@ -1,5 +1,5 @@
 error: defining a method called `add` on this type; consider implementing the `std::ops::Add` trait or choosing a less ambiguous name
-  --> $DIR/methods.rs:36:5
+  --> $DIR/methods.rs:37:5
    |
 LL | /     pub fn add(self, other: T) -> T {
 LL | |         self
@@ -8,8 +8,18 @@ LL | |     }
    |
    = note: `-D clippy::should-implement-trait` implied by `-D warnings`
 
+error: methods called `new` usually return `Self`
+  --> $DIR/methods.rs:153:5
+   |
+LL | /     fn new() -> i32 {
+LL | |         0
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
+
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-  --> $DIR/methods.rs:158:13
+  --> $DIR/methods.rs:175:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -21,7 +31,7 @@ LL | |                .unwrap_or(0);
    = note: replace `map(|x| x + 1).unwrap_or(0)` with `map_or(0, |x| x + 1)`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-  --> $DIR/methods.rs:162:13
+  --> $DIR/methods.rs:179:13
    |
 LL |       let _ = opt.map(|x| {
    |  _____________^
@@ -31,7 +41,7 @@ LL | |               ).unwrap_or(0);
    | |____________________________^
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-  --> $DIR/methods.rs:166:13
+  --> $DIR/methods.rs:183:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -41,7 +51,7 @@ LL | |                 });
    | |__________________^
 
 error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-  --> $DIR/methods.rs:171:13
+  --> $DIR/methods.rs:188:13
    |
 LL |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +59,7 @@ LL |     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
    = note: replace `map(|x| Some(x + 1)).unwrap_or(None)` with `and_then(|x| Some(x + 1))`
 
 error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-  --> $DIR/methods.rs:173:13
+  --> $DIR/methods.rs:190:13
    |
 LL |       let _ = opt.map(|x| {
    |  _____________^
@@ -59,7 +69,7 @@ LL | |     ).unwrap_or(None);
    | |_____________________^
 
 error: called `map(f).unwrap_or(None)` on an Option value. This can be done more directly by calling `and_then(f)` instead
-  --> $DIR/methods.rs:177:13
+  --> $DIR/methods.rs:194:13
    |
 LL |       let _ = opt
    |  _____________^
@@ -70,7 +80,7 @@ LL | |         .unwrap_or(None);
    = note: replace `map(|x| Some(x + 1)).unwrap_or(None)` with `and_then(|x| Some(x + 1))`
 
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
-  --> $DIR/methods.rs:188:13
+  --> $DIR/methods.rs:205:13
    |
 LL |     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -78,7 +88,7 @@ LL |     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
    = note: replace `map(|p| format!("{}.", p)).unwrap_or(id)` with `map_or(id, |p| format!("{}.", p))`
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-  --> $DIR/methods.rs:192:13
+  --> $DIR/methods.rs:209:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -90,7 +100,7 @@ LL | |                .unwrap_or_else(|| 0);
    = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `map_or_else(|| 0, |x| x + 1)`
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-  --> $DIR/methods.rs:196:13
+  --> $DIR/methods.rs:213:13
    |
 LL |       let _ = opt.map(|x| {
    |  _____________^
@@ -100,7 +110,7 @@ LL | |               ).unwrap_or_else(|| 0);
    | |____________________________________^
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
-  --> $DIR/methods.rs:200:13
+  --> $DIR/methods.rs:217:13
    |
 LL |       let _ = opt.map(|x| x + 1)
    |  _____________^
@@ -110,7 +120,7 @@ LL | |                 );
    | |_________________^
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:230:13
+  --> $DIR/methods.rs:247:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -119,7 +129,7 @@ LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:233:13
+  --> $DIR/methods.rs:250:13
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^
@@ -129,7 +139,7 @@ LL | |                    ).next();
    | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:249:13
+  --> $DIR/methods.rs:266:13
    |
 LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +148,7 @@ LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    = note: replace `find(|&x| *x < 0).is_some()` with `any(|x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:252:13
+  --> $DIR/methods.rs:269:13
    |
 LL |       let _ = v.iter().find(|&x| {
    |  _____________^
@@ -148,7 +158,7 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:258:13
+  --> $DIR/methods.rs:275:13
    |
 LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +166,7 @@ LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    = note: replace `position(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:261:13
+  --> $DIR/methods.rs:278:13
    |
 LL |       let _ = v.iter().position(|&x| {
    |  _____________^
@@ -166,7 +176,7 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:267:13
+  --> $DIR/methods.rs:284:13
    |
 LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,7 +184,7 @@ LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    = note: replace `rposition(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:270:13
+  --> $DIR/methods.rs:287:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
    |  _____________^
@@ -184,12 +194,12 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-  --> $DIR/methods.rs:285:13
+  --> $DIR/methods.rs:302:13
    |
 LL |     let _ = opt.unwrap();
    |             ^^^^^^^^^^^^
    |
    = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 20 previous errors
+error: aborting due to 21 previous errors
 
