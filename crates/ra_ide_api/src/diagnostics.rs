@@ -48,7 +48,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         })
     })
     .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
-        let source_root = db.file_source_root(d.file().original_file(db));
+        let source_root = db.file_source_root(d.source().file_id.original_file(db));
         let create_file = FileSystemEdit::CreateFile { source_root, path: d.candidate.clone() };
         let fix = SourceChange::file_system_edit("create module", create_file);
         res.borrow_mut().push(Diagnostic {
