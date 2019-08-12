@@ -72,8 +72,8 @@ pub struct WhereClause<'a>{
 }
 
 pub struct HRef<'a> {
-    pub did: DefId,
-    pub text: &'a str,
+    did: DefId,
+    text: &'a str,
 }
 
 impl<'a> VisSpace<'a> {
@@ -452,7 +452,7 @@ fn resolved_path(w: &mut fmt::Formatter<'_>, did: DefId, path: &clean::Path,
         }
     }
     if w.alternate() {
-        write!(w, "{:#}{:#}", HRef::new(did, &last.name), last.args)?;
+        write!(w, "{}{:#}", &last.name, last.args)?;
     } else {
         let path = if use_absolute {
             match href(did) {
@@ -538,14 +538,11 @@ impl<'a> HRef<'a> {
 
 impl<'a> fmt::Display for HRef<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match href(self.did) {
-            Some((url, shortty, fqp)) => if !f.alternate() {
-                write!(f, "<a class=\"{}\" href=\"{}\" title=\"{} {}\">{}</a>",
-                       shortty, url, shortty, fqp.join("::"), self.text)
-            } else {
-                write!(f, "{}", self.text)
-            },
-            _ => write!(f, "{}", self.text),
+        if let Some((url, short_ty, fqp)) = href(self.did) {
+            write!(f, r#"<a class="{}" href="{}" title="{} {}">{}</a>"#,
+                short_ty, url, short_ty, fqp.join("::"), self.text)
+        } else {
+            write!(f, "{}", self.text)
         }
     }
 }
