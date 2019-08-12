@@ -4,9 +4,12 @@ If you want to help with updating the [changelog][changelog], you're in the righ
 
 ## When to update
 
-The changelog is ideally updated during the week before an upcoming stable
-release. Typos and other small fixes/additions are always welcome. You can find
-the release dates on the [Rust Forge][forge].
+Typos and other small fixes/additions are _always_ welcome.
+
+Special care needs to be taken when it comes to updating the changelog for a new
+Rust release. For that purpose, the changelog is ideally updated during the week
+before an upcoming stable release. You can find the release dates on the [Rust
+Forge][forge].
 
 Most of the time we only need to update the changelog for minor Rust releases. It's
 been very rare that Clippy changes were included in a patch release.
@@ -42,7 +45,7 @@ already, but it's a good idea to do a manual cleanup pass where you look for
 more irrelevant PRs. If you're not sure about some PRs, just leave them in for
 the review and ask for feedback.
 
-With PRs filtered, you can start to take each PR and move the
+With the PRs filtered, you can start to take each PR and move the
 `changelog: ` content to `CHANGELOG.md`. Adapt the wording as you see fit but
 try to keep it somewhat coherent.
 
@@ -53,6 +56,9 @@ The order should roughly be:
 3. ICE fixes
 4. False positive fixes
 5. Suggestion fixes/improvements
+
+Please also be sure to update the Beta/Unreleased sections at the top with the
+relevant commit ranges.
 
 [changelog]: https://github.com/rust-lang/rust-clippy/blob/master/CHANGELOG.md
 [forge]: https://forge.rust-lang.org/
