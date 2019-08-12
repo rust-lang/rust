@@ -6,9 +6,9 @@ use crate::value::Value;
 
 use rustc::hir;
 use rustc_codegen_ssa::traits::*;
-
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
+use syntax_pos::Span;
 
 use std::ffi::{CStr, CString};
 use libc::{c_uint, c_char};
@@ -19,7 +19,8 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         ia: &hir::InlineAsm,
         outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
-        mut inputs: Vec<&'ll Value>
+        mut inputs: Vec<&'ll Value>,
+        span: Span,
     ) -> bool {
         let mut ext_constraints = vec![];
         let mut output_types = vec![];
@@ -102,7 +103,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             let kind = llvm::LLVMGetMDKindIDInContext(self.llcx,
                 key.as_ptr() as *const c_char, key.len() as c_uint);
 
-            let val: &'ll Value = self.const_i32(ia.ctxt.outer_expn().as_u32() as i32);
+            let val: &'ll Value = self.const_i32(span.ctxt().outer_expn().as_u32() as i32);
 
             llvm::LLVMSetMetadata(r, kind,
                 llvm::LLVMMDNodeInContext(self.llcx, &val, 1));
