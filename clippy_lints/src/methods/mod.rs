@@ -360,7 +360,7 @@ declare_clippy_lint! {
     /// iter.flatten();
     /// ```
     pub FLAT_MAP_IDENTITY,
-    pedantic,
+    complexity,
     "call to `flat_map` where `flatten` is sufficient"
 }
 
