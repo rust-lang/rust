@@ -441,6 +441,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
                 let mut kind = match (lo, hi) {
                     (PatternKind::Constant { value: lo }, PatternKind::Constant { value: hi }) => {
+                        assert_eq!(lo.ty, ty);
+                        assert_eq!(hi.ty, ty);
                         let cmp = compare_const_vals(
                             self.tcx,
                             lo,

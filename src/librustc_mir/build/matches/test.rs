@@ -63,6 +63,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatternKind::Range(range) => {
+                assert_eq!(range.lo.ty, match_pair.pattern.ty);
+                assert_eq!(range.hi.ty, match_pair.pattern.ty);
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range(range),
@@ -269,6 +271,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                 } else {
                     if let [success, fail] = *make_target_blocks(self) {
+                        assert_eq!(value.ty, ty);
                         let expect = self.literal_operand(test.span, value);
                         let val = Operand::Copy(place.clone());
                         self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
