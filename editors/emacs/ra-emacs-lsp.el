@@ -14,7 +14,7 @@
 ;;    - 'hover' type information & documentation (with lsp-ui)
 ;;  - implements source changes (for code actions etc.), except for file system changes
 ;;  - implements joinLines (you need to bind rust-analyzer-join-lines to a key)
-;;  - implements extendSelection (either bind rust-analyzer-extend-selection to a key, or use expand-region)
+;;  - implements selectionRanges (either bind lsp-extend-selection to a key, or use expand-region)
 ;;  - provides rust-analyzer-inlay-hints-mode for inline type hints
 
 ;; What's missing:
@@ -103,39 +103,13 @@
                                        (rust-analyzer--join-lines-params)))
    (rust-analyzer--apply-source-change)))
 
-;; extend selection
-
-(defun rust-analyzer-extend-selection ()
-  (interactive)
-  (-let (((&hash "start" "end") (rust-analyzer--extend-selection)))
-    (rust-analyzer--goto-lsp-loc start)
-    (set-mark (point))
-    (rust-analyzer--goto-lsp-loc end)
-    (exchange-point-and-mark)))
-
-(defun rust-analyzer--extend-selection-params ()
-  "Extend selection params."
-  (list :textDocument (lsp--text-document-identifier)
-        :selections
-        (vector
-         (if (use-region-p)
-             (lsp--region-to-range (region-beginning) (region-end))
-           (lsp--region-to-range (point) (point))))))
-
-(defun rust-analyzer--extend-selection ()
-  (->
-   (lsp-send-request
-    (lsp-make-request
-     "rust-analyzer/extendSelection"
-     (rust-analyzer--extend-selection-params)))
-   (ht-get "selections")
-   (seq-first)))
+;; selection ranges
 
 (defun rust-analyzer--add-er-expansion ()
   (make-variable-buffer-local 'er/try-expand-list)
   (setq er/try-expand-list (append
                             er/try-expand-list
-                            '(rust-analyzer-extend-selection))))
+                            '(lsp-extend-selection))))
 
 (with-eval-after-load 'expand-region
   ;; add the expansion for all existing rust-mode buffers. If expand-region is
