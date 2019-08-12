@@ -126,8 +126,6 @@ impl<'a> Resolver<'a> {
         };
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
-        } else if self.is_builtin_macro(Some(def_id)) {
-            self.injected_crate.unwrap_or(self.graph_root)
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
             self.get_module(module_def_id)
@@ -596,11 +594,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 };
 
                 self.r.populate_module_if_necessary(module);
-                if let Some(name) = self.r.session.parse_sess.injected_crate_name.try_get() {
-                    if name.as_str() == ident.name.as_str() {
-                        self.r.injected_crate = Some(module);
-                    }
-                }
 
                 let used = self.process_legacy_macro_imports(item, module);
                 let binding =
