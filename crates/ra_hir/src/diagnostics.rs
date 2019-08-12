@@ -3,7 +3,7 @@ use std::{any::Any, fmt};
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, TextRange};
 use relative_path::RelativePathBuf;
 
-use crate::{HirDatabase, HirFileId, Name};
+use crate::{HirDatabase, HirFileId, Name, Source};
 
 /// Diagnostic defines hir API for errors and warnings.
 ///
@@ -19,10 +19,9 @@ use crate::{HirDatabase, HirFileId, Name};
 /// instance of `Diagnostic` on demand.
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn message(&self) -> String;
-    fn file(&self) -> HirFileId;
-    fn syntax_node_ptr(&self) -> SyntaxNodePtr;
+    fn source(&self) -> Source<SyntaxNodePtr>;
     fn highlight_range(&self) -> TextRange {
-        self.syntax_node_ptr().range()
+        self.source().ast.range()
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static);
 }
@@ -34,8 +33,8 @@ pub trait AstDiagnostic {
 
 impl dyn Diagnostic {
     pub fn syntax_node(&self, db: &impl HirDatabase) -> SyntaxNode {
-        let node = db.parse_or_expand(self.file()).unwrap();
-        self.syntax_node_ptr().to_node(&node)
+        let node = db.parse_or_expand(self.source().file_id).unwrap();
+        self.source().ast.to_node(&node)
     }
 
     pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {
@@ -87,12 +86,11 @@ impl Diagnostic for NoSuchField {
     fn message(&self) -> String {
         "no such field".to_string()
     }
-    fn file(&self) -> HirFileId {
-        self.file
+
+    fn source(&self) -> Source<SyntaxNodePtr> {
+        Source { file_id: self.file, ast: self.field.into() }
     }
-    fn syntax_node_ptr(&self) -> SyntaxNodePtr {
-        self.field.into()
-    }
+
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }
@@ -109,11 +107,8 @@ impl Diagnostic for UnresolvedModule {
     fn message(&self) -> String {
         "unresolved module".to_string()
     }
-    fn file(&self) -> HirFileId {
-        self.file
-    }
-    fn syntax_node_ptr(&self) -> SyntaxNodePtr {
-        self.decl.into()
+    fn source(&self) -> Source<SyntaxNodePtr> {
+        Source { file_id: self.file, ast: self.decl.into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -131,11 +126,8 @@ impl Diagnostic for MissingFields {
     fn message(&self) -> String {
         "fill structure fields".to_string()
     }
-    fn file(&self) -> HirFileId {
-        self.file
-    }
-    fn syntax_node_ptr(&self) -> SyntaxNodePtr {
-        self.field_list.into()
+    fn source(&self) -> Source<SyntaxNodePtr> {
+        Source { file_id: self.file, ast: self.field_list.into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -146,8 +138,8 @@ impl AstDiagnostic for MissingFields {
     type AST = ast::NamedFieldList;
 
     fn ast(&self, db: &impl HirDatabase) -> Self::AST {
-        let root = db.parse_or_expand(self.file()).unwrap();
-        let node = self.syntax_node_ptr().to_node(&root);
+        let root = db.parse_or_expand(self.source().file_id).unwrap();
+        let node = self.source().ast.to_node(&root);
         ast::NamedFieldList::cast(node).unwrap()
     }
 }
