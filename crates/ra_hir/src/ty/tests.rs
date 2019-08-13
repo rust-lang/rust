@@ -3273,6 +3273,126 @@ fn test<T: ApplyL>(t: T) {
     assert_eq!(t, "{unknown}");
 }
 
+#[test]
+fn impl_trait() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> impl Trait<u64> {}
+
+fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[30; 34) 'self': &Self
+   ⋮[72; 74) '{}': ()
+   ⋮[84; 85) 'x': impl Trait<u64>
+   ⋮[104; 105) 'y': &impl Trait<u64>
+   ⋮[125; 200) '{     ...o(); }': ()
+   ⋮[131; 132) 'x': impl Trait<u64>
+   ⋮[138; 139) 'y': &impl Trait<u64>
+   ⋮[149; 150) 'z': impl Trait<u64>
+   ⋮[153; 156) 'bar': fn bar() -> impl Trait<u64>
+   ⋮[153; 158) 'bar()': impl Trait<u64>
+   ⋮[164; 165) 'x': impl Trait<u64>
+   ⋮[164; 171) 'x.foo()': {unknown}
+   ⋮[177; 178) 'y': &impl Trait<u64>
+   ⋮[177; 184) 'y.foo()': {unknown}
+   ⋮[190; 191) 'z': impl Trait<u64>
+   ⋮[190; 197) 'z.foo()': {unknown}
+    "###
+    );
+}
+
+#[test]
+fn dyn_trait() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+}
+fn bar() -> dyn Trait<u64> {}
+
+fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[30; 34) 'self': &Self
+   ⋮[71; 73) '{}': ()
+   ⋮[83; 84) 'x': dyn Trait<u64>
+   ⋮[102; 103) 'y': &dyn Trait<u64>
+   ⋮[122; 197) '{     ...o(); }': ()
+   ⋮[128; 129) 'x': dyn Trait<u64>
+   ⋮[135; 136) 'y': &dyn Trait<u64>
+   ⋮[146; 147) 'z': dyn Trait<u64>
+   ⋮[150; 153) 'bar': fn bar() -> dyn Trait<u64>
+   ⋮[150; 155) 'bar()': dyn Trait<u64>
+   ⋮[161; 162) 'x': dyn Trait<u64>
+   ⋮[161; 168) 'x.foo()': {unknown}
+   ⋮[174; 175) 'y': &dyn Trait<u64>
+   ⋮[174; 181) 'y.foo()': {unknown}
+   ⋮[187; 188) 'z': dyn Trait<u64>
+   ⋮[187; 194) 'z.foo()': {unknown}
+    "###
+    );
+}
+
+#[test]
+fn dyn_trait_bare() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait {
+    fn foo(&self) -> u64;
+}
+fn bar() -> Trait {}
+
+fn test(x: Trait, y: &Trait) -> u64 {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[27; 31) 'self': &Self
+   ⋮[61; 63) '{}': ()
+   ⋮[73; 74) 'x': {unknown}
+   ⋮[83; 84) 'y': &{unknown}
+   ⋮[101; 176) '{     ...o(); }': ()
+   ⋮[107; 108) 'x': {unknown}
+   ⋮[114; 115) 'y': &{unknown}
+   ⋮[125; 126) 'z': {unknown}
+   ⋮[129; 132) 'bar': fn bar() -> {unknown}
+   ⋮[129; 134) 'bar()': {unknown}
+   ⋮[140; 141) 'x': {unknown}
+   ⋮[140; 147) 'x.foo()': {unknown}
+   ⋮[153; 154) 'y': &{unknown}
+   ⋮[153; 160) 'y.foo()': {unknown}
+   ⋮[166; 167) 'z': {unknown}
+   ⋮[166; 173) 'z.foo()': {unknown}
+    "###
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

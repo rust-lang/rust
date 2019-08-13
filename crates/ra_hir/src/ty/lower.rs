@@ -17,7 +17,7 @@ use crate::{
     path::{GenericArg, PathSegment},
     resolve::{Resolution, Resolver},
     ty::AdtDef,
-    type_ref::TypeRef,
+    type_ref::{TypeBound, TypeRef},
     BuiltinType, Const, Enum, EnumVariant, Function, HirDatabase, ModuleDef, Path, Static, Struct,
     StructField, Trait, TypeAlias, Union,
 };
@@ -57,6 +57,22 @@ impl Ty {
                     params.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
                 let sig = Substs(inner_tys.into());
                 Ty::apply(TypeCtor::FnPtr { num_args: sig.len() as u16 - 1 }, sig)
+            }
+            TypeRef::DynTrait(bounds) => {
+                let self_ty = Ty::Bound(0);
+                let predicates = bounds
+                    .iter()
+                    .map(|b| GenericPredicate::from_type_bound(db, resolver, b, self_ty.clone()))
+                    .collect::<Vec<_>>();
+                Ty::Dyn(predicates.into())
+            }
+            TypeRef::ImplTrait(bounds) => {
+                let self_ty = Ty::Bound(0);
+                let predicates = bounds
+                    .iter()
+                    .map(|b| GenericPredicate::from_type_bound(db, resolver, b, self_ty.clone()))
+                    .collect::<Vec<_>>();
+                Ty::Opaque(predicates.into())
             }
             TypeRef::Error => Ty::Unknown,
         }
@@ -310,13 +326,46 @@ impl TraitRef {
         TraitRef { trait_, substs }
     }
 
-    pub(crate) fn for_where_predicate(
+    pub(crate) fn from_where_predicate(
         db: &impl HirDatabase,
         resolver: &Resolver,
         pred: &WherePredicate,
     ) -> Option<TraitRef> {
         let self_ty = Ty::from_hir(db, resolver, &pred.type_ref);
-        TraitRef::from_path(db, resolver, &pred.trait_ref, Some(self_ty))
+        TraitRef::from_type_bound(db, resolver, &pred.bound, self_ty)
+    }
+
+    pub(crate) fn from_type_bound(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        bound: &TypeBound,
+        self_ty: Ty,
+    ) -> Option<TraitRef> {
+        match bound {
+            TypeBound::Path(path) => TraitRef::from_path(db, resolver, path, Some(self_ty)),
+            TypeBound::Error => None,
+        }
+    }
+}
+
+impl GenericPredicate {
+    pub(crate) fn from_where_predicate(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        where_predicate: &WherePredicate,
+    ) -> GenericPredicate {
+        TraitRef::from_where_predicate(db, &resolver, where_predicate)
+            .map_or(GenericPredicate::Error, GenericPredicate::Implemented)
+    }
+
+    pub(crate) fn from_type_bound(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        bound: &TypeBound,
+        self_ty: Ty,
+    ) -> GenericPredicate {
+        TraitRef::from_type_bound(db, &resolver, bound, self_ty)
+            .map_or(GenericPredicate::Error, GenericPredicate::Implemented)
     }
 }
 
@@ -376,10 +425,7 @@ pub(crate) fn trait_env(
 ) -> Arc<super::TraitEnvironment> {
     let predicates = resolver
         .where_predicates_in_scope()
-        .map(|pred| {
-            TraitRef::for_where_predicate(db, &resolver, pred)
-                .map_or(GenericPredicate::Error, GenericPredicate::Implemented)
-        })
+        .map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
         .collect::<Vec<_>>();
 
     Arc::new(super::TraitEnvironment { predicates })
@@ -393,10 +439,7 @@ pub(crate) fn generic_predicates_query(
     let resolver = def.resolver(db);
     let predicates = resolver
         .where_predicates_in_scope()
-        .map(|pred| {
-            TraitRef::for_where_predicate(db, &resolver, pred)
-                .map_or(GenericPredicate::Error, GenericPredicate::Implemented)
-        })
+        .map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
         .collect::<Vec<_>>();
     predicates.into()
 }

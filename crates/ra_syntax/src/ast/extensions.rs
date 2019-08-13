@@ -399,3 +399,29 @@ impl ast::TraitDef {
         self.syntax().children_with_tokens().any(|t| t.kind() == T![auto])
     }
 }
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TypeBoundKind {
+    /// Trait
+    PathType(ast::PathType),
+    /// for<'a> ...
+    ForType(ast::ForType),
+    /// 'a
+    Lifetime(ast::SyntaxToken),
+}
+
+impl ast::TypeBound {
+    pub fn kind(&self) -> Option<TypeBoundKind> {
+        let child = self.syntax.first_child_or_token()?;
+        match child.kind() {
+            PATH_TYPE => Some(TypeBoundKind::PathType(
+                ast::PathType::cast(child.into_node().unwrap()).unwrap(),
+            )),
+            FOR_TYPE => Some(TypeBoundKind::ForType(
+                ast::ForType::cast(child.into_node().unwrap()).unwrap(),
+            )),
+            LIFETIME => Some(TypeBoundKind::Lifetime(child.into_token().unwrap())),
+            _ => unreachable!(),
+        }
+    }
+}
