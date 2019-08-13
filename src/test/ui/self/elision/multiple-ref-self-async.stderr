@@ -1,0 +1,133 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:24:74
+   |
+LL |     async fn wrap_ref_Self_ref_Self(self: Wrap<&Self, &Self>, f: &u8) -> &u8 {
+   |                                                                          ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:30:84
+   |
+LL |     async fn box_wrap_ref_Self_ref_Self(self: Box<Wrap<&Self, &Self>>, f: &u32) -> &u32 {
+   |                                                                                    ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:36:84
+   |
+LL |     async fn pin_wrap_ref_Self_ref_Self(self: Pin<Wrap<&Self, &Self>>, f: &u32) -> &u32 {
+   |                                                                                    ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:42:93
+   |
+LL |     async fn box_box_wrap_ref_Self_ref_Self(self: Box<Box<Wrap<&Self, &Self>>>, f: &u32) -> &u32 {
+   |                                                                                             ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/multiple-ref-self-async.rs:48:93
+   |
+LL |     async fn box_pin_wrap_ref_Self_ref_Self(self: Box<Pin<Wrap<&Self, &Self>>>, f: &u32) -> &u32 {
+   |                                                                                             ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/multiple-ref-self-async.rs:24:63
+   |
+LL |     async fn wrap_ref_Self_ref_Self(self: Wrap<&Self, &Self>, f: &u8) -> &u8 {
+   |                                                               ^          --- this return type evaluates to the `'static` lifetime...
+   |                                                               |
+   |                                                               ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 24:48
+  --> $DIR/multiple-ref-self-async.rs:24:48
+   |
+LL |     async fn wrap_ref_Self_ref_Self(self: Wrap<&Self, &Self>, f: &u8) -> &u8 {
+   |                                                ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 24:48
+   |
+LL |     async fn wrap_ref_Self_ref_Self(self: Wrap<&Self, &Self>, f: &u8) -> &u8 + '_ {
+   |                                                                          ^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/multiple-ref-self-async.rs:30:72
+   |
+LL |     async fn box_wrap_ref_Self_ref_Self(self: Box<Wrap<&Self, &Self>>, f: &u32) -> &u32 {
+   |                                                                        ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                                        |
+   |                                                                        ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 30:56
+  --> $DIR/multiple-ref-self-async.rs:30:56
+   |
+LL |     async fn box_wrap_ref_Self_ref_Self(self: Box<Wrap<&Self, &Self>>, f: &u32) -> &u32 {
+   |                                                        ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 30:56
+   |
+LL |     async fn box_wrap_ref_Self_ref_Self(self: Box<Wrap<&Self, &Self>>, f: &u32) -> &u32 + '_ {
+   |                                                                                    ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/multiple-ref-self-async.rs:36:72
+   |
+LL |     async fn pin_wrap_ref_Self_ref_Self(self: Pin<Wrap<&Self, &Self>>, f: &u32) -> &u32 {
+   |                                                                        ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                                        |
+   |                                                                        ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 36:56
+  --> $DIR/multiple-ref-self-async.rs:36:56
+   |
+LL |     async fn pin_wrap_ref_Self_ref_Self(self: Pin<Wrap<&Self, &Self>>, f: &u32) -> &u32 {
+   |                                                        ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 36:56
+   |
+LL |     async fn pin_wrap_ref_Self_ref_Self(self: Pin<Wrap<&Self, &Self>>, f: &u32) -> &u32 + '_ {
+   |                                                                                    ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/multiple-ref-self-async.rs:42:81
+   |
+LL |     async fn box_box_wrap_ref_Self_ref_Self(self: Box<Box<Wrap<&Self, &Self>>>, f: &u32) -> &u32 {
+   |                                                                                 ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                                                 |
+   |                                                                                 ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 42:64
+  --> $DIR/multiple-ref-self-async.rs:42:64
+   |
+LL |     async fn box_box_wrap_ref_Self_ref_Self(self: Box<Box<Wrap<&Self, &Self>>>, f: &u32) -> &u32 {
+   |                                                                ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 42:64
+   |
+LL |     async fn box_box_wrap_ref_Self_ref_Self(self: Box<Box<Wrap<&Self, &Self>>>, f: &u32) -> &u32 + '_ {
+   |                                                                                             ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/multiple-ref-self-async.rs:48:81
+   |
+LL |     async fn box_pin_wrap_ref_Self_ref_Self(self: Box<Pin<Wrap<&Self, &Self>>>, f: &u32) -> &u32 {
+   |                                                                                 ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                                                 |
+   |                                                                                 ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 48:64
+  --> $DIR/multiple-ref-self-async.rs:48:64
+   |
+LL |     async fn box_pin_wrap_ref_Self_ref_Self(self: Box<Pin<Wrap<&Self, &Self>>>, f: &u32) -> &u32 {
+   |                                                                ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 48:64
+   |
+LL |     async fn box_pin_wrap_ref_Self_ref_Self(self: Box<Pin<Wrap<&Self, &Self>>>, f: &u32) -> &u32 + '_ {
+   |                                                                                             ^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0106`.
