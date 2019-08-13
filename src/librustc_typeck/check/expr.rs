@@ -1342,23 +1342,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else if field.name == kw::Invalid {
             self.tcx().types.err
         } else if self.method_exists(field, expr_t, expr.hir_id, true) {
-            let mut err = type_error_struct!(self.tcx().sess, field.span, expr_t, E0615,
-                               "attempted to take value of method `{}` on type `{}`",
-                               field, expr_t);
-
-            if !self.expr_in_place(expr.hir_id) {
-                self.suggest_method_call(
-                    &mut err,
-                    "use parentheses to call the method",
-                    field,
-                    expr_t,
-                    expr.hir_id
-                );
-            } else {
-                err.help("methods are immutable and cannot be assigned to");
-            }
-
-            err.emit();
+            self.ban_take_value_of_method(expr, expr_t, field);
             self.tcx().types.err
         } else {
             if !expr_t.is_primitive_ty() {
@@ -1436,9 +1420,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr,
         expr_t: Ty<'tcx>,
         field: ast::Ident,
-        def_id: DefId,
+        base_did: DefId,
     ) {
-        let struct_path = self.tcx().def_path_str(def_id);
+        let struct_path = self.tcx().def_path_str(base_did);
         let mut err = struct_span_err!(
             self.tcx().sess,
             expr.span,
@@ -1459,6 +1443,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expr.hir_id,
             );
         }
+        err.emit();
+    }
+
+    fn ban_take_value_of_method(&self, expr: &'tcx hir::Expr, expr_t: Ty<'tcx>, field: ast::Ident) {
+        let mut err = type_error_struct!(
+            self.tcx().sess,
+            field.span,
+            expr_t,
+            E0615,
+            "attempted to take value of method `{}` on type `{}`",
+            field,
+            expr_t
+        );
+
+        if !self.expr_in_place(expr.hir_id) {
+            self.suggest_method_call(
+                &mut err,
+                "use parentheses to call the method",
+                field,
+                expr_t,
+                expr.hir_id
+            );
+        } else {
+            err.help("methods are immutable and cannot be assigned to");
+        }
+
         err.emit();
     }
 
