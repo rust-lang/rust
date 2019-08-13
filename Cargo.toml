@@ -7,7 +7,7 @@ authors = ["bjorn3 <bjorn3@users.noreply.github.com>"]
 edition = "2018"
 
 [lib]
-crate-type = ["rlib", "dylib"]
+crate-type = ["dylib"]
 
 [dependencies]
 # These have to be in sync with each other
