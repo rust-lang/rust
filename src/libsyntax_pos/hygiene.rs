@@ -750,7 +750,3 @@ impl Decodable for ExpnId {
         Ok(ExpnId::root()) // FIXME(jseyfried) intercrate hygiene
     }
 }
-
-impl UseSpecializedEncodable for SyntaxContext {}
-
-impl UseSpecializedDecodable for SyntaxContext {}

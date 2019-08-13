@@ -33,7 +33,6 @@ use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym, Ident};
 use syntax_pos::{self, FileName, SourceFile, Span};
-use syntax_pos::hygiene::SyntaxContext;
 use log::{debug, trace};
 
 use rustc::hir::{self, PatKind};
@@ -178,13 +177,6 @@ impl SpecializedEncoder<Ident> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, ident: &Ident) -> Result<(), Self::Error> {
         // FIXME(jseyfried): intercrate hygiene
         ident.name.encode(self)
-    }
-}
-
-impl SpecializedEncoder<SyntaxContext> for EncodeContext<'tcx> {
-    fn specialized_encode(&mut self, _ctxt: &SyntaxContext) -> Result<(), Self::Error> {
-        // FIXME(jseyfried): intercrate hygiene
-        Ok(())
     }
 }
 
