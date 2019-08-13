@@ -1199,7 +1199,7 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(kw::Else) || !cond.returns() {
             let sp = self.sess.source_map().next_point(lo);
             let mut err = self.diagnostic()
-                .struct_span_err(sp, "missing condition for `if` statement");
+                .struct_span_err(sp, "missing condition for `if` expression");
             err.span_label(sp, "expected if condition here");
             return Err(err)
         }
