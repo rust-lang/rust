@@ -12,12 +12,15 @@ pub struct EnvVars {
 
 impl EnvVars {
     pub(crate) fn init<'mir, 'tcx>(
+        communicate: bool,
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         tcx: &TyCtxt<'tcx>,
     ) {
-        for (name, value) in std::env::vars() {
-            let value = alloc_env_value(value.as_bytes(), ecx.memory_mut(), tcx);
-            ecx.machine.env_vars.map.insert(name.into_bytes(), value);
+        if communicate {
+            for (name, value) in std::env::vars() {
+                let value = alloc_env_value(value.as_bytes(), ecx.memory_mut(), tcx);
+                ecx.machine.env_vars.map.insert(name.into_bytes(), value);
+            }
         }
     }
 

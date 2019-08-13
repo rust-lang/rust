@@ -14,7 +14,6 @@ use rustc::ty::{self, layout::{Size, LayoutOf}, TyCtxt};
 use rustc::mir;
 
 use crate::*;
-use crate::shims::env::EnvVars;
 
 // Some global facts about the emulated machine.
 pub const PAGE_SIZE: u64 = 4*1024; // FIXME: adjust to target architecture
@@ -79,7 +78,7 @@ impl MemoryExtra {
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`.
     /// Miri does not expose env vars from the host to the emulated program.
-    pub(crate) env_vars: EnvVars,
+    pub(crate) env_vars: ShimsEnvVars,
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
@@ -101,7 +100,9 @@ pub struct Evaluator<'tcx> {
 impl<'tcx> Evaluator<'tcx> {
     pub(crate) fn new(communicate: bool) -> Self {
         Evaluator {
-            env_vars: EnvVars::default(),
+            // `env_vars` could be initialized properly here if `Memory` were available before
+            // calling this method.
+            env_vars: ShimsEnvVars::default(),
             argc: None,
             argv: None,
             cmd_line: None,
