@@ -1541,7 +1541,7 @@ pub enum ExprKind {
     Match(P<Expr>, HirVec<Arm>, MatchSource),
     /// A closure (e.g., `move |a, b, c| {a + b + c}`).
     ///
-    /// The final span is the span of the argument block `|...|`.
+    /// The `Span` is the argument block `|...|`.
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
     /// `Option<GeneratorMovability>`.
