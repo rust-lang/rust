@@ -21,48 +21,34 @@ impl<T, P> Deref for Wrap<T, P> {
 impl Struct {
     // Test using `&self` sugar:
 
-    async fn ref_self(&self, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
+    async fn ref_self(&self, f: &u32) -> &u32 { //~ ERROR lifetime mismatch
         f
     }
 
     // Test using `&Self` explicitly:
 
     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
-        f
+        f //~^ ERROR lifetime mismatch
     }
 
     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
-        f
+        f //~^ ERROR lifetime mismatch
     }
 
     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
-        f
+        f //~^ ERROR lifetime mismatch
     }
 
     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
-        f
+        f //~^ ERROR lifetime mismatch
     }
 
     async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
-        f
+        f //~^ ERROR lifetime mismatch
     }
 
     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
-        f
+        f //~^ ERROR lifetime mismatch
     }
 }
 
