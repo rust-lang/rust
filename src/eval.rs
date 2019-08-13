@@ -13,17 +13,17 @@ use crate::{
     Scalar, Tag, Pointer, FnVal,
     MemoryExtra, MiriMemoryKind, Evaluator, TlsEvalContextExt, HelpersEvalContextExt,
 };
-use crate::shims::env::alloc_env_value;
+use crate::shims::env::EnvVars;
 
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
+    /// Determine if validity checking and Stacked Borrows are enabled.
     pub validate: bool,
     /// Determines if communication with the host environment is enabled.
     pub communicate: bool,
     pub args: Vec<String>,
-
-    /// The seed to use when non-determinism is required (e.g. getrandom())
+    /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
 }
 
@@ -165,10 +165,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     assert!(args.next().is_none(), "start lang item has more arguments than expected");
 
     if config.communicate {
-        for (name, value) in std::env::vars() {
-            let value = alloc_env_value(value.as_bytes(), ecx.memory_mut(), &tcx);
-            ecx.machine.env_vars.insert(name.into_bytes(), value);
-        }
+        EnvVars::init(&mut ecx, &tcx);
     }
 
     Ok(ecx)

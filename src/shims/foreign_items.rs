@@ -438,7 +438,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     if !this.is_null(name_ptr)? {
                         let name = this.memory().read_c_str(name_ptr)?.to_owned();
                         if !name.is_empty() && !name.contains(&b'=') {
-                            success = Some(this.machine.env_vars.remove(&name));
+                            success = Some(this.machine.env_vars.unset(&name));
                         }
                     }
                 }
@@ -467,7 +467,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
                 if let Some((name, value)) = new {
                     let value_copy = alloc_env_value(&value, this.memory_mut(), tcx);
-                    if let Some(var) = this.machine.env_vars.insert(name.to_owned(), value_copy) {
+                    if let Some(var) = this.machine.env_vars.set(name.to_owned(), value_copy) {
                         this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
                     }
                     this.write_null(dest)?;
