@@ -359,6 +359,12 @@ fn lhs(
             return Some((m.complete(p, RANGE_EXPR), BlockLike::NotBlock));
         }
         _ => {
+            // test expression_after_block
+            // fn foo() {
+            //    let mut p = F{x: 5};
+            //    {p}.x = 10;
+            // }
+            //
             let (lhs, blocklike) = atom::atom_expr(p, r)?;
             return Some(postfix_expr(p, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block())));
         }

@@ -1,0 +1,65 @@
+SOURCE_FILE@[0; 52)
+  FN_DEF@[0; 51)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 8)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
+    BLOCK@[9; 51)
+      L_CURLY@[9; 10) "{"
+      WHITESPACE@[10; 14) "\n   "
+      LET_STMT@[14; 34)
+        LET_KW@[14; 17) "let"
+        WHITESPACE@[17; 18) " "
+        BIND_PAT@[18; 23)
+          MUT_KW@[18; 21) "mut"
+          WHITESPACE@[21; 22) " "
+          NAME@[22; 23)
+            IDENT@[22; 23) "p"
+        WHITESPACE@[23; 24) " "
+        EQ@[24; 25) "="
+        WHITESPACE@[25; 26) " "
+        STRUCT_LIT@[26; 33)
+          PATH@[26; 27)
+            PATH_SEGMENT@[26; 27)
+              NAME_REF@[26; 27)
+                IDENT@[26; 27) "F"
+          NAMED_FIELD_LIST@[27; 33)
+            L_CURLY@[27; 28) "{"
+            NAMED_FIELD@[28; 32)
+              NAME_REF@[28; 29)
+                IDENT@[28; 29) "x"
+              COLON@[29; 30) ":"
+              WHITESPACE@[30; 31) " "
+              LITERAL@[31; 32)
+                INT_NUMBER@[31; 32) "5"
+            R_CURLY@[32; 33) "}"
+        SEMI@[33; 34) ";"
+      WHITESPACE@[34; 38) "\n   "
+      EXPR_STMT@[38; 49)
+        BIN_EXPR@[38; 48)
+          FIELD_EXPR@[38; 43)
+            BLOCK_EXPR@[38; 41)
+              BLOCK@[38; 41)
+                L_CURLY@[38; 39) "{"
+                PATH_EXPR@[39; 40)
+                  PATH@[39; 40)
+                    PATH_SEGMENT@[39; 40)
+                      NAME_REF@[39; 40)
+                        IDENT@[39; 40) "p"
+                R_CURLY@[40; 41) "}"
+            DOT@[41; 42) "."
+            NAME_REF@[42; 43)
+              IDENT@[42; 43) "x"
+          WHITESPACE@[43; 44) " "
+          EQ@[44; 45) "="
+          WHITESPACE@[45; 46) " "
+          LITERAL@[46; 48)
+            INT_NUMBER@[46; 48) "10"
+        SEMI@[48; 49) ";"
+      WHITESPACE@[49; 50) "\n"
+      R_CURLY@[50; 51) "}"
+  WHITESPACE@[51; 52) "\n"
