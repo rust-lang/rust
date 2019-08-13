@@ -30,6 +30,10 @@ steps:
 - bash: printenv | sort
   displayName: Show environment variables
 
+# Log the date, even on failure. Attempting to debug SSL certificate errors.
+- bash: date
+  displayName: Print out date (before build)
+
 - bash: |
     set -e
     df -h
@@ -198,3 +202,8 @@ steps:
   condition: variables['AWS_SECRET_ACCESS_KEY']
   continueOnError: true
   displayName: Upload CPU usage statistics
+
+# Log the date, even on failure. Attempting to debug SSL certificate errors.
+- bash: date
+  continueOnError: true
+  displayName: Print out date (after build)
