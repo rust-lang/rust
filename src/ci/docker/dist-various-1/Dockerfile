@@ -104,9 +104,7 @@ ENV TARGETS=$TARGETS,armv5te-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
-# FIXME: temporarily disable the redox builder,
-# see: https://github.com/rust-lang/rust/issues/63160
-# ENV TARGETS=$TARGETS,x86_64-unknown-redox
+ENV TARGETS=$TARGETS,x86_64-unknown-redox
 ENV TARGETS=$TARGETS,thumbv6m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7m-none-eabi
 ENV TARGETS=$TARGETS,thumbv7em-none-eabi
@@ -132,7 +130,7 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
     AR_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
     CXX_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
-    
+
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \
       --musl-root-arm=/musl-arm \
