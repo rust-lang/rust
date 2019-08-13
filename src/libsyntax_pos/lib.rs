@@ -49,7 +49,6 @@ pub struct Globals {
     symbol_interner: Lock<symbol::Interner>,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
-    edition: Edition,
 }
 
 impl Globals {
@@ -58,7 +57,6 @@ impl Globals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
-            edition,
         }
     }
 }
