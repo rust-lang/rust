@@ -469,6 +469,18 @@ You can also use `--keep-stage 1` when running tests. Something like this:
 - Initial test run: `./x.py test -i --stage 1 src/test/ui`
 - Subsequent test run: `./x.py test -i --stage 1 src/test/ui --keep-stage 1`
 
+### Building with system LLVM
+
+By default, LLVM is built from source, and that can take significant amount of time.
+An alternative is to use LLVM already installed on your computer.
+
+This is specified in the `target` section of `config.toml`:
+
+```toml
+[target.x86_64-unknown-linux-gnu]
+llvm-config = "/path/to/llvm/llvm-7.0.1/bin/llvm-config"
+```
+
 ### Other `x.py` commands
 
 Here are a few other useful `x.py` commands. We'll cover some of them in detail
