@@ -1338,36 +1338,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Some((did, field_ty)) = private_candidate {
             self.ban_private_field_access(expr, expr_t, field, did);
-            field_ty
-        } else if field.name == kw::Invalid {
-            self.tcx().types.err
+            return field_ty;
+        }
+
+        if field.name == kw::Invalid {
         } else if self.method_exists(field, expr_t, expr.hir_id, true) {
             self.ban_take_value_of_method(expr, expr_t, field);
-            self.tcx().types.err
-        } else {
-            if !expr_t.is_primitive_ty() {
-                let mut err = self.no_such_field_err(field.span, field, expr_t);
+        } else if !expr_t.is_primitive_ty() {
+            let mut err = self.no_such_field_err(field.span, field, expr_t);
 
-                match expr_t.sty {
-                    ty::Adt(def, _) if !def.is_enum() => {
-                        self.suggest_fields_on_recordish(&mut err, def, field);
-                    }
-                    ty::Array(_, len) => {
-                        self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
-                    }
-                    ty::RawPtr(..) => {
-                        self.suggest_first_deref_field(&mut err, expr, base, field);
-                    }
-                    _ => {}
+            match expr_t.sty {
+                ty::Adt(def, _) if !def.is_enum() => {
+                    self.suggest_fields_on_recordish(&mut err, def, field);
                 }
-                err
-            } else {
-                type_error_struct!(self.tcx().sess, field.span, expr_t, E0610,
-                                   "`{}` is a primitive type and therefore doesn't have fields",
-                                   expr_t)
-            }.emit();
-            self.tcx().types.err
+                ty::Array(_, len) => {
+                    self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
+                }
+                ty::RawPtr(..) => {
+                    self.suggest_first_deref_field(&mut err, expr, base, field);
+                }
+                _ => {}
+            }
+
+            err.emit();
+        } else {
+            type_error_struct!(
+                self.tcx().sess,
+                field.span,
+                expr_t,
+                E0610,
+                "`{}` is a primitive type and therefore doesn't have fields",
+                expr_t
+            )
+            .emit();
         }
+
+        self.tcx().types.err
     }
 
     fn ban_private_field_access(
