@@ -607,7 +607,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 return;
             }
             match ret {
-                CPlace::NoPlace(_layout) => unreachable!("{:?}", ret),
+                CPlace::NoPlace(_layout) => {},
                 CPlace::Var(var, layout) => {
                     let clif_ty = fx.clif_type(layout.ty).unwrap();
                     let val = match clif_ty {
