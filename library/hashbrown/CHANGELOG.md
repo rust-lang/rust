@@ -7,7 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## [v0.5.1] - 2019-08-04
+## [v0.6.0] - 2019-08-13
+
+### Fixed
+- Fixed AHash accidentally depending on `std`. (#110)
+
+### Changed
+- The minimum Rust version has been bumped to 1.32 (due to `rand` dependency).
+
+## ~~[v0.5.1] - 2019-08-04~~
+
+This release was _yanked_ due to a breaking change for users of `no-default-features`.
 
 ### Added
 - The experimental and unsafe `RawTable` API is available under the "raw" feature. (#108)
@@ -134,7 +144,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/rust-lang/hashbrown/compare/v0.6.0...HEAD
+[v0.6.0]: https://github.com/rust-lang/hashbrown/compare/v0.5.1...v0.6.0
 [v0.5.1]: https://github.com/rust-lang/hashbrown/compare/v0.5.0...v0.5.1
 [v0.5.0]: https://github.com/rust-lang/hashbrown/compare/v0.4.0...v0.5.0
 [v0.4.0]: https://github.com/rust-lang/hashbrown/compare/v0.3.1...v0.4.0
