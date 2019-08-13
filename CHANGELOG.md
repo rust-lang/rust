@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.4.5] 2019-08-13
+
+### Fixed
+
+- Fix generating invalid code when formatting an impl block with const generics inside a where clause.
+- Fix adding a trailing space after a `dyn` keyword which is used as a macro argument by itself.
+
 ## [1.4.4] 2019-08-06
 
 ### Fixed
