@@ -118,13 +118,13 @@ macro_rules! ast_fragments {
 
         impl<'a, 'b> MutVisitor for MacroExpander<'a, 'b> {
             fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-                self.expand_fragment(AstFragment::OptExpr(Some(expr))).make_opt_expr()
+                self.fully_expand_fragment(AstFragment::OptExpr(Some(expr))).make_opt_expr()
             }
             $($(fn $mut_visit_ast(&mut self, ast: &mut $AstTy) {
-                visit_clobber(ast, |ast| self.expand_fragment(AstFragment::$Kind(ast)).$make_ast());
+                visit_clobber(ast, |ast| self.fully_expand_fragment(AstFragment::$Kind(ast)).$make_ast());
             })?)*
             $($(fn $flat_map_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
-                self.expand_fragment(AstFragment::$Kind(smallvec![ast_elt])).$make_ast()
+                self.fully_expand_fragment(AstFragment::$Kind(smallvec![ast_elt])).$make_ast()
             })?)*
         }
 
@@ -265,7 +265,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             tokens: None,
         })]);
 
-        match self.expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
+        match self.fully_expand_fragment(krate_item).make_items().pop().map(P::into_inner) {
             Some(ast::Item { attrs, node: ast::ItemKind::Mod(module), .. }) => {
                 krate.attrs = attrs;
                 krate.module = module;
@@ -285,8 +285,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         krate
     }
 
-    // Fully expand all macro invocations in this AST fragment.
-    fn expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
+    // Recursively expand all macro invocations in this AST fragment.
+    fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         self.cx.current_expansion.depth = 0;
 
