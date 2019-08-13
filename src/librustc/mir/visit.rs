@@ -463,7 +463,7 @@ macro_rules! make_mir_visitor {
                     } => {
                         self.visit_place(
                             location,
-                            PlaceContext::MutatingUse(MutatingUseContext::Drop),
+                            PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace),
                             source_location
                         );
                         self.visit_operand(value, source_location);
@@ -938,6 +938,8 @@ pub enum NonMutatingUseContext {
 pub enum MutatingUseContext {
     /// Appears as LHS of an assignment.
     Store,
+    /// Being dropped and then reinitialized (i.e. like `Drop` followed by `Store`).
+    DropAndReplace,
     /// Can often be treated as a `Store`, but needs to be separate because
     /// ASM is allowed to read outputs as well, so a `Store`-`AsmOutput` sequence
     /// cannot be simplified the way a `Store`-`Store` can be.
@@ -980,7 +982,8 @@ impl PlaceContext {
     /// Returns `true` if this place context represents a drop.
     pub fn is_drop(&self) -> bool {
         match *self {
-            PlaceContext::MutatingUse(MutatingUseContext::Drop) => true,
+            PlaceContext::MutatingUse(MutatingUseContext::Drop) |
+            PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace) => true,
             _ => false,
         }
     }
@@ -1049,6 +1052,7 @@ impl PlaceContext {
     pub fn is_place_assignment(&self) -> bool {
         match *self {
             PlaceContext::MutatingUse(MutatingUseContext::Store) |
+            PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace) |
             PlaceContext::MutatingUse(MutatingUseContext::Call) |
             PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) => true,
             _ => false,

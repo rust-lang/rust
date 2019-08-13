@@ -284,6 +284,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         if adt.is_union() {
                             if context == PlaceContext::MutatingUse(MutatingUseContext::Store) ||
                                 context == PlaceContext::MutatingUse(MutatingUseContext::Drop) ||
+                                context ==
+                                    PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace) ||
                                 context == PlaceContext::MutatingUse(
                                     MutatingUseContext::AsmOutput
                                 )

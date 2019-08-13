@@ -284,6 +284,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
             PlaceContext::MutatingUse(MutatingUseContext::Store) |
+            PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace) |
             PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
             PlaceContext::MutatingUse(MutatingUseContext::Borrow) |
             PlaceContext::MutatingUse(MutatingUseContext::Projection) |

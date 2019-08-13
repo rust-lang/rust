@@ -131,6 +131,9 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
 
         PlaceContext::MutatingUse(MutatingUseContext::Store) |
 
+        // FIXME(eddyb) this should probably not even appear here, ever.
+        PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace) |
+
         // This is potentially both a def and a use...
         PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
 

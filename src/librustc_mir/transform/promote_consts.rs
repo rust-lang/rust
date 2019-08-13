@@ -101,6 +101,10 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
                 "visit_local: context.is_drop={:?} context.is_use={:?}",
                 context.is_drop(), context.is_use(),
             );
+            // Except, `is_drop()` will also be `true` for `DropAndReplace`.
+            if context == PlaceContext::MutatingUse(MutatingUseContext::DropAndReplace) {
+                *temp = TempState::Unpromotable;
+            }
             return;
         }
 
