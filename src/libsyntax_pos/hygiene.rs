@@ -603,7 +603,9 @@ pub struct ExpnInfo {
     pub call_site: Span,
 
     // --- The part specific to the macro/desugaring definition.
-    // --- FIXME: Share it between expansions with the same definition.
+    // --- It may be reasonable to share this part between expansions with the same definition,
+    // --- but such sharing is known to bring some minor inconveniences without also bringing
+    // --- noticeable perf improvements (PR #62898).
     /// The span of the macro definition (possibly dummy).
     /// This span serves only informational purpose and is not used for resolution.
     pub def_site: Span,
