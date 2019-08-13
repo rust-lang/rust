@@ -3990,27 +3990,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
-        if self.tcx.hir().is_const_scope(expr.hir_id) {
+        if self.tcx.hir().is_const_context(expr.hir_id) {
             // Do not suggest `Box::new` in const context.
             return;
         }
-        if expected.is_box() && !found.is_box() {
-            let boxed_found = self.tcx.mk_box(found);
-            if let (true, Ok(snippet)) = (
-                self.can_coerce(boxed_found, expected),
-                self.sess().source_map().span_to_snippet(expr.span),
-            ) {
-                err.span_suggestion(
-                    expr.span,
-                    "you can store this in the heap calling `Box::new`",
-                    format!("Box::new({})", snippet),
-                    Applicability::MachineApplicable,
-                );
-                err.note("for more information about the distinction between the stack and the \
-                          heap, read https://doc.rust-lang.org/book/ch15-01-box.html, \
-                          https://doc.rust-lang.org/rust-by-example/std/box.html and \
-                          https://doc.rust-lang.org/std/boxed/index.html");
-            }
+        if !expected.is_box() || found.is_box() {
+            return;
+        }
+        let boxed_found = self.tcx.mk_box(found);
+        if let (true, Ok(snippet)) = (
+            self.can_coerce(boxed_found, expected),
+            self.sess().source_map().span_to_snippet(expr.span),
+        ) {
+            err.span_suggestion(
+                expr.span,
+                "store this in the heap by calling `Box::new`",
+                format!("Box::new({})", snippet),
+                Applicability::MachineApplicable,
+            );
+            err.note("for more on the distinction between the stack and the \
+                        heap, read https://doc.rust-lang.org/book/ch15-01-box.html, \
+                        https://doc.rust-lang.org/rust-by-example/std/box.html, and \
+                        https://doc.rust-lang.org/std/boxed/index.html");
         }
     }
 

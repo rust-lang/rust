@@ -649,7 +649,9 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn is_const_scope(&self, hir_id: HirId) -> bool {
+    /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
+    /// Used exclusively for diagnostics, to avoid suggestion function calls.
+    pub fn is_const_context(&self, hir_id: HirId) -> bool {
         let parent_id = self.get_parent_item(hir_id);
         match self.get(parent_id) {
             Node::Item(&Item {

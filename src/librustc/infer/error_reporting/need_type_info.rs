@@ -153,7 +153,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let (ty_msg, suffix) = match &local_visitor.found_ty {
             Some(ty) if &ty.to_string() != "_" &&
                 name == "_" &&
-                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized.
+                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
                 (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings) &&
                 !ty.is_closure() => // The suggestion doesn't make sense for closures.
             {
@@ -163,7 +163,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             Some(ty) if &ty.to_string() != "_" &&
                 ty.to_string() != name &&
-                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized.
+                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
                 (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings) &&
                 !ty.is_closure() => // The suggestion doesn't make sense for closures.
             {
@@ -185,12 +185,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     .map(|args| args.tuple_fields()
                         .map(|arg| arg.to_string())
                         .collect::<Vec<_>>().join(", "))
-                    .unwrap_or_else(String::new);
+                    .unwrap_or_default();
                 // This suggestion is incomplete, as the user will get further type inference
                 // errors due to the `_` placeholders and the introduction of `Box`, but it does
                 // nudge them in the right direction.
                 (msg, format!(
-                    "a boxed closure type like `Box<Fn({}) -> {}>`",
+                    "a boxed closure type like `Box<dyn Fn({}) -> {}>`",
                     args,
                     fn_sig.output().skip_binder().to_string(),
                 ))

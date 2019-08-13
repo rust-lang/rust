@@ -549,7 +549,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        if self.tcx.hir().is_const_scope(expr.hir_id) {
+        if self.tcx.hir().is_const_context(expr.hir_id) {
             // Shouldn't suggest `.into()` on `const`s.
             // FIXME(estebank): modify once we decide to suggest `as` casts
             return false;

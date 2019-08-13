@@ -2,7 +2,7 @@ error[E0282]: type annotations needed for the closure
   --> $DIR/cannot-infer-closure.rs:3:9
    |
 LL |     let x = |a: (), b: ()| {
-   |         - consider giving `x` a boxed closure type like `Box<Fn((), ()) -> std::result::Result<(), _>>`
+   |         - consider giving `x` a boxed closure type like `Box<dyn Fn((), ()) -> std::result::Result<(), _>>`
 LL |         Err(a)?;
    |         ^^^^^^^ cannot infer type
 
