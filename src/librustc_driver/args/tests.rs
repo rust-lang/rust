@@ -1,11 +1,18 @@
 use super::*;
 
+use std::str;
+
 fn want_args(v: impl IntoIterator<Item = &'static str>) -> Vec<String> {
     v.into_iter().map(String::from).collect()
 }
 
 fn got_args(file: &[u8]) -> Result<Vec<String>, Error> {
-    FileArgs::new(String::new(), file.to_vec()).lines().collect()
+    let ret = str::from_utf8(file)
+        .map_err(|_| Error::Utf8Error(None))?
+        .lines()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
+    Ok(ret)
 }
 
 #[test]

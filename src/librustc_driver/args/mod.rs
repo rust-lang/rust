@@ -2,7 +2,7 @@ use std::env;
 use std::error;
 use std::fmt;
 use std::fs;
-use std::io::{self, BufRead};
+use std::io;
 use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -15,36 +15,14 @@ pub fn used_unstable_argsfile() -> bool {
     USED_ARGSFILE_FEATURE.load(Ordering::Relaxed)
 }
 
-struct FileArgs {
-    path: String,
-    input: Vec<u8>,
-}
-
-impl FileArgs {
-    fn new(path: String, input: Vec<u8>) -> Self {
-        FileArgs { path, input }
-    }
-
-    fn lines(self) -> impl Iterator<Item = Result<String, Error>> {
-        let Self { input, path } = self;
-        io::Cursor::new(input).lines().map(move |res| {
-            let path = path.clone();
-            res.map_err(move |err| match err.kind() {
-                io::ErrorKind::InvalidData => Error::Utf8Error(Some(path)),
-                _ => Error::IOError(path, err),
-            })
-        })
-    }
-}
-
 pub struct ArgsIter {
     base: env::ArgsOs,
-    file: Option<Box<dyn Iterator<Item = Result<String, Error>>>>,
+    file: std::vec::IntoIter<String>,
 }
 
 impl ArgsIter {
     pub fn new() -> Self {
-        ArgsIter { base: env::args_os(), file: None }
+        ArgsIter { base: env::args_os(), file: vec![].into_iter() }
     }
 }
 
@@ -53,11 +31,8 @@ impl Iterator for ArgsIter {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(ref mut file) = &mut self.file {
-                match file.next() {
-                    Some(res) => return Some(res.map_err(From::from)),
-                    None => self.file = None,
-                }
+            if let Some(line) = self.file.next() {
+                return Some(Ok(line));
             }
 
             let arg =
@@ -66,14 +41,18 @@ impl Iterator for ArgsIter {
                 Some(Err(err)) => return Some(Err(err)),
                 Some(Ok(ref arg)) if arg.starts_with("@") => {
                     let path = &arg[1..];
-                    let lines = match fs::read(path) {
+                    let file = match fs::read_to_string(path) {
                         Ok(file) => {
                             USED_ARGSFILE_FEATURE.store(true, Ordering::Relaxed);
-                            FileArgs::new(path.to_string(), file).lines()
+                            file
+                        }
+                        Err(ref err) if err.kind() == io::ErrorKind::InvalidData => {
+                            return Some(Err(Error::Utf8Error(Some(path.to_string()))));
                         }
                         Err(err) => return Some(Err(Error::IOError(path.to_string(), err))),
                     };
-                    self.file = Some(Box::new(lines));
+                    self.file =
+                        file.lines().map(ToString::to_string).collect::<Vec<_>>().into_iter();
                 }
                 Some(Ok(arg)) => return Some(Ok(arg)),
                 None => return None,
