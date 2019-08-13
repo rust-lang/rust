@@ -13,7 +13,7 @@ retry() {
         "$@"
         result=$?
         [ $result -eq 0 ] && break
-        count=$(count + 1)
+        count=$((count + 1))
         sleep 1
     done
 
