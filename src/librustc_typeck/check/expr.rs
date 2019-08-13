@@ -1360,6 +1360,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {}
             }
 
+            if field.name == kw::Await {
+                // We know by construction that `<expr>.await` is either on Rust 2015
+                // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
+                err.note("to `.await` a `Future`, switch to Rust 2018");
+                err.help("set `edition = \"2018\"` in `Cargo.toml`");
+                err.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
+            }
+
             err.emit();
         } else {
             type_error_struct!(
