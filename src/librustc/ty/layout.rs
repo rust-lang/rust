@@ -696,7 +696,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 //
                 // where T is a "machine type", e.g., `f32`, `i64`, `*mut _`.
 
-                // SIMD vectors with zero fields are not supported:
+                // SIMD vectors with zero fields are not supported.
+                // (should be caught by typeck)
                 if def.non_enum_variant().fields.is_empty() {
                     tcx.sess.fatal(&format!(
                         "monomorphising SIMD type `{}` of zero length", ty
@@ -707,6 +708,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let f0_ty = def.non_enum_variant().fields[0].ty(tcx, substs);
 
                 // Heterogeneous SIMD vectors are not supported:
+                // (should be caught by typeck)
                 for fi in &def.non_enum_variant().fields {
                     if fi.ty(tcx, substs) != f0_ty {
                         tcx.sess.fatal(&format!(
@@ -726,6 +728,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // First ADT field is an array:
 
                     // SIMD vectors with multiple array fields are not supported:
+                    // (should be caught by typeck)
                     if def.non_enum_variant().fields.len() != 1 {
                         tcx.sess.fatal(&format!(
                             "monomorphising SIMD type `{}` with more than one array field",
@@ -752,7 +755,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     (f0_ty, def.non_enum_variant().fields.len() as _, false)
                 };
 
-                // SIMD vectors of zero length are not supported:
+                // SIMD vectors of zero length are not supported.
+                //
+                // Can't be caught in typeck if the array length is generic.
                 if e_len == 0 {
                     tcx.sess.fatal(&format!(
                         "monomorphising SIMD type `{}` of zero length", ty
@@ -764,6 +769,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let e_abi = if let Abi::Scalar(ref scalar) = e_ly.abi {
                     scalar.clone()
                 } else {
+                    // This error isn;t caught in typeck, e.g., if
+                    // the element type of the vector is generic.
                     tcx.sess.fatal(&format!(
                         "monomorphising SIMD type `{}` with a non-machine element type `{}`",
                         ty, e_ty
