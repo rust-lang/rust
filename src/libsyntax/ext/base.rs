@@ -640,10 +640,11 @@ impl SyntaxExtension {
         SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr { mark_used }, edition)
     }
 
-    pub fn expn_info(&self, call_site: Span, descr: Symbol) -> ExpnInfo {
+    pub fn expn_info(&self, parent: ExpnId, call_site: Span, descr: Symbol) -> ExpnInfo {
         ExpnInfo {
-            call_site,
             kind: ExpnKind::Macro(self.macro_kind(), descr),
+            parent,
+            call_site,
             def_site: self.span,
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),

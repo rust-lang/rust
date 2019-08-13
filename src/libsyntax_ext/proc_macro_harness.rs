@@ -6,7 +6,6 @@ use syntax::attr;
 use syntax::source_map::{ExpnInfo, ExpnKind, respan};
 use syntax::ext::base::{ExtCtxt, MacroKind};
 use syntax::ext::expand::{AstFragment, ExpansionConfig};
-use syntax::ext::hygiene::ExpnId;
 use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
@@ -328,7 +327,7 @@ fn mk_decls(
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],
 ) -> P<ast::Item> {
-    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+    let span = DUMMY_SP.fresh_expansion(ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
         [sym::rustc_attrs, sym::proc_macro_internals][..].into(),
     ));

@@ -425,7 +425,7 @@ impl<'a> TraitDef<'a> {
                         return;
                     }
                 };
-                let container_id = cx.current_expansion.id.parent();
+                let container_id = cx.current_expansion.id.expn_info().parent;
                 let is_always_copy =
                     cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                     has_no_type_params;

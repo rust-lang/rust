@@ -35,7 +35,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
             match annitem.node {
                 ItemKind::Struct(_, Generics { ref params, .. }) |
                 ItemKind::Enum(_, Generics { ref params, .. }) => {
-                    let container_id = cx.current_expansion.id.parent();
+                    let container_id = cx.current_expansion.id.expn_info().parent;
                     if cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                         !params.iter().any(|param| match param.kind {
                             ast::GenericParamKind::Type { .. } => true,

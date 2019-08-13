@@ -97,7 +97,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> ExpnId {
-        let expn_id = ExpnId::fresh(ExpnId::root(), Some(ExpnInfo::default(
+        let expn_id = ExpnId::fresh(Some(ExpnInfo::default(
             ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
         )));
         let module = self.module_map[&self.definitions.local_def_id(id)];
@@ -120,7 +120,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         &mut self, expansion: ExpnId, fragment: &AstFragment, derives: &[ExpnId]
     ) {
         // Fill in some data for derives if the fragment is from a derive container.
-        let parent_scope = self.invocation_parent_scopes[&expansion];
+        // We are inside the `expansion` now, but other parent scope components are still the same.
+        let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
         let parent_def = self.definitions.invocation_parent(expansion);
         self.invocation_parent_scopes.extend(derives.iter().map(|&derive| (derive, parent_scope)));
         for &derive_invoc_id in derives {
@@ -130,9 +131,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         parent_scope.module.unresolved_invocations.borrow_mut().extend(derives);
 
         // Integrate the new AST fragment into all the definition and module structures.
-        // We are inside the `expansion` new, but other parent scope components are still the same.
         fragment.visit_with(&mut DefCollector::new(&mut self.definitions, expansion));
-        let parent_scope = ParentScope { expansion, ..parent_scope };
         let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_legacy_scopes.insert(expansion, output_legacy_scope);
     }
@@ -186,7 +185,9 @@ impl<'a> base::Resolver for Resolver<'a> {
         let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, force)?;
 
         let span = invoc.span();
-        invoc.expansion_data.id.set_expn_info(ext.expn_info(span, fast_print_path(path)));
+        invoc.expansion_data.id.set_expn_info(
+            ext.expn_info(parent_scope.expansion, span, fast_print_path(path))
+        );
 
         if let Res::Def(_, def_id) = res {
             if after_derive {

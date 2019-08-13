@@ -56,16 +56,6 @@ struct SyntaxContextData {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ExpnId(u32);
 
-// FIXME: Find a way to merge this with `ExpnInfo`.
-#[derive(Debug)]
-struct InternalExpnData {
-    parent: ExpnId,
-    /// Each expansion should have an associated expansion info, but sometimes there's a delay
-    /// between creation of an expansion ID and obtaining its info (e.g. macros are collected
-    /// first and then resolved later), so we use an `Option` here.
-    expn_info: Option<ExpnInfo>,
-}
-
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -86,8 +76,8 @@ pub enum Transparency {
 }
 
 impl ExpnId {
-    pub fn fresh(parent: ExpnId, expn_info: Option<ExpnInfo>) -> Self {
-        HygieneData::with(|data| data.fresh_expn(parent, expn_info))
+    pub fn fresh(expn_info: Option<ExpnInfo>) -> Self {
+        HygieneData::with(|data| data.fresh_expn(expn_info))
     }
 
     /// The ID of the theoretical expansion that generates freshly parsed, unexpanded AST.
@@ -107,11 +97,6 @@ impl ExpnId {
     }
 
     #[inline]
-    pub fn parent(self) -> ExpnId {
-        HygieneData::with(|data| data.parent_expn(self))
-    }
-
-    #[inline]
     pub fn expn_info(self) -> ExpnInfo {
         HygieneData::with(|data| data.expn_info(self).clone())
     }
@@ -119,7 +104,7 @@ impl ExpnId {
     #[inline]
     pub fn set_expn_info(self, info: ExpnInfo) {
         HygieneData::with(|data| {
-            let old_info = &mut data.expn_data[self.0 as usize].expn_info;
+            let old_info = &mut data.expn_data[self.0 as usize];
             assert!(old_info.is_none(), "expansion info is reset for an expansion ID");
             *old_info = Some(info);
         })
@@ -150,7 +135,10 @@ impl ExpnId {
 
 #[derive(Debug)]
 crate struct HygieneData {
-    expn_data: Vec<InternalExpnData>,
+    /// Each expansion should have an associated expansion info, but sometimes there's a delay
+    /// between creation of an expansion ID and obtaining its info (e.g. macros are collected
+    /// first and then resolved later), so we use an `Option` here.
+    expn_data: Vec<Option<ExpnInfo>>,
     syntax_context_data: Vec<SyntaxContextData>,
     syntax_context_map: FxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
 }
@@ -158,10 +146,7 @@ crate struct HygieneData {
 impl HygieneData {
     crate fn new(edition: Edition) -> Self {
         HygieneData {
-            expn_data: vec![InternalExpnData {
-                parent: ExpnId::root(),
-                expn_info: Some(ExpnInfo::default(ExpnKind::Root, DUMMY_SP, edition)),
-            }],
+            expn_data: vec![Some(ExpnInfo::default(ExpnKind::Root, DUMMY_SP, edition))],
             syntax_context_data: vec![SyntaxContextData {
                 outer_expn: ExpnId::root(),
                 outer_transparency: Transparency::Opaque,
@@ -178,17 +163,13 @@ impl HygieneData {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 
-    fn fresh_expn(&mut self, parent: ExpnId, expn_info: Option<ExpnInfo>) -> ExpnId {
-        self.expn_data.push(InternalExpnData { parent, expn_info });
+    fn fresh_expn(&mut self, expn_info: Option<ExpnInfo>) -> ExpnId {
+        self.expn_data.push(expn_info);
         ExpnId(self.expn_data.len() as u32 - 1)
     }
 
-    fn parent_expn(&self, expn_id: ExpnId) -> ExpnId {
-        self.expn_data[expn_id.0 as usize].parent
-    }
-
     fn expn_info(&self, expn_id: ExpnId) -> &ExpnInfo {
-        self.expn_data[expn_id.0 as usize].expn_info.as_ref()
+        self.expn_data[expn_id.0 as usize].as_ref()
             .expect("no expansion info for an expansion ID")
     }
 
@@ -197,7 +178,7 @@ impl HygieneData {
             if expn_id == ExpnId::root() {
                 return false;
             }
-            expn_id = self.parent_expn(expn_id);
+            expn_id = self.expn_info(expn_id).parent;
         }
         true
     }
@@ -593,9 +574,9 @@ impl Span {
     /// other compiler-generated code to set per-span properties like allowed unstable features.
     /// The returned span belongs to the created expansion and has the new properties,
     /// but its location is inherited from the current span.
-    pub fn fresh_expansion(self, parent: ExpnId, expn_info: ExpnInfo) -> Span {
+    pub fn fresh_expansion(self, expn_info: ExpnInfo) -> Span {
         HygieneData::with(|data| {
-            let expn_id = data.fresh_expn(parent, Some(expn_info));
+            let expn_id = data.fresh_expn(Some(expn_info));
             self.with_ctxt(data.apply_mark(SyntaxContext::root(), expn_id))
         })
     }
@@ -606,6 +587,10 @@ impl Span {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ExpnInfo {
     // --- The part unique to each expansion.
+    /// The kind of this expansion - macro or compiler desugaring.
+    pub kind: ExpnKind,
+    /// The expansion that produced this expansion.
+    pub parent: ExpnId,
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
     ///
@@ -616,8 +601,6 @@ pub struct ExpnInfo {
     /// call_site span would have its own ExpnInfo, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
-    /// The kind of this expansion - macro or compiler desugaring.
-    pub kind: ExpnKind,
 
     // --- The part specific to the macro/desugaring definition.
     // --- FIXME: Share it between expansions with the same definition.
@@ -644,8 +627,9 @@ impl ExpnInfo {
     /// Constructs an expansion info with default properties.
     pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnInfo {
         ExpnInfo {
-            call_site,
             kind,
+            parent: ExpnId::root(),
+            call_site,
             def_site: DUMMY_SP,
             default_transparency: Transparency::SemiTransparent,
             allow_internal_unstable: None,
@@ -753,6 +737,18 @@ impl DesugaringKind {
     }
 }
 
+impl Encodable for ExpnId {
+    fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
+        Ok(()) // FIXME(jseyfried) intercrate hygiene
+    }
+}
+
+impl Decodable for ExpnId {
+    fn decode<D: Decoder>(_: &mut D) -> Result<Self, D::Error> {
+        Ok(ExpnId::root()) // FIXME(jseyfried) intercrate hygiene
+    }
+}
+
 impl Encodable for SyntaxContext {
     fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
         Ok(()) // FIXME(jseyfried) intercrate hygiene
@@ -760,7 +756,7 @@ impl Encodable for SyntaxContext {
 }
 
 impl Decodable for SyntaxContext {
-    fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
+    fn decode<D: Decoder>(_: &mut D) -> Result<Self, D::Error> {
         Ok(SyntaxContext::root()) // FIXME(jseyfried) intercrate hygiene
     }
 }

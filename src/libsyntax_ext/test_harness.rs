@@ -5,9 +5,8 @@ use smallvec::{smallvec, SmallVec};
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
-use syntax::ext::base::{ExtCtxt, Resolver};
+use syntax::ext::base::{ExtCtxt, MacroKind, Resolver};
 use syntax::ext::expand::{AstFragment, ExpansionConfig};
-use syntax::ext::hygiene::{ExpnId, MacroKind};
 use syntax::feature_gate::Features;
 use syntax::mut_visit::{*, ExpectOne};
 use syntax::parse::ParseSess;
@@ -269,7 +268,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     //            #![main]
     //            test::test_main_static(&[..tests]);
     //        }
-    let sp = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+    let sp = DUMMY_SP.fresh_expansion(ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, cx.ext_cx.parse_sess.edition,
         [sym::main, sym::test, sym::rustc_attrs][..].into(),
     ));

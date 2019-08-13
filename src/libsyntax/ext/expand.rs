@@ -353,7 +353,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 derives.reserve(traits.len());
                 invocations.reserve(traits.len());
                 for path in traits {
-                    let expn_id = ExpnId::fresh(self.cx.current_expansion.id, None);
+                    let expn_id = ExpnId::fresh(None);
                     derives.push(expn_id);
                     invocations.push(Invocation {
                         kind: InvocationKind::Derive { path, item: item.clone() },
@@ -800,13 +800,16 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         // with exception of the derive container case which is not resolved and can get
         // its expansion info immediately.
         let expn_info = match &kind {
-            InvocationKind::DeriveContainer { item, .. } => Some(ExpnInfo::default(
-                ExpnKind::Macro(MacroKind::Attr, sym::derive),
-                item.span(), self.cx.parse_sess.edition,
-            )),
+            InvocationKind::DeriveContainer { item, .. } => Some(ExpnInfo {
+                parent: self.cx.current_expansion.id,
+                ..ExpnInfo::default(
+                    ExpnKind::Macro(MacroKind::Attr, sym::derive),
+                    item.span(), self.cx.parse_sess.edition,
+                )
+            }),
             _ => None,
         };
-        let expn_id = ExpnId::fresh(self.cx.current_expansion.id, expn_info);
+        let expn_id = ExpnId::fresh(expn_info);
         self.invocations.push(Invocation {
             kind,
             fragment_kind,

@@ -588,13 +588,13 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
 
         let expn_info_tag = u8::decode(self)?;
 
-        // FIXME(mw): This method does not restore `InternalExpnData::parent` or
+        // FIXME(mw): This method does not restore `ExpnInfo::parent` or
         // `SyntaxContextData::prev_ctxt` or `SyntaxContextData::opaque`. These things
         // don't seem to be used after HIR lowering, so everything should be fine
         // as long as incremental compilation does not kick in before that.
         let location = || Span::with_root_ctxt(lo, hi);
         let recover_from_expn_info = |this: &Self, expn_info, pos| {
-            let span = location().fresh_expansion(ExpnId::root(), expn_info);
+            let span = location().fresh_expansion(expn_info);
             this.synthetic_expansion_infos.borrow_mut().insert(pos, span.ctxt());
             span
         };

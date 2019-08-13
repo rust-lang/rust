@@ -1,6 +1,6 @@
 use syntax::{ast, attr};
 use syntax::edition::Edition;
-use syntax::ext::hygiene::{ExpnId, MacroKind};
+use syntax::ext::hygiene::MacroKind;
 use syntax::ptr::P;
 use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned, respan};
 use syntax::symbol::{Ident, Symbol, kw, sym};
@@ -55,7 +55,7 @@ pub fn inject(
     // the prelude.
     let name = names[0];
 
-    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+    let span = DUMMY_SP.fresh_expansion(ExpnInfo::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::std_inject), DUMMY_SP, edition,
         [sym::prelude_import][..].into(),
     ));

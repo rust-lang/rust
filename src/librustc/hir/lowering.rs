@@ -704,7 +704,7 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        span.fresh_expansion(ExpnId::root(), ExpnInfo {
+        span.fresh_expansion(ExpnInfo {
             def_site: span,
             allow_internal_unstable,
             ..ExpnInfo::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
