@@ -1,7 +1,7 @@
 // run-pass
 // only-32bit too impatient for 2⁶⁴ items
 // ignore-wasm32-bare compiled with panic=abort by default
-// compile-flags: -C debug_assertions=yes
+// compile-flags: -C debug_assertions=yes -C opt-level=3
 
 use std::panic;
 use std::usize::MAX;
