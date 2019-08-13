@@ -1,7 +1,7 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use std::borrow::Cow;
-use std::cmp::{min, Ordering};
+use std::cmp::{max, min, Ordering};
 
 use regex::Regex;
 use rustc_target::spec::abi;
@@ -733,15 +733,16 @@ pub(crate) fn format_impl(
         }
 
         result.push('{');
-        // this is an impl body snippet(impl SampleImple { /* here */ })
-        let snippet = context.snippet(mk_sp(item.span.hi(), self_ty.span.hi()));
+        // this is an impl body snippet(impl SampleImpl { /* here */ })
+        let lo = max(self_ty.span.hi(), generics.where_clause.span.hi());
+        let snippet = context.snippet(mk_sp(lo, item.span.hi()));
         let open_pos = snippet.find_uncommented("{")? + 1;
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_context(context);
             let item_indent = offset.block_only().block_indent(context.config);
             visitor.block_indent = item_indent;
-            visitor.last_pos = self_ty.span.hi() + BytePos(open_pos as u32);
+            visitor.last_pos = lo + BytePos(open_pos as u32);
 
             visitor.visit_attrs(&item.attrs, ast::AttrStyle::Inner);
             visitor.visit_impl_items(items);
