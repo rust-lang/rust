@@ -1,81 +1,23 @@
-error[E0106]: missing lifetime specifier
+error[E0623]: lifetime mismatch
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:45
    |
 LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
-   |                                             ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
-
-error[E0106]: missing lifetime specifier
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:15:60
-   |
-LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                                                            ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
-
-error[E0106]: missing lifetime specifier
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:15:67
-   |
-LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                                                                   ^
-   |
-   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
-
-error: cannot infer an appropriate lifetime
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:33
-   |
-LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
-   |                                 ^           ---- this return type evaluates to the `'static` lifetime...
-   |                                 |
-   |                                 ...but this borrow...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 10:26
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:26
-   |
-LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
-   |                          ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 10:26
-   |
-LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo + '_ { f }
-   |                                             ^^^^^^^^^
-
-error: cannot infer an appropriate lifetime
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:15:16
-   |
-LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                ^^^^ ...but this borrow...             ----------------- this return type evaluates to the `'static` lifetime...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 15:26
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:15:26
-   |
-LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                          ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 15:26
-   |
-LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) + '_ { (self, f) }
-   |                                                       ^^^^^^^^^^^^^^^^^^^^^^
-
-error: cannot infer an appropriate lifetime
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:15:34
-   |
-LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                                  ^                    ----------------- this return type evaluates to the `'static` lifetime...
-   |                                  |
-   |                                  ...but this borrow...
-   |
-note: ...can't outlive the lifetime '_ as defined on the method body at 15:26
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:15:26
-   |
-LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                          ^
-help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 15:26
-   |
-LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) + '_ { (self, f) }
-   |                                                       ^^^^^^^^^^^^^^^^^^^^^^
+   |                          ----               ^^^^
+   |                          |                  |
+   |                          |                  ...but data from `f` is returned here
+   |                          this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:25:58
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:13:55
+   |
+LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
+   |                          -----                        ^^^^^^^^^^^^^^^^^
+   |                          |                            |
+   |                          |                            ...but data from `f` is returned here
+   |                          this parameter and the return type are declared with different lifetimes...
+
+error[E0623]: lifetime mismatch
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:19:58
    |
 LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |                                  -----                   ^^^
@@ -83,6 +25,5 @@ LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |                                  |                       ...but data from `arg` is returned here
    |                                  this parameter and the return type are declared with different lifetimes...
 
-error: aborting due to 7 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0106`.
