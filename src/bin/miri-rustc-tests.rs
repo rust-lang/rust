@@ -66,7 +66,6 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 }
                 tcx.hir().krate().visit_all_item_likes(&mut Visitor(tcx));
             } else if let Some((entry_def_id, _)) = tcx.entry_fn(LOCAL_CRATE) {
-
                 let config = MiriConfig {
                     validate: true,
                     communicate: false,
