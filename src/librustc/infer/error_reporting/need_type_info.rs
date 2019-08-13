@@ -175,7 +175,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     name,
                  ))
             }
-            Some(ty::TyS { sty: ty::TyKind::Closure(def_id, substs), .. }) => {
+            Some(ty::TyS { sty: ty::Closure(def_id, substs), .. }) => {
                 let msg = " for the closure".to_string();
                 let fn_sig = substs.closure_sig(*def_id, self.tcx);
                 let args = fn_sig.inputs()
