@@ -1370,25 +1370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                     }
                     ty::Array(_, len) => {
-                        if let (Some(len), Ok(user_index)) = (
-                            len.try_eval_usize(self.tcx, self.param_env),
-                            field.as_str().parse::<u64>()
-                        ) {
-                            let base = self.tcx.sess.source_map()
-                                .span_to_snippet(base.span)
-                                .unwrap_or_else(|_|
-                                    self.tcx.hir().hir_to_pretty_string(base.hir_id));
-                            let help = "instead of using tuple indexing, use array indexing";
-                            let suggestion = format!("{}[{}]", base, field);
-                            let applicability = if len < user_index {
-                                Applicability::MachineApplicable
-                            } else {
-                                Applicability::MaybeIncorrect
-                            };
-                            err.span_suggestion(
-                                expr.span, help, suggestion, applicability
-                            );
-                        }
+                        self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
                     }
                     ty::RawPtr(..) => {
                         let base = self.tcx.sess.source_map()
@@ -1417,7 +1399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn ban_private_field_access(
         &self,
-        expr: &'tcx hir::Expr,
+        expr: &hir::Expr,
         expr_t: Ty<'tcx>,
         field: ast::Ident,
         base_did: DefId,
@@ -1446,7 +1428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn ban_take_value_of_method(&self, expr: &'tcx hir::Expr, expr_t: Ty<'tcx>, field: ast::Ident) {
+    fn ban_take_value_of_method(&self, expr: &hir::Expr, expr_t: Ty<'tcx>, field: ast::Ident) {
         let mut err = type_error_struct!(
             self.tcx().sess,
             field.span,
@@ -1470,6 +1452,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         err.emit();
+    }
+
+    fn maybe_suggest_array_indexing(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &hir::Expr,
+        base: &hir::Expr,
+        field: ast::Ident,
+        len: &ty::Const<'tcx>,
+    ) {
+        if let (Some(len), Ok(user_index)) = (
+            len.try_eval_usize(self.tcx, self.param_env),
+            field.as_str().parse::<u64>()
+        ) {
+            let base = self.tcx.sess.source_map()
+                .span_to_snippet(base.span)
+                .unwrap_or_else(|_| self.tcx.hir().hir_to_pretty_string(base.hir_id));
+            let help = "instead of using tuple indexing, use array indexing";
+            let suggestion = format!("{}[{}]", base, field);
+            let applicability = if len < user_index {
+                Applicability::MachineApplicable
+            } else {
+                Applicability::MaybeIncorrect
+            };
+            err.span_suggestion(expr.span, help, suggestion, applicability);
+        }
     }
 
     fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS<'_>)
