@@ -24,6 +24,7 @@ use syntax::source_map::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 use rustc::hir;
 use rustc::hir::{ExprKind, QPath};
+use rustc::hir::def_id::DefId;
 use rustc::hir::def::{CtorKind, Res, DefKind};
 use rustc::hir::ptr::P;
 use rustc::infer;
@@ -1336,23 +1337,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         autoderef.unambiguous_final_ty(self);
 
         if let Some((did, field_ty)) = private_candidate {
-            let struct_path = self.tcx().def_path_str(did);
-            let mut err = struct_span_err!(self.tcx().sess, expr.span, E0616,
-                                           "field `{}` of struct `{}` is private",
-                                           field, struct_path);
-            // Also check if an accessible method exists, which is often what is meant.
-            if self.method_exists(field, expr_t, expr.hir_id, false)
-                && !self.expr_in_place(expr.hir_id)
-            {
-                self.suggest_method_call(
-                    &mut err,
-                    &format!("a method `{}` also exists, call it with parentheses", field),
-                    field,
-                    expr_t,
-                    expr.hir_id,
-                );
-            }
-            err.emit();
+            self.ban_private_field_access(expr, expr_t, field, did);
             field_ty
         } else if field.name == kw::Invalid {
             self.tcx().types.err
@@ -1444,6 +1429,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }.emit();
             self.tcx().types.err
         }
+    }
+
+    fn ban_private_field_access(
+        &self,
+        expr: &'tcx hir::Expr,
+        expr_t: Ty<'tcx>,
+        field: ast::Ident,
+        def_id: DefId,
+    ) {
+        let struct_path = self.tcx().def_path_str(def_id);
+        let mut err = struct_span_err!(
+            self.tcx().sess,
+            expr.span,
+            E0616,
+            "field `{}` of struct `{}` is private",
+            field,
+            struct_path
+        );
+        // Also check if an accessible method exists, which is often what is meant.
+        if self.method_exists(field, expr_t, expr.hir_id, false)
+            && !self.expr_in_place(expr.hir_id)
+        {
+            self.suggest_method_call(
+                &mut err,
+                &format!("a method `{}` also exists, call it with parentheses", field),
+                field,
+                expr_t,
+                expr.hir_id,
+            );
+        }
+        err.emit();
     }
 
     fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS<'_>)
