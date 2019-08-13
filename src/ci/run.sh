@@ -78,6 +78,21 @@ if [ "$RUST_RELEASE_CHANNEL" = "nightly" ] || [ "$DIST_REQUIRE_ALL_TOOLS" = "" ]
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-missing-tools"
 fi
 
+# Print the date from the local machine and the date from an external source to
+# check for clock drifts. An HTTP URL is used instead of HTTPS since on Azure
+# Pipelines it happened that the certificates were marked as expired.
+datecheck() {
+  echo "== clock drift check =="
+  echo -n "  local time: "
+  date
+  echo -n "  network time: "
+  curl -fs --head http://detectportal.firefox.com/success.txt | grep ^Date: \
+      | sed 's/Date: //g' || true
+  echo "== end clock drift check =="
+}
+datecheck
+trap datecheck EXIT
+
 # We've had problems in the past of shell scripts leaking fds into the sccache
 # server (#48192) which causes Cargo to erroneously think that a build script
 # hasn't finished yet. Try to solve that problem by starting a very long-lived
