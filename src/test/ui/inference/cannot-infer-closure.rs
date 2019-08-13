@@ -1,6 +1,6 @@
 fn main() {
-    let x = || {
-        Err(())?; //~ ERROR type annotations needed for the closure
-        Ok(())
+    let x = |a: (), b: ()| {
+        Err(a)?; //~ ERROR type annotations needed for the closure
+        Ok(b)
     };
 }

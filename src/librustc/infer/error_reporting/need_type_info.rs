@@ -175,10 +175,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     name,
                  ))
             }
-            Some(ty) if ty.is_closure() => (
-                " for the closure".to_string(),
-                "a boxed closure type like `Box<Fn() -> _>`".to_string(),
-            ),
+            Some(ty::TyS { sty: ty::TyKind::Closure(def_id, substs), .. }) => {
+                let msg = " for the closure".to_string();
+                let fn_sig = substs.closure_sig(*def_id, self.tcx);
+                let args = fn_sig.inputs()
+                    .skip_binder()
+                    .iter()
+                    .next()
+                    .map(|args| args.tuple_fields()
+                        .map(|arg| arg.to_string())
+                        .collect::<Vec<_>>().join(", "))
+                    .unwrap_or_else(String::new);
+                // This suggestion is incomplete, as the user will get further type inference
+                // errors due to the `_` placeholders and the introduction of `Box`, but it does
+                // nudge them in the right direction.
+                (msg, format!(
+                    "a boxed closure type like `Box<Fn({}) -> {}>`",
+                    args,
+                    fn_sig.output().skip_binder().to_string(),
+                ))
+            }
             _ => (String::new(), "a type".to_owned()),
         };
         let mut labels = vec![(span, InferCtxt::missing_type_msg(&name))];

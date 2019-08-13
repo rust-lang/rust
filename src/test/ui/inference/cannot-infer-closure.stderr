@@ -1,10 +1,10 @@
 error[E0282]: type annotations needed for the closure
   --> $DIR/cannot-infer-closure.rs:3:9
    |
-LL |     let x = || {
-   |         - consider giving `x` a boxed closure type like `Box<Fn() -> _>`
-LL |         Err(())?;
-   |         ^^^^^^^^ cannot infer type
+LL |     let x = |a: (), b: ()| {
+   |         - consider giving `x` a boxed closure type like `Box<Fn((), ()) -> std::result::Result<(), _>>`
+LL |         Err(a)?;
+   |         ^^^^^^^ cannot infer type
 
 error: aborting due to previous error
 
