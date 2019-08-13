@@ -1350,24 +1350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 match expr_t.sty {
                     ty::Adt(def, _) if !def.is_enum() => {
-                        if let Some(suggested_field_name) =
-                            Self::suggest_field_name(def.non_enum_variant(),
-                                                     &field.as_str(), vec![]) {
-                                err.span_suggestion(
-                                    field.span,
-                                    "a field with a similar name exists",
-                                    suggested_field_name.to_string(),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                err.span_label(field.span, "unknown field");
-                                let struct_variant_def = def.non_enum_variant();
-                                let field_names = self.available_field_names(struct_variant_def);
-                                if !field_names.is_empty() {
-                                    err.note(&format!("available fields are: {}",
-                                                      self.name_series_display(field_names)));
-                                }
-                            };
+                        self.suggest_fields_on_recordish(&mut err, def, field);
                     }
                     ty::Array(_, len) => {
                         self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
@@ -1442,6 +1425,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         err.emit();
+    }
+
+    fn suggest_fields_on_recordish(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        def: &'tcx ty::AdtDef,
+        field: ast::Ident,
+    ) {
+        if let Some(suggested_field_name) =
+            Self::suggest_field_name(def.non_enum_variant(), &field.as_str(), vec![])
+        {
+            err.span_suggestion(
+                field.span,
+                "a field with a similar name exists",
+                suggested_field_name.to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        } else {
+            err.span_label(field.span, "unknown field");
+            let struct_variant_def = def.non_enum_variant();
+            let field_names = self.available_field_names(struct_variant_def);
+            if !field_names.is_empty() {
+                err.note(&format!("available fields are: {}",
+                                    self.name_series_display(field_names)));
+            }
+        }
     }
 
     fn maybe_suggest_array_indexing(
