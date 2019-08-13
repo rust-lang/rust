@@ -2180,7 +2180,7 @@ fn lint_flat_map_identity<'a, 'tcx>(
                 span_lint_and_sugg(
                     cx,
                     FLAT_MAP_IDENTITY,
-                    *span,
+                    span.with_hi(expr.span.hi()),
                     message,
                     "try",
                     "flatten()".to_string(),
