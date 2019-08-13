@@ -49,7 +49,7 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
         }
         Err(m) => m,
     };
-    if paths::is_path_start(p) {
+    if paths::is_use_path_start(p) {
         match macro_call(p) {
             BlockLike::Block => (),
             BlockLike::NotBlock => {
@@ -378,7 +378,7 @@ pub(crate) fn mod_item_list(p: &mut Parser) {
 }
 
 fn macro_call(p: &mut Parser) -> BlockLike {
-    assert!(paths::is_path_start(p));
+    assert!(paths::is_use_path_start(p));
     paths::use_path(p);
     macro_call_after_excl(p)
 }

@@ -65,7 +65,7 @@ fn use_tree(p: &mut Parser) {
         // use crate::Item;
         // use self::some::Struct;
         // use crate_name::some_item;
-        _ if paths::is_path_start(p) => {
+        _ if paths::is_use_path_start(p) => {
             paths::use_path(p);
             match p.current() {
                 T![as] => {

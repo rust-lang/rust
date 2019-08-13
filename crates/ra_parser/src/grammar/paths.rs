@@ -4,6 +4,10 @@ pub(super) const PATH_FIRST: TokenSet =
     token_set![IDENT, SELF_KW, SUPER_KW, CRATE_KW, COLONCOLON, L_ANGLE];
 
 pub(super) fn is_path_start(p: &Parser) -> bool {
+    is_use_path_start(p) || p.at(T![<])
+}
+
+pub(super) fn is_use_path_start(p: &Parser) -> bool {
     match p.current() {
         IDENT | T![self] | T![super] | T![crate] | T![::] => true,
         _ => false,
@@ -58,7 +62,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
     if first && p.eat(T![<]) {
         types::type_(p);
         if p.eat(T![as]) {
-            if is_path_start(p) {
+            if is_use_path_start(p) {
                 types::path_type(p);
             } else {
                 p.error("expected a trait");

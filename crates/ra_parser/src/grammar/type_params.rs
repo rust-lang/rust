@@ -101,7 +101,7 @@ fn type_bound(p: &mut Parser) -> bool {
     match p.current() {
         LIFETIME => p.bump(),
         T![for] => types::for_type(p),
-        _ if paths::is_path_start(p) => types::path_type_(p, false),
+        _ if paths::is_use_path_start(p) => types::path_type_(p, false),
         _ => {
             m.abandon(p);
             return false;

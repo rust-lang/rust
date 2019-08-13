@@ -62,7 +62,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
     if let Some(m) = literal(p) {
         return Some((m, BlockLike::NotBlock));
     }
-    if paths::is_path_start(p) || p.at(T![<]) {
+    if paths::is_path_start(p) {
         return Some(path_expr(p, r));
     }
     let la = p.nth(1);
