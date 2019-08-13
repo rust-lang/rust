@@ -465,7 +465,8 @@ mod test {
 
     #[test]
     fn test_dump_default_config() {
-        const DEFAULT_CONFIG: &str = r#"max_width = 100
+        let default_config = format!(
+            r#"max_width = 100
 hard_tabs = false
 tab_spaces = 4
 newline_style = "Auto"
@@ -519,7 +520,7 @@ use_field_init_shorthand = false
 force_explicit_abi = true
 condense_wildcard_suffixes = false
 color = "Auto"
-required_version = "1.4.4"
+required_version = "{}"
 unstable_features = false
 disable_all_formatting = false
 skip_children = false
@@ -531,9 +532,11 @@ report_fixme = "Never"
 ignore = []
 emit_mode = "Files"
 make_backup = false
-"#;
+"#,
+            env!("CARGO_PKG_VERSION")
+        );
         let toml = Config::default().all_options().to_toml().unwrap();
-        assert_eq!(&toml, DEFAULT_CONFIG);
+        assert_eq!(&toml, &default_config);
     }
 
     // FIXME(#2183): these tests cannot be run in parallel because they use env vars.
