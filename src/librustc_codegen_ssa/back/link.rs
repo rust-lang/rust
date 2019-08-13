@@ -159,8 +159,11 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
         }
     };
 
+    // UWP apps have API restrictions enforced during Store submissions.
+    // To comply with the Windows App Certification Kit,
+    // MSVC needs to link with the Store versions of the runtime libraries (vcruntime, msvcrt, etc).
     let t = &sess.target.target;
-    if t.linker_flavor == LinkerFlavor::Msvc && t.target_vendor == "uwp" {
+    if flavor == LinkerFlavor::Msvc && t.target_vendor == "uwp" {
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().skip(4).next() {
