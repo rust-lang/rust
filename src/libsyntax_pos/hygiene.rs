@@ -30,7 +30,6 @@ use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
 use crate::symbol::{kw, Symbol};
 
-use rustc_serialize::{UseSpecializedEncodable, UseSpecializedDecodable};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
@@ -766,7 +765,3 @@ impl DesugaringKind {
         }
     }
 }
-
-impl UseSpecializedEncodable for SyntaxContext {}
-
-impl UseSpecializedDecodable for SyntaxContext {}
