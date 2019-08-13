@@ -15,7 +15,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
+use syntax_pos::hygiene::{ExpnData, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -640,8 +640,8 @@ impl SyntaxExtension {
         SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr { mark_used }, edition)
     }
 
-    pub fn expn_info(&self, parent: ExpnId, call_site: Span, descr: Symbol) -> ExpnInfo {
-        ExpnInfo {
+    pub fn expn_data(&self, parent: ExpnId, call_site: Span, descr: Symbol) -> ExpnData {
+        ExpnData {
             kind: ExpnKind::Macro(self.macro_kind(), descr),
             parent,
             call_site,
@@ -708,7 +708,7 @@ pub struct ExpansionData {
 
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
-/// -> expn_info` of their expansion context stored into their span.
+/// -> expn_data` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
@@ -757,7 +757,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
-        self.current_expansion.id.expn_info().call_site
+        self.current_expansion.id.expn_data().call_site
     }
     pub fn backtrace(&self) -> SyntaxContext {
         SyntaxContext::root().apply_mark(self.current_expansion.id)
@@ -770,13 +770,13 @@ impl<'a> ExtCtxt<'a> {
         let mut ctxt = self.backtrace();
         let mut last_macro = None;
         loop {
-            let expn_info = ctxt.outer_expn_info();
+            let expn_data = ctxt.outer_expn_data();
             // Stop going up the backtrace once include! is encountered
-            if expn_info.is_root() || expn_info.kind.descr() == sym::include {
+            if expn_data.is_root() || expn_data.kind.descr() == sym::include {
                 break;
             }
-            ctxt = expn_info.call_site.ctxt();
-            last_macro = Some(expn_info.call_site);
+            ctxt = expn_data.call_site.ctxt();
+            last_macro = Some(expn_data.call_site);
         }
         last_macro
     }

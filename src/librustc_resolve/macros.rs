@@ -17,7 +17,7 @@ use syntax::edition::Edition;
 use syntax::ext::base::{self, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
-use syntax::ext::hygiene::{self, ExpnId, ExpnInfo, ExpnKind};
+use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
@@ -97,7 +97,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> ExpnId {
-        let expn_id = ExpnId::fresh(Some(ExpnInfo::default(
+        let expn_id = ExpnId::fresh(Some(ExpnData::default(
             ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
         )));
         let module = self.module_map[&self.definitions.local_def_id(id)];
@@ -185,8 +185,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, force)?;
 
         let span = invoc.span();
-        invoc.expansion_data.id.set_expn_info(
-            ext.expn_info(parent_scope.expansion, span, fast_print_path(path))
+        invoc.expansion_data.id.set_expn_data(
+            ext.expn_data(parent_scope.expansion, span, fast_print_path(path))
         );
 
         if let Res::Def(_, def_id) = res {
@@ -302,7 +302,7 @@ impl<'a> Resolver<'a> {
 
         // Possibly apply the macro helper hack
         if kind == Some(MacroKind::Bang) && path.len() == 1 &&
-           path[0].ident.span.ctxt().outer_expn_info().local_inner_macros {
+           path[0].ident.span.ctxt().outer_expn_data().local_inner_macros {
             let root = Ident::new(kw::DollarCrate, path[0].ident.span);
             path.insert(0, Segment::from_ident(root));
         }

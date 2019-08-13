@@ -397,7 +397,7 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::Transparency {
     Opaque,
 });
 
-impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
+impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
     kind,
     parent -> _,
     call_site,

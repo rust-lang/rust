@@ -13,8 +13,8 @@
 //
 // This explains why `HygieneData`, `SyntaxContext` and `ExpnId` have interfaces
 // with a certain amount of redundancy in them. For example,
-// `SyntaxContext::outer_expn_info` combines `SyntaxContext::outer` and
-// `ExpnId::expn_info` so that two `HygieneData` accesses can be performed within
+// `SyntaxContext::outer_expn_data` combines `SyntaxContext::outer` and
+// `ExpnId::expn_data` so that two `HygieneData` accesses can be performed within
 // a single `HygieneData::with` call.
 //
 // It also explains why many functions appear in `HygieneData` and again in
@@ -76,8 +76,8 @@ pub enum Transparency {
 }
 
 impl ExpnId {
-    pub fn fresh(expn_info: Option<ExpnInfo>) -> Self {
-        HygieneData::with(|data| data.fresh_expn(expn_info))
+    pub fn fresh(expn_data: Option<ExpnData>) -> Self {
+        HygieneData::with(|data| data.fresh_expn(expn_data))
     }
 
     /// The ID of the theoretical expansion that generates freshly parsed, unexpanded AST.
@@ -97,16 +97,16 @@ impl ExpnId {
     }
 
     #[inline]
-    pub fn expn_info(self) -> ExpnInfo {
-        HygieneData::with(|data| data.expn_info(self).clone())
+    pub fn expn_data(self) -> ExpnData {
+        HygieneData::with(|data| data.expn_data(self).clone())
     }
 
     #[inline]
-    pub fn set_expn_info(self, info: ExpnInfo) {
+    pub fn set_expn_data(self, expn_data: ExpnData) {
         HygieneData::with(|data| {
-            let old_info = &mut data.expn_data[self.0 as usize];
-            assert!(old_info.is_none(), "expansion info is reset for an expansion ID");
-            *old_info = Some(info);
+            let old_expn_data = &mut data.expn_data[self.0 as usize];
+            assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
+            *old_expn_data = Some(expn_data);
         })
     }
 
@@ -124,9 +124,9 @@ impl ExpnId {
     #[inline]
     pub fn looks_like_proc_macro_derive(self) -> bool {
         HygieneData::with(|data| {
-            let expn_info = data.expn_info(self);
-            if let ExpnKind::Macro(MacroKind::Derive, _) = expn_info.kind {
-                return expn_info.default_transparency == Transparency::Opaque;
+            let expn_data = data.expn_data(self);
+            if let ExpnKind::Macro(MacroKind::Derive, _) = expn_data.kind {
+                return expn_data.default_transparency == Transparency::Opaque;
             }
             false
         })
@@ -135,10 +135,10 @@ impl ExpnId {
 
 #[derive(Debug)]
 crate struct HygieneData {
-    /// Each expansion should have an associated expansion info, but sometimes there's a delay
-    /// between creation of an expansion ID and obtaining its info (e.g. macros are collected
+    /// Each expansion should have an associated expansion data, but sometimes there's a delay
+    /// between creation of an expansion ID and obtaining its data (e.g. macros are collected
     /// first and then resolved later), so we use an `Option` here.
-    expn_data: Vec<Option<ExpnInfo>>,
+    expn_data: Vec<Option<ExpnData>>,
     syntax_context_data: Vec<SyntaxContextData>,
     syntax_context_map: FxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
 }
@@ -146,7 +146,7 @@ crate struct HygieneData {
 impl HygieneData {
     crate fn new(edition: Edition) -> Self {
         HygieneData {
-            expn_data: vec![Some(ExpnInfo::default(ExpnKind::Root, DUMMY_SP, edition))],
+            expn_data: vec![Some(ExpnData::default(ExpnKind::Root, DUMMY_SP, edition))],
             syntax_context_data: vec![SyntaxContextData {
                 outer_expn: ExpnId::root(),
                 outer_transparency: Transparency::Opaque,
@@ -163,14 +163,14 @@ impl HygieneData {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 
-    fn fresh_expn(&mut self, expn_info: Option<ExpnInfo>) -> ExpnId {
-        self.expn_data.push(expn_info);
+    fn fresh_expn(&mut self, expn_data: Option<ExpnData>) -> ExpnId {
+        self.expn_data.push(expn_data);
         ExpnId(self.expn_data.len() as u32 - 1)
     }
 
-    fn expn_info(&self, expn_id: ExpnId) -> &ExpnInfo {
+    fn expn_data(&self, expn_id: ExpnId) -> &ExpnData {
         self.expn_data[expn_id.0 as usize].as_ref()
-            .expect("no expansion info for an expansion ID")
+            .expect("no expansion data for an expansion ID")
     }
 
     fn is_descendant_of(&self, mut expn_id: ExpnId, ancestor: ExpnId) -> bool {
@@ -178,7 +178,7 @@ impl HygieneData {
             if expn_id == ExpnId::root() {
                 return false;
             }
-            expn_id = self.expn_info(expn_id).parent;
+            expn_id = self.expn_data(expn_id).parent;
         }
         true
     }
@@ -221,7 +221,7 @@ impl HygieneData {
 
     fn walk_chain(&self, mut span: Span, to: SyntaxContext) -> Span {
         while span.from_expansion() && span.ctxt() != to {
-            span = self.expn_info(self.outer_expn(span.ctxt())).call_site;
+            span = self.expn_data(self.outer_expn(span.ctxt())).call_site;
         }
         span
     }
@@ -237,7 +237,7 @@ impl HygieneData {
     fn apply_mark(&mut self, ctxt: SyntaxContext, expn_id: ExpnId) -> SyntaxContext {
         assert_ne!(expn_id, ExpnId::root());
         self.apply_mark_with_transparency(
-            ctxt, expn_id, self.expn_info(expn_id).default_transparency
+            ctxt, expn_id, self.expn_data(expn_id).default_transparency
         )
     }
 
@@ -248,7 +248,7 @@ impl HygieneData {
             return self.apply_mark_internal(ctxt, expn_id, transparency);
         }
 
-        let call_site_ctxt = self.expn_info(expn_id).call_site.ctxt();
+        let call_site_ctxt = self.expn_data(expn_id).call_site.ctxt();
         let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
             self.modern(call_site_ctxt)
         } else {
@@ -540,20 +540,20 @@ impl SyntaxContext {
         HygieneData::with(|data| data.outer_expn(self))
     }
 
-    /// `ctxt.outer_expn_info()` is equivalent to but faster than
-    /// `ctxt.outer_expn().expn_info()`.
+    /// `ctxt.outer_expn_data()` is equivalent to but faster than
+    /// `ctxt.outer_expn().expn_data()`.
     #[inline]
-    pub fn outer_expn_info(self) -> ExpnInfo {
-        HygieneData::with(|data| data.expn_info(data.outer_expn(self)).clone())
+    pub fn outer_expn_data(self) -> ExpnData {
+        HygieneData::with(|data| data.expn_data(data.outer_expn(self)).clone())
     }
 
-    /// `ctxt.outer_expn_with_info()` is equivalent to but faster than
-    /// `{ let outer = ctxt.outer_expn(); (outer, outer.expn_info()) }`.
+    /// `ctxt.outer_expn_with_data()` is equivalent to but faster than
+    /// `{ let outer = ctxt.outer_expn(); (outer, outer.expn_data()) }`.
     #[inline]
-    pub fn outer_expn_with_info(self) -> (ExpnId, ExpnInfo) {
+    pub fn outer_expn_with_data(self) -> (ExpnId, ExpnData) {
         HygieneData::with(|data| {
             let outer = data.outer_expn(self);
-            (outer, data.expn_info(outer).clone())
+            (outer, data.expn_data(outer).clone())
         })
     }
 
@@ -574,9 +574,9 @@ impl Span {
     /// other compiler-generated code to set per-span properties like allowed unstable features.
     /// The returned span belongs to the created expansion and has the new properties,
     /// but its location is inherited from the current span.
-    pub fn fresh_expansion(self, expn_info: ExpnInfo) -> Span {
+    pub fn fresh_expansion(self, expn_data: ExpnData) -> Span {
         HygieneData::with(|data| {
-            let expn_id = data.fresh_expn(Some(expn_info));
+            let expn_id = data.fresh_expn(Some(expn_data));
             self.with_ctxt(data.apply_mark(SyntaxContext::root(), expn_id))
         })
     }
@@ -585,7 +585,7 @@ impl Span {
 /// A subset of properties from both macro definition and macro call available through global data.
 /// Avoid using this if you have access to the original definition or call structures.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct ExpnInfo {
+pub struct ExpnData {
     // --- The part unique to each expansion.
     /// The kind of this expansion - macro or compiler desugaring.
     pub kind: ExpnKind,
@@ -598,7 +598,7 @@ pub struct ExpnInfo {
     /// `foo!()` invoked `bar!()` internally, and there was an
     /// expression inside `bar!`; the call_site of the expression in
     /// the expansion would point to the `bar!` invocation; that
-    /// call_site span would have its own ExpnInfo, with the call_site
+    /// call_site span would have its own ExpnData, with the call_site
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
 
@@ -609,7 +609,7 @@ pub struct ExpnInfo {
     /// The span of the macro definition (possibly dummy).
     /// This span serves only informational purpose and is not used for resolution.
     pub def_site: Span,
-    /// Transparency used by `apply_mark` for the expansion with this expansion info by default.
+    /// Transparency used by `apply_mark` for the expansion with this expansion data by default.
     pub default_transparency: Transparency,
     /// List of #[unstable]/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
@@ -625,10 +625,10 @@ pub struct ExpnInfo {
     pub edition: Edition,
 }
 
-impl ExpnInfo {
-    /// Constructs an expansion info with default properties.
-    pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnInfo {
-        ExpnInfo {
+impl ExpnData {
+    /// Constructs expansion data with default properties.
+    pub fn default(kind: ExpnKind, call_site: Span, edition: Edition) -> ExpnData {
+        ExpnData {
             kind,
             parent: ExpnId::root(),
             call_site,
@@ -642,10 +642,10 @@ impl ExpnInfo {
     }
 
     pub fn allow_unstable(kind: ExpnKind, call_site: Span, edition: Edition,
-                          allow_internal_unstable: Lrc<[Symbol]>) -> ExpnInfo {
-        ExpnInfo {
+                          allow_internal_unstable: Lrc<[Symbol]>) -> ExpnData {
+        ExpnData {
             allow_internal_unstable: Some(allow_internal_unstable),
-            ..ExpnInfo::default(kind, call_site, edition)
+            ..ExpnData::default(kind, call_site, edition)
         }
     }
 

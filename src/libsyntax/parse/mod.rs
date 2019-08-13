@@ -87,7 +87,7 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
-            edition: ExpnId::root().expn_info().edition,
+            edition: ExpnId::root().expn_data().edition,
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             param_attr_spans: Lock::new(Vec::new()),
             let_chains_spans: Lock::new(Vec::new()),

@@ -11,7 +11,7 @@ use syntax::feature_gate::Features;
 use syntax::mut_visit::{*, ExpectOne};
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
-use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned};
+use syntax::source_map::{ExpnData, ExpnKind, dummy_spanned};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -268,7 +268,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     //            #![main]
     //            test::test_main_static(&[..tests]);
     //        }
-    let sp = DUMMY_SP.fresh_expansion(ExpnInfo::allow_unstable(
+    let sp = DUMMY_SP.fresh_expansion(ExpnData::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, cx.ext_cx.parse_sess.edition,
         [sym::main, sym::test, sym::rustc_attrs][..].into(),
     ));

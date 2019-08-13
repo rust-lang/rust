@@ -362,7 +362,7 @@ pub(crate) struct Rustc<'a> {
 impl<'a> Rustc<'a> {
     pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
         // No way to determine def location for a proc macro right now, so use call location.
-        let location = cx.current_expansion.id.expn_info().call_site;
+        let location = cx.current_expansion.id.expn_data().call_site;
         let to_span = |transparency| {
             location.with_ctxt(
                 SyntaxContext::root()
