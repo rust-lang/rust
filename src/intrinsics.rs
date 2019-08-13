@@ -601,6 +601,34 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 }
             }
         };
+        uninit, () {
+            if ret.layout().abi == Abi::Uninhabited {
+                crate::trap::trap_panic(fx, "[panic] Called intrinsic::uninit for uninhabited type.");
+                return;
+            }
+            match ret {
+                CPlace::NoPlace(_layout) => unreachable!("{:?}", ret),
+                CPlace::Var(var, layout) => {
+                    let clif_ty = fx.clif_type(layout.ty).unwrap();
+                    let val = match clif_ty {
+                        types::I8 | types::I16 | types::I32 | types::I64 => fx.bcx.ins().iconst(clif_ty, 42),
+                        types::F32 => {
+                            let zero = fx.bcx.ins().iconst(types::I32, 0xdeadbeef);
+                            fx.bcx.ins().bitcast(types::F32, zero)
+                        }
+                        types::F64 => {
+                            let zero = fx.bcx.ins().iconst(types::I64, 0xcafebabedeadbeefu64 as i64);
+                            fx.bcx.ins().bitcast(types::F64, zero)
+                        }
+                        _ => panic!("clif_type returned {}", clif_ty),
+                    };
+                    fx.bcx.def_var(mir_var(var), val);
+                }
+                CPlace::Addr(_, _, _) | CPlace::Stack(_, _) => {
+                    // Don't write to `ret`, as the destination memory is already uninitialized.
+                }
+            }
+        };
         write_bytes, (c dst, v val, v count) {
             let pointee_ty = dst.layout().ty.builtin_deref(true).unwrap().ty;
             let pointee_size = fx.layout_of(pointee_ty).size.bytes();
