@@ -1373,17 +1373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.maybe_suggest_array_indexing(&mut err, expr, base, field, len);
                     }
                     ty::RawPtr(..) => {
-                        let base = self.tcx.sess.source_map()
-                            .span_to_snippet(base.span)
-                            .unwrap_or_else(|_| self.tcx.hir().hir_to_pretty_string(base.hir_id));
-                        let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
-                        let suggestion = format!("(*{}).{}", base, field);
-                        err.span_suggestion(
-                            expr.span,
-                            &msg,
-                            suggestion,
-                            Applicability::MaybeIncorrect,
-                        );
+                        self.suggest_first_deref_field(&mut err, expr, base, field);
                     }
                     _ => {}
                 }
@@ -1478,6 +1468,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             err.span_suggestion(expr.span, help, suggestion, applicability);
         }
+    }
+
+    fn suggest_first_deref_field(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &hir::Expr,
+        base: &hir::Expr,
+        field: ast::Ident,
+    ) {
+        let base = self.tcx.sess.source_map()
+            .span_to_snippet(base.span)
+            .unwrap_or_else(|_| self.tcx.hir().hir_to_pretty_string(base.hir_id));
+        let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
+        let suggestion = format!("(*{}).{}", base, field);
+        err.span_suggestion(
+            expr.span,
+            &msg,
+            suggestion,
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS<'_>)
