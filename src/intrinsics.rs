@@ -502,7 +502,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, res);
         };
         _ if intrinsic.starts_with("saturating_"), <T> (c x, c y) {
-            // FIXME implement saturating behavior
             assert_eq!(x.layout().ty, y.layout().ty);
             let bin_op = match intrinsic {
                 "saturating_add" => BinOp::Add,
@@ -610,6 +609,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             fx.bcx.call_memset(fx.module.target_config(), dst_ptr, val, count);
         };
         ctlz | ctlz_nonzero, <T> (v arg) {
+            // FIXME trap on `ctlz_nonzero` with zero arg.
             let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
                 // FIXME verify this algorithm is correct
                 let (lsb, msb) = fx.bcx.ins().isplit(arg);
@@ -625,6 +625,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, res);
         };
         cttz | cttz_nonzero, <T> (v arg) {
+            // FIXME trap on `cttz_nonzero` with zero arg.
             let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
                 // FIXME verify this algorithm is correct
                 let (lsb, msb) = fx.bcx.ins().isplit(arg);
