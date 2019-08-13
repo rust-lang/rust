@@ -554,8 +554,14 @@ impl SourceMap {
             }
 
             if let Some(ref src) = local_begin.sf.src {
+                if !src.is_char_boundary(start_index) || !src.is_char_boundary(end_index) {
+                    return Err(SpanSnippetError::IllFormedSpan(sp));
+                }
                 return Ok(extract_source(src, start_index, end_index));
             } else if let Some(src) = local_begin.sf.external_src.borrow().get_source() {
+                if !src.is_char_boundary(start_index) || !src.is_char_boundary(end_index) {
+                    return Err(SpanSnippetError::IllFormedSpan(sp));
+                }
                 return Ok(extract_source(src, start_index, end_index));
             } else {
                 return Err(SpanSnippetError::SourceNotAvailable {

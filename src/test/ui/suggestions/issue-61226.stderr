@@ -1,0 +1,17 @@
+error[E0423]: expected value, found struct `X`
+  --> $DIR/issue-61226.rs:3:10
+   |
+LL |     vec![X]; //…
+   |          ^
+   |          |
+   |          did you mean `X { /* fields */ }`?
+   |          help: a function with a similar name exists: `f`
+
+error[E0601]: `main` function not found in crate `issue_61226`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-61226.rs`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0601.
+For more information about an error, try `rustc --explain E0423`.
