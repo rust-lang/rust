@@ -29,6 +29,8 @@ use std::fmt;
 use std::ops::{Deref, Index, IndexMut};
 use std::usize;
 
+use crate::dataflow::{DataflowResults, MaybeInitializedLocals};
+use crate::dataflow::{do_dataflow, DebugFormatted, state_for_location};
 use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
@@ -661,6 +663,7 @@ struct Checker<'a, 'tcx> {
     span: Span,
     def_id: DefId,
     rpo: ReversePostorder<'a, 'tcx>,
+    maybe_init_locals: DataflowResults<'tcx, MaybeInitializedLocals<'a, 'tcx>>,
 
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>,
@@ -719,11 +722,19 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
+        let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
+
+        let maybe_init_locals_analysis = MaybeInitializedLocals::new(body);
+        let maybe_init_locals =
+            do_dataflow(tcx, body, def_id, &[], &dead_unwinds, maybe_init_locals_analysis,
+                        |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
+
         Checker {
             cx,
             span: body.span,
             def_id,
             rpo,
+            maybe_init_locals,
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -1150,25 +1161,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         }
     }
 
-    fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
-        debug!("visit_operand: operand={:?} location={:?}", operand, location);
-        self.super_operand(operand, location);
-
-        match *operand {
-            Operand::Move(ref place) => {
-                // Mark the consumed locals to indicate later drops are noops.
-                if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: None,
-                } = *place {
-                    self.cx.per_local[NeedsDrop].remove(local);
-                }
-            }
-            Operand::Copy(_) |
-            Operand::Constant(_) => {}
-        }
-    }
-
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         debug!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
@@ -1477,7 +1469,20 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     projection: None,
                 } = *place {
                     if NeedsDrop::in_local(self, local) {
-                        Some(self.body.local_decls[local].source_info.span)
+                        // Check whether the local hasn't been moved out of already.
+                        // FIXME(eddyb) use a more efficient dataflow cursor.
+                        let maybe_init_locals_analysis = MaybeInitializedLocals::new(self.body);
+                        let maybe_init_locals = state_for_location(
+                            location,
+                            &maybe_init_locals_analysis,
+                            &self.maybe_init_locals,
+                            self.body,
+                        );
+                        if maybe_init_locals.contains(local) {
+                            Some(self.body.local_decls[local].source_info.span)
+                        } else {
+                            None
+                        }
                     } else {
                         None
                     }

@@ -28,6 +28,10 @@ pub use self::borrowed_locals::*;
 
 pub(super) mod borrows;
 
+mod maybe_init_locals;
+
+pub use self::maybe_init_locals::*;
+
 /// `MaybeInitializedPlaces` tracks all places that might be
 /// initialized upon reaching a particular point in the control flow
 /// for a function.

@@ -93,6 +93,9 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
             => return,
         }
 
+        let temp = &mut self.temps[index];
+        debug!("visit_local: temp={:?}", temp);
+
         // Ignore drops, if the temp gets promoted,
         // then it's constant and thus drop is noop.
         // Non-uses are also irrelevent.
@@ -108,8 +111,6 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
             return;
         }
 
-        let temp = &mut self.temps[index];
-        debug!("visit_local: temp={:?}", temp);
         if *temp == TempState::Undefined {
             match context {
                 PlaceContext::MutatingUse(MutatingUseContext::Store) |
