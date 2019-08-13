@@ -492,13 +492,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         id: AllocId,
         liveness: AllocCheck,
     ) -> InterpResult<'static, (Size, Align)> {
-        if let Ok(alloc) = self.get(id) {
+        // # Regular allocations
+        // Don't use `self.get` here as that will
+        // a) cause cycles in case `id` refers to a static
+        // b) duplicate a static's allocation in miri
+        if let Some((_, alloc)) = self.alloc_map.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
         }
-        // can't do this in the match argument, we may get cycle errors since the lock would get
-        // dropped after the match.
+
+        // # Statics and function pointers
+        // Can't do this in the match argument, we may get cycle errors since the lock would
+        // be held throughout the match.
         let alloc = self.tcx.alloc_map.lock().get(id);
-        // Could also be a fn ptr or extern static
         match alloc {
             Some(GlobalAlloc::Function(..)) => {
                 if let AllocCheck::Dereferencable = liveness {
@@ -507,28 +512,26 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 } else {
                     Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
                 }
-            }
-            // `self.get` would also work, but can cause cycles if a static refers to itself
+            },
             Some(GlobalAlloc::Static(did)) => {
-                // The only way `get` couldn't have worked here is if this is an extern static
-                assert!(self.tcx.is_foreign_item(did));
-                // Use size and align of the type
+                // Use size and align of the type.
                 let ty = self.tcx.type_of(did);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                 Ok((layout.size, layout.align.abi))
-            }
-            _ => {
-                if let Ok(alloc) = self.get(id) {
-                    Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align))
-                }
-                else if let AllocCheck::MaybeDead = liveness {
-                    // Deallocated pointers are allowed, we should be able to find
-                    // them in the map.
-                    Ok(*self.dead_alloc_map.get(&id)
-                        .expect("deallocated pointers should all be recorded in `dead_alloc_map`"))
-                } else {
-                    err!(DanglingPointerDeref)
-                }
+            },
+            Some(GlobalAlloc::Memory(alloc)) =>
+                // Need to duplicate the logic here, because the global allocations have
+                // different associated types than the interpreter-local ones.
+                Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
+            // The rest must be dead.
+            None => if let AllocCheck::MaybeDead = liveness {
+                // Deallocated pointers are allowed, we should be able to find
+                // them in the map.
+                Ok(*self.dead_alloc_map.get(&id)
+                    .expect("deallocated pointers should all be recorded in \
+                            `dead_alloc_map`"))
+            } else {
+                err!(DanglingPointerDeref)
             },
         }
     }
