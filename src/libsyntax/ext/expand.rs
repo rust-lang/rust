@@ -116,18 +116,6 @@ macro_rules! ast_fragments {
             }
         }
 
-        impl<'a, 'b> MutVisitor for MacroExpander<'a, 'b> {
-            fn filter_map_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
-                self.fully_expand_fragment(AstFragment::OptExpr(Some(expr))).make_opt_expr()
-            }
-            $($(fn $mut_visit_ast(&mut self, ast: &mut $AstTy) {
-                visit_clobber(ast, |ast| self.fully_expand_fragment(AstFragment::$Kind(ast)).$make_ast());
-            })?)*
-            $($(fn $flat_map_ast_elt(&mut self, ast_elt: <$AstTy as IntoIterator>::Item) -> $AstTy {
-                self.fully_expand_fragment(AstFragment::$Kind(smallvec![ast_elt])).$make_ast()
-            })?)*
-        }
-
         impl<'a> MacResult for crate::ext::tt::macro_rules::ParserAnyMacro<'a> {
             $(fn $make_ast(self: Box<crate::ext::tt::macro_rules::ParserAnyMacro<'a>>)
                            -> Option<$AstTy> {
@@ -286,7 +274,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     // Recursively expand all macro invocations in this AST fragment.
-    fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
+    pub fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         self.cx.current_expansion.depth = 0;
 

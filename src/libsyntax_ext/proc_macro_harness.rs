@@ -1,18 +1,17 @@
 use std::mem;
 
+use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::source_map::{ExpnInfo, ExpnKind, respan};
 use syntax::ext::base::{ExtCtxt, MacroKind};
-use syntax::ext::expand::ExpansionConfig;
+use syntax::ext::expand::{AstFragment, ExpansionConfig};
 use syntax::ext::hygiene::ExpnId;
 use syntax::ext::proc_macro::is_proc_macro_attr;
-use syntax::mut_visit::MutVisitor;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
-
 use syntax_pos::{Span, DUMMY_SP};
 
 struct ProcMacroDerive {
@@ -409,5 +408,7 @@ fn mk_decls(
         i
     });
 
-    cx.monotonic_expander().flat_map_item(module).pop().unwrap()
+    // Integrate the new module into existing module structures.
+    let module = AstFragment::Items(smallvec![module]);
+    cx.monotonic_expander().fully_expand_fragment(module).make_items().pop().unwrap()
 }
