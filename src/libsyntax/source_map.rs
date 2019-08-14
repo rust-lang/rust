@@ -519,7 +519,7 @@ impl SourceMap {
     /// extract function takes three arguments: a string slice containing the source, an index in
     /// the slice for the beginning of the span and an index in the slice for the end of the span.
     fn span_to_source<F>(&self, sp: Span, extract_source: F) -> Result<String, SpanSnippetError>
-        where F: Fn(&str, usize, usize) -> String
+        where F: Fn(&str, usize, usize) -> Result<String, SpanSnippetError>
     {
         if sp.lo() > sp.hi() {
             return Err(SpanSnippetError::IllFormedSpan(sp));
@@ -554,9 +554,9 @@ impl SourceMap {
             }
 
             if let Some(ref src) = local_begin.sf.src {
-                return Ok(extract_source(src, start_index, end_index));
+                return extract_source(src, start_index, end_index);
             } else if let Some(src) = local_begin.sf.external_src.borrow().get_source() {
-                return Ok(extract_source(src, start_index, end_index));
+                return extract_source(src, start_index, end_index);
             } else {
                 return Err(SpanSnippetError::SourceNotAvailable {
                     filename: local_begin.sf.name.clone()
@@ -567,8 +567,9 @@ impl SourceMap {
 
     /// Returns the source snippet as `String` corresponding to the given `Span`
     pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
-        self.span_to_source(sp, |src, start_index, end_index| src[start_index..end_index]
-                                                                .to_string())
+        self.span_to_source(sp, |src, start_index, end_index| src.get(start_index..end_index)
+            .map(|s| s.to_string())
+            .ok_or_else(|| SpanSnippetError::IllFormedSpan(sp)))
     }
 
     pub fn span_to_margin(&self, sp: Span) -> Option<usize> {
@@ -582,7 +583,9 @@ impl SourceMap {
 
     /// Returns the source snippet as `String` before the given `Span`
     pub fn span_to_prev_source(&self, sp: Span) -> Result<String, SpanSnippetError> {
-        self.span_to_source(sp, |src, start_index, _| src[..start_index].to_string())
+        self.span_to_source(sp, |src, start_index, _| src.get(..start_index)
+            .map(|s| s.to_string())
+            .ok_or_else(|| SpanSnippetError::IllFormedSpan(sp)))
     }
 
     /// Extend the given `Span` to just after the previous occurrence of `c`. Return the same span

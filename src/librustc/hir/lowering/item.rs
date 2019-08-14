@@ -60,10 +60,12 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
     fn visit_item(&mut self, item: &'tcx Item) {
         let mut item_hir_id = None;
         self.lctx.with_hir_id_owner(item.id, |lctx| {
-            if let Some(hir_item) = lctx.lower_item(item) {
-                item_hir_id = Some(hir_item.hir_id);
-                lctx.insert_item(hir_item);
-            }
+            lctx.without_in_scope_lifetime_defs(|lctx| {
+                if let Some(hir_item) = lctx.lower_item(item) {
+                    item_hir_id = Some(hir_item.hir_id);
+                    lctx.insert_item(hir_item);
+                }
+            })
         });
 
         if let Some(hir_id) = item_hir_id {
@@ -123,7 +125,7 @@ impl LoweringContext<'_> {
             _ => &[],
         };
         let lt_def_names = parent_generics.iter().filter_map(|param| match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => Some(param.name.ident().modern()),
+            hir::GenericParamKind::Lifetime { .. } => Some(param.name.modern()),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -131,6 +133,28 @@ impl LoweringContext<'_> {
         let res = f(self);
 
         self.in_scope_lifetimes.truncate(old_len);
+        res
+    }
+
+    // Clears (and restores) the `in_scope_lifetimes` field. Used when
+    // visiting nested items, which never inherit in-scope lifetimes
+    // from their surrounding environment.
+    fn without_in_scope_lifetime_defs<T>(
+        &mut self,
+        f: impl FnOnce(&mut LoweringContext<'_>) -> T,
+    ) -> T {
+        let old_in_scope_lifetimes = std::mem::replace(&mut self.in_scope_lifetimes, vec![]);
+
+        // this vector is only used when walking over impl headers,
+        // input types, and the like, and should not be non-empty in
+        // between items
+        assert!(self.lifetimes_to_define.is_empty());
+
+        let res = f(self);
+
+        assert!(self.in_scope_lifetimes.is_empty());
+        self.in_scope_lifetimes = old_in_scope_lifetimes;
+
         res
     }
 

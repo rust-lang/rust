@@ -1236,7 +1236,7 @@ impl<'a> Parser<'a> {
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 
-        if c_variadic && args.is_empty() {
+        if c_variadic && args.len() <= 1 {
             self.span_err(sp,
                           "C-variadic function must be declared with at least one named argument");
         }

@@ -1,0 +1,46 @@
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:45
+   |
+LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
+   |                                             ^^^^
+   |
+   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:50
+   |
+LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
+   |                          -                       ^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+   |                          |
+   |                          lifetime `'_` defined here
+   |                          lifetime `'_` defined here
+
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:13:73
+   |
+LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
+   |                          -                                              ^^^^^^^^^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
+   |                          |
+   |                          lifetime `'_` defined here
+   |                          lifetime `'_` defined here
+
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:19:58
+   |
+LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
+   |                                                          ^^^
+   |
+   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+
+error: lifetime may not live long enough
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:19:62
+   |
+LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
+   |                  --              -                           ^^^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'a`
+   |                  |               |
+   |                  |               lifetime `'_` defined here
+   |                  lifetime `'a` defined here
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

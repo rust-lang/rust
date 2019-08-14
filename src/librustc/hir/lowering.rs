@@ -136,7 +136,10 @@ pub struct LoweringContext<'a> {
     /// When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
     /// against this list to see if it is already in-scope, or if a definition
     /// needs to be created for it.
-    in_scope_lifetimes: Vec<Ident>,
+    ///
+    /// We always store a `modern()` version of the param-name in this
+    /// vector.
+    in_scope_lifetimes: Vec<ParamName>,
 
     current_module: NodeId,
 
@@ -337,49 +340,6 @@ enum AnonymousLifetimeMode {
 
     /// Pass responsibility to `resolve_lifetime` code for all cases.
     PassThrough,
-
-    /// Used in the return types of `async fn` where there exists
-    /// exactly one argument-position elided lifetime.
-    ///
-    /// In `async fn`, we lower the arguments types using the `CreateParameter`
-    /// mode, meaning that non-`dyn` elided lifetimes are assigned a fresh name.
-    /// If any corresponding elided lifetimes appear in the output, we need to
-    /// replace them with references to the fresh name assigned to the corresponding
-    /// elided lifetime in the arguments.
-    ///
-    /// For **Modern cases**, replace the anonymous parameter with a
-    /// reference to a specific freshly-named lifetime that was
-    /// introduced in argument
-    ///
-    /// For **Dyn Bound** cases, pass responsibility to
-    /// `resole_lifetime` code.
-    Replace(LtReplacement),
-}
-
-/// The type of elided lifetime replacement to perform on `async fn` return types.
-#[derive(Copy, Clone)]
-enum LtReplacement {
-    /// Fresh name introduced by the single non-dyn elided lifetime
-    /// in the arguments of the async fn.
-    Some(ParamName),
-
-    /// There is no single non-dyn elided lifetime because no lifetimes
-    /// appeared in the arguments.
-    NoLifetimes,
-
-    /// There is no single non-dyn elided lifetime because multiple
-    /// lifetimes appeared in the arguments.
-    MultipleLifetimes,
-}
-
-/// Calculates the `LtReplacement` to use for elided lifetimes in the return
-/// type based on the fresh elided lifetimes introduced in argument position.
-fn get_elided_lt_replacement(arg_position_lifetimes: &[(Span, ParamName)]) -> LtReplacement {
-    match arg_position_lifetimes {
-        [] => LtReplacement::NoLifetimes,
-        [(_span, param)] => LtReplacement::Some(*param),
-        _ => LtReplacement::MultipleLifetimes,
-    }
 }
 
 struct ImplTraitTypeIdVisitor<'a> { ids: &'a mut SmallVec<[NodeId; 1]> }
@@ -865,7 +825,7 @@ impl<'a> LoweringContext<'a> {
             return;
         }
 
-        if self.in_scope_lifetimes.contains(&ident.modern()) {
+        if self.in_scope_lifetimes.contains(&ParamName::Plain(ident.modern())) {
             return;
         }
 
@@ -899,7 +859,7 @@ impl<'a> LoweringContext<'a> {
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {
-            GenericParamKind::Lifetime { .. } => Some(param.ident.modern()),
+            GenericParamKind::Lifetime { .. } => Some(ParamName::Plain(param.ident.modern())),
             _ => None,
         });
         self.in_scope_lifetimes.extend(lt_def_names);
@@ -1953,8 +1913,7 @@ impl<'a> LoweringContext<'a> {
                         err.emit();
                     }
                     AnonymousLifetimeMode::PassThrough |
-                    AnonymousLifetimeMode::ReportError |
-                    AnonymousLifetimeMode::Replace(_) => {
+                    AnonymousLifetimeMode::ReportError => {
                         self.sess.buffer_lint_with_diagnostic(
                             ELIDED_LIFETIMES_IN_PATHS,
                             CRATE_NODE_ID,
@@ -2141,7 +2100,6 @@ impl<'a> LoweringContext<'a> {
 
         // Remember how many lifetimes were already around so that we can
         // only look at the lifetime parameters introduced by the arguments.
-        let lifetime_count_before_args = self.lifetimes_to_define.len();
         let inputs = self.with_anonymous_lifetime_mode(lt_mode, |this| {
             decl.inputs
                 .iter()
@@ -2156,16 +2114,10 @@ impl<'a> LoweringContext<'a> {
         });
 
         let output = if let Some(ret_id) = make_ret_async {
-            // Calculate the `LtReplacement` to use for any return-position elided
-            // lifetimes based on the elided lifetime parameters introduced in the args.
-            let lt_replacement = get_elided_lt_replacement(
-                &self.lifetimes_to_define[lifetime_count_before_args..]
-            );
             self.lower_async_fn_ret_ty(
                 &decl.output,
                 in_band_ty_params.expect("`make_ret_async` but no `fn_def_id`").0,
                 ret_id,
-                lt_replacement,
             )
         } else {
             match decl.output {
@@ -2230,7 +2182,6 @@ impl<'a> LoweringContext<'a> {
         output: &FunctionRetTy,
         fn_def_id: DefId,
         opaque_ty_node_id: NodeId,
-        elided_lt_replacement: LtReplacement,
     ) -> hir::FunctionRetTy {
         let span = output.span();
 
@@ -2248,9 +2199,65 @@ impl<'a> LoweringContext<'a> {
 
         self.allocate_hir_id_counter(opaque_ty_node_id);
 
+        // When we create the opaque type for this async fn, it is going to have
+        // to capture all the lifetimes involved in the signature (including in the
+        // return type). This is done by introducing lifetime parameters for:
+        //
+        // - all the explicitly declared lifetimes from the impl and function itself;
+        // - all the elided lifetimes in the fn arguments;
+        // - all the elided lifetimes in the return type.
+        //
+        // So for example in this snippet:
+        //
+        // ```rust
+        // impl<'a> Foo<'a> {
+        //   async fn bar<'b>(&self, x: &'b Vec<f64>, y: &str) -> &u32 {
+        //   //               ^ '0                       ^ '1     ^ '2
+        //   // elided lifetimes used below
+        //   }
+        // }
+        // ```
+        //
+        // we would create an opaque type like:
+        //
+        // ```
+        // type Bar<'a, 'b, '0, '1, '2> = impl Future<Output = &'2 u32>;
+        // ```
+        //
+        // and we would then desugar `bar` to the equivalent of:
+        //
+        // ```rust
+        // impl<'a> Foo<'a> {
+        //   fn bar<'b, '0, '1>(&'0 self, x: &'b Vec<f64>, y: &'1 str) -> Bar<'a, 'b, '0, '1, '_>
+        // }
+        // ```
+        //
+        // Note that the final parameter to `Bar` is `'_`, not `'2` --
+        // this is because the elided lifetimes from the return type
+        // should be figured out using the ordinary elision rules, and
+        // this desugaring achieves that.
+        //
+        // The variable `input_lifetimes_count` tracks the number of
+        // lifetime parameters to the opaque type *not counting* those
+        // lifetimes elided in the return type. This includes those
+        // that are explicitly declared (`in_scope_lifetimes`) and
+        // those elided lifetimes we found in the arguments (current
+        // content of `lifetimes_to_define`). Next, we will process
+        // the return type, which will cause `lifetimes_to_define` to
+        // grow.
+        let input_lifetimes_count = self.in_scope_lifetimes.len() + self.lifetimes_to_define.len();
+
         let (opaque_ty_id, lifetime_params) = self.with_hir_id_owner(opaque_ty_node_id, |this| {
+            // We have to be careful to get elision right here. The
+            // idea is that we create a lifetime parameter for each
+            // lifetime in the return type.  So, given a return type
+            // like `async fn foo(..) -> &[&u32]`, we lower to `impl
+            // Future<Output = &'1 [ &'2 u32 ]>`.
+            //
+            // Then, we will create `fn foo(..) -> Foo<'_, '_>`, and
+            // hence the elision takes place at the fn site.
             let future_bound = this.with_anonymous_lifetime_mode(
-                AnonymousLifetimeMode::Replace(elided_lt_replacement),
+                AnonymousLifetimeMode::CreateParameter,
                 |this| this.lower_async_fn_output_type_to_future_bound(
                     output,
                     fn_def_id,
@@ -2267,9 +2274,13 @@ impl<'a> LoweringContext<'a> {
             let lifetime_params: Vec<(Span, ParamName)> =
                 this.in_scope_lifetimes
                     .iter().cloned()
-                    .map(|ident| (ident.span, ParamName::Plain(ident)))
+                    .map(|name| (name.ident().span, name))
                     .chain(this.lifetimes_to_define.iter().cloned())
                     .collect();
+
+            debug!("lower_async_fn_ret_ty: in_scope_lifetimes={:#?}", this.in_scope_lifetimes);
+            debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", this.lifetimes_to_define);
+            debug!("lower_async_fn_ret_ty: lifetime_params={:#?}", lifetime_params);
 
             let generic_params =
                 lifetime_params
@@ -2304,19 +2315,52 @@ impl<'a> LoweringContext<'a> {
             (opaque_ty_id, lifetime_params)
         });
 
-        let generic_args =
-            lifetime_params
-                .iter().cloned()
-                .map(|(span, hir_name)| {
-                    GenericArg::Lifetime(hir::Lifetime {
-                        hir_id: self.next_id(),
-                        span,
-                        name: hir::LifetimeName::Param(hir_name),
-                    })
+        // As documented above on the variable
+        // `input_lifetimes_count`, we need to create the lifetime
+        // arguments to our opaque type. Continuing with our example,
+        // we're creating the type arguments for the return type:
+        //
+        // ```
+        // Bar<'a, 'b, '0, '1, '_>
+        // ```
+        //
+        // For the "input" lifetime parameters, we wish to create
+        // references to the parameters themselves, including the
+        // "implicit" ones created from parameter types (`'a`, `'b`,
+        // '`0`, `'1`).
+        //
+        // For the "output" lifetime parameters, we just want to
+        // generate `'_`.
+        let mut generic_args: Vec<_> =
+            lifetime_params[..input_lifetimes_count]
+            .iter()
+            .map(|&(span, hir_name)| {
+                // Input lifetime like `'a` or `'1`:
+                GenericArg::Lifetime(hir::Lifetime {
+                    hir_id: self.next_id(),
+                    span,
+                    name: hir::LifetimeName::Param(hir_name),
                 })
-                .collect();
+            })
+            .collect();
+        generic_args.extend(
+            lifetime_params[input_lifetimes_count..]
+            .iter()
+            .map(|&(span, _)| {
+                // Output lifetime like `'_`.
+                GenericArg::Lifetime(hir::Lifetime {
+                    hir_id: self.next_id(),
+                    span,
+                    name: hir::LifetimeName::Implicit,
+                })
+            })
+        );
 
-        let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args);
+        // Create the `Foo<...>` refernece itself. Note that the `type
+        // Foo = impl Trait` is, internally, created as a child of the
+        // async fn, so the *type parameters* are inherited.  It's
+        // only the lifetime parameters that we must supply.
+        let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args.into());
 
         hir::FunctionRetTy::Return(P(hir::Ty {
             node: opaque_ty_ref,
@@ -2412,11 +2456,6 @@ impl<'a> LoweringContext<'a> {
                     }
 
                     AnonymousLifetimeMode::ReportError => self.new_error_lifetime(Some(l.id), span),
-
-                    AnonymousLifetimeMode::Replace(replacement) => {
-                        let hir_id = self.lower_node_id(l.id);
-                        self.replace_elided_lifetime(hir_id, span, replacement)
-                    }
                 },
             ident => {
                 self.maybe_collect_in_band_lifetime(ident);
@@ -2437,39 +2476,6 @@ impl<'a> LoweringContext<'a> {
             span,
             name: name,
         }
-    }
-
-    /// Replace a return-position elided lifetime with the elided lifetime
-    /// from the arguments.
-    fn replace_elided_lifetime(
-        &mut self,
-        hir_id: hir::HirId,
-        span: Span,
-        replacement: LtReplacement,
-    ) -> hir::Lifetime {
-        let multiple_or_none = match replacement {
-            LtReplacement::Some(name) => {
-                return hir::Lifetime {
-                    hir_id,
-                    span,
-                    name: hir::LifetimeName::Param(name),
-                };
-            }
-            LtReplacement::MultipleLifetimes => "multiple",
-            LtReplacement::NoLifetimes => "none",
-        };
-
-        let mut err = crate::middle::resolve_lifetime::report_missing_lifetime_specifiers(
-            self.sess,
-            span,
-            1,
-        );
-        err.note(&format!(
-            "return-position elided lifetimes require exactly one \
-             input-position elided lifetime, found {}.", multiple_or_none));
-        err.emit();
-
-        hir::Lifetime { hir_id, span, name: hir::LifetimeName::Error }
     }
 
     fn lower_generic_params(
@@ -3174,10 +3180,6 @@ impl<'a> LoweringContext<'a> {
             AnonymousLifetimeMode::ReportError => self.new_error_lifetime(None, span),
 
             AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span),
-
-            AnonymousLifetimeMode::Replace(replacement) => {
-                self.new_replacement_lifetime(replacement, span)
-            }
         }
     }
 
@@ -3231,10 +3233,6 @@ impl<'a> LoweringContext<'a> {
             // This is the normal case.
             AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span),
 
-            AnonymousLifetimeMode::Replace(replacement) => {
-                self.new_replacement_lifetime(replacement, span)
-            }
-
             AnonymousLifetimeMode::ReportError => self.new_error_lifetime(None, span),
         }
     }
@@ -3266,23 +3264,9 @@ impl<'a> LoweringContext<'a> {
 
             // This is the normal case.
             AnonymousLifetimeMode::PassThrough => {}
-
-            // We don't need to do any replacement here as this lifetime
-            // doesn't refer to an elided lifetime elsewhere in the function
-            // signature.
-            AnonymousLifetimeMode::Replace(_) => {}
         }
 
         self.new_implicit_lifetime(span)
-    }
-
-    fn new_replacement_lifetime(
-        &mut self,
-        replacement: LtReplacement,
-        span: Span,
-    ) -> hir::Lifetime {
-        let hir_id = self.next_id();
-        self.replace_elided_lifetime(hir_id, span, replacement)
     }
 
     fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
