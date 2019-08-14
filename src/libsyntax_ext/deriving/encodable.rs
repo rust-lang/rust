@@ -238,7 +238,7 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
             }
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
-            let name = cx.expr_str(trait_span, variant.node.ident.name);
+            let name = cx.expr_str(trait_span, variant.ident.name);
             let call = cx.expr_method_call(trait_span,
                                            blkencoder,
                                            cx.ident_of("emit_enum_variant"),

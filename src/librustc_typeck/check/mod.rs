@@ -2050,19 +2050,19 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
     }
 
     for v in vs {
-        if let Some(ref e) = v.node.disr_expr {
+        if let Some(ref e) = v.disr_expr {
             tcx.typeck_tables_of(tcx.hir().local_def_id(e.hir_id));
         }
     }
 
     if tcx.adt_def(def_id).repr.int.is_none() && tcx.features().arbitrary_enum_discriminant {
         let is_unit =
-            |var: &hir::Variant| match var.node.data {
+            |var: &hir::Variant| match var.data {
                 hir::VariantData::Unit(..) => true,
                 _ => false
             };
 
-        let has_disr = |var: &hir::Variant| var.node.disr_expr.is_some();
+        let has_disr = |var: &hir::Variant| var.disr_expr.is_some();
         let has_non_units = vs.iter().any(|var| !is_unit(var));
         let disr_units = vs.iter().any(|var| is_unit(&var) && has_disr(&var));
         let disr_non_unit = vs.iter().any(|var| !is_unit(&var) && has_disr(&var));
@@ -2081,11 +2081,11 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
             let variant_did = def.variants[VariantIdx::new(i)].def_id;
             let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
-            let i_span = match variant_i.node.disr_expr {
+            let i_span = match variant_i.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => tcx.hir().span(variant_i_hir_id)
             };
-            let span = match v.node.disr_expr {
+            let span = match v.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span
             };

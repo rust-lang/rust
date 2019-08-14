@@ -783,14 +783,14 @@ impl<'a> ExtCtxt<'a> {
             ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID)
         };
 
-        respan(span,
-               ast::Variant_ {
-                   ident,
-                   id: ast::DUMMY_NODE_ID,
-                   attrs: Vec::new(),
-                   data: vdata,
-                   disr_expr: None,
-               })
+        ast::Variant {
+            attrs: Vec::new(),
+            data: vdata,
+            disr_expr: None,
+            id: ast::DUMMY_NODE_ID,
+            ident,
+            span,
+        }
     }
 
     pub fn item_enum_poly(&self, span: Span, name: Ident,

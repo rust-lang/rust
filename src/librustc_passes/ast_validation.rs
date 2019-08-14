@@ -602,7 +602,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
-                    for field in variant.node.data.fields() {
+                    for field in variant.data.fields() {
                         self.invalid_visibility(&field.vis, None);
                     }
                 }

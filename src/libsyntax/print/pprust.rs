@@ -1402,7 +1402,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(&v.node.attrs);
+            self.print_outer_attributes(&v.attrs);
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
@@ -1492,8 +1492,8 @@ impl<'a> State<'a> {
     crate fn print_variant(&mut self, v: &ast::Variant) {
         self.head("");
         let generics = ast::Generics::default();
-        self.print_struct(&v.node.data, &generics, v.node.ident, v.span, false);
-        match v.node.disr_expr {
+        self.print_struct(&v.data, &generics, v.ident, v.span, false);
+        match v.disr_expr {
             Some(ref d) => {
                 self.s.space();
                 self.word_space("=");

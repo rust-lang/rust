@@ -277,7 +277,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                 filter!(self.span_utils, item.ident.span);
                 let variants_str = def.variants
                     .iter()
-                    .map(|v| v.node.ident.to_string())
+                    .map(|v| v.ident.to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
                 let value = format!("{}::{{{}}}", name, variants_str);
@@ -291,7 +291,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     parent: None,
                     children: def.variants
                         .iter()
-                        .map(|v| id_from_node_id(v.node.id, self))
+                        .map(|v| id_from_node_id(v.id, self))
                         .collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(&item.attrs),

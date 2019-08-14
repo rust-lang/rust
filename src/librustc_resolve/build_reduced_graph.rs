@@ -799,17 +799,17 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                        parent: Module<'a>,
                                        vis: ty::Visibility,
                                        expn_id: ExpnId) {
-        let ident = variant.node.ident;
+        let ident = variant.ident;
 
         // Define a name in the type namespace.
-        let def_id = self.r.definitions.local_def_id(variant.node.id);
+        let def_id = self.r.definitions.local_def_id(variant.id);
         let res = Res::Def(DefKind::Variant, def_id);
         self.r.define(parent, ident, TypeNS, (res, vis, variant.span, expn_id));
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the
         // crate.
         let mut ctor_vis = vis;
-        let has_non_exhaustive = attr::contains_name(&variant.node.attrs, sym::non_exhaustive);
+        let has_non_exhaustive = attr::contains_name(&variant.attrs, sym::non_exhaustive);
         if has_non_exhaustive && vis == ty::Visibility::Public {
             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
@@ -819,9 +819,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         // value namespace, they are reserved for possible future use.
         // It's ok to use the variant's id as a ctor id since an
         // error will be reported on any use of such resolution anyway.
-        let ctor_node_id = variant.node.data.ctor_id().unwrap_or(variant.node.id);
+        let ctor_node_id = variant.data.ctor_id().unwrap_or(variant.id);
         let ctor_def_id = self.r.definitions.local_def_id(ctor_node_id);
-        let ctor_kind = CtorKind::from_ast(&variant.node.data);
+        let ctor_kind = CtorKind::from_ast(&variant.data);
         let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
         self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
     }

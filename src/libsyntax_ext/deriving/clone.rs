@@ -138,7 +138,7 @@ fn cs_clone_shallow(name: &str,
             }
             StaticEnum(enum_def, ..) => {
                 for variant in &enum_def.variants {
-                    process_variant(cx, &mut stmts, &variant.node.data);
+                    process_variant(cx, &mut stmts, &variant.data);
                 }
             }
             _ => cx.span_bug(trait_span, &format!("unexpected substructure in \
@@ -170,9 +170,9 @@ fn cs_clone(name: &str,
             vdata = vdata_;
         }
         EnumMatching(.., variant, ref af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.node.ident]);
+            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
             all_fields = af;
-            vdata = &variant.node.data;
+            vdata = &variant.data;
         }
         EnumNonMatchingCollapsed(..) => {
             cx.span_bug(trait_span,

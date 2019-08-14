@@ -147,7 +147,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
     }
 
     fn check_variant(&mut self, cx: &EarlyContext<'_>, v: &ast::Variant, _: &ast::Generics) {
-        self.check_case(cx, "variant", &v.node.ident);
+        self.check_case(cx, "variant", &v.ident);
     }
 
     fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {

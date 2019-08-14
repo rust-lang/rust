@@ -75,7 +75,7 @@ fn cs_total_eq_assert(cx: &mut ExtCtxt<'_>,
         }
         StaticEnum(enum_def, ..) => {
             for variant in &enum_def.variants {
-                process_variant(cx, &mut stmts, &variant.node.data);
+                process_variant(cx, &mut stmts, &variant.data);
             }
         }
         _ => cx.span_bug(trait_span, "unexpected substructure in `derive(Eq)`")

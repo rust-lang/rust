@@ -907,7 +907,7 @@ impl<'hir> Map<'hir> {
                     _ => bug!("struct ID bound to non-struct {}", self.node_to_string(id))
                 }
             }
-            Some(Node::Variant(variant)) => &variant.node.data,
+            Some(Node::Variant(variant)) => &variant.data,
             Some(Node::Ctor(data)) => data,
             _ => bug!("expected struct or variant, found {}", self.node_to_string(id))
         }
@@ -940,7 +940,7 @@ impl<'hir> Map<'hir> {
             Node::ForeignItem(fi) => fi.ident.name,
             Node::ImplItem(ii) => ii.ident.name,
             Node::TraitItem(ti) => ti.ident.name,
-            Node::Variant(v) => v.node.ident.name,
+            Node::Variant(v) => v.ident.name,
             Node::Field(f) => f.ident.name,
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
@@ -961,7 +961,7 @@ impl<'hir> Map<'hir> {
             Some(Node::ForeignItem(fi)) => Some(&fi.attrs[..]),
             Some(Node::TraitItem(ref ti)) => Some(&ti.attrs[..]),
             Some(Node::ImplItem(ref ii)) => Some(&ii.attrs[..]),
-            Some(Node::Variant(ref v)) => Some(&v.node.attrs[..]),
+            Some(Node::Variant(ref v)) => Some(&v.attrs[..]),
             Some(Node::Field(ref f)) => Some(&f.attrs[..]),
             Some(Node::Expr(ref e)) => Some(&*e.attrs),
             Some(Node::Stmt(ref s)) => Some(s.node.attrs()),
@@ -1155,7 +1155,7 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 
 impl Named for Item { fn name(&self) -> Name { self.ident.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
-impl Named for VariantKind { fn name(&self) -> Name { self.ident.name } }
+impl Named for Variant { fn name(&self) -> Name { self.ident.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
@@ -1332,7 +1332,7 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         }
         Some(Node::Variant(ref variant)) => {
             format!("variant {} in {}{}",
-                    variant.node.ident,
+                    variant.ident,
                     path_str(), id_str)
         }
         Some(Node::Field(ref field)) => {

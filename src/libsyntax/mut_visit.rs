@@ -456,7 +456,7 @@ pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: 
 }
 
 pub fn noop_visit_variant<T: MutVisitor>(variant: &mut Variant, vis: &mut T) {
-    let Spanned { node: Variant_ { ident, attrs, id, data, disr_expr }, span } = variant;
+    let Variant { ident, attrs, id, data, disr_expr, span } = variant;
     vis.visit_ident(ident);
     visit_attrs(attrs, vis);
     vis.visit_id(id);

@@ -130,10 +130,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         Enum {
             name,
             variants: def.variants.iter().map(|v| Variant {
-                name: v.node.ident.name,
-                id: v.node.id,
-                attrs: &v.node.attrs,
-                def: &v.node.data,
+                name: v.ident.name,
+                id: v.id,
+                attrs: &v.attrs,
+                def: &v.data,
                 whence: v.span,
             }).collect(),
             vis: &it.vis,

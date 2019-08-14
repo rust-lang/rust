@@ -2041,7 +2041,7 @@ pub struct EnumDef {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Variant_ {
+pub struct Variant {
     /// Name of the variant.
     pub ident: Ident,
     /// Attributes of the variant.
@@ -2052,9 +2052,9 @@ pub struct Variant_ {
     pub data: VariantData,
     /// Explicit discriminant, e.g., `Foo = 1`.
     pub disr_expr: Option<AnonConst>,
+    /// Span
+    pub span: Span,
 }
-
-pub type Variant = Spanned<Variant_>;
 
 /// Part of `use` item to the right of its prefix.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
