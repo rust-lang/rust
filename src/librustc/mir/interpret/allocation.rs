@@ -235,17 +235,17 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         let offset = ptr.offset.bytes() as usize;
-        match self.bytes[offset..].iter().position(|&c| c == 0) {
+        Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
                 let size_with_null = Size::from_bytes((size + 1) as u64);
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
                 // We read the null, so we include it in the request, but we want it removed
                 // from the result, so we do subslicing.
-                Ok(&self.get_bytes(cx, ptr, size_with_null)?[..size])
+                &self.get_bytes(cx, ptr, size_with_null)?[..size]
             }
             // This includes the case where `offset` is out-of-bounds to begin with.
-            None => err!(UnterminatedCString(ptr.erase_tag())),
-        }
+            None => throw_unsup!(UnterminatedCString(ptr.erase_tag())),
+        })
     }
 
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
@@ -446,7 +446,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         if self.relocations(cx, ptr, size).is_empty() {
             Ok(())
         } else {
-            err!(ReadPointerAsBytes)
+            throw_unsup!(ReadPointerAsBytes)
         }
     }
 
@@ -516,7 +516,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         self.undef_mask.is_range_defined(
             ptr.offset,
             ptr.offset + size,
-        ).or_else(|idx| err!(ReadUndefBytes(idx)))
+        ).or_else(|idx| throw_unsup!(ReadUndefBytes(idx)))
     }
 
     pub fn mark_definedness(

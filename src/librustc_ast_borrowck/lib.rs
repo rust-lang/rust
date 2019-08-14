@@ -1,8 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![allow(non_camel_case_types)]
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
 
 #![feature(in_band_lifetimes)]
 #![feature(nll)]

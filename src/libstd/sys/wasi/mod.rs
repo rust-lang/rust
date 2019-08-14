@@ -47,6 +47,8 @@ pub mod stdio;
 pub mod thread;
 #[path = "../wasm/thread_local.rs"]
 pub mod thread_local;
+#[path = "../wasm/fast_thread_local.rs"]
+pub mod fast_thread_local;
 pub mod time;
 pub mod ext;
 

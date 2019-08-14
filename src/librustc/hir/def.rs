@@ -1,4 +1,4 @@
-use crate::hir::def_id::DefId;
+use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::util::nodemap::DefIdMap;
 use syntax::ast;
 use syntax::ext::base::MacroKind;
@@ -55,15 +55,15 @@ pub enum DefKind {
     /// Refers to the variant itself, `DefKind::Ctor` refers to its constructor if it exists.
     Variant,
     Trait,
-    /// `existential type Foo: Bar;`
-    Existential,
+    /// `type Foo = impl Bar;`
+    OpaqueTy,
     /// `type Foo = Bar;`
     TyAlias,
     ForeignTy,
     TraitAlias,
     AssocTy,
-    /// `existential type Foo: Bar;`
-    AssocExistential,
+    /// `type Foo = impl Bar;`
+    AssocOpaqueTy,
     TyParam,
 
     // Value namespace
@@ -81,9 +81,11 @@ pub enum DefKind {
 }
 
 impl DefKind {
-    pub fn descr(self) -> &'static str {
+    pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
+            DefKind::Mod if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE =>
+                "crate",
             DefKind::Mod => "module",
             DefKind::Static => "static",
             DefKind::Enum => "enum",
@@ -96,11 +98,11 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) =>
                 bug!("impossible struct constructor"),
-            DefKind::Existential => "existential type",
+            DefKind::OpaqueTy => "opaque type",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
             DefKind::AssocTy => "associated type",
-            DefKind::AssocExistential => "associated existential type",
+            DefKind::AssocOpaqueTy => "associated opaque type",
             DefKind::Union => "union",
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
@@ -118,9 +120,9 @@ impl DefKind {
         match *self {
             DefKind::AssocTy
             | DefKind::AssocConst
-            | DefKind::AssocExistential
+            | DefKind::AssocOpaqueTy
             | DefKind::Enum
-            | DefKind::Existential => "an",
+            | DefKind::OpaqueTy => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
             _ => "a",
         }
@@ -366,7 +368,7 @@ impl<Id> Res<Id> {
     /// A human readable name for the res kind ("function", "module", etc.).
     pub fn descr(&self) -> &'static str {
         match *self {
-            Res::Def(kind, _) => kind.descr(),
+            Res::Def(kind, def_id) => kind.descr(def_id),
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",

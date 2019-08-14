@@ -7,7 +7,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::middle::region;
-use rustc::mir::interpret::PanicMessage;
+use rustc::mir::interpret::PanicInfo;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
 use syntax_pos::Span;
@@ -101,7 +101,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Operand::Move(is_min),
                         false,
-                        PanicMessage::OverflowNeg,
+                        PanicInfo::OverflowNeg,
                         expr_span,
                     );
                 }
@@ -401,7 +401,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val = result_value.clone().field(val_fld, ty);
             let of = result_value.field(of_fld, bool_ty);
 
-            let err = PanicMessage::Overflow(op);
+            let err = PanicInfo::Overflow(op);
 
             block = self.assert(block, Operand::Move(of), false, err, span);
 
@@ -412,11 +412,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
                 let zero_err = if op == BinOp::Div {
-                    PanicMessage::DivisionByZero
+                    PanicInfo::DivisionByZero
                 } else {
-                    PanicMessage::RemainderByZero
+                    PanicInfo::RemainderByZero
                 };
-                let overflow_err = PanicMessage::Overflow(op);
+                let overflow_err = PanicInfo::Overflow(op);
 
                 // Check for / 0
                 let is_zero = self.temp(bool_ty, span);

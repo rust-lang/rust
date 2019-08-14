@@ -17,6 +17,9 @@ use std::str;
 use crate::hygiene::SyntaxContext;
 use crate::{Span, DUMMY_SP, GLOBALS};
 
+#[cfg(test)]
+mod tests;
+
 symbols! {
     // After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
     // this should be rarely necessary though if the keywords are kept in alphabetic order.
@@ -95,7 +98,6 @@ symbols! {
         Auto:               "auto",
         Catch:              "catch",
         Default:            "default",
-        Existential:        "existential",
         Union:              "union",
     }
 
@@ -410,6 +412,7 @@ symbols! {
         match_beginning_vert,
         match_default_bindings,
         may_dangle,
+        mem,
         member_constraints,
         message,
         meta,
@@ -563,7 +566,6 @@ symbols! {
         rustc_clean,
         rustc_const_unstable,
         rustc_conversion_suggestion,
-        rustc_copy_clone_marker,
         rustc_def_path,
         rustc_deprecated,
         rustc_diagnostic_macros,
@@ -677,6 +679,7 @@ symbols! {
         tuple_indexing,
         Ty,
         ty,
+        type_alias_impl_trait,
         TyCtxt,
         TyKind,
         type_alias_enum_variants,
@@ -693,6 +696,7 @@ symbols! {
         underscore_imports,
         underscore_lifetimes,
         uniform_paths,
+        uninitialized,
         universal_impl_trait,
         unmarked_api,
         unreachable_code,
@@ -724,6 +728,7 @@ symbols! {
         windows,
         windows_subsystem,
         Yield,
+        zeroed,
     }
 }
 
@@ -1343,41 +1348,5 @@ impl Decodable for InternedString {
 impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         self.with(|string| s.emit_str(string))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Globals;
-    use crate::edition;
-
-    #[test]
-    fn interner_tests() {
-        let mut i: Interner = Interner::default();
-        // first one is zero:
-        assert_eq!(i.intern("dog"), Symbol::new(0));
-        // re-use gets the same entry:
-        assert_eq!(i.intern("dog"), Symbol::new(0));
-        // different string gets a different #:
-        assert_eq!(i.intern("cat"), Symbol::new(1));
-        assert_eq!(i.intern("cat"), Symbol::new(1));
-        // dog is still at zero
-        assert_eq!(i.intern("dog"), Symbol::new(0));
-        let z = i.intern("zebra");
-        assert_eq!(i.gensymed(z), Symbol::new(SymbolIndex::MAX_AS_U32));
-        // gensym of same string gets new number:
-        assert_eq!(i.gensymed(z), Symbol::new(SymbolIndex::MAX_AS_U32 - 1));
-        // gensym of *existing* string gets new number:
-        let d = i.intern("dog");
-        assert_eq!(i.gensymed(d), Symbol::new(SymbolIndex::MAX_AS_U32 - 2));
-    }
-
-    #[test]
-    fn without_first_quote_test() {
-        GLOBALS.set(&Globals::new(edition::DEFAULT_EDITION), || {
-            let i = Ident::from_str("'break");
-            assert_eq!(i.without_first_quote().name, kw::Break);
-        });
     }
 }

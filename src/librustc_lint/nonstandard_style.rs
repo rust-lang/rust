@@ -137,7 +137,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
         }
 
         match it.node {
-            ast::ItemKind::Ty(..) |
+            ast::ItemKind::TyAlias(..) |
             ast::ItemKind::Enum(..) |
             ast::ItemKind::Struct(..) |
             ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),

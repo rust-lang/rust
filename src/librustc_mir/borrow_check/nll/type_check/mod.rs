@@ -1,7 +1,5 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 
-#![allow(unreachable_code)]
-
 use crate::borrow_check::borrow_set::BorrowSet;
 use crate::borrow_check::location::LocationTable;
 use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConstraint};
@@ -28,7 +26,7 @@ use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::mir::interpret::{ConstValue, PanicMessage};
+use rustc::mir::interpret::{ConstValue, PanicInfo};
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, NonMutatingUseContext};
 use rustc::mir::*;
@@ -671,7 +669,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             ProjectionElem::Subslice { from, to } => PlaceTy::from_ty(
                 match base_ty.sty {
                     ty::Array(inner, size) => {
-                        let size = size.unwrap_usize(tcx);
+                        let size = size.eval_usize(tcx, self.cx.param_env);
                         let min_size = (from as u64) + (to as u64);
                         if let Some(rest_size) = size.checked_sub(min_size) {
                             tcx.mk_array(inner, rest_size)
@@ -1216,10 +1214,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         for proj in &user_ty.projs {
-            let projected_ty = curr_projected_ty.projection_ty_core(tcx, proj, |this, field, &()| {
-                let ty = this.field_ty(tcx, field);
-                self.normalize(ty, locations)
-            });
+            let projected_ty = curr_projected_ty.projection_ty_core(
+                tcx,
+                self.param_env,
+                proj,
+                |this, field, &()| {
+                    let ty = this.field_ty(tcx, field);
+                    self.normalize(ty, locations)
+                },
+            );
             curr_projected_ty = projected_ty;
         }
         debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
@@ -1281,15 +1284,43 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let opaque_defn_ty = tcx.type_of(opaque_def_id);
                         let opaque_defn_ty = opaque_defn_ty.subst(tcx, opaque_decl.substs);
                         let opaque_defn_ty = renumber::renumber_regions(infcx, &opaque_defn_ty);
+                        let concrete_is_opaque = infcx
+                            .resolve_vars_if_possible(&opaque_decl.concrete_ty).is_impl_trait();
+
                         debug!(
-                            "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
+                            "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?} \
+                            concrete_is_opaque={}",
                             opaque_decl.concrete_ty,
                             infcx.resolve_vars_if_possible(&opaque_decl.concrete_ty),
-                            opaque_defn_ty
+                            opaque_defn_ty,
+                            concrete_is_opaque
                         );
-                        obligations.add(infcx
-                            .at(&ObligationCause::dummy(), param_env)
-                            .eq(opaque_decl.concrete_ty, opaque_defn_ty)?);
+
+                        // concrete_is_opaque is `true` when we're using an opaque `impl Trait`
+                        // type without 'revealing' it. For example, code like this:
+                        //
+                        // type Foo = impl Debug;
+                        // fn foo1() -> Foo { ... }
+                        // fn foo2() -> Foo { foo1() }
+                        //
+                        // In `foo2`, we're not revealing the type of `Foo` - we're
+                        // just treating it as the opaque type.
+                        //
+                        // When this occurs, we do *not* want to try to equate
+                        // the concrete type with the underlying defining type
+                        // of the opaque type - this will always fail, since
+                        // the defining type of an opaque type is always
+                        // some other type (e.g. not itself)
+                        // Essentially, none of the normal obligations apply here -
+                        // we're just passing around some unknown opaque type,
+                        // without actually looking at the underlying type it
+                        // gets 'revealed' into
+
+                        if !concrete_is_opaque {
+                            obligations.add(infcx
+                                .at(&ObligationCause::dummy(), param_env)
+                                .eq(opaque_decl.concrete_ty, opaque_defn_ty)?);
+                        }
                     }
 
                     debug!("eq_opaque_type_and_type: equated");
@@ -1606,7 +1637,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
-                if let PanicMessage::BoundsCheck { ref len, ref index } = *msg {
+                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
                     if len.ty(body, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }

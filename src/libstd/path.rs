@@ -317,7 +317,7 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
 
 // Detect scheme on Redox
 fn has_redox_scheme(s: &[u8]) -> bool {
-    cfg!(target_os = "redox") && s.split(|b| *b == b'/').next().unwrap_or(b"").contains(&b':')
+    cfg!(target_os = "redox") && s.contains(&b':')
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,6 +1123,12 @@ impl FusedIterator for Ancestors<'_> {}
 /// Which method works best depends on what kind of situation you're in.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
+// FIXME:
+// `PathBuf::as_mut_vec` current implementation relies
+// on `PathBuf` being layout-compatible with `Vec<u8>`.
+// When attribute privacy is implemented, `PathBuf` should be annotated as `#[repr(transparent)]`.
+// Anyway, `PathBuf` representation and layout are considered implementation detail, are
+// not documented and must not be relied upon.
 pub struct PathBuf {
     inner: OsString,
 }
@@ -1745,6 +1751,12 @@ impl AsRef<OsStr> for PathBuf {
 /// assert_eq!(extension, Some(OsStr::new("txt")));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+// FIXME:
+// `Path::new` current implementation relies
+// on `Path` being layout-compatible with `OsStr`.
+// When attribute privacy is implemented, `Path` should be annotated as `#[repr(transparent)]`.
+// Anyway, `Path` representation and layout are considered implementation detail, are
+// not documented and must not be relied upon.
 pub struct Path {
     inner: OsStr,
 }
@@ -1819,6 +1831,8 @@ impl Path {
     /// Yields a [`&str`] slice if the `Path` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
+    /// Note that validation is performed because non-UTF-8 strings are
+    /// perfectly valid for some OS.
     ///
     /// [`&str`]: ../primitive.str.html
     ///

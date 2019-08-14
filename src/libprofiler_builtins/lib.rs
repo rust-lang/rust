@@ -7,4 +7,3 @@
 #![allow(unused_features)]
 #![feature(nll)]
 #![feature(staged_api)]
-#![deny(rust_2018_idioms)]

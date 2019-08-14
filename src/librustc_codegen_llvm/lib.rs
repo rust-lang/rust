@@ -12,7 +12,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
-#![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
@@ -22,17 +21,15 @@
 #![feature(static_nobundle)]
 #![feature(trusted_len)]
 #![feature(mem_take)]
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
 
 use back::write::{create_target_machine, create_informational_target_machine};
 use syntax_pos::symbol::Symbol;
 
+extern crate rustc_demangle;
 extern crate flate2;
 #[macro_use] extern crate bitflags;
 extern crate libc;
 #[macro_use] extern crate rustc;
-extern crate rustc_allocator;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate rustc_incremental;
@@ -52,13 +49,13 @@ use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModul
 use rustc_codegen_ssa::CompiledModule;
 use errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
+use syntax::ext::allocator::AllocatorKind;
 use syntax_pos::symbol::InternedString;
 pub use llvm_util::target_features;
 use std::any::Any;
 use std::sync::{mpsc, Arc};
 
 use rustc::dep_graph::DepGraph;
-use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::session::Session;
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest, OptLevel};

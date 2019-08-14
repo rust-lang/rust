@@ -30,15 +30,17 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("dragonfly") {
         println!("cargo:rustc-link-lib=gcc_pic");
-    } else if target.contains("windows-gnu") {
+    } else if target.contains("pc-windows-gnu") {
         println!("cargo:rustc-link-lib=static-nobundle=gcc_eh");
         println!("cargo:rustc-link-lib=static-nobundle=pthread");
+    } else if target.contains("uwp-windows-gnu") {
+        println!("cargo:rustc-link-lib=unwind");
     } else if target.contains("fuchsia") {
         println!("cargo:rustc-link-lib=unwind");
     } else if target.contains("haiku") {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("redox") {
-        println!("cargo:rustc-link-lib=gcc");
+        // redox is handled in lib.rs
     } else if target.contains("cloudabi") {
         println!("cargo:rustc-link-lib=unwind");
     }

@@ -4,8 +4,9 @@ use crate::attr::{self, HasAttrs};
 use crate::source_map::{dummy_spanned, respan};
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
-use crate::ext::derive::{add_derived_markers, collect_derives};
+use crate::ext::proc_macro::collect_derives;
 use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind};
+use crate::ext::tt::macro_rules::annotate_err_with_kind;
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use crate::mut_visit::*;
@@ -209,7 +210,6 @@ pub enum InvocationKind {
     Derive {
         path: Path,
         item: Annotatable,
-        item_with_markers: Annotatable,
     },
     /// "Invocation" that contains all derives from an item,
     /// broken into multiple `Derive` invocations when expanded.
@@ -360,8 +360,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                 let mut item = self.fully_configure(item);
                 item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
-                let mut item_with_markers = item.clone();
-                add_derived_markers(&mut self.cx, item.span(), &traits, &mut item_with_markers);
                 let derives = derives.entry(invoc.expansion_data.id).or_default();
 
                 derives.reserve(traits.len());
@@ -370,11 +368,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let expn_id = ExpnId::fresh(self.cx.current_expansion.id, None);
                     derives.push(expn_id);
                     invocations.push(Invocation {
-                        kind: InvocationKind::Derive {
-                            path,
-                            item: item.clone(),
-                            item_with_markers: item_with_markers.clone(),
-                        },
+                        kind: InvocationKind::Derive { path, item: item.clone() },
                         fragment_kind: invoc.fragment_kind,
                         expansion_data: ExpansionData {
                             id: expn_id,
@@ -383,7 +377,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     });
                 }
                 let fragment = invoc.fragment_kind
-                    .expect_from_annotatables(::std::iter::once(item_with_markers));
+                    .expect_from_annotatables(::std::iter::once(item));
                 self.collect_invocations(fragment, derives)
             } else {
                 unreachable!()
@@ -517,8 +511,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     result
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
+                    let prev = self.cx.current_expansion.prior_type_ascription;
+                    self.cx.current_expansion.prior_type_ascription =
+                        mac.node.prior_type_ascription;
                     let tok_result = expander.expand(self.cx, span, mac.node.stream());
-                    if let Some(result) = fragment_kind.make_from(tok_result) {
+                    let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
                         let msg = format!("non-{kind} macro in {kind} position: {path}",
@@ -526,7 +523,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.span_err(span, &msg);
                         self.cx.trace_macros_diag();
                         fragment_kind.dummy(span)
-                    }
+                    };
+                    self.cx.current_expansion.prior_type_ascription = prev;
+                    result
                 }
                 _ => unreachable!()
             }
@@ -569,13 +568,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!()
             }
-            InvocationKind::Derive { path, item, item_with_markers } => match ext {
+            InvocationKind::Derive { path, item } => match ext {
                 SyntaxExtensionKind::Derive(expander) |
                 SyntaxExtensionKind::LegacyDerive(expander) => {
-                    let (path, item) = match ext {
-                        SyntaxExtensionKind::LegacyDerive(..) => (path, item_with_markers),
-                        _ => (path, item),
-                    };
                     if !item.derive_allowed() {
                         return fragment_kind.dummy(span);
                     }
@@ -692,12 +687,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         );
     }
 
-    fn parse_ast_fragment(&mut self,
-                          toks: TokenStream,
-                          kind: AstFragmentKind,
-                          path: &Path,
-                          span: Span)
-                          -> AstFragment {
+    fn parse_ast_fragment(
+        &mut self,
+        toks: TokenStream,
+        kind: AstFragmentKind,
+        path: &Path,
+        span: Span,
+    ) -> AstFragment {
         let mut parser = self.cx.new_parser_from_tts(&toks.into_trees().collect::<Vec<_>>());
         match parser.parse_ast_fragment(kind, false) {
             Ok(fragment) => {
@@ -706,6 +702,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             Err(mut err) => {
                 err.set_span(span);
+                annotate_err_with_kind(&mut err, kind, span);
                 err.emit();
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
@@ -1253,7 +1250,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                         return noop_visit_attribute(at, self);
                     }
 
-                    let filename = self.cx.root_path.join(file.to_string());
+                    let filename = self.cx.resolve_path(&*file.as_str(), it.span());
                     match fs::read_to_string(&filename) {
                         Ok(src) => {
                             let src_interned = Symbol::intern(&src);
@@ -1278,7 +1275,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             ];
 
                             let include_ident = Ident::with_empty_ctxt(sym::include);
-                            let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
+                            let item = attr::mk_list_item(include_ident, include_info);
                             items.push(ast::NestedMetaItem::MetaItem(item));
                         }
                         Err(e) => {
@@ -1301,10 +1298,6 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                     &format!("couldn't read {}: {}", filename.display(), e),
                                 );
                                 err.span_label(lit.span, "couldn't read file");
-
-                                if e.kind() == ErrorKind::NotFound {
-                                    err.help("external doc paths are relative to the crate root");
-                                }
 
                                 err.emit();
                             }
@@ -1343,11 +1336,15 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 }
             }
 
-            let meta = attr::mk_list_item(DUMMY_SP, Ident::with_empty_ctxt(sym::doc), items);
-            match at.style {
-                ast::AttrStyle::Inner => *at = attr::mk_spanned_attr_inner(at.span, at.id, meta),
-                ast::AttrStyle::Outer => *at = attr::mk_spanned_attr_outer(at.span, at.id, meta),
-            }
+            let meta = attr::mk_list_item(Ident::with_empty_ctxt(sym::doc), items);
+            *at = attr::Attribute {
+                span: at.span,
+                id: at.id,
+                style: at.style,
+                path: meta.path,
+                tokens: meta.node.tokens(meta.span),
+                is_sugared_doc: false,
+            };
         } else {
             noop_visit_attribute(at, self)
         }

@@ -9,6 +9,7 @@ use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 use rustc_data_structures::newtype_index;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use syntax_pos::symbol::{sym, Symbol};
+use syntax_pos::Span;
 
 pub mod call;
 
@@ -105,20 +106,34 @@ impl TargetDataLayout {
         let mut dl = TargetDataLayout::default();
         let mut i128_align_src = 64;
         for spec in target.data_layout.split('-') {
-            match spec.split(':').collect::<Vec<_>>()[..] {
+            let spec_parts = spec.split(':').collect::<Vec<_>>();
+
+            match &*spec_parts {
                 ["e"] => dl.endian = Endian::Little,
                 ["E"] => dl.endian = Endian::Big,
                 [p] if p.starts_with("P") => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
-                ["a", ref a..] => dl.aggregate_align = align(a, "a")?,
-                ["f32", ref a..] => dl.f32_align = align(a, "f32")?,
-                ["f64", ref a..] => dl.f64_align = align(a, "f64")?,
-                [p @ "p", s, ref a..] | [p @ "p0", s, ref a..] => {
+                // FIXME: Ping cfg(bootstrap) -- Use `ref a @ ..` with new bootstrap compiler.
+                ["a", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.aggregate_align = align(a, "a")?
+                }
+                ["f32", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.f32_align = align(a, "f32")?
+                }
+                ["f64", ..] => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
+                    dl.f64_align = align(a, "f64")?
+                }
+                [p @ "p", s, ..] | [p @ "p0", s, ..] => {
+                    let a = &spec_parts[2..]; // FIXME inline into pattern.
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
                 }
-                [s, ref a..] if s.starts_with("i") => {
+                [s, ..] if s.starts_with("i") => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
                     let bits = match s[1..].parse::<u64>() {
                         Ok(bits) => bits,
                         Err(_) => {
@@ -142,7 +157,8 @@ impl TargetDataLayout {
                         dl.i128_align = a;
                     }
                 }
-                [s, ref a..] if s.starts_with("v") => {
+                [s, ..] if s.starts_with("v") => {
+                    let a = &spec_parts[1..]; // FIXME inline into pattern.
                     let v_size = size(&s[1..], "v")?;
                     let a = align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
@@ -878,23 +894,94 @@ pub enum DiscriminantKind {
     },
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Niche {
+    pub offset: Size,
+    pub scalar: Scalar,
+}
+
+impl Niche {
+    pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
+        let niche = Niche {
+            offset,
+            scalar,
+        };
+        if niche.available(cx) > 0 {
+            Some(niche)
+        } else {
+            None
+        }
+    }
+
+    pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
+        let Scalar { value, valid_range: ref v } = self.scalar;
+        let bits = value.size(cx).bits();
+        assert!(bits <= 128);
+        let max_value = !0u128 >> (128 - bits);
+
+        // Find out how many values are outside the valid range.
+        let niche = v.end().wrapping_add(1)..*v.start();
+        niche.end.wrapping_sub(niche.start) & max_value
+    }
+
+    pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
+        assert!(count > 0);
+
+        let Scalar { value, valid_range: ref v } = self.scalar;
+        let bits = value.size(cx).bits();
+        assert!(bits <= 128);
+        let max_value = !0u128 >> (128 - bits);
+
+        if count > max_value {
+            return None;
+        }
+
+        // Compute the range of invalid values being reserved.
+        let start = v.end().wrapping_add(1) & max_value;
+        let end = v.end().wrapping_add(count) & max_value;
+
+        // If the `end` of our range is inside the valid range,
+        // then we ran out of invalid values.
+        // FIXME(eddyb) abstract this with a wraparound range type.
+        let valid_range_contains = |x| {
+            if v.start() <= v.end() {
+                *v.start() <= x && x <= *v.end()
+            } else {
+                *v.start() <= x || x <= *v.end()
+            }
+        };
+        if valid_range_contains(end) {
+            return None;
+        }
+
+        Some((start, Scalar { value, valid_range: *v.start()..=end }))
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct LayoutDetails {
     pub variants: Variants,
     pub fields: FieldPlacement,
     pub abi: Abi,
+
+    /// The leaf scalar with the largest number of invalid values
+    /// (i.e. outside of its `valid_range`), if it exists.
+    pub largest_niche: Option<Niche>,
+
     pub align: AbiAndPrefAlign,
     pub size: Size
 }
 
 impl LayoutDetails {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
+        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
+            largest_niche,
             size,
             align,
         }
@@ -926,6 +1013,9 @@ pub trait LayoutOf {
     type TyLayout;
 
     fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
+    fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyLayout {
+        self.layout_of(ty)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

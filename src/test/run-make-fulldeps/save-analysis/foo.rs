@@ -418,8 +418,9 @@ impl Error + 'static + Send {
         <Error + 'static>::is::<T>(self)
     }
 }
-extern crate serialize;
-#[derive(Clone, Copy, Hash, Encodable, Decodable, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+extern crate serialize as rustc_serialize;
+#[derive(Clone, Copy, Hash, RustcEncodable, RustcDecodable,
+         PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
 struct AllDerives(i32);
 
 fn test_format_args() {

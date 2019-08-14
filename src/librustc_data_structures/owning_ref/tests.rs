@@ -274,7 +274,9 @@ mod owning_handle {
         use std::cell::RefCell;
         let cell = Rc::new(RefCell::new(2));
         let cell_ref = RcRef::new(cell);
-        let mut handle = OwningHandle::new_with_fn(cell_ref, |x| unsafe { x.as_ref() }.unwrap().borrow_mut());
+        let mut handle = OwningHandle::new_with_fn(cell_ref, |x| {
+            unsafe { x.as_ref() }.unwrap().borrow_mut()
+        });
         assert_eq!(*handle, 2);
         *handle = 3;
         assert_eq!(*handle, 3);
@@ -319,8 +321,12 @@ mod owning_handle {
         let result = {
             let complex = Rc::new(RefCell::new(Arc::new(RwLock::new("someString"))));
             let curr = RcRef::new(complex);
-            let curr = OwningHandle::new_with_fn(curr, |x| unsafe { x.as_ref() }.unwrap().borrow_mut());
-            let mut curr = OwningHandle::new_with_fn(curr, |x| unsafe { x.as_ref() }.unwrap().try_write().unwrap());
+            let curr = OwningHandle::new_with_fn(curr, |x| {
+                unsafe { x.as_ref() }.unwrap().borrow_mut()
+            });
+            let mut curr = OwningHandle::new_with_fn(curr, |x| {
+                unsafe { x.as_ref() }.unwrap().try_write().unwrap()
+            });
             assert_eq!(*curr, "someString");
             *curr = "someOtherString";
             curr
@@ -353,8 +359,12 @@ mod owning_handle {
         let result = {
             let complex = Rc::new(RefCell::new(Arc::new(RwLock::new("someString"))));
             let curr = RcRef::new(complex);
-            let curr = OwningHandle::new_with_fn(curr, |x| unsafe { x.as_ref() }.unwrap().borrow_mut());
-            let mut curr = OwningHandle::new_with_fn(curr, |x| unsafe { x.as_ref() }.unwrap().try_write().unwrap());
+            let curr = OwningHandle::new_with_fn(curr, |x| {
+                unsafe { x.as_ref() }.unwrap().borrow_mut()
+            });
+            let mut curr = OwningHandle::new_with_fn(curr, |x| {
+                unsafe { x.as_ref() }.unwrap().try_write().unwrap()
+            });
             assert_eq!(*curr, "someString");
             *curr = "someOtherString";
             curr

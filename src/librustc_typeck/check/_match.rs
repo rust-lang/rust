@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // For each ampersand peeled off, update the binding mode and push the original
             // type into the adjustments vector.
             //
-            // See the examples in `run-pass/match-defbm*.rs`.
+            // See the examples in `ui/match-defbm*.rs`.
             let mut pat_adjustments = vec![];
             while let ty::Ref(_, inner_ty, inner_mutability) = exp_ty.sty {
                 debug!("inspecting {:?}", exp_ty);
@@ -196,7 +196,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let rhs_ty = self.check_expr(end);
 
                 // Check that both end-points are of numeric or char type.
-                let numeric_or_char = |ty: Ty<'_>| ty.is_numeric() || ty.is_char();
+                let numeric_or_char = |ty: Ty<'_>| {
+                    ty.is_numeric()
+                    || ty.is_char()
+                    || ty.references_error()
+                };
                 let lhs_compat = numeric_or_char(lhs_ty);
                 let rhs_compat = numeric_or_char(rhs_ty);
 
@@ -419,7 +423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 let (inner_ty, slice_ty) = match expected_ty.sty {
                     ty::Array(inner_ty, size) => {
-                        if let Some(size) = size.assert_usize(tcx) {
+                        if let Some(size) = size.try_eval_usize(tcx, self.param_env) {
                             let min_len = before.len() as u64 + after.len() as u64;
                             if slice.is_none() {
                                 if min_len != size {
@@ -551,21 +555,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
         if let PatKind::Binding(..) = inner.node {
-            let parent_id = tcx.hir().get_parent_node(pat.hir_id);
-            let parent = tcx.hir().get(parent_id);
-            debug!("inner {:?} pat {:?} parent {:?}", inner, pat, parent);
-            match parent {
-                hir::Node::Item(hir::Item { node: hir::ItemKind::Fn(..), .. }) |
-                hir::Node::ForeignItem(hir::ForeignItem {
-                    node: hir::ForeignItemKind::Fn(..), ..
-                }) |
-                hir::Node::TraitItem(hir::TraitItem { node: hir::TraitItemKind::Method(..), .. }) |
-                hir::Node::ImplItem(hir::ImplItem { node: hir::ImplItemKind::Method(..), .. }) => {
-                    // this pat is likely an argument
+            let binding_parent_id = tcx.hir().get_parent_node(pat.hir_id);
+            let binding_parent = tcx.hir().get(binding_parent_id);
+            debug!("inner {:?} pat {:?} parent {:?}", inner, pat, binding_parent);
+            match binding_parent {
+                hir::Node::Arg(hir::Arg { span, .. }) => {
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
-                        // FIXME: turn into structured suggestion, will need a span that also
-                        // includes the the arg's type.
-                        err.help(&format!("did you mean `{}: &{}`?", snippet, expected));
+                        err.span_suggestion(
+                            *span,
+                            &format!("did you mean `{}`", snippet),
+                            format!(" &{}", expected),
+                            Applicability::MachineApplicable,
+                        );
                     }
                 }
                 hir::Node::Arm(_) |

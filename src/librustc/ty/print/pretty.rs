@@ -6,12 +6,13 @@ use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, UnpackedKind};
-use crate::ty::layout::Size;
-use crate::mir::interpret::{ConstValue, sign_extend, Scalar};
+use crate::ty::layout::{Integer, IntegerExt, Size};
+use crate::mir::interpret::{ConstValue, sign_extend, Scalar, truncate};
 use syntax::ast;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_target::spec::abi::Abi;
+use syntax::attr::{SignedInt, UnsignedInt};
 use syntax::symbol::{kw, InternedString};
 
 use std::cell::Cell;
@@ -696,7 +697,12 @@ pub trait PrettyPrinter<'tcx>:
             },
             ty::Array(ty, sz) => {
                 p!(write("["), print(ty), write("; "));
-                if let Some(n) = sz.assert_usize(self.tcx()) {
+                if let ConstValue::Unevaluated(..) = sz.val {
+                    // do not try to evalute unevaluated constants. If we are const evaluating an
+                    // array length anon const, rustc will (with debug assertions) print the
+                    // constant's path. Which will end up here again.
+                    p!(write("_"));
+                } else if let Some(n) = sz.try_eval_usize(self.tcx(), ty::ParamEnv::empty()) {
                     p!(write("{}", n));
                 } else {
                     p!(write("_"));
@@ -894,15 +900,31 @@ pub trait PrettyPrinter<'tcx>:
                     return Ok(self);
                 },
                 ty::Uint(ui) => {
-                    p!(write("{}{}", data, ui));
+                    let bit_size = Integer::from_attr(&self.tcx(), UnsignedInt(ui)).size();
+                    let max = truncate(u128::max_value(), bit_size);
+
+                    if data == max {
+                        p!(write("std::{}::MAX", ui))
+                    } else {
+                        p!(write("{}{}", data, ui))
+                    };
                     return Ok(self);
                 },
                 ty::Int(i) =>{
+                    let bit_size = Integer::from_attr(&self.tcx(), SignedInt(i))
+                        .size().bits() as u128;
+                    let min = 1u128 << (bit_size - 1);
+                    let max = min - 1;
+
                     let ty = self.tcx().lift_to_global(&ct.ty).unwrap();
                     let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
                         .unwrap()
                         .size;
-                    p!(write("{}{}", sign_extend(data, size) as i128, i));
+                    match data {
+                        d if d == min => p!(write("std::{}::MIN", i)),
+                        d if d == max => p!(write("std::{}::MAX", i)),
+                        _ => p!(write("{}{}", sign_extend(data, size) as i128, i))
+                    }
                     return Ok(self);
                 },
                 ty::Char => {
@@ -915,7 +937,7 @@ pub trait PrettyPrinter<'tcx>:
         if let ty::Ref(_, ref_ty, _) = ct.ty.sty {
             let byte_str = match (ct.val, &ref_ty.sty) {
                 (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
-                    let n = n.unwrap_usize(self.tcx());
+                    let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
                     Some(self.tcx()
                         .alloc_map.lock()
                         .unwrap_memory(ptr.alloc_id)

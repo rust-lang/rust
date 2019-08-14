@@ -1,4 +1,3 @@
-//use crate::boxed::FnBox;
 use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
@@ -9,10 +8,7 @@ use crate::time::Duration;
 
 use crate::sys_common::thread::*;
 
-#[cfg(not(target_os = "l4re"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
-#[cfg(target_os = "l4re")]
-pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
 
 pub struct Thread {
     id: libc::pthread_t,
@@ -25,16 +21,9 @@ unsafe impl Sync for Thread {}
 
 // The pthread_attr_setstacksize symbol doesn't exist in the emscripten libc,
 // so we have to not link to it to satisfy emcc's ERROR_ON_UNDEFINED_SYMBOLS.
-#[cfg(not(target_os = "emscripten"))]
 unsafe fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,
                                     stack_size: libc::size_t) -> libc::c_int {
     libc::pthread_attr_setstacksize(attr, stack_size)
-}
-
-#[cfg(target_os = "emscripten")]
-unsafe fn pthread_attr_setstacksize(_attr: *mut libc::pthread_attr_t,
-                                    _stack_size: libc::size_t) -> libc::c_int {
-    panic!()
 }
 
 impl Thread {
@@ -149,31 +138,6 @@ pub mod guard {
     pub unsafe fn deinit() {}
 }
 
-// glibc >= 2.15 has a __pthread_get_minstack() function that returns
-// PTHREAD_STACK_MIN plus however many bytes are needed for thread-local
-// storage.  We need that information to avoid blowing up when a small stack
-// is created in an application with big thread-local storage requirements.
-// See #6233 for rationale and details.
-#[cfg(target_os = "linux")]
-#[allow(deprecated)]
-fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
-    weak!(fn __pthread_get_minstack(*const libc::pthread_attr_t) -> libc::size_t);
-
-    match __pthread_get_minstack.get() {
-        None => libc::PTHREAD_STACK_MIN,
-        Some(f) => unsafe { f(attr) },
-    }
-}
-
-// No point in looking up __pthread_get_minstack() on non-glibc
-// platforms.
-#[cfg(all(not(target_os = "linux"),
-          not(target_os = "netbsd")))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
     libc::PTHREAD_STACK_MIN
-}
-
-#[cfg(target_os = "netbsd")]
-fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    2048 // just a guess
 }

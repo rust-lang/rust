@@ -5,7 +5,6 @@
 // libsyntax is not compiled for it.
 
 #![deny(plugin_as_library)]
-#![allow(unused_extern_crates)]
 
 extern crate attr_plugin_test; //~ ERROR compiler plugin used as an ordinary library
 

@@ -707,10 +707,25 @@ extern "rust-intrinsic" {
                          they should be used through stabilized interfaces \
                          in the rest of the standard library",
                issue = "0")]
-    #[rustc_deprecated(reason = "no longer used by rustc, will be removed - use MaybeUninit \
-                                 instead",
+    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned",
                        since = "1.38.0")]
     pub fn init<T>() -> T;
+
+    /// Creates an uninitialized value.
+    ///
+    /// `uninit` is unsafe because there is no guarantee of what its
+    /// contents are. In particular its drop-flag may be set to any
+    /// state, which means it may claim either dropped or
+    /// undropped. In the general case one must use `ptr::write` to
+    /// initialize memory previous set to the result of `uninit`.
+    #[unstable(feature = "core_intrinsics",
+               reason = "intrinsics are unlikely to ever be stabilized, instead \
+                         they should be used through stabilized interfaces \
+                         in the rest of the standard library",
+               issue = "0")]
+    #[rustc_deprecated(reason = "superseded by MaybeUninit, removal planned",
+                       since = "1.38.0")]
+    pub fn uninit<T>() -> T;
 
     /// Moves a value out of scope without running drop glue.
     pub fn forget<T: ?Sized>(_: T);
@@ -1333,7 +1348,6 @@ pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size_of::<T>()` overlap.
-#[cfg(not(miri))] // Cannot compare with `>` across allocations in Miri
 fn overlaps<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src as usize;
     let dst_usize = dst as usize;
@@ -1438,7 +1452,6 @@ pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
 
     debug_assert!(is_aligned_and_not_null(src), "attempt to copy from unaligned or null pointer");
     debug_assert!(is_aligned_and_not_null(dst), "attempt to copy to unaligned or null pointer");
-    #[cfg(not(miri))]
     debug_assert!(!overlaps(src, dst, count), "attempt to copy to overlapping memory");
     copy_nonoverlapping(src, dst, count)
 }

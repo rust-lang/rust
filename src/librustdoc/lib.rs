@@ -1,6 +1,3 @@
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
@@ -47,7 +44,6 @@ use std::default::Default;
 use std::env;
 use std::panic;
 use std::process;
-use std::sync::mpsc::channel;
 
 use rustc::session::{early_warn, early_error};
 use rustc::session::config::{ErrorOutputType, RustcOptGroup};
@@ -83,7 +79,6 @@ struct Output {
     krate: clean::Crate,
     renderinfo: html::render::RenderInfo,
     renderopts: config::RenderOptions,
-    passes: Vec<String>,
 }
 
 pub fn main() {
@@ -289,6 +284,12 @@ fn opts() -> Vec<RustcOptGroup> {
                      "How errors and other messages are produced",
                      "human|json|short")
         }),
+        stable("json", |o| {
+            o.optopt("",
+                     "json",
+                     "Configure the structure of JSON diagnostics",
+                     "CONFIG")
+        }),
         unstable("disable-minification", |o| {
              o.optflag("",
                        "disable-minification",
@@ -416,14 +417,13 @@ fn main_options(options: config::Options) -> i32 {
             return rustc_driver::EXIT_SUCCESS;
         }
 
-        let Output { krate, passes, renderinfo, renderopts } = out;
+        let Output { krate, renderinfo, renderopts } = out;
         info!("going to format");
         let (error_format, treat_err_as_bug, ui_testing, edition) = diag_opts;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
         match html::render::run(
             krate,
             renderopts,
-            passes.into_iter().collect(),
             renderinfo,
             &diag,
             edition,
@@ -451,12 +451,10 @@ where R: 'static + Send,
     // First, parse the crate and extract all relevant information.
     info!("starting to run rustc");
 
-    let (tx, rx) = channel();
-
     let result = rustc_driver::report_ices_to_stderr_if_any(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
-        let (mut krate, renderinfo, renderopts, passes) = core::run_core(options);
+        let (mut krate, renderinfo, renderopts) = core::run_core(options);
 
         info!("finished with rustc");
 
@@ -466,16 +464,15 @@ where R: 'static + Send,
 
         krate.version = crate_version;
 
-        tx.send(f(Output {
+        f(Output {
             krate: krate,
             renderinfo: renderinfo,
             renderopts,
-            passes: passes
-        })).unwrap();
+        })
     });
 
     match result {
-        Ok(()) => rx.recv().unwrap(),
+        Ok(output) => output,
         Err(_) => panic::resume_unwind(Box::new(errors::FatalErrorMarker)),
     }
 }

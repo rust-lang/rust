@@ -8,13 +8,12 @@ Core encoding and decoding interfaces.
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(allow(unused_variables), deny(warnings))))]
 
-#![deny(rust_2018_idioms)]
-
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(specialization)]
 #![feature(never_type)]
 #![feature(nll)]
+#![feature(associated_type_bounds)]
 #![cfg_attr(test, feature(test))]
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable};

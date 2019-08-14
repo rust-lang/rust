@@ -14,12 +14,12 @@ use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
+use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
-use syntax_ext::proc_macro_decls::is_proc_macro_attr;
 use syntax_pos::{Span, MultiSpan};
 use errors::{Applicability, FatalError};
 
@@ -51,7 +51,6 @@ impl OuterImplTrait {
 struct AstValidator<'a> {
     session: &'a Session,
     has_proc_macro_decls: bool,
-    has_global_allocator: bool,
 
     /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
     /// Nested `impl Trait` _is_ allowed in associated type position,
@@ -288,7 +287,7 @@ impl<'a> AstValidator<'a> {
     // ```
     fn check_expr_within_pat(&self, expr: &Expr, allow_paths: bool) {
         match expr.node {
-            ExprKind::Lit(..) => {}
+            ExprKind::Lit(..) | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
             ExprKind::Unary(UnOp::Neg, ref inner)
                 if match inner.node { ExprKind::Lit(_) => true, _ => false } => {}
@@ -539,10 +538,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
-        if attr::contains_name(&item.attrs, sym::global_allocator) {
-            self.has_global_allocator = true;
-        }
-
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
                 self.invalid_visibility(&item.vis, None);
@@ -672,7 +667,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                                 "unions cannot have zero fields");
                 }
             }
-            ItemKind::Existential(ref bounds, _) => {
+            ItemKind::OpaqueTy(ref bounds, _) => {
                 if !bounds.iter()
                           .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
                     let msp = MultiSpan::from_spans(bounds.iter()
@@ -848,11 +843,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 }
 
-pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
+pub fn check_crate(session: &Session, krate: &Crate) -> bool {
     let mut validator = AstValidator {
         session,
         has_proc_macro_decls: false,
-        has_global_allocator: false,
         outer_impl_trait: None,
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
@@ -861,5 +855,5 @@ pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
     };
     visit::walk_crate(&mut validator, krate);
 
-    (validator.has_proc_macro_decls, validator.has_global_allocator)
+    validator.has_proc_macro_decls
 }

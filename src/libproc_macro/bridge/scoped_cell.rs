@@ -5,6 +5,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 /// Type lambda application, with a lifetime.
+#[allow(unused_lifetimes)]
 pub trait ApplyL<'a> {
     type Out;
 }

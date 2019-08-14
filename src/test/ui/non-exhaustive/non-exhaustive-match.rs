@@ -12,8 +12,8 @@ fn main() {
     match Some(10) { //~ ERROR non-exhaustive patterns: `Some(_)` not covered
       None => {}
     }
-    match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, -2147483648i32..=3i32)`
-                      //  and `(_, _, 5i32..=2147483647i32)` not covered
+    match (2, 3, 4) { //~ ERROR non-exhaustive patterns: `(_, _, std::i32::MIN..=3i32)`
+                      //  and `(_, _, 5i32..=std::i32::MAX)` not covered
       (_, _, 4) => {}
     }
     match (T::A, T::A) { //~ ERROR non-exhaustive patterns: `(A, A)` not covered
@@ -32,14 +32,14 @@ fn main() {
     let vec = vec![Some(42), None, Some(21)];
     let vec: &[Option<isize>] = &vec;
     match *vec { //~ ERROR non-exhaustive patterns: `[]` not covered
-        [Some(..), None, ref tail..] => {}
-        [Some(..), Some(..), ref tail..] => {}
+        [Some(..), None, ref tail @ ..] => {}
+        [Some(..), Some(..), ref tail @ ..] => {}
         [None] => {}
     }
     let vec = vec![1];
     let vec: &[isize] = &vec;
     match *vec {
-        [_, ref tail..] => (),
+        [_, ref tail @ ..] => (),
         [] => ()
     }
     let vec = vec![0.5f32];
@@ -53,10 +53,10 @@ fn main() {
     let vec = vec![Some(42), None, Some(21)];
     let vec: &[Option<isize>] = &vec;
     match *vec {
-        [Some(..), None, ref tail..] => {}
-        [Some(..), Some(..), ref tail..] => {}
-        [None, None, ref tail..] => {}
-        [None, Some(..), ref tail..] => {}
+        [Some(..), None, ref tail @ ..] => {}
+        [Some(..), Some(..), ref tail @ ..] => {}
+        [None, None, ref tail @ ..] => {}
+        [None, Some(..), ref tail @ ..] => {}
         [Some(_)] => {}
         [None] => {}
         [] => {}

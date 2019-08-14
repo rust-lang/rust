@@ -10,7 +10,7 @@ fn test_clone_eq() {
     m.insert(1);
     m.insert(2);
 
-    assert!(m.clone() == m);
+    assert_eq!(m.clone(), m);
 }
 
 #[test]
@@ -28,7 +28,7 @@ fn test_hash() {
     y.insert(2);
     y.insert(1);
 
-    assert!(hash(&x) == hash(&y));
+    assert_eq!(hash(&x), hash(&y));
 }
 
 fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F)
@@ -69,6 +69,11 @@ fn test_intersection() {
     check_intersection(&[11, 1, 3, 77, 103, 5, -5],
                        &[2, 11, 77, -9, -42, 5, 3],
                        &[3, 5, 11, 77]);
+
+    if cfg!(miri) { // Miri is too slow
+        return;
+    }
+
     let large = (0..1000).collect::<Vec<_>>();
     check_intersection(&[], &large, &[]);
     check_intersection(&large, &[], &[]);
@@ -98,6 +103,11 @@ fn test_difference() {
     check_difference(&[-5, 11, 22, 33, 40, 42],
                      &[-12, -5, 14, 23, 34, 38, 39, 50],
                      &[11, 22, 33, 40, 42]);
+
+    if cfg!(miri) { // Miri is too slow
+        return;
+    }
+
     let large = (0..1000).collect::<Vec<_>>();
     check_difference(&[], &large, &[]);
     check_difference(&[-1], &large, &[-1]);
@@ -166,6 +176,17 @@ fn test_is_subset() {
     assert_eq!(is_subset(&[1, 2], &[1]), false);
     assert_eq!(is_subset(&[1, 2], &[1, 2]), true);
     assert_eq!(is_subset(&[1, 2], &[2, 3]), false);
+    assert_eq!(is_subset(&[-5, 11, 22, 33, 40, 42],
+                         &[-12, -5, 14, 23, 11, 34, 22, 38, 33, 42, 39, 40]),
+               true);
+    assert_eq!(is_subset(&[-5, 11, 22, 33, 40, 42],
+                         &[-12, -5, 14, 23, 34, 38, 22, 11]),
+               false);
+
+    if cfg!(miri) { // Miri is too slow
+        return;
+    }
+
     let large = (0..1000).collect::<Vec<_>>();
     assert_eq!(is_subset(&[], &large), true);
     assert_eq!(is_subset(&large, &[]), false);
@@ -371,7 +392,10 @@ fn test_split_off_empty_left() {
 
 #[test]
 fn test_split_off_large_random_sorted() {
+    #[cfg(not(miri))] // Miri is too slow
     let mut data = rand_data(1529);
+    #[cfg(miri)]
+    let mut data = rand_data(529);
     // special case with maximum height.
     data.sort();
 

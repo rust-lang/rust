@@ -110,7 +110,7 @@ pub fn spin_loop() {
 ///
 /// This function is a no-op, and does not even read from `dummy`.
 #[inline]
-#[unstable(feature = "test", issue = "27812")]
+#[unstable(feature = "test", issue = "50297")]
 #[allow(unreachable_code)] // this makes #[cfg] a bit easier below.
 pub fn black_box<T>(dummy: T) -> T {
     // We need to "use" the argument in some way LLVM can't introspect, and on

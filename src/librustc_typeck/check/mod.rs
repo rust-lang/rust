@@ -312,7 +312,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// It is only the `&[1, 2, 3]` expression as a whole that can be coerced
     /// to the type `&[isize]`. Therefore, we propagate this more limited hint,
     /// which still is useful, because it informs integer literals and the like.
-    /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
+    /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
     fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         match fcx.tcx.struct_tail_without_normalization(ty).sty {
@@ -1325,19 +1325,117 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     check_packed(tcx, span, def_id);
 }
 
-fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, substs: SubstsRef<'tcx>, span: Span) {
-    if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
-        let mut err = struct_span_err!(
-            tcx.sess, span, E0720,
-            "opaque type expands to a recursive type",
-        );
-        err.span_label(span, "expands to a recursive type");
-        if let ty::Opaque(..) = partially_expanded_type.sty {
-            err.note("type resolves to itself");
-        } else {
-            err.note(&format!("expanded type is `{}`", partially_expanded_type));
+/// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
+/// projections that would result in "inheriting lifetimes".
+fn check_opaque<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+    span: Span,
+    origin: &hir::OpaqueTyOrigin,
+) {
+    check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
+    check_opaque_for_cycles(tcx, def_id, substs, span, origin);
+}
+
+/// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
+/// in "inheriting lifetimes".
+fn check_opaque_for_inheriting_lifetimes(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    span: Span,
+) {
+    let item = tcx.hir().expect_item(
+        tcx.hir().as_local_hir_id(def_id).expect("opaque type is not local"));
+    debug!("check_opaque_for_inheriting_lifetimes: def_id={:?} span={:?} item={:?}",
+           def_id, span, item);
+
+    #[derive(Debug)]
+    struct ProhibitOpaqueVisitor<'tcx> {
+        opaque_identity_ty: Ty<'tcx>,
+        generics: &'tcx ty::Generics,
+    };
+
+    impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+            debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
+            if t == self.opaque_identity_ty { false } else { t.super_visit_with(self) }
         }
-        err.emit();
+
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+            debug!("check_opaque_for_inheriting_lifetimes: (visit_region) r={:?}", r);
+            if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
+                return *index < self.generics.parent_count as u32;
+            }
+
+            r.super_visit_with(self)
+        }
+    }
+
+    let prohibit_opaque = match item.node {
+        ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::AsyncFn, .. }) |
+        ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn, .. }) => {
+            let mut visitor = ProhibitOpaqueVisitor {
+                opaque_identity_ty: tcx.mk_opaque(
+                    def_id, InternalSubsts::identity_for_item(tcx, def_id)),
+                generics: tcx.generics_of(def_id),
+            };
+            debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
+
+            tcx.predicates_of(def_id).predicates.iter().any(
+                |(predicate, _)| predicate.visit_with(&mut visitor))
+        },
+        _ => false,
+    };
+
+    debug!("check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}", prohibit_opaque);
+    if prohibit_opaque {
+        let is_async = match item.node {
+            ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
+                hir::OpaqueTyOrigin::AsyncFn => true,
+                _ => false,
+            },
+            _ => unreachable!(),
+        };
+
+        tcx.sess.span_err(span, &format!(
+            "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
+             a parent scope",
+            if is_async { "async fn" } else { "impl Trait" },
+        ));
+    }
+}
+
+/// Checks that an opaque type does not contain cycles.
+fn check_opaque_for_cycles<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+    span: Span,
+    origin: &hir::OpaqueTyOrigin,
+) {
+    if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
+        if let hir::OpaqueTyOrigin::AsyncFn = origin {
+            struct_span_err!(
+                tcx.sess, span, E0733,
+                "recursion in an `async fn` requires boxing",
+            )
+            .span_label(span, "an `async fn` cannot invoke itself directly")
+            .note("a recursive `async fn` must be rewritten to return a boxed future.")
+            .emit();
+        } else {
+            let mut err = struct_span_err!(
+                tcx.sess, span, E0720,
+                "opaque type expands to a recursive type",
+            );
+            err.span_label(span, "expands to a recursive type");
+            if let ty::Opaque(..) = partially_expanded_type.sty {
+                err.note("type resolves to itself");
+            } else {
+                err.note(&format!("expanded type is `{}`", partially_expanded_type));
+            }
+            err.emit();
+        }
     }
 }
 
@@ -1387,13 +1485,13 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
         hir::ItemKind::Union(..) => {
             check_union(tcx, it.hir_id, it.span);
         }
-        hir::ItemKind::Existential(..) => {
+        hir::ItemKind::OpaqueTy(hir::OpaqueTy{origin, ..}) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
 
             let substs = InternalSubsts::identity_for_item(tcx, def_id);
-            check_opaque(tcx, def_id, substs, it.span);
+            check_opaque(tcx, def_id, substs, it.span, &origin);
         }
-        hir::ItemKind::Ty(..) => {
+        hir::ItemKind::TyAlias(..) => {
             let def_id = tcx.hir().local_def_id(it.hir_id);
             let pty_ty = tcx.type_of(def_id);
             let generics = tcx.generics_of(def_id);
@@ -1526,8 +1624,8 @@ fn check_specialization_validity<'tcx>(
     let kind = match impl_item.node {
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,
         hir::ImplItemKind::Method(..) => ty::AssocKind::Method,
-        hir::ImplItemKind::Existential(..) => ty::AssocKind::Existential,
-        hir::ImplItemKind::Type(_) => ty::AssocKind::Type
+        hir::ImplItemKind::OpaqueTy(..) => ty::AssocKind::OpaqueTy,
+        hir::ImplItemKind::TyAlias(_) => ty::AssocKind::Type,
     };
 
     let parent = ancestors.defs(tcx, trait_item.ident, kind, trait_def.def_id).nth(1)
@@ -1623,8 +1721,8 @@ fn check_impl_items_against_trait<'tcx>(
                          err.emit()
                     }
                 }
-                hir::ImplItemKind::Existential(..) |
-                hir::ImplItemKind::Type(_) => {
+                hir::ImplItemKind::OpaqueTy(..) |
+                hir::ImplItemKind::TyAlias(_) => {
                     if ty_trait_item.kind == ty::AssocKind::Type {
                         if ty_trait_item.defaultness.has_value() {
                             overridden_associated_type = Some(impl_item);
@@ -1818,7 +1916,9 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, d
     );
     let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
     err.span_label(sp, &msg);
-    if let &[ref start.., ref end] = &variant_spans[..] {
+    if let &[.., ref end] = &variant_spans[..] {
+        // FIXME: Ping cfg(bootstrap) -- Use `ref start @ ..` with new bootstrap compiler.
+        let start = &variant_spans[..variant_spans.len() - 1];
         for variant_span in start {
             err.span_label(*variant_span, "");
         }
@@ -2012,7 +2112,7 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
-        }
+    }
 
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId)
                                  -> &'tcx ty::GenericPredicates<'tcx>
@@ -3691,7 +3791,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.consider_hint_about_removing_semicolon(blk, expected_ty, err);
                         }
                         if let Some(fn_span) = fn_span {
-                            err.span_label(fn_span, "this function's body doesn't return");
+                            err.span_label(
+                                fn_span,
+                                "implicitly returns `()` as its body has no tail or `return` \
+                                 expression",
+                            );
                         }
                     }, false);
                 }
@@ -3801,6 +3905,101 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pointing_at_return_type
     }
 
+    /// When encountering an fn-like ctor that needs to unify with a value, check whether calling
+    /// the ctor would successfully solve the type mismatch and if so, suggest it:
+    /// ```
+    /// fn foo(x: usize) -> usize { x }
+    /// let x: usize = foo;  // suggest calling the `foo` function: `foo(42)`
+    /// ```
+    fn suggest_fn_call(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) -> bool {
+        match found.sty {
+            ty::FnDef(..) | ty::FnPtr(_) => {}
+            _ => return false,
+        }
+        let hir = self.tcx.hir();
+
+        let sig = found.fn_sig(self.tcx);
+        let sig = self
+            .replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, &sig)
+            .0;
+        let sig = self.normalize_associated_types_in(expr.span, &sig);
+        if let Ok(_) = self.try_coerce(expr, sig.output(), expected, AllowTwoPhase::No) {
+            let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
+                (String::new(), Applicability::MachineApplicable)
+            } else {
+                ("...".to_string(), Applicability::HasPlaceholders)
+            };
+            let mut msg = "call this function";
+            if let ty::FnDef(def_id, ..) = found.sty {
+                match hir.get_if_local(def_id) {
+                    Some(Node::Item(hir::Item {
+                        node: ItemKind::Fn(.., body_id),
+                        ..
+                    })) |
+                    Some(Node::ImplItem(hir::ImplItem {
+                        node: hir::ImplItemKind::Method(_, body_id),
+                        ..
+                    })) |
+                    Some(Node::TraitItem(hir::TraitItem {
+                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
+                        ..
+                    })) => {
+                        let body = hir.body(*body_id);
+                        sugg_call = body.arguments.iter()
+                            .map(|arg| match &arg.pat.node {
+                                hir::PatKind::Binding(_, _, ident, None)
+                                if ident.name != kw::SelfLower => ident.to_string(),
+                                _ => "_".to_string(),
+                            }).collect::<Vec<_>>().join(", ");
+                    }
+                    Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
+                        sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                        match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
+                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
+                                msg = "instantiate this tuple variant";
+                            }
+                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
+                                msg = "instantiate this tuple struct";
+                            }
+                            _ => {}
+                        }
+                    }
+                    Some(Node::ForeignItem(hir::ForeignItem {
+                        node: hir::ForeignItemKind::Fn(_, idents, _),
+                        ..
+                    })) |
+                    Some(Node::TraitItem(hir::TraitItem {
+                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
+                        ..
+                    })) => sugg_call = idents.iter()
+                            .map(|ident| if ident.name != kw::SelfLower {
+                                ident.to_string()
+                            } else {
+                                "_".to_string()
+                            }).collect::<Vec<_>>()
+                            .join(", "),
+                    _ => {}
+                }
+            };
+            if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
+                err.span_suggestion(
+                    expr.span,
+                    &format!("use parentheses to {}", msg),
+                    format!("{}({})", code, sugg_call),
+                    applicability,
+                );
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn suggest_ref_or_into(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
@@ -3815,6 +4014,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggestion,
                 Applicability::MachineApplicable,
             );
+        } else if let (ty::FnDef(def_id, ..), true) = (
+            &found.sty,
+            self.suggest_fn_call(err, expr, expected, found),
+        ) {
+            if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
+                let sp = self.sess().source_map().def_span(sp);
+                err.span_label(sp, &format!("{} defined here", found));
+            }
         } else if !self.check_for_cast(err, expr, found, expected) {
             let is_struct_pat_shorthand_field = self.is_hir_id_from_struct_pattern_shorthand_field(
                 expr.hir_id,

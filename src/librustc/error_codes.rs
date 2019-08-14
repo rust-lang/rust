@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 // Error messages for EXXXX errors.
 // Each message should start and end with a new line, and be wrapped to 80 characters.
 // In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
@@ -2090,11 +2088,11 @@ generator can be constructed.
 Erroneous code example:
 
 ```edition2018,compile-fail,E0698
-#![feature(futures_api, async_await, await_macro)]
+#![feature(async_await)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  await!(bar());  // error: cannot infer type for `T`
+    bar().await; // error: cannot infer type for `T`
 }
 ```
 
@@ -2103,12 +2101,12 @@ To fix this you must bind `T` to a concrete type such as `String`
 so that a generator can then be constructed:
 
 ```edition2018
-#![feature(futures_api, async_await, await_macro)]
+#![feature(async_await)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  await!(bar::<String>());
-  //          ^^^^^^^^ specify type explicitly
+  bar::<String>().await;
+  //   ^^^^^^^^ specify type explicitly
 }
 ```
 "##,

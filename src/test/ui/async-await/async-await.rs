@@ -99,12 +99,10 @@ fn async_fn_with_impl_future_named_lifetime<'a>(x: &'a u8) -> impl Future<Output
     }
 }
 
-/* FIXME(cramertj) support when `existential type T<'a, 'b>:;` works
 async fn async_fn_multiple_args(x: &u8, _y: &u8) -> u8 {
-    await!(wake_and_yield_once());
+    wake_and_yield_once().await;
     *x
 }
-*/
 
 async fn async_fn_multiple_args_named_lifetime<'a>(x: &'a u8, _y: &'a u8) -> u8 {
     wake_and_yield_once().await;

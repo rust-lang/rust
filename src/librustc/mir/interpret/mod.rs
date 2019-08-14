@@ -1,8 +1,93 @@
 //! An interpreter for MIR used in CTFE and by miri
 
 #[macro_export]
-macro_rules! err {
-    ($($tt:tt)*) => { Err($crate::mir::interpret::InterpError::$($tt)*.into()) };
+macro_rules! err_unsup {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::Unsupported(
+            $crate::mir::interpret::UnsupportedOpInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_unsup_format {
+    ($($tt:tt)*) => { err_unsup!(Unsupported(format!($($tt)*))) };
+}
+
+#[macro_export]
+macro_rules! err_inval {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::InvalidProgram(
+            $crate::mir::interpret::InvalidProgramInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_ub {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::UndefinedBehavior(
+            $crate::mir::interpret::UndefinedBehaviorInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_ub_format {
+    ($($tt:tt)*) => { err_ub!(Ub(format!($($tt)*))) };
+}
+
+#[macro_export]
+macro_rules! err_panic {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::Panic(
+            $crate::mir::interpret::PanicInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! err_exhaust {
+    ($($tt:tt)*) => {
+        $crate::mir::interpret::InterpError::ResourceExhaustion(
+            $crate::mir::interpret::ResourceExhaustionInfo::$($tt)*
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! throw_unsup {
+    ($($tt:tt)*) => { return Err(err_unsup!($($tt)*).into()) };
+}
+
+#[macro_export]
+macro_rules! throw_unsup_format {
+    ($($tt:tt)*) => { throw_unsup!(Unsupported(format!($($tt)*))) };
+}
+
+#[macro_export]
+macro_rules! throw_inval {
+    ($($tt:tt)*) => { return Err(err_inval!($($tt)*).into()) };
+}
+
+#[macro_export]
+macro_rules! throw_ub {
+    ($($tt:tt)*) => { return Err(err_ub!($($tt)*).into()) };
+}
+
+#[macro_export]
+macro_rules! throw_ub_format {
+    ($($tt:tt)*) => { throw_ub!(Ub(format!($($tt)*))) };
+}
+
+#[macro_export]
+macro_rules! throw_panic {
+    ($($tt:tt)*) => { return Err(err_panic!($($tt)*).into()) };
+}
+
+#[macro_export]
+macro_rules! throw_exhaust {
+    ($($tt:tt)*) => { return Err(err_exhaust!($($tt)*).into()) };
 }
 
 mod error;
@@ -12,7 +97,8 @@ mod pointer;
 
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicMessage
+    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled, PanicInfo, UnsupportedOpInfo,
+    InvalidProgramInfo, ResourceExhaustionInfo, UndefinedBehaviorInfo,
 };
 
 pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};

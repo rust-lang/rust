@@ -1016,7 +1016,7 @@ fn create_generator_resume_function<'tcx>(
 
     let mut cases = create_cases(body, &transform, |point| Some(point.resume));
 
-    use rustc::mir::interpret::PanicMessage::{
+    use rustc::mir::interpret::PanicInfo::{
         GeneratorResumedAfterPanic,
         GeneratorResumedAfterReturn,
     };

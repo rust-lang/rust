@@ -1,8 +1,8 @@
 error: an inner attribute is not permitted in this context
-  --> $DIR/issue-45296.rs:4:7
+  --> $DIR/issue-45296.rs:4:5
    |
 LL |     #![allow(unused_variables)]
-   |       ^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files. Outer attributes, like `#[test]`, annotate the item following them.
 

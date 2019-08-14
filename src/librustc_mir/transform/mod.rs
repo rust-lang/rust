@@ -34,7 +34,6 @@ pub mod copy_prop;
 pub mod const_prop;
 pub mod generator;
 pub mod inline;
-pub mod lower_128bit;
 pub mod uniform_array_move_out;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
@@ -127,7 +126,7 @@ impl<'tcx> MirSource<'tcx> {
 /// Generates a default name for the pass based on the name of the
 /// type `T`.
 pub fn default_name<T: ?Sized>() -> Cow<'static, str> {
-    let name = unsafe { ::std::intrinsics::type_name::<T>() };
+    let name = ::std::any::type_name::<T>();
     if let Some(tail) = name.rfind(":") {
         Cow::from(&name[tail+1..])
     } else {
@@ -271,8 +270,6 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
 
         // From here on out, regions are gone.
         &erase_regions::EraseRegions,
-
-        &lower_128bit::Lower128Bit,
 
 
         // Optimizations begin.

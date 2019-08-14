@@ -206,7 +206,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         def_id,
         &attributes,
         &dead_unwinds,
-        Borrows::new(tcx, body, regioncx.clone(), &borrow_set),
+        Borrows::new(tcx, body, param_env, regioncx.clone(), &borrow_set),
         |rs, i| DebugFormatted::new(&rs.location(i)),
     ));
     let flow_uninits = FlowAtLocation::new(do_dataflow(
@@ -242,6 +242,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         infcx,
         body,
         mir_def_id: def_id,
+        param_env,
         move_data: &mdpe.move_data,
         location_table,
         movable_generator,
@@ -252,6 +253,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
+        disable_error_downgrading: false,
         nonlexical_regioncx: regioncx,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
@@ -363,7 +365,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     if !mbcx.errors_buffer.is_empty() {
         mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
 
-        if tcx.migrate_borrowck() {
+        if !mbcx.disable_error_downgrading && tcx.migrate_borrowck() {
             // When borrowck=migrate, check if AST-borrowck would
             // error on the given code.
 
@@ -424,6 +426,7 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
     body: &'cx Body<'tcx>,
     mir_def_id: DefId,
+    param_env: ty::ParamEnv<'tcx>,
     move_data: &'cx MoveData<'tcx>,
 
     /// Map from MIR `Location` to `LocationIndex`; created
@@ -479,6 +482,9 @@ crate struct MirBorrowckCtxt<'cx, 'tcx> {
     uninitialized_error_reported: FxHashSet<PlaceRef<'cx, 'tcx>>,
     /// Errors to be reported buffer
     errors_buffer: Vec<Diagnostic>,
+    /// If there are no errors reported by the HIR borrow checker, we downgrade
+    /// all NLL errors to warnings. Setting this flag disables downgrading.
+    disable_error_downgrading: bool,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
     used_mut: FxHashSet<Local>,
@@ -733,8 +739,8 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 cleanup: _,
             } => {
                 self.consume_operand(loc, (cond, span), flow_state);
-                use rustc::mir::interpret::PanicMessage;
-                if let PanicMessage::BoundsCheck { ref len, ref index } = *msg {
+                use rustc::mir::interpret::PanicInfo;
+                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);
                 }
@@ -919,6 +925,12 @@ impl InitializationRequiringAction {
 }
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
+    /// If there are no errors reported by the HIR borrow checker, we downgrade
+    /// all NLL errors to warnings. Calling this disables downgrading.
+    crate fn disable_error_downgrading(&mut self)  {
+        self.disable_error_downgrading = true;
+    }
+
     /// Checks an access to the given place to see if it is allowed. Examines the set of borrows
     /// that are in scope, as well as which paths have been initialized, to ensure that (a) the
     /// place is initialized and (b) it is not borrowed in some way that would prevent this
@@ -1004,11 +1016,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut error_reported = false;
         let tcx = self.infcx.tcx;
         let body = self.body;
+        let param_env = self.param_env;
         let location_table = self.location_table.start_index(location);
         let borrow_set = self.borrow_set.clone();
         each_borrow_involving_path(
             self,
             tcx,
+            param_env,
             body,
             location,
             (sd, place_span.0),
@@ -1329,7 +1343,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 base: PlaceBase::Local(local),
                 projection: None,
             }) if self.body.local_decls[local].is_user_variable.is_none() => {
-                if self.body.local_decls[local].ty.is_mutable_pointer() {
+                if self.body.local_decls[local].ty.is_mutable_ptr() {
                     // The variable will be marked as mutable by the borrow.
                     return;
                 }
@@ -1480,6 +1494,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         if places_conflict::borrow_conflicts_with_place(
             self.infcx.tcx,
+            self.param_env,
             self.body,
             place,
             borrow.kind,
@@ -1942,7 +1957,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     BorrowKind::Mut { .. } => is_local_mutation_allowed,
                     BorrowKind::Shared | BorrowKind::Shallow => unreachable!(),
                 };
-                match self.is_mutable(&place.base, &place.projection, is_local_mutation_allowed) {
+                match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
                     Ok(root_place) => {
                         self.add_used_mut(root_place, flow_state);
                         return false;
@@ -1954,7 +1969,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
-                match self.is_mutable(&place.base, &place.projection, is_local_mutation_allowed) {
+                match self.is_mutable(place.as_ref(), is_local_mutation_allowed) {
                     Ok(root_place) => {
                         self.add_used_mut(root_place, flow_state);
                         return false;
@@ -1974,8 +1989,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             | Write(wk @ WriteKind::StorageDeadOrDrop)
             | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
             | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
-                if let (Err(_place_err), true) = (
-                    self.is_mutable(&place.base, &place.projection, is_local_mutation_allowed),
+                if let (Err(place_err), true) = (
+                    self.is_mutable(place.as_ref(), is_local_mutation_allowed),
                     self.errors_buffer.is_empty()
                 ) {
                     if self.infcx.tcx.migrate_borrowck() {
@@ -1996,10 +2011,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.report_mutability_error(
                             place,
                             span,
-                            PlaceRef {
-                                base: _place_err.0,
-                                projection: _place_err.1,
-                            },
+                            place_err,
                             error_access,
                             location,
                         );
@@ -2033,10 +2045,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             self.report_mutability_error(
                 place,
                 span,
-                PlaceRef {
-                    base: the_place_err.0,
-                    projection: the_place_err.1,
-                },
+                the_place_err,
                 error_access,
                 location,
             );
@@ -2107,78 +2116,86 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Returns the root place if the place passed in is a projection.
     fn is_mutable<'d>(
         &self,
-        place_base: &'d PlaceBase<'tcx>,
-        place_projection: &'d Option<Box<Projection<'tcx>>>,
+        place: PlaceRef<'d, 'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
-    ) -> Result<RootPlace<'d, 'tcx>, (&'d PlaceBase<'tcx>, &'d Option<Box<Projection<'tcx>>>)> {
-        match (place_base, place_projection) {
-            (PlaceBase::Local(local), None) => {
+    ) -> Result<RootPlace<'d, 'tcx>, PlaceRef<'d, 'tcx>> {
+        match place {
+            PlaceRef {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } => {
                 let local = &self.body.local_decls[*local];
                 match local.mutability {
                     Mutability::Not => match is_local_mutation_allowed {
                         LocalMutationIsAllowed::Yes => Ok(RootPlace {
-                            place_base,
-                            place_projection,
+                            place_base: place.base,
+                            place_projection: place.projection,
                             is_local_mutation_allowed: LocalMutationIsAllowed::Yes,
                         }),
                         LocalMutationIsAllowed::ExceptUpvars => Ok(RootPlace {
-                            place_base,
-                            place_projection,
+                            place_base: place.base,
+                            place_projection: place.projection,
                             is_local_mutation_allowed: LocalMutationIsAllowed::ExceptUpvars,
                         }),
-                        LocalMutationIsAllowed::No => Err((place_base, place_projection)),
+                        LocalMutationIsAllowed::No => Err(place),
                     },
                     Mutability::Mut => Ok(RootPlace {
-                        place_base,
-                        place_projection,
+                        place_base: place.base,
+                        place_projection: place.projection,
                         is_local_mutation_allowed,
                     }),
                 }
             }
             // The rules for promotion are made by `qualify_consts`, there wouldn't even be a
             // `Place::Promoted` if the promotion weren't 100% legal. So we just forward this
-            (PlaceBase::Static(box Static {
-                kind: StaticKind::Promoted(_),
-                ..
-            }), None) =>
+            PlaceRef {
+                base: PlaceBase::Static(box Static {
+                    kind: StaticKind::Promoted(_),
+                    ..
+                }),
+                projection: None,
+            } =>
                 Ok(RootPlace {
-                    place_base,
-                    place_projection,
+                    place_base: place.base,
+                    place_projection: place.projection,
                     is_local_mutation_allowed,
                 }),
-            (PlaceBase::Static(box Static {
-                kind: StaticKind::Static(def_id),
-                ..
-            }), None) => {
+            PlaceRef {
+                base: PlaceBase::Static(box Static {
+                    kind: StaticKind::Static(def_id),
+                    ..
+                }),
+                projection: None,
+            } => {
                 if !self.infcx.tcx.is_mutable_static(*def_id) {
-                    Err((place_base, place_projection))
+                    Err(place)
                 } else {
                     Ok(RootPlace {
-                        place_base,
-                        place_projection,
+                        place_base: place.base,
+                        place_projection: place.projection,
                         is_local_mutation_allowed,
                     })
                 }
             }
-            (_, Some(ref proj)) => {
+            PlaceRef {
+                base: _,
+                projection: Some(proj),
+            } => {
                 match proj.elem {
                     ProjectionElem::Deref => {
                         let base_ty =
-                            Place::ty_from(place_base, &proj.base, self.body, self.infcx.tcx).ty;
+                            Place::ty_from(place.base, &proj.base, self.body, self.infcx.tcx).ty;
 
                         // Check the kind of deref to decide
                         match base_ty.sty {
                             ty::Ref(_, _, mutbl) => {
                                 match mutbl {
                                     // Shared borrowed data is never mutable
-                                    hir::MutImmutable => Err((place_base, place_projection)),
+                                    hir::MutImmutable => Err(place),
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
                                     hir::MutMutable => {
-                                        let mode = match self.is_upvar_field_projection(PlaceRef {
-                                            base: &place_base,
-                                            projection: &place_projection,
-                                        }) {
+                                        let mode = match self.is_upvar_field_projection(place) {
                                             Some(field)
                                                 if self.upvars[field.index()].by_ref =>
                                             {
@@ -2187,20 +2204,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                             _ => LocalMutationIsAllowed::Yes,
                                         };
 
-                                        self.is_mutable(place_base, &proj.base, mode)
+                                        self.is_mutable(PlaceRef {
+                                            base: place.base,
+                                            projection: &proj.base,
+                                        }, mode)
                                     }
                                 }
                             }
                             ty::RawPtr(tnm) => {
                                 match tnm.mutbl {
                                     // `*const` raw pointers are not mutable
-                                    hir::MutImmutable => Err((place_base, place_projection)),
+                                    hir::MutImmutable => Err(place),
                                     // `*mut` raw pointers are always mutable, regardless of
                                     // context. The users have to check by themselves.
                                     hir::MutMutable => {
                                         Ok(RootPlace {
-                                            place_base,
-                                            place_projection,
+                                            place_base: place.base,
+                                            place_projection: place.projection,
                                             is_local_mutation_allowed,
                                         })
                                     }
@@ -2208,7 +2228,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                             // `Box<T>` owns its content, so mutable if its location is mutable
                             _ if base_ty.is_box() => {
-                                self.is_mutable(place_base, &proj.base, is_local_mutation_allowed)
+                                self.is_mutable(PlaceRef {
+                                    base: place.base,
+                                    projection: &proj.base,
+                                }, is_local_mutation_allowed)
                             }
                             // Deref should only be for reference, pointers or boxes
                             _ => bug!("Deref of unexpected type: {:?}", base_ty),
@@ -2221,21 +2244,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::Downcast(..) => {
-                        let upvar_field_projection = self.is_upvar_field_projection(PlaceRef {
-                            base: &place_base,
-                            projection: &place_projection,
-                        });
+                        let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let upvar = &self.upvars[field.index()];
                             debug!(
                                 "upvar.mutability={:?} local_mutation_is_allowed={:?} \
-                                place={:?} {:?}",
-                                upvar, is_local_mutation_allowed, place_base, place_projection
+                                place={:?}",
+                                upvar, is_local_mutation_allowed, place
                             );
                             match (upvar.mutability, is_local_mutation_allowed) {
                                 (Mutability::Not, LocalMutationIsAllowed::No)
                                 | (Mutability::Not, LocalMutationIsAllowed::ExceptUpvars) => {
-                                    Err((place_base, place_projection))
+                                    Err(place)
                                 }
                                 (Mutability::Not, LocalMutationIsAllowed::Yes)
                                 | (Mutability::Mut, _) => {
@@ -2265,18 +2285,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     //     });
                                     // }
                                     // ```
-                                    let _ = self.is_mutable(place_base,
-                                                            &proj.base,
-                                                            is_local_mutation_allowed)?;
+                                    let _ = self.is_mutable(PlaceRef {
+                                        base: place.base,
+                                        projection: &proj.base,
+                                    }, is_local_mutation_allowed)?;
                                     Ok(RootPlace {
-                                        place_base,
-                                        place_projection,
+                                        place_base: place.base,
+                                        place_projection: place.projection,
                                         is_local_mutation_allowed,
                                     })
                                 }
                             }
                         } else {
-                            self.is_mutable(place_base, &proj.base, is_local_mutation_allowed)
+                            self.is_mutable(PlaceRef {
+                                base: place.base,
+                                projection: &proj.base,
+                            }, is_local_mutation_allowed)
                         }
                     }
                 }

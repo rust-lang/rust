@@ -305,7 +305,7 @@ impl HygieneData {
         // was defined at its invocation (i.e., inside the macros 2.0 definition)
         // so that the macros 2.0 definition remains hygienic.
         //
-        // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
+        // See the example at `test/ui/hygiene/legacy_interaction.rs`.
         for (expn_id, transparency) in self.marks(ctxt) {
             call_site_ctxt = self.apply_mark_internal(call_site_ctxt, expn_id, transparency);
         }
@@ -744,9 +744,9 @@ pub enum DesugaringKind {
     QuestionMark,
     TryBlock,
     /// Desugaring of an `impl Trait` in return type position
-    /// to an `existential type Foo: Trait;` and replacing the
+    /// to an `type Foo = impl Trait;` and replacing the
     /// `impl Trait` with `Foo`.
-    ExistentialType,
+    OpaqueTy,
     Async,
     Await,
     ForLoop,
@@ -761,7 +761,7 @@ impl DesugaringKind {
             DesugaringKind::Await => "`await` expression",
             DesugaringKind::QuestionMark => "operator `?`",
             DesugaringKind::TryBlock => "`try` block",
-            DesugaringKind::ExistentialType => "`existential type`",
+            DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
         }
     }

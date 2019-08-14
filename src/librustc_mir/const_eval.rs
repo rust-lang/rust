@@ -20,10 +20,10 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar,
+    PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue,
-    InterpResult, InterpErrorInfo, InterpError, GlobalId, InterpCx, StackPopCleanup,
-    Allocation, AllocId, MemoryKind,
+    InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
+    Allocation, AllocId, MemoryKind, Memory,
     snapshot, RefTracking, intern_const_alloc_recursive,
 };
 
@@ -98,7 +98,7 @@ fn op_to_const<'tcx>(
         Ok(mplace) => {
             let ptr = mplace.ptr.to_ptr().unwrap();
             let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-            ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
+            ConstValue::ByRef { alloc, offset: ptr.offset }
         },
         // see comment on `let try_as_immediate` above
         Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
@@ -112,7 +112,7 @@ fn op_to_const<'tcx>(
                 let mplace = op.assert_mem_place();
                 let ptr = mplace.ptr.to_ptr().unwrap();
                 let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                ConstValue::ByRef { offset: ptr.offset, align: mplace.align, alloc }
+                ConstValue::ByRef { alloc, offset: ptr.offset }
             },
         },
         Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
@@ -181,15 +181,15 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     Ok(ret)
 }
 
-impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
-    fn into(self) -> InterpErrorInfo<'tcx> {
-        InterpError::MachineError(self.to_string()).into()
-    }
-}
-
 #[derive(Clone, Debug)]
 enum ConstEvalError {
     NeedsRfc(String),
+}
+
+impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
+    fn into(self) -> InterpErrorInfo<'tcx> {
+        err_unsup!(Unsupported(self.to_string())).into()
+    }
 }
 
 impl fmt::Display for ConstEvalError {
@@ -326,6 +326,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
 
+    // We do not check for alignment to avoid having to carry an `Align`
+    // in `ConstValue::ByRef`.
+    const CHECK_ALIGN: bool = false;
+
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
@@ -341,7 +345,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         debug!("eval_fn_call: {:?}", instance);
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def_id) = instance.def {
-            // Execution might have wandered off into other crates, so we cannot to a stability-
+            // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def_id) {
@@ -352,7 +356,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     ecx.goto_block(ret)?; // fully evaluated and done
                     Ok(None)
                 } else {
-                    err!(MachineError(format!("calling non-const function `{}`", instance)))
+                    throw_unsup_format!("calling non-const function `{}`", instance)
                 };
             }
         }
@@ -360,7 +364,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Ok(Some(match ecx.load_mir(instance.def) {
             Ok(body) => body,
             Err(err) => {
-                if let InterpError::NoMirFor(ref path) = err.kind {
+                if let err_unsup!(NoMirFor(ref path)) = err.kind {
                     return Err(
                         ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
                             .into(),
@@ -397,7 +401,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         )
     }
 
-    fn ptr_op(
+    fn ptr_to_int(
+        _mem: &Memory<'mir, 'tcx, Self>,
+        _ptr: Pointer,
+    ) -> InterpResult<'tcx, u64> {
+        Err(
+            ConstEvalError::NeedsRfc("pointer-to-integer cast".to_string()).into(),
+        )
+    }
+
+    fn binary_ptr_op(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
@@ -412,7 +425,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _tcx: TyCtxt<'tcx>,
         _def_id: DefId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
-        err!(ReadForeignStatic)
+        throw_unsup!(ReadForeignStatic)
     }
 
     #[inline(always)]
@@ -527,6 +540,12 @@ pub fn error_to_const_error<'mir, 'tcx>(
     ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
 }
 
+pub fn note_on_undefined_behavior_error() -> &'static str {
+    "The rules on what exactly is undefined behavior aren't clear, \
+    so this check might be overzealous. Please open an issue on the rust compiler \
+    repository if you believe it should not be considered undefined behavior"
+}
+
 fn validate_and_turn_into_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
@@ -552,9 +571,8 @@ fn validate_and_turn_into_const<'tcx>(
             let ptr = mplace.ptr.to_ptr()?;
             Ok(tcx.mk_const(ty::Const {
                 val: ConstValue::ByRef {
-                    offset: ptr.offset,
-                    align: mplace.align,
                     alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                    offset: ptr.offset,
                 },
                 ty: mplace.layout.ty,
             }))
@@ -567,10 +585,7 @@ fn validate_and_turn_into_const<'tcx>(
         let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
             Ok(mut diag) => {
-                diag.note("The rules on what exactly is undefined behavior aren't clear, \
-                    so this check might be overzealous. Please open an issue on the rust compiler \
-                    repository if you believe it should not be considered undefined behavior",
-                );
+                diag.note(note_on_undefined_behavior_error());
                 diag.emit();
                 ErrorHandled::Reported
             }
@@ -698,7 +713,7 @@ pub fn const_eval_raw_provider<'tcx>(
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
                     let span = tcx.promoted_mir(def_id)[p].span;
-                    if let InterpError::ReferencedConstant = err.error {
+                    if let err_inval!(ReferencedConstant) = err.error {
                         err.report_as_error(
                             tcx.at(span),
                             "evaluation of constant expression failed",

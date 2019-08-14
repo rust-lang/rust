@@ -8,7 +8,8 @@ RUN sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
 
 RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no-install-recommends \
   build-essential \
-  gcc-multilib \
+# gcc-multilib can not be installed together with gcc-arm-linux-gnueabi
+  gcc-7-multilib \
   libedit-dev \
   libgmp-dev \
   libisl-dev \
@@ -21,10 +22,19 @@ RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no
   unzip \
   # Needed for apt-key to work:
   dirmngr \
-  gpg-agent
+  gpg-agent \
+  g++-7-arm-linux-gnueabi
 
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
 RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2 main'
+
+WORKDIR /build
+COPY scripts/musl.sh /build
+RUN env \
+    CC=arm-linux-gnueabi-gcc-7 CFLAGS="-march=armv7-a" \
+    CXX=arm-linux-gnueabi-g++-7 CXXFLAGS="-march=armv7-a" \
+    bash musl.sh armv7 && \
+    rm -rf /build/*
 
 WORKDIR /tmp
 COPY dist-various-2/shared.sh /tmp/
@@ -58,7 +68,11 @@ ENV \
     CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
     AR_x86_64_sun_solaris=x86_64-sun-solaris2.10-ar \
     CC_x86_64_sun_solaris=x86_64-sun-solaris2.10-gcc \
-    CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++
+    CXX_x86_64_sun_solaris=x86_64-sun-solaris2.10-g++ \
+    CC_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-gcc-7 \
+    CXX_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-g++-7 \
+    CC=gcc-7 \
+    CXX=g++-7
 
 ENV CARGO_TARGET_X86_64_FUCHSIA_AR /usr/local/bin/llvm-ar
 ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \
@@ -81,9 +95,19 @@ ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
 ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
 ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
+ENV TARGETS=$TARGETS,armv7-unknown-linux-gnueabi
+ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabi
 
 ENV X86_FORTANIX_SGX_LIBS="/x86_64-fortanix-unknown-sgx/lib/"
 
+# As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
+# we need asm in the search path for gcc-7 (for gnux32) but not in the search path of the
+# cross compilers.
+# Luckily one of the folders is /usr/local/include so symlink /usr/include/asm-generic there
+RUN ln -s /usr/include/asm-generic /usr/local/include/asm
+
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
-  --set target.wasm32-wasi.wasi-root=/wasm32-wasi
+  --set target.wasm32-wasi.wasi-root=/wasm32-wasi \
+  --musl-root-armv7=/musl-armv7
+
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS

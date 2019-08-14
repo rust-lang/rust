@@ -95,7 +95,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                     );
                 }
             }
-            if sess.opts.debugging_opts.emit_artifact_notifications {
+            if sess.opts.json_artifact_notifications {
                 sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename, "link");
             }
         }
@@ -677,14 +677,6 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
         if let Err(e) = Command::new("dsymutil").arg(out_filename).output() {
             sess.fatal(&format!("failed to run dsymutil: {}", e))
         }
-    }
-
-    if sess.opts.target_triple.triple() == "wasm32-unknown-unknown" {
-        super::wasm::add_producer_section(
-            &out_filename,
-            &sess.edition().to_string(),
-            option_env!("CFG_VERSION").unwrap_or("unknown"),
-        );
     }
 }
 

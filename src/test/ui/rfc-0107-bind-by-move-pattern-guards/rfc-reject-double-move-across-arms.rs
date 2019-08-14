@@ -1,4 +1,3 @@
-#![feature(nll)]
 #![feature(bind_by_move_pattern_guards)]
 
 enum VecWrapper { A(Vec<i32>) }

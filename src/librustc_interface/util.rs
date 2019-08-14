@@ -203,8 +203,6 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     f: F,
 ) -> R {
     use rayon::{ThreadPool, ThreadPoolBuilder};
-    use syntax;
-    use syntax_pos;
 
     let gcx_ptr = &Lock::new(0);
 

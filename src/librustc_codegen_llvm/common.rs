@@ -11,7 +11,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::traits::*;
 
 use crate::consts::const_alloc_to_llvm;
-use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size, Align};
+use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
 use rustc::mir::interpret::{Scalar, GlobalAlloc, Allocation};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 
@@ -164,25 +164,6 @@ impl CodegenCx<'ll, 'tcx> {
                    v, idx, r);
 
             r
-        }
-    }
-
-    pub fn const_get_real(&self, v: &'ll Value) -> Option<(f64, bool)> {
-        unsafe {
-            if self.is_const_real(v) {
-                let mut loses_info: llvm::Bool = 0;
-                let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info);
-                let loses_info = if loses_info == 1 { true } else { false };
-                Some((r, loses_info))
-            } else {
-                None
-            }
-        }
-    }
-
-    fn is_const_real(&self, v: &'ll Value) -> bool {
-        unsafe {
-            llvm::LLVMIsAConstantFP(v).is_some()
         }
     }
 }
@@ -348,12 +329,12 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn from_const_alloc(
         &self,
         layout: TyLayout<'tcx>,
-        align: Align,
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
+        assert_eq!(alloc.align, layout.align.abi);
         let init = const_alloc_to_llvm(self, alloc);
-        let base_addr = self.static_addr_of(init, align, None);
+        let base_addr = self.static_addr_of(init, alloc.align, None);
 
         let llval = unsafe { llvm::LLVMConstInBoundsGEP(
             self.const_bitcast(base_addr, self.type_i8p()),
@@ -361,7 +342,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             1,
         )};
         let llval = self.const_bitcast(llval, self.type_ptr_to(layout.llvm_type(self)));
-        PlaceRef::new_sized(llval, layout, align)
+        PlaceRef::new_sized(llval, layout, alloc.align)
     }
 
     fn const_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {

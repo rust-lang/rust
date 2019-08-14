@@ -10,15 +10,17 @@ use crate::parse::{self, ParseSess};
 use crate::print::pp::{self, Breaks};
 use crate::print::pp::Breaks::{Consistent, Inconsistent};
 use crate::ptr::P;
-use crate::std_inject;
 use crate::symbol::{kw, sym};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{self, BytePos};
-use syntax_pos::{DUMMY_SP, FileName, Span};
+use syntax_pos::{FileName, Span};
 
 use std::borrow::Cow;
+
+#[cfg(test)]
+mod tests;
 
 pub enum MacHeader<'a> {
     Path(&'a ast::Path),
@@ -114,7 +116,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
         is_expanded,
     };
 
-    if is_expanded && std_inject::injected_crate_name().is_some() {
+    if is_expanded && sess.injected_crate_name.try_get().is_some() {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
         // However we don't want these attributes in the AST because
@@ -122,14 +124,13 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
 
         // #![feature(prelude_import)]
         let pi_nested = attr::mk_nested_word_item(ast::Ident::with_empty_ctxt(sym::prelude_import));
-        let list = attr::mk_list_item(
-            DUMMY_SP, ast::Ident::with_empty_ctxt(sym::feature), vec![pi_nested]);
-        let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), list);
+        let list = attr::mk_list_item(ast::Ident::with_empty_ctxt(sym::feature), vec![pi_nested]);
+        let fake_attr = attr::mk_attr_inner(list);
         s.print_attribute(&fake_attr);
 
         // #![no_std]
         let no_std_meta = attr::mk_word_item(ast::Ident::with_empty_ctxt(sym::no_std));
-        let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), no_std_meta);
+        let fake_attr = attr::mk_attr_inner(no_std_meta);
         s.print_attribute(&fake_attr);
     }
 
@@ -286,6 +287,7 @@ fn token_kind_to_string_ext(tok: &TokenKind, convert_dollar_crate: Option<Span>)
         token::Whitespace           => " ".to_string(),
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
+        token::Unknown(s)           => s.to_string(),
 
         token::Interpolated(ref nt) => nonterminal_to_string(nt),
     }
@@ -382,21 +384,6 @@ pub fn vis_to_string(v: &ast::Visibility) -> String {
     to_string(|s| s.print_visibility(v))
 }
 
-#[cfg(test)]
-fn fun_to_string(decl: &ast::FnDecl,
-                     header: ast::FnHeader,
-                     name: ast::Ident,
-                     generics: &ast::Generics)
-                     -> String {
-    to_string(|s| {
-        s.head("");
-        s.print_fn(decl, header, Some(name),
-                   generics, &source_map::dummy_spanned(ast::VisibilityKind::Inherited));
-        s.end(); // Close the head box
-        s.end(); // Close the outer box
-    })
-}
-
 fn block_to_string(blk: &ast::Block) -> String {
     to_string(|s| {
         // containing cbox, will be closed by print-block at }
@@ -417,11 +404,6 @@ pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
 
 pub fn attribute_to_string(attr: &ast::Attribute) -> String {
     to_string(|s| s.print_attribute(attr))
-}
-
-#[cfg(test)]
-fn variant_to_string(var: &ast::Variant) -> String {
-    to_string(|s| s.print_variant(var))
 }
 
 pub fn arg_to_string(arg: &ast::Arg) -> String {
@@ -1226,7 +1208,7 @@ impl<'a> State<'a> {
                 self.s.word(ga.asm.as_str().to_string());
                 self.end();
             }
-            ast::ItemKind::Ty(ref ty, ref generics) => {
+            ast::ItemKind::TyAlias(ref ty, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "type"));
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
@@ -1239,9 +1221,10 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer ibox
             }
-            ast::ItemKind::Existential(ref bounds, ref generics) => {
-                self.head(visibility_qualified(&item.vis, "existential type"));
+            ast::ItemKind::OpaqueTy(ref bounds, ref generics) => {
+                self.head(visibility_qualified(&item.vis, "type"));
                 self.print_ident(item.ident);
+                self.word_space("= impl");
                 self.print_generic_params(&generics.params);
                 self.end(); // end the inner ibox
 
@@ -1596,12 +1579,15 @@ impl<'a> State<'a> {
                 self.nbsp();
                 self.print_block_with_attrs(body, &ii.attrs);
             }
-            ast::ImplItemKind::Type(ref ty) => {
+            ast::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
-            ast::ImplItemKind::Existential(ref bounds) => {
-                self.word_space("existential");
-                self.print_associated_type(ii.ident, Some(bounds), None);
+            ast::ImplItemKind::OpaqueTy(ref bounds) => {
+                self.word_space("type");
+                self.print_ident(ii.ident);
+                self.word_space("= impl");
+                self.print_type_bounds(":", bounds);
+                self.s.word(";");
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
@@ -2121,17 +2107,9 @@ impl<'a> State<'a> {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
-            ast::ExprKind::Await(origin, ref expr) => {
-                match origin {
-                    ast::AwaitOrigin::MacroLike => {
-                        self.s.word("await!");
-                        self.print_expr_maybe_paren(expr, parser::PREC_FORCE_PAREN);
-                    }
-                    ast::AwaitOrigin::FieldLike => {
-                        self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
-                        self.s.word(".await");
-                    }
-                }
+            ast::ExprKind::Await(ref expr) => {
+                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
+                self.s.word(".await");
             }
             ast::ExprKind::Assign(ref lhs, ref rhs) => {
                 let prec = AssocOp::Assign.precedence() as i8;
@@ -2369,22 +2347,10 @@ impl<'a> State<'a> {
                     self.print_pat(p);
                 }
             }
-            PatKind::TupleStruct(ref path, ref elts, ddpos) => {
+            PatKind::TupleStruct(ref path, ref elts) => {
                 self.print_path(path, true, 0);
                 self.popen();
-                if let Some(ddpos) = ddpos {
-                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p));
-                    if ddpos != 0 {
-                        self.word_space(",");
-                    }
-                    self.s.word("..");
-                    if ddpos != elts.len() {
-                        self.s.word(",");
-                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(p));
-                    }
-                } else {
-                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
-                }
+                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
                 self.pclose();
             }
             PatKind::Path(None, ref path) => {
@@ -2416,23 +2382,11 @@ impl<'a> State<'a> {
                 self.s.space();
                 self.s.word("}");
             }
-            PatKind::Tuple(ref elts, ddpos) => {
+            PatKind::Tuple(ref elts) => {
                 self.popen();
-                if let Some(ddpos) = ddpos {
-                    self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p));
-                    if ddpos != 0 {
-                        self.word_space(",");
-                    }
-                    self.s.word("..");
-                    if ddpos != elts.len() {
-                        self.s.word(",");
-                        self.commasep(Inconsistent, &elts[ddpos..], |s, p| s.print_pat(p));
-                    }
-                } else {
-                    self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
-                    if elts.len() == 1 {
-                        self.s.word(",");
-                    }
+                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
+                if elts.len() == 1 {
+                    self.s.word(",");
                 }
                 self.pclose();
             }
@@ -2458,26 +2412,12 @@ impl<'a> State<'a> {
                 }
                 self.print_expr(end);
             }
-            PatKind::Slice(ref before, ref slice, ref after) => {
+            PatKind::Slice(ref elts) => {
                 self.s.word("[");
-                self.commasep(Inconsistent,
-                                   &before[..],
-                                   |s, p| s.print_pat(p));
-                if let Some(ref p) = *slice {
-                    if !before.is_empty() { self.word_space(","); }
-                    if let PatKind::Wild = p.node {
-                        // Print nothing
-                    } else {
-                        self.print_pat(p);
-                    }
-                    self.s.word("..");
-                    if !after.is_empty() { self.word_space(","); }
-                }
-                self.commasep(Inconsistent,
-                                   &after[..],
-                                   |s, p| s.print_pat(p));
+                self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
                 self.s.word("]");
             }
+            PatKind::Rest => self.s.word(".."),
             PatKind::Paren(ref inner) => {
                 self.popen();
                 self.print_pat(inner);
@@ -2686,27 +2626,23 @@ impl<'a> State<'a> {
         self.s.word("<");
 
         self.commasep(Inconsistent, &generic_params, |s, param| {
+            s.print_outer_attributes_inline(&param.attrs);
+
             match param.kind {
                 ast::GenericParamKind::Lifetime => {
-                    s.print_outer_attributes_inline(&param.attrs);
                     let lt = ast::Lifetime { id: param.id, ident: param.ident };
                     s.print_lifetime_bounds(lt, &param.bounds)
                 }
                 ast::GenericParamKind::Type { ref default } => {
-                    s.print_outer_attributes_inline(&param.attrs);
                     s.print_ident(param.ident);
                     s.print_type_bounds(":", &param.bounds);
-                    match default {
-                        Some(ref default) => {
-                            s.s.space();
-                            s.word_space("=");
-                            s.print_type(default)
-                        }
-                        _ => {}
+                    if let Some(ref default) = default {
+                        s.s.space();
+                        s.word_space("=");
+                        s.print_type(default)
                     }
                 }
                 ast::GenericParamKind::Const { ref ty } => {
-                    s.print_outer_attributes_inline(&param.attrs);
                     s.word_space("const");
                     s.print_ident(param.ident);
                     s.s.space();
@@ -2807,6 +2743,9 @@ impl<'a> State<'a> {
 
     crate fn print_arg(&mut self, input: &ast::Arg, is_closure: bool) {
         self.ibox(INDENT_UNIT);
+
+        self.print_outer_attributes_inline(&input.attrs);
+
         match input.ty.node {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat),
             _ => {
@@ -2933,62 +2872,5 @@ impl<'a> State<'a> {
             ast::IsAuto::Yes => self.word_nbsp("auto"),
             ast::IsAuto::No => {}
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::ast;
-    use crate::source_map;
-    use crate::with_default_globals;
-    use syntax_pos;
-
-    #[test]
-    fn test_fun_to_string() {
-        with_default_globals(|| {
-            let abba_ident = ast::Ident::from_str("abba");
-
-            let decl = ast::FnDecl {
-                inputs: Vec::new(),
-                output: ast::FunctionRetTy::Default(syntax_pos::DUMMY_SP),
-                c_variadic: false
-            };
-            let generics = ast::Generics::default();
-            assert_eq!(
-                fun_to_string(
-                    &decl,
-                    ast::FnHeader {
-                        unsafety: ast::Unsafety::Normal,
-                        constness: source_map::dummy_spanned(ast::Constness::NotConst),
-                        asyncness: source_map::dummy_spanned(ast::IsAsync::NotAsync),
-                        abi: Abi::Rust,
-                    },
-                    abba_ident,
-                    &generics
-                ),
-                "fn abba()"
-            );
-        })
-    }
-
-    #[test]
-    fn test_variant_to_string() {
-        with_default_globals(|| {
-            let ident = ast::Ident::from_str("principal_skinner");
-
-            let var = source_map::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
-                ident,
-                attrs: Vec::new(),
-                id: ast::DUMMY_NODE_ID,
-                // making this up as I go.... ?
-                data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
-                disr_expr: None,
-            });
-
-            let varstr = variant_to_string(&var);
-            assert_eq!(varstr, "principal_skinner");
-        })
     }
 }

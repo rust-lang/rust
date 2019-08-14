@@ -231,8 +231,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
-use crate::iter::{FromIterator, FusedIterator, TrustedLen};
-use crate::ops::{self, Deref};
+use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
+use crate::ops::{self, Deref, DerefMut};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -981,24 +981,22 @@ impl<T: Default, E> Result<T, E> {
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref, E> Result<T, E> {
-    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E>`.
+    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T::Target, &E>`.
     ///
-    /// Leaves the original Result in-place, creating a new one with a reference
-    /// to the original one, additionally coercing the `Ok` arm of the Result via
-    /// `Deref`.
-    pub fn deref_ok(&self) -> Result<&T::Target, &E> {
+    /// Leaves the original `Result` in-place, creating a new one containing a reference to the
+    /// `Ok` type's `Deref::Target` type.
+    pub fn as_deref_ok(&self) -> Result<&T::Target, &E> {
         self.as_ref().map(|t| t.deref())
     }
 }
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T, E: Deref> Result<T, E> {
-    /// Converts from `&Result<T, E>` to `Result<&T, &E::Target>`.
+    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T, &E::Target>`.
     ///
-    /// Leaves the original Result in-place, creating a new one with a reference
-    /// to the original one, additionally coercing the `Err` arm of the Result via
-    /// `Deref`.
-    pub fn deref_err(&self) -> Result<&T, &E::Target>
+    /// Leaves the original `Result` in-place, creating a new one containing a reference to the
+    /// `Err` type's `Deref::Target` type.
+    pub fn as_deref_err(&self) -> Result<&T, &E::Target>
     {
         self.as_ref().map_err(|e| e.deref())
     }
@@ -1006,14 +1004,49 @@ impl<T, E: Deref> Result<T, E> {
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref, E: Deref> Result<T, E> {
-    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E::Target>`.
+    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&T::Target, &E::Target>`.
     ///
-    /// Leaves the original Result in-place, creating a new one with a reference
-    /// to the original one, additionally coercing both the `Ok` and `Err` arms
-    /// of the Result via `Deref`.
-    pub fn deref(&self) -> Result<&T::Target, &E::Target>
+    /// Leaves the original `Result` in-place, creating a new one containing a reference to both
+    /// the `Ok` and `Err` types' `Deref::Target` types.
+    pub fn as_deref(&self) -> Result<&T::Target, &E::Target>
     {
         self.as_ref().map(|t| t.deref()).map_err(|e| e.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: DerefMut, E> Result<T, E> {
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut T::Target, &mut E>`.
+    ///
+    /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
+    /// the `Ok` type's `Deref::Target` type.
+    pub fn as_deref_mut_ok(&mut self) -> Result<&mut T::Target, &mut E> {
+        self.as_mut().map(|t| t.deref_mut())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T, E: DerefMut> Result<T, E> {
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut T, &mut E::Target>`.
+    ///
+    /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
+    /// the `Err` type's `Deref::Target` type.
+    pub fn as_deref_mut_err(&mut self) -> Result<&mut T, &mut E::Target>
+    {
+        self.as_mut().map_err(|e| e.deref_mut())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: DerefMut, E: DerefMut> Result<T, E> {
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to
+    /// `Result<&mut T::Target, &mut E::Target>`.
+    ///
+    /// Leaves the original `Result` in-place, creating a new one containing a mutable reference to
+    /// both the `Ok` and `Err` types' `Deref::Target` types.
+    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E::Target>
+    {
+        self.as_mut().map(|t| t.deref_mut()).map_err(|e| e.deref_mut())
     }
 }
 
@@ -1310,39 +1343,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        struct Adapter<Iter, E> {
-            iter: Iter,
-            err: Option<E>,
-        }
-
-        impl<T, E, Iter: Iterator<Item=Result<T, E>>> Iterator for Adapter<Iter, E> {
-            type Item = T;
-
-            #[inline]
-            fn next(&mut self) -> Option<T> {
-                match self.iter.next() {
-                    Some(Ok(value)) => Some(value),
-                    Some(Err(err)) => {
-                        self.err = Some(err);
-                        None
-                    }
-                    None => None,
-                }
-            }
-
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                let (_min, max) = self.iter.size_hint();
-                (0, max)
-            }
-        }
-
-        let mut adapter = Adapter { iter: iter.into_iter(), err: None };
-        let v: V = FromIterator::from_iter(adapter.by_ref());
-
-        match adapter.err {
-            Some(err) => Err(err),
-            None => Ok(v),
-        }
+        iter::process_results(iter.into_iter(), |i| i.collect())
     }
 }
 

@@ -12,6 +12,8 @@ fn fmtdflt() -> FormatSpec<'static> {
         flags: 0,
         precision: CountImplied,
         width: CountImplied,
+        precision_span: None,
+        width_span: None,
         ty: "",
     };
 }
@@ -79,165 +81,204 @@ fn format_position_nothing_else() {
 }
 #[test]
 fn format_type() {
-    same("{3:a}",
-         &[NextArgument(Argument {
-               position: ArgumentIs(3),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: 0,
-                   precision: CountImplied,
-                   width: CountImplied,
-                   ty: "a",
-               },
-           })]);
+    same(
+        "{3:a}",
+        &[NextArgument(Argument {
+            position: ArgumentIs(3),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountImplied,
+                width: CountImplied,
+                precision_span: None,
+                width_span: None,
+                ty: "a",
+            },
+        })]);
 }
 #[test]
 fn format_align_fill() {
-    same("{3:>}",
-         &[NextArgument(Argument {
-               position: ArgumentIs(3),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignRight,
-                   flags: 0,
-                   precision: CountImplied,
-                   width: CountImplied,
-                   ty: "",
-               },
-           })]);
-    same("{3:0<}",
-         &[NextArgument(Argument {
-               position: ArgumentIs(3),
-               format: FormatSpec {
-                   fill: Some('0'),
-                   align: AlignLeft,
-                   flags: 0,
-                   precision: CountImplied,
-                   width: CountImplied,
-                   ty: "",
-               },
-           })]);
-    same("{3:*<abcd}",
-         &[NextArgument(Argument {
-               position: ArgumentIs(3),
-               format: FormatSpec {
-                   fill: Some('*'),
-                   align: AlignLeft,
-                   flags: 0,
-                   precision: CountImplied,
-                   width: CountImplied,
-                   ty: "abcd",
-               },
-           })]);
+    same(
+        "{3:>}",
+        &[NextArgument(Argument {
+            position: ArgumentIs(3),
+            format: FormatSpec {
+                fill: None,
+                align: AlignRight,
+                flags: 0,
+                precision: CountImplied,
+                width: CountImplied,
+                precision_span: None,
+                width_span: None,
+                ty: "",
+            },
+        })]);
+    same(
+        "{3:0<}",
+        &[NextArgument(Argument {
+            position: ArgumentIs(3),
+            format: FormatSpec {
+                fill: Some('0'),
+                align: AlignLeft,
+                flags: 0,
+                precision: CountImplied,
+                width: CountImplied,
+                precision_span: None,
+                width_span: None,
+                ty: "",
+            },
+        })]);
+    same(
+        "{3:*<abcd}",
+        &[NextArgument(Argument {
+            position: ArgumentIs(3),
+            format: FormatSpec {
+                fill: Some('*'),
+                align: AlignLeft,
+                flags: 0,
+                precision: CountImplied,
+                width: CountImplied,
+                precision_span: None,
+                width_span: None,
+                ty: "abcd",
+            },
+        })]);
 }
 #[test]
 fn format_counts() {
     use syntax_pos::{GLOBALS, Globals, edition};
     GLOBALS.set(&Globals::new(edition::DEFAULT_EDITION), || {
-    same("{:10s}",
-         &[NextArgument(Argument {
-               position: ArgumentImplicitlyIs(0),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: 0,
-                   precision: CountImplied,
-                   width: CountIs(10),
-                   ty: "s",
-               },
-           })]);
-    same("{:10$.10s}",
-         &[NextArgument(Argument {
-               position: ArgumentImplicitlyIs(0),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: 0,
-                   precision: CountIs(10),
-                   width: CountIsParam(10),
-                   ty: "s",
-               },
-           })]);
-    same("{:.*s}",
-         &[NextArgument(Argument {
-               position: ArgumentImplicitlyIs(1),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: 0,
-                   precision: CountIsParam(0),
-                   width: CountImplied,
-                   ty: "s",
-               },
-           })]);
-    same("{:.10$s}",
-         &[NextArgument(Argument {
-               position: ArgumentImplicitlyIs(0),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: 0,
-                   precision: CountIsParam(10),
-                   width: CountImplied,
-                   ty: "s",
-               },
-           })]);
-    same("{:a$.b$s}",
-         &[NextArgument(Argument {
-               position: ArgumentImplicitlyIs(0),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: 0,
-                   precision: CountIsName(Symbol::intern("b")),
-                   width: CountIsName(Symbol::intern("a")),
-                   ty: "s",
-               },
-           })]);
+    same(
+        "{:10s}",
+        &[NextArgument(Argument {
+            position: ArgumentImplicitlyIs(0),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountImplied,
+                width: CountIs(10),
+                precision_span: None,
+                width_span: None,
+                ty: "s",
+            },
+        })]);
+    same(
+        "{:10$.10s}",
+        &[NextArgument(Argument {
+            position: ArgumentImplicitlyIs(0),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountIs(10),
+                width: CountIsParam(10),
+                precision_span: None,
+                width_span: Some(InnerSpan::new(3, 6)),
+                ty: "s",
+            },
+        })]);
+    same(
+        "{:.*s}",
+        &[NextArgument(Argument {
+            position: ArgumentImplicitlyIs(1),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountIsParam(0),
+                width: CountImplied,
+                precision_span: Some(InnerSpan::new(3, 5)),
+                width_span: None,
+                ty: "s",
+            },
+        })]);
+    same(
+        "{:.10$s}",
+        &[NextArgument(Argument {
+            position: ArgumentImplicitlyIs(0),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountIsParam(10),
+                width: CountImplied,
+                precision_span: Some(InnerSpan::new(3, 7)),
+                width_span: None,
+                ty: "s",
+            },
+        })]);
+    same(
+        "{:a$.b$s}",
+        &[NextArgument(Argument {
+            position: ArgumentImplicitlyIs(0),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: 0,
+                precision: CountIsName(Symbol::intern("b")),
+                width: CountIsName(Symbol::intern("a")),
+                precision_span: None,
+                width_span: None,
+                ty: "s",
+            },
+        })]);
     });
 }
 #[test]
 fn format_flags() {
-    same("{:-}",
-         &[NextArgument(Argument {
-               position: ArgumentImplicitlyIs(0),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: (1 << FlagSignMinus as u32),
-                   precision: CountImplied,
-                   width: CountImplied,
-                   ty: "",
-               },
-           })]);
-    same("{:+#}",
-         &[NextArgument(Argument {
-               position: ArgumentImplicitlyIs(0),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: (1 << FlagSignPlus as u32) | (1 << FlagAlternate as u32),
-                   precision: CountImplied,
-                   width: CountImplied,
-                   ty: "",
-               },
-           })]);
+    same(
+        "{:-}",
+        &[NextArgument(Argument {
+            position: ArgumentImplicitlyIs(0),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: (1 << FlagSignMinus as u32),
+                precision: CountImplied,
+                width: CountImplied,
+                precision_span: None,
+                width_span: None,
+                ty: "",
+            },
+        })]);
+    same(
+        "{:+#}",
+        &[NextArgument(Argument {
+            position: ArgumentImplicitlyIs(0),
+            format: FormatSpec {
+                fill: None,
+                align: AlignUnknown,
+                flags: (1 << FlagSignPlus as u32) | (1 << FlagAlternate as u32),
+                precision: CountImplied,
+                width: CountImplied,
+                precision_span: None,
+                width_span: None,
+                ty: "",
+            },
+        })]);
 }
 #[test]
 fn format_mixture() {
-    same("abcd {3:a} efg",
-         &[String("abcd "),
-           NextArgument(Argument {
-               position: ArgumentIs(3),
-               format: FormatSpec {
-                   fill: None,
-                   align: AlignUnknown,
-                   flags: 0,
-                   precision: CountImplied,
-                   width: CountImplied,
-                   ty: "a",
-               },
-           }),
-           String(" efg")]);
+    same(
+        "abcd {3:a} efg",
+        &[
+            String("abcd "),
+            NextArgument(Argument {
+                position: ArgumentIs(3),
+                format: FormatSpec {
+                    fill: None,
+                    align: AlignUnknown,
+                    flags: 0,
+                    precision: CountImplied,
+                    width: CountImplied,
+                    precision_span: None,
+                    width_span: None,
+                    ty: "a",
+                },
+            }),
+            String(" efg"),
+        ],
+    );
 }

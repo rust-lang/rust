@@ -189,7 +189,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
     for impl_item_ref in impl_item_refs {
         let impl_item = tcx.hir().impl_item(impl_item_ref.id);
         let seen_items = match impl_item.node {
-            hir::ImplItemKind::Type(_) => &mut seen_type_items,
+            hir::ImplItemKind::TyAlias(_) => &mut seen_type_items,
             _                          => &mut seen_value_items,
         };
         match seen_items.entry(impl_item.ident.modern()) {

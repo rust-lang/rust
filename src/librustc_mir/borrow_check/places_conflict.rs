@@ -26,6 +26,7 @@ crate enum PlaceConflictBias {
 /// dataflow).
 crate fn places_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     access_place: &Place<'tcx>,
@@ -33,6 +34,7 @@ crate fn places_conflict<'tcx>(
 ) -> bool {
     borrow_conflicts_with_place(
         tcx,
+        param_env,
         body,
         borrow_place,
         BorrowKind::Mut { allow_two_phase_borrow: true },
@@ -48,6 +50,7 @@ crate fn places_conflict<'tcx>(
 /// order to make the conservative choice and preserve soundness.
 pub(super) fn borrow_conflicts_with_place<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
@@ -78,6 +81,7 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
         access_place.iterate(|access_base, access_projections| {
             place_components_conflict(
                 tcx,
+                param_env,
                 body,
                 (borrow_base, borrow_projections),
                 borrow_kind,
@@ -91,6 +95,7 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
 
 fn place_components_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     borrow_projections: (&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>),
     borrow_kind: BorrowKind,
@@ -143,7 +148,7 @@ fn place_components_conflict<'tcx>(
     let borrow_base = borrow_projections.0;
     let access_base = access_projections.0;
 
-    match place_base_conflict(tcx, borrow_base, access_base) {
+    match place_base_conflict(tcx, param_env, borrow_base, access_base) {
         Overlap::Arbitrary => {
             bug!("Two base can't return Arbitrary");
         }
@@ -306,6 +311,7 @@ fn place_components_conflict<'tcx>(
 // between `elem1` and `elem2`.
 fn place_base_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     elem1: &PlaceBase<'tcx>,
     elem2: &PlaceBase<'tcx>,
 ) -> Overlap {
@@ -339,7 +345,7 @@ fn place_base_conflict<'tcx>(
                 (StaticKind::Promoted(promoted_1), StaticKind::Promoted(promoted_2)) => {
                     if promoted_1 == promoted_2 {
                         if let ty::Array(_, len) = s1.ty.sty {
-                            if let Some(0) = len.assert_usize(tcx) {
+                            if let Some(0) = len.try_eval_usize(tcx, param_env) {
                                 // Ignore conflicts with promoted [T; 0].
                                 debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
                                 return Overlap::Disjoint;

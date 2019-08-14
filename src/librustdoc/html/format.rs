@@ -14,7 +14,6 @@ use rustc_target::spec::abi::Abi;
 use rustc::hir;
 
 use crate::clean::{self, PrimitiveType};
-use crate::core::DocAccessLevels;
 use crate::html::item_type::ItemType;
 use crate::html::render::{self, cache, CURRENT_LOCATION_KEY};
 
@@ -404,7 +403,7 @@ impl fmt::Display for clean::Path {
 
 pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
-    if !did.is_local() && !cache.access_levels.is_doc_reachable(did) {
+    if !did.is_local() && !cache.access_levels.is_public(did) {
         return None
     }
 

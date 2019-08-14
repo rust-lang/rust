@@ -15,7 +15,7 @@ use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFolda
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
-use crate::mir::interpret::{Scalar, Pointer};
+use crate::mir::interpret::{Scalar, GlobalId};
 
 use smallvec::SmallVec;
 use std::borrow::Cow;
@@ -171,6 +171,7 @@ pub enum TyKind<'tcx> {
     Never,
 
     /// A tuple type. For example, `(i32, bool)`.
+    /// Use `TyS::tuple_fields` to iterate over the field types.
     Tuple(SubstsRef<'tcx>),
 
     /// The projection of an associated type. For example,
@@ -185,7 +186,7 @@ pub enum TyKind<'tcx> {
     /// Opaque (`impl Trait`) type found in a return type.
     /// The `DefId` comes either from
     /// * the `impl Trait` ast::Ty node,
-    /// * or the `existential type` declaration
+    /// * or the `type Foo = impl Trait` declaration
     /// The substitutions are for the generics of the function in question.
     /// After typeck, the concrete type can be found in the `types` map.
     Opaque(DefId, SubstsRef<'tcx>),
@@ -646,7 +647,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     ///
     /// A Rust trait object type consists (in addition to a lifetime bound)
     /// of a set of trait bounds, which are separated into any number
-    /// of auto-trait bounds, and at most 1 non-auto-trait bound. The
+    /// of auto-trait bounds, and at most one non-auto-trait bound. The
     /// non-auto-trait bound is called the "principal" of the trait
     /// object.
     ///
@@ -680,7 +681,8 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
     #[inline]
     pub fn projection_bounds<'a>(&'a self) ->
-        impl Iterator<Item=ExistentialProjection<'tcx>> + 'a {
+        impl Iterator<Item = ExistentialProjection<'tcx>> + 'a
+    {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::Projection(p) => Some(p),
@@ -690,7 +692,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::AutoTrait(d) => Some(d),
@@ -711,17 +713,17 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 
     #[inline]
     pub fn projection_bounds<'a>(&'a self) ->
-        impl Iterator<Item=PolyExistentialProjection<'tcx>> + 'a {
+        impl Iterator<Item = PolyExistentialProjection<'tcx>> + 'a {
         self.skip_binder().projection_bounds().map(Binder::bind)
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.skip_binder().auto_traits()
     }
 
     pub fn iter<'a>(&'a self)
-        -> impl DoubleEndedIterator<Item=Binder<ExistentialPredicate<'tcx>>> + 'tcx {
+        -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
         self.skip_binder().iter().cloned().map(Binder::bind)
     }
 }
@@ -1722,11 +1724,11 @@ impl<'tcx> TyS<'tcx> {
                     })
                 })
             }
-            ty::Tuple(tys) => tys.iter().any(|ty| {
-                ty.expect_ty().conservative_is_privately_uninhabited(tcx)
+            ty::Tuple(..) => self.tuple_fields().any(|ty| {
+                ty.conservative_is_privately_uninhabited(tcx)
             }),
             ty::Array(ty, len) => {
-                match len.assert_usize(tcx) {
+                match len.try_eval_usize(tcx, ParamEnv::empty()) {
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
                     Some(n) if n != 0 => ty.conservative_is_privately_uninhabited(tcx),
@@ -1847,7 +1849,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_mutable_pointer(&self) -> bool {
+    pub fn is_mutable_ptr(&self) -> bool {
         match self.sty {
             RawPtr(TypeAndMut { mutbl: hir::Mutability::MutMutable, .. }) |
             Ref(_, _, hir::Mutability::MutMutable) => true,
@@ -1861,6 +1863,12 @@ impl<'tcx> TyS<'tcx> {
             RawPtr(_) => return true,
             _ => return false,
         }
+    }
+
+    /// Tests if this is any kind of primitive pointer type (reference, raw pointer, fn pointer).
+    #[inline]
+    pub fn is_any_ptr(&self) -> bool {
+        self.is_region_ptr() || self.is_unsafe_ptr() || self.is_fn_ptr()
     }
 
     /// Returns `true` if this type is an `Arc<T>`.
@@ -2002,7 +2010,7 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_pointer_sized(&self) -> bool {
+    pub fn is_ptr_sized_integral(&self) -> bool {
         match self.sty {
             Int(ast::IntTy::Isize) | Uint(ast::UintTy::Usize) => true,
             _ => false,
@@ -2093,6 +2101,15 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             Adt(adt, _) => Some(adt),
             _ => None,
+        }
+    }
+
+    /// Iterates over tuple fields.
+    /// Panics when called on anything but a tuple.
+    pub fn tuple_fields(&self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> {
+        match self.sty {
+            Tuple(substs) => substs.iter().map(|field| field.expect_ty()),
+            _ => bug!("tuple_fields called on non-tuple"),
         }
     }
 
@@ -2285,29 +2302,38 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn to_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
-        if self.ty != ty.value {
-            return None;
+    pub fn try_eval_bits(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Option<u128> {
+        assert_eq!(self.ty, ty);
+        // if `ty` does not depend on generic parameters, use an empty param_env
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
+        match self.val {
+            // FIXME(const_generics): this doesn't work right now,
+            // because it tries to relate an `Infer` to a `Param`.
+            ConstValue::Unevaluated(did, substs) => {
+                // if `substs` has no unresolved components, use and empty param_env
+                let (param_env, substs) = param_env.with_reveal_all().and(substs).into_parts();
+                // try to resolve e.g. associated constants to their definition on an impl
+                let instance = ty::Instance::resolve(tcx, param_env, did, substs)?;
+                let gid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                let evaluated = tcx.const_eval(param_env.and(gid)).ok()?;
+                evaluated.val.try_to_bits(size)
+            },
+            // otherwise just extract a `ConstValue`'s bits if possible
+            _ => self.val.try_to_bits(size),
         }
-        let size = tcx.layout_of(ty).ok()?.size;
-        self.val.try_to_bits(size)
     }
 
     #[inline]
-    pub fn to_ptr(&self) -> Option<Pointer> {
-        self.val.try_to_ptr()
-    }
-
-    #[inline]
-    pub fn assert_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> Option<u128> {
-        assert_eq!(self.ty, ty.value);
-        let size = tcx.layout_of(ty).ok()?.size;
-        self.val.try_to_bits(size)
-    }
-
-    #[inline]
-    pub fn assert_bool(&self, tcx: TyCtxt<'tcx>) -> Option<bool> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.bool)).and_then(|v| match v {
+    pub fn try_eval_bool(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
+        self.try_eval_bits(tcx, param_env, tcx.types.bool).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
             _ => None,
@@ -2315,20 +2341,19 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn assert_usize(&self, tcx: TyCtxt<'tcx>) -> Option<u64> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.usize)).map(|v| v as u64)
+    pub fn try_eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<u64> {
+        self.try_eval_bits(tcx, param_env, tcx.types.usize).map(|v| v as u64)
     }
 
     #[inline]
-    pub fn unwrap_bits(&self, tcx: TyCtxt<'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> u128 {
-        self.assert_bits(tcx, ty).unwrap_or_else(||
-            bug!("expected bits of {}, got {:#?}", ty.value, self))
+    pub fn eval_bits(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> u128 {
+        self.try_eval_bits(tcx, param_env, ty).unwrap_or_else(||
+            bug!("expected bits of {:#?}, got {:#?}", ty, self))
     }
 
     #[inline]
-    pub fn unwrap_usize(&self, tcx: TyCtxt<'tcx>) -> u64 {
-        self.assert_usize(tcx).unwrap_or_else(||
-            bug!("expected constant usize, got {:#?}", self))
+    pub fn eval_usize(&self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> u64 {
+        self.eval_bits(tcx, param_env, tcx.types.usize) as u64
     }
 }
 

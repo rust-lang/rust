@@ -172,7 +172,7 @@ impl<T: ?Sized> From<&T> for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
-impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
+impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
     #[inline]
     fn from(p: NonNull<T>) -> Self {
         unsafe { Unique::new_unchecked(p.as_ptr()) }

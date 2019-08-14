@@ -1,3 +1,6 @@
+#![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
+
 use super::debuginfo::{
     DIBuilder, DIDescriptor, DIFile, DILexicalBlock, DISubprogram, DIType,
     DIBasicType, DIDerivedType, DICompositeType, DIScope, DIVariable,
@@ -566,7 +569,7 @@ pub mod debuginfo {
     bitflags! {
         #[repr(transparent)]
         #[derive(Default)]
-        pub struct DIFlags: ::libc::uint32_t {
+        pub struct DIFlags: u32 {
             const FlagZero                = 0;
             const FlagPrivate             = 1;
             const FlagProtected           = 2;
@@ -595,7 +598,7 @@ pub mod debuginfo {
     bitflags! {
         #[repr(transparent)]
         #[derive(Default)]
-        pub struct DISPFlags: ::libc::uint32_t {
+        pub struct DISPFlags: u32 {
             const SPFlagZero              = 0;
             const SPFlagVirtual           = 1;
             const SPFlagPureVirtual       = 2;
@@ -719,7 +722,6 @@ extern "C" {
     pub fn LLVMConstIntGetZExtValue(ConstantVal: &Value) -> c_ulonglong;
     pub fn LLVMRustConstInt128Get(ConstantVal: &Value, SExt: bool,
                                   high: &mut u64, low: &mut u64) -> bool;
-    pub fn LLVMConstRealGetDouble (ConstantVal: &Value, losesInfo: &mut Bool) -> f64;
 
 
     // Operations on composite constants
@@ -1663,7 +1665,6 @@ extern "C" {
     pub fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
     pub fn LLVMIsAConstantInt(value_ref: &Value) -> Option<&Value>;
-    pub fn LLVMIsAConstantFP(value_ref: &Value) -> Option<&Value>;
 
     pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;

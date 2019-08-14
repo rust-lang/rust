@@ -62,9 +62,8 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
-
-#![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
+#![cfg_attr(not(bootstrap), allow(incomplete_features))]
 
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
@@ -74,7 +73,7 @@
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(const_fn_union)]
-#![cfg_attr(not(bootstrap), feature(const_generics))]
+#![feature(const_generics)]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
@@ -133,6 +132,7 @@
 #![feature(maybe_uninit_slice, maybe_uninit_array)]
 #![feature(external_doc)]
 #![feature(mem_take)]
+#![feature(associated_type_bounds)]
 
 #[prelude_import]
 #[allow(unused)]

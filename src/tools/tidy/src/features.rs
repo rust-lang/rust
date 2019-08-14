@@ -16,6 +16,9 @@ use std::path::Path;
 
 use regex::Regex;
 
+#[cfg(test)]
+mod tests;
+
 mod version;
 use version::Version;
 
@@ -203,14 +206,6 @@ fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
         .map(|m| m.as_str())
 }
 
-#[test]
-fn test_find_attr_val() {
-    let s = r#"#[unstable(feature = "checked_duration_since", issue = "58402")]"#;
-    assert_eq!(find_attr_val(s, "feature"), Some("checked_duration_since"));
-    assert_eq!(find_attr_val(s, "issue"), Some("58402"));
-    assert_eq!(find_attr_val(s, "since"), None);
-}
-
 fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
     let prefix = "feature_gate_";
     if filen_underscore.starts_with(prefix) {
@@ -344,7 +339,7 @@ fn get_and_check_lib_features(base_src_path: &Path,
                 Ok((name, f)) => {
                     let mut check_features = |f: &Feature, list: &Features, display: &str| {
                         if let Some(ref s) = list.get(name) {
-                            if f.tracking_issue != s.tracking_issue {
+                            if f.tracking_issue != s.tracking_issue && f.level != Status::Stable {
                                 tidy_error!(bad,
                                             "{}:{}: mismatches the `issue` in {}",
                                             file.display(),

@@ -10,14 +10,10 @@
 #![feature(core_intrinsics)]
 #![feature(never_type)]
 #![feature(nll)]
-#![allow(unused_attributes)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(in_band_lifetimes)]
 
 #![recursion_limit="256"]
-
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
 
 #[macro_use]
 extern crate rustc;

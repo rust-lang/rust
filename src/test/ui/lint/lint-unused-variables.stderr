@@ -1,0 +1,56 @@
+error: unused variable: `a`
+  --> $DIR/lint-unused-variables.rs:8:5
+   |
+LL |     a: i32,
+   |     ^ help: consider prefixing with an underscore: `_a`
+   |
+note: lint level defined here
+  --> $DIR/lint-unused-variables.rs:5:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:14:5
+   |
+LL |     b: i32,
+   |     ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `a`
+  --> $DIR/lint-unused-variables.rs:53:9
+   |
+LL |         a: i32,
+   |         ^ help: consider prefixing with an underscore: `_a`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:59:9
+   |
+LL |         b: i32,
+   |         ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:37:9
+   |
+LL |         b: i32,
+   |         ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `a`
+  --> $DIR/lint-unused-variables.rs:22:9
+   |
+LL |         a: i32,
+   |         ^ help: consider prefixing with an underscore: `_a`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:29:9
+   |
+LL |         b: i32,
+   |         ^ help: consider prefixing with an underscore: `_b`
+
+error: unused variable: `b`
+  --> $DIR/lint-unused-variables.rs:45:9
+   |
+LL |         b: i32,
+   |         ^ help: consider prefixing with an underscore: `_b`
+
+error: aborting due to 8 previous errors
+

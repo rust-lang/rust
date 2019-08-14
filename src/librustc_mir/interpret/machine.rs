@@ -10,7 +10,7 @@ use rustc::mir;
 use rustc::ty::{self, TyCtxt};
 
 use super::{
-    Allocation, AllocId, InterpResult, InterpError, Scalar, AllocationExtra,
+    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
     InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
 };
 
@@ -54,6 +54,16 @@ pub trait AllocMap<K: Hash + Eq, V> {
         k: K,
         vacant: impl FnOnce() -> Result<V, E>
     ) -> Result<&mut V, E>;
+
+    /// Read-only lookup.
+    fn get(&self, k: K) -> Option<&V> {
+        self.get_or(k, || Err(())).ok()
+    }
+
+    /// Mutable lookup.
+    fn get_mut(&mut self, k: K) -> Option<&mut V> {
+        self.get_mut_or(k, || Err(())).ok()
+    }
 }
 
 /// Methods of this trait signifies a point where CTFE evaluation would fail
@@ -98,6 +108,9 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// `tag_allocation` or `find_foreign_static` (see below) returns an owned allocation
     /// that is added to the memory so that the work is not done twice.
     const STATIC_KIND: Option<Self::MemoryKinds>;
+
+    /// Whether memory accesses should be alignment-checked.
+    const CHECK_ALIGN: bool;
 
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
@@ -155,11 +168,10 @@ pub trait Machine<'mir, 'tcx>: Sized {
         def_id: DefId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>>;
 
-    /// Called for all binary operations on integer(-like) types when one operand is a pointer
-    /// value, and for the `Offset` operation that is inherently about pointers.
+    /// Called for all binary operations where the LHS has pointer type.
     ///
     /// Returns a (value, overflowed) pair if the operation succeeded
-    fn ptr_op(
+    fn binary_ptr_op(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Self::PointerTag>,
@@ -224,23 +236,19 @@ pub trait Machine<'mir, 'tcx>: Sized {
         extra: Self::FrameExtra,
     ) -> InterpResult<'tcx>;
 
-    #[inline(always)]
     fn int_to_ptr(
         _mem: &Memory<'mir, 'tcx, Self>,
         int: u64,
     ) -> InterpResult<'tcx, Pointer<Self::PointerTag>> {
         Err((if int == 0 {
-            InterpError::InvalidNullPointerUsage
+            err_unsup!(InvalidNullPointerUsage)
         } else {
-            InterpError::ReadBytesAsPointer
+            err_unsup!(ReadBytesAsPointer)
         }).into())
     }
 
-    #[inline(always)]
     fn ptr_to_int(
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer<Self::PointerTag>,
-    ) -> InterpResult<'tcx, u64> {
-        err!(ReadPointerAsBytes)
-    }
+    ) -> InterpResult<'tcx, u64>;
 }

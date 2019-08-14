@@ -23,7 +23,7 @@ pub struct AnnotateSnippetEmitterWriter {
     source_map: Option<Lrc<SourceMapperDyn>>,
     /// If true, hides the longer explanation text
     short_message: bool,
-    /// If true, will normalize line numbers with LL to prevent noise in UI test diffs.
+    /// If true, will normalize line numbers with `LL` to prevent noise in UI test diffs.
     ui_testing: bool,
 }
 
@@ -173,10 +173,6 @@ impl AnnotateSnippetEmitterWriter {
     /// Allows to modify `Self` to enable or disable the `ui_testing` flag.
     ///
     /// If this is set to true, line numbers will be normalized as `LL` in the output.
-    // FIXME(#59346): This method is used via the public interface, but setting the `ui_testing`
-    // flag currently does not anonymize line numbers. We would have to add the `maybe_anonymized`
-    // method from `emitter.rs` and implement rust-lang/annotate-snippets-rs#2 in order to
-    // anonymize line numbers.
     pub fn ui_testing(mut self, ui_testing: bool) -> Self {
         self.ui_testing = ui_testing;
         self
@@ -202,7 +198,7 @@ impl AnnotateSnippetEmitterWriter {
         };
         if let Some(snippet) = converter.to_annotation_snippet() {
             let dl = DisplayList::from(snippet);
-            let dlf = DisplayListFormatter::new(true);
+            let dlf = DisplayListFormatter::new(true, self.ui_testing);
             // FIXME(#59346): Figure out if we can _always_ print to stderr or not.
             // `emitter.rs` has the `Destination` enum that lists various possible output
             // destinations.

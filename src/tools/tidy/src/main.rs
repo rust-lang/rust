@@ -4,8 +4,6 @@
 //! etc. This is run by default on `make check` and as part of the auto
 //! builders.
 
-#![deny(warnings)]
-
 use tidy::*;
 
 use std::process;
@@ -24,10 +22,11 @@ fn main() {
     style::check(&path, &mut bad);
     errors::check(&path, &mut bad);
     cargo::check(&path, &mut bad);
+    edition::check(&path, &mut bad);
     let collected = features::check(&path, &mut bad, verbose);
     pal::check(&path, &mut bad);
     unstable_book::check(&path, collected, &mut bad);
-    libcoretest::check(&path, &mut bad);
+    unit_tests::check(&path, &mut bad);
     if !args.iter().any(|s| *s == "--no-vendor") {
         deps::check(&path, &mut bad);
     }

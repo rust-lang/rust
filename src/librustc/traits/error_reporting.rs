@@ -417,7 +417,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Some(format!("[{}]", self.tcx.type_of(def.did).to_string())),
                 ));
                 let tcx = self.tcx;
-                if let Some(len) = len.assert_usize(tcx) {
+                if let Some(len) = len.try_eval_usize(tcx, ty::ParamEnv::empty()) {
                     flags.push((
                         sym::_Self,
                         Some(format!("[{}; {}]", self.tcx.type_of(def.did).to_string(), len)),

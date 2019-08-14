@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 register_long_diagnostics! {
 
 
@@ -1991,7 +1989,7 @@ When matching on a variable it cannot be mutated in the match guards, as this
 could cause the match to be non-exhaustive:
 
 ```compile_fail,E0510
-#![feature(nll, bind_by_move_pattern_guards)]
+#![feature(bind_by_move_pattern_guards)]
 let mut x = Some(0);
 match x {
     None => (),
@@ -2029,7 +2027,6 @@ Local variables, function parameters and temporaries are all dropped before the
 end of the function body. So a reference to them cannot be returned.
 
 ```compile_fail,E0515
-#![feature(nll)]
 fn get_dangling_reference() -> &'static i32 {
     let x = 0;
     &x
@@ -2037,7 +2034,6 @@ fn get_dangling_reference() -> &'static i32 {
 ```
 
 ```compile_fail,E0515
-#![feature(nll)]
 use std::slice::Iter;
 fn get_dangling_iterator<'a>() -> Iter<'a, i32> {
     let v = vec![1, 2, 3];
@@ -2235,7 +2231,6 @@ function which outlived the lifetime of the function.
 Example of erroneous code:
 
 ```compile_fail,E0712
-#![feature(nll)]
 #![feature(thread_local)]
 
 #[thread_local]
@@ -2288,8 +2283,6 @@ not run while the string-data is borrowed; for example by taking `S`
 by reference:
 
 ```
-#![feature(nll)]
-
 pub struct S<'a> { data: &'a mut String }
 
 impl<'a> Drop for S<'a> {
@@ -2314,7 +2307,6 @@ while a borrow is still in active use.
 Erroneous code example:
 
 ```compile_fail,E0716
-# #![feature(nll)]
 fn foo() -> i32 { 22 }
 fn bar(x: &i32) -> &i32 { x }
 let p = bar(&foo());

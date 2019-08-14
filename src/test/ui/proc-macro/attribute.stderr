@@ -40,56 +40,50 @@ error: `self` cannot be a name of derive macro
 LL | #[proc_macro_derive(self)]
    |                     ^^^^
 
-error: cannot override a built-in derive macro
-  --> $DIR/attribute.rs:43:21
-   |
-LL | #[proc_macro_derive(PartialEq)]
-   |                     ^^^^^^^^^
-
 error: second argument must be `attributes`
-  --> $DIR/attribute.rs:47:26
+  --> $DIR/attribute.rs:46:26
    |
 LL | #[proc_macro_derive(d11, a)]
    |                          ^
 
 error: attribute must be of form: `attributes(foo, bar)`
-  --> $DIR/attribute.rs:47:26
+  --> $DIR/attribute.rs:46:26
    |
 LL | #[proc_macro_derive(d11, a)]
    |                          ^
 
 error: attribute must be of form: `attributes(foo, bar)`
-  --> $DIR/attribute.rs:52:26
+  --> $DIR/attribute.rs:51:26
    |
 LL | #[proc_macro_derive(d12, attributes)]
    |                          ^^^^^^^^^^
 
 error: not a meta item
-  --> $DIR/attribute.rs:56:37
+  --> $DIR/attribute.rs:55:37
    |
 LL | #[proc_macro_derive(d13, attributes("a"))]
    |                                     ^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:60:37
+  --> $DIR/attribute.rs:59:37
    |
 LL | #[proc_macro_derive(d14, attributes(a = ""))]
    |                                     ^^^^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:64:37
+  --> $DIR/attribute.rs:63:37
    |
 LL | #[proc_macro_derive(d15, attributes(m::a))]
    |                                     ^^^^
 
 error: must only be one word
-  --> $DIR/attribute.rs:68:37
+  --> $DIR/attribute.rs:67:37
    |
 LL | #[proc_macro_derive(d16, attributes(a(b)))]
    |                                     ^^^^
 
 error: `self` cannot be a name of derive helper attribute
-  --> $DIR/attribute.rs:72:37
+  --> $DIR/attribute.rs:71:37
    |
 LL | #[proc_macro_derive(d17, attributes(self))]
    |                                     ^^^^
@@ -106,5 +100,5 @@ error: malformed `proc_macro_derive` attribute input
 LL | #[proc_macro_derive = ""]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
 
-error: aborting due to 18 previous errors
+error: aborting due to 17 previous errors
 

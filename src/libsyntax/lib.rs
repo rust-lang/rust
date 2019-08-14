@@ -7,9 +7,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 #![feature(bind_by_move_pattern_guards)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
@@ -18,11 +15,16 @@
 #![feature(label_break_value)]
 #![feature(mem_take)]
 #![feature(nll)]
+#![feature(proc_macro_diagnostic)]
+#![feature(proc_macro_internals)]
+#![feature(proc_macro_span)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
+
+extern crate proc_macro;
 
 pub use errors;
 use rustc_data_structures::sync::Lock;
@@ -31,12 +33,16 @@ pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
 
+#[cfg(test)]
+mod tests;
+
 const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
 // errors; eventually we plan to convert all code using panictry to just use
 // normal try.
+#[macro_export]
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};
@@ -129,8 +135,6 @@ pub mod util {
     pub mod lev_distance;
     pub mod node_count;
     pub mod parser;
-    #[cfg(test)]
-    pub mod parser_testing;
     pub mod map_in_place;
 }
 
@@ -147,10 +151,8 @@ pub mod mut_visit;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;
-pub mod std_inject;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
-pub mod test;
 pub mod tokenstream;
 pub mod visit;
 
@@ -161,13 +163,15 @@ pub mod print {
 }
 
 pub mod ext {
+    mod placeholders;
+    mod proc_macro_server;
+
     pub use syntax_pos::hygiene;
+    pub mod allocator;
     pub mod base;
     pub mod build;
-    pub mod derive;
     pub mod expand;
-    pub mod placeholders;
-    pub mod source_util;
+    pub mod proc_macro;
 
     pub mod tt {
         pub mod transcribe;
@@ -179,8 +183,5 @@ pub mod ext {
 }
 
 pub mod early_buffered_lints;
-
-#[cfg(test)]
-mod test_snippet;
 
 __build_diagnostic_array! { libsyntax, DIAGNOSTICS }

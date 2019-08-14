@@ -1055,17 +1055,16 @@ fn encode_query_results<'a, 'tcx, Q, E>(
     query_result_index: &mut EncodedQueryResultIndex,
 ) -> Result<(), E::Error>
 where
-    Q: super::config::QueryDescription<'tcx>,
+    Q: super::config::QueryDescription<'tcx, Value: Encodable>,
     E: 'a + TyEncoder,
-    Q::Value: Encodable,
 {
     let desc = &format!("encode_query_results for {}",
-        unsafe { ::std::intrinsics::type_name::<Q>() });
+        ::std::any::type_name::<Q>());
 
     time_ext(tcx.sess.time_extended(), Some(tcx.sess), desc, || {
-        let map = Q::query_cache(tcx).borrow();
-        assert!(map.active.is_empty());
-        for (key, entry) in map.results.iter() {
+        let shards = Q::query_cache(tcx).lock_shards();
+        assert!(shards.iter().all(|shard| shard.active.is_empty()));
+        for (key, entry) in shards.iter().flat_map(|shard| shard.results.iter()) {
             if Q::cache_on_disk(tcx, key.clone(), Some(&entry.value)) {
                 let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 

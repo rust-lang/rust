@@ -1,8 +1,8 @@
 // compile-fail
+// ignore-tidy-linelength
 // edition:2018
 
 #![feature(async_await)]
-#![feature(existential_type)]
 #![feature(impl_trait_in_bindings)]
 //~^ WARNING the feature `impl_trait_in_bindings` is incomplete
 
@@ -45,7 +45,8 @@ mod lifetimes {
 
     /// Missing bound constraining `Assoc`, `T::Assoc` can't be normalized further.
     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output=T::Assoc> {
-        //~^ ERROR: type mismatch
+    //~^ ERROR: type mismatch
+    //~^^ ERROR `impl Trait` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
         Foo(())
     }
 }

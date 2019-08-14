@@ -13,6 +13,7 @@ use crate::mem::ManuallyDrop;
 /// ever gets used to access memory:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: &i32 = unsafe { mem::zeroed() }; // undefined behavior!
@@ -27,6 +28,7 @@ use crate::mem::ManuallyDrop;
 /// always be `true` or `false`. Hence, creating an uninitialized `bool` is undefined behavior:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let b: bool = unsafe { mem::uninitialized() }; // undefined behavior!
@@ -40,6 +42,7 @@ use crate::mem::ManuallyDrop;
 /// which otherwise can hold any *fixed* bit pattern:
 ///
 /// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem::{self, MaybeUninit};
 ///
 /// let x: i32 = unsafe { mem::uninitialized() }; // undefined behavior!
@@ -51,7 +54,8 @@ use crate::mem::ManuallyDrop;
 ///
 /// On top of that, remember that most types have additional invariants beyond merely
 /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
-/// is considered initialized because the only requirement the compiler knows about it
+/// is considered initialized (under the current implementation; this does not constitute
+/// a stable guarantee) because the only requirement the compiler knows about it
 /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
 /// *immediate* undefined behavior, but will cause undefined behavior with most
 /// safe operations (including dropping it).
@@ -208,6 +212,8 @@ use crate::mem::ManuallyDrop;
 /// guarantee may evolve.
 #[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
+// Lang item so we can wrap other types in it. This is useful for generators.
+#[cfg_attr(not(bootstrap), lang = "maybe_uninit")]
 #[derive(Copy)]
 #[repr(transparent)]
 pub union MaybeUninit<T> {
@@ -402,6 +408,14 @@ impl<T> MaybeUninit<T> {
     ///
     /// [inv]: #initialization-invariant
     ///
+    /// On top of that, remember that most types have additional invariants beyond merely
+    /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
+    /// is considered initialized (under the current implementation; this does not constitute
+    /// a stable guarantee) because the only requirement the compiler knows about it
+    /// is that the data pointer must be non-null. Creating such a `Vec<T>` does not cause
+    /// *immediate* undefined behavior, but will cause undefined behavior with most
+    /// safe operations (including dropping it).
+    ///
     /// # Examples
     ///
     /// Correct usage of this method:
@@ -434,7 +448,7 @@ impl<T> MaybeUninit<T> {
     /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
     /// to the usual drop handling.
     ///
-    /// Whenever possible, it is preferrable to use [`assume_init`] instead, which
+    /// Whenever possible, it is preferable to use [`assume_init`] instead, which
     /// prevents duplicating the content of the `MaybeUninit<T>`.
     ///
     /// # Safety

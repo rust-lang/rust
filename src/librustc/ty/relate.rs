@@ -25,6 +25,8 @@ pub enum Cause {
 pub trait TypeRelation<'tcx>: Sized {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
 
@@ -466,7 +468,9 @@ pub fn super_relate_tys<R: TypeRelation<'tcx>>(
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
-                    match (sz_a.assert_usize(tcx), sz_b.assert_usize(tcx)) {
+                    let sz_a = sz_a.try_eval_usize(tcx, relation.param_env());
+                    let sz_b = sz_b.try_eval_usize(tcx, relation.param_env());
+                    match (sz_a, sz_b) {
                         (Some(sz_a_val), Some(sz_b_val)) => {
                             Err(TypeError::FixedArraySize(
                                 expected_found(relation, &sz_a_val, &sz_b_val)
@@ -594,13 +598,11 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
                 ty: a.ty,
             }))
         }
-        (ConstValue::ByRef { .. }, _) => {
-            bug!(
-                "non-Scalar ConstValue encountered in super_relate_consts {:?} {:?}",
-                a,
-                b,
-            );
-        }
+
+        // FIXME(const_generics): we should either handle `Scalar::Ptr` or add a comment
+        // saying that we're not handling it intentionally.
+
+        // FIXME(const_generics): handle `ConstValue::ByRef` and `ConstValue::Slice`.
 
         // FIXME(const_generics): this is wrong, as it is a projection
         (ConstValue::Unevaluated(a_def_id, a_substs),

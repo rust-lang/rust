@@ -105,6 +105,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
             );
 
+            // This error should not be downgraded to a warning,
+            // even in migrate mode.
+            self.disable_error_downgrading();
             err.buffer(&mut self.errors_buffer);
         } else {
             if let Some((reported_place, _)) = self.move_error_reported.get(&move_out_indices) {
@@ -1140,19 +1143,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 bug!("try_report_cannot_return_reference_to_local: not a local")
             };
             match self.body.local_kind(*local) {
-                LocalKind::ReturnPointer | LocalKind::Temp => {
-                    (
-                        "temporary value".to_string(),
-                        "temporary value created here".to_string(),
-                    )
-                }
-                LocalKind::Arg => {
-                    (
-                        "function parameter".to_string(),
-                        "function parameter borrowed here".to_string(),
-                    )
-                },
-                LocalKind::Var => bug!("local variable without a name"),
+                LocalKind::ReturnPointer | LocalKind::Temp => (
+                    "temporary value".to_string(),
+                    "temporary value created here".to_string(),
+                ),
+                LocalKind::Arg => (
+                    "function parameter".to_string(),
+                    "function parameter borrowed here".to_string(),
+                ),
+                LocalKind::Var => (
+                    "local binding".to_string(),
+                    "local binding introduced here".to_string(),
+                ),
             }
         };
 

@@ -64,6 +64,7 @@ features = [
 
 [dependencies]
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
+crossbeam-utils = { version = "0.6.5", features = ["nightly"] }
 parking_lot = { version = "0.7", features = ['nightly'] }
 rand = { version = "0.6.1", features = ["i128_support"] }
 serde = { version = "1.0.82", features = ['derive'] }

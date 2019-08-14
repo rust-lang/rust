@@ -18,6 +18,9 @@ use crate::dep_graph::{DepNode};
 use lazy_static;
 use crate::session::Session;
 
+#[cfg(test)]
+mod tests;
+
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
@@ -348,17 +351,4 @@ impl<K, V> MemoizationMap for RefCell<FxHashMap<K,V>>
             }
         }
     }
-}
-
-#[test]
-fn test_to_readable_str() {
-    assert_eq!("0", to_readable_str(0));
-    assert_eq!("1", to_readable_str(1));
-    assert_eq!("99", to_readable_str(99));
-    assert_eq!("999", to_readable_str(999));
-    assert_eq!("1_000", to_readable_str(1_000));
-    assert_eq!("1_001", to_readable_str(1_001));
-    assert_eq!("999_999", to_readable_str(999_999));
-    assert_eq!("1_000_000", to_readable_str(1_000_000));
-    assert_eq!("1_234_567", to_readable_str(1_234_567));
 }

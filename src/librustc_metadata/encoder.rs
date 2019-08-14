@@ -868,8 +868,7 @@ impl EncodeContext<'tcx> {
                 }))
             }
             ty::AssocKind::Type => EntryKind::AssocType(container),
-            ty::AssocKind::Existential =>
-                span_bug!(ast_item.span, "existential type in trait"),
+            ty::AssocKind::OpaqueTy => span_bug!(ast_item.span, "opaque type in trait"),
         };
 
         Entry {
@@ -893,7 +892,7 @@ impl EncodeContext<'tcx> {
                         None
                     }
                 }
-                ty::AssocKind::Existential => unreachable!(),
+                ty::AssocKind::OpaqueTy => unreachable!(),
             },
             inherent_impls: LazySeq::empty(),
             variances: if trait_item.kind == ty::AssocKind::Method {
@@ -964,7 +963,7 @@ impl EncodeContext<'tcx> {
                     has_self: impl_item.method_has_self_argument,
                 }))
             }
-            ty::AssocKind::Existential => EntryKind::AssocExistential(container),
+            ty::AssocKind::OpaqueTy => EntryKind::AssocOpaqueTy(container),
             ty::AssocKind::Type => EntryKind::AssocType(container)
         };
 
@@ -980,8 +979,8 @@ impl EncodeContext<'tcx> {
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     needs_inline || is_const_fn || always_encode_mir
                 },
-                hir::ImplItemKind::Existential(..) |
-                hir::ImplItemKind::Type(..) => false,
+                hir::ImplItemKind::OpaqueTy(..) |
+                hir::ImplItemKind::TyAlias(..) => false,
             };
 
         Entry {
@@ -1095,8 +1094,8 @@ impl EncodeContext<'tcx> {
             }
             hir::ItemKind::ForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
-            hir::ItemKind::Ty(..) => EntryKind::Type,
-            hir::ItemKind::Existential(..) => EntryKind::Existential,
+            hir::ItemKind::TyAlias(..) => EntryKind::Type,
+            hir::ItemKind::OpaqueTy(..) => EntryKind::OpaqueTy,
             hir::ItemKind::Enum(..) => EntryKind::Enum(get_repr_options(tcx, def_id)),
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let variant = tcx.adt_def(def_id).non_enum_variant();
@@ -1228,8 +1227,8 @@ impl EncodeContext<'tcx> {
                 hir::ItemKind::Static(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
-                hir::ItemKind::Ty(..) |
-                hir::ItemKind::Existential(..) |
+                hir::ItemKind::TyAlias(..) |
+                hir::ItemKind::OpaqueTy(..) |
                 hir::ItemKind::Enum(..) |
                 hir::ItemKind::Struct(..) |
                 hir::ItemKind::Union(..) |
@@ -1248,12 +1247,12 @@ impl EncodeContext<'tcx> {
                 hir::ItemKind::Static(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
-                hir::ItemKind::Ty(..) |
+                hir::ItemKind::TyAlias(..) |
                 hir::ItemKind::Enum(..) |
                 hir::ItemKind::Struct(..) |
                 hir::ItemKind::Union(..) |
                 hir::ItemKind::Impl(..) |
-                hir::ItemKind::Existential(..) |
+                hir::ItemKind::OpaqueTy(..) |
                 hir::ItemKind::Trait(..) => Some(self.encode_generics(def_id)),
                 hir::ItemKind::TraitAlias(..) => Some(self.encode_generics(def_id)),
                 _ => None,
@@ -1262,12 +1261,12 @@ impl EncodeContext<'tcx> {
                 hir::ItemKind::Static(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
-                hir::ItemKind::Ty(..) |
+                hir::ItemKind::TyAlias(..) |
                 hir::ItemKind::Enum(..) |
                 hir::ItemKind::Struct(..) |
                 hir::ItemKind::Union(..) |
                 hir::ItemKind::Impl(..) |
-                hir::ItemKind::Existential(..) |
+                hir::ItemKind::OpaqueTy(..) |
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => Some(self.encode_predicates(def_id)),
                 _ => None,
@@ -1762,8 +1761,8 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::GlobalAsm(..) |
             hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::Use(..) |
-            hir::ItemKind::Ty(..) |
-            hir::ItemKind::Existential(..) |
+            hir::ItemKind::TyAlias(..) |
+            hir::ItemKind::OpaqueTy(..) |
             hir::ItemKind::TraitAlias(..) => {
                 // no sub-item recording needed in these cases
             }

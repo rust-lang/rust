@@ -11,11 +11,6 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     static INVALID: AtomicBool = AtomicBool::new(false);
 
     let mut fds = [0; 2];
-
-    // Unfortunately the only known way right now to create atomically set the
-    // CLOEXEC flag is to use the `pipe2` syscall on Linux. This was added in
-    // 2.6.27, however, and because we support 2.6.18 we must detect this
-    // support dynamically.
     cvt(unsafe { libc::pipe(fds.as_mut_ptr()) })?;
 
     let fd0 = FileDesc::new(fds[0]);

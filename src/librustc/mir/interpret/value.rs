@@ -2,7 +2,7 @@ use std::fmt;
 use rustc_macros::HashStable;
 use rustc_apfloat::{Float, ieee::{Double, Single}};
 
-use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size, Align}, subst::SubstsRef};
+use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
 use crate::ty::PlaceholderConst;
 use crate::hir::def_id::DefId;
 
@@ -45,18 +45,11 @@ pub enum ConstValue<'tcx> {
 
     /// A value not represented/representable by `Scalar` or `Slice`
     ByRef {
-        /// The alignment exists to allow `const_field` to have `ByRef` access to nonprimitive
-        /// fields of `repr(packed)` structs. The alignment may be lower than the type of this
-        /// constant. This permits reads with lower alignment than what the type would normally
-        /// require.
-        /// FIXME(RalfJ,oli-obk): The alignment checks are part of miri, but const eval doesn't
-        /// really need them. Disabling them may be too hard though.
-        align: Align,
-        /// Offset into `alloc`
-        offset: Size,
         /// The backing memory of the value, may contain more memory than needed for just the value
         /// in order to share `Allocation`s between values
         alloc: &'tcx Allocation,
+        /// Offset into `alloc`
+        offset: Size,
     },
 
     /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
@@ -360,7 +353,7 @@ impl<'tcx, Tag> Scalar<Tag> {
                 Scalar::check_data(data, size);
                 Ok(data)
             }
-            Scalar::Ptr(_) => err!(ReadPointerAsBytes),
+            Scalar::Ptr(_) => throw_unsup!(ReadPointerAsBytes),
         }
     }
 
@@ -373,8 +366,8 @@ impl<'tcx, Tag> Scalar<Tag> {
     #[inline]
     pub fn to_ptr(self) -> InterpResult<'tcx, Pointer<Tag>> {
         match self {
-            Scalar::Raw { data: 0, .. } => err!(InvalidNullPointerUsage),
-            Scalar::Raw { .. } => err!(ReadBytesAsPointer),
+            Scalar::Raw { data: 0, .. } => throw_unsup!(InvalidNullPointerUsage),
+            Scalar::Raw { .. } => throw_unsup!(ReadBytesAsPointer),
             Scalar::Ptr(p) => Ok(p),
         }
     }
@@ -406,7 +399,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         match self {
             Scalar::Raw { data: 0, size: 1 } => Ok(false),
             Scalar::Raw { data: 1, size: 1 } => Ok(true),
-            _ => err!(InvalidBool),
+            _ => throw_unsup!(InvalidBool),
         }
     }
 
@@ -414,7 +407,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         let val = self.to_u32()?;
         match ::std::char::from_u32(val) {
             Some(c) => Ok(c),
-            None => err!(InvalidChar(val as u128)),
+            None => throw_unsup!(InvalidChar(val as u128)),
         }
     }
 
@@ -537,7 +530,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     pub fn not_undef(self) -> InterpResult<'static, Scalar<Tag>> {
         match self {
             ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
-            ScalarMaybeUndef::Undef => err!(ReadUndefBytes(Size::from_bytes(0))),
+            ScalarMaybeUndef::Undef => throw_unsup!(ReadUndefBytes(Size::from_bytes(0))),
         }
     }
 

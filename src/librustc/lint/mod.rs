@@ -206,6 +206,7 @@ macro_rules! declare_lint_pass {
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt, [$hir:tt]) => (
         $macro!($args, [$hir], [
+            fn check_arg(a: &$hir hir::Arg);
             fn check_body(a: &$hir hir::Body);
             fn check_body_post(a: &$hir hir::Body);
             fn check_name(a: Span, b: ast::Name);
@@ -358,6 +359,7 @@ macro_rules! declare_combined_late_lint_pass {
 macro_rules! early_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
+            fn check_arg(a: &ast::Arg);
             fn check_ident(a: ast::Ident);
             fn check_crate(a: &ast::Crate);
             fn check_crate_post(a: &ast::Crate);
@@ -494,8 +496,6 @@ macro_rules! declare_combined_early_lint_pass {
 pub type EarlyLintPassObject = Box<dyn EarlyLintPass + sync::Send + sync::Sync + 'static>;
 pub type LateLintPassObject = Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + sync::Send
                                                                            + sync::Sync + 'static>;
-
-
 
 /// Identifies a lint known to the compiler.
 #[derive(Clone, Copy, Debug)]
@@ -810,6 +810,12 @@ impl LintLevelMapBuilder<'tcx> {
 impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
         intravisit::NestedVisitorMap::All(&self.tcx.hir())
+    }
+
+    fn visit_arg(&mut self, arg: &'tcx hir::Arg) {
+        self.with_lint_attrs(arg.hir_id, &arg.attrs, |builder| {
+            intravisit::walk_arg(builder, arg);
+        });
     }
 
     fn visit_item(&mut self, it: &'tcx hir::Item) {

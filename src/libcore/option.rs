@@ -8,7 +8,7 @@
 //! * Initial values
 //! * Return values for functions that are not defined
 //!   over their entire input range (partial functions)
-//! * Return value for otherwise reporting simple errors, where `None` is
+//! * Return value for otherwise reporting simple errors, where [`None`] is
 //!   returned on error
 //! * Optional struct fields
 //! * Struct fields that can be loaned or "taken"
@@ -136,7 +136,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
-use crate::{convert, fmt, hint, mem, ops::{self, Deref}};
+use crate::{convert, fmt, hint, mem, ops::{self, Deref, DerefMut}};
 use crate::pin::Pin;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
@@ -752,7 +752,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns [`Some`] if exactly one of `self`, `optb` is [`Some`], otherwise returns `None`.
+    /// Returns [`Some`] if exactly one of `self`, `optb` is [`Some`], otherwise returns [`None`].
     ///
     /// [`Some`]: #variant.Some
     /// [`None`]: #variant.None
@@ -1104,14 +1104,25 @@ impl<T: Default> Option<T> {
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref> Option<T> {
-    /// Converts from `&Option<T>` to `Option<&T::Target>`.
+    /// Converts from `Option<T>` (or `&Option<T>`) to `Option<&T::Target>`.
     ///
     /// Leaves the original Option in-place, creating a new one with a reference
     /// to the original one, additionally coercing the contents via [`Deref`].
     ///
     /// [`Deref`]: ../../std/ops/trait.Deref.html
-    pub fn deref(&self) -> Option<&T::Target> {
+    pub fn as_deref(&self) -> Option<&T::Target> {
         self.as_ref().map(|t| t.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: DerefMut> Option<T> {
+    /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
+    ///
+    /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
+    /// the inner type's `Deref::Target` type.
+    pub fn as_deref_mut(&mut self) -> Option<&mut T::Target> {
+        self.as_mut().map(|t| t.deref_mut())
     }
 }
 
@@ -1488,45 +1499,10 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        struct Adapter<Iter> {
-            iter: Iter,
-            found_none: bool,
-        }
-
-        impl<T, Iter: Iterator<Item=Option<T>>> Iterator for Adapter<Iter> {
-            type Item = T;
-
-            #[inline]
-            fn next(&mut self) -> Option<T> {
-                match self.iter.next() {
-                    Some(Some(value)) => Some(value),
-                    Some(None) => {
-                        self.found_none = true;
-                        None
-                    }
-                    None => None,
-                }
-            }
-
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                if self.found_none {
-                    (0, Some(0))
-                } else {
-                    let (_, upper) = self.iter.size_hint();
-                    (0, upper)
-                }
-            }
-        }
-
-        let mut adapter = Adapter { iter: iter.into_iter(), found_none: false };
-        let v: V = FromIterator::from_iter(adapter.by_ref());
-
-        if adapter.found_none {
-            None
-        } else {
-            Some(v)
-        }
+        iter.into_iter()
+            .map(|x| x.ok_or(()))
+            .collect::<Result<_, _>>()
+            .ok()
     }
 }
 

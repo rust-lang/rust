@@ -2,7 +2,7 @@ use crate::interface::{Compiler, Result};
 use crate::util;
 use crate::proc_macro_decls;
 
-use log::{debug, info, warn, log_enabled};
+use log::{info, warn, log_enabled};
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
@@ -10,46 +10,39 @@ use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
 use rustc::middle::cstore::CrateStore;
-use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt, GlobalCtxt};
 use rustc::ty::steal::Steal;
 use rustc::traits;
 use rustc::util::common::{time, ErrorReported};
-use rustc::util::profiling::ProfileCategory;
-use rustc::session::{CompileResult, CrateDisambiguator, Session};
+use rustc::session::Session;
 use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
-use rustc_allocator as allocator;
 use rustc_ast_borrowck as borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
 use rustc_incremental;
-use rustc_incremental::DepGraphFuture;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_mir as mir;
-use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion, layout_test};
+use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin as plugin;
 use rustc_plugin::registry::Registry;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
 use rustc_typeck as typeck;
-use syntax::{self, ast, attr, diagnostics, visit};
+use syntax::{self, ast, diagnostics, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::{NamedSyntaxExtension, ExtCtxt};
 use syntax::mut_visit::MutVisitor;
 use syntax::parse::{self, PResult};
 use syntax::util::node_count::NodeCounter;
-use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::AttributeType;
-use syntax_pos::{FileName, edition::Edition, hygiene};
+use syntax_pos::FileName;
 use syntax_ext;
 
 use rustc_serialize::json;
@@ -61,12 +54,10 @@ use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Write};
 use std::iter;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::mpsc;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::mem;
-use std::ops::Generator;
 
 pub fn parse<'a>(sess: &'a Session, input: &Input) -> PResult<'a, ast::Crate> {
     sess.diagnostic()
@@ -212,15 +203,16 @@ impl ExpansionResult {
 
 impl BoxedResolver {
     pub fn to_expansion_result(
-        mut resolver: Rc<Option<RefCell<BoxedResolver>>>,
+        resolver: Rc<RefCell<BoxedResolver>>,
     ) -> ExpansionResult {
-        if let Some(resolver) = Rc::get_mut(&mut resolver) {
-            mem::replace(resolver, None).unwrap().into_inner().complete()
-        } else {
-            let resolver = &*resolver;
-            resolver.as_ref().unwrap().borrow_mut().access(|resolver| {
-                ExpansionResult::from_resolver_ref(resolver)
-            })
+        match Rc::try_unwrap(resolver) {
+            Ok(resolver) => resolver.into_inner().complete(),
+            Err(resolver) => {
+                let resolver = &*resolver;
+                resolver.borrow_mut().access(|resolver| {
+                    ExpansionResult::from_resolver_ref(resolver)
+                })
+            }
         }
     }
 }
@@ -278,7 +270,12 @@ pub fn register_plugins<'a>(
 
     krate = time(sess, "crate injection", || {
         let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| &**s);
-        syntax::std_inject::maybe_inject_crates_ref(krate, alt_std_name, sess.edition())
+        let (krate, name) =
+            syntax_ext::standard_library_imports::inject(krate, alt_std_name, sess.edition());
+        if let Some(name) = name {
+            sess.parse_sess.injected_crate_name.set(name);
+        }
+        krate
     });
 
     let registrars = time(sess, "plugin loading", || {
@@ -372,7 +369,10 @@ fn configure_and_expand_inner<'a>(
         crate_loader,
         &resolver_arenas,
     );
-    syntax_ext::register_builtins(&mut resolver, plugin_info.syntax_exts, sess.edition());
+    syntax_ext::register_builtin_macros(&mut resolver, sess.edition());
+    syntax_ext::plugin_macro_defs::inject(
+        &mut krate, &mut resolver, plugin_info.syntax_exts, sess.edition()
+    );
 
     // Expand all macros
     sess.profiler(|p| p.start_activity("macro expansion"));
@@ -453,7 +453,7 @@ fn configure_and_expand_inner<'a>(
     sess.profiler(|p| p.end_activity("macro expansion"));
 
     time(sess, "maybe building test harness", || {
-        syntax::test::modify_for_testing(
+        syntax_ext::test_harness::inject(
             &sess.parse_sess,
             &mut resolver,
             sess.opts.test,
@@ -469,7 +469,7 @@ fn configure_and_expand_inner<'a>(
         util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
 
-    let (has_proc_macro_decls, has_global_allocator) = time(sess, "AST validation", || {
+    let has_proc_macro_decls = time(sess, "AST validation", || {
         ast_validation::check_crate(sess, &krate)
     });
 
@@ -482,7 +482,7 @@ fn configure_and_expand_inner<'a>(
             let num_crate_types = crate_types.len();
             let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
             let is_test_crate = sess.opts.test;
-            syntax_ext::proc_macro_decls::modify(
+            syntax_ext::proc_macro_harness::inject(
                 &sess.parse_sess,
                 &mut resolver,
                 krate,
@@ -490,19 +490,6 @@ fn configure_and_expand_inner<'a>(
                 has_proc_macro_decls,
                 is_test_crate,
                 num_crate_types,
-                sess.diagnostic(),
-            )
-        });
-    }
-
-    if has_global_allocator {
-        // Expand global allocators, which are treated as an in-tree proc macro
-        time(sess, "creating allocators", || {
-            allocator::expand::modify(
-                &sess.parse_sess,
-                &mut resolver,
-                &mut krate,
-                crate_name.to_string(),
                 sess.diagnostic(),
             )
         });
@@ -674,7 +661,7 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
             .iter()
             .filter(|fmap| fmap.is_real_file())
             .filter(|fmap| !fmap.is_imported())
-            .map(|fmap| escape_dep_filename(&fmap.name))
+            .map(|fmap| escape_dep_filename(&fmap.unmapped_path.as_ref().unwrap_or(&fmap.name)))
             .collect();
 
         if sess.binary_dep_depinfo() {
@@ -709,7 +696,7 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
     match result {
         Ok(_) => {
-            if sess.opts.debugging_opts.emit_artifact_notifications {
+            if sess.opts.json_artifact_notifications {
                  sess.parse_sess.span_diagnostic
                     .emit_artifact_notification(&deps_filename, "dep-info");
             }
@@ -1072,7 +1059,7 @@ fn encode_and_write_metadata(
         if let Err(e) = fs::rename(&metadata_filename, &out_filename) {
             tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
         }
-        if tcx.sess.opts.debugging_opts.emit_artifact_notifications {
+        if tcx.sess.opts.json_artifact_notifications {
             tcx.sess.parse_sess.span_diagnostic
                 .emit_artifact_notification(&out_filename, "metadata");
         }

@@ -27,7 +27,7 @@ hashbrown = { version = "0.4.0", features = ['rustc-dep-of-std'] }
 getrandom = "0.1"
 
 [dependencies.backtrace]
-version = "0.3.29"
+version = "0.3.34"
 default-features = false # don't use coresymbolication on OSX
 features = [
   "rustc-dep-of-std", # enable build support for integrating into libstd
@@ -75,11 +75,6 @@ panic_immediate_abort = ["core/panic_immediate_abort"]
 # interoperate with the host environment. Currently not well documented and
 # requires rebuilding the standard library to use it.
 wasm_syscall = []
-
-# An off-by-default features to enable libstd to assume that wasm-bindgen is in
-# the environment for hooking up some thread-related information like the
-# current thread id and accessing/getting the current thread's TCB
-wasm-bindgen-threads = []
 
 # Enable std_detect default features for stdarch/crates/std_detect:
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml

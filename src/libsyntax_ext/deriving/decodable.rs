@@ -7,7 +7,6 @@ use crate::deriving::generic::ty::*;
 use syntax::ast;
 use syntax::ast::{Expr, MetaItem, Mutability};
 use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -17,23 +16,7 @@ pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt<'_>,
                                        mitem: &MetaItem,
                                        item: &Annotatable,
                                        push: &mut dyn FnMut(Annotatable)) {
-    expand_deriving_decodable_imp(cx, span, mitem, item, push, "rustc_serialize")
-}
-
-pub fn expand_deriving_decodable(cx: &mut ExtCtxt<'_>,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable)) {
-    expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
-}
-
-fn expand_deriving_decodable_imp(cx: &mut ExtCtxt<'_>,
-                                 span: Span,
-                                 mitem: &MetaItem,
-                                 item: &Annotatable,
-                                 push: &mut dyn FnMut(Annotatable),
-                                 krate: &'static str) {
+    let krate = "rustc_serialize";
     let typaram = &*deriving::hygienic_type_parameter(item, "__D");
 
     let trait_def = TraitDef {

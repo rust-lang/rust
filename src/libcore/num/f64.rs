@@ -549,7 +549,7 @@ impl f64 {
         Self::from_bits(u64::from_be_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in big endian.
+    /// Create a floating point value from its representation as a byte array in little endian.
     ///
     /// # Examples
     ///
@@ -564,7 +564,7 @@ impl f64 {
         Self::from_bits(u64::from_le_bytes(bytes))
     }
 
-    /// Create a floating point value from its representation as a byte array in big endian.
+    /// Create a floating point value from its representation as a byte array in native endian.
     ///
     /// As the target platform's native endianness is used, portable code
     /// likely wants to use [`from_be_bytes`] or [`from_le_bytes`], as

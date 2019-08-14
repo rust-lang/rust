@@ -1,7 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(non_snake_case)]
-
 register_long_diagnostics! {
 
 E0023: r##"
@@ -3497,8 +3495,8 @@ Example of erroneous code:
 
 let r = &[1, 2];
 match r {
-    &[a, b, c, rest..] => { // error: pattern requires at least 3
-                            //        elements but array has 2
+    &[a, b, c, rest @ ..] => { // error: pattern requires at least 3
+                               //        elements but array has 2
         println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
     }
 }
@@ -3512,7 +3510,7 @@ requires. You can match an arbitrary number of remaining elements with `..`:
 
 let r = &[1, 2, 3, 4, 5];
 match r {
-    &[a, b, c, rest..] => { // ok!
+    &[a, b, c, rest @ ..] => { // ok!
         // prints `a=1, b=2, c=3 rest=[4, 5]`
         println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
     }
@@ -4765,7 +4763,53 @@ assert_eq!(1, discriminant(&Enum::Struct{a: 7, b: 11}));
 ```
 "##,
 
+E0733: r##"
+Recursion in an `async fn` requires boxing. For example, this will not compile:
+
+```edition2018,compile_fail,E0733
+#![feature(async_await)]
+async fn foo(n: usize) {
+    if n > 0 {
+        foo(n - 1).await;
+    }
 }
+```
+
+To achieve async recursion, the `async fn` needs to be desugared
+such that the `Future` is explicit in the return type:
+
+```edition2018,compile_fail,E0720
+# #![feature(async_await)]
+use std::future::Future;
+fn foo_desugered(n: usize) -> impl Future<Output = ()> {
+    async move {
+        if n > 0 {
+            foo_desugered(n - 1).await;
+        }
+    }
+}
+```
+
+Finally, the future is wrapped in a pinned box:
+
+```edition2018
+# #![feature(async_await)]
+use std::future::Future;
+use std::pin::Pin;
+fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
+    Box::pin(async move {
+        if n > 0 {
+            foo_recursive(n - 1).await;
+        }
+    })
+}
+```
+
+The `Box<...>` ensures that the result is of known size,
+and the pin is required to keep it in the same place in memory.
+"##,
+
+}  // (end of detailed error messages)
 
 register_diagnostics! {
 //  E0035, merged into E0087/E0089

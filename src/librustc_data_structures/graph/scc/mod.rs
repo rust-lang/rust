@@ -9,7 +9,8 @@ use crate::graph::vec_graph::VecGraph;
 use crate::indexed_vec::{Idx, IndexVec};
 use std::ops::Range;
 
-mod test;
+#[cfg(test)]
+mod tests;
 
 /// Strongly connected components (SCC) of a graph. The type `N` is
 /// the index type for the graph nodes and `S` is the index type for

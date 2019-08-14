@@ -1,7 +1,8 @@
 // Private types and traits are not allowed in interfaces of associated types.
 // This test also ensures that the checks are performed even inside private modules.
 
-#![feature(associated_type_defaults, existential_type)]
+#![feature(associated_type_defaults)]
+#![feature(type_alias_impl_trait)]
 
 mod m {
     struct Priv;
@@ -31,7 +32,7 @@ mod m {
         type Alias1 = Priv;
         //~^ ERROR private type `m::Priv` in public interface
 
-        existential type Exist: PrivTr;
+        type Exist = impl PrivTr;
         //~^ ERROR private trait `m::PrivTr` in public interface
         fn infer_exist() -> Self::Exist { Priv }
     }

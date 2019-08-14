@@ -36,7 +36,6 @@ o("docs", "build.docs", "build standard library documentation")
 o("compiler-docs", "build.compiler-docs", "build compiler documentation")
 o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
 o("parallel-compiler", "rust.parallel-compiler", "build a multi-threaded rustc")
-o("test-miri", "rust.test-miri", "run miri's test suite")
 o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tests")
 o("ccache", "llvm.ccache", "invoke gcc/clang via ccache to reuse object files between builds")
 o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
@@ -125,7 +124,9 @@ v("musl-root-armhf", "target.arm-unknown-linux-musleabihf.musl-root",
   "arm-unknown-linux-musleabihf install directory")
 v("musl-root-armv5te", "target.armv5te-unknown-linux-musleabi.musl-root",
   "armv5te-unknown-linux-musleabi install directory")
-v("musl-root-armv7", "target.armv7-unknown-linux-musleabihf.musl-root",
+v("musl-root-armv7", "target.armv7-unknown-linux-musleabi.musl-root",
+  "armv7-unknown-linux-musleabi install directory")
+v("musl-root-armv7hf", "target.armv7-unknown-linux-musleabihf.musl-root",
   "armv7-unknown-linux-musleabihf install directory")
 v("musl-root-aarch64", "target.aarch64-unknown-linux-musl.musl-root",
   "aarch64-unknown-linux-musl install directory")

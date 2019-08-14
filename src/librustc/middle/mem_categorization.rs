@@ -214,6 +214,7 @@ impl HirNode for hir::Pat {
 #[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     pub body_owner: DefId,
     pub upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
     pub region_scope_tree: &'a region::ScopeTree,
@@ -330,6 +331,7 @@ impl MutabilityCategory {
 impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         body_owner: DefId,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
@@ -342,7 +344,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             region_scope_tree,
             tables,
             rvalue_promotable_map,
-            infcx: None
+            infcx: None,
+            param_env,
         }
     }
 }
@@ -359,6 +362,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ///   known, the results around upvar accesses may be incorrect.
     pub fn with_infer(
         infcx: &'a InferCtxt<'a, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         body_owner: DefId,
         region_scope_tree: &'a region::ScopeTree,
         tables: &'a ty::TypeckTables<'tcx>,
@@ -379,6 +383,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             tables,
             rvalue_promotable_map,
             infcx: Some(infcx),
+            param_env,
         }
     }
 
@@ -896,7 +901,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
         // Always promote `[T; 0]` (even when e.g., borrowed mutably).
         let promotable = match expr_ty.sty {
-            ty::Array(_, len) if len.assert_usize(self.tcx) == Some(0) => true,
+            ty::Array(_, len) if len.try_eval_usize(self.tcx, self.param_env) == Some(0) => true,
             _ => promotable,
         };
 

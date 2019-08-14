@@ -188,8 +188,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             }
                         }
                     }
-                    hir::ImplItemKind::Existential(..) |
-                    hir::ImplItemKind::Type(_) => false,
+                    hir::ImplItemKind::OpaqueTy(..) |
+                    hir::ImplItemKind::TyAlias(_) => false,
                 }
             }
             Some(_) => false,
@@ -263,8 +263,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     // worklist, as determined by the privacy pass
                     hir::ItemKind::ExternCrate(_) |
                     hir::ItemKind::Use(..) |
-                    hir::ItemKind::Existential(..) |
-                    hir::ItemKind::Ty(..) |
+                    hir::ItemKind::OpaqueTy(..) |
+                    hir::ItemKind::TyAlias(..) |
                     hir::ItemKind::Static(..) |
                     hir::ItemKind::Mod(..) |
                     hir::ItemKind::ForeignMod(..) |
@@ -301,8 +301,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             self.visit_nested_body(body)
                         }
                     }
-                    hir::ImplItemKind::Existential(..) |
-                    hir::ImplItemKind::Type(_) => {}
+                    hir::ImplItemKind::OpaqueTy(..) |
+                    hir::ImplItemKind::TyAlias(_) => {}
                 }
             }
             Node::Expr(&hir::Expr { node: hir::ExprKind::Closure(.., body, _, _), .. }) => {

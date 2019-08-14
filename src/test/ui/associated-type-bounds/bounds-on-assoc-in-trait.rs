@@ -28,7 +28,7 @@ impl Case1 for S1 {
     type B = Range<u16>;
 }
 
-// Ensure we don't have existential desugaring:
+// Ensure we don't have opaque `impl Trait` desugaring:
 
 pub trait Foo { type Out: Baz<Assoc: Default>; }
 pub trait Baz { type Assoc; }

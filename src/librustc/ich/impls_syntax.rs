@@ -363,7 +363,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
             }
 
             token::DocComment(val) |
-            token::Shebang(val) => val.hash_stable(hcx, hasher),
+            token::Shebang(val) |
+            token::Unknown(val) => val.hash_stable(hcx, hasher),
         }
     }
 }
@@ -418,7 +419,7 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {
     Async,
     Await,
     QuestionMark,
-    ExistentialType,
+    OpaqueTy,
     ForLoop,
     TryBlock
 });

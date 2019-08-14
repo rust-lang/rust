@@ -1,5 +1,4 @@
 #![feature(proc_macro_hygiene)]
-#![deny(rust_2018_idioms)]
 #![cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
 
 #![recursion_limit="128"]

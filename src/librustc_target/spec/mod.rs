@@ -60,6 +60,7 @@ mod solaris_base;
 mod uefi_base;
 mod windows_base;
 mod windows_msvc_base;
+mod windows_uwp_base;
 mod thumb_base;
 mod l4re_base;
 mod fuchsia_base;
@@ -311,7 +312,7 @@ macro_rules! supported_targets {
             $(use super::$module;)+
 
             $(
-                #[test]
+                #[test] // `#[test]` - this is hard to put into a separate file, make an exception
                 fn $module() {
                     // Grab the TargetResult struct. If we successfully retrieved
                     // a Target, then the test JSON encoding/decoding can run for this
@@ -358,8 +359,10 @@ supported_targets! {
     ("armv4t-unknown-linux-gnueabi", armv4t_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-musleabi", armv5te_unknown_linux_musleabi),
+    ("armv7-unknown-linux-gnueabi", armv7_unknown_linux_gnueabi),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("thumbv7neon-unknown-linux-gnueabihf", thumbv7neon_unknown_linux_gnueabihf),
+    ("armv7-unknown-linux-musleabi", armv7_unknown_linux_musleabi),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
     ("aarch64-unknown-linux-musl", aarch64_unknown_linux_musl),
@@ -414,6 +417,7 @@ supported_targets! {
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
+    ("aarch64-unknown-redox", aarch64_unknown_redox),
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 
     ("i386-apple-ios", i386_apple_ios),
@@ -434,6 +438,8 @@ supported_targets! {
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
+    ("i686-uwp-windows-gnu", i686_uwp_windows_gnu),
+    ("x86_64-uwp-windows-gnu", x86_64_uwp_windows_gnu),
 
     ("aarch64-pc-windows-msvc", aarch64_pc_windows_msvc),
     ("x86_64-pc-windows-msvc", x86_64_pc_windows_msvc),
@@ -733,10 +739,6 @@ pub struct TargetOptions {
     /// for this target unconditionally.
     pub no_builtins: bool,
 
-    /// Whether to lower 128-bit operations to compiler_builtins calls. Use if
-    /// your backend only supports 64-bit and smaller math.
-    pub i128_lowering: bool,
-
     /// The codegen backend to use for this target, typically "llvm"
     pub codegen_backend: String,
 
@@ -852,7 +854,6 @@ impl Default for TargetOptions {
             requires_lto: false,
             singlethread: false,
             no_builtins: false,
-            i128_lowering: false,
             codegen_backend: "llvm".to_string(),
             default_hidden_visibility: false,
             embed_bitcode: false,

@@ -75,6 +75,9 @@ use crate::html::{highlight, layout, static_files};
 
 use minifier;
 
+#[cfg(test)]
+mod tests;
+
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
 
@@ -167,6 +170,7 @@ struct Context {
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
+    playground: Option<markdown::Playground>,
 }
 
 struct SharedContext {
@@ -182,8 +186,8 @@ struct SharedContext {
     pub include_sources: bool,
     /// The local file sources we've emitted and their respective url-paths.
     pub local_sources: FxHashMap<PathBuf, String>,
-    /// All the passes that were run on this crate.
-    pub passes: FxHashSet<String>,
+    /// Whether the collapsed pass ran
+    pub collapsed: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
     /// an issue number.
     pub issue_tracker_base_url: Option<String>,
@@ -226,15 +230,10 @@ impl SharedContext {
 }
 
 impl SharedContext {
-    /// Returns `true` if the `collapse-docs` pass was run on this crate.
-    pub fn was_collapsed(&self) -> bool {
-        self.passes.contains("collapse-docs")
-    }
-
     /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
     /// `collapsed_doc_value` of the given item.
     pub fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<Cow<'a, str>> {
-        if self.was_collapsed() {
+        if self.collapsed {
             item.collapsed_doc_value().map(|s| s.into())
         } else {
             item.doc_value().map(|s| s.into())
@@ -523,7 +522,6 @@ pub fn initial_ids() -> Vec<String> {
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
            options: RenderOptions,
-           passes: FxHashSet<String>,
            renderinfo: RenderInfo,
            diag: &errors::Handler,
            edition: Edition) -> Result<(), Error> {
@@ -554,8 +552,8 @@ pub fn run(mut krate: clean::Crate,
     };
     let mut errors = Arc::new(ErrorStorage::new());
     let mut scx = SharedContext {
+        collapsed: krate.collapsed,
         src_root,
-        passes,
         include_sources: true,
         local_sources: Default::default(),
         issue_tracker_base_url: None,
@@ -577,9 +575,11 @@ pub fn run(mut krate: clean::Crate,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
+    let mut playground = None;
     if let Some(url) = playground_url {
-        markdown::PLAYGROUND.with(|slot| {
-            *slot.borrow_mut() = Some((Some(krate.name.clone()), url));
+        playground = Some(markdown::Playground {
+            crate_name: Some(krate.name.clone()),
+            url,
         });
     }
 
@@ -595,9 +595,9 @@ pub fn run(mut krate: clean::Crate,
                     scx.layout.logo = s.to_string();
                 }
                 (sym::html_playground_url, Some(s)) => {
-                    markdown::PLAYGROUND.with(|slot| {
-                        let name = krate.name.clone();
-                        *slot.borrow_mut() = Some((Some(name), s.to_string()));
+                    playground = Some(markdown::Playground {
+                        crate_name: Some(krate.name.clone()),
+                        url: s.to_string(),
                     });
                 }
                 (sym::issue_tracker_base_url, Some(s)) => {
@@ -621,6 +621,7 @@ pub fn run(mut krate: clean::Crate,
         edition,
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
+        playground,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -656,7 +657,7 @@ pub fn run(mut krate: clean::Crate,
         crate_version: krate.version.take(),
         orphan_impl_items: Vec::new(),
         orphan_trait_impls: Vec::new(),
-        traits: krate.external_traits.lock().replace(Default::default()),
+        traits: krate.external_traits.replace(Default::default()),
         deref_trait_did,
         deref_mut_trait_did,
         owned_box_did,
@@ -874,15 +875,23 @@ fn write_shared(
 r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
 
+function showThemeButtonState() {{
+    themes.style.display = "none";
+    themePicker.style.borderBottomRightRadius = "3px";
+    themePicker.style.borderBottomLeftRadius = "3px";
+}}
+
+function hideThemeButtonState() {{
+    themes.style.display = "block";
+    themePicker.style.borderBottomRightRadius = "0";
+    themePicker.style.borderBottomLeftRadius = "0";
+}}
+
 function switchThemeButtonState() {{
     if (themes.style.display === "block") {{
-        themes.style.display = "none";
-        themePicker.style.borderBottomRightRadius = "3px";
-        themePicker.style.borderBottomLeftRadius = "3px";
+        showThemeButtonState();
     }} else {{
-        themes.style.display = "block";
-        themePicker.style.borderBottomRightRadius = "0";
-        themePicker.style.borderBottomLeftRadius = "0";
+        hideThemeButtonState();
     }}
 }};
 
@@ -895,7 +904,7 @@ function handleThemeButtonsBlur(e) {{
         (!related ||
          (related.id !== "themePicker" &&
           (!related.parentNode || related.parentNode.id !== "theme-choices")))) {{
-        switchThemeButtonState();
+        hideThemeButtonState();
     }}
 }}
 
@@ -1173,7 +1182,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
-                static_root_path: cx.shared.static_root_path.deref(),
+                static_root_path: cx.shared.static_root_path.as_deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
                 resource_suffix: &cx.shared.resource_suffix,
@@ -1322,13 +1331,13 @@ fn write_minify_replacer<W: Write>(
                  {
                     let tokens: Tokens<'_> = simple_minify(contents)
                         .into_iter()
-                        .filter(|f| {
+                        .filter(|(f, next)| {
                             // We keep backlines.
-                            minifier::js::clean_token_except(f, &|c: &Token<'_>| {
+                            minifier::js::clean_token_except(f, next, &|c: &Token<'_>| {
                                 c.get_char() != Some(ReservedChar::Backline)
                             })
                         })
-                        .map(|f| {
+                        .map(|(f, _)| {
                             minifier::js::replace_token_with(f, &|t: &Token<'_>| {
                                 match *t {
                                     Token::Keyword(Keyword::Null) => Some(Token::Other("N")),
@@ -1363,7 +1372,7 @@ fn write_minify_replacer<W: Write>(
                             // shouldn't be aggregated.
                             |tokens, pos| {
                                 pos < 2 ||
-                                !tokens[pos - 1].is_char(ReservedChar::OpenBracket) ||
+                                !tokens[pos - 1].eq_char(ReservedChar::OpenBracket) ||
                                 tokens[pos - 2].get_other() != Some("searchIndex")
                             }
                         )
@@ -1513,7 +1522,7 @@ impl<'a> SourceCollector<'a> {
             title: &title,
             css_class: "source",
             root_path: &root_path,
-            static_root_path: self.scx.static_root_path.deref(),
+            static_root_path: self.scx.static_root_path.as_deref(),
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.scx.resource_suffix,
@@ -1883,7 +1892,7 @@ struct AllTypes {
     macros: FxHashSet<ItemEntry>,
     functions: FxHashSet<ItemEntry>,
     typedefs: FxHashSet<ItemEntry>,
-    existentials: FxHashSet<ItemEntry>,
+    opaque_tys: FxHashSet<ItemEntry>,
     statics: FxHashSet<ItemEntry>,
     constants: FxHashSet<ItemEntry>,
     keywords: FxHashSet<ItemEntry>,
@@ -1904,7 +1913,7 @@ impl AllTypes {
             macros: new_set(100),
             functions: new_set(100),
             typedefs: new_set(100),
-            existentials: new_set(100),
+            opaque_tys: new_set(100),
             statics: new_set(100),
             constants: new_set(100),
             keywords: new_set(100),
@@ -1929,7 +1938,7 @@ impl AllTypes {
                 ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
                 ItemType::Typedef => self.typedefs.insert(ItemEntry::new(new_url, name)),
-                ItemType::Existential => self.existentials.insert(ItemEntry::new(new_url, name)),
+                ItemType::OpaqueTy => self.opaque_tys.insert(ItemEntry::new(new_url, name)),
                 ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
                 ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
                 ItemType::ProcAttribute => self.attributes.insert(ItemEntry::new(new_url, name)),
@@ -1979,7 +1988,7 @@ impl fmt::Display for AllTypes {
         print_entries(f, &self.functions, "Functions", "functions")?;
         print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
         print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases")?;
-        print_entries(f, &self.existentials, "Existentials", "existentials")?;
+        print_entries(f, &self.opaque_tys, "Opaque Types", "opaque-types")?;
         print_entries(f, &self.statics, "Statics", "statics")?;
         print_entries(f, &self.constants, "Constants", "constants")
     }
@@ -2110,7 +2119,7 @@ impl Context {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
-            static_root_path: self.shared.static_root_path.deref(),
+            static_root_path: self.shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.shared.resource_suffix,
@@ -2137,7 +2146,7 @@ impl Context {
         self.shared.fs.write(&final_file, &v)?;
 
         // Generating settings page.
-        let settings = Settings::new(self.shared.static_root_path.deref().unwrap_or("./"),
+        let settings = Settings::new(self.shared.static_root_path.as_deref().unwrap_or("./"),
                                      &self.shared.resource_suffix);
         page.title = "Rustdoc settings";
         page.description = "Settings of Rustdoc";
@@ -2195,7 +2204,7 @@ impl Context {
         let page = layout::Page {
             css_class: tyname,
             root_path: &self.root_path(),
-            static_root_path: self.shared.static_root_path.deref(),
+            static_root_path: self.shared.static_root_path.as_deref(),
             title: &title,
             description: &desc,
             keywords: &keywords,
@@ -2477,7 +2486,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ConstantItem(..) => write!(fmt, "Constant ")?,
             clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
             clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
-            clean::ExistentialItem(..) => write!(fmt, "Existential Type ")?,
+            clean::OpaqueTyItem(..) => write!(fmt, "Opaque Type ")?,
             clean::TraitAliasItem(..) => write!(fmt, "Trait Alias ")?,
             _ => {
                 // We don't generate pages for any other type.
@@ -2516,7 +2525,7 @@ impl<'a> fmt::Display for Item<'a> {
             clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
             clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
             clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
-            clean::ExistentialItem(ref e, _) => item_existential(fmt, self.cx, self.item, e),
+            clean::OpaqueTyItem(ref e, _) => item_opaque_ty(fmt, self.cx, self.item, e),
             clean::TraitAliasItem(ref ta) => item_trait_alias(fmt, self.cx, self.item, ta),
             _ => {
                 // We don't generate pages for any other type.
@@ -2586,8 +2595,8 @@ fn render_markdown(w: &mut fmt::Formatter<'_>,
     write!(w, "<div class='docblock{}'>{}{}</div>",
            if is_hidden { " hidden" } else { "" },
            prefix,
-           Markdown(md_text, &links, RefCell::new(&mut ids),
-           cx.codes, cx.edition))
+           Markdown(md_text, &links, &mut ids,
+           cx.codes, cx.edition, &cx.playground).to_string())
 }
 
 fn document_short(
@@ -2857,7 +2866,7 @@ fn item_module(w: &mut fmt::Formatter<'_>, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_tags = stability_tags(myitem),
-                       docs = MarkdownSummaryLine(doc_value, &myitem.links()),
+                       docs = MarkdownSummaryLine(doc_value, &myitem.links()).to_string(),
                        class = myitem.type_(),
                        add = add,
                        stab = stab.unwrap_or_else(|| String::new()),
@@ -2952,8 +2961,8 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 
         if let Some(note) = note {
             let mut ids = cx.id_map.borrow_mut();
-            let html = MarkdownHtml(&note, RefCell::new(&mut ids), error_codes, cx.edition);
-            message.push_str(&format!(": {}", html));
+            let html = MarkdownHtml(&note, &mut ids, error_codes, cx.edition, &cx.playground);
+            message.push_str(&format!(": {}", html.to_string()));
         }
         stability.push(format!("<div class='stab deprecated'>{}</div>", message));
     }
@@ -3001,7 +3010,13 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
             message = format!(
                 "<details><summary>{}</summary>{}</details>",
                 message,
-                MarkdownHtml(&unstable_reason, RefCell::new(&mut ids), error_codes, cx.edition)
+                MarkdownHtml(
+                    &unstable_reason,
+                    &mut ids,
+                    error_codes,
+                    cx.edition,
+                    &cx.playground,
+                ).to_string()
             );
         }
 
@@ -4231,8 +4246,8 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             let mut ids = cx.id_map.borrow_mut();
             write!(w, "<div class='docblock'>{}</div>",
-                   Markdown(&*dox, &i.impl_item.links(), RefCell::new(&mut ids),
-                            cx.codes, cx.edition))?;
+                   Markdown(&*dox, &i.impl_item.links(), &mut ids,
+                            cx.codes, cx.edition, &cx.playground).to_string())?;
         }
     }
 
@@ -4387,15 +4402,15 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
     Ok(())
 }
 
-fn item_existential(
+fn item_opaque_ty(
     w: &mut fmt::Formatter<'_>,
     cx: &Context,
     it: &clean::Item,
-    t: &clean::Existential,
+    t: &clean::OpaqueTy,
 ) -> fmt::Result {
-    write!(w, "<pre class='rust existential'>")?;
+    write!(w, "<pre class='rust opaque'>")?;
     render_attributes(w, it, false)?;
-    write!(w, "existential type {}{}{where_clause}: {bounds};</pre>",
+    write!(w, "type {}{}{where_clause} = impl {bounds};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
            where_clause = WhereClause { gens: &t.generics, indent: 0, end_newline: true },
@@ -4576,12 +4591,13 @@ fn get_methods(
     i: &clean::Impl,
     for_deref: bool,
     used_links: &mut FxHashSet<String>,
+    deref_mut: bool,
 ) -> Vec<String> {
     i.items.iter().filter_map(|item| {
         match item.name {
             // Maybe check with clean::Visibility::Public as well?
             Some(ref name) if !name.is_empty() && item.visibility.is_some() && item.is_method() => {
-                if !for_deref || should_render_item(item, false) {
+                if !for_deref || should_render_item(item, deref_mut) {
                     Some(format!("<a href=\"#{}\">{}</a>",
                                  get_next_url(used_links, format!("method.{}", name)),
                                  name))
@@ -4622,7 +4638,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                            .filter(|i| i.inner_impl().trait_.is_none())
                            .flat_map(move |i| get_methods(i.inner_impl(),
                                                           false,
-                                                          &mut used_links_bor.borrow_mut()))
+                                                          &mut used_links_bor.borrow_mut(), false))
                            .collect::<Vec<_>>();
             // We want links' order to be reproducible so we don't use unstable sort.
             ret.sort();
@@ -4656,7 +4672,8 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                                            .filter(|i| i.inner_impl().trait_.is_none())
                                            .flat_map(|i| get_methods(i.inner_impl(),
                                                                      true,
-                                                                     &mut used_links))
+                                                                     &mut used_links,
+                                                                     true))
                                            .collect::<Vec<_>>();
                         // We want links' order to be reproducible so we don't use unstable sort.
                         ret.sort();
@@ -4983,7 +5000,7 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
         ItemType::AssocConst      => ("associated-consts", "Associated Constants"),
         ItemType::ForeignType     => ("foreign-types", "Foreign Types"),
         ItemType::Keyword         => ("keywords", "Keywords"),
-        ItemType::Existential     => ("existentials", "Existentials"),
+        ItemType::OpaqueTy        => ("opaque-types", "Opaque Types"),
         ItemType::ProcAttribute   => ("attributes", "Attribute Macros"),
         ItemType::ProcDerive      => ("derives", "Derive Macros"),
         ItemType::TraitAlias      => ("trait-aliases", "Trait aliases"),
@@ -5007,7 +5024,8 @@ fn sidebar_module(fmt: &mut fmt::Formatter<'_>, _it: &clean::Item,
                    ItemType::Enum, ItemType::Constant, ItemType::Static, ItemType::Trait,
                    ItemType::Function, ItemType::Typedef, ItemType::Union, ItemType::Impl,
                    ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
-                   ItemType::AssocType, ItemType::AssocConst, ItemType::ForeignType] {
+                   ItemType::AssocType, ItemType::AssocConst, ItemType::ForeignType,
+                   ItemType::Keyword] {
         if items.iter().any(|it| !it.is_stripped() && it.type_() == myty) {
             let (short, name) = item_ty_to_strs(&myty);
             sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
@@ -5236,34 +5254,4 @@ fn get_generics(clean_type: &clean::Type) -> Option<Vec<String>> {
 
 pub fn cache() -> Arc<Cache> {
     CACHE_KEY.with(|c| c.borrow().clone())
-}
-
-#[cfg(test)]
-#[test]
-fn test_name_key() {
-    assert_eq!(name_key("0"), ("", 0, 1));
-    assert_eq!(name_key("123"), ("", 123, 0));
-    assert_eq!(name_key("Fruit"), ("Fruit", 0, 0));
-    assert_eq!(name_key("Fruit0"), ("Fruit", 0, 1));
-    assert_eq!(name_key("Fruit0000"), ("Fruit", 0, 4));
-    assert_eq!(name_key("Fruit01"), ("Fruit", 1, 1));
-    assert_eq!(name_key("Fruit10"), ("Fruit", 10, 0));
-    assert_eq!(name_key("Fruit123"), ("Fruit", 123, 0));
-}
-
-#[cfg(test)]
-#[test]
-fn test_name_sorting() {
-    let names = ["Apple",
-                 "Banana",
-                 "Fruit", "Fruit0", "Fruit00",
-                 "Fruit1", "Fruit01",
-                 "Fruit2", "Fruit02",
-                 "Fruit20",
-                 "Fruit30x",
-                 "Fruit100",
-                 "Pear"];
-    let mut sorted = names.to_owned();
-    sorted.sort_by_key(|&s| name_key(s));
-    assert_eq!(names, sorted);
 }

@@ -269,8 +269,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         match pat.node {
-            PatKind::Struct(hir::QPath::Resolved(_, ref path), ref fields, _) => {
-                self.handle_field_pattern_match(pat, path.res, fields);
+            PatKind::Struct(ref path, ref fields, _) => {
+                let res = self.tables.qpath_res(path, pat.hir_id);
+                self.handle_field_pattern_match(pat, res, fields);
             }
             PatKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
@@ -317,11 +318,6 @@ fn has_allow_dead_code_or_lang_attr(
 
     // (To be) stable attribute for #[lang = "oom"]
     if attr::contains_name(attrs, sym::alloc_error_handler) {
-        return true;
-    }
-
-    // Don't lint about global allocators
-    if attr::contains_name(attrs, sym::global_allocator) {
         return true;
     }
 
@@ -484,7 +480,7 @@ impl DeadVisitor<'tcx> {
             hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
             | hir::ItemKind::Fn(..)
-            | hir::ItemKind::Ty(..)
+            | hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..) => true,
@@ -643,8 +639,8 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 }
                 self.visit_nested_body(body_id)
             }
-            hir::ImplItemKind::Existential(..) |
-            hir::ImplItemKind::Type(..) => {}
+            hir::ImplItemKind::OpaqueTy(..) |
+            hir::ImplItemKind::TyAlias(..) => {}
         }
     }
 

@@ -484,13 +484,13 @@ impl<'tcx> Ancestors<'tcx> {
                 | (Const, Const)
                 | (Method, Method)
                 | (Type, Type)
-                | (Type, Existential)
+                | (Type, OpaqueTy)
                 => tcx.hygienic_eq(impl_item.ident, trait_item_name, trait_def_id),
 
                 | (Const, _)
                 | (Method, _)
                 | (Type, _)
-                | (Existential, _)
+                | (OpaqueTy, _)
                 => false,
             }).map(move |item| NodeItem { node: node, item: item })
         })

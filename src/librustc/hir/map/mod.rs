@@ -287,7 +287,7 @@ impl<'hir> Map<'hir> {
         self.definitions.def_index_to_hir_id(def_id.to_def_id().index)
     }
 
-    fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
+    pub fn def_kind(&self, hir_id: HirId) -> Option<DefKind> {
         let node = if let Some(node) = self.find(hir_id) {
             node
         } else {
@@ -301,8 +301,8 @@ impl<'hir> Map<'hir> {
                     ItemKind::Const(..) => DefKind::Const,
                     ItemKind::Fn(..) => DefKind::Fn,
                     ItemKind::Mod(..) => DefKind::Mod,
-                    ItemKind::Existential(..) => DefKind::Existential,
-                    ItemKind::Ty(..) => DefKind::TyAlias,
+                    ItemKind::OpaqueTy(..) => DefKind::OpaqueTy,
+                    ItemKind::TyAlias(..) => DefKind::TyAlias,
                     ItemKind::Enum(..) => DefKind::Enum,
                     ItemKind::Struct(..) => DefKind::Struct,
                     ItemKind::Union(..) => DefKind::Union,
@@ -333,8 +333,8 @@ impl<'hir> Map<'hir> {
                 match item.node {
                     ImplItemKind::Const(..) => DefKind::AssocConst,
                     ImplItemKind::Method(..) => DefKind::Method,
-                    ImplItemKind::Type(..) => DefKind::AssocTy,
-                    ImplItemKind::Existential(..) => DefKind::AssocExistential,
+                    ImplItemKind::TyAlias(..) => DefKind::AssocTy,
+                    ImplItemKind::OpaqueTy(..) => DefKind::AssocOpaqueTy,
                 }
             }
             Node::Variant(_) => DefKind::Variant,
@@ -360,6 +360,7 @@ impl<'hir> Map<'hir> {
             Node::Pat(_) |
             Node::Binding(_) |
             Node::Local(_) |
+            Node::Arg(_) |
             Node::Arm(_) |
             Node::Lifetime(_) |
             Node::Visibility(_) |
@@ -575,7 +576,7 @@ impl<'hir> Map<'hir> {
                 Node::Item(ref item) => {
                     match item.node {
                         ItemKind::Fn(_, _, ref generics, _) |
-                        ItemKind::Ty(_, ref generics) |
+                        ItemKind::TyAlias(_, ref generics) |
                         ItemKind::Enum(_, ref generics) |
                         ItemKind::Struct(_, ref generics) |
                         ItemKind::Union(_, ref generics) |
@@ -815,7 +816,7 @@ impl<'hir> Map<'hir> {
         }, |_| false).ok()
     }
 
-    /// Returns the defining scope for an existential type definition.
+    /// Returns the defining scope for an opaque type definition.
     pub fn get_defining_scope(&self, id: HirId) -> Option<HirId> {
         let mut scope = id;
         loop {
@@ -826,7 +827,7 @@ impl<'hir> Map<'hir> {
             match self.get(scope) {
                 Node::Item(i) => {
                     match i.node {
-                        ItemKind::Existential(ExistTy { impl_trait_fn: None, .. }) => {}
+                        ItemKind::OpaqueTy(OpaqueTy { impl_trait_fn: None, .. }) => {}
                         _ => break,
                     }
                 }
@@ -932,6 +933,7 @@ impl<'hir> Map<'hir> {
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
         self.read(id); // reveals attributes on the node
         let attrs = match self.find_entry(id).map(|entry| entry.node) {
+            Some(Node::Arg(a)) => Some(&a.attrs[..]),
             Some(Node::Local(l)) => Some(&l.attrs[..]),
             Some(Node::Item(i)) => Some(&i.attrs[..]),
             Some(Node::ForeignItem(fi)) => Some(&fi.attrs[..]),
@@ -995,6 +997,7 @@ impl<'hir> Map<'hir> {
     pub fn span(&self, hir_id: HirId) -> Span {
         self.read(hir_id); // reveals span from node
         match self.find_entry(hir_id).map(|entry| entry.node) {
+            Some(Node::Arg(arg)) => arg.span,
             Some(Node::Item(item)) => item.span,
             Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
             Some(Node::TraitItem(trait_method)) => trait_method.span,
@@ -1197,6 +1200,7 @@ impl<'hir> print::PpAnn for Map<'hir> {
 impl<'a> print::State<'a> {
     pub fn print_node(&mut self, node: Node<'_>) {
         match node {
+            Node::Arg(a)          => self.print_arg(&a),
             Node::Item(a)         => self.print_item(&a),
             Node::ForeignItem(a)  => self.print_foreign_item(&a),
             Node::TraitItem(a)    => self.print_trait_item(a),
@@ -1265,8 +1269,8 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                 ItemKind::Mod(..) => "mod",
                 ItemKind::ForeignMod(..) => "foreign mod",
                 ItemKind::GlobalAsm(..) => "global asm",
-                ItemKind::Ty(..) => "ty",
-                ItemKind::Existential(..) => "existential type",
+                ItemKind::TyAlias(..) => "ty",
+                ItemKind::OpaqueTy(..) => "opaque type",
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
                 ItemKind::Union(..) => "union",
@@ -1287,11 +1291,11 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
                 ImplItemKind::Method(..) => {
                     format!("method {} in {}{}", ii.ident, path_str(), id_str)
                 }
-                ImplItemKind::Type(_) => {
+                ImplItemKind::TyAlias(_) => {
                     format!("assoc type {} in {}{}", ii.ident, path_str(), id_str)
                 }
-                ImplItemKind::Existential(_) => {
-                    format!("assoc existential type {} in {}{}", ii.ident, path_str(), id_str)
+                ImplItemKind::OpaqueTy(_) => {
+                    format!("assoc opaque type {} in {}{}", ii.ident, path_str(), id_str)
                 }
             }
         }
@@ -1337,6 +1341,9 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         }
         Some(Node::Pat(_)) => {
             format!("pat {}{}", map.hir_to_pretty_string(id), id_str)
+        }
+        Some(Node::Arg(_)) => {
+            format!("arg {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Arm(_)) => {
             format!("arm {}{}", map.hir_to_pretty_string(id), id_str)

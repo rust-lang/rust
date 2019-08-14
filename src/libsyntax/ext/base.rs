@@ -14,7 +14,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
-use syntax_pos::{Span, MultiSpan, DUMMY_SP};
+use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
 use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -592,6 +592,11 @@ pub struct SyntaxExtension {
     pub helper_attrs: Vec<Symbol>,
     /// Edition of the crate in which this macro is defined.
     pub edition: Edition,
+    /// Built-in macros have a couple of special properties like availability
+    /// in `#[no_implicit_prelude]` modules, so we have to keep this flag.
+    pub is_builtin: bool,
+    /// We have to identify macros providing a `Copy` impl early for compatibility reasons.
+    pub is_derive_copy: bool,
 }
 
 impl SyntaxExtensionKind {
@@ -636,6 +641,8 @@ impl SyntaxExtension {
             deprecation: None,
             helper_attrs: Vec::new(),
             edition,
+            is_builtin: false,
+            is_derive_copy: false,
             kind,
         }
     }
@@ -679,6 +686,16 @@ pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
+bitflags::bitflags! {
+    /// Built-in derives that need some extra tracking beyond the usual macro functionality.
+    #[derive(Default)]
+    pub struct SpecialDerives: u8 {
+        const PARTIAL_EQ = 1 << 0;
+        const EQ         = 1 << 1;
+        const COPY       = 1 << 2;
+    }
+}
+
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
 
@@ -687,7 +704,7 @@ pub trait Resolver {
     fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment,
                                             derives: &[ExpnId]);
-    fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
+    fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension);
 
     fn resolve_imports(&mut self);
 
@@ -695,6 +712,9 @@ pub trait Resolver {
                                 -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate>;
 
     fn check_unused_macros(&self);
+
+    fn has_derives(&self, expn_id: ExpnId, derives: SpecialDerives) -> bool;
+    fn add_derives(&mut self, expn_id: ExpnId, derives: SpecialDerives);
 }
 
 #[derive(Clone)]
@@ -709,6 +729,7 @@ pub struct ExpansionData {
     pub depth: usize,
     pub module: Rc<ModuleData>,
     pub directory_ownership: DirectoryOwnership,
+    pub prior_type_ascription: Option<(Span, bool)>,
 }
 
 /// One of these is made during expansion and incrementally updated as we go;
@@ -721,7 +742,6 @@ pub struct ExtCtxt<'a> {
     pub resolver: &'a mut dyn Resolver,
     pub current_expansion: ExpansionData,
     pub expansions: FxHashMap<Span, Vec<String>>,
-    pub allow_derive_markers: Lrc<[Symbol]>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -739,9 +759,9 @@ impl<'a> ExtCtxt<'a> {
                 depth: 0,
                 module: Rc::new(ModuleData { mod_path: Vec::new(), directory: PathBuf::new() }),
                 directory_ownership: DirectoryOwnership::Owned { relative: None },
+                prior_type_ascription: None,
             },
             expansions: FxHashMap::default(),
-            allow_derive_markers: [sym::rustc_attrs, sym::structural_match][..].into(),
         }
     }
 
@@ -888,6 +908,31 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn check_unused_macros(&self) {
         self.resolver.check_unused_macros();
+    }
+
+    /// Resolve a path mentioned inside Rust code.
+    ///
+    /// This unifies the logic used for resolving `include_X!`, and `#[doc(include)]` file paths.
+    ///
+    /// Returns an absolute path to the file that `path` refers to.
+    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PathBuf {
+        let path = path.into();
+
+        // Relative paths are resolved relative to the file in which they are found
+        // after macro expansion (that is, they are unhygienic).
+        if !path.is_absolute() {
+            let callsite = span.source_callsite();
+            let mut result = match self.source_map().span_to_unmapped_path(callsite) {
+                FileName::Real(path) => path,
+                FileName::DocTest(path, _) => path,
+                other => panic!("cannot resolve relative path in non-file source `{}`", other),
+            };
+            result.pop();
+            result.push(path);
+            result
+        } else {
+            path
+        }
     }
 }
 

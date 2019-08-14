@@ -255,6 +255,8 @@ pub enum TokenKind {
     /// A comment.
     Comment,
     Shebang(ast::Name),
+    /// A completely invalid token which should be skipped.
+    Unknown(ast::Name),
 
     Eof,
 }
@@ -476,6 +478,19 @@ impl Token {
         false
     }
 
+    /// Would `maybe_whole_expr` in `parser.rs` return `Ok(..)`?
+    /// That is, is this a pre-parsed expression dropped into the token stream
+    /// (which happens while parsing the result of macro expansion)?
+    crate fn is_whole_expr(&self) -> bool {
+        if let Interpolated(ref nt) = self.kind {
+            if let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// Returns `true` if the token is either the `mut` or `const` keyword.
     crate fn is_mutability(&self) -> bool {
         self.is_keyword(kw::Mut) ||
@@ -590,7 +605,7 @@ impl Token {
             DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
             Question | OpenDelim(..) | CloseDelim(..) |
             Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
-            Whitespace | Comment | Shebang(..) | Eof => return None,
+            Whitespace | Comment | Shebang(..) | Unknown(..) | Eof => return None,
         };
 
         Some(Token::new(kind, self.span.to(joint.span)))

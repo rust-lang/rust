@@ -10,7 +10,7 @@
 //!
 //! SpanUtils is used to manipulate spans. In particular, to extract sub-spans
 //! from spans (e.g., the span for `bar` from the above example path).
-//! DumpVisitor walks the AST and processes it, and JsonDumper is used for
+//! DumpVisitor walks the AST and processes it, and Dumper is used for
 //! recording the output.
 
 use rustc::hir::def::{Res, DefKind as HirDefKind};
@@ -23,7 +23,7 @@ use rustc_data_structures::fx::FxHashSet;
 use std::path::Path;
 use std::env;
 
-use syntax::ast::{self, Attribute, NodeId, PatKind, CRATE_NODE_ID};
+use syntax::ast::{self, Attribute, NodeId, PatKind};
 use syntax::parse::token;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{
@@ -38,7 +38,7 @@ use syntax_pos::*;
 
 use crate::{escape, generated_code, id_from_def_id, id_from_node_id, lower_attributes,
             PathCollector, SaveContext};
-use crate::json_dumper::{Access, DumpOutput, JsonDumper};
+use crate::dumper::{Access, Dumper};
 use crate::span_utils::SpanUtils;
 use crate::sig;
 
@@ -75,14 +75,12 @@ macro_rules! access_from_vis {
     };
 }
 
-pub struct DumpVisitor<'l, 'tcx, 'll, O: DumpOutput> {
-    save_ctxt: SaveContext<'l, 'tcx>,
+pub struct DumpVisitor<'l, 'tcx> {
+    pub save_ctxt: SaveContext<'l, 'tcx>,
     tcx: TyCtxt<'tcx>,
-    dumper: &'ll mut JsonDumper<O>,
+    dumper: Dumper,
 
     span: SpanUtils<'l>,
-
-    cur_scope: NodeId,
 
     // Set of macro definition (callee) spans, and the set
     // of macro use (callsite) spans. We store these to ensure
@@ -92,36 +90,29 @@ pub struct DumpVisitor<'l, 'tcx, 'll, O: DumpOutput> {
     // macro_calls: FxHashSet<Span>,
 }
 
-impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
+impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     pub fn new(
         save_ctxt: SaveContext<'l, 'tcx>,
-        dumper: &'ll mut JsonDumper<O>,
-    ) -> DumpVisitor<'l, 'tcx, 'll, O> {
+    ) -> DumpVisitor<'l, 'tcx> {
         let span_utils = SpanUtils::new(&save_ctxt.tcx.sess);
+        let dumper = Dumper::new(save_ctxt.config.clone());
         DumpVisitor {
             tcx: save_ctxt.tcx,
             save_ctxt,
             dumper,
             span: span_utils,
-            cur_scope: CRATE_NODE_ID,
             // mac_defs: FxHashSet::default(),
             // macro_calls: FxHashSet::default(),
         }
     }
 
-    fn nest_scope<F>(&mut self, scope_id: NodeId, f: F)
-    where
-        F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, O>),
-    {
-        let parent_scope = self.cur_scope;
-        self.cur_scope = scope_id;
-        f(self);
-        self.cur_scope = parent_scope;
+    pub fn analysis(&self) -> &rls_data::Analysis {
+        self.dumper.analysis()
     }
 
     fn nest_tables<F>(&mut self, item_id: NodeId, f: F)
     where
-        F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, O>),
+        F: FnOnce(&mut Self),
     {
         let item_def_id = self.tcx.hir().local_def_id_from_node_id(item_id);
         if self.tcx.has_typeck_tables(item_def_id) {
@@ -320,7 +311,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // walk the fn body
         if let Some(body) = body {
-            self.nest_tables(id, |v| v.nest_scope(id, |v| v.visit_block(body)));
+            self.nest_tables(id, |v| v.visit_block(body));
         }
     }
 
@@ -405,7 +396,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             self.visit_ty(&ret_ty);
         }
 
-        self.nest_tables(item.id, |v| v.nest_scope(item.id, |v| v.visit_block(&body)));
+        self.nest_tables(item.id, |v| v.visit_block(&body));
     }
 
     fn process_static_or_const_item(
@@ -1176,13 +1167,13 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     impl_item.span,
                 );
             }
-            ast::ImplItemKind::Type(ref ty) => {
+            ast::ImplItemKind::TyAlias(ref ty) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
                 self.visit_ty(ty)
             }
-            ast::ImplItemKind::Existential(ref bounds) => {
+            ast::ImplItemKind::OpaqueTy(ref bounds) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.
@@ -1311,7 +1302,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     }
 }
 
-impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll, O> {
+impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
     fn visit_mod(&mut self, m: &'l ast::Mod, span: Span, attrs: &[ast::Attribute], id: NodeId) {
         // Since we handle explicit modules ourselves in visit_item, this should
         // only get called for the root module of a crate.
@@ -1349,7 +1340,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
                 attributes: lower_attributes(attrs.to_owned(), &self.save_ctxt),
             },
         );
-        self.nest_scope(id, |v| visit::walk_mod(v, m));
+        visit::walk_mod(self, m);
     }
 
     fn visit_item(&mut self, item: &'l ast::Item) {
@@ -1404,9 +1395,9 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
             }
             Mod(ref m) => {
                 self.process_mod(item);
-                self.nest_scope(item.id, |v| visit::walk_mod(v, m));
+                visit::walk_mod(self, m);
             }
-            Ty(ref ty, ref ty_params) => {
+            TyAlias(ref ty, ref ty_params) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 let value = ty_to_string(&ty);
@@ -1437,7 +1428,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
                 self.visit_ty(&ty);
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
-            Existential(ref _bounds, ref ty_params) => {
+            OpaqueTy(ref _bounds, ref ty_params) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 // FIXME do something with _bounds
@@ -1570,7 +1561,7 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
                 // walk the body
                 self.nest_tables(ex.id, |v| {
                     v.process_formals(&decl.inputs, &id);
-                    v.nest_scope(ex.id, |v| v.visit_expr(body))
+                    v.visit_expr(body)
                 });
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) => {

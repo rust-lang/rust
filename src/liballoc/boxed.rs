@@ -1,6 +1,6 @@
 //! A pointer type for heap allocation.
 //!
-//! `Box<T>`, casually referred to as a 'box', provides the simplest form of
+//! [`Box<T>`], casually referred to as a 'box', provides the simplest form of
 //! heap allocation in Rust. Boxes provide ownership for this allocation, and
 //! drop their contents when they go out of scope.
 //!
@@ -48,7 +48,7 @@
 //!
 //! It wouldn't work. This is because the size of a `List` depends on how many
 //! elements are in the list, and so we don't know how much memory to allocate
-//! for a `Cons`. By introducing a `Box`, which has a defined size, we know how
+//! for a `Cons`. By introducing a [`Box<T>`], which has a defined size, we know how
 //! big `Cons` needs to be.
 //!
 //! # Memory layout
@@ -59,22 +59,27 @@
 //! [`Layout`] used with the allocator is correct for the type. More precisely,
 //! a `value: *mut T` that has been allocated with the [`Global`] allocator
 //! with `Layout::for_value(&*value)` may be converted into a box using
-//! `Box::<T>::from_raw(value)`. Conversely, the memory backing a `value: *mut
-//! T` obtained from `Box::<T>::into_raw` may be deallocated using the
-//! [`Global`] allocator with `Layout::for_value(&*value)`.
+//! [`Box::<T>::from_raw(value)`]. Conversely, the memory backing a `value: *mut
+//! T` obtained from [`Box::<T>::into_raw`] may be deallocated using the
+//! [`Global`] allocator with [`Layout::for_value(&*value)`].
 //!
 //!
 //! [dereferencing]: ../../std/ops/trait.Deref.html
 //! [`Box`]: struct.Box.html
+//! [`Box<T>`]: struct.Box.html
+//! [`Box::<T>::from_raw(value)`]: struct.Box.html#method.from_raw
+//! [`Box::<T>::into_raw`]: struct.Box.html#method.into_raw
 //! [`Global`]: ../alloc/struct.Global.html
 //! [`Layout`]: ../alloc/struct.Layout.html
+//! [`Layout::for_value(&*value)`]: ../alloc/struct.Layout.html#method.for_value
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::any::Any;
+use core::array::LengthAtMost32;
 use core::borrow;
 use core::cmp::Ordering;
-use core::convert::From;
+use core::convert::{From, TryFrom};
 use core::fmt;
 use core::future::Future;
 use core::hash::{Hash, Hasher};
@@ -605,6 +610,22 @@ impl From<Box<str>> for Box<[u8]> {
     #[inline]
     fn from(s: Box<str>) -> Self {
         unsafe { Box::from_raw(Box::into_raw(s) as *mut [u8]) }
+    }
+}
+
+#[unstable(feature = "boxed_slice_try_from", issue = "0")]
+impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]>
+where
+    [T; N]: LengthAtMost32,
+{
+    type Error = Box<[T]>;
+
+    fn try_from(boxed_slice: Box<[T]>) -> Result<Self, Self::Error> {
+        if boxed_slice.len() == N {
+            Ok(unsafe { Box::from_raw(Box::into_raw(boxed_slice) as *mut [T; N]) })
+        } else {
+            Err(boxed_slice)
+        }
     }
 }
 

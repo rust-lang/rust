@@ -22,6 +22,9 @@ use rustc_data_structures::sync::Lrc;
 use std::ops::DerefMut;
 use std::{panic, process, ptr};
 
+#[cfg(test)]
+mod tests;
+
 pub trait ExpectOne<A: Array> {
     fn expect_one(self, err: &'static str) -> A::Item;
 }
@@ -530,7 +533,7 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
 }
 
 pub fn noop_visit_mac<T: MutVisitor>(Spanned { node, span }: &mut Mac, vis: &mut T) {
-    let Mac_ { path, delim: _, tts } = node;
+    let Mac_ { path, delim: _, tts, .. } = node;
     vis.visit_path(path);
     vis.visit_tts(tts);
     vis.visit_span(span);
@@ -558,10 +561,11 @@ pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_visit_arg<T: MutVisitor>(Arg { attrs, id, pat, ty }: &mut Arg, vis: &mut T) {
+pub fn noop_visit_arg<T: MutVisitor>(Arg { attrs, id, pat, span, ty }: &mut Arg, vis: &mut T) {
     vis.visit_id(id);
     visit_thin_attrs(attrs, vis);
     vis.visit_pat(pat);
+    vis.visit_span(span);
     vis.visit_ty(ty);
 }
 
@@ -843,11 +847,11 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         ItemKind::Mod(m) => vis.visit_mod(m),
         ItemKind::ForeignMod(nm) => vis.visit_foreign_mod(nm),
         ItemKind::GlobalAsm(_ga) => {}
-        ItemKind::Ty(ty, generics) => {
+        ItemKind::TyAlias(ty, generics) => {
             vis.visit_ty(ty);
             vis.visit_generics(generics);
         }
-        ItemKind::Existential(bounds, generics) => {
+        ItemKind::OpaqueTy(bounds, generics) => {
             visit_bounds(bounds, vis);
             vis.visit_generics(generics);
         }
@@ -929,8 +933,8 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
             visit_method_sig(sig, visitor);
             visitor.visit_block(body);
         }
-        ImplItemKind::Type(ty) => visitor.visit_ty(ty),
-        ImplItemKind::Existential(bounds) => visit_bounds(bounds, visitor),
+        ImplItemKind::TyAlias(ty) => visitor.visit_ty(ty),
+        ImplItemKind::OpaqueTy(bounds) => visit_bounds(bounds, visitor),
         ImplItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_span(span);
@@ -1020,15 +1024,15 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
     let Pat { id, node, span } = pat.deref_mut();
     vis.visit_id(id);
     match node {
-        PatKind::Wild => {}
+        PatKind::Wild | PatKind::Rest => {}
         PatKind::Ident(_binding_mode, ident, sub) => {
             vis.visit_ident(ident);
             visit_opt(sub, |sub| vis.visit_pat(sub));
         }
         PatKind::Lit(e) => vis.visit_expr(e),
-        PatKind::TupleStruct(path, pats, _ddpos) => {
+        PatKind::TupleStruct(path, elems) => {
             vis.visit_path(path);
-            visit_vec(pats, |pat| vis.visit_pat(pat));
+            visit_vec(elems, |elem| vis.visit_pat(elem));
         }
         PatKind::Path(qself, path) => {
             vis.visit_qself(qself);
@@ -1043,7 +1047,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
                 vis.visit_span(span);
             };
         }
-        PatKind::Tuple(elts, _ddpos) => visit_vec(elts, |elt| vis.visit_pat(elt)),
+        PatKind::Tuple(elems) => visit_vec(elems, |elem| vis.visit_pat(elem)),
         PatKind::Box(inner) => vis.visit_pat(inner),
         PatKind::Ref(inner, _mutbl) => vis.visit_pat(inner),
         PatKind::Range(e1, e2, Spanned { span: _, node: _ }) => {
@@ -1051,11 +1055,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
             vis.visit_expr(e2);
             vis.visit_span(span);
         }
-        PatKind::Slice(before, slice, after) => {
-            visit_vec(before, |pat| vis.visit_pat(pat));
-            visit_opt(slice, |slice| vis.visit_pat(slice));
-            visit_vec(after, |pat| vis.visit_pat(pat));
-        }
+        PatKind::Slice(elems) => visit_vec(elems, |elem| vis.visit_pat(elem)),
         PatKind::Paren(inner) => vis.visit_pat(inner),
         PatKind::Mac(mac) => vis.visit_mac(mac),
     }
@@ -1142,7 +1142,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
             vis.visit_id(node_id);
             vis.visit_block(body);
         }
-        ExprKind::Await(_origin, expr) => vis.visit_expr(expr),
+        ExprKind::Await(expr) => vis.visit_expr(expr),
         ExprKind::Assign(el, er) => {
             vis.visit_expr(el);
             vis.visit_expr(er);
@@ -1257,78 +1257,4 @@ pub fn noop_visit_vis<T: MutVisitor>(Spanned { node, span }: &mut Visibility, vi
         }
     }
     vis.visit_span(span);
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::ast::{self, Ident};
-    use crate::util::parser_testing::{string_to_crate, matches_codepattern};
-    use crate::print::pprust;
-    use crate::mut_visit;
-    use crate::with_default_globals;
-    use super::*;
-
-    // this version doesn't care about getting comments or docstrings in.
-    fn fake_print_crate(s: &mut pprust::State<'_>,
-                        krate: &ast::Crate) {
-        s.print_mod(&krate.module, &krate.attrs)
-    }
-
-    // change every identifier to "zz"
-    struct ToZzIdentMutVisitor;
-
-    impl MutVisitor for ToZzIdentMutVisitor {
-        fn visit_ident(&mut self, ident: &mut ast::Ident) {
-            *ident = Ident::from_str("zz");
-        }
-        fn visit_mac(&mut self, mac: &mut ast::Mac) {
-            mut_visit::noop_visit_mac(mac, self)
-        }
-    }
-
-    // maybe add to expand.rs...
-    macro_rules! assert_pred {
-        ($pred:expr, $predname:expr, $a:expr , $b:expr) => (
-            {
-                let pred_val = $pred;
-                let a_val = $a;
-                let b_val = $b;
-                if !(pred_val(&a_val, &b_val)) {
-                    panic!("expected args satisfying {}, got {} and {}",
-                          $predname, a_val, b_val);
-                }
-            }
-        )
-    }
-
-    // make sure idents get transformed everywhere
-    #[test] fn ident_transformation () {
-        with_default_globals(|| {
-            let mut zz_visitor = ToZzIdentMutVisitor;
-            let mut krate = string_to_crate(
-                "#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}".to_string());
-            zz_visitor.visit_crate(&mut krate);
-            assert_pred!(
-                matches_codepattern,
-                "matches_codepattern",
-                pprust::to_string(|s| fake_print_crate(s, &krate)),
-                "#[zz]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string());
-        })
-    }
-
-    // even inside macro defs....
-    #[test] fn ident_transformation_in_defs () {
-        with_default_globals(|| {
-            let mut zz_visitor = ToZzIdentMutVisitor;
-            let mut krate = string_to_crate(
-                "macro_rules! a {(b $c:expr $(d $e:token)f+ => \
-                (g $(d $d $e)+))} ".to_string());
-            zz_visitor.visit_crate(&mut krate);
-            assert_pred!(
-                matches_codepattern,
-                "matches_codepattern",
-                pprust::to_string(|s| fake_print_crate(s, &krate)),
-                "macro_rules! zz{(zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+))}".to_string());
-        })
-    }
 }

@@ -8,7 +8,7 @@ error[E0432]: unresolved import `foo`
   --> $DIR/unresolved-imports-used.rs:10:5
    |
 LL | use foo::bar;
-   |     ^^^ maybe a missing `extern crate foo;`?
+   |     ^^^ maybe a missing crate `foo`?
 
 error[E0603]: function `quz` is private
   --> $DIR/unresolved-imports-used.rs:8:10

@@ -94,7 +94,7 @@ use self::node_index::NodeIndex;
 mod graphviz;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub trait ForestObligation : Clone + Debug {
     type Predicate : Clone + hash::Hash + Eq + Debug;

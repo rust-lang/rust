@@ -1,8 +1,8 @@
-error: expected one of `async`, `const`, `crate`, `default`, `existential`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `static`
-  --> $DIR/removed-syntax-static-fn.rs:6:5
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `static`
+  --> $DIR/removed-syntax-static-fn.rs:4:5
    |
 LL | impl S {
-   |         - expected one of 11 possible tokens here
+   |         - expected one of 10 possible tokens here
 LL |     static fn f() {}
    |     ^^^^^^ unexpected token
 

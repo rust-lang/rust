@@ -3,7 +3,7 @@ use crate::parse::token::{self, Token, TokenKind};
 use crate::symbol::{sym, Symbol};
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
-use errors::{FatalError, Diagnostic, DiagnosticBuilder};
+use errors::{FatalError, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
 use rustc_lexer::Base;
 use rustc_lexer::unescape;
@@ -14,6 +14,9 @@ use std::iter;
 use std::convert::TryInto;
 use rustc_data_structures::sync::Lrc;
 use log::debug;
+
+#[cfg(test)]
+mod tests;
 
 pub mod comments;
 mod tokentrees;
@@ -29,16 +32,14 @@ pub struct UnmatchedBrace {
 }
 
 pub struct StringReader<'a> {
-    crate sess: &'a ParseSess,
-    /// The absolute offset within the source_map of the current character
-    crate pos: BytePos,
-    /// The current character (which has been read from self.pos)
-    crate source_file: Lrc<syntax_pos::SourceFile>,
+    sess: &'a ParseSess,
+    /// Initial position, read-only.
+    start_pos: BytePos,
+    /// The absolute offset within the source_map of the current character.
+    pos: BytePos,
     /// Stop reading src at this index.
-    crate end_src_index: usize,
-    fatal_errs: Vec<DiagnosticBuilder<'a>>,
-    // cache a direct reference to the source text, so that we don't have to
-    // retrieve it via `self.source_file.src.as_ref().unwrap()` all the time.
+    end_src_index: usize,
+    /// Source text to tokenize.
     src: Lrc<String>,
     override_span: Option<Span>,
 }
@@ -56,11 +57,10 @@ impl<'a> StringReader<'a> {
 
         StringReader {
             sess,
+            start_pos: source_file.start_pos,
             pos: source_file.start_pos,
-            source_file,
             end_src_index: src.len(),
             src,
-            fatal_errs: Vec::new(),
             override_span,
         }
     }
@@ -87,33 +87,21 @@ impl<'a> StringReader<'a> {
         self.override_span.unwrap_or_else(|| Span::new(lo, hi, NO_EXPANSION))
     }
 
-    fn unwrap_or_abort(&mut self, res: Result<Token, ()>) -> Token {
-        match res {
-            Ok(tok) => tok,
-            Err(_) => {
-                self.emit_fatal_errors();
-                FatalError.raise();
-            }
-        }
-    }
-
     /// Returns the next token, including trivia like whitespace or comments.
     ///
     /// `Err(())` means that some errors were encountered, which can be
     /// retrieved using `buffer_fatal_errors`.
-    pub fn try_next_token(&mut self) -> Result<Token, ()> {
-        assert!(self.fatal_errs.is_empty());
-
+    pub fn next_token(&mut self) -> Token {
         let start_src_index = self.src_index(self.pos);
         let text: &str = &self.src[start_src_index..self.end_src_index];
 
         if text.is_empty() {
-            let span = self.mk_sp(self.source_file.end_pos, self.source_file.end_pos);
-            return Ok(Token::new(token::Eof, span));
+            let span = self.mk_sp(self.pos, self.pos);
+            return Token::new(token::Eof, span);
         }
 
         {
-            let is_beginning_of_file = self.pos == self.source_file.start_pos;
+            let is_beginning_of_file = self.pos == self.start_pos;
             if is_beginning_of_file {
                 if let Some(shebang_len) = rustc_lexer::strip_shebang(text) {
                     let start = self.pos;
@@ -123,7 +111,7 @@ impl<'a> StringReader<'a> {
                     let kind = token::Shebang(sym);
 
                     let span = self.mk_sp(start, self.pos);
-                    return Ok(Token::new(kind, span));
+                    return Token::new(kind, span);
                 }
             }
         }
@@ -137,39 +125,10 @@ impl<'a> StringReader<'a> {
 
         // This could use `?`, but that makes code significantly (10-20%) slower.
         // https://github.com/rust-lang/rust/issues/37939
-        let kind = match self.cook_lexer_token(token.kind, start) {
-            Ok(it) => it,
-            Err(err) => return Err(self.fatal_errs.push(err)),
-        };
+        let kind = self.cook_lexer_token(token.kind, start);
 
         let span = self.mk_sp(start, self.pos);
-        Ok(Token::new(kind, span))
-    }
-
-    /// Returns the next token, including trivia like whitespace or comments.
-    ///
-    /// Aborts in case of an error.
-    pub fn next_token(&mut self) -> Token {
-        let res = self.try_next_token();
-        self.unwrap_or_abort(res)
-    }
-
-    fn emit_fatal_errors(&mut self) {
-        for err in &mut self.fatal_errs {
-            err.emit();
-        }
-
-        self.fatal_errs.clear();
-    }
-
-    pub fn buffer_fatal_errors(&mut self) -> Vec<Diagnostic> {
-        let mut buffer = Vec::new();
-
-        for err in self.fatal_errs.drain(..) {
-            err.buffer(&mut buffer);
-        }
-
-        buffer
+        Token::new(kind, span)
     }
 
     /// Report a fatal lexical error with a given span.
@@ -216,8 +175,8 @@ impl<'a> StringReader<'a> {
         &self,
         token: rustc_lexer::TokenKind,
         start: BytePos,
-    ) -> Result<TokenKind, DiagnosticBuilder<'a>> {
-        let kind = match token {
+    ) -> TokenKind {
+        match token {
             rustc_lexer::TokenKind::LineComment => {
                 let string = self.str_from(start);
                 // comments with only more "/"s are not doc comments
@@ -389,11 +348,17 @@ impl<'a> StringReader<'a> {
                                                           self.pos,
                                                           "unknown start of token",
                                                           c);
-                unicode_chars::check_for_substitution(self, start, c, &mut err);
-                return Err(err)
+                // FIXME: the lexer could be used to turn the ASCII version of unicode homoglyphs,
+                // instead of keeping a table in `check_for_substitution`into the token. Ideally,
+                // this should be inside `rustc_lexer`. However, we should first remove compound
+                // tokens like `<<` from `rustc_lexer`, and then add fancier error recovery to it,
+                // as there will be less overall work to do this way.
+                let token = unicode_chars::check_for_substitution(self, start, c, &mut err)
+                    .unwrap_or_else(|| token::Unknown(self.symbol_from(start)));
+                err.emit();
+                token
             }
-        };
-        Ok(kind)
+        }
     }
 
     fn cook_lexer_literal(
@@ -523,7 +488,7 @@ impl<'a> StringReader<'a> {
 
     #[inline]
     fn src_index(&self, pos: BytePos) -> usize {
-        (pos - self.source_file.start_pos).to_usize()
+        (pos - self.start_pos).to_usize()
     }
 
     /// Slice of the source text from `start` up to but excluding `self.pos`,
@@ -767,262 +732,4 @@ fn is_block_doc_comment(s: &str) -> bool {
                s.starts_with("/*!")) && s.len() >= 5;
     debug!("is {:?} a doc comment? {}", s, res);
     res
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use crate::ast::CrateConfig;
-    use crate::symbol::Symbol;
-    use crate::source_map::{SourceMap, FilePathMapping};
-    use crate::feature_gate::UnstableFeatures;
-    use crate::parse::token;
-    use crate::diagnostics::plugin::ErrorMap;
-    use crate::with_default_globals;
-    use std::io;
-    use std::path::PathBuf;
-    use syntax_pos::{BytePos, Span, NO_EXPANSION, edition::Edition};
-    use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-    use rustc_data_structures::sync::Lock;
-
-    fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
-        let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
-                                                          Some(sm.clone()),
-                                                          false,
-                                                          false,
-                                                          false);
-        ParseSess {
-            span_diagnostic: errors::Handler::with_emitter(true, None, Box::new(emitter)),
-            unstable_features: UnstableFeatures::from_environment(),
-            config: CrateConfig::default(),
-            included_mod_stack: Lock::new(Vec::new()),
-            source_map: sm,
-            missing_fragment_specifiers: Lock::new(FxHashSet::default()),
-            raw_identifier_spans: Lock::new(Vec::new()),
-            registered_diagnostics: Lock::new(ErrorMap::new()),
-            buffered_lints: Lock::new(vec![]),
-            edition: Edition::from_session(),
-            ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
-            param_attr_spans: Lock::new(Vec::new()),
-            let_chains_spans: Lock::new(Vec::new()),
-            async_closure_spans: Lock::new(Vec::new()),
-        }
-    }
-
-    // open a string reader for the given string
-    fn setup<'a>(sm: &SourceMap,
-                 sess: &'a ParseSess,
-                 teststr: String)
-                 -> StringReader<'a> {
-        let sf = sm.new_source_file(PathBuf::from(teststr.clone()).into(), teststr);
-        StringReader::new(sess, sf, None)
-    }
-
-    #[test]
-    fn t1() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            let mut string_reader = setup(&sm,
-                                        &sh,
-                                        "/* my source file */ fn main() { println!(\"zebra\"); }\n"
-                                            .to_string());
-            assert_eq!(string_reader.next_token(), token::Comment);
-            assert_eq!(string_reader.next_token(), token::Whitespace);
-            let tok1 = string_reader.next_token();
-            let tok2 = Token::new(
-                mk_ident("fn"),
-                Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
-            );
-            assert_eq!(tok1.kind, tok2.kind);
-            assert_eq!(tok1.span, tok2.span);
-            assert_eq!(string_reader.next_token(), token::Whitespace);
-            // read another token:
-            let tok3 = string_reader.next_token();
-            assert_eq!(string_reader.pos.clone(), BytePos(28));
-            let tok4 = Token::new(
-                mk_ident("main"),
-                Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
-            );
-            assert_eq!(tok3.kind, tok4.kind);
-            assert_eq!(tok3.span, tok4.span);
-
-            assert_eq!(string_reader.next_token(), token::OpenDelim(token::Paren));
-            assert_eq!(string_reader.pos.clone(), BytePos(29))
-        })
-    }
-
-    // check that the given reader produces the desired stream
-    // of tokens (stop checking after exhausting the expected vec)
-    fn check_tokenization(mut string_reader: StringReader<'_>, expected: Vec<TokenKind>) {
-        for expected_tok in &expected {
-            assert_eq!(&string_reader.next_token(), expected_tok);
-        }
-    }
-
-    // make the identifier by looking up the string in the interner
-    fn mk_ident(id: &str) -> TokenKind {
-        token::Ident(Symbol::intern(id), false)
-    }
-
-    fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> TokenKind {
-        TokenKind::lit(kind, Symbol::intern(symbol), suffix.map(Symbol::intern))
-    }
-
-    #[test]
-    fn doublecolonparsing() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            check_tokenization(setup(&sm, &sh, "a b".to_string()),
-                            vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
-        })
-    }
-
-    #[test]
-    fn dcparsing_2() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            check_tokenization(setup(&sm, &sh, "a::b".to_string()),
-                            vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
-        })
-    }
-
-    #[test]
-    fn dcparsing_3() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            check_tokenization(setup(&sm, &sh, "a ::b".to_string()),
-                            vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
-        })
-    }
-
-    #[test]
-    fn dcparsing_4() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            check_tokenization(setup(&sm, &sh, "a:: b".to_string()),
-                            vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
-        })
-    }
-
-    #[test]
-    fn character_a() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token(),
-                       mk_lit(token::Char, "a", None));
-        })
-    }
-
-    #[test]
-    fn character_space() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token(),
-                       mk_lit(token::Char, " ", None));
-        })
-    }
-
-    #[test]
-    fn character_escaped() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token(),
-                       mk_lit(token::Char, "\\n", None));
-        })
-    }
-
-    #[test]
-    fn lifetime_name() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token(),
-                       token::Lifetime(Symbol::intern("'abc")));
-        })
-    }
-
-    #[test]
-    fn raw_string() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
-                       mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None));
-        })
-    }
-
-    #[test]
-    fn literal_suffixes() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            macro_rules! test {
-                ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
-                               mk_lit(token::$tok_type, $tok_contents, Some("suffix")));
-                    // with a whitespace separator:
-                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
-                               mk_lit(token::$tok_type, $tok_contents, None));
-                }}
-            }
-
-            test!("'a'", Char, "a");
-            test!("b'a'", Byte, "a");
-            test!("\"a\"", Str, "a");
-            test!("b\"a\"", ByteStr, "a");
-            test!("1234", Integer, "1234");
-            test!("0b101", Integer, "0b101");
-            test!("0xABC", Integer, "0xABC");
-            test!("1.0", Float, "1.0");
-            test!("1.0e10", Float, "1.0e10");
-
-            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token(),
-                       mk_lit(token::Integer, "2", Some("us")));
-            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
-                       mk_lit(token::StrRaw(3), "raw", Some("suffix")));
-            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
-                       mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")));
-        })
-    }
-
-    #[test]
-    fn line_doc_comments() {
-        assert!(is_doc_comment("///"));
-        assert!(is_doc_comment("/// blah"));
-        assert!(!is_doc_comment("////"));
-    }
-
-    #[test]
-    fn nested_block_comments() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            let mut lexer = setup(&sm, &sh, "/* /* */ */'a'".to_string());
-            assert_eq!(lexer.next_token(), token::Comment);
-            assert_eq!(lexer.next_token(), mk_lit(token::Char, "a", None));
-        })
-    }
-
-    #[test]
-    fn crlf_comments() {
-        with_default_globals(|| {
-            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(sm.clone());
-            let mut lexer = setup(&sm, &sh, "// test\r\n/// test\r\n".to_string());
-            let comment = lexer.next_token();
-            assert_eq!(comment.kind, token::Comment);
-            assert_eq!((comment.span.lo(), comment.span.hi()), (BytePos(0), BytePos(7)));
-            assert_eq!(lexer.next_token(), token::Whitespace);
-            assert_eq!(lexer.next_token(), token::DocComment(Symbol::intern("/// test")));
-        })
-    }
 }

@@ -125,14 +125,18 @@ impl Step for Llvm {
         } else {
             match builder.config.llvm_targets {
                 Some(ref s) => s,
-                None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
+                None => "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
+                         Sparc;SystemZ;WebAssembly;X86",
             }
         };
 
         let llvm_exp_targets = if self.emscripten {
             ""
         } else {
-            &builder.config.llvm_experimental_targets[..]
+            match builder.config.llvm_experimental_targets {
+                Some(ref s) => s,
+                None => "",
+            }
         };
 
         let assertions = if builder.config.llvm_assertions {"ON"} else {"OFF"};
@@ -547,7 +551,7 @@ impl Step for TestHelpers {
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various
-    /// `run-pass` test suites for ABI testing.
+    /// `run-pass` tests for ABI testing.
     fn run(self, builder: &Builder<'_>) {
         if builder.config.dry_run {
             return;

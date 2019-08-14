@@ -12,8 +12,6 @@ use crate::util::PathBufExt;
 pub enum Mode {
     CompileFail,
     RunFail,
-    /// This now behaves like a `ui` test that has an implict `// run-pass`.
-    RunPass,
     RunPassValgrind,
     Pretty,
     DebugInfoCdb,
@@ -33,7 +31,7 @@ pub enum Mode {
 
 impl Mode {
     pub fn disambiguator(self) -> &'static str {
-        // Run-pass and pretty run-pass tests could run concurrently, and if they do,
+        // Pretty-printing tests could run concurrently, and if they do,
         // they need to keep their output segregated. Same is true for debuginfo tests that
         // can be run on cdb, gdb, and lldb.
         match self {
@@ -52,7 +50,6 @@ impl FromStr for Mode {
         match s {
             "compile-fail" => Ok(CompileFail),
             "run-fail" => Ok(RunFail),
-            "run-pass" => Ok(RunPass),
             "run-pass-valgrind" => Ok(RunPassValgrind),
             "pretty" => Ok(Pretty),
             "debuginfo-cdb" => Ok(DebugInfoCdb),
@@ -78,7 +75,6 @@ impl fmt::Display for Mode {
         let s = match *self {
             CompileFail => "compile-fail",
             RunFail => "run-fail",
-            RunPass => "run-pass",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
             DebugInfoCdb => "debuginfo-cdb",
@@ -202,7 +198,7 @@ pub struct Config {
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
-    /// The test mode, compile-fail, run-fail, run-pass
+    /// The test mode, compile-fail, run-fail, ui
     pub mode: Mode,
 
     /// Run ignored tests

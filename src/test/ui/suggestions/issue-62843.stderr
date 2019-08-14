@@ -1,0 +1,13 @@
+error[E0277]: expected a `std::ops::FnMut<(char,)>` closure, found `std::string::String`
+  --> $DIR/issue-62843.rs:4:27
+   |
+LL |     println!("{:?}", line.find(pattern));
+   |                           ^^^^ expected an `FnMut<(char,)>` closure, found `std::string::String`
+   |
+   = help: the trait `std::ops::FnMut<(char,)>` is not implemented for `std::string::String`
+   = note: borrowing the `std::string::String` might fix the problem
+   = note: required because of the requirements on the impl of `std::str::pattern::Pattern<'_>` for `std::string::String`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

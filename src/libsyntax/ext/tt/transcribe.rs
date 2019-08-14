@@ -12,7 +12,6 @@ use smallvec::{smallvec, SmallVec};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
-use std::rc::Rc;
 
 /// An iterator over the token trees in a delimited token tree (`{ ... }`) or a sequence (`$(...)`).
 enum Frame {
@@ -65,9 +64,9 @@ impl Iterator for Frame {
 /// `transcribe` would return a `TokenStream` containing `println!("{}", stringify!(bar));`.
 ///
 /// Along the way, we do some additional error checking.
-pub fn transcribe(
+pub(super) fn transcribe(
     cx: &ExtCtxt<'_>,
-    interp: &FxHashMap<Ident, Rc<NamedMatch>>,
+    interp: &FxHashMap<Ident, NamedMatch>,
     src: Vec<quoted::TokenTree>,
 ) -> TokenStream {
     // Nothing for us to transcribe...
@@ -212,7 +211,7 @@ pub fn transcribe(
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
-                    if let MatchedNonterminal(ref nt) = *cur_matched {
+                    if let MatchedNonterminal(ref nt) = cur_matched {
                         // FIXME #2887: why do we apply a mark when matching a token tree meta-var
                         // (e.g. `$x:tt`), but not when we are matching any other type of token
                         // tree?
@@ -273,18 +272,17 @@ pub fn transcribe(
 /// See the definition of `repeats` in the `transcribe` function. `repeats` is used to descend
 /// into the right place in nested matchers. If we attempt to descend too far, the macro writer has
 /// made a mistake, and we return `None`.
-fn lookup_cur_matched(
+fn lookup_cur_matched<'a>(
     ident: Ident,
-    interpolations: &FxHashMap<Ident, Rc<NamedMatch>>,
+    interpolations: &'a FxHashMap<Ident, NamedMatch>,
     repeats: &[(usize, usize)],
-) -> Option<Rc<NamedMatch>> {
+) -> Option<&'a NamedMatch> {
     interpolations.get(&ident).map(|matched| {
-        let mut matched = matched.clone();
+        let mut matched = matched;
         for &(idx, _) in repeats {
-            let m = matched.clone();
-            match *m {
+            match matched {
                 MatchedNonterminal(_) => break,
-                MatchedSeq(ref ads, _) => matched = Rc::new(ads[idx].clone()),
+                MatchedSeq(ref ads, _) => matched = ads.get(idx).unwrap(),
             }
         }
 
@@ -343,7 +341,7 @@ impl LockstepIterSize {
 /// multiple nested matcher sequences.
 fn lockstep_iter_size(
     tree: &quoted::TokenTree,
-    interpolations: &FxHashMap<Ident, Rc<NamedMatch>>,
+    interpolations: &FxHashMap<Ident, NamedMatch>,
     repeats: &[(usize, usize)],
 ) -> LockstepIterSize {
     use quoted::TokenTree;
@@ -360,7 +358,7 @@ fn lockstep_iter_size(
         }
         TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl(_, name, _) => {
             match lookup_cur_matched(name, interpolations, repeats) {
-                Some(matched) => match *matched {
+                Some(matched) => match matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ref ads, _) => LockstepIterSize::Constraint(ads.len(), name),
                 },

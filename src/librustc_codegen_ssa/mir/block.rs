@@ -2,7 +2,7 @@ use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
 use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
-use rustc::mir::interpret::PanicMessage;
+use rustc::mir::interpret::PanicInfo;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
 use crate::base;
@@ -337,7 +337,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => {
                 (bx.get_fn(drop_fn),
-                 FnType::of_instance(&bx, &drop_fn))
+                 FnType::of_instance(&bx, drop_fn))
             }
         };
         helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
@@ -368,7 +368,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let PanicMessage::OverflowNeg = *msg {
+            if let PanicInfo::OverflowNeg = *msg {
                 const_cond = Some(expected);
             }
         }
@@ -403,7 +403,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
-            PanicMessage::BoundsCheck { ref len, ref index } => {
+            PanicInfo::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
 
@@ -435,7 +435,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Obtain the panic entry point.
         let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_ty = FnType::of_instance(&bx, &instance);
+        let fn_ty = FnType::of_instance(&bx, instance);
         let llfn = bx.get_fn(instance);
 
         // Codegen the actual panic invoke/call.
@@ -552,7 +552,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let def_id =
                     common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_ty = FnType::of_instance(&bx, &instance);
+                let fn_ty = FnType::of_instance(&bx, instance);
                 let llfn = bx.get_fn(instance);
 
                 // Codegen the actual panic invoke/call.

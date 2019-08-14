@@ -1,11 +1,11 @@
-error[E0720]: opaque type expands to a recursive type
+error[E0733]: recursion in an `async fn` requires boxing
   --> $DIR/recursive-async-impl-trait-type.rs:7:40
    |
 LL | async fn recursive_async_function() -> () {
-   |                                        ^^ expands to a recursive type
+   |                                        ^^ an `async fn` cannot invoke itself directly
    |
-   = note: expanded type is `std::future::GenFuture<[static generator@$DIR/recursive-async-impl-trait-type.rs:7:43: 9:2 {impl std::future::Future, ()}]>`
+   = note: a recursive `async fn` must be rewritten to return a boxed future.
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0720`.
+For more information about this error, try `rustc --explain E0733`.

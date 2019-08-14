@@ -2,6 +2,7 @@
 
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
+use crate::error::Error;
 use crate::fmt;
 
 /// A thread local storage key which owns its contents.
@@ -189,6 +190,7 @@ macro_rules! __thread_local_inner {
 
 /// An error returned by [`LocalKey::try_with`](struct.LocalKey.html#method.try_with).
 #[stable(feature = "thread_local_try_with", since = "1.26.0")]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub struct AccessError {
     _private: (),
 }
@@ -206,6 +208,9 @@ impl fmt::Display for AccessError {
         fmt::Display::fmt("already destroyed", f)
     }
 }
+
+#[stable(feature = "thread_local_try_with", since = "1.26.0")]
+impl Error for AccessError {}
 
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]

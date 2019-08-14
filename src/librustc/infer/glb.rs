@@ -27,6 +27,8 @@ impl TypeRelation<'tcx> for Glb<'combine, 'infcx, 'tcx> {
 
     fn tcx(&self) -> TyCtxt<'tcx> { self.fields.tcx() }
 
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.fields.param_env }
+
     fn a_is_expected(&self) -> bool { self.a_is_expected }
 
     fn relate_with_variance<T: Relate<'tcx>>(&mut self,

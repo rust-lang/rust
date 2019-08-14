@@ -6,9 +6,6 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
 #![feature(nll)]
@@ -44,6 +41,9 @@ use std::fmt;
 use std::hash::{Hasher, Hash};
 use std::ops::{Add, Sub};
 use std::path::PathBuf;
+
+#[cfg(test)]
+mod tests;
 
 pub struct Globals {
     symbol_interner: Lock<symbol::Interner>,
@@ -1402,6 +1402,7 @@ pub struct MalformedSourceMapPositions {
     pub end_pos: BytePos
 }
 
+/// Range inside of a `Span` used for diagnostics when we only have access to relative positions.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct InnerSpan {
     pub start: usize,
@@ -1421,27 +1422,5 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
     match lines.binary_search(&pos) {
         Ok(line) => line as isize,
         Err(line) => line as isize - 1
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{lookup_line, BytePos};
-
-    #[test]
-    fn test_lookup_line() {
-
-        let lines = &[BytePos(3), BytePos(17), BytePos(28)];
-
-        assert_eq!(lookup_line(lines, BytePos(0)), -1);
-        assert_eq!(lookup_line(lines, BytePos(3)),  0);
-        assert_eq!(lookup_line(lines, BytePos(4)),  0);
-
-        assert_eq!(lookup_line(lines, BytePos(16)), 0);
-        assert_eq!(lookup_line(lines, BytePos(17)), 1);
-        assert_eq!(lookup_line(lines, BytePos(18)), 1);
-
-        assert_eq!(lookup_line(lines, BytePos(28)), 2);
-        assert_eq!(lookup_line(lines, BytePos(29)), 2);
     }
 }

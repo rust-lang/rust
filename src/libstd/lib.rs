@@ -209,9 +209,8 @@
 #![warn(missing_docs)]
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
-
-#![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
+#![allow(unused_lifetimes)]
 
 // Tell the compiler to link to either panic_abort or panic_unwind
 #![needs_panic_runtime]
@@ -219,16 +218,17 @@
 // std may use features in a platform-specific way
 #![allow(unused_features)]
 
-#![cfg_attr(test, feature(print_internals, set_stdio, test, update_panic_count))]
+#![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
-            feature(global_asm, slice_index_methods,
-                    decl_macro, coerce_unsized, sgx_platform, ptr_wrapping_offset_from))]
+            feature(slice_index_methods, decl_macro, coerce_unsized,
+                    sgx_platform, ptr_wrapping_offset_from))]
 #![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"),
             feature(fixed_size_array, maybe_uninit_extra))]
 
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
+#![cfg_attr(not(bootstrap), feature(__rust_unstable_column))]
 #![feature(alloc_error_handler)]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -238,6 +238,7 @@
 #![feature(arbitrary_self_types)]
 #![feature(array_error_internals)]
 #![feature(asm)]
+#![feature(associated_type_bounds)]
 #![feature(bind_by_move_pattern_guards)]
 #![feature(box_syntax)]
 #![feature(c_variadic)]
@@ -251,6 +252,7 @@
 #![feature(const_cstr_unchecked)]
 #![feature(const_raw_ptr_deref)]
 #![feature(core_intrinsics)]
+#![feature(custom_test_frameworks)]
 #![feature(doc_alias)]
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
@@ -262,7 +264,9 @@
 #![feature(exhaustive_patterns)]
 #![feature(external_doc)]
 #![feature(fn_traits)]
+#![feature(format_args_nl)]
 #![feature(generator_trait)]
+#![feature(global_asm)]
 #![feature(hash_raw_entry)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
@@ -272,6 +276,7 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(linkage)]
+#![feature(log_syntax)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(mem_take)]
@@ -300,9 +305,11 @@
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
 #![feature(str_internals)]
+#![feature(test)]
 #![feature(thread_local)]
 #![feature(todo_macro)]
 #![feature(toowned_clone_into)]
+#![feature(trace_macros)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
@@ -319,12 +326,6 @@ use prelude::v1::*;
 
 // Access to Bencher, etc.
 #[cfg(test)] extern crate test;
-
-// Re-export a few macros from core
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::{unreachable, unimplemented, write, writeln, r#try, todo};
 
 #[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
@@ -509,6 +510,55 @@ mod std_detect;
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(test))]
 pub use std_detect::detect;
+
+// Re-export macros defined in libcore.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated_in_future)]
+pub use core::{
+    // Stable
+    assert_eq,
+    assert_ne,
+    debug_assert_eq,
+    debug_assert_ne,
+    debug_assert,
+    r#try,
+    unimplemented,
+    unreachable,
+    write,
+    writeln,
+    // Unstable
+    todo,
+};
+
+// Re-export built-in macros defined through libcore.
+#[cfg(not(bootstrap))]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+pub use core::{
+    // Stable
+    assert,
+    cfg,
+    column,
+    compile_error,
+    concat,
+    env,
+    file,
+    format_args,
+    include,
+    include_bytes,
+    include_str,
+    line,
+    module_path,
+    option_env,
+    stringify,
+    // Unstable
+    __rust_unstable_column,
+    asm,
+    concat_idents,
+    format_args_nl,
+    global_asm,
+    log_syntax,
+    trace_macros,
+};
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`

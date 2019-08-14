@@ -15,7 +15,8 @@
 //! switching compilers for the bootstrap and for build scripts will probably
 //! never get replaced.
 
-#![deny(warnings)]
+// NO-RUSTC-WRAPPER
+#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
 
 use std::env;
 use std::ffi::OsString;
@@ -126,8 +127,11 @@ fn main() {
 
     if env::var_os("RUSTC_DENY_WARNINGS").is_some() &&
        env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
+        // When extending this list, search for `NO-RUSTC-WRAPPER` and add the new lints
+        // there as well, some code doesn't go through this `rustc` wrapper.
         cmd.arg("-Dwarnings");
         cmd.arg("-Drust_2018_idioms");
+        cmd.arg("-Dunused_lifetimes");
         // cfg(not(bootstrap)): Remove this during the next stage 0 compiler update.
         // `-Drustc::internal` is a new feature and `rustc_version` mis-reports the `stage`.
         let cfg_not_bootstrap = stage != "0" && crate_name != Some("rustc_version");
@@ -139,8 +143,11 @@ fn main() {
 
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
-        // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(&sysroot);
+        // actually downloaded, so we just always pass the `--sysroot` option,
+        // unless one is already set.
+        if !args.iter().any(|arg| arg == "--sysroot") {
+            cmd.arg("--sysroot").arg(&sysroot);
+        }
 
         cmd.arg("-Zexternal-macro-backtrace");
 
@@ -278,20 +285,6 @@ fn main() {
             }
             if s == "false" {
                 cmd.arg("-C").arg("target-feature=-crt-static");
-            }
-        }
-
-        // When running miri tests, we need to generate MIR for all libraries
-        if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
-            // The flags here should be kept in sync with `add_miri_default_args`
-            // in miri's `src/lib.rs`.
-            cmd.arg("-Zalways-encode-mir");
-            cmd.arg("--cfg=miri");
-            // These options are preferred by miri, to be able to perform better validation,
-            // but the bootstrap compiler might not understand them.
-            if stage != "0" {
-                cmd.arg("-Zmir-emit-retag");
-                cmd.arg("-Zmir-opt-level=0");
             }
         }
 

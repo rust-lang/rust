@@ -120,7 +120,8 @@ trait DummyTrait {
 }
 impl DummyTrait for () {
     type Out = impl Debug;
-    //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+    //~^ ERROR `impl Trait` in type aliases is unstable
+    //~^^ ERROR could not find defining uses
 
     fn in_trait_impl_parameter(_: impl Debug) { }
     // Allowed
@@ -155,7 +156,8 @@ extern "C" fn in_extern_fn_return() -> impl Debug {
 }
 
 type InTypeAlias<R> = impl Debug;
-//~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+//~^ ERROR `impl Trait` in type aliases is unstable
+//~^^ ERROR could not find defining uses
 
 type InReturnInTypeAlias<R> = fn() -> impl Debug;
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types

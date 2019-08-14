@@ -1,5 +1,3 @@
-#![allow(unused_extern_crates)]
-
 extern crate alloc;
 
 mod alloc {

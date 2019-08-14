@@ -97,6 +97,8 @@ impl AssocOp {
             // DotDotDot is no longer supported, but we need some way to display the error
             token::DotDotDot => Some(DotDotEq),
             token::Colon => Some(Colon),
+            // `<-` should probably be `< -`
+            token::LArrow => Some(Less),
             _ if t.is_keyword(kw::As) => Some(As),
             _ => None
         }
@@ -382,7 +384,7 @@ pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
             // X { y: 1 } + X { y: 2 }
             contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
         }
-        ast::ExprKind::Await(_, ref x) |
+        ast::ExprKind::Await(ref x) |
         ast::ExprKind::Unary(_, ref x) |
         ast::ExprKind::Cast(ref x, _) |
         ast::ExprKind::Type(ref x, _) |

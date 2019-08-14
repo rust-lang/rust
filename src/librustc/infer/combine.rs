@@ -340,6 +340,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             ambient_variance,
             needs_wf: false,
             root_ty: ty,
+            param_env: self.param_env,
         };
 
         let ty = match generalize.relate(&ty, &ty) {
@@ -379,6 +380,8 @@ struct Generalizer<'cx, 'tcx> {
 
     /// The root type that we are generalizing. Used when reporting cycles.
     root_ty: Ty<'tcx>,
+
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 /// Result from a generalization operation. This includes
@@ -419,6 +422,7 @@ impl TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { self.param_env }
 
     fn tag(&self) -> &'static str {
         "Generalizer"

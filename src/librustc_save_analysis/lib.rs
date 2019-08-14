@@ -1,13 +1,9 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(nll)]
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-#![allow(unused_attributes)]
 
 #![recursion_limit="256"]
 
-
-mod json_dumper;
+mod dumper;
 mod dump_visitor;
 #[macro_use]
 mod span_utils;
@@ -39,12 +35,11 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{arg_to_string, ty_to_string};
 use syntax_pos::*;
 
-use json_dumper::JsonDumper;
 use dump_visitor::DumpVisitor;
 use span_utils::SpanUtils;
 
 use rls_data::{Def, DefKind, ExternalCrateData, GlobalCrateId, MacroRef, Ref, RefKind, Relation,
-               RelationKind, SpanData, Impl, ImplKind};
+               RelationKind, SpanData, Impl, ImplKind, Analysis};
 use rls_data::config::Config;
 
 use log::{debug, error, info};
@@ -730,10 +725,10 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Res::Def(HirDefKind::TyAlias, def_id) |
             Res::Def(HirDefKind::ForeignTy, def_id) |
             Res::Def(HirDefKind::TraitAlias, def_id) |
-            Res::Def(HirDefKind::AssocExistential, def_id) |
+            Res::Def(HirDefKind::AssocOpaqueTy, def_id) |
             Res::Def(HirDefKind::AssocTy, def_id) |
             Res::Def(HirDefKind::Trait, def_id) |
-            Res::Def(HirDefKind::Existential, def_id) |
+            Res::Def(HirDefKind::OpaqueTy, def_id) |
             Res::Def(HirDefKind::TyParam, def_id) => {
                 Some(Ref {
                     kind: RefKind::Type,
@@ -1001,12 +996,10 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
 
 /// Defines what to do with the results of saving the analysis.
 pub trait SaveHandler {
-    fn save<'l, 'tcx>(
+    fn save(
         &mut self,
-        save_ctxt: SaveContext<'l, 'tcx>,
-        krate: &ast::Crate,
-        cratename: &str,
-        input: &'l Input,
+        save_ctxt: &SaveContext<'_, '_>,
+        analysis: &Analysis,
     );
 }
 
@@ -1066,28 +1059,19 @@ impl<'a> DumpHandler<'a> {
     }
 }
 
-impl<'a> SaveHandler for DumpHandler<'a> {
-    fn save<'l, 'tcx>(
+impl SaveHandler for DumpHandler<'_> {
+    fn save(
         &mut self,
-        save_ctxt: SaveContext<'l, 'tcx>,
-        krate: &ast::Crate,
-        cratename: &str,
-        input: &'l Input,
+        save_ctxt: &SaveContext<'_, '_>,
+        analysis: &Analysis,
     ) {
         let sess = &save_ctxt.tcx.sess;
-        let file_name = {
-            let (mut output, file_name) = self.output_file(&save_ctxt);
-            let mut dumper = JsonDumper::new(&mut output, save_ctxt.config.clone());
-            let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+        let (output, file_name) = self.output_file(&save_ctxt);
+        if let Err(e) = serde_json::to_writer(output, &analysis) {
+            error!("Can't serialize save-analysis: {:?}", e);
+        }
 
-            visitor.dump_crate_info(cratename, krate);
-            visitor.dump_compilation_options(input, cratename);
-            visit::walk_crate(&mut visitor, krate);
-
-            file_name
-        };
-
-        if sess.opts.debugging_opts.emit_artifact_notifications {
+        if sess.opts.json_artifact_notifications {
             sess.parse_sess.span_diagnostic
                 .emit_artifact_notification(&file_name, "save-analysis");
         }
@@ -1099,25 +1083,13 @@ pub struct CallbackHandler<'b> {
     pub callback: &'b mut dyn FnMut(&rls_data::Analysis),
 }
 
-impl<'b> SaveHandler for CallbackHandler<'b> {
-    fn save<'l, 'tcx>(
+impl SaveHandler for CallbackHandler<'_> {
+    fn save(
         &mut self,
-        save_ctxt: SaveContext<'l, 'tcx>,
-        krate: &ast::Crate,
-        cratename: &str,
-        input: &'l Input,
+        _: &SaveContext<'_, '_>,
+        analysis: &Analysis,
     ) {
-        // We're using the JsonDumper here because it has the format of the
-        // save-analysis results that we will pass to the callback. IOW, we are
-        // using the JsonDumper to collect the save-analysis results, but not
-        // actually to dump them to a file. This is all a bit convoluted and
-        // there is certainly a simpler design here trying to get out (FIXME).
-        let mut dumper = JsonDumper::with_callback(self.callback, save_ctxt.config.clone());
-        let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
-
-        visitor.dump_crate_info(cratename, krate);
-        visitor.dump_compilation_options(input, cratename);
-        visit::walk_crate(&mut visitor, krate);
+        (self.callback)(analysis)
     }
 }
 
@@ -1148,7 +1120,13 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
             impl_counter: Cell::new(0),
         };
 
-        handler.save(save_ctxt, krate, cratename, input)
+        let mut visitor = DumpVisitor::new(save_ctxt);
+
+        visitor.dump_crate_info(cratename, krate);
+        visitor.dump_compilation_options(input, cratename);
+        visit::walk_crate(&mut visitor, krate);
+
+        handler.save(&visitor.save_ctxt, &visitor.analysis())
     })
 }
 

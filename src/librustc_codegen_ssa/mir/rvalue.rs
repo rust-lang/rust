@@ -6,6 +6,7 @@ use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
 use std::{u128, i128};
 use syntax::symbol::sym;
+use syntax::source_map::{DUMMY_SP, Span};
 
 use crate::base;
 use crate::MemFlags;
@@ -136,7 +137,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             _ => {
-                assert!(self.rvalue_creates_operand(rvalue));
+                assert!(self.rvalue_creates_operand(rvalue, DUMMY_SP));
                 let (mut bx, temp) = self.codegen_rvalue_operand(bx, rvalue);
                 temp.val.store(&mut bx, dest);
                 bx
@@ -169,7 +170,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mut bx: Bx,
         rvalue: &mir::Rvalue<'tcx>
     ) -> (Bx, OperandRef<'tcx, Bx::Value>) {
-        assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
+        assert!(
+            self.rvalue_creates_operand(rvalue, DUMMY_SP),
+            "cannot codegen {:?} to operand",
+            rvalue,
+        );
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
@@ -521,7 +526,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.sty {
-                    let n = n.unwrap_usize(bx.cx().tcx());
+                    let n = n.eval_usize(bx.cx().tcx(), ty::ParamEnv::reveal_all());
                     return bx.cx().const_usize(n);
                 }
             }
@@ -691,7 +696,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
+    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>, span: Span) -> bool {
         match *rvalue {
             mir::Rvalue::Ref(..) |
             mir::Rvalue::Len(..) |
@@ -707,7 +712,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Aggregate(..) => {
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(&ty);
-                self.cx.layout_of(ty).is_zst()
+                self.cx.spanned_layout_of(ty, span).is_zst()
             }
         }
 

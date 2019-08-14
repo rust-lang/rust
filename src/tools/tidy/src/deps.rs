@@ -48,11 +48,12 @@ const EXCEPTIONS: &[&str] = &[
     "bytesize",           // Apache-2.0, cargo
     "im-rc",              // MPL-2.0+, cargo
     "adler32",            // BSD-3-Clause AND Zlib, cargo dep that isn't used
-    "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for `sgx` target
     "constant_time_eq",   // CC0-1.0, rustfmt
     "utf8parse",          // Apache-2.0 OR MIT, cargo via strip-ansi-escapes
     "vte",                // Apache-2.0 OR MIT, cargo via strip-ansi-escapes
     "sized-chunks",       // MPL-2.0+, cargo via im-rc
+    // FIXME: this dependency violates the documentation comment above:
+    "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for `sgx` target
 ];
 
 /// Which crates to check against the whitelist?
@@ -75,6 +76,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("bitflags"),
     Crate("build_const"),
     Crate("byteorder"),
+    Crate("c2-chacha"),
     Crate("cc"),
     Crate("cfg-if"),
     Crate("chalk-engine"),
@@ -96,6 +98,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("fuchsia-zircon"),
     Crate("fuchsia-zircon-sys"),
     Crate("getopts"),
+    Crate("getrandom"),
     Crate("humantime"),
     Crate("indexmap"),
     Crate("itertools"),
@@ -121,6 +124,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("parking_lot_core"),
     Crate("pkg-config"),
     Crate("polonius-engine"),
+    Crate("ppv-lite86"),
     Crate("proc-macro2"),
     Crate("quick-error"),
     Crate("quote"),

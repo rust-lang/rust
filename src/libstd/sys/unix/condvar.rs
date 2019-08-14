@@ -31,14 +31,16 @@ impl Condvar {
               target_os = "ios",
               target_os = "l4re",
               target_os = "android",
-              target_os = "hermit"))]
+              target_os = "hermit",
+              target_os = "redox"))]
     pub unsafe fn init(&mut self) {}
 
     #[cfg(not(any(target_os = "macos",
                   target_os = "ios",
                   target_os = "l4re",
                   target_os = "android",
-                  target_os = "hermit")))]
+                  target_os = "hermit",
+                  target_os = "redox")))]
     pub unsafe fn init(&mut self) {
         use crate::mem::MaybeUninit;
         let mut attr = MaybeUninit::<libc::pthread_condattr_t>::uninit();

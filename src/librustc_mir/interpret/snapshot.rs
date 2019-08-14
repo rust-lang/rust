@@ -11,8 +11,7 @@ use rustc::ich::StableHashingContextProvider;
 use rustc::mir;
 use rustc::mir::interpret::{
     AllocId, Pointer, Scalar,
-    Relocations, Allocation, UndefMask,
-    InterpResult, InterpError,
+    Relocations, Allocation, UndefMask, InterpResult,
 };
 
 use rustc::ty::{self, TyCtxt};
@@ -77,7 +76,7 @@ impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
         }
 
         // Second cycle
-        Err(InterpError::InfiniteLoop.into())
+        throw_exhaust!(InfiniteLoop)
     }
 }
 
@@ -305,8 +304,8 @@ impl_stable_hash_for!(enum crate::interpret::eval_context::StackPopCleanup {
 
 #[derive(Eq, PartialEq)]
 struct FrameSnapshot<'a, 'tcx> {
-    instance: &'a ty::Instance<'tcx>,
-    span: &'a Span,
+    instance: ty::Instance<'tcx>,
+    span: Span,
     return_to_block: &'a StackPopCleanup,
     return_place: Option<Place<(), AllocIdSnapshot<'a>>>,
     locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
@@ -345,8 +344,8 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
         } = self;
 
         FrameSnapshot {
-            instance,
-            span,
+            instance: *instance,
+            span: *span,
             return_to_block,
             block,
             stmt: *stmt,

@@ -186,8 +186,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
-use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
+use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::source_map::{self, respan};
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
@@ -426,8 +425,9 @@ impl<'a> TraitDef<'a> {
                         return;
                     }
                 };
+                let container_id = cx.current_expansion.id.parent();
                 let is_always_copy =
-                    attr::contains_name(&item.attrs, sym::rustc_copy_clone_marker) &&
+                    cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                     has_no_type_params;
                 let use_temporaries = is_packed && is_always_copy;
 
@@ -530,7 +530,8 @@ impl<'a> TraitDef<'a> {
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 generics: Generics::default(),
-                node: ast::ImplItemKind::Type(type_def.to_ty(cx, self.span, type_ident, generics)),
+                node: ast::ImplItemKind::TyAlias(
+                    type_def.to_ty(cx, self.span, type_ident, generics)),
                 tokens: None,
             }
         });
@@ -666,14 +667,13 @@ impl<'a> TraitDef<'a> {
         let path = cx.path_all(self.span, false, vec![type_ident], self_params, vec![]);
         let self_type = cx.ty_path(path);
 
-        let attr = cx.attribute(self.span,
-                                cx.meta_word(self.span, sym::automatically_derived));
+        let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
         // Just mark it now since we know that it'll end up used downstream
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
             let word = cx.meta_list_item_word(self.span, Symbol::intern("unused_qualifications"));
-            cx.attribute(self.span, cx.meta_list(self.span, sym::allow, vec![word]))
+            cx.attribute(cx.meta_list(self.span, sym::allow, vec![word]))
         };
 
         let mut a = vec![attr, unused_qual];
@@ -1767,50 +1767,6 @@ pub fn cs_fold1<F, B>(use_foldl: bool,
         StaticEnum(..) | StaticStruct(..) => {
             cs_fold_static(cx, trait_span)
         }
-    }
-}
-
-/// Call the method that is being derived on all the fields, and then
-/// process the collected results. i.e.
-///
-/// ```ignore (only-for-syntax-highlight)
-/// f(cx, span, vec![self_1.method(__arg_1_1, __arg_2_1),
-///                  self_2.method(__arg_1_2, __arg_2_2)])
-/// ```
-#[inline]
-pub fn cs_same_method<F>(f: F,
-                         mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
-                         cx: &mut ExtCtxt<'_>,
-                         trait_span: Span,
-                         substructure: &Substructure<'_>)
-                         -> P<Expr>
-    where F: FnOnce(&mut ExtCtxt<'_>, Span, Vec<P<Expr>>) -> P<Expr>
-{
-    match *substructure.fields {
-        EnumMatching(.., ref all_fields) |
-        Struct(_, ref all_fields) => {
-            // call self_n.method(other_1_n, other_2_n, ...)
-            let called = all_fields.iter()
-                .map(|field| {
-                    cx.expr_method_call(field.span,
-                                        field.self_.clone(),
-                                        substructure.method_ident,
-                                        field.other
-                                            .iter()
-                                            .map(|e| cx.expr_addr_of(field.span, e.clone()))
-                                            .collect())
-                })
-                .collect();
-
-            f(cx, trait_span, called)
-        }
-        EnumNonMatchingCollapsed(ref all_self_args, _, tuple) => {
-            enum_nonmatch_f(cx,
-                            trait_span,
-                            (&all_self_args[..], tuple),
-                            substructure.nonself_args)
-        }
-        StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
     }
 }
 

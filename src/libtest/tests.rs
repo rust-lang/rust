@@ -1,12 +1,32 @@
-use crate::bench;
+use super::*;
+
 use crate::test::{
     filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
     ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed, TrFailedMsg,
     TrIgnored, TrOk,
 };
-use crate::Bencher;
-use crate::Concurrent;
 use std::sync::mpsc::channel;
+
+impl TestOpts {
+    fn new() -> TestOpts {
+        TestOpts {
+            list: false,
+            filter: None,
+            filter_exact: false,
+            exclude_should_panic: false,
+            run_ignored: RunIgnored::No,
+            run_tests: false,
+            bench_benchmarks: false,
+            logfile: None,
+            nocapture: false,
+            color: AutoColor,
+            format: OutputFormat::Pretty,
+            test_threads: None,
+            skip: vec![],
+            options: Options::new(),
+        }
+    }
+}
 
 fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
     vec![
@@ -450,4 +470,48 @@ pub fn test_bench_iter() {
 
     crate::bench::benchmark(desc, tx, true, f);
     rx.recv().unwrap();
+}
+
+#[test]
+fn should_sort_failures_before_printing_them() {
+    let test_a = TestDesc {
+        name: StaticTestName("a"),
+        ignore: false,
+        should_panic: ShouldPanic::No,
+        allow_fail: false,
+    };
+
+    let test_b = TestDesc {
+        name: StaticTestName("b"),
+        ignore: false,
+        should_panic: ShouldPanic::No,
+        allow_fail: false,
+    };
+
+    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false);
+
+    let st = ConsoleTestState {
+        log_out: None,
+        total: 0,
+        passed: 0,
+        failed: 0,
+        ignored: 0,
+        allowed_fail: 0,
+        filtered_out: 0,
+        measured: 0,
+        metrics: MetricMap::new(),
+        failures: vec![(test_b, Vec::new()), (test_a, Vec::new())],
+        options: Options::new(),
+        not_failures: Vec::new(),
+    };
+
+    out.write_failures(&st).unwrap();
+    let s = match out.output_location() {
+        &Raw(ref m) => String::from_utf8_lossy(&m[..]),
+        &Pretty(_) => unreachable!(),
+    };
+
+    let apos = s.find("a").unwrap();
+    let bpos = s.find("b").unwrap();
+    assert!(apos < bpos);
 }

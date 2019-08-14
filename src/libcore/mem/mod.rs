@@ -414,16 +414,19 @@ pub const fn needs_drop<T>() -> bool {
     intrinsics::needs_drop::<T>()
 }
 
-/// Creates a value whose bytes are all zero.
+/// Returns the value of type `T` represented by the all-zero byte-pattern.
 ///
-/// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
-/// It is useful for FFI sometimes, but should generally be avoided.
+/// This means that, for example, the padding byte in `(u8, u16)` is not
+/// necessarily zeroed.
 ///
 /// There is no guarantee that an all-zero byte-pattern represents a valid value of
 /// some type `T`. For example, the all-zero byte-pattern is not a valid value
 /// for reference types (`&T` and `&mut T`). Using `zeroed` on such types
 /// causes immediate [undefined behavior][ub] because [the Rust compiler assumes][inv]
 /// that there always is a valid value in a variable it considers initialized.
+///
+/// This has the same effect as [`MaybeUninit::zeroed().assume_init()`][zeroed].
+/// It is useful for FFI sometimes, but should generally be avoided.
 ///
 /// [zeroed]: union.MaybeUninit.html#method.zeroed
 /// [ub]: ../../reference/behavior-considered-undefined.html
@@ -442,15 +445,19 @@ pub const fn needs_drop<T>() -> bool {
 ///
 /// *Incorrect* usage of this function: initializing a reference with zero.
 ///
-/// ```no_run
+/// ```rust,no_run
+/// # #![allow(invalid_value)]
 /// use std::mem;
 ///
 /// let _x: &i32 = unsafe { mem::zeroed() }; // Undefined behavior!
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(bootstrap, allow(deprecated_in_future))]
+#[allow(deprecated)]
 pub unsafe fn zeroed<T>() -> T {
-    MaybeUninit::zeroed().assume_init()
+    intrinsics::panic_if_uninhabited::<T>();
+    intrinsics::init()
 }
 
 /// Bypasses Rust's normal memory-initialization checks by pretending to
@@ -474,8 +481,11 @@ pub unsafe fn zeroed<T>() -> T {
 #[inline]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(bootstrap, allow(deprecated_in_future))]
+#[allow(deprecated)]
 pub unsafe fn uninitialized<T>() -> T {
-    MaybeUninit::uninit().assume_init()
+    intrinsics::panic_if_uninhabited::<T>();
+    intrinsics::uninit()
 }
 
 /// Swaps the values at two mutable locations, without deinitializing either one.

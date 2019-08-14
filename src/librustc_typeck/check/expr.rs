@@ -225,7 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.mk_unit()
             }
             ExprKind::Break(destination, ref expr_opt) => {
-                self.check_expr_break(destination, expr_opt.deref(), expr)
+                self.check_expr_break(destination, expr_opt.as_deref(), expr)
             }
             ExprKind::Continue(destination) => {
                 if destination.target_id.is_ok() {
@@ -236,7 +236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             ExprKind::Ret(ref expr_opt) => {
-                self.check_expr_return(expr_opt.deref(), expr)
+                self.check_expr_return(expr_opt.as_deref(), expr)
             }
             ExprKind::Assign(ref lhs, ref rhs) => {
                 self.check_expr_assign(expr, expected, lhs, rhs)
@@ -548,7 +548,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coerce.coerce(self, &cause, e, e_ty);
                 } else {
                     assert!(e_ty.is_unit());
-                    coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
+                    let ty = coerce.expected_ty();
+                    coerce.coerce_forced_unit(self, &cause, &mut |err| {
+                        let val = match ty.sty {
+                            ty::Bool => "true",
+                            ty::Char => "'a'",
+                            ty::Int(_) | ty::Uint(_) => "42",
+                            ty::Float(_) => "3.14159",
+                            ty::Error | ty::Never => return,
+                            _ => "value",
+                        };
+                        let msg = "give it a value of the expected type";
+                        let label = destination.label
+                            .map(|l| format!(" {}", l.ident))
+                            .unwrap_or_else(String::new);
+                        let sugg = format!("break{} {}", label, val);
+                        err.span_suggestion(expr.span, msg, sugg, Applicability::HasPlaceholders);
+                    }, false);
                 }
             } else {
                 // If `ctxt.coerce` is `None`, we can just ignore
@@ -1386,7 +1402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     ty::Array(_, len) => {
                         if let (Some(len), Ok(user_index)) = (
-                            len.assert_usize(self.tcx),
+                            len.try_eval_usize(self.tcx, self.param_env),
                             field.as_str().parse::<u64>()
                         ) {
                             let base = self.tcx.sess.source_map()

@@ -1101,13 +1101,23 @@ struct BorrowRef<'b> {
 impl<'b> BorrowRef<'b> {
     #[inline]
     fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRef<'b>> {
-        let b = borrow.get();
-        if is_writing(b) || b == isize::max_value() {
-            // If there's currently a writing borrow, or if incrementing the
-            // refcount would overflow into a writing borrow.
+        let b = borrow.get().wrapping_add(1);
+        if !is_reading(b) {
+            // Incrementing borrow can result in a non-reading value (<= 0) in these cases:
+            // 1. It was < 0, i.e. there are writing borrows, so we can't allow a read borrow
+            //    due to Rust's reference aliasing rules
+            // 2. It was isize::max_value() (the max amount of reading borrows) and it overflowed
+            //    into isize::min_value() (the max amount of writing borrows) so we can't allow
+            //    an additional read borrow because isize can't represent so many read borrows
+            //    (this can only happen if you mem::forget more than a small constant amount of
+            //    `Ref`s, which is not good practice)
             None
         } else {
-            borrow.set(b + 1);
+            // Incrementing borrow can result in a reading value (> 0) in these cases:
+            // 1. It was = 0, i.e. it wasn't borrowed, and we are taking the first read borrow
+            // 2. It was > 0 and < isize::max_value(), i.e. there were read borrows, and isize
+            //    is large enough to represent having one more read borrow
+            borrow.set(b);
             Some(BorrowRef { borrow })
         }
     }

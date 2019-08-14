@@ -29,9 +29,10 @@ impl ThisTrait for SomeStruct {
 /// but what about those aliases? i hear they're pretty exotic
 pub trait MyAlias = ThisTrait + Send + Sync;
 
-// FIXME(58624): once rustdoc can process existential types, we need to make sure they're counted
-// /// woah, getting all existential in here
-// pub existential type ThisExists: ThisTrait;
+// FIXME(58624): once rustdoc can process opaque `impl Trait` types,
+// we need to make sure they're counted
+// /// woah, getting all opaque in here
+// pub type ThisExists = impl ThisTrait;
 //
 // /// why don't we get a little more concrete
 // pub fn defines() -> ThisExists { SomeStruct {} }

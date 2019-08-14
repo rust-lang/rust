@@ -19,9 +19,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-#![deny(unused_lifetimes)]
-
 #[macro_use]
 extern crate rustc;
 
@@ -100,6 +97,7 @@ macro_rules! early_lint_passes {
             DeprecatedAttr: DeprecatedAttr::new(),
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
+            IncompleteFeatures: IncompleteFeatures,
         ]);
     )
 }
@@ -179,6 +177,7 @@ macro_rules! late_lint_mod_passes {
             UnreachablePub: UnreachablePub,
 
             ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+            InvalidValue: InvalidValue,
         ]);
     )
 }

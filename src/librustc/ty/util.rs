@@ -845,15 +845,15 @@ impl<'tcx> ty::TyS<'tcx> {
             ty: Ty<'tcx>,
         ) -> Representability {
             match ty.sty {
-                Tuple(ref ts) => {
+                Tuple(..) => {
                     // Find non representable
-                    fold_repr(ts.iter().map(|ty| {
+                    fold_repr(ty.tuple_fields().map(|ty| {
                         is_type_structurally_recursive(
                             tcx,
                             sp,
                             seen,
                             representable_cache,
-                            ty.expect_ty(),
+                            ty,
                         )
                     }))
                 }
@@ -1095,7 +1095,7 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
         // state transformation pass
         ty::Generator(..) => true,
 
-        ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).any(needs_drop),
+        ty::Tuple(..) => ty.tuple_fields().any(needs_drop),
 
         // unions don't have destructors because of the child types,
         // only if they manually implement `Drop` (handled above).

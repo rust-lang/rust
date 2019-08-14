@@ -132,7 +132,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
         cx.tcx().struct_lockstep_tails_erasing_lifetimes(source, target, cx.param_env());
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.unwrap_usize(cx.tcx()))
+            cx.const_usize(len.eval_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -779,12 +779,6 @@ impl CrateInfo {
 
         return info;
     }
-}
-
-fn is_codegened_item(tcx: TyCtxt<'_>, id: DefId) -> bool {
-    let (all_mono_items, _) =
-        tcx.collect_and_partition_mono_items(LOCAL_CRATE);
-    all_mono_items.contains(&id)
 }
 
 pub fn provide_both(providers: &mut Providers<'_>) {

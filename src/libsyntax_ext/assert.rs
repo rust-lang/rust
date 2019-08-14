@@ -3,7 +3,6 @@ use errors::{Applicability, DiagnosticBuilder};
 use syntax::ast::{self, *};
 use syntax::source_map::Spanned;
 use syntax::ext::base::*;
-use syntax::ext::build::AstBuilder;
 use syntax::parse::token::{self, TokenKind};
 use syntax::parse::parser::Parser;
 use syntax::print::pprust;
@@ -38,6 +37,7 @@ pub fn expand_assert<'cx>(
             ))
         }).into(),
         delim: MacDelimiter::Parenthesis,
+        prior_type_ascription: None,
     };
     let if_expr = cx.expr_if(
         sp,

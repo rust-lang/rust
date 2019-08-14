@@ -21,7 +21,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{self, Body, interpret, ProjectionKind};
+use crate::mir::{Body, interpret, ProjectionKind};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -281,14 +281,14 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
     }
 }
 
-/// All information necessary to validate and reveal an `impl Trait` or `existential Type`
+/// All information necessary to validate and reveal an `impl Trait`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct ResolvedOpaqueTy<'tcx> {
     /// The revealed type as seen by this function.
     pub concrete_type: Ty<'tcx>,
     /// Generic parameters on the opaque type as passed by this function.
-    /// For `existential type Foo<A, B>; fn foo<T, U>() -> Foo<T, U> { .. }` this is `[T, U]`, not
-    /// `[A, B]`
+    /// For `type Foo<A, B> = impl Bar<A, B>; fn foo<T, U>() -> Foo<T, U> { .. }`
+    /// this is `[T, U]`, not `[A, B]`.
     pub substs: SubstsRef<'tcx>,
 }
 
@@ -392,9 +392,9 @@ pub struct TypeckTables<'tcx> {
     /// read-again by borrowck.
     pub free_region_map: FreeRegionMap<'tcx>,
 
-    /// All the existential types that are restricted to concrete types
-    /// by this function
-    pub concrete_existential_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
+    /// All the opaque types that are restricted to concrete types
+    /// by this function.
+    pub concrete_opaque_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
 
     /// Given the closure ID this map provides the list of UpvarIDs used by it.
     /// The upvarID contains the HIR node ID and it also contains the full path
@@ -424,7 +424,7 @@ impl<'tcx> TypeckTables<'tcx> {
             used_trait_imports: Lrc::new(Default::default()),
             tainted_by_errors: false,
             free_region_map: Default::default(),
-            concrete_existential_types: Default::default(),
+            concrete_opaque_types: Default::default(),
             upvar_list: Default::default(),
         }
     }
@@ -733,7 +733,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             ref used_trait_imports,
             tainted_by_errors,
             ref free_region_map,
-            ref concrete_existential_types,
+            ref concrete_opaque_types,
             ref upvar_list,
 
         } = *self;
@@ -777,7 +777,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
             free_region_map.hash_stable(hcx, hasher);
-            concrete_existential_types.hash_stable(hcx, hasher);
+            concrete_opaque_types.hash_stable(hcx, hasher);
             upvar_list.hash_stable(hcx, hasher);
         })
     }
@@ -1295,40 +1295,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn lang_items(self) -> &'tcx middle::lang_items::LanguageItems {
         self.get_lang_items(LOCAL_CRATE)
-    }
-
-    /// Due to missing llvm support for lowering 128 bit math to software emulation
-    /// (on some targets), the lowering can be done in MIR.
-    ///
-    /// This function only exists until said support is implemented.
-    pub fn is_binop_lang_item(&self, def_id: DefId) -> Option<(mir::BinOp, bool)> {
-        let items = self.lang_items();
-        let def_id = Some(def_id);
-        if items.i128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
-        else if items.u128_add_fn() == def_id { Some((mir::BinOp::Add, false)) }
-        else if items.i128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
-        else if items.u128_sub_fn() == def_id { Some((mir::BinOp::Sub, false)) }
-        else if items.i128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
-        else if items.u128_mul_fn() == def_id { Some((mir::BinOp::Mul, false)) }
-        else if items.i128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
-        else if items.u128_div_fn() == def_id { Some((mir::BinOp::Div, false)) }
-        else if items.i128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
-        else if items.u128_rem_fn() == def_id { Some((mir::BinOp::Rem, false)) }
-        else if items.i128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
-        else if items.u128_shl_fn() == def_id { Some((mir::BinOp::Shl, false)) }
-        else if items.i128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
-        else if items.u128_shr_fn() == def_id { Some((mir::BinOp::Shr, false)) }
-        else if items.i128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
-        else if items.u128_addo_fn() == def_id { Some((mir::BinOp::Add, true)) }
-        else if items.i128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
-        else if items.u128_subo_fn() == def_id { Some((mir::BinOp::Sub, true)) }
-        else if items.i128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
-        else if items.u128_mulo_fn() == def_id { Some((mir::BinOp::Mul, true)) }
-        else if items.i128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
-        else if items.u128_shlo_fn() == def_id { Some((mir::BinOp::Shl, true)) }
-        else if items.i128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
-        else if items.u128_shro_fn() == def_id { Some((mir::BinOp::Shr, true)) }
-        else { None }
     }
 
     pub fn stability(self) -> &'tcx stability::Index<'tcx> {
@@ -2381,10 +2347,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Foreign(def_id))
     }
 
-    pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
-        let adt_def = self.adt_def(def_id);
-        let substs = InternalSubsts::for_item(self, def_id, |param, substs| {
+    fn mk_generic_adt(self, wrapper_def_id: DefId, ty_param: Ty<'tcx>) -> Ty<'tcx> {
+        let adt_def = self.adt_def(wrapper_def_id);
+        let substs = InternalSubsts::for_item(self, wrapper_def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime |
                 GenericParamDefKind::Const => {
@@ -2392,7 +2357,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
                 GenericParamDefKind::Type { has_default, .. } => {
                     if param.index == 0 {
-                        ty.into()
+                        ty_param.into()
                     } else {
                         assert!(has_default);
                         self.type_of(param.def_id).subst(self, substs).into()
@@ -2401,6 +2366,18 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         });
         self.mk_ty(Adt(adt_def, substs))
+    }
+
+    #[inline]
+    pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
+        self.mk_generic_adt(def_id, ty)
+    }
+
+    #[inline]
+    pub fn mk_maybe_uninit(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = self.require_lang_item(lang_items::MaybeUninitLangItem);
+        self.mk_generic_adt(def_id, ty)
     }
 
     #[inline]
@@ -2686,8 +2663,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         unsafety: hir::Unsafety,
                         abi: abi::Abi)
         -> <I::Item as InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>::Output
-        where I: Iterator,
-              I::Item: InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>
+    where
+        I: Iterator<Item: InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>,
     {
         inputs.chain(iter::once(output)).intern_with(|xs| ty::FnSig {
             inputs_and_output: self.intern_type_list(xs),

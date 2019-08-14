@@ -167,7 +167,7 @@ struct TraitObligationStack<'prev, 'tcx> {
     /// ok on the premise that if `A: AutoTrait` held, but we indeed
     /// encountered a problem (later on) with `A: AutoTrait. So we
     /// currently set a flag on the stack node for `B: AutoTrait` (as
-    /// well as the second instance of `A: AutoTrait`) to supress
+    /// well as the second instance of `A: AutoTrait`) to suppress
     /// caching.
     ///
     /// This is a simple, targeted fix. A more-performant fix requires
@@ -1082,7 +1082,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
         if unbound_input_types && stack.iter().skip(1).any(|prev| {
             stack.obligation.param_env == prev.obligation.param_env
-                && self.match_fresh_trait_refs(&stack.fresh_trait_ref, &prev.fresh_trait_ref)
+                && self.match_fresh_trait_refs(
+                    &stack.fresh_trait_ref, &prev.fresh_trait_ref, prev.obligation.param_env)
         }) {
             debug!(
                 "evaluate_stack({:?}) --> unbound argument, recursive --> giving up",
@@ -1105,7 +1106,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     /// - is a defaulted trait,
     /// - it also appears in the backtrace at some position `X`,
-    /// - all the predicates at positions `X..` between `X` an the top are
+    /// - all the predicates at positions `X..` between `X` and the top are
     ///   also defaulted traits.
     pub fn coinductive_match<I>(&mut self, cycle: I) -> bool
     where
@@ -3798,8 +3799,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &self,
         previous: &ty::PolyTraitRef<'tcx>,
         current: &ty::PolyTraitRef<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        let mut matcher = ty::_match::Match::new(self.tcx());
+        let mut matcher = ty::_match::Match::new(self.tcx(), param_env);
         matcher.relate(previous, current).is_ok()
     }
 
@@ -3899,7 +3901,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // each predicate must be preceded by the obligations required
         // to normalize it.
         // for example, if we have:
-        //    impl<U: Iterator, V: Iterator<Item=U>> Foo for V where U::Item: Copy
+        //    impl<U: Iterator<Item: Copy>, V: Iterator<Item = U>> Foo for V
         // the impl will have the following predicates:
         //    <V as Iterator>::Item = U,
         //    U: Iterator, U: Sized,
