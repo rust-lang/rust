@@ -1098,9 +1098,8 @@ fn generic_simd_intrinsic(
     }
 
     let tcx = bx.tcx();
-    let param_env = ty::ParamEnv::reveal_all();
     let sig = tcx.normalize_erasing_late_bound_regions(
-        param_env,
+        ty::ParamEnv::reveal_all(),
         &callee_ty.fn_sig(tcx),
     );
     let arg_tys = sig.inputs();
