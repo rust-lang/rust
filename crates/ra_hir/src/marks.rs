@@ -16,4 +16,6 @@ test_utils::marks!(
     match_second_arm_never
     match_all_arms_never
     match_no_never_arms
+    if_never
+    if_else_never
 );

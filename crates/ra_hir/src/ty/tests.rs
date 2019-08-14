@@ -3595,7 +3595,7 @@ fn no_such_field_diagnostics() {
     );
 }
 
-mod match_with_never_tests {
+mod branching_with_never_tests {
     use super::type_at;
     use test_utils::covers;
 
@@ -3635,6 +3635,46 @@ fn test(a: i32) {
         2 => 2.0,
         3 => loop {},
         _ => 3.0,
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "f64");
+    }
+
+    #[test]
+    fn if_never() {
+        covers!(if_never);
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test() {
+    let i = if true {
+        loop {}
+    } else {
+        3.0
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "f64");
+    }
+
+    #[test]
+    fn if_else_never() {
+        covers!(if_else_never);
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test(input: bool) {
+    let i = if input {
+        2.0
+    } else {
+        return
     };
     i<|>
     ()

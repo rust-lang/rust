@@ -987,14 +987,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let then_ty = self.infer_expr(*then_branch, expected);
                 match else_branch {
                     Some(else_branch) => {
-                        self.infer_expr(*else_branch, expected);
+                        let else_ty = self.infer_expr(*else_branch, expected);
+                        if Self::is_never(&then_ty) {
+                            tested_by!(if_never);
+                            else_ty
+                        } else {
+                            tested_by!(if_else_never);
+                            then_ty
+                        }
                     }
                     None => {
                         // no else branch -> unit
                         self.unify(&then_ty, &Ty::unit()); // actually coerce
+                        then_ty
                     }
-                };
-                then_ty
+                }
             }
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
             Expr::TryBlock { body } => {
