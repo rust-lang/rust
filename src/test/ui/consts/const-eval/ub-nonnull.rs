@@ -11,10 +11,11 @@ const NON_NULL_PTR: NonNull<u8> = unsafe { mem::transmute(&1) };
 const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 
+#[deny(const_err)] // this triggers a `const_err` so validation does not even happen
 const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
-//~^ ERROR it is undefined behavior to use this value
-    let ptr: &(u8, u8, u8) = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
-    let out_of_bounds_ptr = &ptr.2; // use address-of-field for pointer arithmetic
+    let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
+    // Use address-of-element for pointer arithmetic. This could wrap around to NULL!
+    let out_of_bounds_ptr = &ptr[255]; //~ ERROR any use of this value will cause an error
     mem::transmute(out_of_bounds_ptr)
 } };
 

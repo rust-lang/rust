@@ -368,7 +368,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // It is sufficient to check this for the end pointer. The addition
                 // checks for overflow.
                 let end_ptr = ptr.offset(size, self)?;
-                end_ptr.check_in_alloc(allocation_size, CheckInAllocMsg::MemoryAccessTest)?;
+                end_ptr.check_inbounds_alloc(allocation_size, CheckInAllocMsg::MemoryAccessTest)?;
                 // Test align. Check this last; if both bounds and alignment are violated
                 // we want the error to be about the bounds.
                 if let Some(align) = align {
@@ -400,7 +400,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     ) -> bool {
         let (size, _align) = self.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
             .expect("alloc info with MaybeDead cannot fail");
-        ptr.check_in_alloc(size, CheckInAllocMsg::NullPointerTest).is_err()
+        ptr.check_inbounds_alloc(size, CheckInAllocMsg::NullPointerTest).is_err()
     }
 }
 
