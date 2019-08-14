@@ -305,6 +305,16 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
+
+        let crate_type = args.windows(2)
+            .find(|w| &*w[0] == "--crate-type")
+            .and_then(|w| w[1].to_str());
+
+        if let Some("proc-macro") = crate_type {
+            if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
+                cmd.arg("--remap-path-prefix").arg(&map);
+            }
+        }
     }
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
