@@ -69,7 +69,7 @@
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 #![allow(explicit_outlives_requirements)]
-#![cfg_attr(not(bootstrap), allow(incomplete_features))]
+#![allow(incomplete_features)]
 
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(test))]
@@ -84,7 +84,7 @@
 #![feature(coerce_unsized)]
 #![feature(const_generic_impls_guard)]
 #![feature(const_generics)]
-#![cfg_attr(not(bootstrap), feature(const_in_array_repeat_expressions))]
+#![feature(const_in_array_repeat_expressions)]
 #![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
@@ -118,7 +118,7 @@
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
 #![feature(slice_partition_dedup)]
-#![feature(maybe_uninit_extra, maybe_uninit_slice, maybe_uninit_array)]
+#![feature(maybe_uninit_extra, maybe_uninit_slice)]
 #![feature(alloc_layout_extra)]
 #![feature(try_trait)]
 #![feature(mem_take)]

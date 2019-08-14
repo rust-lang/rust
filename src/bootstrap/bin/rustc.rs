@@ -45,18 +45,6 @@ fn main() {
         }
     }
 
-    // Drop `--error-format json` because despite our desire for json messages
-    // from Cargo we don't want any from rustc itself.
-    if let Some(n) = args.iter().position(|n| n == "--error-format") {
-        args.remove(n);
-        args.remove(n);
-    }
-
-    if let Some(s) = env::var_os("RUSTC_ERROR_FORMAT") {
-        args.push("--error-format".into());
-        args.push(s);
-    }
-
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
     let target = args.windows(2)
@@ -110,7 +98,11 @@ fn main() {
 
     // Non-zero stages must all be treated uniformly to avoid problems when attempting to uplift
     // compiler libraries and such from stage 1 to 2.
-    if stage == "0" {
+    //
+    // FIXME: the fact that core here is excluded is due to core_arch from our stdarch submodule
+    // being broken on the beta compiler with bootstrap passed, so this is a temporary workaround
+    // (we've just snapped, so there are no cfg(bootstrap) related annotations in core).
+    if stage == "0" && crate_name != Some("core") {
         cmd.arg("--cfg").arg("bootstrap");
     }
 
@@ -132,10 +124,7 @@ fn main() {
         cmd.arg("-Dwarnings");
         cmd.arg("-Drust_2018_idioms");
         cmd.arg("-Dunused_lifetimes");
-        // cfg(not(bootstrap)): Remove this during the next stage 0 compiler update.
-        // `-Drustc::internal` is a new feature and `rustc_version` mis-reports the `stage`.
-        let cfg_not_bootstrap = stage != "0" && crate_name != Some("rustc_version");
-        if cfg_not_bootstrap && use_internal_lints(crate_name) {
+        if use_internal_lints(crate_name) {
             cmd.arg("-Zunstable-options");
             cmd.arg("-Drustc::internal");
         }

@@ -1116,10 +1116,6 @@ pub fn run_cargo(builder: &Builder<'_>,
                 },
                 ..
             } => (filenames, crate_types),
-            CargoMessage::CompilerMessage { message } => {
-                eprintln!("{}", message.rendered);
-                return;
-            }
             _ => return,
         };
         for filename in filenames {
@@ -1256,8 +1252,12 @@ pub fn stream_cargo(
     }
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
-    cargo.arg("--message-format").arg("json")
-         .stdout(Stdio::piped());
+    let mut message_format = String::from("json-render-diagnostics");
+    if let Some(s) = &builder.config.rustc_error_format  {
+        message_format.push_str(",json-diagnostic-");
+        message_format.push_str(s);
+    }
+    cargo.arg("--message-format").arg(message_format).stdout(Stdio::piped());
 
     for arg in tail_args {
         cargo.arg(arg);
@@ -1310,12 +1310,4 @@ pub enum CargoMessage<'a> {
     BuildScriptExecuted {
         package_id: Cow<'a, str>,
     },
-    CompilerMessage {
-        message: ClippyMessage<'a>
-    }
-}
-
-#[derive(Deserialize)]
-pub struct ClippyMessage<'a> {
-    rendered: Cow<'a, str>,
 }

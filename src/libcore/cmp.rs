@@ -201,7 +201,6 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 }
 
 /// Derive macro generating an impl of the trait `PartialEq`.
-#[cfg(not(bootstrap))]
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
@@ -265,7 +264,6 @@ pub trait Eq: PartialEq<Self> {
 }
 
 /// Derive macro generating an impl of the trait `Eq`.
-#[cfg(not(bootstrap))]
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
@@ -617,7 +615,6 @@ pub trait Ord: Eq + PartialOrd<Self> {
 }
 
 /// Derive macro generating an impl of the trait `Ord`.
-#[cfg(not(bootstrap))]
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
@@ -867,7 +864,6 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 }
 
 /// Derive macro generating an impl of the trait `PartialOrd`.
-#[cfg(not(bootstrap))]
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]

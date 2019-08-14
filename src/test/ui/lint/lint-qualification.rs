@@ -1,5 +1,5 @@
 #![deny(unused_qualifications)]
-#[allow(deprecated)]
+#![allow(deprecated)]
 
 mod foo {
     pub fn bar() {}
