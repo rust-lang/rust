@@ -3,7 +3,6 @@
 
 use std::rc::Rc;
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::cell::RefCell;
 
 use rand::rngs::StdRng;
@@ -79,7 +78,7 @@ impl MemoryExtra {
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`.
     /// Miri does not expose env vars from the host to the emulated program.
-    pub(crate) env_vars: HashMap<Vec<u8>, Pointer<Tag>>,
+    pub(crate) env_vars: EnvVars,
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
@@ -93,17 +92,23 @@ pub struct Evaluator<'tcx> {
 
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
+
+    /// If enabled, the `env_vars` field is populated with the host env vars during initialization.
+    pub(crate) communicate: bool,
 }
 
 impl<'tcx> Evaluator<'tcx> {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(communicate: bool) -> Self {
         Evaluator {
-            env_vars: HashMap::default(),
+            // `env_vars` could be initialized properly here if `Memory` were available before
+            // calling this method.
+            env_vars: EnvVars::default(),
             argc: None,
             argv: None,
             cmd_line: None,
             last_error: 0,
             tls: TlsData::default(),
+            communicate,
         }
     }
 }
