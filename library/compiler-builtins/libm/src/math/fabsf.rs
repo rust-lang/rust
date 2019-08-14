@@ -21,8 +21,8 @@ mod tests {
 
     #[test]
     fn sanity_check() {
-      assert_eq!(fabsf(-1.0), 1.0);
-      assert_eq!(fabsf(2.8), 2.8);
+        assert_eq!(fabsf(-1.0), 1.0);
+        assert_eq!(fabsf(2.8), 2.8);
     }
 
     /// The spec: https://en.cppreference.com/w/cpp/numeric/math/fabs

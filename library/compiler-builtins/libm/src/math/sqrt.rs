@@ -247,8 +247,8 @@ mod tests {
 
     #[test]
     fn sanity_check() {
-      assert_eq!(sqrt(100.0), 10.0);
-      assert_eq!(sqrt(4.0), 2.0);
+        assert_eq!(sqrt(100.0), 10.0);
+        assert_eq!(sqrt(4.0), 2.0);
     }
 
     /// The spec: https://en.cppreference.com/w/cpp/numeric/math/sqrt
