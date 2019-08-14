@@ -1355,7 +1355,7 @@ struct LateLintPassObjects<'a> {
     lints: &'a mut [LateLintPassObject],
 }
 
-#[cfg_attr(not(bootstrap), allow(rustc::lint_pass_impl_without_macro))]
+#[allow(rustc::lint_pass_impl_without_macro)]
 impl LintPass for LateLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()
@@ -1525,7 +1525,7 @@ struct EarlyLintPassObjects<'a> {
     lints: &'a mut [EarlyLintPassObject],
 }
 
-#[cfg_attr(not(bootstrap), allow(rustc::lint_pass_impl_without_macro))]
+#[allow(rustc::lint_pass_impl_without_macro)]
 impl LintPass for EarlyLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()
