@@ -1663,6 +1663,7 @@ fn lint_iter_cloned_collect<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Ex
 fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: &[hir::Expr]) {
     fn check_fold_with_op(
         cx: &LateContext<'_, '_>,
+        expr: &hir::Expr,
         fold_args: &[hir::Expr],
         op: hir::BinOpKind,
         replacement_method_name: &str,
@@ -1685,22 +1686,20 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
             if match_var(&*left_expr, first_arg_ident);
             if replacement_has_args || match_var(&*right_expr, second_arg_ident);
 
-            then {
-                // Span containing `.fold(...)`
-                let next_point = cx.sess().source_map().next_point(fold_args[0].span);
-                let fold_span = next_point.with_hi(fold_args[2].span.hi() + BytePos(1));
+            if let hir::ExprKind::MethodCall(_, span, _) = &expr.node;
 
+            then {
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = if replacement_has_args {
                     format!(
-                        ".{replacement}(|{s}| {r})",
+                        "{replacement}(|{s}| {r})",
                         replacement = replacement_method_name,
                         s = second_arg_ident,
                         r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
                     )
                 } else {
                     format!(
-                        ".{replacement}()",
+                        "{replacement}()",
                         replacement = replacement_method_name,
                     )
                 };
@@ -1708,7 +1707,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
                 span_lint_and_sugg(
                     cx,
                     UNNECESSARY_FOLD,
-                    fold_span,
+                    span.with_hi(expr.span.hi()),
                     // TODO #2371 don't suggest e.g., .any(|x| f(x)) if we can suggest .any(f)
                     "this `.fold` can be written more succinctly using another method",
                     "try",
@@ -1732,10 +1731,10 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
     // Check if the first argument to .fold is a suitable literal
     if let hir::ExprKind::Lit(ref lit) = fold_args[1].node {
         match lit.node {
-            ast::LitKind::Bool(false) => check_fold_with_op(cx, fold_args, hir::BinOpKind::Or, "any", true),
-            ast::LitKind::Bool(true) => check_fold_with_op(cx, fold_args, hir::BinOpKind::And, "all", true),
-            ast::LitKind::Int(0, _) => check_fold_with_op(cx, fold_args, hir::BinOpKind::Add, "sum", false),
-            ast::LitKind::Int(1, _) => check_fold_with_op(cx, fold_args, hir::BinOpKind::Mul, "product", false),
+            ast::LitKind::Bool(false) => check_fold_with_op(cx, expr, fold_args, hir::BinOpKind::Or, "any", true),
+            ast::LitKind::Bool(true) => check_fold_with_op(cx, expr, fold_args, hir::BinOpKind::And, "all", true),
+            ast::LitKind::Int(0, _) => check_fold_with_op(cx, expr, fold_args, hir::BinOpKind::Add, "sum", false),
+            ast::LitKind::Int(1, _) => check_fold_with_op(cx, expr, fold_args, hir::BinOpKind::Mul, "product", false),
             _ => (),
         }
     }
