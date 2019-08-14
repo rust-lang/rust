@@ -62,6 +62,8 @@ pub struct ParseSess {
     pub let_chains_spans: Lock<Vec<Span>>,
     // Places where `async || ..` exprs were used and should be feature gated.
     pub async_closure_spans: Lock<Vec<Span>>,
+    // Places where `yield e?` exprs were used and should be feature gated.
+    pub yield_spans: Lock<Vec<Span>>,
     pub injected_crate_name: Once<Symbol>,
 }
 
@@ -91,6 +93,7 @@ impl ParseSess {
             param_attr_spans: Lock::new(Vec::new()),
             let_chains_spans: Lock::new(Vec::new()),
             async_closure_spans: Lock::new(Vec::new()),
+            yield_spans: Lock::new(Vec::new()),
             injected_crate_name: Once::new(),
         }
     }
