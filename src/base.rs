@@ -264,18 +264,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let lhs = trans_operand(fx, lhs);
                     let rhs = trans_operand(fx, rhs);
 
-                    let res = match lhs.layout().ty.sty {
-                        ty::Bool => crate::num::trans_bool_binop(fx, *bin_op, lhs, rhs),
-                        ty::Uint(_) | ty::Int(_ )=> {
-                            crate::num::trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
-                        }
-                        ty::Float(_) => crate::num::trans_float_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
-                        ty::Char => crate::num::trans_char_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
-                        ty::RawPtr(..) | ty::FnPtr(..) => {
-                            crate::num::trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
-                        }
-                        _ => unimplemented!("{:?}({:?}, {:?})", bin_op, lhs.layout().ty, rhs.layout().ty),
-                    };
+                    let res = crate::num::codegen_binop(fx, *bin_op, lhs, rhs);
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
@@ -283,11 +272,11 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let rhs = trans_operand(fx, rhs);
 
                     let res = if !fx.tcx.sess.overflow_checks() {
-                        let val = crate::num::trans_int_binop(fx, *bin_op, lhs, rhs, lhs.layout().ty).load_scalar(fx);
+                        let val = crate::num::trans_int_binop(fx, *bin_op, lhs, rhs).load_scalar(fx);
                         let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
                         CValue::by_val_pair(val, is_overflow, lval.layout())
                     } else {
-                        crate::num::trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
+                        crate::num::trans_checked_int_binop(fx, *bin_op, lhs, rhs)
                     };
 
                     lval.write_cvalue(fx, res);
@@ -314,6 +303,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             ty::Int(_) => {
                                 let clif_ty = fx.clif_type(layout.ty).unwrap();
                                 if clif_ty == types::I128 {
+                                    // FIXME implement it
                                     crate::trap::trap_unreachable_ret_value(fx, layout, "i128 neg is not yet supported").load_scalar(fx)
                                 } else {
                                     let zero = fx.bcx.ins().iconst(clif_ty, 0);

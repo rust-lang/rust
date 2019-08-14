@@ -446,7 +446,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "unchecked_shr" => BinOp::Shr,
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
-            let res = crate::num::trans_int_binop(fx, bin_op, x, y, ret.layout().ty);
+            let res = crate::num::trans_int_binop(fx, bin_op, x, y);
             ret.write_cvalue(fx, res);
         };
         _ if intrinsic.ends_with("_with_overflow"), (c x, c y) {
@@ -463,7 +463,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 bin_op,
                 x,
                 y,
-                ret.layout().ty,
             );
             ret.write_cvalue(fx, res);
         };
@@ -480,7 +479,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 bin_op,
                 x,
                 y,
-                ret.layout().ty,
             );
             ret.write_cvalue(fx, res);
         };
@@ -499,7 +497,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 bin_op,
                 x,
                 y,
-                fx.tcx.mk_tup([T, fx.tcx.types.bool].into_iter()),
             );
 
             let (val, has_overflow) = checked_res.load_scalar_pair(fx);

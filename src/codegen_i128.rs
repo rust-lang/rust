@@ -8,7 +8,6 @@ pub fn maybe_codegen<'a, 'tcx>(
     checked: bool,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
-    out_ty: Ty<'tcx>,
 ) -> Option<CValue<'tcx>> {
     if lhs.layout().ty != fx.tcx.types.u128 && lhs.layout().ty != fx.tcx.types.i128 {
         return None;
@@ -26,6 +25,7 @@ pub fn maybe_codegen<'a, 'tcx>(
         }
         BinOp::Add | BinOp::Sub if !checked => return None,
         BinOp::Add => {
+            let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
             return Some(if is_signed {
                 fx.easy_call("__rust_i128_addo", &[lhs, rhs], out_ty)
             } else {
@@ -33,6 +33,7 @@ pub fn maybe_codegen<'a, 'tcx>(
             })
         }
         BinOp::Sub => {
+            let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
             return Some(if is_signed {
                 fx.easy_call("__rust_i128_subo", &[lhs, rhs], out_ty)
             } else {
@@ -42,6 +43,7 @@ pub fn maybe_codegen<'a, 'tcx>(
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
         BinOp::Mul => {
             let res = if checked {
+                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
                 if is_signed {
                     fx.easy_call("__rust_i128_mulo", &[lhs, rhs], out_ty)
                 } else {
@@ -91,18 +93,7 @@ pub fn maybe_codegen<'a, 'tcx>(
                     // } else {
                     //     msb_cc
                     // }
-                    let cc = match (bin_op, is_signed) {
-                        (BinOp::Ge, false) => IntCC::UnsignedGreaterThanOrEqual,
-                        (BinOp::Gt, false) => IntCC::UnsignedGreaterThan,
-                        (BinOp::Lt, false) => IntCC::UnsignedLessThan,
-                        (BinOp::Le, false) => IntCC::UnsignedLessThanOrEqual,
-
-                        (BinOp::Ge, true) => IntCC::SignedGreaterThanOrEqual,
-                        (BinOp::Gt, true) => IntCC::SignedGreaterThan,
-                        (BinOp::Lt, true) => IntCC::SignedLessThan,
-                        (BinOp::Le, true) => IntCC::SignedLessThanOrEqual,
-                        _ => unreachable!(),
-                    };
+                    let cc = crate::num::bin_op_to_intcc(bin_op, is_signed).unwrap();
 
                     let msb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_msb, rhs_msb);
                     let lsb_cc = fx.bcx.ins().icmp(cc, lhs_lsb, rhs_lsb);
@@ -160,6 +151,7 @@ pub fn maybe_codegen<'a, 'tcx>(
                 };
                 if let Some(val) = val {
                     if let Some(is_overflow) = is_overflow {
+                        let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
                         let val = val.load_scalar(fx);
                         return Some(CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty)))
                     } else {
@@ -186,6 +178,7 @@ pub fn maybe_codegen<'a, 'tcx>(
                 (_, _) => unreachable!(),
             };
             if let Some(is_overflow) = is_overflow {
+                let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
                 let val = val.load_scalar(fx);
                 Some(CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty)))
             } else {
