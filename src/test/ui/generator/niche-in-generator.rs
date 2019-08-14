@@ -1,5 +1,7 @@
 // Test that niche finding works with captured generator upvars.
 
+// run-pass
+
 #![feature(generators)]
 
 use std::mem::size_of_val;
