@@ -17,8 +17,7 @@ use crate::util::nodemap::FxHashSet;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use syntax::{ast, source_map};
-use syntax::attr;
+use syntax::{ast, attr};
 use syntax::symbol::sym;
 use syntax_pos;
 
@@ -119,17 +118,16 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, res: Res,
-                                  pats: &[source_map::Spanned<hir::FieldPat>]) {
+    fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, res: Res, pats: &[hir::FieldPat]) {
         let variant = match self.tables.node_type(lhs.hir_id).sty {
             ty::Adt(adt, _) => adt.variant_of_res(res),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
         for pat in pats {
-            if let PatKind::Wild = pat.node.pat.node {
+            if let PatKind::Wild = pat.pat.node {
                 continue;
             }
-            let index = self.tcx.field_index(pat.node.hir_id, self.tables);
+            let index = self.tcx.field_index(pat.hir_id, self.tables);
             self.insert_def_id(variant.fields[index].did);
         }
     }

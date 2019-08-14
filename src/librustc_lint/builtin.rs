@@ -164,7 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                                    .expect("struct pattern type is not an ADT")
                                    .variant_of_res(cx.tables.qpath_res(qpath, pat.hir_id));
             for fieldpat in field_pats {
-                if fieldpat.node.is_shorthand {
+                if fieldpat.is_shorthand {
                     continue;
                 }
                 if fieldpat.span.ctxt().outer_expn_info().is_some() {
@@ -173,9 +173,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                     // (Issue #49588)
                     continue;
                 }
-                if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
+                if let PatKind::Binding(_, _, ident, None) = fieldpat.pat.node {
                     if cx.tcx.find_field_index(ident, &variant) ==
-                       Some(cx.tcx.field_index(fieldpat.node.hir_id, cx.tables)) {
+                       Some(cx.tcx.field_index(fieldpat.hir_id, cx.tables)) {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant", ident));

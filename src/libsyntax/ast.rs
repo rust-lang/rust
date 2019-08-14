@@ -571,7 +571,7 @@ impl Pat {
 
         match &self.node {
             PatKind::Ident(_, _, Some(p)) => p.walk(it),
-            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.node.pat.walk(it)),
+            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk(it)),
             PatKind::TupleStruct(_, s) | PatKind::Tuple(s) | PatKind::Slice(s) => {
                 s.iter().all(|p| p.walk(it))
             }
@@ -609,6 +609,7 @@ pub struct FieldPat {
     pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
     pub id: NodeId,
+    pub span: Span,
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
@@ -642,7 +643,7 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Path, Vec<Spanned<FieldPat>>, /* recovered */ bool),
+    Struct(Path, Vec<FieldPat>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     TupleStruct(Path, Vec<P<Pat>>),

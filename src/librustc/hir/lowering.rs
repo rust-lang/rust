@@ -2691,16 +2691,12 @@ impl<'a> LoweringContext<'a> {
 
                 let fs = fields
                     .iter()
-                    .map(|f| {
-                        Spanned {
-                            span: f.span,
-                            node: hir::FieldPat {
-                                hir_id: self.next_id(),
-                                ident: f.node.ident,
-                                pat: self.lower_pat(&f.node.pat),
-                                is_shorthand: f.node.is_shorthand,
-                            },
-                        }
+                    .map(|f| hir::FieldPat {
+                        hir_id: self.next_id(),
+                        ident: f.ident,
+                        pat: self.lower_pat(&f.pat),
+                        is_shorthand: f.is_shorthand,
+                        span: f.span,
                     })
                     .collect();
                 hir::PatKind::Struct(qpath, fs, etc)

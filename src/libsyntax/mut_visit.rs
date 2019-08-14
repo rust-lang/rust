@@ -1042,10 +1042,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         }
         PatKind::Struct(path, fields, _etc) => {
             vis.visit_path(path);
-            for Spanned {
-                node: FieldPat { ident, pat, is_shorthand: _, attrs, id },
-                span
-            } in fields {
+            for FieldPat { ident, pat, is_shorthand: _, attrs, id, span } in fields {
                 vis.visit_ident(ident);
                 vis.visit_id(id);
                 vis.visit_pat(pat);

@@ -442,9 +442,9 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
         PatKind::Struct(ref path, ref fields, _) => {
             visitor.visit_path(path, pattern.id);
             for field in fields {
-                walk_list!(visitor, visit_attribute, field.node.attrs.iter());
-                visitor.visit_ident(field.node.ident);
-                visitor.visit_pat(&field.node.pat)
+                walk_list!(visitor, visit_attribute, field.attrs.iter());
+                visitor.visit_ident(field.ident);
+                visitor.visit_pat(&field.pat)
             }
         }
         PatKind::Tuple(ref elems) => {

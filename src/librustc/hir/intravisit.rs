@@ -704,9 +704,9 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
         PatKind::Struct(ref qpath, ref fields, _) => {
             visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
             for field in fields {
-                visitor.visit_id(field.node.hir_id);
-                visitor.visit_ident(field.node.ident);
-                visitor.visit_pat(&field.node.pat)
+                visitor.visit_id(field.hir_id);
+                visitor.visit_ident(field.ident);
+                visitor.visit_pat(&field.pat)
             }
         }
         PatKind::Tuple(ref tuple_elements, _) => {
