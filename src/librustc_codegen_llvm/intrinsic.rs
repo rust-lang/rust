@@ -1041,7 +1041,7 @@ fn generic_simd_intrinsic(
 ) -> Result<&'ll Value, ()> {
     // Given a SIMD vector type `x` return the element type and the number of
     // elements in the vector.
-    fn simd_type_size(bx: &Builder<'a, 'll, 'tcx>, x: Ty<'tcx>) -> (Ty<'tcx>, usize) {
+    fn simd_ty_and_len(bx: &Builder<'a, 'll, 'tcx>, x: Ty<'tcx>) -> (Ty<'tcx>, usize) {
         let ty = if let ty::Adt(def, substs) = x.sty {
             assert!(def.repr.simd());
             let field0_ty = def.non_enum_variant().fields[0].ty(bx.tcx(), substs);
@@ -1118,7 +1118,7 @@ fn generic_simd_intrinsic(
         require_simd!(arg_tys[1], "argument");
 
 
-        let (_, v_len) = simd_type_size(bx, arg_tys[1]);
+        let (_, v_len) = simd_ty_and_len(bx, arg_tys[1]);
         require!(m_len == v_len,
                  "mismatched lengths: mask length `{}` != other vector length `{}`",
                  m_len, v_len
@@ -1143,11 +1143,11 @@ fn generic_simd_intrinsic(
         _ => None
     };
 
-    let (in_elem, in_len) = simd_type_size(bx, arg_tys[0]);
+    let (in_elem, in_len) = simd_ty_and_len(bx, arg_tys[0]);
     if let Some(cmp_op) = comparison {
         require_simd!(ret_ty, "return");
 
-        let (out_ty, out_len) = simd_type_size(bx, ret_ty);
+        let (out_ty, out_len) = simd_ty_and_len(bx, ret_ty);
         require!(
             in_len == out_len,
             "expected return type with length {} (same as input type `{}`), \
@@ -1175,7 +1175,7 @@ fn generic_simd_intrinsic(
 
         require_simd!(ret_ty, "return");
 
-        let (out_ty, out_len) = simd_type_size(bx, ret_ty);
+        let (out_ty, out_len) = simd_ty_and_len(bx, ret_ty);
         require!(out_len == n,
                  "expected return type of length {}, found `{}` with length {}",
                  n, ret_ty, out_len);
@@ -1236,7 +1236,7 @@ fn generic_simd_intrinsic(
         let m_elem_ty = in_elem;
         let m_len = in_len;
         require_simd!(arg_tys[1], "argument");
-        let (_, v_len) = simd_type_size(bx, arg_tys[1]);
+        let (_, v_len) = simd_ty_and_len(bx, arg_tys[1]);
         require!(m_len == v_len,
                  "mismatched lengths: mask length `{}` != other vector length `{}`",
                  m_len, v_len
@@ -1452,8 +1452,8 @@ fn generic_simd_intrinsic(
         require_simd!(ret_ty, "return");
 
         // Of the same length:
-        let (_, out_len) = simd_type_size(bx, arg_tys[1]);
-        let (_, out_len2) = simd_type_size(bx, arg_tys[2]);
+        let (_, out_len) = simd_ty_and_len(bx, arg_tys[1]);
+        let (_, out_len2) = simd_ty_and_len(bx, arg_tys[2]);
         require!(in_len == out_len,
                  "expected {} argument with length {} (same as input type `{}`), \
                   found `{}` with length {}", "second", in_len, in_ty, arg_tys[1],
@@ -1486,8 +1486,8 @@ fn generic_simd_intrinsic(
 
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
-        let (element_ty0, _) = simd_type_size(bx, arg_tys[0]);
-        let (element_ty1, _) = simd_type_size(bx, arg_tys[1]);
+        let (element_ty0, _) = simd_ty_and_len(bx, arg_tys[0]);
+        let (element_ty1, _) = simd_ty_and_len(bx, arg_tys[1]);
         let (pointer_count, underlying_ty) = match element_ty1.sty {
             ty::RawPtr(p) if p.ty == in_elem => (ptr_count(element_ty1),
                                                  non_ptr(element_ty1)),
@@ -1505,7 +1505,7 @@ fn generic_simd_intrinsic(
         assert_eq!(underlying_ty, non_ptr(element_ty0));
 
         // The element type of the third argument must be a signed integer type of any width:
-        let (element_ty2, _) = simd_type_size(bx, arg_tys[2]);
+        let (element_ty2, _) = simd_ty_and_len(bx, arg_tys[2]);
         match element_ty2.sty {
             ty::Int(_) => (),
             _ => {
@@ -1561,8 +1561,8 @@ fn generic_simd_intrinsic(
         require_simd!(arg_tys[2], "third");
 
         // Of the same length:
-        let (_, element_len1) = simd_type_size(bx, arg_tys[1]);
-        let (_, element_len2) = simd_type_size(bx, arg_tys[2]);
+        let (_, element_len1) = simd_ty_and_len(bx, arg_tys[1]);
+        let (_, element_len2) = simd_ty_and_len(bx, arg_tys[2]);
         require!(in_len == element_len1,
                  "expected {} argument with length {} (same as input type `{}`), \
                   found `{}` with length {}", "second", in_len, in_ty, arg_tys[1],
@@ -1590,9 +1590,9 @@ fn generic_simd_intrinsic(
 
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
-        let (element_ty0, _element_len0) = simd_type_size(bx, arg_tys[0]);
-        let (element_ty1, _element_len1) = simd_type_size(bx, arg_tys[1]);
-        let (element_ty2, _element_len2) = simd_type_size(bx, arg_tys[2]);
+        let (element_ty0, _element_len0) = simd_ty_and_len(bx, arg_tys[0]);
+        let (element_ty1, _element_len1) = simd_ty_and_len(bx, arg_tys[1]);
+        let (element_ty2, _element_len2) = simd_ty_and_len(bx, arg_tys[2]);
         let (pointer_count, underlying_ty) = match element_ty1.sty {
             ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::MutMutable
                 => (ptr_count(element_ty1),
@@ -1793,7 +1793,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 
     if name == "simd_cast" {
         require_simd!(ret_ty, "return");
-        let (out_elem, out_len) = simd_type_size(bx, ret_ty);
+        let (out_elem, out_len) = simd_ty_and_len(bx, ret_ty);
         require!(in_len == out_len,
                  "expected return type with length {} (same as input type `{}`), \
                   found `{}` with length {}",
@@ -1913,7 +1913,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
                 return_error!(
                     "expected element type `{}` of vector type `{}` \
                      to be a signed or unsigned integer type",
-                    simd_type_size(bx, arg_tys[0]).0, arg_tys[0]
+                    simd_ty_and_len(bx, arg_tys[0]).0, arg_tys[0]
                 );
             }
         };
