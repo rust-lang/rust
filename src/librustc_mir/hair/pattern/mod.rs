@@ -181,7 +181,6 @@ pub enum PatternKind<'tcx> {
 pub struct PatternRange<'tcx> {
     pub lo: &'tcx ty::Const<'tcx>,
     pub hi: &'tcx ty::Const<'tcx>,
-    pub ty: Ty<'tcx>,
     pub end: RangeEnd,
 }
 
@@ -296,7 +295,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatternKind::Constant { value } => {
                 write!(f, "{}", value)
             }
-            PatternKind::Range(PatternRange { lo, hi, ty: _, end }) => {
+            PatternKind::Range(PatternRange { lo, hi, end }) => {
                 write!(f, "{}", lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "..=")?,
@@ -442,6 +441,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
                 let mut kind = match (lo, hi) {
                     (PatternKind::Constant { value: lo }, PatternKind::Constant { value: hi }) => {
+                        assert_eq!(lo.ty, ty);
+                        assert_eq!(hi.ty, ty);
                         let cmp = compare_const_vals(
                             self.tcx,
                             lo,
@@ -451,7 +452,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         match (end, cmp) {
                             (RangeEnd::Excluded, Some(Ordering::Less)) =>
-                                PatternKind::Range(PatternRange { lo, hi, ty, end }),
+                                PatternKind::Range(PatternRange { lo, hi, end }),
                             (RangeEnd::Excluded, _) => {
                                 span_err!(
                                     self.tcx.sess,
@@ -465,7 +466,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 PatternKind::Constant { value: lo }
                             }
                             (RangeEnd::Included, Some(Ordering::Less)) => {
-                                PatternKind::Range(PatternRange { lo, hi, ty, end })
+                                PatternKind::Range(PatternRange { lo, hi, end })
                             }
                             (RangeEnd::Included, _) => {
                                 let mut err = struct_span_err!(
@@ -1416,17 +1417,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             } => PatternKind::Constant {
                 value,
             },
-            PatternKind::Range(PatternRange {
-                lo,
-                hi,
-                ty,
-                end,
-            }) => PatternKind::Range(PatternRange {
-                lo,
-                hi,
-                ty: ty.fold_with(folder),
-                end,
-            }),
+            PatternKind::Range(range) => PatternKind::Range(range),
             PatternKind::Slice {
                 ref prefix,
                 ref slice,

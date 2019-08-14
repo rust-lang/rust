@@ -609,7 +609,6 @@ impl<'tcx> Witness<'tcx> {
                         ConstantRange(lo, hi, ty, end) => PatternKind::Range(PatternRange {
                             lo: ty::Const::from_bits(cx.tcx, lo, ty::ParamEnv::empty().and(ty)),
                             hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
-                            ty,
                             end,
                         }),
                         _ => PatternKind::Wild,
@@ -880,10 +879,10 @@ impl<'tcx> IntRange<'tcx> {
         let range = loop {
             match pat.kind {
                 box PatternKind::Constant { value } => break ConstantValue(value),
-                box PatternKind::Range(PatternRange { lo, hi, ty, end }) => break ConstantRange(
-                    lo.eval_bits(tcx, param_env, ty),
-                    hi.eval_bits(tcx, param_env, ty),
-                    ty,
+                box PatternKind::Range(PatternRange { lo, hi, end }) => break ConstantRange(
+                    lo.eval_bits(tcx, param_env, lo.ty),
+                    hi.eval_bits(tcx, param_env, hi.ty),
+                    lo.ty,
                     end,
                 ),
                 box PatternKind::AscribeUserType { ref subpattern, .. } => {
@@ -1339,11 +1338,11 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
             Some(vec![Variant(adt_def.variants[variant_index].def_id)])
         }
         PatternKind::Constant { value } => Some(vec![ConstantValue(value)]),
-        PatternKind::Range(PatternRange { lo, hi, ty, end }) =>
+        PatternKind::Range(PatternRange { lo, hi, end }) =>
             Some(vec![ConstantRange(
-                lo.eval_bits(cx.tcx, cx.param_env, ty),
-                hi.eval_bits(cx.tcx, cx.param_env, ty),
-                ty,
+                lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
+                hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
+                lo.ty,
                 end,
             )]),
         PatternKind::Array { .. } => match pcx.ty.sty {
@@ -1656,7 +1655,7 @@ fn constructor_covered_by_range<'tcx>(
 ) -> Result<bool, ErrorReported> {
     let (from, to, end, ty) = match pat.kind {
         box PatternKind::Constant { value } => (value, value, RangeEnd::Included, value.ty),
-        box PatternKind::Range(PatternRange { lo, hi, end, ty }) => (lo, hi, end, ty),
+        box PatternKind::Range(PatternRange { lo, hi, end }) => (lo, hi, end, lo.ty),
         _ => bug!("`constructor_covered_by_range` called with {:?}", pat),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);

@@ -651,7 +651,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let (llval, ty) = self.simd_shuffle_indices(
                                 &bx,
                                 constant.span,
-                                constant.ty,
+                                constant.literal.ty,
                                 c,
                             );
                             return OperandRef {
