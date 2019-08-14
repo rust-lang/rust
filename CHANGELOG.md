@@ -4,14 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased / In Rust Beta or Nightly
 
-[01ab9fe6...master](https://github.com/rust-lang/rust-clippy/compare/01ab9fe6...master)
+[72da101...master](https://github.com/rust-lang/rust-clippy/compare/72da101...master)
 
+## Rust 1.38
+
+Current Beta
+
+[e3cb40e...72da101](https://github.com/rust-lang/rust-clippy/compare/e3cb40e...72da101)
+
+## Rust 1.37
+
+Current stable, released 2019-08-15
+
+[082cfa7...e3cb40e](https://github.com/rust-lang/rust-clippy/compare/082cfa7...e3cb40e)
+
+* New Lints:
+  * [`checked_conversions`] [#4088](https://github.com/rust-lang/rust-clippy/pull/4088)
+  * [`get_last_with_len`] [#3832](https://github.com/rust-lang/rust-clippy/pull/3832)
+  * [`integer_division`] [#4195](https://github.com/rust-lang/rust-clippy/pull/4195)
+* Renamed Lint: `const_static_lifetime` is now called [`redundant_static_lifetimes`].
+  The lint now covers statics in addition to consts [#4162](https://github.com/rust-lang/rust-clippy/pull/4162)
+* [`match_same_arms`] now warns for all identical arms, instead of only the first one [#4102](https://github.com/rust-lang/rust-clippy/pull/4102)
+* [`needless_return`] now works with void functions [#4220](https://github.com/rust-lang/rust-clippy/pull/4220)
+* Fix false positive in [`redundant_closure`] [#4190](https://github.com/rust-lang/rust-clippy/pull/4190)
+* Fix false positive in [`useless_attribute`] [#4107](https://github.com/rust-lang/rust-clippy/pull/4107)
+* Fix incorrect suggestion for [`float_cmp`] [#4214](https://github.com/rust-lang/rust-clippy/pull/4214)
+* Add suggestions for [`print_with_newline`] and [`write_with_newline`] [#4136](https://github.com/rust-lang/rust-clippy/pull/4136)
+* Improve suggestions for [`option_map_unwrap_or_else`] and [`result_map_unwrap_or_else`] [#4164](https://github.com/rust-lang/rust-clippy/pull/4164)
+* Improve suggestions for [`non_ascii_literal`] [#4119](https://github.com/rust-lang/rust-clippy/pull/4119)
+* Improve diagnostics for [`let_and_return`] [#4137](https://github.com/rust-lang/rust-clippy/pull/4137)
+* Improve diagnostics for [`trivially_copy_pass_by_ref`] [#4071](https://github.com/rust-lang/rust-clippy/pull/4071)
+* Add macro check for [`unreadable_literal`] [#4099](https://github.com/rust-lang/rust-clippy/pull/4099)
 
 ## Rust 1.36
 
-Current beta
+Released 2019-07-04
 
-[eb9f9b1...71be6f62](https://github.com/rust-lang/rust-clippy/compare/eb9f9b1...71be6f62)
+[eb9f9b1...082cfa7](https://github.com/rust-lang/rust-clippy/compare/eb9f9b1...082cfa7)
 
  * New lints: [`find_map`], [`filter_map_next`] [#4039](https://github.com/rust-lang/rust-clippy/pull/4039)
  * New lint: [`path_buf_push_overwrite`] [#3954](https://github.com/rust-lang/rust-clippy/pull/3954)
@@ -19,7 +48,7 @@ Current beta
  * Split [`redundant_closure`] into [`redundant_closure`] and [`redundant_closure_for_method_calls`] [#4110](https://github.com/rust-lang/rust-clippy/pull/4101)
  * Allow allowing of [`toplevel_ref_arg`] lint [#4007](https://github.com/rust-lang/rust-clippy/pull/4007)
  * Fix false negative in [`or_fun_call`] pertaining to nested constructors [#4084](https://github.com/rust-lang/rust-clippy/pull/4084)
- * Fixed false positive in [`or_fn_call`] pertaining to enum variant constructors [#4018](https://github.com/rust-lang/rust-clippy/pull/4018)
+ * Fix false positive in [`or_fn_call`] pertaining to enum variant constructors [#4018](https://github.com/rust-lang/rust-clippy/pull/4018)
  * Fix false positive in [`useless_let_if_seq`] pertaining to interior mutability [#4035](https://github.com/rust-lang/rust-clippy/pull/4035)
  * Fix false positive in [`redundant_closure`] pertaining to non-function types [#4008](https://github.com/rust-lang/rust-clippy/pull/4008)
  * Fix false positive in [`let_and_return`] pertaining to attributes on `let`s [#4024](https://github.com/rust-lang/rust-clippy/pull/4024)
@@ -40,7 +69,7 @@ Current beta
 
 ## Rust 1.35
 
-Current stable, released 2019-05-20
+Released 2019-05-20
 
 [1fac380..37f5c1e](https://github.com/rust-lang/rust-clippy/compare/1fac380...37f5c1e)
 
