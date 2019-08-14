@@ -128,11 +128,7 @@ fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<ch
     if first_char != '\\' {
         return match first_char {
             '\t' | '\n' => Err(EscapeError::EscapeOnlyChar),
-            '\r' => Err(if chars.clone().next() == Some('\n') {
-                EscapeError::EscapeOnlyChar
-            } else {
-                EscapeError::BareCarriageReturn
-            }),
+            '\r' => Err(EscapeError::BareCarriageReturn),
             '\'' if mode.in_single_quotes() => Err(EscapeError::EscapeOnlyChar),
             '"' if mode.in_double_quotes() => Err(EscapeError::EscapeOnlyChar),
             _ => {
@@ -244,25 +240,13 @@ where
 
         let unescaped_char = match first_char {
             '\\' => {
-                let (second_char, third_char) = {
-                    let mut chars = chars.clone();
-                    (chars.next(), chars.next())
-                };
-                match (second_char, third_char) {
-                    (Some('\n'), _) | (Some('\r'), Some('\n')) => {
+                let second_char = chars.clone().next();
+                match second_char {
+                    Some('\n') => {
                         skip_ascii_whitespace(&mut chars);
                         continue;
                     }
                     _ => scan_escape(first_char, &mut chars, mode),
-                }
-            }
-            '\r' => {
-                let second_char = chars.clone().next();
-                if second_char == Some('\n') {
-                    chars.next();
-                    Ok('\n')
-                } else {
-                    scan_escape(first_char, &mut chars, mode)
                 }
             }
             '\n' => Ok('\n'),
@@ -298,15 +282,11 @@ where
     while let Some(curr) = chars.next() {
         let start = initial_len - chars.as_str().len() - curr.len_utf8();
 
-        let result = match (curr, chars.clone().next()) {
-            ('\r', Some('\n')) => {
-                chars.next();
-                Ok('\n')
-            },
-            ('\r', _) => Err(EscapeError::BareCarriageReturnInRawString),
-            (c, _) if mode.is_bytes() && !c.is_ascii() =>
+        let result = match curr {
+            '\r' => Err(EscapeError::BareCarriageReturnInRawString),
+            c if mode.is_bytes() && !c.is_ascii() =>
                 Err(EscapeError::NonAsciiCharInByteString),
-            (c, _) => Ok(c),
+            c => Ok(c),
         };
         let end = initial_len - chars.as_str().len();
 
