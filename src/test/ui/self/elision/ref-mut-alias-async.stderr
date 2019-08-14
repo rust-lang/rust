@@ -1,0 +1,133 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-alias-async.rs:17:54
+   |
+LL |     async fn ref_Alias(self: &mut Alias, f: &u32) -> &u32 {
+   |                                                      ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-alias-async.rs:23:63
+   |
+LL |     async fn box_ref_Alias(self: Box<&mut Alias>, f: &u32) -> &u32 {
+   |                                                               ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-alias-async.rs:29:63
+   |
+LL |     async fn pin_ref_Alias(self: Pin<&mut Alias>, f: &u32) -> &u32 {
+   |                                                               ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-alias-async.rs:35:72
+   |
+LL |     async fn box_box_ref_Alias(self: Box<Box<&mut Alias>>, f: &u32) -> &u32 {
+   |                                                                        ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-alias-async.rs:41:72
+   |
+LL |     async fn box_pin_ref_Alias(self: Box<Pin<&mut Alias>>, f: &u32) -> &u32 {
+   |                                                                        ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-mut-alias-async.rs:17:42
+   |
+LL |     async fn ref_Alias(self: &mut Alias, f: &u32) -> &u32 {
+   |                                          ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                          |
+   |                                          ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 17:30
+  --> $DIR/ref-mut-alias-async.rs:17:30
+   |
+LL |     async fn ref_Alias(self: &mut Alias, f: &u32) -> &u32 {
+   |                              ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 17:30
+   |
+LL |     async fn ref_Alias(self: &mut Alias, f: &u32) -> &u32 + '_ {
+   |                                                      ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-mut-alias-async.rs:23:51
+   |
+LL |     async fn box_ref_Alias(self: Box<&mut Alias>, f: &u32) -> &u32 {
+   |                                                   ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                   |
+   |                                                   ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 23:38
+  --> $DIR/ref-mut-alias-async.rs:23:38
+   |
+LL |     async fn box_ref_Alias(self: Box<&mut Alias>, f: &u32) -> &u32 {
+   |                                      ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 23:38
+   |
+LL |     async fn box_ref_Alias(self: Box<&mut Alias>, f: &u32) -> &u32 + '_ {
+   |                                                               ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-mut-alias-async.rs:29:51
+   |
+LL |     async fn pin_ref_Alias(self: Pin<&mut Alias>, f: &u32) -> &u32 {
+   |                                                   ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                   |
+   |                                                   ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 29:38
+  --> $DIR/ref-mut-alias-async.rs:29:38
+   |
+LL |     async fn pin_ref_Alias(self: Pin<&mut Alias>, f: &u32) -> &u32 {
+   |                                      ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 29:38
+   |
+LL |     async fn pin_ref_Alias(self: Pin<&mut Alias>, f: &u32) -> &u32 + '_ {
+   |                                                               ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-mut-alias-async.rs:35:60
+   |
+LL |     async fn box_box_ref_Alias(self: Box<Box<&mut Alias>>, f: &u32) -> &u32 {
+   |                                                            ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                            |
+   |                                                            ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 35:46
+  --> $DIR/ref-mut-alias-async.rs:35:46
+   |
+LL |     async fn box_box_ref_Alias(self: Box<Box<&mut Alias>>, f: &u32) -> &u32 {
+   |                                              ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 35:46
+   |
+LL |     async fn box_box_ref_Alias(self: Box<Box<&mut Alias>>, f: &u32) -> &u32 + '_ {
+   |                                                                        ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-mut-alias-async.rs:41:60
+   |
+LL |     async fn box_pin_ref_Alias(self: Box<Pin<&mut Alias>>, f: &u32) -> &u32 {
+   |                                                            ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                            |
+   |                                                            ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 41:46
+  --> $DIR/ref-mut-alias-async.rs:41:46
+   |
+LL |     async fn box_pin_ref_Alias(self: Box<Pin<&mut Alias>>, f: &u32) -> &u32 {
+   |                                              ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 41:46
+   |
+LL |     async fn box_pin_ref_Alias(self: Box<Pin<&mut Alias>>, f: &u32) -> &u32 + '_ {
+   |                                                                        ^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0106`.
