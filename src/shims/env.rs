@@ -12,9 +12,9 @@ pub struct EnvVars {
 
 impl EnvVars {
     pub(crate) fn init<'mir, 'tcx>(
-        communicate: bool,
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         tcx: &TyCtxt<'tcx>,
+        communicate: bool,
     ) {
         if communicate {
             for (name, value) in std::env::vars() {

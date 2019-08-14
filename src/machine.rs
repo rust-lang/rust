@@ -78,7 +78,7 @@ impl MemoryExtra {
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`.
     /// Miri does not expose env vars from the host to the emulated program.
-    pub(crate) env_vars: ShimsEnvVars,
+    pub(crate) env_vars: EnvVars,
 
     /// Program arguments (`Option` because we can only initialize them after creating the ecx).
     /// These are *pointers* to argc/argv because macOS.
@@ -102,7 +102,7 @@ impl<'tcx> Evaluator<'tcx> {
         Evaluator {
             // `env_vars` could be initialized properly here if `Memory` were available before
             // calling this method.
-            env_vars: ShimsEnvVars::default(),
+            env_vars: EnvVars::default(),
             argc: None,
             argv: None,
             cmd_line: None,
