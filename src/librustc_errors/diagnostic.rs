@@ -120,6 +120,9 @@ impl Diagnostic {
     }
 
     /// Adds a span/label to be included in the resulting snippet.
+    /// This label will be shown together with the original span/label used when creating the
+    /// diagnostic, *not* a span added by one of the `span_*` methods.
+    ///
     /// This is pushed onto the `MultiSpan` that was created when the
     /// diagnostic was first built. If you don't call this function at
     /// all, and you just supplied a `Span` to create the diagnostic,
@@ -196,6 +199,7 @@ impl Diagnostic {
         self
     }
 
+    /// Prints the span with a note above it.
     pub fn span_note<S: Into<MultiSpan>>(&mut self,
                                          sp: S,
                                          msg: &str)
@@ -209,6 +213,7 @@ impl Diagnostic {
         self
     }
 
+    /// Prints the span with a warn above it.
     pub fn span_warn<S: Into<MultiSpan>>(&mut self,
                                          sp: S,
                                          msg: &str)
@@ -222,6 +227,7 @@ impl Diagnostic {
         self
     }
 
+    /// Prints the span with some help above it.
     pub fn span_help<S: Into<MultiSpan>>(&mut self,
                                          sp: S,
                                          msg: &str)
