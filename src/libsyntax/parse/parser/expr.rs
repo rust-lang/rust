@@ -1444,6 +1444,7 @@ impl<'a> Parser<'a> {
             guard,
             body: expr,
             span: lo.to(hi),
+            id: ast::DUMMY_NODE_ID,
         })
     }
 
@@ -1599,6 +1600,7 @@ impl<'a> Parser<'a> {
                         expr: self.mk_expr(self.token.span, ExprKind::Err, ThinVec::new()),
                         is_shorthand: false,
                         attrs: ThinVec::new(),
+                        id: ast::DUMMY_NODE_ID,
                     });
                 }
             }
@@ -1684,6 +1686,7 @@ impl<'a> Parser<'a> {
             expr,
             is_shorthand,
             attrs: attrs.into(),
+            id: ast::DUMMY_NODE_ID,
         })
     }
 

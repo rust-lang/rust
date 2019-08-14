@@ -620,6 +620,7 @@ impl<'a> Parser<'a> {
                 pat: subpat,
                 is_shorthand,
                 attrs: attrs.into(),
+                id: ast::DUMMY_NODE_ID,
            }
         })
     }
