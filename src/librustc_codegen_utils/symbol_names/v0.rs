@@ -198,10 +198,14 @@ impl SymbolMangler<'tcx> {
 
         let lifetimes = regions.into_iter().map(|br| {
             match br {
-                ty::BrAnon(i) => i + 1,
+                ty::BrAnon(i) => {
+                    // FIXME(eddyb) for some reason, `anonymize_late_bound_regions` starts at `1`.
+                    assert_ne!(i, 0);
+                    i - 1
+                },
                 _ => bug!("symbol_names: non-anonymized region `{:?}` in `{:?}`", br, value),
             }
-        }).max().unwrap_or(0);
+        }).max().map_or(0, |max| max + 1);
 
         self.push_opt_integer_62("G", lifetimes as u64);
         lifetime_depths.end += lifetimes;
@@ -297,6 +301,10 @@ impl Printer<'tcx> for SymbolMangler<'tcx> {
             // Late-bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
             ty::ReLateBound(debruijn, ty::BrAnon(i)) => {
+                // FIXME(eddyb) for some reason, `anonymize_late_bound_regions` starts at `1`.
+                assert_ne!(i, 0);
+                let i = i - 1;
+
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + i;
 
