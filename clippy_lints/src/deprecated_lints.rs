@@ -118,7 +118,7 @@ declare_deprecated_lint! {
 ///
 /// **Deprecation reason:** This lint has been superseded by the warn-by-default
 /// `invalid_value` rustc lint.
-declare_clippy_lint! {
+declare_deprecated_lint! {
     pub INVALID_REF,
     "superseded by rustc lint `invalid_value`"
 }
