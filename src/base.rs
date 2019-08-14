@@ -246,55 +246,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
             variant_index,
         } => {
             let place = trans_place(fx, place);
-            let layout = place.layout();
-            if layout.for_variant(&*fx, *variant_index).abi == layout::Abi::Uninhabited {
-                return;
-            }
-            match layout.variants {
-                layout::Variants::Single { index } => {
-                    assert_eq!(index, *variant_index);
-                }
-                layout::Variants::Multiple {
-                    discr: _,
-                    discr_index,
-                    discr_kind: layout::DiscriminantKind::Tag,
-                    variants: _,
-                } => {
-                    let ptr = place.place_field(fx, mir::Field::new(discr_index));
-                    let to = layout
-                        .ty
-                        .discriminant_for_variant(fx.tcx, *variant_index)
-                        .unwrap()
-                        .val;
-                    let discr = CValue::const_val(fx, ptr.layout().ty, to);
-                    ptr.write_cvalue(fx, discr);
-                }
-                layout::Variants::Multiple {
-                    discr: _,
-                    discr_index,
-                    discr_kind: layout::DiscriminantKind::Niche {
-                        dataful_variant,
-                        ref niche_variants,
-                        niche_start,
-                    },
-                    variants: _,
-                } => {
-                    if *variant_index != dataful_variant {
-                        let niche = place.place_field(fx, mir::Field::new(discr_index));
-                        //let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
-                        let niche_value =
-                            ((variant_index.as_u32() - niche_variants.start().as_u32()) as u128)
-                                .wrapping_add(niche_start);
-                        // FIXME(eddyb) Check the actual primitive type here.
-                        let niche_llval = if niche_value == 0 {
-                            CValue::const_val(fx, niche.layout().ty, 0)
-                        } else {
-                            CValue::const_val(fx, niche.layout().ty, niche_value)
-                        };
-                        niche.write_cvalue(fx, niche_llval);
-                    }
-                }
-            }
+            crate::discriminant::codegen_set_discriminant(fx, place, *variant_index);
         }
         StatementKind::Assign(to_place, rval) => {
             let lval = trans_place(fx, to_place);
@@ -435,7 +387,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         // FIXME avoid forcing to stack
                         let place =
                             CPlace::for_addr(operand.force_stack(fx), operand.layout());
-                        let discr = trans_get_discriminant(fx, place, fx.layout_of(to_ty));
+                        let discr = crate::discriminant::codegen_get_discriminant(fx, place, fx.layout_of(to_ty));
                         lval.write_cvalue(fx, discr);
                     } else {
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
@@ -470,7 +422,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 }
                 Rvalue::Discriminant(place) => {
                     let place = trans_place(fx, place);
-                    let discr = trans_get_discriminant(fx, place, dest_layout);
+                    let discr = crate::discriminant::codegen_get_discriminant(fx, place, dest_layout);
                     lval.write_cvalue(fx, discr);
                 }
                 Rvalue::Repeat(operand, times) => {
@@ -616,89 +568,6 @@ fn codegen_array_len<'a, 'tcx: 'a>(
             .1
             .expect("Length metadata for slice place"),
         _ => bug!("Rvalue::Len({:?})", place),
-    }
-}
-
-pub fn trans_get_discriminant<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
-    place: CPlace<'tcx>,
-    dest_layout: TyLayout<'tcx>,
-) -> CValue<'tcx> {
-    let layout = place.layout();
-
-    if layout.abi == layout::Abi::Uninhabited {
-        return trap_unreachable_ret_value(fx, dest_layout, "[panic] Tried to get discriminant for uninhabited type.");
-    }
-
-    let (discr_scalar, discr_index, discr_kind) = match &layout.variants {
-        layout::Variants::Single { index } => {
-            let discr_val = layout
-                .ty
-                .ty_adt_def()
-                .map_or(u128::from(index.as_u32()), |def| {
-                    def.discriminant_for_variant(fx.tcx, *index).val
-                });
-            return CValue::const_val(fx, dest_layout.ty, discr_val);
-        }
-        layout::Variants::Multiple { discr, discr_index, discr_kind, variants: _ } => {
-            (discr, *discr_index, discr_kind)
-        }
-    };
-
-    let discr = place.place_field(fx, mir::Field::new(discr_index)).to_cvalue(fx);
-    let discr_ty = discr.layout().ty;
-    let lldiscr = discr.load_scalar(fx);
-    match discr_kind {
-        layout::DiscriminantKind::Tag => {
-            let signed = match discr_scalar.value {
-                layout::Int(_, signed) => signed,
-                _ => false,
-            };
-            let val = clif_intcast(fx, lldiscr, fx.clif_type(dest_layout.ty).unwrap(), signed);
-            return CValue::by_val(val, dest_layout);
-        }
-        layout::DiscriminantKind::Niche {
-            dataful_variant,
-            ref niche_variants,
-            niche_start,
-        } => {
-            let niche_llty = fx.clif_type(discr_ty).unwrap();
-            let dest_clif_ty = fx.clif_type(dest_layout.ty).unwrap();
-            if niche_variants.start() == niche_variants.end() {
-                let b = fx
-                    .bcx
-                    .ins()
-                    .icmp_imm(IntCC::Equal, lldiscr, *niche_start as u64 as i64);
-                let if_true = fx
-                    .bcx
-                    .ins()
-                    .iconst(dest_clif_ty, niche_variants.start().as_u32() as i64);
-                let if_false = fx
-                    .bcx
-                    .ins()
-                    .iconst(dest_clif_ty, dataful_variant.as_u32() as i64);
-                let val = fx.bcx.ins().select(b, if_true, if_false);
-                return CValue::by_val(val, dest_layout);
-            } else {
-                // Rebase from niche values to discriminant values.
-                let delta = niche_start.wrapping_sub(niche_variants.start().as_u32() as u128);
-                let delta = fx.bcx.ins().iconst(niche_llty, delta as u64 as i64);
-                let lldiscr = fx.bcx.ins().isub(lldiscr, delta);
-                let b = fx.bcx.ins().icmp_imm(
-                    IntCC::UnsignedLessThanOrEqual,
-                    lldiscr,
-                    niche_variants.end().as_u32() as i64,
-                );
-                let if_true =
-                    clif_intcast(fx, lldiscr, fx.clif_type(dest_layout.ty).unwrap(), false);
-                let if_false = fx
-                    .bcx
-                    .ins()
-                    .iconst(dest_clif_ty, dataful_variant.as_u32() as i64);
-                let val = fx.bcx.ins().select(b, if_true, if_false);
-                return CValue::by_val(val, dest_layout);
-            }
-        }
     }
 }
 

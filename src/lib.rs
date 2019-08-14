@@ -38,6 +38,7 @@ mod codegen_i128;
 mod common;
 mod constant;
 mod debuginfo;
+mod discriminant;
 mod driver;
 mod intrinsics;
 mod linkage;
