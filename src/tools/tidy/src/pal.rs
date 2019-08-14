@@ -82,6 +82,9 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/librustdoc",
     "src/libsyntax",
     "src/bootstrap",
+
+    // constant hash map seed for `wasm32-unknown-unknown`
+    "src/libstd/collections/hash/map.rs",
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
