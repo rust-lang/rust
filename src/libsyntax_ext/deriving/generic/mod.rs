@@ -1613,6 +1613,7 @@ impl<'a> TraitDef<'a> {
                         source_map::Spanned {
                             span: pat.span.with_ctxt(self.span.ctxt()),
                             node: ast::FieldPat {
+                                id: ast::DUMMY_NODE_ID,
                                 ident: ident.unwrap(),
                                 pat,
                                 is_shorthand: false,
