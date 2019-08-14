@@ -920,8 +920,10 @@ pub fn expr_to_spanned_string<'a>(
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     expr.span = expr.span.apply_mark(cx.current_expansion.id);
 
-    // we want to be able to handle e.g., `concat!("foo", "bar")`
-    cx.expander().visit_expr(&mut expr);
+    // Perform eager expansion on the expression.
+    // We want to be able to handle e.g., `concat!("foo", "bar")`.
+    let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
+
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
             ast::LitKind::Str(s, style) => return Ok(respan(expr.span, (s, style))),
@@ -986,8 +988,12 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>,
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
-        let mut expr = panictry!(p.parse_expr());
-        cx.expander().visit_expr(&mut expr);
+        let expr = panictry!(p.parse_expr());
+
+        // Perform eager expansion on the expression.
+        // We want to be able to handle e.g., `concat!("foo", "bar")`.
+        let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
+
         es.push(expr);
         if p.eat(&token::Comma) {
             continue;
