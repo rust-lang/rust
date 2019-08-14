@@ -143,6 +143,11 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     pub fn inspect_with_undef_and_ptr_outside_interpreter(&self, range: Range<usize>) -> &[u8] {
         &self.bytes[range]
     }
+
+    /// View the undef mask.
+    pub fn undef_mask(&self) -> &UndefMask {
+        &self.undef_mask
+    }
 }
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Allocation {}

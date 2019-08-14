@@ -653,7 +653,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 }
                 relocations.push((i, target_id));
             }
-            if alloc.undef_mask.is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
+            if alloc.undef_mask().is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
                 // this `as usize` is fine, since `i` came from a `usize`
                 let i = i.bytes() as usize;
 
