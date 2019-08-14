@@ -1,0 +1,133 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-struct-async.rs:15:52
+   |
+LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                                                    ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-struct-async.rs:21:61
+   |
+LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
+   |                                                             ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-struct-async.rs:27:61
+   |
+LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
+   |                                                             ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-struct-async.rs:33:70
+   |
+LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
+   |                                                                      ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-struct-async.rs:39:66
+   |
+LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
+   |                                                                  ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-struct-async.rs:15:40
+   |
+LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                                        ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                        |
+   |                                        ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 15:31
+  --> $DIR/ref-struct-async.rs:15:31
+   |
+LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
+   |                               ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 15:31
+   |
+LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 + '_ {
+   |                                                    ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-struct-async.rs:21:49
+   |
+LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
+   |                                                 ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                 |
+   |                                                 ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 21:39
+  --> $DIR/ref-struct-async.rs:21:39
+   |
+LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
+   |                                       ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 21:39
+   |
+LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 + '_ {
+   |                                                             ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-struct-async.rs:27:49
+   |
+LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
+   |                                                 ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                 |
+   |                                                 ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 27:39
+  --> $DIR/ref-struct-async.rs:27:39
+   |
+LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
+   |                                       ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 27:39
+   |
+LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 + '_ {
+   |                                                             ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-struct-async.rs:33:58
+   |
+LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
+   |                                                          ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                          |
+   |                                                          ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 33:47
+  --> $DIR/ref-struct-async.rs:33:47
+   |
+LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
+   |                                               ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 33:47
+   |
+LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 + '_ {
+   |                                                                      ^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/ref-struct-async.rs:39:54
+   |
+LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
+   |                                                      ^           ---- this return type evaluates to the `'static` lifetime...
+   |                                                      |
+   |                                                      ...but this borrow...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 39:43
+  --> $DIR/ref-struct-async.rs:39:43
+   |
+LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
+   |                                           ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 39:43
+   |
+LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 + '_ {
+   |                                                                  ^^^^^^^^^
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

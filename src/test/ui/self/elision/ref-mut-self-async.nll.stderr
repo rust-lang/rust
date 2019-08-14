@@ -1,0 +1,51 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-self-async.rs:15:46
+   |
+LL |     async fn ref_self(&mut self, f: &u32) -> &u32 {
+   |                                              ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-self-async.rs:23:52
+   |
+LL |     async fn ref_Self(self: &mut Self, f: &u32) -> &u32 {
+   |                                                    ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-self-async.rs:29:61
+   |
+LL |     async fn box_ref_Self(self: Box<&mut Self>, f: &u32) -> &u32 {
+   |                                                             ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-self-async.rs:35:61
+   |
+LL |     async fn pin_ref_Self(self: Pin<&mut Self>, f: &u32) -> &u32 {
+   |                                                             ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-self-async.rs:41:70
+   |
+LL |     async fn box_box_ref_Self(self: Box<Box<&mut Self>>, f: &u32) -> &u32 {
+   |                                                                      ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/ref-mut-self-async.rs:47:70
+   |
+LL |     async fn box_pin_ref_Self(self: Box<Pin<&mut Self>>, f: &u32) -> &u32 {
+   |                                                                      ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found multiple.
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0106`.
