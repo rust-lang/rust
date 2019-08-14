@@ -12,7 +12,6 @@ use crate::fmt::{self, Debug};
 use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
 use crate::iter::{FromIterator, FusedIterator};
 use crate::ops::Index;
-use crate::sys;
 
 /// A hash map implemented with quadratic probing and SIMD lookup.
 ///
