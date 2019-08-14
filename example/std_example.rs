@@ -48,6 +48,8 @@ fn main() {
     assert_eq!(0xFEDCBA987654321123456789ABCDEFu128 as i128 >> 64, 0xFEDCBA98765432i128);
     assert_eq!(353985398u128 * 932490u128, 330087843781020u128);
 
+    let _a = 1u32 << 2u8;
+
     unsafe {
         test_simd();
     }

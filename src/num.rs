@@ -129,8 +129,20 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
         BinOp::BitXor => b.bxor(lhs, rhs),
         BinOp::BitAnd => b.band(lhs, rhs),
         BinOp::BitOr => b.bor(lhs, rhs),
-        BinOp::Shl => b.ishl(lhs, rhs),
-        BinOp::Shr => if signed { b.sshr(lhs, rhs) } else { b.ushr(lhs, rhs) },
+        BinOp::Shl => {
+            let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
+            let rhs = clif_intcast(fx, rhs, lhs_ty, false);
+            fx.bcx.ins().ishl(lhs, rhs)
+        }
+        BinOp::Shr => {
+            let lhs_ty = fx.bcx.func.dfg.value_type(lhs);
+            let rhs = clif_intcast(fx, rhs, lhs_ty, false);
+            if signed {
+                fx.bcx.ins().sshr(lhs, rhs)
+            } else {
+                fx.bcx.ins().ushr(lhs, rhs)
+            }
+        }
         // Compare binops handles by `codegen_binop`.
         _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs.layout().ty, in_rhs.layout().ty),
     };
