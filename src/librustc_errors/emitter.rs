@@ -24,7 +24,7 @@ use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
-use std::cmp::{min, Reverse};
+use std::cmp::{min, max, Reverse};
 use std::path::Path;
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter, Ansi};
 use termcolor::{WriteColor, Color, Buffer};
@@ -59,13 +59,20 @@ impl HumanReadableErrorType {
 
 #[derive(Clone, Copy, Debug)]
 struct Margin {
+    /// The available whitespace in the left that can be consumed when centering.
     pub whitespace_left: usize,
+    /// The column of the beginning of left-most span.
     pub span_left: usize,
+    /// The column of the end of right-most span.
     pub span_right: usize,
-    pub line_len: usize,
+    /// The beginning of the line to be displayed.
     pub computed_left: usize,
+    /// The end of the line to be displayed.
     pub computed_right: usize,
+    /// The current width of the terminal. 140 by default and in tests.
     pub column_width: usize,
+    /// The end column of a span label, including the span. Doesn't account for labels not in the
+    /// same line as the span.
     pub label_right: usize,
 }
 
@@ -75,59 +82,92 @@ impl Margin {
         span_left: usize,
         span_right: usize,
         label_right: usize,
+        column_width: usize,
+        max_line_len: usize,
     ) -> Self {
-        Margin {
-            whitespace_left,
-            span_left,
-            span_right,
-            line_len: 0,
+        // The 6 is padding to give a bit of room for `...` when displaying:
+        // ```
+        // error: message
+        //   --> file.rs:16:58
+        //    |
+        // 16 | ... fn foo(self) -> Self::Bar {
+        //    |                     ^^^^^^^^^
+        // ```
+
+        let mut m = Margin {
+            whitespace_left: if whitespace_left >= 6 { whitespace_left - 6 } else { 0 },
+            span_left: if span_left >= 6 { span_left - 6 } else { 0 },
+            span_right: span_right + 6,
             computed_left: 0,
             computed_right: 0,
-            column_width: 140,
-            label_right,
-        }
+            column_width,
+            label_right: label_right + 6,
+        };
+        m.compute(max_line_len);
+        m
     }
 
     fn was_cut_left(&self) -> bool {
         self.computed_left > 0
     }
 
-    fn was_cut_right(&self) -> bool {
-        self.computed_right < self.line_len
+    fn was_cut_right(&self, line_len: usize) -> bool {
+        let right = if self.computed_right == self.span_right ||
+            self.computed_right == self.label_right
+        {
+            // Account for the "..." padding given above. Otherwise we end up with code lines that
+            // do fit but end in "..." as if they were trimmed.
+            self.computed_right - 6
+        } else {
+            self.computed_right
+        };
+        right < line_len && line_len > self.computed_left + self.column_width
     }
 
-    fn compute(&mut self) {
+    fn compute(&mut self, max_line_len: usize) {
+        // When there's a lot of whitespace (>20), we want to trim it as it is useless.
         self.computed_left = if self.whitespace_left > 20 {
             self.whitespace_left - 16 // We want some padding.
         } else {
             0
         };
-        self.computed_right = self.column_width + self.computed_left;
+        // We want to show as much as possible, max_line_len is the right-most boundary for the
+        // relevant code.
+        self.computed_right = max(max_line_len, self.computed_left);
 
         if self.computed_right - self.computed_left > self.column_width {
             // Trimming only whitespace isn't enough, let's get craftier.
             if self.label_right - self.whitespace_left <= self.column_width {
+                // Attempt to fit the code window only trimming whitespace.
                 self.computed_left = self.whitespace_left;
                 self.computed_right = self.computed_left + self.column_width;
-            } else if self.label_right - self.span_left - 20 <= self.column_width {
-                self.computed_left = self.span_left - 20;
-                self.computed_right = self.computed_left + self.column_width;
             } else if self.label_right - self.span_left <= self.column_width {
+                // Attempt to fit the code window considering only the spans and labels.
                 self.computed_left = self.span_left;
                 self.computed_right = self.computed_left + self.column_width;
             } else if self.span_right - self.span_left <= self.column_width {
+                // Attempt to fit the code window considering the spans and labels plus padding.
                 self.computed_left = self.span_left;
                 self.computed_right = self.computed_left + self.column_width;
-            } else { // mostly give up but still don't show the full line
+            } else { // Mostly give up but still don't show the full line.
                 self.computed_left = self.span_left;
                 self.computed_right = self.span_right;
             }
         }
-        self.computed_left = std::cmp::min(self.computed_left, self.line_len);
-        if self.computed_right > self.line_len {
-            self.computed_right = self.line_len;
+    }
+
+    fn left(&self, line_len: usize) -> usize {
+        min(self.computed_left, line_len)
+    }
+
+    fn right(&self, line_len: usize) -> usize {
+        if max(line_len, self.computed_left) - self.computed_left <= self.column_width {
+            line_len
+        } else if self.computed_right > line_len {
+            line_len
+        } else {
+            self.computed_right
         }
-        self.computed_right = std::cmp::min(self.computed_right, self.line_len);
     }
 }
 
@@ -308,6 +348,42 @@ impl EmitterWriter {
         }
     }
 
+    fn draw_line(
+        &self,
+        buffer: &mut StyledBuffer,
+        source_string: &str,
+        line_index: usize,
+        line_offset: usize,
+        width_offset: usize,
+        code_offset: usize,
+        margin: Margin,
+    ) {
+        let line_len = source_string.len();
+        // Create the source line we will highlight.
+        buffer.puts(
+            line_offset,
+            code_offset,
+            // On long lines, we strip the source line
+            &source_string[margin.left(line_len)..margin.right(line_len)],
+            Style::Quotation,
+        );
+        if margin.was_cut_left() { // We have stripped some code/whitespace from the beginning, make it clear.
+            buffer.puts(line_offset, code_offset, "...", Style::LineNumber);
+        }
+        if margin.was_cut_right(line_len) {
+            // We have stripped some code after the right-most span end, make it clear we did so.
+            buffer.puts(
+                line_offset,
+                margin.right(line_len) - margin.left(line_len) + code_offset - 3,
+                "...",
+                Style::LineNumber,
+            );
+        }
+        buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
+
+        draw_col_separator(buffer, line_offset, width_offset - 2);
+    }
+
     fn render_source_line(
         &self,
         buffer: &mut StyledBuffer,
@@ -315,7 +391,7 @@ impl EmitterWriter {
         line: &Line,
         width_offset: usize,
         code_offset: usize,
-        mut margin: Margin,
+        margin: Margin,
     ) -> Vec<(usize, Style)> {
         // Draw:
         //
@@ -342,31 +418,15 @@ impl EmitterWriter {
 
         let line_offset = buffer.num_lines();
 
-        margin.line_len = source_string.len();
-        margin.compute();
-        // Create the source line we will highlight.
-        buffer.puts(
+        self.draw_line(
+            buffer,
+            &source_string,
+            line.line_index,
             line_offset,
+            width_offset,
             code_offset,
-            // On long lines, we strip the source line
-            &source_string[margin.computed_left..margin.computed_right],
-            Style::Quotation,
+            margin,
         );
-        if margin.was_cut_left() { // We have stripped some code/whitespace from the beginning, make it clear.
-            buffer.puts(line_offset, code_offset, "...", Style::LineNumber);
-        }
-        if margin.was_cut_right() {
-            // We have stripped some code after the right-most span end, make it clear we did so.
-            buffer.puts(
-                line_offset,
-                margin.computed_right - margin.computed_left + code_offset,
-                "...",
-                Style::LineNumber,
-            );
-        }
-        buffer.puts(line_offset, 0, &self.maybe_anonymized(line.line_index), Style::LineNumber);
-
-        draw_col_separator(buffer, line_offset, width_offset - 2);
 
         // Special case when there's only one annotation involved, it is the start of a multiline
         // span and there's no text at the beginning of the code line. Instead of doing the whole
@@ -614,19 +674,23 @@ impl EmitterWriter {
             match annotation.annotation_type {
                 AnnotationType::MultilineStart(depth) |
                 AnnotationType::MultilineEnd(depth) => {
-                    draw_range(buffer,
-                               '_',
-                               line_offset + pos,
-                               width_offset + depth,
-                               code_offset + annotation.start_col - margin.computed_left,
-                               style);
+                    draw_range(
+                        buffer,
+                        '_',
+                        line_offset + pos,
+                        width_offset + depth,
+                        code_offset + annotation.start_col - margin.computed_left,
+                        style,
+                    );
                 }
                 _ if self.teach => {
-                    buffer.set_style_range(line_offset,
-                                           code_offset + annotation.start_col - margin.computed_left,
-                                           code_offset + annotation.end_col - margin.computed_left,
-                                           style,
-                                           annotation.is_primary);
+                    buffer.set_style_range(
+                        line_offset,
+                        code_offset + annotation.start_col - margin.computed_left,
+                        code_offset + annotation.end_col - margin.computed_left,
+                        style,
+                        annotation.is_primary,
+                    );
                 }
                 _ => {}
             }
@@ -1159,7 +1223,7 @@ impl EmitterWriter {
                             .take_while(|c| c.is_whitespace())
                             .count();
                         if source_string.chars().any(|c| !c.is_whitespace()) {
-                            whitespace_margin = std::cmp::min(
+                            whitespace_margin = min(
                                 whitespace_margin,
                                 leading_whitespace,
                             );
@@ -1174,8 +1238,8 @@ impl EmitterWriter {
                 let mut span_left_margin = std::usize::MAX;
                 for line in &annotated_file.lines {
                     for ann in &line.annotations {
-                        span_left_margin = std::cmp::min(span_left_margin, ann.start_col);
-                        span_left_margin = std::cmp::min(span_left_margin, ann.end_col);
+                        span_left_margin = min(span_left_margin, ann.start_col);
+                        span_left_margin = min(span_left_margin, ann.end_col);
                     }
                 }
                 if span_left_margin == std::usize::MAX {
@@ -1185,34 +1249,48 @@ impl EmitterWriter {
                 // Right-most column any visible span points at.
                 let mut span_right_margin = 0;
                 let mut label_right_margin = 0;
+                let mut max_line_len = 0;
                 for line in &annotated_file.lines {
+                    max_line_len = max(
+                        max_line_len,
+                        annotated_file.file.get_line(line.line_index - 1).map(|s| s.len()).unwrap_or(0),
+                    );
                     for ann in &line.annotations {
-                        span_right_margin = std::cmp::max(span_right_margin, ann.start_col);
-                        span_right_margin = std::cmp::max(span_right_margin, ann.end_col);
-                        label_right_margin = std::cmp::max(
+                        span_right_margin = max(span_right_margin, ann.start_col);
+                        span_right_margin = max(span_right_margin, ann.end_col);
+                        label_right_margin = max(
                             label_right_margin,
                             // TODO: account for labels not in the same line
                             ann.end_col + ann.label.as_ref().map(|l| l.len() + 1).unwrap_or(0),
                         );
                     }
                 }
+
+                let width_offset = 3 + max_line_num_len;
+                let code_offset = if annotated_file.multiline_depth == 0 {
+                    width_offset
+                } else {
+                    width_offset + annotated_file.multiline_depth + 1
+                };
+
+                let column_width = if self.ui_testing {
+                    140
+                } else {
+                    term_size::dimensions().map(|(w, _)| w - code_offset).unwrap_or(140)
+                };
+
                 let margin = Margin::new(
                     whitespace_margin,
                     span_left_margin,
                     span_right_margin,
                     label_right_margin,
+                    column_width,
+                    max_line_len,
                 );
 
                 // Next, output the annotate source for this file
                 for line_idx in 0..annotated_file.lines.len() {
                     let previous_buffer_line = buffer.num_lines();
-
-                    let width_offset = 3 + max_line_num_len;
-                    let code_offset = if annotated_file.multiline_depth == 0 {
-                        width_offset
-                    } else {
-                        width_offset + annotated_file.multiline_depth + 1
-                    };
 
                     let depths = self.render_source_line(
                         &mut buffer,
@@ -1268,36 +1346,24 @@ impl EmitterWriter {
 
                             let last_buffer_line_num = buffer.num_lines();
 
-                            buffer.puts(
-                                last_buffer_line_num,
-                                0,
-                                &self.maybe_anonymized(
-                                    annotated_file.lines[line_idx + 1].line_index - 1,
-                                ),
-                                Style::LineNumber,
-                            );
-                            draw_col_separator(
+                            self.draw_line(
                                 &mut buffer,
+                                &unannotated_line,
+                                annotated_file.lines[line_idx + 1].line_index - 1,
                                 last_buffer_line_num,
-                                1 + max_line_num_len,
-                            );
-
-                            let mut margin = margin;
-                            margin.line_len = unannotated_line.len();
-                            margin.compute();
-                            buffer.puts(
-                                last_buffer_line_num,
+                                width_offset,
                                 code_offset,
-                                &unannotated_line[margin.computed_left..margin.computed_right],
-                                Style::Quotation,
+                                margin,
                             );
 
                             for (depth, style) in &multilines {
-                                draw_multiline_line(&mut buffer,
-                                                    last_buffer_line_num,
-                                                    width_offset,
-                                                    *depth,
-                                                    *style);
+                                draw_multiline_line(
+                                    &mut buffer,
+                                    last_buffer_line_num,
+                                    width_offset,
+                                    *depth,
+                                    *style,
+                                );
                             }
                         }
                     }

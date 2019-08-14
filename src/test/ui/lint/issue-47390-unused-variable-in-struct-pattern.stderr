@@ -38,8 +38,8 @@ LL |     if let SoulHistory { corridors_of_light,
 warning: variable `hours_are_suns` is assigned to, but never used
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:38:30
    |
-LL | ...             mut hours_are_suns,
-   |                     ^^^^^^^^^^^^^^
+LL |                          mut hours_are_suns,
+   |                              ^^^^^^^^^^^^^^
    |
    = note: consider using `_hours_are_suns` instead
 
