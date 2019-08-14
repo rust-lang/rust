@@ -694,7 +694,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 // * #[repr(simd)] struct S { x: T, y: T, z: T, w: T }
                 // * #[repr(simd)] struct S([T; 4])
                 //
-                // where T is a "machine type", e.g., `f32`, `i64`, `*mut _`.
+                // where T is a primitive scalar (integer/float/pointer).
 
                 // SIMD vectors with zero fields are not supported.
                 // (should be caught by typeck)
@@ -746,7 +746,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }) = self.layout_of(f0_ty) {
                         count
                     } else {
-                        unreachable!();
+                        return Err(LayoutError::Unknown(ty));
                     };
 
                     (e_ty, *len, true)
@@ -772,7 +772,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // This error isn;t caught in typeck, e.g., if
                     // the element type of the vector is generic.
                     tcx.sess.fatal(&format!(
-                        "monomorphising SIMD type `{}` with a non-machine element type `{}`",
+                        "monomorphising SIMD type `{}` with a non-primitive-scalar (integer/float/pointer) element type `{}`",
                         ty, e_ty
                     ))
                 };
