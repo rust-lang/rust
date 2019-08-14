@@ -384,7 +384,11 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'tcx>, body: &'b Body<'tcx>, promoted: &'b IndexVec<Promoted, Body<'tcx>>) -> Self {
+    fn new(
+        cx: &'a mut TypeChecker<'b, 'tcx>,
+        body: &'b Body<'tcx>,
+        promoted: &'b IndexVec<Promoted, Body<'tcx>>,
+    ) -> Self {
         TypeVerifier {
             body,
             promoted,

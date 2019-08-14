@@ -151,7 +151,8 @@ fn do_mir_borrowck<'a, 'tcx>(
     // will have a lifetime tied to the inference context.
     let mut body: Body<'tcx> = input_body.clone();
     let mut promoted: IndexVec<Promoted, Body<'tcx>> = input_promoted.clone();
-    let free_regions = nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
+    let free_regions =
+        nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
     let body = &body; // no further changes
     let location_table = &LocationTable::new(body);
 

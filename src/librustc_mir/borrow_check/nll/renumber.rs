@@ -7,7 +7,11 @@ use rustc_data_structures::indexed_vec::IndexVec;
 
 /// Replaces all free regions appearing in the MIR with fresh
 /// inference variables, returning the number of variables created.
-pub fn renumber_mir<'tcx>(infcx: &InferCtxt<'_, 'tcx>, body: &mut Body<'tcx>, promoted: &mut IndexVec<Promoted, Body<'tcx>>) {
+pub fn renumber_mir<'tcx>(
+    infcx: &InferCtxt<'_, 'tcx>,
+    body: &mut Body<'tcx>,
+    promoted: &mut IndexVec<Promoted, Body<'tcx>>,
+) {
     debug!("renumber_mir()");
     debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
 

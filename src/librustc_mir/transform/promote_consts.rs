@@ -295,7 +295,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         new_temp
     }
 
-    fn promote_candidate(mut self, def_id: DefId, candidate: Candidate, next_promoted_id: usize) -> Option<Body<'tcx>> {
+    fn promote_candidate(
+        mut self,
+        def_id: DefId,
+        candidate: Candidate,
+        next_promoted_id: usize,
+    ) -> Option<Body<'tcx>> {
         let mut operand = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);

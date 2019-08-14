@@ -110,7 +110,11 @@ rustc_queries! {
             no_hash
         }
 
-        query mir_validated(_: DefId) -> (&'tcx Steal<mir::Body<'tcx>>, &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>) {
+        query mir_validated(_: DefId) ->
+            (
+                &'tcx Steal<mir::Body<'tcx>>,
+                &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
+            ) {
             no_hash
         }
 

@@ -200,7 +200,10 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
     tcx.alloc_steal_mir(body)
 }
 
-fn mir_validated(tcx: TyCtxt<'tcx>, def_id: DefId) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
+fn mir_validated(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(hir_id) {
         // Ensure that we compute the `mir_const_qualif` for constants at
@@ -215,8 +218,9 @@ fn mir_validated(tcx: TyCtxt<'tcx>, def_id: DefId) -> (&'tcx Steal<Body<'tcx>>, 
         &qualify_and_promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
-    let promoted = qualify_and_promote_pass.promoted.into_inner();
-    (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted.unwrap_or_else(|| IndexVec::new())))
+    let promoted =
+        qualify_and_promote_pass.promoted.into_inner().unwrap_or_else(|| IndexVec::new());
+    (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
 fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {

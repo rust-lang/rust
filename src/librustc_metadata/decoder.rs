@@ -924,7 +924,8 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn maybe_get_promoted_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Option<IndexVec<Promoted, Body<'tcx>>> {
+    pub fn maybe_get_promoted_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) ->
+        Option<IndexVec<Promoted, Body<'tcx>>> {
         match self.is_proc_macro(id) {
             true => None,
             false => self.entry(id).promoted_mir.map(|promoted| promoted.decode((self, tcx)),)

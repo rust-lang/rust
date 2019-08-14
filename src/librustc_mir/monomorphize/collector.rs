@@ -670,15 +670,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     self.output.push(MonoItem::Static(*def_id));
                 }
             }
-            PlaceBase::Static(box Static { kind: StaticKind::Promoted(promoted, substs), def_id, .. }) => {
-                debug!("collecting promoted(def_id: {:?}, promoted: {:?}, substs: {:?})", def_id, promoted, substs);
-                debug!("param_substs: {:?}", self.param_substs);
+            PlaceBase::Static(box Static {
+                kind: StaticKind::Promoted(promoted, substs),
+                def_id,
+                ..
+            }) => {
                 let param_env = ty::ParamEnv::reveal_all();
                 let cid = GlobalId {
                     instance: Instance::new(*def_id, substs.subst(self.tcx, self.param_substs)),
                     promoted: Some(*promoted),
                 };
-                debug!("cid: {:?}", cid);
                 match self.tcx.const_eval(param_env.and(cid)) {
                     Ok(val) => collect_const(self.tcx, val, substs, self.output),
                     Err(ErrorHandled::Reported) => {},

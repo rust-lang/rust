@@ -1060,7 +1060,8 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_promoted_mir(&mut self, def_id: DefId) -> Option<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>> {
+    fn encode_promoted_mir(&mut self, def_id: DefId) ->
+        Option<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>> {
         debug!("EncodeContext::encode_promoted_mir({:?})", def_id);
         if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
             let promoted = self.tcx.promoted_mir(def_id);

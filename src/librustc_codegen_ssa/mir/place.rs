@@ -460,7 +460,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }),
                 projection: None,
             } => {
-                debug!("promoted={:?}, def_id={:?}, substs={:?}, self_substs={:?}", promoted, def_id, substs, self.instance.substs);
                 let param_env = ty::ParamEnv::reveal_all();
                 let instance = Instance::new(*def_id, substs.subst(bx.tcx(), self.instance.substs));
                 debug!("instance: {:?}", instance);
