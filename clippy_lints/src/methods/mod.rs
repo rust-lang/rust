@@ -15,7 +15,7 @@ use rustc::ty::{self, Predicate, Ty};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast;
-use syntax::source_map::{BytePos, Span};
+use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 
 use crate::utils::paths;
