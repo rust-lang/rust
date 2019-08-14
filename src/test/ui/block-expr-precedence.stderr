@@ -1,0 +1,8 @@
+warning: unnecessary trailing semicolons
+  --> $DIR/block-expr-precedence.rs:60:21
+   |
+LL |   if (true) { 12; };;; -num;
+   |                     ^^ help: remove these semicolons
+   |
+   = note: `#[warn(redundant_semicolon)]` on by default
+
