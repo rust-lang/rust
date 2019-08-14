@@ -367,7 +367,8 @@ impl EmitterWriter {
             &source_string[margin.left(line_len)..margin.right(line_len)],
             Style::Quotation,
         );
-        if margin.was_cut_left() { // We have stripped some code/whitespace from the beginning, make it clear.
+        if margin.was_cut_left() {
+            // We have stripped some code/whitespace from the beginning, make it clear.
             buffer.puts(line_offset, code_offset, "...", Style::LineNumber);
         }
         if margin.was_cut_right(line_len) {
@@ -403,7 +404,7 @@ impl EmitterWriter {
         //   ^^ ^ ^^^ ^^^^ ^^^ we don't care about code too far to the right of a span, we trim it
         //   |  | |   |
         //   |  | |   actual code found in your source code and the spans we use to mark it
-        //   |  | when there's too much wasted space to the left, we trim it to focus where it matters
+        //   |  | when there's too much wasted space to the left, trim it
         //   |  vertical divider between the column number and the code
         //   column number
 
@@ -1251,18 +1252,16 @@ impl EmitterWriter {
                 let mut label_right_margin = 0;
                 let mut max_line_len = 0;
                 for line in &annotated_file.lines {
-                    max_line_len = max(
-                        max_line_len,
-                        annotated_file.file.get_line(line.line_index - 1).map(|s| s.len()).unwrap_or(0),
-                    );
+                    max_line_len = max(max_line_len, annotated_file.file
+                        .get_line(line.line_index - 1)
+                        .map(|s| s.len())
+                        .unwrap_or(0));
                     for ann in &line.annotations {
                         span_right_margin = max(span_right_margin, ann.start_col);
                         span_right_margin = max(span_right_margin, ann.end_col);
-                        label_right_margin = max(
-                            label_right_margin,
-                            // TODO: account for labels not in the same line
-                            ann.end_col + ann.label.as_ref().map(|l| l.len() + 1).unwrap_or(0),
-                        );
+                        // FIXME: account for labels not in the same line
+                        let label_right = ann.label.as_ref().map(|l| l.len() + 1).unwrap_or(0);
+                        label_right_margin = max(label_right_margin, ann.end_col + label_right);
                     }
                 }
 
