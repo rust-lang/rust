@@ -27,7 +27,7 @@
 
 #![cfg_attr(unix, feature(libc))]
 
-#![cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
+#![allow(rustc::default_hash_types)]
 
 #[macro_use]
 extern crate log;

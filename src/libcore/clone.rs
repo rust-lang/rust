@@ -134,7 +134,6 @@ pub trait Clone : Sized {
 }
 
 /// Derive macro generating an impl of the trait `Clone`.
-#[cfg(not(bootstrap))]
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]

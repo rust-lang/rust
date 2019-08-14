@@ -1,5 +1,5 @@
 #![feature(proc_macro_hygiene)]
-#![cfg_attr(not(bootstrap), allow(rustc::default_hash_types))]
+#![allow(rustc::default_hash_types)]
 
 #![recursion_limit="128"]
 
