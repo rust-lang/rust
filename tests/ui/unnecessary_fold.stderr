@@ -30,5 +30,11 @@ error: this `.fold` can be written more succinctly using another method
 LL |     let _: bool = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
 
-error: aborting due to 5 previous errors
+error: this `.fold` can be written more succinctly using another method
+  --> $DIR/unnecessary_fold.rs:49:10
+   |
+LL |         .fold(false, |acc, x| acc || x > 2);
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `any(|x| x > 2)`
+
+error: aborting due to 6 previous errors
 
