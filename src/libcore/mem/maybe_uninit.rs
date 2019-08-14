@@ -312,7 +312,7 @@ impl<T> MaybeUninit<T> {
     /// without dropping it, so be careful not to use this twice unless you want to
     /// skip running the destructor. For your convenience, this also returns a mutable
     /// reference to the (now safely initialized) contents of `self`.
-    #[unstable(feature = "maybe_uninit_extra", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub fn write(&mut self, val: T) -> &mut T {
         unsafe {
@@ -502,7 +502,7 @@ impl<T> MaybeUninit<T> {
     /// // We now created two copies of the same vector, leading to a double-free when
     /// // they both get dropped!
     /// ```
-    #[unstable(feature = "maybe_uninit_extra", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub unsafe fn read(&self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
@@ -516,7 +516,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
     /// state. Calling this when the content is not yet fully initialized causes undefined
     /// behavior.
-    #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
         &*self.value
@@ -532,21 +532,21 @@ impl<T> MaybeUninit<T> {
     // FIXME(#53491): We currently rely on the above being incorrect, i.e., we have references
     // to uninitialized data (e.g., in `libcore/fmt/float.rs`).  We should make
     // a final decision about the rules before stabilization.
-    #[unstable(feature = "maybe_uninit_ref", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_ref", issue = "63568")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
         &mut *self.value
     }
 
     /// Gets a pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub fn first_ptr(this: &[MaybeUninit<T>]) -> *const T {
         this as *const [MaybeUninit<T>] as *const T
     }
 
     /// Gets a mutable pointer to the first element of the array.
-    #[unstable(feature = "maybe_uninit_slice", issue = "53491")]
+    #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub fn first_ptr_mut(this: &mut [MaybeUninit<T>]) -> *mut T {
         this as *mut [MaybeUninit<T>] as *mut T
