@@ -1,0 +1,39 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/self_lifetime-async.rs:9:44
+   |
+LL |     async fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
+   |                                            ^
+   |
+   = note: return-position elided lifetimes require exactly one input-position elided lifetime, found none.
+
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/self_lifetime-async.rs:9:22
+   |
+LL |     async fn foo<'b>(self: &'b Foo<'a>) -> &() { self.0 }
+   |                      ^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'a as defined on the impl at 8:6...
+  --> $DIR/self_lifetime-async.rs:8:6
+   |
+LL | impl<'a> Foo<'a> {
+   |      ^^
+   = note: ...so that the expression is assignable:
+           expected &Foo<'_>
+              found &'b Foo<'a>
+   = note: but, the lifetime must be valid for the static lifetime...
+   = note: ...so that the types are compatible:
+           expected &()
+              found &'static ()
+
+error[E0623]: lifetime mismatch
+  --> $DIR/self_lifetime-async.rs:16:52
+   |
+LL |     async fn bar<'a>(self: &Alias, arg: &'a ()) -> &() { arg }
+   |                            ------                  ^^^
+   |                            |                       |
+   |                            |                       ...but data from `arg` is returned here
+   |                            this parameter and the return type are declared with different lifetimes...
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0106`.
