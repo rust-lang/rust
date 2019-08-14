@@ -1916,9 +1916,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, d
     );
     let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
     err.span_label(sp, &msg);
-    if let &[.., ref end] = &variant_spans[..] {
-        // FIXME: Ping cfg(bootstrap) -- Use `ref start @ ..` with new bootstrap compiler.
-        let start = &variant_spans[..variant_spans.len() - 1];
+    if let &[ref start @ .., ref end] = &variant_spans[..] {
         for variant_span in start {
             err.span_label(*variant_span, "");
         }
