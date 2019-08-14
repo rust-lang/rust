@@ -61,15 +61,15 @@ Legends:
 | `struct-async.rs`| ✓ | ✓ | N/A |
 | `alias-async.rs`| ✓ | ✓ | N/A |
 | `assoc-async.rs`| ✓ | ✓ | N/A |
-| `ref-self-async.rs` | X | X | α ⟶ β + γ |
-| `ref-mut-self-async.rs` | X | X | α ⟶ β + γ |
-| `ref-struct-async.rs` | X | X | α ⟶ β + γ |
-| `ref-mut-struct-async.rs` | X | X | α ⟶ β + γ |
-| `ref-alias-async.rs` | X | X | ✓ ⟶ β + γ |
-| `ref-assoc-async.rs` | X | X | ✓ ⟶ β + γ |
-| `ref-mut-alias-async.rs` | X | X | ✓ ⟶ β + γ |
+| `ref-self-async.rs` | X | ✓ | N/A |
+| `ref-mut-self-async.rs` | X | ✓ | N/A |
+| `ref-struct-async.rs` | X | ✓ | N/A |
+| `ref-mut-struct-async.rs` | X | ✓ | N/A |
+| `ref-alias-async.rs` | ✓ | ✓ | N/A |
+| `ref-assoc-async.rs` | ✓ | ✓ | N/A |
+| `ref-mut-alias-async.rs` | ✓ | ✓ | N/A |
 | `lt-self-async.rs` | ✓ | ✓ | N/A
 | `lt-struct-async.rs` | ✓ | ✓ | N/A
 | `lt-alias-async.rs` | ✓ | ✓ | N/A
 | `lt-assoc-async.rs` | ✓ | ✓ | N/A
-| `lt-ref-self-async.rs` | X | X | α ⟶ β + γ
+| `lt-ref-self-async.rs` | X | ✓ | N/A |

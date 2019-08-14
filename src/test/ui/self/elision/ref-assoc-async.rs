@@ -1,4 +1,5 @@
 // edition:2018
+// check-pass
 
 #![feature(async_await)]
 
@@ -19,32 +20,22 @@ impl Trait for Struct {
 
 impl Struct {
     async fn ref_AssocType(self: &<Struct as Trait>::AssocType, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 
     async fn box_ref_AssocType(self: Box<&<Struct as Trait>::AssocType>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 
     async fn pin_ref_AssocType(self: Pin<&<Struct as Trait>::AssocType>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 
     async fn box_box_ref_AssocType(self: Box<Box<&<Struct as Trait>::AssocType>>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 
     async fn box_pin_ref_AssocType(self: Box<Pin<&<Struct as Trait>::AssocType>>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 }
