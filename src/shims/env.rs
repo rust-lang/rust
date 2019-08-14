@@ -52,34 +52,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn getenv(
         &mut self,
         name_op: OpTy<'tcx, Tag>,
-        dest: PlaceTy<'tcx, Tag>
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
 
-        let result = {
-            let name_ptr = this.read_scalar(name_op)?.not_undef()?;
-            let name = this.memory().read_c_str(name_ptr)?;
-            match this.machine.env_vars.map.get(name) {
-                Some(&var) => Scalar::Ptr(var),
-                None => Scalar::ptr_null(&*this.tcx),
-            }
-        };
-        this.write_scalar(result, dest)?;
-        Ok(())
+        let name_ptr = this.read_scalar(name_op)?.not_undef()?;
+        let name = this.memory().read_c_str(name_ptr)?;
+        Ok(match this.machine.env_vars.map.get(name) {
+            Some(&var) => Scalar::Ptr(var),
+            None => Scalar::ptr_null(&*this.tcx),
+        })
     }
 
     fn setenv(
         &mut self,
         name_op: OpTy<'tcx, Tag>,
         value_op: OpTy<'tcx, Tag>,
-        dest: PlaceTy<'tcx, Tag>
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let mut new = None;
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let value_ptr = this.read_scalar(value_op)?.not_undef()?;
         let value = this.memory().read_c_str(value_ptr)?;
+        let mut new = None;
         if !this.is_null(name_ptr)? {
             let name = this.memory().read_c_str(name_ptr)?;
             if !name.is_empty() && !name.contains(&b'=') {
@@ -91,22 +85,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), value_copy) {
                 this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
-            this.write_null(dest)?;
+            Ok(0)
         } else {
-            this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
+            Ok(-1)
         }
-        Ok(())
     }
 
     fn unsetenv(
         &mut self,
         name_op: OpTy<'tcx, Tag>,
-        dest: PlaceTy<'tcx, Tag>
-    ) -> InterpResult<'tcx> {
+    ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let mut success = None;
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
+        let mut success = None;
         if !this.is_null(name_ptr)? {
             let name = this.memory().read_c_str(name_ptr)?.to_owned();
             if !name.is_empty() && !name.contains(&b'=') {
@@ -117,10 +109,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             if let Some(var) = old {
                 this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
-            this.write_null(dest)?;
+            Ok(0)
         } else {
-            this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
+            Ok(-1)
         }
-        Ok(())
     }
 }
