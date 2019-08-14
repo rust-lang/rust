@@ -1572,13 +1572,13 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
 }
 
 pub struct QualifyAndPromoteConstants<'tcx> {
-    pub promoted: Cell<Option<IndexVec<Promoted, Body<'tcx>>>>,
+    pub promoted: Cell<IndexVec<Promoted, Body<'tcx>>>,
 }
 
 impl<'tcx> Default for QualifyAndPromoteConstants<'tcx> {
     fn default() -> Self {
         QualifyAndPromoteConstants {
-            promoted: Cell::new(None),
+            promoted: Cell::new(IndexVec::new()),
         }
     }
 }
@@ -1661,7 +1661,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
 
             // Do the actual promotion, now that we know what's viable.
             self.promoted.set(
-                Some(promote_consts::promote_candidates(def_id, body, tcx, temps, candidates))
+                promote_consts::promote_candidates(def_id, body, tcx, temps, candidates)
             );
         } else {
             if !body.control_flow_destroyed.is_empty() {

@@ -218,8 +218,7 @@ fn mir_validated(
         &qualify_and_promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
-    let promoted =
-        qualify_and_promote_pass.promoted.into_inner().unwrap_or_else(|| IndexVec::new());
+    let promoted = qualify_and_promote_pass.promoted.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
