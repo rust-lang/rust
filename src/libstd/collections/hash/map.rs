@@ -2447,13 +2447,15 @@ impl RandomState {
         // every corresponding HashMap a different iteration order.
         thread_local!(static KEYS: Cell<[u64; 2]> = {
             let mut buf = [0u8; 16];
-            // In case of `Error::UNAVAILABLE` we use a constant value
-            // for the following whitelisted targets
-            let whitelisted = cfg!(target="wasm32-unknown-unknown");
-            match getrandom::getrandom(&mut buf) {
-                Ok(()) => {}
-                Err(Error::UNAVAILABLE) if whitelisted => {}
-                Err(err) => panic!("getrandom failure: {:?}", err)
+            // Use a constant seed on wasm32-unknown-unknown.
+            // `cfg(target = "..")` does not work right now, see:
+            // https://github.com/rust-lang/rust/issues/63217
+            if cfg!(not(all(
+                target_arch = "wasm32",
+                target_vendor = "unknown",
+                target_os = "unknown",
+            ))) {
+                getrandom::getrandom(&mut buf).unwrap();
             }
             let n = u128::from_ne_bytes(buf);
             Cell::new([n as u64, (n >> 64) as u64])
