@@ -20,7 +20,7 @@ pub fn expand_assert<'cx>(
         Ok(assert) => assert,
         Err(mut err) => {
             err.emit();
-            return DummyResult::expr(sp);
+            return DummyResult::any(sp);
         }
     };
 
