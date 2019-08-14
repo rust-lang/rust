@@ -3600,30 +3600,6 @@ mod branching_with_never_tests {
     use test_utils::covers;
 
     #[test]
-    fn match_complex_arm_ty() {
-        covers!(match_complex_arm_ty);
-        let t = type_at(
-            r#"
-//- /main.rs
-enum Option<T> {
-    Some(T),
-    None
-}
-
-fn test(a: i32) {
-    let i = match a {
-        2 => Option::Some(2.0),
-        _ => loop {},
-    };
-    i<|>
-    ()
-}
-"#,
-        );
-        assert_eq!(t, "Option<f64>");
-    }
-
-    #[test]
     fn match_first_arm_never() {
         covers!(match_first_arm_never);
         let t = type_at(

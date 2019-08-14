@@ -11,7 +11,6 @@ test_utils::marks!(
     match_ergonomics_ref
     trait_resolution_on_fn_type
     infer_while_let
-    match_complex_arm_ty
     match_first_arm_never
     match_second_arm_never
     match_all_arms_never

@@ -1121,7 +1121,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     match_ty.clone()
                 } else {
                     tested_by!(match_no_never_arms);
-                    tested_by!(match_complex_arm_ty);
                     expected.ty
                 }
             }
