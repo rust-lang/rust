@@ -111,7 +111,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::To
                           -> Box<dyn base::MacResult+'static> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include_str!") {
         Some(f) => f,
-        None => return DummyResult::expr(sp)
+        None => return DummyResult::any(sp)
     };
     let file = cx.resolve_path(file, sp);
     match fs::read_to_string(&file) {
@@ -126,11 +126,11 @@ pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::To
         },
         Err(ref e) if e.kind() == ErrorKind::InvalidData => {
             cx.span_err(sp, &format!("{} wasn't a utf-8 file", file.display()));
-            DummyResult::expr(sp)
+            DummyResult::any(sp)
         }
         Err(e) => {
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
-            DummyResult::expr(sp)
+            DummyResult::any(sp)
         }
     }
 }
@@ -139,7 +139,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::
                             -> Box<dyn base::MacResult+'static> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include_bytes!") {
         Some(f) => f,
-        None => return DummyResult::expr(sp)
+        None => return DummyResult::any(sp)
     };
     let file = cx.resolve_path(file, sp);
     match fs::read(&file) {
@@ -158,7 +158,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::
         },
         Err(e) => {
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));
-            DummyResult::expr(sp)
+            DummyResult::any(sp)
         }
     }
 }
