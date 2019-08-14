@@ -19,9 +19,9 @@ Current stable, released 2019-08-15
 [082cfa7...e3cb40e](https://github.com/rust-lang/rust-clippy/compare/082cfa7...e3cb40e)
 
 * New Lints:
-  * `checked_conversions` [#4088](https://github.com/rust-lang/rust-clippy/pull/4088)
-  * `get_last_with_len` [#3832](https://github.com/rust-lang/rust-clippy/pull/3832)
-  * `integer_division` [#4195](https://github.com/rust-lang/rust-clippy/pull/4195)
+  * [`checked_conversions`] [#4088](https://github.com/rust-lang/rust-clippy/pull/4088)
+  * [`get_last_with_len`] [#3832](https://github.com/rust-lang/rust-clippy/pull/3832)
+  * [`integer_division`] [#4195](https://github.com/rust-lang/rust-clippy/pull/4195)
 * Renamed Lint: `const_static_lifetime` is now called [`redundant_static_lifetimes`].
   The lint now covers statics in addition to consts [#4162](https://github.com/rust-lang/rust-clippy/pull/4162)
 * [`match_same_arms`] now warns for all identical arms, instead of only the first one [#4102](https://github.com/rust-lang/rust-clippy/pull/4102)
@@ -30,7 +30,7 @@ Current stable, released 2019-08-15
 * Fix false positive in [`useless_attribute`] [#4107](https://github.com/rust-lang/rust-clippy/pull/4107)
 * Fix incorrect suggestion for [`float_cmp`] [#4214](https://github.com/rust-lang/rust-clippy/pull/4214)
 * Add suggestions for [`print_with_newline`] and [`write_with_newline`] [#4136](https://github.com/rust-lang/rust-clippy/pull/4136)
-* Improve suggestions for [`map_or_else`] [#4164](https://github.com/rust-lang/rust-clippy/pull/4164)
+* Improve suggestions for [`option_map_unwrap_or_else`] and [`result_map_unwrap_or_else`] [#4164](https://github.com/rust-lang/rust-clippy/pull/4164)
 * Improve suggestions for [`non_ascii_literal`] [#4119](https://github.com/rust-lang/rust-clippy/pull/4119)
 * Improve diagnostics for [`let_and_return`] [#4137](https://github.com/rust-lang/rust-clippy/pull/4137)
 * Improve diagnostics for [`trivially_copy_pass_by_ref`] [#4071](https://github.com/rust-lang/rust-clippy/pull/4071)
