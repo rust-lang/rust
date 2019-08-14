@@ -246,7 +246,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(None);
         }
 
-        let ptr = match self.check_mplace_access(mplace, None)? {
+        let ptr = match self.check_mplace_access(mplace, None)
+            .expect("places should be checked on creation")
+        {
             Some(ptr) => ptr,
             None => return Ok(Some(ImmTy { // zero-sized type
                 imm: Scalar::zst().into(),
