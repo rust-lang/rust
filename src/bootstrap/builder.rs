@@ -754,76 +754,20 @@ impl<'a> Builder<'a> {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
 
-        // command specific path, we call clear_if_dirty with this
-        let mut my_out = match cmd {
-            "build" => self.cargo_out(compiler, mode, target),
-
-            // This is the intended out directory for crate documentation.
-            "doc" | "rustdoc" =>  self.crate_doc_out(target),
-
-            _ => self.stage_out(compiler, mode),
-        };
-
-        // This is for the original compiler, but if we're forced to use stage 1, then
-        // std/test/rustc stamps won't exist in stage 2, so we need to get those from stage 1, since
-        // we copy the libs forward.
-        let cmp = self.compiler_for(compiler.stage, compiler.host, target);
-
-        let libstd_stamp = match cmd {
-            "check" | "clippy" | "fix" => check::libstd_stamp(self, cmp, target),
-            _ => compile::libstd_stamp(self, cmp, target),
-        };
-
-        let libtest_stamp = match cmd {
-            "check" | "clippy" | "fix" => check::libtest_stamp(self, cmp, target),
-            _ => compile::libtest_stamp(self, cmp, target),
-        };
-
-        let librustc_stamp = match cmd {
-            "check" | "clippy" | "fix" => check::librustc_stamp(self, cmp, target),
-            _ => compile::librustc_stamp(self, cmp, target),
-        };
+        // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
+        // so we need to explicitly clear out if they've been updated.
+        for backend in self.codegen_backends(compiler) {
+            self.clear_if_dirty(&out_dir, &backend);
+        }
 
         if cmd == "doc" || cmd == "rustdoc" {
-            if mode == Mode::Rustc || mode == Mode::ToolRustc || mode == Mode::Codegen {
+            let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
-                my_out = self.compiler_doc_out(target);
-            }
+                Mode::Rustc | Mode::ToolRustc | Mode::Codegen => self.compiler_doc_out(target),
+                _ => self.crate_doc_out(target),
+            };
             let rustdoc = self.rustdoc(compiler);
             self.clear_if_dirty(&my_out, &rustdoc);
-        } else if cmd != "test" {
-            match mode {
-                Mode::Std => {
-                    self.clear_if_dirty(&my_out, &self.rustc(compiler));
-                    for backend in self.codegen_backends(compiler) {
-                        self.clear_if_dirty(&my_out, &backend);
-                    }
-                },
-                Mode::Test => {
-                    self.clear_if_dirty(&my_out, &libstd_stamp);
-                },
-                Mode::Rustc => {
-                    self.clear_if_dirty(&my_out, &self.rustc(compiler));
-                    self.clear_if_dirty(&my_out, &libstd_stamp);
-                    self.clear_if_dirty(&my_out, &libtest_stamp);
-                },
-                Mode::Codegen => {
-                    self.clear_if_dirty(&my_out, &librustc_stamp);
-                },
-                Mode::ToolBootstrap => { },
-                Mode::ToolStd => {
-                    self.clear_if_dirty(&my_out, &libstd_stamp);
-                },
-                Mode::ToolTest => {
-                    self.clear_if_dirty(&my_out, &libstd_stamp);
-                    self.clear_if_dirty(&my_out, &libtest_stamp);
-                },
-                Mode::ToolRustc => {
-                    self.clear_if_dirty(&my_out, &libstd_stamp);
-                    self.clear_if_dirty(&my_out, &libtest_stamp);
-                    self.clear_if_dirty(&my_out, &librustc_stamp);
-                },
-            }
         }
 
         cargo
@@ -860,6 +804,19 @@ impl<'a> Builder<'a> {
                 }
             },
         }
+
+        // This tells Cargo (and in turn, rustc) to output more complete
+        // dependency information.  Most importantly for rustbuild, this
+        // includes sysroot artifacts, like libstd, which means that we don't
+        // need to track those in rustbuild (an error prone process!). This
+        // feature is currently unstable as there may be some bugs and such, but
+        // it represents a big improvement in rustbuild's reliability on
+        // rebuilds, so we're using it here.
+        //
+        // For some additional context, see #63470 (the PR originally adding
+        // this), as well as #63012 which is the tracking issue for this
+        // feature on the rustc side.
+        cargo.arg("-Zbinary-dep-depinfo");
 
         cargo.arg("-j").arg(self.jobs().to_string());
         // Remove make-related flags to ensure Cargo can correctly set things up
