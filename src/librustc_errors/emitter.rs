@@ -57,6 +57,80 @@ impl HumanReadableErrorType {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+struct Margin {
+    pub whitespace_left: usize,
+    pub span_left: usize,
+    pub span_right: usize,
+    pub line_len: usize,
+    pub computed_left: usize,
+    pub computed_right: usize,
+    pub column_width: usize,
+    pub label_right: usize,
+}
+
+impl Margin {
+    fn new(
+        whitespace_left: usize,
+        span_left: usize,
+        span_right: usize,
+        label_right: usize,
+    ) -> Self {
+        Margin {
+            whitespace_left,
+            span_left,
+            span_right,
+            line_len: 0,
+            computed_left: 0,
+            computed_right: 0,
+            column_width: 140,
+            label_right,
+        }
+    }
+
+    fn was_cut_left(&self) -> bool {
+        self.computed_left > 0
+    }
+
+    fn was_cut_right(&self) -> bool {
+        self.computed_right < self.line_len
+    }
+
+    fn compute(&mut self) {
+        self.computed_left = if self.whitespace_left > 20 {
+            self.whitespace_left - 16 // We want some padding.
+        } else {
+            0
+        };
+        self.computed_right = self.column_width + self.computed_left;
+
+        if self.computed_right - self.computed_left > self.column_width {
+            // Trimming only whitespace isn't enough, let's get craftier.
+            if self.label_right - self.whitespace_left <= self.column_width {
+                self.computed_left = self.whitespace_left;
+                self.computed_right = self.computed_left + self.column_width;
+            } else if self.label_right - self.span_left - 20 <= self.column_width {
+                self.computed_left = self.span_left - 20;
+                self.computed_right = self.computed_left + self.column_width;
+            } else if self.label_right - self.span_left <= self.column_width {
+                self.computed_left = self.span_left;
+                self.computed_right = self.computed_left + self.column_width;
+            } else if self.span_right - self.span_left <= self.column_width {
+                self.computed_left = self.span_left;
+                self.computed_right = self.computed_left + self.column_width;
+            } else { // mostly give up but still don't show the full line
+                self.computed_left = self.span_left;
+                self.computed_right = self.span_right;
+            }
+        }
+        self.computed_left = std::cmp::min(self.computed_left, self.line_len);
+        if self.computed_right > self.line_len {
+            self.computed_right = self.line_len;
+        }
+        self.computed_right = std::cmp::min(self.computed_right, self.line_len);
+    }
+}
+
 const ANONYMIZED_LINE_NUM: &str = "LL";
 
 /// Emitter trait for emitting errors.
@@ -179,7 +253,6 @@ pub struct EmitterWriter {
     sm: Option<Lrc<SourceMapperDyn>>,
     short_message: bool,
     teach: bool,
-    strip_margin: bool,
     ui_testing: bool,
 }
 
@@ -202,7 +275,6 @@ impl EmitterWriter {
             sm: source_map,
             short_message,
             teach,
-            strip_margin: false,
             ui_testing: false,
         }
     }
@@ -219,7 +291,6 @@ impl EmitterWriter {
             sm: source_map,
             short_message,
             teach,
-            strip_margin: false,
             ui_testing: false,
         }
     }
@@ -244,8 +315,7 @@ impl EmitterWriter {
         line: &Line,
         width_offset: usize,
         code_offset: usize,
-        margin: usize,
-        right_span_margin: usize
+        mut margin: Margin,
     ) -> Vec<(usize, Style)> {
         // Draw:
         //
@@ -260,6 +330,7 @@ impl EmitterWriter {
         //   |  | when there's too much wasted space to the left, we trim it to focus where it matters
         //   |  vertical divider between the column number and the code
         //   column number
+
         if line.line_index == 0 {
             return Vec::new();
         }
@@ -271,26 +342,27 @@ impl EmitterWriter {
 
         let line_offset = buffer.num_lines();
 
-        let left_margin = std::cmp::min(margin, source_string.len());
-        let right_margin = if source_string.len() > right_span_margin + 120 {
-            right_span_margin + 120
-        } else {
-            source_string.len()
-        };
+        margin.line_len = source_string.len();
+        margin.compute();
         // Create the source line we will highlight.
         buffer.puts(
             line_offset,
             code_offset,
-            &source_string[left_margin..right_margin], // On long lines, we strip the source line
+            // On long lines, we strip the source line
+            &source_string[margin.computed_left..margin.computed_right],
             Style::Quotation,
         );
-        if margin > 0 { // We have stripped some code/whitespace from the beginning, make it clear.
+        if margin.was_cut_left() { // We have stripped some code/whitespace from the beginning, make it clear.
             buffer.puts(line_offset, code_offset, "...", Style::LineNumber);
         }
-        if right_margin != source_string.len() {
+        if margin.was_cut_right() {
             // We have stripped some code after the right-most span end, make it clear we did so.
-            let offset = code_offset + right_margin - left_margin;
-            buffer.puts(line_offset, offset, "...", Style::LineNumber);
+            buffer.puts(
+                line_offset,
+                margin.computed_right - margin.computed_left + code_offset,
+                "...",
+                Style::LineNumber,
+            );
         }
         buffer.puts(line_offset, 0, &self.maybe_anonymized(line.line_index), Style::LineNumber);
 
@@ -546,13 +618,13 @@ impl EmitterWriter {
                                '_',
                                line_offset + pos,
                                width_offset + depth,
-                               code_offset + annotation.start_col - margin,
+                               code_offset + annotation.start_col - margin.computed_left,
                                style);
                 }
                 _ if self.teach => {
                     buffer.set_style_range(line_offset,
-                                           code_offset + annotation.start_col - margin,
-                                           code_offset + annotation.end_col - margin,
+                                           code_offset + annotation.start_col - margin.computed_left,
+                                           code_offset + annotation.end_col - margin.computed_left,
                                            style,
                                            annotation.is_primary);
                 }
@@ -582,7 +654,7 @@ impl EmitterWriter {
             if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
                 for p in line_offset + 1..=line_offset + pos {
                     buffer.putc(p,
-                                code_offset + annotation.start_col - margin,
+                                code_offset + annotation.start_col - margin.computed_left,
                                 '|',
                                 style);
                 }
@@ -626,9 +698,9 @@ impl EmitterWriter {
                 Style::LabelSecondary
             };
             let (pos, col) = if pos == 0 {
-                (pos + 1, annotation.end_col + 1 - margin)
+                (pos + 1, annotation.end_col + 1 - margin.computed_left)
             } else {
-                (pos + 2, annotation.start_col - margin)
+                (pos + 2, annotation.start_col - margin.computed_left)
             };
             if let Some(ref label) = annotation.label {
                 buffer.puts(line_offset + pos,
@@ -670,7 +742,7 @@ impl EmitterWriter {
             };
             for p in annotation.start_col..annotation.end_col {
                 buffer.putc(line_offset + 1,
-                            code_offset + p - margin,
+                            code_offset + p - margin.computed_left,
                             underline,
                             style);
             }
@@ -1010,22 +1082,30 @@ impl EmitterWriter {
                     let buffer_msg_line_offset = buffer.num_lines();
 
                     buffer.prepend(buffer_msg_line_offset, "--> ", Style::LineNumber);
-                    buffer.append(buffer_msg_line_offset,
-                                  &format!("{}:{}:{}",
-                                           loc.file.name,
-                                           sm.doctest_offset_line(&loc.file.name, loc.line),
-                                           loc.col.0 + 1),
-                                  Style::LineAndColumn);
+                    buffer.append(
+                        buffer_msg_line_offset,
+                        &format!(
+                            "{}:{}:{}",
+                            loc.file.name,
+                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            loc.col.0 + 1,
+                        ),
+                        Style::LineAndColumn,
+                    );
                     for _ in 0..max_line_num_len {
                         buffer.prepend(buffer_msg_line_offset, " ", Style::NoStyle);
                     }
                 } else {
-                    buffer.prepend(0,
-                                   &format!("{}:{}:{}: ",
-                                            loc.file.name,
-                                            sm.doctest_offset_line(&loc.file.name, loc.line),
-                                            loc.col.0 + 1),
-                                   Style::LineAndColumn);
+                    buffer.prepend(
+                        0,
+                        &format!(
+                            "{}:{}:{}: ",
+                            loc.file.name,
+                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            loc.col.0 + 1,
+                        ),
+                        Style::LineAndColumn,
+                    );
                 }
             } else if !self.short_message {
                 // remember where we are in the output buffer for easy reference
@@ -1069,7 +1149,7 @@ impl EmitterWriter {
                 let mut multilines = FxHashMap::default();
 
                 // Get the left-side margin to remove it
-                let mut margin = std::usize::MAX;
+                let mut whitespace_margin = std::usize::MAX;
                 for line_idx in 0..annotated_file.lines.len() {
                     let file = annotated_file.file.clone();
                     let line = &annotated_file.lines[line_idx];
@@ -1079,14 +1159,15 @@ impl EmitterWriter {
                             .take_while(|c| c.is_whitespace())
                             .count();
                         if source_string.chars().any(|c| !c.is_whitespace()) {
-                            margin = std::cmp::min(margin, leading_whitespace);
+                            whitespace_margin = std::cmp::min(
+                                whitespace_margin,
+                                leading_whitespace,
+                            );
                         }
                     }
                 }
-                if margin >= 20 { // On errors with generous margins, trim it
-                    margin = margin - 16; // Keep at least 4 spaces margin
-                } else if margin == std::usize::MAX || !self.strip_margin {
-                    margin = 0;
+                if whitespace_margin == std::usize::MAX {
+                    whitespace_margin = 0;
                 }
 
                 // Left-most column any visible span points at.
@@ -1100,18 +1181,27 @@ impl EmitterWriter {
                 if span_left_margin == std::usize::MAX {
                     span_left_margin = 0;
                 }
-                if span_left_margin > 160 {
-                    margin = std::cmp::max(margin, span_left_margin - 100);
-                }
 
                 // Right-most column any visible span points at.
                 let mut span_right_margin = 0;
+                let mut label_right_margin = 0;
                 for line in &annotated_file.lines {
                     for ann in &line.annotations {
                         span_right_margin = std::cmp::max(span_right_margin, ann.start_col);
                         span_right_margin = std::cmp::max(span_right_margin, ann.end_col);
+                        label_right_margin = std::cmp::max(
+                            label_right_margin,
+                            // TODO: account for labels not in the same line
+                            ann.end_col + ann.label.as_ref().map(|l| l.len() + 1).unwrap_or(0),
+                        );
                     }
                 }
+                let margin = Margin::new(
+                    whitespace_margin,
+                    span_left_margin,
+                    span_right_margin,
+                    label_right_margin,
+                );
 
                 // Next, output the annotate source for this file
                 for line_idx in 0..annotated_file.lines.len() {
@@ -1131,7 +1221,6 @@ impl EmitterWriter {
                         width_offset,
                         code_offset,
                         margin,
-                        span_right_margin,
                     );
 
                     let mut to_add = FxHashMap::default();
@@ -1179,24 +1268,29 @@ impl EmitterWriter {
 
                             let last_buffer_line_num = buffer.num_lines();
 
-                            buffer.puts(last_buffer_line_num,
-                                        0,
-                                        &self.maybe_anonymized(annotated_file.lines[line_idx + 1]
-                                                                             .line_index - 1),
-                                        Style::LineNumber);
-                            draw_col_separator(&mut buffer,
-                                               last_buffer_line_num,
-                                               1 + max_line_num_len);
-                            let left_margin = std::cmp::min(margin, unannotated_line.len());
-                            let right_margin = if unannotated_line.len() > span_right_margin + 120 {
-                                span_right_margin + 120
-                            } else {
-                                unannotated_line.len()
-                            };
-                            buffer.puts(last_buffer_line_num,
-                                        code_offset,
-                                        &unannotated_line[left_margin..right_margin],
-                                        Style::Quotation);
+                            buffer.puts(
+                                last_buffer_line_num,
+                                0,
+                                &self.maybe_anonymized(
+                                    annotated_file.lines[line_idx + 1].line_index - 1,
+                                ),
+                                Style::LineNumber,
+                            );
+                            draw_col_separator(
+                                &mut buffer,
+                                last_buffer_line_num,
+                                1 + max_line_num_len,
+                            );
+
+                            let mut margin = margin;
+                            margin.line_len = unannotated_line.len();
+                            margin.compute();
+                            buffer.puts(
+                                last_buffer_line_num,
+                                code_offset,
+                                &unannotated_line[margin.computed_left..margin.computed_right],
+                                Style::Quotation,
+                            );
 
                             for (depth, style) in &multilines {
                                 draw_multiline_line(&mut buffer,

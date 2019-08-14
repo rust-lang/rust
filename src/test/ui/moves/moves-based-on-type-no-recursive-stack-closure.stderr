@@ -1,11 +1,11 @@
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
   --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:20:27
    |
-LL | ...             (f.c)(f, true);
-   |                 ----- ^ second mutable borrow occurs here
-   |                 |
-   |                 first mutable borrow occurs here
-   |                 first borrow later used by call
+LL |                     (f.c)(f, true);
+   |                     ----- ^ second mutable borrow occurs here
+   |                     |
+   |                     first mutable borrow occurs here
+   |                     first borrow later used by call
 
 error[E0382]: borrow of moved value: `f`
   --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:32:5
