@@ -272,12 +272,11 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        self.sanitize_constant(constant, location);
-        self.sanitize_type(constant, constant.ty);
+        self.sanitize_type(constant, constant.literal.ty);
 
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
-                constant.ty,
+                constant.literal.ty,
                 ty::Variance::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![], },
                 location.to_locations(),
@@ -289,7 +288,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     constant,
                     "bad constant user type {:?} vs {:?}: {:?}",
                     annotation,
-                    constant.ty,
+                    constant.literal.ty,
                     terr,
                 );
             }
@@ -299,7 +298,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     location.to_locations(),
                     ConstraintCategory::Boring,
                     self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        constant.ty, def_id, UserSubsts { substs, user_self_ty: None },
+                        constant.literal.ty, def_id, UserSubsts { substs, user_self_ty: None },
                     )),
                 ) {
                     span_mirbug!(
@@ -400,41 +399,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
         } else {
             ty
-        }
-    }
-
-    /// Checks that the constant's `ty` field matches up with what would be
-    /// expected from its literal. Unevaluated constants and well-formed
-    /// constraints are checked by `visit_constant`.
-    fn sanitize_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
-        debug!(
-            "sanitize_constant(constant={:?}, location={:?})",
-            constant, location
-        );
-
-        let literal = constant.literal;
-
-        if let ConstValue::Unevaluated(..) = literal.val {
-            return;
-        }
-
-        debug!("sanitize_constant: expected_ty={:?}", literal.ty);
-
-        if let Err(terr) = self.cx.eq_types(
-            literal.ty,
-            constant.ty,
-            location.to_locations(),
-            ConstraintCategory::Boring,
-        ) {
-            span_mirbug!(
-                self,
-                constant,
-                "constant {:?} should have type {:?} but has {:?} ({:?})",
-                constant,
-                literal.ty,
-                constant.ty,
-                terr,
-            );
         }
     }
 
