@@ -167,7 +167,22 @@ impl<'a> Parser<'a> {
                     if self.token == token::Semi {
                         unused_attrs(&attrs, self);
                         self.bump();
-                        return Ok(None);
+                        let mut last_semi = lo;
+                        while self.token == token::Semi {
+                            last_semi = self.token.span;
+                            self.bump();
+                        }
+                        // We are encoding a string of semicolons as an
+                        // an empty tuple that spans the excess semicolons
+                        // to preserve this info until the lint stage
+                        return Ok(Some(Stmt {
+                            id: ast::DUMMY_NODE_ID,
+                            span: lo.to(last_semi),
+                            node: StmtKind::Semi(self.mk_expr(lo.to(last_semi),
+                                ExprKind::Tup(Vec::new()),
+                                ThinVec::new()
+                            )),
+                        }));
                     }
 
                     if self.token == token::CloseDelim(token::Brace) {
