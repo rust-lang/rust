@@ -10,6 +10,7 @@ because that's clearly a non-descriptive name.
 * [Setup](#Setup)
 * [Testing](#Testing)
 * [Rustfix tests](#Rustfix-tests)
+* [Edition 2018 tests](#Edition-2018-tests)
 * [Lint declaration](#Lint-declaration)
 * [Lint passes](#Lint-passes)
 * [Emitting a lint](#Emitting-a-lint)
@@ -100,6 +101,12 @@ Use `tests/ui/update-all-references.sh` to automatically generate the
 `.fixed` file after running the tests.
 
 With tests in place, let's have a look at implementing our lint now.
+
+### Edition 2018 tests
+
+Some features require the 2018 edition to work (e.g. `async_await`), but
+compile-test tests run on the 2015 edition by default. To change this behavior
+add `// compile-flags: --edition 2018` at the top of the test file.
 
 ### Testing manually
 
