@@ -1043,7 +1043,6 @@ fn generic_simd_intrinsic(
     // elements in the vector.
     fn simd_ty_and_len(bx: &Builder<'a, 'll, 'tcx>, x: Ty<'tcx>) -> (Ty<'tcx>, usize) {
         let ty = if let ty::Adt(def, substs) = x.sty {
-            assert!(def.repr.simd());
             let field0_ty = def.non_enum_variant().fields[0].ty(bx.tcx(), substs);
             if let ty::Array(element_ty, _) = field0_ty.sty {
                 element_ty
