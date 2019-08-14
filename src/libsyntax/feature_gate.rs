@@ -2088,11 +2088,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "type ascription is experimental");
                 }
             }
-            ast::ExprKind::Yield(..) => {
-                gate_feature_post!(&self, generators,
-                                  e.span,
-                                  "yield syntax is experimental");
-            }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
@@ -2462,6 +2457,13 @@ pub fn check_crate(krate: &ast::Crate,
         async_closure,
         *span,
         "async closures are unstable"
+    ));
+
+    for_each_in_lock(&sess.yield_spans, |span| gate_feature!(
+        &ctx,
+        generators,
+        *span,
+        "yield syntax is experimental"
     ));
 
     let visitor = &mut PostExpansionVisitor {
