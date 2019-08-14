@@ -1,0 +1,24 @@
+error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
+  --> $DIR/issue-63388-1.rs:14:10
+   |
+LL |     ) -> &dyn Foo
+   |          ^^^^^^^^
+   |
+   = note: hidden type `impl std::future::Future` captures lifetime '_#27r
+
+error: lifetime may not live long enough
+  --> $DIR/issue-63388-1.rs:15:5
+   |
+LL |       async fn do_sth<'a>(
+   |                       -- lifetime `'a` defined here
+LL |           &'a self, foo: &dyn Foo
+   |                          - lifetime `'_` defined here
+LL |       ) -> &dyn Foo
+LL | /     {
+LL | |         foo
+LL | |     }
+   | |_____^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'_`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0700`.

@@ -1,4 +1,5 @@
 // edition:2018
+// check-pass
 
 #![feature(async_await)]
 
@@ -18,32 +19,22 @@ impl Struct {
     // feels like a bug.
 
     async fn ref_Alias(self: &Alias, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 
     async fn box_ref_Alias(self: Box<&Alias>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 
     async fn pin_ref_Alias(self: Pin<&Alias>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 
     async fn box_box_ref_Alias(self: Box<Box<&Alias>>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 
     async fn box_pin_ref_Alias(self: Box<Pin<&Alias>>, f: &u32) -> &u32 {
-        //~^ ERROR missing lifetime specifier
-        //~| ERROR cannot infer an appropriate lifetime
         f
     }
 }
