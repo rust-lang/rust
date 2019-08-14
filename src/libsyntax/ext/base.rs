@@ -1,6 +1,6 @@
 use crate::ast::{self, Attribute, Name, PatKind};
 use crate::attr::{HasAttrs, Stability, Deprecation};
-use crate::source_map::{SourceMap, Spanned, respan};
+use crate::source_map::SourceMap;
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
 use crate::ext::hygiene::{ExpnId, SyntaxContext, Transparency};
@@ -916,7 +916,7 @@ pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     mut expr: P<ast::Expr>,
     err_msg: &str,
-) -> Result<Spanned<(Symbol, ast::StrStyle)>, Option<DiagnosticBuilder<'a>>> {
+) -> Result<(Symbol, ast::StrStyle, Span), Option<DiagnosticBuilder<'a>>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     expr.span = expr.span.apply_mark(cx.current_expansion.id);
 
@@ -926,7 +926,7 @@ pub fn expr_to_spanned_string<'a>(
 
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
-            ast::LitKind::Str(s, style) => return Ok(respan(expr.span, (s, style))),
+            ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::Err(_) => None,
             _ => Some(cx.struct_span_err(l.span, err_msg))
         },
@@ -940,7 +940,7 @@ pub fn expr_to_string(cx: &mut ExtCtxt<'_>, expr: P<ast::Expr>, err_msg: &str)
     expr_to_spanned_string(cx, expr, err_msg)
         .map_err(|err| err.map(|mut err| err.emit()))
         .ok()
-        .map(|s| s.node)
+        .map(|(symbol, style, _)| (symbol, style))
 }
 
 /// Non-fatally assert that `tts` is empty. Note that this function

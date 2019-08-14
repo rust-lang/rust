@@ -1,7 +1,7 @@
 use crate::ast::{self, Block, Ident, LitKind, NodeId, PatKind, Path};
 use crate::ast::{MacStmtStyle, StmtKind, ItemKind};
 use crate::attr::{self, HasAttrs};
-use crate::source_map::{dummy_spanned, respan};
+use crate::source_map::respan;
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
 use crate::ext::proc_macro::collect_derives;
@@ -1251,13 +1251,15 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                                 ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
                                         Ident::with_empty_ctxt(sym::file),
-                                        dummy_spanned(file),
+                                        file,
+                                        DUMMY_SP,
                                     ),
                                 ),
                                 ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
                                         Ident::with_empty_ctxt(sym::contents),
-                                        dummy_spanned(src_interned),
+                                        src_interned,
+                                        DUMMY_SP,
                                     ),
                                 ),
                             ];

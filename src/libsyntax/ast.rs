@@ -939,8 +939,6 @@ pub struct Field {
     pub id: NodeId,
 }
 
-pub type SpannedIdent = Spanned<Ident>;
-
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BlockCheckMode {
     Default,
