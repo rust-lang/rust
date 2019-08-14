@@ -143,11 +143,13 @@ impl Margin {
                 self.computed_right = self.computed_left + self.column_width;
             } else if self.label_right - self.span_left <= self.column_width {
                 // Attempt to fit the code window considering only the spans and labels.
-                self.computed_left = self.span_left;
+                let padding_left = (self.column_width - (self.label_right - self.span_left)) / 2;
+                self.computed_left = self.span_left - padding_left;
                 self.computed_right = self.computed_left + self.column_width;
             } else if self.span_right - self.span_left <= self.column_width {
                 // Attempt to fit the code window considering the spans and labels plus padding.
-                self.computed_left = self.span_left;
+                let padding_left = (self.column_width - (self.span_right - self.span_left)) / 2;
+                self.computed_left = self.span_left - padding_left;
                 self.computed_right = self.computed_left + self.column_width;
             } else { // Mostly give up but still don't show the full line.
                 self.computed_left = self.span_left;
@@ -360,13 +362,11 @@ impl EmitterWriter {
     ) {
         let line_len = source_string.len();
         // Create the source line we will highlight.
-        buffer.puts(
-            line_offset,
-            code_offset,
-            // On long lines, we strip the source line
-            &source_string[margin.left(line_len)..margin.right(line_len)],
-            Style::Quotation,
-        );
+        let left = margin.left(line_len);
+        let right = margin.right(line_len);
+        // On long lines, we strip the source line, accounting for unicode.
+        let code: String = source_string.chars().skip(left).take(right - left).collect();
+        buffer.puts(line_offset, code_offset, &code, Style::Quotation);
         if margin.was_cut_left() {
             // We have stripped some code/whitespace from the beginning, make it clear.
             buffer.puts(line_offset, code_offset, "...", Style::LineNumber);
@@ -418,6 +418,8 @@ impl EmitterWriter {
         };
 
         let line_offset = buffer.num_lines();
+
+        let left = margin.left(source_string.len()); // Left trim
 
         self.draw_line(
             buffer,
@@ -680,15 +682,15 @@ impl EmitterWriter {
                         '_',
                         line_offset + pos,
                         width_offset + depth,
-                        code_offset + annotation.start_col - margin.computed_left,
+                        code_offset + annotation.start_col - left,
                         style,
                     );
                 }
                 _ if self.teach => {
                     buffer.set_style_range(
                         line_offset,
-                        code_offset + annotation.start_col - margin.computed_left,
-                        code_offset + annotation.end_col - margin.computed_left,
+                        code_offset + annotation.start_col - left,
+                        code_offset + annotation.end_col - left,
                         style,
                         annotation.is_primary,
                     );
@@ -763,15 +765,20 @@ impl EmitterWriter {
                 Style::LabelSecondary
             };
             let (pos, col) = if pos == 0 {
-                (pos + 1, annotation.end_col + 1 - margin.computed_left)
+                (pos + 1, if annotation.end_col + 1 > left {
+                    annotation.end_col + 1 - left
+                } else {
+                    0
+                })
             } else {
-                (pos + 2, annotation.start_col - margin.computed_left)
+                (pos + 2, if annotation.start_col > left {
+                    annotation.start_col - left
+                } else {
+                    0
+                })
             };
             if let Some(ref label) = annotation.label {
-                buffer.puts(line_offset + pos,
-                            code_offset + col,
-                            &label,
-                            style);
+                buffer.puts(line_offset + pos, code_offset + col, &label, style);
             }
         }
 
@@ -806,10 +813,16 @@ impl EmitterWriter {
                 ('-', Style::UnderlineSecondary)
             };
             for p in annotation.start_col..annotation.end_col {
-                buffer.putc(line_offset + 1,
-                            code_offset + p - margin.computed_left,
-                            underline,
-                            style);
+                buffer.putc(
+                    line_offset + 1,
+                    if code_offset + p > left {
+                        code_offset + p - left
+                    } else {
+                        0
+                    },
+                    underline,
+                    style,
+                );
             }
         }
         annotations_position.iter().filter_map(|&(_, annotation)| {
