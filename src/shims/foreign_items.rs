@@ -466,7 +466,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     }
                 }
                 if let Some((name, value)) = new {
-                    let value_copy = alloc_env_value(&value, this.memory_mut(), tcx);
+                    let value_copy = alloc_env_value(&value, this.memory_mut());
                     if let Some(var) = this.machine.env_vars.set(name.to_owned(), value_copy) {
                         this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
                     }

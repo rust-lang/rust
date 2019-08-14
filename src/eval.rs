@@ -39,8 +39,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         Evaluator::new(config.communicate),
         MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate),
     );
+
     // Complete initialization.
-    EnvVars::init(&mut ecx, &tcx, config.communicate);
+    EnvVars::init(&mut ecx, config.communicate);
+
     // Setup first stack-frame
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
     let main_mir = ecx.load_mir(main_instance.def)?;
