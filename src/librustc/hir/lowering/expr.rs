@@ -677,6 +677,7 @@ impl LoweringContext<'_> {
         let fn_decl = self.lower_fn_decl(decl, None, false, None);
 
         self.with_new_scopes(|this| {
+            let prev = this.current_item;
             this.current_item = Some(fn_decl_span);
             let mut generator_kind = None;
             let body_id = this.lower_fn_body(decl, |this| {
@@ -690,8 +691,10 @@ impl LoweringContext<'_> {
                 generator_kind,
                 movability,
             );
+            let capture_clause = this.lower_capture_clause(capture_clause);
+            this.current_item = prev;
             hir::ExprKind::Closure(
-                this.lower_capture_clause(capture_clause),
+                capture_clause,
                 fn_decl,
                 body_id,
                 fn_decl_span,
