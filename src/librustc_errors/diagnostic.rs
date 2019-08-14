@@ -94,7 +94,6 @@ impl Diagnostic {
         match self.level {
             Level::Bug |
             Level::Fatal |
-            Level::PhaseFatal |
             Level::Error |
             Level::FailureNote => {
                 true
