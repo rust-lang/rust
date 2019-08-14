@@ -25,11 +25,7 @@ profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.4.0", features = ['rustc-dep-of-std'] }
 
-[target.'cfg(not(all(
-    target_arch = "wasm32",
-    target_vendor = "unknown",
-    target_os = "unknown",
-)))'.dependencies]
+[target.'cfg(not(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown")))'.dependencies]
 getrandom = { version = "0.1.9", features = ['rustc-dep-of-std'] }
 
 [dependencies.backtrace]
