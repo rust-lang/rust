@@ -24,8 +24,8 @@ impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
         infcx: &'a InferCtxt<'a, 'tcx>,
         target_ty: Ty<'tcx>,
         hir_map: &'a hir::map::Map<'tcx>,
-    ) -> FindLocalByTypeVisitor<'a, 'tcx> {
-        FindLocalByTypeVisitor {
+    ) -> Self {
+        Self {
             infcx,
             target_ty,
             hir_map,
@@ -101,6 +101,50 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
     }
 }
 
+/// Suggest giving an appropriate return type to a closure expression.
+fn closure_return_type_suggestion(
+    span: Span,
+    err: &mut DiagnosticBuilder<'_>,
+    output: &FunctionRetTy,
+    body: &Body,
+    name: &str,
+    ret: &str,
+) {
+    let (arrow, post) = match output {
+        FunctionRetTy::DefaultReturn(_) => ("-> ", " "),
+        _ => ("", ""),
+    };
+    let suggestion = match body.value.node {
+        ExprKind::Block(..) => {
+            vec![(output.span(), format!("{}{}{}", arrow, ret, post))]
+        }
+        _ => {
+            vec![
+                (output.span(), format!("{}{}{}{{ ", arrow, ret, post)),
+                (body.value.span.shrink_to_hi(), " }".to_string()),
+            ]
+        }
+    };
+    err.multipart_suggestion(
+        "give this closure an explicit return type without `_` placeholders",
+        suggestion,
+        Applicability::HasPlaceholders,
+    );
+    err.span_label(span, InferCtxt::missing_type_msg(&name));
+}
+
+/// Given a closure signature, return a `String` containing a list of all its argument types.
+fn closure_args(fn_sig: &ty::PolyFnSig<'_>) -> String {
+    fn_sig.inputs()
+        .skip_binder()
+        .iter()
+        .next()
+        .map(|args| args.tuple_fields()
+            .map(|arg| arg.to_string())
+            .collect::<Vec<_>>().join(", "))
+        .unwrap_or_default()
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn extract_type_name(
         &self,
@@ -160,24 +204,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             span
         };
 
+        let is_named_and_not_impl_trait = |ty: Ty<'_>| {
+            &ty.to_string() != "_" &&
+                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
+                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings)
+        };
+
         let ty_msg = match local_visitor.found_ty {
             Some(ty::TyS { sty: ty::Closure(def_id, substs), .. }) => {
                 let fn_sig = substs.closure_sig(*def_id, self.tcx);
-                let args = fn_sig.inputs()
-                    .skip_binder()
-                    .iter()
-                    .next()
-                    .map(|args| args.tuple_fields()
-                        .map(|arg| arg.to_string())
-                        .collect::<Vec<_>>().join(", "))
-                    .unwrap_or_default();
+                let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
                 format!(" for the closure `fn({}) -> {}`", args, ret)
             }
-            Some(ty) if &ty.to_string() != "_" &&
-                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
-                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings) =>
-            {
+            Some(ty) if is_named_and_not_impl_trait(ty) => {
                 let ty = ty_to_string(ty);
                 format!(" for `{}`", ty)
             }
@@ -211,59 +251,33 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let ret = fn_sig.output().skip_binder().to_string();
 
                 if let Some(ExprKind::Closure(_, decl, body_id, ..)) = local_visitor.found_closure {
-                    let (arrow, post) = match decl.output {
-                        FunctionRetTy::DefaultReturn(_) => ("-> ", " "),
-                        _ => ("", ""),
-                    };
                     if let Some(body) = self.tcx.hir().krate().bodies.get(body_id) {
-                        let suggestion = match body.value.node {
-                            ExprKind::Block(..) => {
-                                vec![(decl.output.span(), format!("{}{}{}", arrow, ret, post))]
-                            }
-                            _ => {
-                                vec![
-                                    (decl.output.span(), format!("{}{}{}{{ ", arrow, ret, post)),
-                                    (body.value.span.shrink_to_hi(), " }".to_string()),
-                                ]
-                            }
-                        };
-                        err.multipart_suggestion(
-                            "give this closure an explicit return type without `_` placeholders",
-                            suggestion,
-                            Applicability::HasPlaceholders,
+                        closure_return_type_suggestion(
+                            span,
+                            &mut err,
+                            &decl.output,
+                            &body,
+                            &name,
+                            &ret,
                         );
-                        err.span_label(span, InferCtxt::missing_type_msg(&name));
+                        // We don't want to give the other suggestions when the problem is the
+                        // closure return type.
                         return err;
                     }
                 }
 
                 // This shouldn't be reachable, but just in case we leave a reasonable fallback.
-                let args = fn_sig.inputs()
-                    .skip_binder()
-                    .iter()
-                    .next()
-                    .map(|args| args.tuple_fields()
-                        .map(|arg| arg.to_string())
-                        .collect::<Vec<_>>().join(", "))
-                    .unwrap_or_default();
+                let args = closure_args(&fn_sig);
                 // This suggestion is incomplete, as the user will get further type inference
                 // errors due to the `_` placeholders and the introduction of `Box`, but it does
                 // nudge them in the right direction.
                 format!("a boxed closure type like `Box<dyn Fn({}) -> {}>`", args, ret)
             }
-            Some(ty) if &ty.to_string() != "_" &&
-                name == "_" &&
-                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
-                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings) =>
-            {
+            Some(ty) if is_named_and_not_impl_trait(ty) && name == "_" => {
                 let ty = ty_to_string(ty);
                 format!("the explicit type `{}`, with the type parameters specified", ty)
             }
-            Some(ty) if &ty.to_string() != "_" &&
-                ty.to_string() != name &&
-                // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
-                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings) =>
-            {
+            Some(ty) if is_named_and_not_impl_trait(ty) && ty.to_string() != name => {
                 let ty = ty_to_string(ty);
                 format!(
                     "the explicit type `{}`, where the type parameter `{}` is specified",
@@ -296,25 +310,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 format!("consider giving this closure parameter {}", suffix),
             );
         } else if let Some(pattern) = local_visitor.found_local_pattern {
-            if let Some(simple_ident) = pattern.simple_ident() {
+            let msg = if let Some(simple_ident) = pattern.simple_ident() {
                 match pattern.span.desugaring_kind() {
                     None => {
-                        err.span_label(
-                            pattern.span,
-                            format!("consider giving `{}` {}", simple_ident, suffix),
-                        );
+                        format!("consider giving `{}` {}", simple_ident, suffix)
                     }
                     Some(DesugaringKind::ForLoop) => {
-                        err.span_label(
-                            pattern.span,
-                            "the element type for this iterator is not specified".to_string(),
-                        );
+                        "the element type for this iterator is not specified".to_string()
                     }
-                    _ => {}
+                    _ => format!("this needs {}", suffix),
                 }
             } else {
-                err.span_label(pattern.span, format!("consider giving this pattern {}", suffix));
-            }
+                format!("consider giving this pattern {}", suffix)
+            };
+            err.span_label(pattern.span, msg);
         }
         if !err.span.span_labels().iter().any(|span_label| {
                 span_label.label.is_some() && span_label.span == span
