@@ -111,6 +111,12 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             block_expr(p, Some(m))
         }
         T!['{'] => {
+            // test for_range_from
+            // fn foo() {
+            //    for x in 0 .. {
+            //        break;
+            //    }
+            // }
             if r.forbid_structs {
                 return None;
             } else {
@@ -312,16 +318,6 @@ fn while_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 // test for_expr
 // fn foo() {
 //     for x in [] {};
-// }
-
-// test for_range_block
-// fn foo() {
-//    for x in 0 .. {
-//        break;
-//    }
-//    for _x in 0 .. (0 .. {1 + 2}).sum::<u32>() {
-//        break;
-//    }
 // }
 fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![for]));

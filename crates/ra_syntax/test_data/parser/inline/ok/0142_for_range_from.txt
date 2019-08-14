@@ -1,0 +1,40 @@
+SOURCE_FILE@[0; 51)
+  FN_DEF@[0; 50)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 8)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
+    BLOCK@[9; 50)
+      L_CURLY@[9; 10) "{"
+      WHITESPACE@[10; 14) "\n   "
+      FOR_EXPR@[14; 48)
+        FOR_KW@[14; 17) "for"
+        WHITESPACE@[17; 18) " "
+        BIND_PAT@[18; 19)
+          NAME@[18; 19)
+            IDENT@[18; 19) "x"
+        WHITESPACE@[19; 20) " "
+        IN_KW@[20; 22) "in"
+        WHITESPACE@[22; 23) " "
+        RANGE_EXPR@[23; 27)
+          LITERAL@[23; 24)
+            INT_NUMBER@[23; 24) "0"
+          WHITESPACE@[24; 25) " "
+          DOTDOT@[25; 27) ".."
+        WHITESPACE@[27; 28) " "
+        BLOCK@[28; 48)
+          L_CURLY@[28; 29) "{"
+          WHITESPACE@[29; 37) "\n       "
+          EXPR_STMT@[37; 43)
+            BREAK_EXPR@[37; 42)
+              BREAK_KW@[37; 42) "break"
+            SEMI@[42; 43) ";"
+          WHITESPACE@[43; 47) "\n   "
+          R_CURLY@[47; 48) "}"
+      WHITESPACE@[48; 49) "\n"
+      R_CURLY@[49; 50) "}"
+  WHITESPACE@[50; 51) "\n"
