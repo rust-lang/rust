@@ -557,11 +557,11 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         let access = access_from!(self.save_ctxt, item, hir_id);
 
         for variant in &enum_definition.variants {
-            let name = variant.node.ident.name.to_string();
+            let name = variant.ident.name.to_string();
             let qualname = format!("{}::{}", enum_data.qualname, name);
-            let name_span = variant.node.ident.span;
+            let name_span = variant.ident.span;
 
-            match variant.node.data {
+            match variant.data {
                 ast::VariantData::Struct(ref fields, ..) => {
                     let fields_str = fields
                         .iter()
@@ -574,7 +574,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     let value = format!("{}::{} {{ {} }}", enum_data.name, name, fields_str);
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_node_id(variant.node.id, &self.save_ctxt);
+                        let id = id_from_node_id(variant.id, &self.save_ctxt);
                         let parent = Some(id_from_node_id(item.id, &self.save_ctxt));
 
                         self.dumper.dump_def(
@@ -589,10 +589,10 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                                 parent,
                                 children: vec![],
                                 decl_id: None,
-                                docs: self.save_ctxt.docs_for_attrs(&variant.node.attrs),
+                                docs: self.save_ctxt.docs_for_attrs(&variant.attrs),
                                 sig: sig::variant_signature(variant, &self.save_ctxt),
                                 attributes: lower_attributes(
-                                    variant.node.attrs.clone(),
+                                    variant.attrs.clone(),
                                     &self.save_ctxt,
                                 ),
                             },
@@ -612,7 +612,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     }
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_node_id(variant.node.id, &self.save_ctxt);
+                        let id = id_from_node_id(variant.id, &self.save_ctxt);
                         let parent = Some(id_from_node_id(item.id, &self.save_ctxt));
 
                         self.dumper.dump_def(
@@ -627,10 +627,10 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                                 parent,
                                 children: vec![],
                                 decl_id: None,
-                                docs: self.save_ctxt.docs_for_attrs(&variant.node.attrs),
+                                docs: self.save_ctxt.docs_for_attrs(&variant.attrs),
                                 sig: sig::variant_signature(variant, &self.save_ctxt),
                                 attributes: lower_attributes(
-                                    variant.node.attrs.clone(),
+                                    variant.attrs.clone(),
                                     &self.save_ctxt,
                                 ),
                             },
@@ -640,8 +640,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             }
 
 
-            for field in variant.node.data.fields() {
-                self.process_struct_field_def(field, variant.node.id);
+            for field in variant.data.fields() {
+                self.process_struct_field_def(field, variant.id);
                 self.visit_ty(&field.ty);
             }
         }

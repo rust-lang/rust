@@ -2193,7 +2193,7 @@ pub struct EnumDef {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct VariantKind {
+pub struct Variant {
     /// Name of the variant.
     #[stable_hasher(project(name))]
     pub ident: Ident,
@@ -2205,9 +2205,9 @@ pub struct VariantKind {
     pub data: VariantData,
     /// Explicit discriminant (e.g., `Foo = 1`).
     pub disr_expr: Option<AnonConst>,
+    /// Span
+    pub span: Span
 }
-
-pub type Variant = Spanned<VariantKind>;
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum UseKind {

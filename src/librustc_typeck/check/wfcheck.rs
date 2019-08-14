@@ -1119,7 +1119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {
         enum_def.variants.iter()
-            .map(|variant| self.non_enum_variant(&variant.node.data))
+            .map(|variant| self.non_enum_variant(&variant.data))
             .collect()
     }
 

@@ -687,11 +687,11 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         match item.node {
             hir::ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
-                    let variant_level = self.update(variant.node.id, item_level);
-                    if let Some(ctor_hir_id) = variant.node.data.ctor_hir_id() {
+                    let variant_level = self.update(variant.id, item_level);
+                    if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
                         self.update(ctor_hir_id, item_level);
                     }
-                    for field in variant.node.data.fields() {
+                    for field in variant.data.fields() {
                         self.update(field.hir_id, variant_level);
                     }
                 }
@@ -810,9 +810,9 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.hir_id, item_level).generics().predicates();
                 }
                 for variant in &def.variants {
-                    let variant_level = self.get(variant.node.id);
+                    let variant_level = self.get(variant.id);
                     if variant_level.is_some() {
-                        for field in variant.node.data.fields() {
+                        for field in variant.data.fields() {
                             self.reach(field.hir_id, variant_level).ty();
                         }
                         // Corner case: if the variant is reachable, but its
@@ -1647,7 +1647,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
-        if self.access_levels.is_reachable(v.node.id) {
+        if self.access_levels.is_reachable(v.id) {
             self.in_variant = true;
             intravisit::walk_variant(self, v, g, item_id);
             self.in_variant = false;
@@ -1898,7 +1898,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 self.check(item.hir_id, item_visibility).generics().predicates();
 
                 for variant in &def.variants {
-                    for field in variant.node.data.fields() {
+                    for field in variant.data.fields() {
                         self.check(field.hir_id, item_visibility).ty();
                     }
                 }

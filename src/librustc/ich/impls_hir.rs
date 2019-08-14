@@ -304,7 +304,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
     }
 }
 
-impl_stable_hash_for_spanned!(hir::VariantKind);
+impl_stable_hash_for_spanned!(hir::Variant);
 
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {

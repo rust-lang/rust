@@ -737,7 +737,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(&v.node.attrs);
+            self.print_outer_attributes(&v.attrs);
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
@@ -829,8 +829,8 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &hir::Variant) {
         self.head("");
         let generics = hir::Generics::empty();
-        self.print_struct(&v.node.data, &generics, v.node.ident.name, v.span, false);
-        if let Some(ref d) = v.node.disr_expr {
+        self.print_struct(&v.data, &generics, v.ident.name, v.span, false);
+        if let Some(ref d) = v.disr_expr {
             self.s.space();
             self.word_space("=");
             self.print_anon_const(d);
