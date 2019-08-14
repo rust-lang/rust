@@ -553,8 +553,6 @@ impl<H> PartialEq for BuildHasherDefault<H> {
 #[stable(since = "1.29.0", feature = "build_hasher_eq")]
 impl<H> Eq for BuildHasherDefault<H> {}
 
-//////////////////////////////////////////////////////////////////////////////
-
 mod impls {
     use crate::mem;
     use crate::slice;
