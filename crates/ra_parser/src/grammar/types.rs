@@ -29,7 +29,7 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
         T![dyn ] => dyn_trait_type(p),
         // Some path types are not allowed to have bounds (no plus)
         T![<] => path_type_(p, allow_bounds),
-        _ if paths::is_path_start(p) => path_or_macro_type_(p, allow_bounds),
+        _ if paths::is_use_path_start(p) => path_or_macro_type_(p, allow_bounds),
         _ => {
             p.err_recover("expected type", TYPE_RECOVERY_SET);
         }
@@ -205,6 +205,7 @@ pub(super) fn for_binder(p: &mut Parser) {
 // type A = for<'a> fn() -> ();
 // fn foo<T>(_t: &T) where for<'a> &'a T: Iterator {}
 // fn bar<T>(_t: &T) where for<'a> &'a mut T: Iterator {}
+// fn baz<T>(_t: &T) where for<'a> <&'a T as Baz>::Foo: Iterator {}
 pub(super) fn for_type(p: &mut Parser) {
     assert!(p.at(T![for]));
     let m = p.start();
@@ -251,7 +252,7 @@ pub(super) fn path_type(p: &mut Parser) {
 // type A = foo!();
 // type B = crate::foo!();
 fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
-    assert!(paths::is_path_start(p) || p.at(T![<]));
+    assert!(paths::is_path_start(p));
     let m = p.start();
     paths::type_path(p);
 
@@ -270,7 +271,7 @@ fn path_or_macro_type_(p: &mut Parser, allow_bounds: bool) {
 }
 
 pub(super) fn path_type_(p: &mut Parser, allow_bounds: bool) {
-    assert!(paths::is_path_start(p) || p.at(T![<]));
+    assert!(paths::is_path_start(p));
     let m = p.start();
     paths::type_path(p);
 

@@ -65,7 +65,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     {
         return Some(bind_pat(p, true));
     }
-    if paths::is_path_start(p) {
+    if paths::is_use_path_start(p) {
         return Some(path_pat(p));
     }
 
@@ -118,7 +118,7 @@ fn literal_pat(p: &mut Parser) -> CompletedMarker {
 //     let Bar(..) = ();
 // }
 fn path_pat(p: &mut Parser) -> CompletedMarker {
-    assert!(paths::is_path_start(p));
+    assert!(paths::is_use_path_start(p));
     let m = p.start();
     paths::expr_path(p);
     let kind = match p.current() {

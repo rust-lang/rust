@@ -1,4 +1,4 @@
-SOURCE_FILE@[0; 135)
+SOURCE_FILE@[0; 200)
   TYPE_ALIAS_DEF@[0; 28)
     TYPE_KW@[0; 4) "type"
     WHITESPACE@[4; 5) " "
@@ -157,3 +157,84 @@ SOURCE_FILE@[0; 135)
       L_CURLY@[132; 133) "{"
       R_CURLY@[133; 134) "}"
   WHITESPACE@[134; 135) "\n"
+  FN_DEF@[135; 199)
+    FN_KW@[135; 137) "fn"
+    WHITESPACE@[137; 138) " "
+    NAME@[138; 141)
+      IDENT@[138; 141) "baz"
+    TYPE_PARAM_LIST@[141; 144)
+      L_ANGLE@[141; 142) "<"
+      TYPE_PARAM@[142; 143)
+        NAME@[142; 143)
+          IDENT@[142; 143) "T"
+      R_ANGLE@[143; 144) ">"
+    PARAM_LIST@[144; 152)
+      L_PAREN@[144; 145) "("
+      PARAM@[145; 151)
+        BIND_PAT@[145; 147)
+          NAME@[145; 147)
+            IDENT@[145; 147) "_t"
+        COLON@[147; 148) ":"
+        WHITESPACE@[148; 149) " "
+        REFERENCE_TYPE@[149; 151)
+          AMP@[149; 150) "&"
+          PATH_TYPE@[150; 151)
+            PATH@[150; 151)
+              PATH_SEGMENT@[150; 151)
+                NAME_REF@[150; 151)
+                  IDENT@[150; 151) "T"
+      R_PAREN@[151; 152) ")"
+    WHITESPACE@[152; 153) " "
+    WHERE_CLAUSE@[153; 196)
+      WHERE_KW@[153; 158) "where"
+      WHITESPACE@[158; 159) " "
+      WHERE_PRED@[159; 196)
+        FOR_TYPE@[159; 186)
+          FOR_KW@[159; 162) "for"
+          TYPE_PARAM_LIST@[162; 166)
+            L_ANGLE@[162; 163) "<"
+            LIFETIME_PARAM@[163; 165)
+              LIFETIME@[163; 165) "\'a"
+            R_ANGLE@[165; 166) ">"
+          WHITESPACE@[166; 167) " "
+          PATH_TYPE@[167; 186)
+            PATH@[167; 186)
+              PATH@[167; 181)
+                PATH_SEGMENT@[167; 181)
+                  L_ANGLE@[167; 168) "<"
+                  REFERENCE_TYPE@[168; 173)
+                    AMP@[168; 169) "&"
+                    LIFETIME@[169; 171) "\'a"
+                    WHITESPACE@[171; 172) " "
+                    PATH_TYPE@[172; 173)
+                      PATH@[172; 173)
+                        PATH_SEGMENT@[172; 173)
+                          NAME_REF@[172; 173)
+                            IDENT@[172; 173) "T"
+                  WHITESPACE@[173; 174) " "
+                  AS_KW@[174; 176) "as"
+                  WHITESPACE@[176; 177) " "
+                  PATH_TYPE@[177; 180)
+                    PATH@[177; 180)
+                      PATH_SEGMENT@[177; 180)
+                        NAME_REF@[177; 180)
+                          IDENT@[177; 180) "Baz"
+                  R_ANGLE@[180; 181) ">"
+              COLONCOLON@[181; 183) "::"
+              PATH_SEGMENT@[183; 186)
+                NAME_REF@[183; 186)
+                  IDENT@[183; 186) "Foo"
+        COLON@[186; 187) ":"
+        WHITESPACE@[187; 188) " "
+        TYPE_BOUND_LIST@[188; 196)
+          TYPE_BOUND@[188; 196)
+            PATH_TYPE@[188; 196)
+              PATH@[188; 196)
+                PATH_SEGMENT@[188; 196)
+                  NAME_REF@[188; 196)
+                    IDENT@[188; 196) "Iterator"
+    WHITESPACE@[196; 197) " "
+    BLOCK@[197; 199)
+      L_CURLY@[197; 198) "{"
+      R_CURLY@[198; 199) "}"
+  WHITESPACE@[199; 200) "\n"
