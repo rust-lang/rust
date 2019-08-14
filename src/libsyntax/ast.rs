@@ -608,6 +608,7 @@ pub struct FieldPat {
     pub pat: P<Pat>,
     pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
+    pub id: NodeId,
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
@@ -925,6 +926,7 @@ pub struct Arm {
     pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
     pub span: Span,
+    pub id: NodeId,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -934,6 +936,7 @@ pub struct Field {
     pub span: Span,
     pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
+    pub id: NodeId,
 }
 
 pub type SpannedIdent = Spanned<Ident>;
