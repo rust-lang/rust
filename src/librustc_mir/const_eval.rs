@@ -540,6 +540,12 @@ pub fn error_to_const_error<'mir, 'tcx>(
     ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
 }
 
+pub fn note_on_undefined_behavior_error() -> &'static str {
+    "The rules on what exactly is undefined behavior aren't clear, \
+    so this check might be overzealous. Please open an issue on the rust compiler \
+    repository if you believe it should not be considered undefined behavior"
+}
+
 fn validate_and_turn_into_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
@@ -579,10 +585,7 @@ fn validate_and_turn_into_const<'tcx>(
         let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
             Ok(mut diag) => {
-                diag.note("The rules on what exactly is undefined behavior aren't clear, \
-                    so this check might be overzealous. Please open an issue on the rust compiler \
-                    repository if you believe it should not be considered undefined behavior",
-                );
+                diag.note(note_on_undefined_behavior_error());
                 diag.emit();
                 ErrorHandled::Reported
             }
