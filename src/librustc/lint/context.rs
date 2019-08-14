@@ -1345,7 +1345,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // part of `walk_mac`, and (b) we should be calling
         // `visit_path`, *but* that would require a `NodeId`, and I
         // want to get #53686 fixed quickly. -nmatsakis
-        ast_visit::walk_path(self, &mac.node.path);
+        ast_visit::walk_path(self, &mac.path);
 
         run_early_pass!(self, check_mac, mac);
     }

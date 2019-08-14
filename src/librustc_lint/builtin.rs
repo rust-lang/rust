@@ -1493,7 +1493,7 @@ impl EarlyLintPass for KeywordIdents {
         self.check_tokens(cx, mac_def.stream());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
-        self.check_tokens(cx, mac.node.tts.clone().into());
+        self.check_tokens(cx, mac.tts.clone().into());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {
         self.check_ident_token(cx, UnderMacro(false), ident);

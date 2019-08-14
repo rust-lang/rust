@@ -533,8 +533,8 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_visit_mac<T: MutVisitor>(Spanned { node, span }: &mut Mac, vis: &mut T) {
-    let Mac_ { path, delim: _, tts, .. } = node;
+pub fn noop_visit_mac<T: MutVisitor>(mac: &mut Mac, vis: &mut T) {
+    let Mac { path, delim: _, tts, span, prior_type_ascription: _ } = mac;
     vis.visit_path(path);
     vis.visit_tts(tts);
     vis.visit_span(span);

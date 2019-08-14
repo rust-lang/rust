@@ -2,7 +2,7 @@ use super::{Parser, PResult, PathStyle};
 
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use crate::ptr::P;
-use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac_};
+use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
 use crate::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
 use crate::parse::token::{self};
 use crate::print::pprust;
@@ -275,12 +275,13 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, lo: Span, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let (delim, tts) = self.expect_delimited_token_tree()?;
-        let mac = respan(lo.to(self.prev_span), Mac_ {
+        let mac = Mac {
             path,
             tts,
             delim,
+            span: lo.to(self.prev_span),
             prior_type_ascription: self.last_type_ascription,
-        });
+        };
         Ok(PatKind::Mac(mac))
     }
 

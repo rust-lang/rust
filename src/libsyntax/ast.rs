@@ -1285,8 +1285,6 @@ pub enum Movability {
     Movable,
 }
 
-pub type Mac = Spanned<Mac_>;
-
 /// Represents a macro invocation. The `Path` indicates which macro
 /// is being invoked, and the vector of token-trees contains the source
 /// of the macro invocation.
@@ -1294,10 +1292,11 @@ pub type Mac = Spanned<Mac_>;
 /// N.B., the additional ident for a `macro_rules`-style macro is actually
 /// stored in the enclosing item.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Mac_ {
+pub struct Mac {
     pub path: Path,
     pub delim: MacDelimiter,
     pub tts: TokenStream,
+    pub span: Span,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
 
@@ -1308,7 +1307,7 @@ pub enum MacDelimiter {
     Brace,
 }
 
-impl Mac_ {
+impl Mac {
     pub fn stream(&self) -> TokenStream {
         self.tts.clone()
     }

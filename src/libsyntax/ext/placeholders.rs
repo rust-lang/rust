@@ -14,12 +14,13 @@ use rustc_data_structures::fx::FxHashMap;
 
 pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
-        dummy_spanned(ast::Mac_ {
+        ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
             tts: TokenStream::empty().into(),
             delim: ast::MacDelimiter::Brace,
+            span: DUMMY_SP,
             prior_type_ascription: None,
-        })
+        }
     }
 
     let ident = ast::Ident::invalid();

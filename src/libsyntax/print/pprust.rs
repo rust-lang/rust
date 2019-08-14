@@ -1067,7 +1067,7 @@ impl<'a> State<'a> {
             }
             ast::ForeignItemKind::Macro(ref m) => {
                 self.print_mac(m);
-                match m.node.delim {
+                match m.delim {
                     MacDelimiter::Brace => {},
                     _ => self.s.word(";")
                 }
@@ -1341,7 +1341,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.print_mac(mac);
-                match mac.node.delim {
+                match mac.delim {
                     MacDelimiter::Brace => {}
                     _ => self.s.word(";"),
                 }
@@ -1554,7 +1554,7 @@ impl<'a> State<'a> {
             }
             ast::TraitItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.node.delim {
+                match mac.delim {
                     MacDelimiter::Brace => {}
                     _ => self.s.word(";"),
                 }
@@ -1591,7 +1591,7 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.node.delim {
+                match mac.delim {
                     MacDelimiter::Brace => {}
                     _ => self.s.word(";"),
                 }
@@ -1749,11 +1749,11 @@ impl<'a> State<'a> {
 
     crate fn print_mac(&mut self, m: &ast::Mac) {
         self.print_mac_common(
-            Some(MacHeader::Path(&m.node.path)),
+            Some(MacHeader::Path(&m.path)),
             true,
             None,
-            m.node.delim.to_token(),
-            m.node.stream(),
+            m.delim.to_token(),
+            m.stream(),
             true,
             m.span,
         );
