@@ -47,10 +47,10 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        -> Box<dyn base::MacResult + 'cx> {
     let mut inline_asm = match parse_inline_asm(cx, sp, tts) {
         Ok(Some(inline_asm)) => inline_asm,
-        Ok(None) => return DummyResult::expr(sp),
+        Ok(None) => return DummyResult::any(sp),
         Err(mut err) => {
             err.emit();
-            return DummyResult::expr(sp);
+            return DummyResult::any(sp);
         }
     };
 

@@ -405,7 +405,6 @@ impl MacResult for MacEager {
 /// after hitting errors.
 #[derive(Copy, Clone)]
 pub struct DummyResult {
-    expr_only: bool,
     is_error: bool,
     span: Span,
 }
@@ -416,21 +415,12 @@ impl DummyResult {
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
     pub fn any(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, is_error: true, span })
+        Box::new(DummyResult { is_error: true, span })
     }
 
     /// Same as `any`, but must be a valid fragment, not error.
     pub fn any_valid(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, is_error: false, span })
-    }
-
-    /// Creates a default MacResult that can only be an expression.
-    ///
-    /// Use this for macros that must expand to an expression, so even
-    /// if an error is encountered internally, the user will receive
-    /// an error that they also used it in the wrong place.
-    pub fn expr(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: true, is_error: true, span })
+        Box::new(DummyResult { is_error: false, span })
     }
 
     /// A plain dummy expression.
@@ -472,36 +462,19 @@ impl MacResult for DummyResult {
     }
 
     fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
-        // this code needs a comment... why not always just return the Some() ?
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::ImplItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::TraitItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
