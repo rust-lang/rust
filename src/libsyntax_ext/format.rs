@@ -805,7 +805,7 @@ fn expand_format_args_impl<'cx>(
         }
         Err(mut err) => {
             err.emit();
-            DummyResult::expr(sp)
+            DummyResult::any(sp)
         }
     }
 }
