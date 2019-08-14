@@ -403,6 +403,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             is_shorthand: false,
             attrs: ThinVec::new(),
+            id: ast::DUMMY_NODE_ID,
         }
     }
     pub fn expr_struct(
@@ -612,6 +613,7 @@ impl<'a> ExtCtxt<'a> {
             guard: None,
             body: expr,
             span,
+            id: ast::DUMMY_NODE_ID,
         }
     }
 
