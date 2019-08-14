@@ -447,7 +447,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
             let res = match ret.layout().ty.sty {
-                ty::Uint(_) => crate::base::trans_int_binop(
+                ty::Uint(_) => crate::num::trans_int_binop(
                     fx,
                     bin_op,
                     x,
@@ -455,7 +455,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                     ret.layout().ty,
                     false,
                 ),
-                ty::Int(_) => crate::base::trans_int_binop(
+                ty::Int(_) => crate::num::trans_int_binop(
                     fx,
                     bin_op,
                     x,
@@ -476,7 +476,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
 
-            let res = crate::base::trans_checked_int_binop(
+            let res = crate::num::trans_checked_int_binop(
                 fx,
                 bin_op,
                 x,
@@ -494,7 +494,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "overflowing_mul" => BinOp::Mul,
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
-            let res = crate::base::trans_int_binop(
+            let res = crate::num::trans_int_binop(
                 fx,
                 bin_op,
                 x,
@@ -514,7 +514,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
 
             let signed = type_sign(T);
 
-            let checked_res = crate::base::trans_checked_int_binop(
+            let checked_res = crate::num::trans_checked_int_binop(
                 fx,
                 bin_op,
                 x,

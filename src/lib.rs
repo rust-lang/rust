@@ -44,6 +44,7 @@ mod linkage;
 mod llvm_intrinsics;
 mod main_shim;
 mod metadata;
+mod num;
 mod pretty_clif;
 mod target_features_whitelist;
 mod trap;
