@@ -42,9 +42,22 @@ pub fn ceil(x: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use core::f64::*;
+
     #[test]
     fn sanity_check() {
-        assert_eq!(super::ceil(1.1), 2.0);
-        assert_eq!(super::ceil(2.9), 3.0);
+        assert_eq!(ceil(1.1), 2.0);
+        assert_eq!(ceil(2.9), 3.0);
+    }
+
+    /// The spec: https://en.cppreference.com/w/cpp/numeric/math/ceil
+    #[test]
+    fn spec_tests() {
+        // Not Asserted: that the current rounding mode has no effect.
+        assert!(ceil(NAN).is_nan());
+        for f in [0.0, -0.0, INFINITY, NEG_INFINITY].iter().copied() {
+            assert_eq!(ceil(f), f);
+        }
     }
 }
