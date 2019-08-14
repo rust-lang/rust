@@ -6,6 +6,14 @@ LL |     /// hi
    |
    = help: doc comments must come before what they document, maybe a comment was intended with `//`?
 
+warning: unnecessary trailing semicolon
+  --> $DIR/doc-before-semi.rs:5:5
+   |
+LL |     ;
+   |     ^ help: remove this semicolon
+   |
+   = note: `#[warn(redundant_semicolon)]` on by default
+
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0585`.
