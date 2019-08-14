@@ -634,7 +634,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
             let discr_val = layout
                 .ty
                 .ty_adt_def()
-                .map_or(index.as_u32() as u128, |def| {
+                .map_or(u128::from(index.as_u32()), |def| {
                     def.discriminant_for_variant(fx.tcx, *index).val
                 });
             return CValue::const_val(fx, dest_layout.ty, discr_val);

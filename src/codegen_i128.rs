@@ -86,7 +86,7 @@ pub fn maybe_codegen<'a, 'tcx>(
                 }
                 _ => {
                     // if msb_eq {
-                    //     lhs_cc
+                    //     lsb_cc
                     // } else {
                     //     msb_cc
                     // }
