@@ -261,40 +261,33 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     place.write_place_ref(fx, lval);
                 }
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
-                    let ty = fx.monomorphize(&lhs.ty(fx.mir, fx.tcx));
                     let lhs = trans_operand(fx, lhs);
                     let rhs = trans_operand(fx, rhs);
 
-                    let res = match ty.sty {
+                    let res = match lhs.layout().ty.sty {
                         ty::Bool => crate::num::trans_bool_binop(fx, *bin_op, lhs, rhs),
-                        ty::Uint(_) => {
-                            crate::num::trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, false)
-                        }
-                        ty::Int(_) => {
-                            crate::num::trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, true)
+                        ty::Uint(_) | ty::Int(_ )=> {
+                            crate::num::trans_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
                         ty::Float(_) => crate::num::trans_float_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
                         ty::Char => crate::num::trans_char_binop(fx, *bin_op, lhs, rhs, lval.layout().ty),
                         ty::RawPtr(..) | ty::FnPtr(..) => {
                             crate::num::trans_ptr_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                         }
-                        _ => unimplemented!("binop {:?} for {:?}", bin_op, ty),
+                        _ => unimplemented!("{:?}({:?}, {:?})", bin_op, lhs.layout().ty, rhs.layout().ty),
                     };
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
-                    let ty = fx.monomorphize(&lhs.ty(fx.mir, fx.tcx));
                     let lhs = trans_operand(fx, lhs);
                     let rhs = trans_operand(fx, rhs);
 
-                    let signed = type_sign(ty);
-
                     let res = if !fx.tcx.sess.overflow_checks() {
-                        let val = crate::num::trans_int_binop(fx, *bin_op, lhs, rhs, lhs.layout().ty, signed).load_scalar(fx);
+                        let val = crate::num::trans_int_binop(fx, *bin_op, lhs, rhs, lhs.layout().ty).load_scalar(fx);
                         let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
                         CValue::by_val_pair(val, is_overflow, lval.layout())
                     } else {
-                        crate::num::trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty, signed)
+                        crate::num::trans_checked_int_binop(fx, *bin_op, lhs, rhs, lval.layout().ty)
                     };
 
                     lval.write_cvalue(fx, res);

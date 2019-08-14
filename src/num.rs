@@ -78,7 +78,6 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
     out_ty: Ty<'tcx>,
-    signed: bool,
 ) -> CValue<'tcx> {
     if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
         assert_eq!(
@@ -93,9 +92,11 @@ pub fn trans_int_binop<'a, 'tcx: 'a>(
         _ => unreachable!("Out ty {:?} is not an integer or bool", out_ty),
     }
 
-    if let Some(res) = crate::codegen_i128::maybe_codegen(fx, bin_op, false, signed, lhs, rhs, out_ty) {
+    if let Some(res) = crate::codegen_i128::maybe_codegen(fx, bin_op, false, lhs, rhs, out_ty) {
         return res;
     }
+
+    let signed = type_sign(lhs.layout().ty);
 
     let (lhs, rhs) = if
         (bin_op == BinOp::Eq || bin_op == BinOp::Ne)
@@ -149,7 +150,6 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     in_lhs: CValue<'tcx>,
     in_rhs: CValue<'tcx>,
     out_ty: Ty<'tcx>,
-    signed: bool,
 ) -> CValue<'tcx> {
     if bin_op != BinOp::Shl && bin_op != BinOp::Shr {
         assert_eq!(
@@ -162,9 +162,11 @@ pub fn trans_checked_int_binop<'a, 'tcx: 'a>(
     let lhs = in_lhs.load_scalar(fx);
     let rhs = in_rhs.load_scalar(fx);
 
-    if let Some(res) = crate::codegen_i128::maybe_codegen(fx, bin_op, true, signed, in_lhs, in_rhs, out_ty) {
+    if let Some(res) = crate::codegen_i128::maybe_codegen(fx, bin_op, true, in_lhs, in_rhs, out_ty) {
         return res;
     }
+
+    let signed = type_sign(in_lhs.layout().ty);
 
     let (res, has_overflow) = match bin_op {
         BinOp::Add => {

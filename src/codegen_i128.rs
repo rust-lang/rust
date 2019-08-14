@@ -6,7 +6,6 @@ pub fn maybe_codegen<'a, 'tcx>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     bin_op: BinOp,
     checked: bool,
-    is_signed: bool,
     lhs: CValue<'tcx>,
     rhs: CValue<'tcx>,
     out_ty: Ty<'tcx>,
@@ -17,6 +16,8 @@ pub fn maybe_codegen<'a, 'tcx>(
 
     let lhs_val = lhs.load_scalar(fx);
     let rhs_val = rhs.load_scalar(fx);
+
+    let is_signed = type_sign(lhs.layout().ty);
 
     match bin_op {
         BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {

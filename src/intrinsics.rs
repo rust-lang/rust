@@ -446,28 +446,10 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 "unchecked_shr" => BinOp::Shr,
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
-            let res = match ret.layout().ty.sty {
-                ty::Uint(_) => crate::num::trans_int_binop(
-                    fx,
-                    bin_op,
-                    x,
-                    y,
-                    ret.layout().ty,
-                    false,
-                ),
-                ty::Int(_) => crate::num::trans_int_binop(
-                    fx,
-                    bin_op,
-                    x,
-                    y,
-                    ret.layout().ty,
-                    true,
-                ),
-                _ => panic!(),
-            };
+            let res = crate::num::trans_int_binop(fx, bin_op, x, y, ret.layout().ty);
             ret.write_cvalue(fx, res);
         };
-        _ if intrinsic.ends_with("_with_overflow"), <T> (c x, c y) {
+        _ if intrinsic.ends_with("_with_overflow"), (c x, c y) {
             assert_eq!(x.layout().ty, y.layout().ty);
             let bin_op = match intrinsic {
                 "add_with_overflow" => BinOp::Add,
@@ -482,11 +464,10 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 x,
                 y,
                 ret.layout().ty,
-                type_sign(T),
             );
             ret.write_cvalue(fx, res);
         };
-        _ if intrinsic.starts_with("overflowing_"), <T> (c x, c y) {
+        _ if intrinsic.starts_with("overflowing_"), (c x, c y) {
             assert_eq!(x.layout().ty, y.layout().ty);
             let bin_op = match intrinsic {
                 "overflowing_add" => BinOp::Add,
@@ -500,7 +481,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 x,
                 y,
                 ret.layout().ty,
-                type_sign(T),
             );
             ret.write_cvalue(fx, res);
         };
@@ -520,7 +500,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 x,
                 y,
                 fx.tcx.mk_tup([T, fx.tcx.types.bool].into_iter()),
-                signed,
             );
 
             let (val, has_overflow) = checked_res.load_scalar_pair(fx);
