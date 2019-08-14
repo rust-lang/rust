@@ -649,12 +649,34 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn is_const_scope(&self, hir_id: HirId) -> bool {
-        self.walk_parent_nodes(hir_id, |node| match *node {
-            Node::Item(Item { node: ItemKind::Const(_, _), .. }) => true,
-            Node::Item(Item { node: ItemKind::Fn(_, header, _, _), .. }) => header.is_const(),
+    /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
+    /// Used exclusively for diagnostics, to avoid suggestion function calls.
+    pub fn is_const_context(&self, hir_id: HirId) -> bool {
+        let parent_id = self.get_parent_item(hir_id);
+        match self.get(parent_id) {
+            Node::Item(&Item {
+                node: ItemKind::Const(..),
+                ..
+            })
+            | Node::TraitItem(&TraitItem {
+                node: TraitItemKind::Const(..),
+                ..
+            })
+            | Node::ImplItem(&ImplItem {
+                node: ImplItemKind::Const(..),
+                ..
+            })
+            | Node::AnonConst(_)
+            | Node::Item(&Item {
+                node: ItemKind::Static(..),
+                ..
+            }) => true,
+            Node::Item(&Item {
+                node: ItemKind::Fn(_, header, ..),
+                ..
+            }) => header.constness == Constness::Const,
             _ => false,
-        }, |_| false).map(|id| id != CRATE_HIR_ID).unwrap_or(false)
+        }
     }
 
     /// If there is some error when walking the parents (e.g., a node does not
