@@ -95,6 +95,7 @@ pub const SLICE_INTO_VEC: [&str; 4] = ["alloc", "slice", "<impl [T]>", "into_vec
 pub const SLICE_ITER: [&str; 3] = ["core", "slice", "Iter"];
 pub const STDERR: [&str; 4] = ["std", "io", "stdio", "stderr"];
 pub const STDOUT: [&str; 4] = ["std", "io", "stdio", "stdout"];
+pub const STD_CONVERT_IDENTITY: [&str; 3] = ["std", "convert", "identity"];
 pub const STD_MEM_TRANSMUTE: [&str; 3] = ["std", "mem", "transmute"];
 pub const STD_PTR_NULL: [&str; 3] = ["std", "ptr", "null"];
 pub const STRING: [&str; 3] = ["alloc", "string", "String"];

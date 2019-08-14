@@ -343,6 +343,28 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `flat_map(|x| x)`.
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely by using `flatten`.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    /// # let iter = vec![vec![0]].into_iter();
+    /// iter.flat_map(|x| x);
+    /// ```
+    /// Can be written as
+    /// ```rust
+    /// # let iter = vec![vec![0]].into_iter();
+    /// iter.flatten();
+    /// ```
+    pub FLAT_MAP_IDENTITY,
+    complexity,
+    "call to `flat_map` where `flatten` is sufficient"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for usage of `_.find(_).map(_)`.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as a
@@ -892,6 +914,7 @@ declare_lint_pass!(Methods => [
     FILTER_NEXT,
     FILTER_MAP,
     FILTER_MAP_NEXT,
+    FLAT_MAP_IDENTITY,
     FIND_MAP,
     MAP_FLATTEN,
     ITER_NTH,
@@ -932,6 +955,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["map", "find"] => lint_find_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0]),
             ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
             ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0]),
             ["is_some", "position"] => lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0]),
@@ -2140,6 +2164,56 @@ fn lint_filter_map_flat_map<'a, 'tcx>(
                    This is more succinctly expressed by calling `.flat_map(..)` \
                    and filtering by returning an empty Iterator.";
         span_lint(cx, FILTER_MAP, expr.span, msg);
+    }
+}
+
+/// lint use of `flat_map` for `Iterators` where `flatten` would be sufficient
+fn lint_flat_map_identity<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx hir::Expr,
+    flat_map_args: &'tcx [hir::Expr],
+) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let arg_node = &flat_map_args[1].node;
+
+        let apply_lint = |message: &str| {
+            if let hir::ExprKind::MethodCall(_, span, _) = &expr.node {
+                span_lint_and_sugg(
+                    cx,
+                    FLAT_MAP_IDENTITY,
+                    span.with_hi(expr.span.hi()),
+                    message,
+                    "try",
+                    "flatten()".to_string(),
+                    Applicability::MachineApplicable,
+                );
+            }
+        };
+
+        if_chain! {
+            if let hir::ExprKind::Closure(_, _, body_id, _, _) = arg_node;
+            let body = cx.tcx.hir().body(*body_id);
+
+            if let hir::PatKind::Binding(_, _, binding_ident, _) = body.arguments[0].pat.node;
+            if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.node;
+
+            if path.segments.len() == 1;
+            if path.segments[0].ident.as_str() == binding_ident.as_str();
+
+            then {
+                apply_lint("called `flat_map(|x| x)` on an `Iterator`");
+            }
+        }
+
+        if_chain! {
+            if let hir::ExprKind::Path(ref qpath) = arg_node;
+
+            if match_qpath(qpath, &paths::STD_CONVERT_IDENTITY);
+
+            then {
+                apply_lint("called `flat_map(std::convert::identity)` on an `Iterator`");
+            }
+        }
     }
 }
 
