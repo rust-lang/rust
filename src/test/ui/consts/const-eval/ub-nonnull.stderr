@@ -6,21 +6,26 @@ LL | const NULL_PTR: NonNull<u8> = unsafe { mem::transmute(0usize) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:14:1
+error: any use of this value will cause an error
+  --> $DIR/ub-nonnull.rs:18:29
    |
 LL | / const OUT_OF_BOUNDS_PTR: NonNull<u8> = { unsafe {
-LL | |
-LL | |     let ptr: &(u8, u8, u8) = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
-LL | |     let out_of_bounds_ptr = &ptr.2; // use address-of-field for pointer arithmetic
+LL | |     let ptr: &[u8; 256] = mem::transmute(&0u8); // &0 gets promoted so it does not dangle
+LL | |     // Use address-of-element for pointer arithmetic. This could wrap around to NULL!
+LL | |     let out_of_bounds_ptr = &ptr[255];
+   | |                             ^^^^^^^^^ Memory access failed: pointer must be in-bounds at offset 256, but is outside bounds of allocation 6 which has size 1
 LL | |     mem::transmute(out_of_bounds_ptr)
 LL | | } };
-   | |____^ type validation failed: encountered a potentially NULL pointer, but expected something that cannot possibly fail to be greater or equal to 1
+   | |____-
    |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+note: lint level defined here
+  --> $DIR/ub-nonnull.rs:14:8
+   |
+LL | #[deny(const_err)] // this triggers a `const_err` so validation does not even happen
+   |        ^^^^^^^^^
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:21:1
+  --> $DIR/ub-nonnull.rs:22:1
    |
 LL | const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something greater or equal to 1
@@ -28,7 +33,7 @@ LL | const NULL_U8: NonZeroU8 = unsafe { mem::transmute(0u8) };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:23:1
+  --> $DIR/ub-nonnull.rs:24:1
    |
 LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected something greater or equal to 1
@@ -36,7 +41,7 @@ LL | const NULL_USIZE: NonZeroUsize = unsafe { mem::transmute(0usize) };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:30:1
+  --> $DIR/ub-nonnull.rs:31:1
    |
 LL | const UNINIT: NonZeroU8 = unsafe { Transmute { uninit: () }.out };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected something greater or equal to 1
@@ -44,7 +49,7 @@ LL | const UNINIT: NonZeroU8 = unsafe { Transmute { uninit: () }.out };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:38:1
+  --> $DIR/ub-nonnull.rs:39:1
    |
 LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 42, but expected something in the range 10..=30
@@ -52,7 +57,7 @@ LL | const BAD_RANGE1: RestrictedRange1 = unsafe { RestrictedRange1(42) };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-nonnull.rs:44:1
+  --> $DIR/ub-nonnull.rs:45:1
    |
 LL | const BAD_RANGE2: RestrictedRange2 = unsafe { RestrictedRange2(20) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 20, but expected something less or equal to 10, or greater or equal to 30
