@@ -1,0 +1,10 @@
+error: Make sure you did not confuse `map` with `filter`.
+  --> $DIR/suspicious_map.rs:4:13
+   |
+LL |     let _ = (0..3).map(|x| x + 2).count();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::suspicious-map` implied by `-D warnings`
+
+error: aborting due to previous error
+
