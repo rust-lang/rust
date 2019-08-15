@@ -112,7 +112,7 @@ dependencies = [
 [[package]]
 name = "cranelift"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-codegen 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
  "cranelift-frontend 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
@@ -121,7 +121,7 @@ dependencies = [
 [[package]]
 name = "cranelift-bforest"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-entity 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
 ]
@@ -129,7 +129,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-bforest 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
  "cranelift-codegen-meta 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
@@ -143,7 +143,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen-meta"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-entity 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
 ]
@@ -151,12 +151,12 @@ dependencies = [
 [[package]]
 name = "cranelift-entity"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 
 [[package]]
 name = "cranelift-faerie"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-codegen 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
  "cranelift-module 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
@@ -169,7 +169,7 @@ dependencies = [
 [[package]]
 name = "cranelift-frontend"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-codegen 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -179,7 +179,7 @@ dependencies = [
 [[package]]
 name = "cranelift-module"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-codegen 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
  "cranelift-entity 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
@@ -190,7 +190,7 @@ dependencies = [
 [[package]]
 name = "cranelift-native"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-codegen 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
  "raw-cpuid 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -200,7 +200,7 @@ dependencies = [
 [[package]]
 name = "cranelift-simplejit"
 version = "0.36.0"
-source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ca836a8e0d0b62e2ddecb5902cd5091b468a4db3"
+source = "git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128#ba82568fe58b6d54b2a85927aada861629117a79"
 dependencies = [
  "cranelift-codegen 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
  "cranelift-module 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
