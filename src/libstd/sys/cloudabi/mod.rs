@@ -1,5 +1,3 @@
-#![allow(deprecated)] // mem::uninitialized
-
 use crate::io::ErrorKind;
 use crate::mem;
 
