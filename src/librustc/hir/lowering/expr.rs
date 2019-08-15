@@ -984,7 +984,6 @@ impl LoweringContext<'_> {
             volatile: asm.volatile,
             alignstack: asm.alignstack,
             dialect: asm.dialect,
-            ctxt: asm.ctxt,
         };
 
         let outputs = asm.outputs
