@@ -860,28 +860,16 @@ impl<'a> Builder<'a> {
             stage = compiler.stage;
         }
 
-        let mut extra_args = String::new();
+        let mut rustflags = Rustflags::new();
+        rustflags.env(&format!("RUSTFLAGS_STAGE_{}", stage));
         if stage != 0 {
-            let s = env::var("RUSTFLAGS_NOT_BOOTSTRAP").unwrap_or_default();
-            extra_args.push_str(&s);
+            rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
         } else {
-            let s = env::var("RUSTFLAGS_BOOTSTRAP").unwrap_or_default();
-            extra_args.push_str(&s);
+            rustflags.env("RUSTFLAGS_BOOTSTRAP");
         }
 
         if cmd == "clippy" {
-            extra_args.push_str("-Zforce-unstable-if-unmarked");
-        }
-
-        if !extra_args.is_empty() {
-            cargo.env(
-                "RUSTFLAGS",
-                format!(
-                    "{} {}",
-                    env::var("RUSTFLAGS").unwrap_or_default(),
-                    extra_args
-                ),
-            );
+            rustflags.arg("-Zforce-unstable-if-unmarked");
         }
 
         let want_rustdoc = self.doc_tests != DocTests::No;
@@ -1171,6 +1159,8 @@ impl<'a> Builder<'a> {
 
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
+        cargo.env("RUSTFLAGS", &rustflags.0);
+
         cargo
     }
 
@@ -1271,3 +1261,30 @@ impl<'a> Builder<'a> {
 
 #[cfg(test)]
 mod tests;
+
+struct Rustflags(String);
+
+impl Rustflags {
+    fn new() -> Rustflags {
+        let mut ret = Rustflags(String::new());
+        ret.env("RUSTFLAGS");
+        return ret;
+    }
+
+    fn env(&mut self, env: &str) {
+        if let Ok(s) = env::var(env) {
+            for part in s.split_whitespace() {
+                self.arg(part);
+            }
+        }
+    }
+
+    fn arg(&mut self, arg: &str) -> &mut Self {
+        assert_eq!(arg.split_whitespace().count(), 1);
+        if self.0.len() > 0 {
+            self.0.push_str(" ");
+        }
+        self.0.push_str(arg);
+        self
+    }
+}
