@@ -939,24 +939,6 @@ impl<'a> Builder<'a> {
 
         if !mode.is_tool() {
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");
-
-            // Currently the compiler depends on crates from crates.io, and
-            // then other crates can depend on the compiler (e.g., proc-macro
-            // crates). Let's say, for example that rustc itself depends on the
-            // bitflags crate. If an external crate then depends on the
-            // bitflags crate as well, we need to make sure they don't
-            // conflict, even if they pick the same version of bitflags. We'll
-            // want to make sure that e.g., a plugin and rustc each get their
-            // own copy of bitflags.
-
-            // Cargo ensures that this works in general through the -C metadata
-            // flag. This flag will frob the symbols in the binary to make sure
-            // they're different, even though the source code is the exact
-            // same. To solve this problem for the compiler we extend Cargo's
-            // already-passed -C metadata flag with our own. Our rustc.rs
-            // wrapper around the actual rustc will detect -C metadata being
-            // passed and frob it with this extra string we're passing in.
-            cargo.env("RUSTC_METADATA_SUFFIX", "rustc");
         }
 
         if let Some(x) = self.crt_static(target) {
