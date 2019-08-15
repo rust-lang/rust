@@ -870,7 +870,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let expansion = ExpnId::root(); // FIXME(jseyfried) intercrate hygiene
         match res {
             Res::Def(kind @ DefKind::Mod, def_id)
-            | Res::Def(kind @ DefKind::Enum, def_id) => {
+            | Res::Def(kind @ DefKind::Enum, def_id)
+            | Res::Def(kind @ DefKind::Trait, def_id) => {
                 let module = self.r.new_module(parent,
                                              ModuleKind::Def(kind, def_id, ident.name),
                                              def_id,
@@ -883,6 +884,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             | Res::Def(DefKind::ForeignTy, _)
             | Res::Def(DefKind::OpaqueTy, _)
             | Res::Def(DefKind::TraitAlias, _)
+            | Res::Def(DefKind::AssocTy, _)
+            | Res::Def(DefKind::AssocOpaqueTy, _)
             | Res::PrimTy(..)
             | Res::ToolMod => {
                 self.r.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
@@ -890,6 +893,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::Static, _)
             | Res::Def(DefKind::Const, _)
+            | Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Ctor(CtorOf::Variant, ..), _) => {
                 self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
             }
@@ -902,28 +906,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     self.r.struct_constructors.insert(struct_def_id, (res, vis));
                 }
             }
-            Res::Def(DefKind::Trait, def_id) => {
-                let module_kind = ModuleKind::Def(DefKind::Trait, def_id, ident.name);
-                let module = self.r.new_module(parent,
-                                             module_kind,
-                                             parent.normal_ancestor_id,
-                                             expansion,
-                                             span);
-                self.r.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
+            Res::Def(DefKind::Method, def_id) => {
+                self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
 
-                module.populate_on_access.set(false);
-                for child in self.r.cstore.item_children_untracked(def_id, self.r.session) {
-                    let res = child.res.map_id(|_| panic!("unexpected id"));
-                    let ns = if let Res::Def(DefKind::AssocTy, _) = res {
-                        TypeNS
-                    } else { ValueNS };
-                    self.r.define(module, child.ident, ns,
-                                (res, ty::Visibility::Public, DUMMY_SP, expansion));
-
-                    if self.r.cstore.associated_item_cloned_untracked(child.res.def_id())
-                           .method_has_self_argument {
-                        self.r.has_self.insert(res.def_id());
-                    }
+                if self.r.cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
+                    self.r.has_self.insert(def_id);
                 }
             }
             Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
