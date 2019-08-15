@@ -34,6 +34,7 @@ fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         param_attr_spans: Lock::new(Vec::new()),
         let_chains_spans: Lock::new(Vec::new()),
         async_closure_spans: Lock::new(Vec::new()),
+        yield_spans: Lock::new(Vec::new()),
         injected_crate_name: Once::new(),
     }
 }
