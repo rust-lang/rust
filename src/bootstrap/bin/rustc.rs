@@ -148,11 +148,6 @@ fn main() {
             cmd.arg("-L").arg(&root);
         }
 
-        // Override linker if necessary.
-        if let Ok(target_linker) = env::var("RUSTC_TARGET_LINKER") {
-            cmd.arg(format!("-Clinker={}", target_linker));
-        }
-
         // If we're compiling specifically the `panic_abort` crate then we pass
         // the `-C panic=abort` option. Note that we do not do this for any
         // other crate intentionally as this is the only crate for now that we

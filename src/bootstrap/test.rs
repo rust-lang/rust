@@ -23,7 +23,7 @@ use crate::tool::{self, Tool, SourceType};
 use crate::toolstate::ToolState;
 use crate::util::{self, dylib_path, dylib_path_var};
 use crate::Crate as CargoCrate;
-use crate::{DocTests, Mode, GitRepo};
+use crate::{DocTests, Mode, GitRepo, envify};
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -1911,16 +1911,6 @@ impl Step for CrateRustdoc {
 
         try_run(builder, &mut cargo);
     }
-}
-
-fn envify(s: &str) -> String {
-    s.chars()
-        .map(|c| match c {
-            '-' => '_',
-            c => c,
-        })
-        .flat_map(|c| c.to_uppercase())
-        .collect()
 }
 
 /// Some test suites are run inside emulators or on remote devices, and most

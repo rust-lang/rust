@@ -926,7 +926,8 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
         if let Some(target_linker) = self.linker(target) {
-            cargo.env("RUSTC_TARGET_LINKER", target_linker);
+            let target = crate::envify(&target);
+            cargo.env(&format!("CARGO_TARGET_{}_LINKER", target), target_linker);
         }
         if !(["build", "check", "clippy", "fix", "rustc"].contains(&cmd)) && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(compiler));
