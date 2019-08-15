@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
     }
 
     fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, generics: &hir::Generics) {
-        if !has_attr(cx.sess(), &var.node.attrs) {
+        if !has_attr(cx.sess(), &var.attrs) {
             return;
         }
         prelude();

@@ -123,7 +123,7 @@ impl_lint_pass!(EnumVariantNames => [
 ]);
 
 fn var2str(var: &Variant) -> LocalInternedString {
-    var.node.ident.as_str()
+    var.ident.as_str()
 }
 
 /// Returns the number of chars that match from the start

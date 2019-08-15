@@ -1,10 +1,16 @@
 error: statement with no effect
-  --> $DIR/blocks.rs:14:5
+  --> $DIR/blocks.rs:8:9
    |
-LL |     -x;
-   |     ^^^
+LL |         ;;;;
+   |         ^^^^
    |
    = note: `-D clippy::no-effect` implied by `-D warnings`
 
-error: aborting due to previous error
+error: statement with no effect
+  --> $DIR/blocks.rs:15:5
+   |
+LL |     -x;
+   |     ^^^
+
+error: aborting due to 2 previous errors
 

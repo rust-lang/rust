@@ -322,14 +322,14 @@ fn try_() -> Result<i32, &'static str> {
 
 #[clippy::cognitive_complexity = "0"]
 fn try_again() -> Result<i32, &'static str> {
-    let _ = r#try!(Ok(42));
-    let _ = r#try!(Ok(43));
-    let _ = r#try!(Ok(44));
-    let _ = r#try!(Ok(45));
-    let _ = r#try!(Ok(46));
-    let _ = r#try!(Ok(47));
-    let _ = r#try!(Ok(48));
-    let _ = r#try!(Ok(49));
+    let _ = Ok(42)?;
+    let _ = Ok(43)?;
+    let _ = Ok(44)?;
+    let _ = Ok(45)?;
+    let _ = Ok(46)?;
+    let _ = Ok(47)?;
+    let _ = Ok(48)?;
+    let _ = Ok(49)?;
     match 5 {
         5 => Ok(5),
         _ => return Err("bla"),
