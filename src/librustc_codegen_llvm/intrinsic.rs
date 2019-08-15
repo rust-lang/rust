@@ -1041,18 +1041,18 @@ fn generic_simd_intrinsic(
 ) -> Result<&'ll Value, ()> {
     // Given a SIMD vector type `x` return the element type and the number of
     // elements in the vector.
-    fn simd_ty_and_len(bx: &Builder<'a, 'll, 'tcx>, x: Ty<'tcx>) -> (Ty<'tcx>, usize) {
-        let ty = if let ty::Adt(def, substs) = x.sty {
-            let field0_ty = def.non_enum_variant().fields[0].ty(bx.tcx(), substs);
-            if let ty::Array(element_ty, _) = field0_ty.sty {
+    fn simd_ty_and_len(bx: &Builder<'a, 'll, 'tcx>, simd_ty: Ty<'tcx>) -> (Ty<'tcx>, usize) {
+        let ty = if let ty::Adt(def, substs) = simd_ty.sty {
+            let f0_ty = def.non_enum_variant().fields[0].ty(bx.tcx(), substs);
+            if let ty::Array(element_ty, _) = f0_ty.sty {
                 element_ty
             } else {
-                field0_ty
+                f0_ty
             }
         } else {
             bug!("should only be called with a SIMD type")
         };
-        let count = if let ty::layout::Abi::Vector{count, ..} = bx.layout_of(x).abi {
+        let count = if let ty::layout::Abi::Vector{count, ..} = bx.layout_of(simd_ty).abi {
             count
         } else {
             bug!("should only be called with a SIMD type")

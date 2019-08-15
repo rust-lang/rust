@@ -772,7 +772,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // This error isn;t caught in typeck, e.g., if
                     // the element type of the vector is generic.
                     tcx.sess.fatal(&format!(
-                        "monomorphising SIMD type `{}` with a non-primitive-scalar (integer/float/pointer) element type `{}`",
+                        "monomorphising SIMD type `{}` with a non-primitive-scalar \
+                        (integer/float/pointer) element type `{}`",
                         ty, e_ty
                     ))
                 };

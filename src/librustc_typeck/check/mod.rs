@@ -1763,8 +1763,11 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
                 _ if e.is_machine() => { /* struct(u8, u8, u8, u8) is ok */ }
                 ty::Array(ty, _c) if ty.is_machine() => { /* struct([f32; 4]) */ }
                 _ => {
-                    span_err!(tcx.sess, sp, E0077,
-                              "SIMD vector element type should be machine type");
+                    span_err!(
+                        tcx.sess, sp, E0077,
+                        "SIMD vector element type should be a \
+                         primitive scalar (integer/float/pointer) type"
+                    );
                     return;
                 }
             }
