@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio, exit};
 use std::str;
 
-use build_helper::{output, mtime, t, up_to_date};
+use build_helper::{output, t, up_to_date};
 use filetime::FileTime;
 use serde::Deserialize;
 use serde_json;
@@ -274,8 +274,6 @@ impl Step for StdLink {
             // for reason why the sanitizers are not built in stage0.
             copy_apple_sanitizer_dylibs(builder, &builder.native_dir(target), "osx", &libdir);
         }
-
-        builder.cargo(target_compiler, Mode::ToolStd, target, "clean");
     }
 }
 
@@ -480,8 +478,6 @@ impl Step for TestLink {
             &builder.sysroot_libdir(target_compiler, compiler.host),
             &libtest_stamp(builder, compiler, target)
         );
-
-        builder.cargo(target_compiler, Mode::ToolTest, target, "clean");
     }
 }
 
@@ -639,7 +635,6 @@ impl Step for RustcLink {
             &builder.sysroot_libdir(target_compiler, compiler.host),
             &librustc_stamp(builder, compiler, target)
         );
-        builder.cargo(target_compiler, Mode::ToolRustc, target, "clean");
     }
 }
 
@@ -1202,40 +1197,12 @@ pub fn run_cargo(builder: &Builder<'_>,
         deps.push((path_to_add.into(), false));
     }
 
-    // Now we want to update the contents of the stamp file, if necessary. First
-    // we read off the previous contents along with its mtime. If our new
-    // contents (the list of files to copy) is different or if any dep's mtime
-    // is newer then we rewrite the stamp file.
     deps.sort();
-    let stamp_contents = fs::read(stamp);
-    let stamp_mtime = mtime(&stamp);
     let mut new_contents = Vec::new();
-    let mut max = None;
-    let mut max_path = None;
     for (dep, proc_macro) in deps.iter() {
-        let mtime = mtime(dep);
-        if Some(mtime) > max {
-            max = Some(mtime);
-            max_path = Some(dep.clone());
-        }
         new_contents.extend(if *proc_macro { b"h" } else { b"t" });
         new_contents.extend(dep.to_str().unwrap().as_bytes());
         new_contents.extend(b"\0");
-    }
-    let max = max.unwrap();
-    let max_path = max_path.unwrap();
-    let contents_equal = stamp_contents
-        .map(|contents| contents == new_contents)
-        .unwrap_or_default();
-    if contents_equal && max <= stamp_mtime {
-        builder.verbose(&format!("not updating {:?}; contents equal and {:?} <= {:?}",
-                stamp, max, stamp_mtime));
-        return deps.into_iter().map(|(d, _)| d).collect()
-    }
-    if max > stamp_mtime {
-        builder.verbose(&format!("updating {:?} as {:?} changed", stamp, max_path));
-    } else {
-        builder.verbose(&format!("updating {:?} as deps changed", stamp));
     }
     t!(fs::write(&stamp, &new_contents));
     deps.into_iter().map(|(d, _)| d).collect()
