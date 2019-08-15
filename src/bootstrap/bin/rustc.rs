@@ -97,8 +97,6 @@ fn main() {
         cmd.env("RUST_BACKTRACE", "1");
     }
 
-    cmd.env("RUSTC_BREAK_ON_ICE", "1");
-
     if let Ok(debuginfo_level) = env::var("RUSTC_DEBUGINFO_LEVEL") {
         cmd.arg(format!("-Cdebuginfo={}", debuginfo_level));
     }

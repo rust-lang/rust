@@ -917,7 +917,8 @@ impl<'a> Builder<'a> {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")
                 },
             )
-            .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
+            .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
+            .env("RUSTC_BREAK_ON_ICE", "1");
 
         if let Some(host_linker) = self.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
