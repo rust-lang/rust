@@ -148,7 +148,7 @@ impl Margin {
                 self.computed_right = self.computed_left + self.column_width;
             } else if self.span_right - self.span_left <= self.column_width {
                 // Attempt to fit the code window considering the spans and labels plus padding.
-                let padding_left = (self.column_width - (self.span_right - self.span_left)) / 2;
+                let padding_left = (self.column_width - (self.span_right - self.span_left)) / 5 * 2;
                 self.computed_left = self.span_left - padding_left;
                 self.computed_right = self.computed_left + self.column_width;
             } else { // Mostly give up but still don't show the full line.
@@ -365,7 +365,18 @@ impl EmitterWriter {
         let left = margin.left(line_len);
         let right = margin.right(line_len);
         // On long lines, we strip the source line, accounting for unicode.
-        let code: String = source_string.chars().skip(left).take(right - left).collect();
+        let mut taken = 0;
+        let code: String = source_string.chars().skip(left).take_while(|ch| {
+            // Make sure that the trimming on the right will fall within the terminal width.
+            // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is.
+            // For now, just accept that sometimes the code line will be longer than desired.
+            let next = unicode_width::UnicodeWidthChar::width(*ch).unwrap_or(1);
+            if taken + next > right - left {
+                return false;
+            }
+            taken += next;
+            true
+        }).collect();
         buffer.puts(line_offset, code_offset, &code, Style::Quotation);
         if margin.was_cut_left() {
             // We have stripped some code/whitespace from the beginning, make it clear.
@@ -373,12 +384,7 @@ impl EmitterWriter {
         }
         if margin.was_cut_right(line_len) {
             // We have stripped some code after the right-most span end, make it clear we did so.
-            buffer.puts(
-                line_offset,
-                margin.right(line_len) - margin.left(line_len) + code_offset - 3,
-                "...",
-                Style::LineNumber,
-            );
+            buffer.puts(line_offset, code_offset + taken - 3, "...", Style::LineNumber);
         }
         buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
 
@@ -420,6 +426,10 @@ impl EmitterWriter {
         let line_offset = buffer.num_lines();
 
         let left = margin.left(source_string.len()); // Left trim
+        // Account for unicode characters of width !=0 that were removed.
+        let left = source_string.chars().take(left).fold(0, |acc, ch| {
+            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1)
+        });
 
         self.draw_line(
             buffer,
@@ -1465,7 +1475,7 @@ impl EmitterWriter {
                         // ...or trailing spaces. Account for substitutions containing unicode
                         // characters.
                         let sub_len = part.snippet.trim().chars().fold(0, |acc, ch| {
-                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0)
+                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1)
                         });
 
                         let underline_start = (span_start_pos + start) as isize + offset;
@@ -1488,7 +1498,7 @@ impl EmitterWriter {
 
                         // length of the code after substitution
                         let full_sub_len = part.snippet.chars().fold(0, |acc, ch| {
-                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) as isize
+                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as isize
                         });
 
                         // length of the code to be substituted
