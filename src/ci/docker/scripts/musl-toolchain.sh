@@ -54,29 +54,3 @@ if [ "$REPLACE_CC" = "1" ]; then
         ln -s $TARGET-g++ /usr/local/bin/$exec
     done
 fi
-
-export CC=$TARGET-gcc
-export CXX=$TARGET-g++
-
-LLVM=70
-
-# may have been downloaded in a previous run
-if [ ! -d libunwind-release_$LLVM ]; then
-  curl -L https://github.com/llvm-mirror/llvm/archive/release_$LLVM.tar.gz | tar xzf -
-  curl -L https://github.com/llvm-mirror/libunwind/archive/release_$LLVM.tar.gz | tar xzf -
-fi
-
-# fixme(mati865): Replace it with https://github.com/rust-lang/rust/pull/59089
-mkdir libunwind-build
-cd libunwind-build
-cmake ../libunwind-release_$LLVM \
-          -DLLVM_PATH=/build/llvm-release_$LLVM \
-          -DLIBUNWIND_ENABLE_SHARED=0 \
-          -DCMAKE_C_COMPILER=$CC \
-          -DCMAKE_CXX_COMPILER=$CXX \
-          -DCMAKE_C_FLAGS="$CFLAGS" \
-          -DCMAKE_CXX_FLAGS="$CXXFLAGS"
-
-hide_output make -j$(nproc)
-cp lib/libunwind.a $OUTPUT/$TARGET/lib
-cd - && rm -rf libunwind-build
