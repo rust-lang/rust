@@ -846,9 +846,9 @@ pub fn expand_preparsed_format_args(
 
     let msg = "format argument must be a string literal";
     let fmt_sp = efmt.span;
-    let fmt = match expr_to_spanned_string(ecx, efmt, msg) {
+    let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt, msg) {
         Ok(mut fmt) if append_newline => {
-            fmt.node.0 = Symbol::intern(&format!("{}\n", fmt.node.0));
+            fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
             fmt
         }
         Ok(fmt) => fmt,
@@ -875,7 +875,7 @@ pub fn expand_preparsed_format_args(
         _ => (false, None),
     };
 
-    let str_style = match fmt.node.1 {
+    let str_style = match fmt_style {
         ast::StrStyle::Cooked => None,
         ast::StrStyle::Raw(raw) => {
             Some(raw as usize)
@@ -981,7 +981,7 @@ pub fn expand_preparsed_format_args(
         vec![]
     };
 
-    let fmt_str = &*fmt.node.0.as_str();  // for the suggestions below
+    let fmt_str = &*fmt_str.as_str();  // for the suggestions below
     let mut parser = parse::Parser::new(fmt_str, str_style, skips, append_newline);
 
     let mut unverified_pieces = Vec::new();
@@ -995,7 +995,7 @@ pub fn expand_preparsed_format_args(
 
     if !parser.errors.is_empty() {
         let err = parser.errors.remove(0);
-        let sp = fmt.span.from_inner(err.span);
+        let sp = fmt_span.from_inner(err.span);
         let mut e = ecx.struct_span_err(sp, &format!("invalid format string: {}",
                                                      err.description));
         e.span_label(sp, err.label + " in format string");
@@ -1003,7 +1003,7 @@ pub fn expand_preparsed_format_args(
             e.note(&note);
         }
         if let Some((label, span)) = err.secondary_label {
-            let sp = fmt.span.from_inner(span);
+            let sp = fmt_span.from_inner(span);
             e.span_label(sp, label);
         }
         e.emit();
@@ -1011,7 +1011,7 @@ pub fn expand_preparsed_format_args(
     }
 
     let arg_spans = parser.arg_places.iter()
-        .map(|span| fmt.span.from_inner(*span))
+        .map(|span| fmt_span.from_inner(*span))
         .collect();
 
     let named_pos: FxHashSet<usize> = names.values().cloned().collect();
@@ -1034,7 +1034,7 @@ pub fn expand_preparsed_format_args(
         str_pieces: Vec::with_capacity(unverified_pieces.len()),
         all_pieces_simple: true,
         macsp,
-        fmtsp: fmt.span,
+        fmtsp: fmt_span,
         invalid_refs: Vec::new(),
         arg_spans,
         arg_with_formatting: Vec::new(),

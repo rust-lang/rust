@@ -12,7 +12,6 @@ use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
 use syntax::ast;
-use syntax::source_map::Spanned;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 use syntax_pos::hygiene::DesugaringKind;
@@ -1036,7 +1035,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         &self,
         pat: &'tcx hir::Pat,
         qpath: &hir::QPath,
-        fields: &'tcx [Spanned<hir::FieldPat>],
+        fields: &'tcx [hir::FieldPat],
         etc: bool,
         expected: Ty<'tcx>,
         def_bm: ty::BindingMode,
@@ -1048,7 +1047,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             variant_ty
         } else {
             for field in fields {
-                self.check_pat_walk(&field.node.pat, self.tcx.types.err, def_bm, discrim_span);
+                self.check_pat_walk(&field.pat, self.tcx.types.err, def_bm, discrim_span);
             }
             return self.tcx.types.err;
         };
@@ -1206,7 +1205,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         pat_id: hir::HirId,
         span: Span,
         variant: &'tcx ty::VariantDef,
-        fields: &'tcx [Spanned<hir::FieldPat>],
+        fields: &'tcx [hir::FieldPat],
         etc: bool,
         def_bm: ty::BindingMode,
     ) -> bool {
@@ -1231,7 +1230,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
         let mut inexistent_fields = vec![];
         // Typecheck each field.
-        for &Spanned { node: ref field, span } in fields {
+        for field in fields {
+            let span = field.span;
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {

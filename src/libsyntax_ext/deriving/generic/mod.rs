@@ -187,7 +187,7 @@ use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
 use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
-use syntax::source_map::{self, respan};
+use syntax::source_map::respan;
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, kw, sym};
@@ -1610,15 +1610,13 @@ impl<'a> TraitDef<'a> {
                         if ident.is_none() {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
-                        source_map::Spanned {
+                        ast::FieldPat {
+                            ident: ident.unwrap(),
+                            is_shorthand: false,
+                            attrs: ThinVec::new(),
+                            id: ast::DUMMY_NODE_ID,
                             span: pat.span.with_ctxt(self.span.ctxt()),
-                            node: ast::FieldPat {
-                                id: ast::DUMMY_NODE_ID,
-                                ident: ident.unwrap(),
-                                pat,
-                                is_shorthand: false,
-                                attrs: ThinVec::new(),
-                            },
+                            pat,
                         }
                     })
                     .collect();

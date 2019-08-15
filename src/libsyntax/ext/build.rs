@@ -575,7 +575,7 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::TupleStruct(path, subpats))
     }
     pub fn pat_struct(&self, span: Span, path: ast::Path,
-                  field_pats: Vec<Spanned<ast::FieldPat>>) -> P<ast::Pat> {
+                      field_pats: Vec<ast::FieldPat>) -> P<ast::Pat> {
         self.pat(span, PatKind::Struct(path, field_pats, false))
     }
     pub fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat> {

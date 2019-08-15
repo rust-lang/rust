@@ -1670,14 +1670,14 @@ impl<'a> State<'a> {
                                    &fields[..],
                                    |s, f| {
                                        s.cbox(INDENT_UNIT);
-                                       if !f.node.is_shorthand {
-                                           s.print_ident(f.node.ident);
+                                       if !f.is_shorthand {
+                                           s.print_ident(f.ident);
                                            s.word_nbsp(":");
                                        }
-                                       s.print_pat(&f.node.pat);
+                                       s.print_pat(&f.pat);
                                        s.end()
                                    },
-                                   |f| f.node.pat.span);
+                                   |f| f.pat.span);
                 if etc {
                     if !fields.is_empty() {
                         self.word_space(",");

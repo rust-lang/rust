@@ -824,7 +824,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
     }
 
-    fn visit_mac(&mut self, mac: &Spanned<Mac_>) {
+    fn visit_mac(&mut self, mac: &Mac) {
         // when a new macro kind is added but the author forgets to set it up for expansion
         // because that's the only part that won't cause a compiler error
         self.session.diagnostic()

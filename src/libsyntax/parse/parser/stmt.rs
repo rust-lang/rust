@@ -5,7 +5,7 @@ use super::path::PathStyle;
 use crate::ptr::P;
 use crate::{maybe_whole, ThinVec};
 use crate::ast::{self, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
-use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac_, MacDelimiter};
+use crate::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
 use crate::ext::base::DummyResult;
 use crate::parse::{classify, DirectoryOwnership};
 use crate::parse::diagnostics::Error;
@@ -99,12 +99,13 @@ impl<'a> Parser<'a> {
                 MacStmtStyle::NoBraces
             };
 
-            let mac = respan(lo.to(hi), Mac_ {
+            let mac = Mac {
                 path,
                 tts,
                 delim,
+                span: lo.to(hi),
                 prior_type_ascription: self.last_type_ascription,
-            });
+            };
             let node = if delim == MacDelimiter::Brace ||
                           self.token == token::Semi || self.token == token::Eof {
                 StmtKind::Mac(P((mac, style, attrs.into())))

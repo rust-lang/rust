@@ -418,8 +418,8 @@ fn add_from_pat<'tcx>(ir: &mut IrMaps<'tcx>, pat: &P<hir::Pat>) {
             }
             Struct(_, ref fields, _) => {
                 for field in fields {
-                    if field.node.is_shorthand {
-                        shorthand_field_ids.insert(field.node.pat.hir_id);
+                    if field.is_shorthand {
+                        shorthand_field_ids.insert(field.pat.hir_id);
                     }
                 }
             }

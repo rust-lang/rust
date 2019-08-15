@@ -32,7 +32,7 @@ use syntax::print::pprust::{
     ty_to_string
 };
 use syntax::ptr::P;
-use syntax::source_map::{Spanned, DUMMY_SP, respan};
+use syntax::source_map::{DUMMY_SP, respan};
 use syntax::walk_list;
 use syntax_pos::*;
 
@@ -879,7 +879,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 };
                 let variant = adt.variant_of_res(self.save_ctxt.get_path_res(p.id));
 
-                for &Spanned { node: ref field, .. } in fields {
+                for field in fields {
                     if let Some(index) = self.tcx.find_field_index(field.ident, variant) {
                         if !self.span.filter_generated(field.ident.span) {
                             let span = self.span_from_span(field.ident.span);

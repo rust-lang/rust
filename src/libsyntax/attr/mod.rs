@@ -13,7 +13,7 @@ use crate::ast::{AttrId, AttrStyle, Name, Ident, Path, PathSegment};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
-use crate::source_map::{BytePos, Spanned, dummy_spanned};
+use crate::source_map::{BytePos, Spanned, DUMMY_SP};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::parser::Parser;
 use crate::parse::{self, ParseSess, PResult};
@@ -328,7 +328,9 @@ impl Attribute {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
                 Ident::with_empty_ctxt(sym::doc),
-                dummy_spanned(Symbol::intern(&strip_doc_comment_decoration(&comment.as_str()))));
+                Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())),
+                DUMMY_SP,
+            );
             f(&Attribute {
                 id: self.id,
                 style: self.style,
@@ -345,9 +347,9 @@ impl Attribute {
 
 /* Constructors */
 
-pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem {
-    let lit_kind = LitKind::Str(value.node, ast::StrStyle::Cooked);
-    mk_name_value_item(ident, lit_kind, value.span)
+pub fn mk_name_value_item_str(ident: Ident, str: Symbol, str_span: Span) -> MetaItem {
+    let lit_kind = LitKind::Str(str, ast::StrStyle::Cooked);
+    mk_name_value_item(ident, lit_kind, str_span)
 }
 
 pub fn mk_name_value_item(ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
