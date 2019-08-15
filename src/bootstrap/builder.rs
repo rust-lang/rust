@@ -908,7 +908,6 @@ impl<'a> Builder<'a> {
             )
             .env("RUSTC_SYSROOT", &sysroot)
             .env("RUSTC_LIBDIR", &libdir)
-            .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
             .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
             .env(
                 "RUSTDOC_REAL",
@@ -920,6 +919,54 @@ impl<'a> Builder<'a> {
             )
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
             .env("RUSTC_BREAK_ON_ICE", "1");
+
+        // Dealing with rpath here is a little special, so let's go into some
+        // detail. First off, `-rpath` is a linker option on Unix platforms
+        // which adds to the runtime dynamic loader path when looking for
+        // dynamic libraries. We use this by default on Unix platforms to ensure
+        // that our nightlies behave the same on Windows, that is they work out
+        // of the box. This can be disabled, of course, but basically that's why
+        // we're gated on RUSTC_RPATH here.
+        //
+        // Ok, so the astute might be wondering "why isn't `-C rpath` used
+        // here?" and that is indeed a good question to task. This codegen
+        // option is the compiler's current interface to generating an rpath.
+        // Unfortunately it doesn't quite suffice for us. The flag currently
+        // takes no value as an argument, so the compiler calculates what it
+        // should pass to the linker as `-rpath`. This unfortunately is based on
+        // the **compile time** directory structure which when building with
+        // Cargo will be very different than the runtime directory structure.
+        //
+        // All that's a really long winded way of saying that if we use
+        // `-Crpath` then the executables generated have the wrong rpath of
+        // something like `$ORIGIN/deps` when in fact the way we distribute
+        // rustc requires the rpath to be `$ORIGIN/../lib`.
+        //
+        // So, all in all, to set up the correct rpath we pass the linker
+        // argument manually via `-C link-args=-Wl,-rpath,...`. Plus isn't it
+        // fun to pass a flag to a tool to pass a flag to pass a flag to a tool
+        // to change a flag in a binary?
+        if self.config.rust_rpath {
+            let rpath = if target.contains("apple") {
+
+                // Note that we need to take one extra step on macOS to also pass
+                // `-Wl,-instal_name,@rpath/...` to get things to work right. To
+                // do that we pass a weird flag to the compiler to get it to do
+                // so. Note that this is definitely a hack, and we should likely
+                // flesh out rpath support more fully in the future.
+                rustflags.arg("-Zosx-rpath-install-name");
+                Some("-Wl,-rpath,@loader_path/../lib")
+            } else if !target.contains("windows") &&
+                      !target.contains("wasm32") &&
+                      !target.contains("fuchsia") {
+                Some("-Wl,-rpath,$ORIGIN/../lib")
+            } else {
+                None
+            };
+            if let Some(rpath) = rpath {
+                rustflags.arg(&format!("-Clink-args={}", rpath));
+            }
+        }
 
         if let Some(host_linker) = self.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
