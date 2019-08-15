@@ -872,6 +872,8 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zforce-unstable-if-unmarked");
         }
 
+        rustflags.arg("-Zexternal-macro-backtrace");
+
         let want_rustdoc = self.doc_tests != DocTests::No;
 
         // We synthetically interpret a stage0 compiler used to build tools as a

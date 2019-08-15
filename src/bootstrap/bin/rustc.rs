@@ -124,8 +124,6 @@ fn main() {
             cmd.arg("--sysroot").arg(&sysroot);
         }
 
-        cmd.arg("-Zexternal-macro-backtrace");
-
         // Link crates to the proc macro crate for the target, but use a host proc macro crate
         // to actually run the macros
         if env::var_os("RUST_DUAL_PROC_MACROS").is_some() {
