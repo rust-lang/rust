@@ -41,4 +41,12 @@ fn unnecessary_fold_should_ignore() {
     let _ = [(0..2), (0..3)].iter().fold(1, |a, b| a * b.len());
 }
 
+/// Should lint only the line containing the fold
+fn unnecessary_fold_over_multiple_lines() {
+    let _ = (0..3)
+        .map(|x| x + 1)
+        .filter(|x| x % 2 == 0)
+        .any(|x| x > 2);
+}
+
 fn main() {}
