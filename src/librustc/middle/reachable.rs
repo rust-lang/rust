@@ -32,9 +32,15 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAt
         return true
     }
 
-    match item.node {
-        hir::ItemKind::Impl(..) |
-        hir::ItemKind::Fn(..) => {
+        match item.node {
+        hir::ItemKind::Fn(_, header, ..) => {
+            if header.constness == hir::Constness::Const {
+                return true;
+            }
+            let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
+            generics.requires_monomorphization(tcx)
+        }
+        hir::ItemKind::Impl(..) => {
             let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
             generics.requires_monomorphization(tcx)
         }
@@ -51,6 +57,11 @@ fn method_might_be_inlined(
     let generics = tcx.generics_of(tcx.hir().local_def_id(impl_item.hir_id));
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true
+    }
+    if let hir::ImplItemKind::Method(method_sig, _) = &impl_item.node {
+        if method_sig.header.constness == hir::Constness::Const {
+            return true
+        }
     }
     if let Some(impl_hir_id) = tcx.hir().as_local_hir_id(impl_src) {
         match tcx.hir().find(impl_hir_id) {
