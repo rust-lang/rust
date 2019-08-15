@@ -16,7 +16,11 @@ pub fn renumber_mir<'tcx>(
     debug!("renumber_mir: body.arg_count={:?}", body.arg_count);
 
     let mut visitor = NLLVisitor { infcx };
-    visitor.visit_promoted(promoted);
+
+    for body in promoted.iter_mut() {
+        visitor.visit_body(body);
+    }
+
     visitor.visit_body(body);
 }
 
@@ -46,13 +50,6 @@ impl<'a, 'tcx> NLLVisitor<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         renumber_regions(self.infcx, value)
-    }
-
-    fn visit_promoted(&mut self, promoted: &mut IndexVec<Promoted, Body<'tcx>>) {
-        debug!("visiting promoted mir");
-        for body in promoted.iter_mut() {
-            self.visit_body(body);
-        }
     }
 }
 

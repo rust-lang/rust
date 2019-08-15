@@ -149,41 +149,38 @@ pub fn run_passes(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
     instance: InstanceDef<'tcx>,
+    promoted: Option<Promoted>,
     mir_phase: MirPhase,
     passes: &[&dyn MirPass<'tcx>],
 ) {
     let phase_index = mir_phase.phase_index();
 
-    let run_passes = |body: &mut Body<'tcx>, promoted| {
-        if body.phase >= mir_phase {
-            return;
-        }
+    if body.phase >= mir_phase {
+        return;
+    }
 
-        let source = MirSource {
-            instance,
-            promoted,
+    let source = MirSource {
+        instance,
+        promoted,
+    };
+    let mut index = 0;
+    let mut run_pass = |pass: &dyn MirPass<'tcx>| {
+        let run_hooks = |body: &_, index, is_after| {
+            dump_mir::on_mir_pass(tcx, &format_args!("{:03}-{:03}", phase_index, index),
+                                    &pass.name(), source, body, is_after);
         };
-        let mut index = 0;
-        let mut run_pass = |pass: &dyn MirPass<'tcx>| {
-            let run_hooks = |body: &_, index, is_after| {
-                dump_mir::on_mir_pass(tcx, &format_args!("{:03}-{:03}", phase_index, index),
-                                      &pass.name(), source, body, is_after);
-            };
-            run_hooks(body, index, false);
-            pass.run_pass(tcx, source, body);
-            run_hooks(body, index, true);
+        run_hooks(body, index, false);
+        pass.run_pass(tcx, source, body);
+        run_hooks(body, index, true);
 
-            index += 1;
-        };
-
-        for pass in passes {
-            run_pass(*pass);
-        }
-
-        body.phase = mir_phase;
+        index += 1;
     };
 
-    run_passes(body, None);
+    for pass in passes {
+        run_pass(*pass);
+    }
+
+    body.phase = mir_phase;
 }
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
@@ -191,7 +188,7 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
-    run_passes(tcx, &mut body, InstanceDef::Item(def_id), MirPhase::Const, &[
+    run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Const, &[
         // What we need to do constant evaluation.
         &simplify::SimplifyCfg::new("initial"),
         &rustc_peek::SanityCheck,
@@ -213,7 +210,7 @@ fn mir_validated(
 
     let mut body = tcx.mir_const(def_id).steal();
     let qualify_and_promote_pass = qualify_consts::QualifyAndPromoteConstants::default();
-    run_passes(tcx, &mut body, InstanceDef::Item(def_id), MirPhase::Validated, &[
+    run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
         // What we need to run borrowck etc.
         &qualify_and_promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
@@ -222,26 +219,13 @@ fn mir_validated(
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
-fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
-    if tcx.is_constructor(def_id) {
-        // There's no reason to run all of the MIR passes on constructors when
-        // we can just output the MIR we want directly. This also saves const
-        // qualification and borrow checking the trouble of special casing
-        // constructors.
-        return shim::build_adt_ctor(tcx, def_id);
-    }
-
-    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
-    // execute before we can steal.
-    tcx.ensure().mir_borrowck(def_id);
-
-    if tcx.use_ast_borrowck() {
-        tcx.ensure().borrowck(def_id);
-    }
-
-    let (body, _) = tcx.mir_validated(def_id);
-    let mut body = body.steal();
-    run_passes(tcx, &mut body, InstanceDef::Item(def_id), MirPhase::Optimized, &[
+fn run_optimization_passes<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    def_id: DefId,
+    promoted: Option<Promoted>,
+) {
+    run_passes(tcx, body, InstanceDef::Item(def_id), promoted, MirPhase::Optimized, &[
         // Remove all things only needed by analysis
         &no_landing_pads::NoLandingPads,
         &simplify_branches::SimplifyBranches::new("initial"),
@@ -292,6 +276,28 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
         &add_call_guards::CriticalCallEdges,
         &dump_mir::Marker("PreCodegen"),
     ]);
+}
+
+fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
+    if tcx.is_constructor(def_id) {
+        // There's no reason to run all of the MIR passes on constructors when
+        // we can just output the MIR we want directly. This also saves const
+        // qualification and borrow checking the trouble of special casing
+        // constructors.
+        return shim::build_adt_ctor(tcx, def_id);
+    }
+
+    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
+    // execute before we can steal.
+    tcx.ensure().mir_borrowck(def_id);
+
+    if tcx.use_ast_borrowck() {
+        tcx.ensure().borrowck(def_id);
+    }
+
+    let (body, _) = tcx.mir_validated(def_id);
+    let mut body = body.steal();
+    run_optimization_passes(tcx, &mut body, def_id, None);
     tcx.arena.alloc(body)
 }
 
@@ -304,57 +310,8 @@ fn promoted_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx IndexVec<Promot
     let (_, promoted) = tcx.mir_validated(def_id);
     let mut promoted = promoted.steal();
 
-    for mut body in promoted.iter_mut() {
-        run_passes(tcx, &mut body, InstanceDef::Item(def_id), MirPhase::Optimized, &[
-            // Remove all things only needed by analysis
-            &no_landing_pads::NoLandingPads,
-            &simplify_branches::SimplifyBranches::new("initial"),
-            &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &cleanup_post_borrowck::CleanupNonCodegenStatements,
-
-            &simplify::SimplifyCfg::new("early-opt"),
-
-            // These next passes must be executed together
-            &add_call_guards::CriticalCallEdges,
-            &elaborate_drops::ElaborateDrops,
-            &no_landing_pads::NoLandingPads,
-            // AddMovesForPackedDrops needs to run after drop
-            // elaboration.
-            &add_moves_for_packed_drops::AddMovesForPackedDrops,
-            // AddRetag needs to run after ElaborateDrops, and it needs
-            // an AllCallEdges pass right before it.  Otherwise it should
-            // run fairly late, but before optimizations begin.
-            &add_call_guards::AllCallEdges,
-            &add_retag::AddRetag,
-
-            &simplify::SimplifyCfg::new("elaborate-drops"),
-
-            // No lifetime analysis based on borrowing can be done from here on out.
-
-            // From here on out, regions are gone.
-            &erase_regions::EraseRegions,
-
-            // Optimizations begin.
-            &uniform_array_move_out::RestoreSubsliceArrayMoveOut,
-            &inline::Inline,
-
-            // Lowering generator control-flow and variables
-            // has to happen before we do anything else to them.
-            &generator::StateTransform,
-
-            &instcombine::InstCombine,
-            &const_prop::ConstProp,
-            &simplify_branches::SimplifyBranches::new("after-const-prop"),
-            &deaggregator::Deaggregator,
-            &copy_prop::CopyPropagation,
-            &simplify_branches::SimplifyBranches::new("after-copy-prop"),
-            &remove_noop_landing_pads::RemoveNoopLandingPads,
-            &simplify::SimplifyCfg::new("final"),
-            &simplify::SimplifyLocals,
-
-            &add_call_guards::CriticalCallEdges,
-            &dump_mir::Marker("PreCodegen"),
-        ]);
+    for (p, mut body) in promoted.iter_enumerated_mut() {
+        run_optimization_passes(tcx, &mut body, def_id, Some(p));
     }
 
     tcx.intern_promoted(promoted)

@@ -304,12 +304,17 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         let mut operand = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
-            let mut promoted_place = |ty, substs, span| {
+            let tcx = self.tcx;
+            let mut promoted_place = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
                 Place {
                     base: PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(promoted_id, substs),
+                        kind:
+                            StaticKind::Promoted(
+                                promoted_id,
+                                InternalSubsts::identity_for_item(tcx, def_id),
+                            ),
                         ty,
                         def_id,
                     }),
@@ -329,11 +334,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             Operand::Move(Place {
                                 base: mem::replace(
                                     &mut place.base,
-                                    promoted_place(
-                                        ty,
-                                        InternalSubsts::identity_for_item(self.tcx, def_id),
-                                        span,
-                                    ).base
+                                    promoted_place(ty, span).base
                                 ),
                                 projection: None,
                             })
@@ -349,13 +350,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let span = statement.source_info.span;
                             mem::replace(
                                 operand,
-                                Operand::Copy(
-                                    promoted_place(
-                                        ty,
-                                        InternalSubsts::identity_for_item(self.tcx, def_id),
-                                        span,
-                                    )
-                                )
+                                Operand::Copy(promoted_place(ty, span))
                             )
                         }
                         _ => bug!()
@@ -367,12 +362,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         TerminatorKind::Call { ref mut args, .. } => {
                             let ty = args[index].ty(local_decls, self.tcx);
                             let span = terminator.source_info.span;
-                            let operand =
-                                Operand::Copy(
-                                    promoted_place(
-                                        ty,
-                                        InternalSubsts::identity_for_item(self.tcx, def_id),
-                                        span));
+                            let operand = Operand::Copy(promoted_place(ty, span));
                             mem::replace(&mut args[index], operand)
                         }
                         // We expected a `TerminatorKind::Call` for which we'd like to promote an
@@ -472,6 +462,7 @@ pub fn promote_candidates<'tcx>(
             keep_original: false
         };
 
+        //FIXME(oli-obk): having a `maybe_push()` method on `IndexVec` might be nice
         if let Some(promoted) = promoter.promote_candidate(def_id, candidate, promotions.len()) {
             promotions.push(promoted);
         }
