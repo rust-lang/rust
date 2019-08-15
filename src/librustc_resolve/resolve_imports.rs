@@ -7,10 +7,8 @@ use crate::{CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, ParentScope
 use crate::Determinacy::{self, *};
 use crate::Namespace::{self, TypeNS, MacroNS};
 use crate::{NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
-use crate::{Resolutions, Resolver, ResolutionError, Segment};
+use crate::{Resolver, ResolutionError, Segment, ModuleKind};
 use crate::{names_to_string, module_to_string};
-use crate::ModuleKind;
-use crate::build_reduced_graph::BuildReducedGraphVisitor;
 use crate::diagnostics::Suggestion;
 
 use errors::Applicability;
@@ -38,7 +36,7 @@ use syntax_pos::{MultiSpan, Span};
 
 use log::*;
 
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::{mem, ptr};
 
 type Res = def::Res<NodeId>;
@@ -162,25 +160,6 @@ impl<'a> NameResolution<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    crate fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
-        if module.populate_on_access.get() {
-            module.populate_on_access.set(false);
-            let def_id = module.def_id().expect("unpopulated module without a def-id");
-            for child in self.cstore.item_children_untracked(def_id, self.session) {
-                let child = child.map_id(|_| panic!("unexpected id"));
-                BuildReducedGraphVisitor { parent_scope: self.dummy_parent_scope(), r: self }
-                    .build_reduced_graph_for_external_crate_res(module, child);
-            }
-        }
-        &module.lazy_resolutions
-    }
-
-    crate fn resolution(&mut self, module: Module<'a>, ident: Ident, ns: Namespace)
-                  -> &'a RefCell<NameResolution<'a>> {
-        *self.resolutions(module).borrow_mut().entry((ident.modern(), ns))
-               .or_insert_with(|| self.arenas.alloc_name_resolution())
-    }
-
     crate fn resolve_ident_in_module_unadjusted(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -1039,7 +1018,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             return if all_ns_failed {
                 let resolutions = match module {
-                    ModuleOrUniformRoot::Module(module) => Some(self.r.resolutions(module).borrow()),
+                    ModuleOrUniformRoot::Module(module) =>
+                        Some(self.r.resolutions(module).borrow()),
                     _ => None,
                 };
                 let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
@@ -1292,8 +1272,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         // Ensure that `resolutions` isn't borrowed during `try_define`,
         // since it might get updated via a glob cycle.
-        let bindings = self.r.resolutions(module).borrow().iter().filter_map(|(&ident, resolution)| {
-            resolution.borrow().binding().map(|binding| (ident, binding))
+        let bindings = self.r.resolutions(module).borrow().iter().filter_map(|(ident, resolution)| {
+            resolution.borrow().binding().map(|binding| (*ident, binding))
         }).collect::<Vec<_>>();
         for ((mut ident, ns), binding) in bindings {
             let scope = match ident.span.reverse_glob_adjust(module.expansion, directive.span) {

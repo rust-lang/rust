@@ -868,6 +868,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
         let ident = ident.gensym_if_underscore();
         let expansion = ExpnId::root(); // FIXME(jseyfried) intercrate hygiene
+        // Record primary definitions.
         match res {
             Res::Def(kind @ DefKind::Mod, def_id)
             | Res::Def(kind @ DefKind::Enum, def_id)
@@ -879,7 +880,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                              span);
                 self.r.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
             }
-            Res::Def(DefKind::Variant, _)
+            Res::Def(DefKind::Struct, _)
+            | Res::Def(DefKind::Union, _)
+            | Res::Def(DefKind::Variant, _)
             | Res::Def(DefKind::TyAlias, _)
             | Res::Def(DefKind::ForeignTy, _)
             | Res::Def(DefKind::OpaqueTy, _)
@@ -887,43 +890,40 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             | Res::Def(DefKind::AssocTy, _)
             | Res::Def(DefKind::AssocOpaqueTy, _)
             | Res::PrimTy(..)
-            | Res::ToolMod => {
-                self.r.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
-            }
+            | Res::ToolMod =>
+                self.r.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion)),
             Res::Def(DefKind::Fn, _)
+            | Res::Def(DefKind::Method, _)
             | Res::Def(DefKind::Static, _)
             | Res::Def(DefKind::Const, _)
             | Res::Def(DefKind::AssocConst, _)
-            | Res::Def(DefKind::Ctor(CtorOf::Variant, ..), _) => {
-                self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
-            }
-            Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
-                self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
-
-                if let Some(struct_def_id) =
-                        self.r.cstore.def_key(def_id).parent
-                            .map(|index| DefId { krate: def_id.krate, index: index }) {
-                    self.r.struct_constructors.insert(struct_def_id, (res, vis));
-                }
+            | Res::Def(DefKind::Ctor(..), _) =>
+                self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion)),
+            Res::Def(DefKind::Macro(..), _)
+            | Res::NonMacroAttr(..) =>
+                self.r.define(parent, ident, MacroNS, (res, vis, DUMMY_SP, expansion)),
+            Res::Def(DefKind::TyParam, _) | Res::Def(DefKind::ConstParam, _)
+            | Res::Local(..) | Res::SelfTy(..) | Res::SelfCtor(..) | Res::Err =>
+                bug!("unexpected resolution: {:?}", res)
+        }
+        // Record some extra data for better diagnostics.
+        match res {
+            Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
+                let field_names = self.r.cstore.struct_field_names_untracked(def_id);
+                self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::Method, def_id) => {
-                self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion));
-
                 if self.r.cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
                     self.r.has_self.insert(def_id);
                 }
             }
-            Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
-                self.r.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion));
-
-                // Record field names for error reporting.
-                let field_names = self.r.cstore.struct_field_names_untracked(def_id);
-                self.insert_field_names(def_id, field_names);
+            Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
+                let parent = self.r.cstore.def_key(def_id).parent;
+                if let Some(struct_def_id) = parent.map(|index| DefId { index, ..def_id }) {
+                    self.r.struct_constructors.insert(struct_def_id, (res, vis));
+                }
             }
-            Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                self.r.define(parent, ident, MacroNS, (res, vis, DUMMY_SP, expansion));
-            }
-            _ => bug!("unexpected resolution: {:?}", res)
+            _ => {}
         }
     }
 

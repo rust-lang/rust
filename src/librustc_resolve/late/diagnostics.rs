@@ -1,8 +1,7 @@
 use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 use crate::path_names_to_string;
-use crate::diagnostics::{add_typo_suggestion, add_module_candidates};
-use crate::diagnostics::{ImportSuggestion, TypoSuggestion};
+use crate::diagnostics::{add_typo_suggestion, ImportSuggestion, TypoSuggestion};
 use crate::late::{LateResolutionVisitor, RibKind};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
@@ -548,7 +547,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 // Items in scope
                 if let RibKind::ModuleRibKind(module) = rib.kind {
                     // Items from this module
-                    add_module_candidates(self.r, module, &mut names, &filter_fn);
+                    self.r.add_module_candidates(module, &mut names, &filter_fn);
 
                     if let ModuleKind::Block(..) = module.kind {
                         // We can see through blocks
@@ -577,7 +576,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                             }));
 
                             if let Some(prelude) = self.r.prelude {
-                                add_module_candidates(self.r, prelude, &mut names, &filter_fn);
+                                self.r.add_module_candidates(prelude, &mut names, &filter_fn);
                             }
                         }
                         break;
@@ -599,7 +598,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 mod_path, Some(TypeNS), false, span, CrateLint::No
             ) {
                 if let ModuleOrUniformRoot::Module(module) = module {
-                    add_module_candidates(self.r, module, &mut names, &filter_fn);
+                    self.r.add_module_candidates(module, &mut names, &filter_fn);
                 }
             }
         }
