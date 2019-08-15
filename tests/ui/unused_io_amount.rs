@@ -3,13 +3,6 @@
 
 use std::io;
 
-fn try_macro<T: io::Read + io::Write>(s: &mut T) -> io::Result<()> {
-    r#try!(s.write(b"test"));
-    let mut buf = [0u8; 4];
-    r#try!(s.read(&mut buf));
-    Ok(())
-}
-
 fn question_mark<T: io::Read + io::Write>(s: &mut T) -> io::Result<()> {
     s.write(b"test")?;
     let mut buf = [0u8; 4];

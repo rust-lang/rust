@@ -230,9 +230,9 @@ error: the function has a cognitive complexity of 1
   --> $DIR/cognitive_complexity.rs:324:1
    |
 LL | / fn try_again() -> Result<i32, &'static str> {
-LL | |     let _ = r#try!(Ok(42));
-LL | |     let _ = r#try!(Ok(43));
-LL | |     let _ = r#try!(Ok(44));
+LL | |     let _ = Ok(42)?;
+LL | |     let _ = Ok(43)?;
+LL | |     let _ = Ok(44)?;
 ...  |
 LL | |     }
 LL | | }
