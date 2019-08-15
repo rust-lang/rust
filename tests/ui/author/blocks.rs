@@ -1,4 +1,5 @@
 #![feature(stmt_expr_attributes)]
+#![allow(redundant_semicolon)]
 
 #[rustfmt::skip]
 fn main() {
