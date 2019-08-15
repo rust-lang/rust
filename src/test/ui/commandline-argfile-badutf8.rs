@@ -1,6 +1,7 @@
 // Check to see if we can get parameters from an @argsfile file
 //
 // build-fail
+// normalize-stderr-test: "Argument \d+" -> "Argument $$N"
 // compile-flags: --cfg cmdline_set @{{src-base}}/commandline-argfile-badutf8.args
 
 #[cfg(not(cmdline_set))]

@@ -1,2 +1,2 @@
-error: Argument 18 is not valid: IO Error: $DIR/commandline-argfile-missing.args: No such file or directory (os error 2)
+error: Argument $N is not valid: IO Error: $DIR/commandline-argfile-missing.args: No such file or directory (os error $ERR)
 

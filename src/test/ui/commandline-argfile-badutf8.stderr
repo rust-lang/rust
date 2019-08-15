@@ -1,2 +1,2 @@
-error: Argument 18 is not valid: Utf8 error in $DIR/commandline-argfile-badutf8.args
+error: Argument $N is not valid: Utf8 error in $DIR/commandline-argfile-badutf8.args
 
