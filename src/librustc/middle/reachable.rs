@@ -33,7 +33,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAt
     }
 
     match item.node {
-        hir::ItemKind::Fn(_, header, ..) if header.constness == hir::Constness::Const => {
+        hir::ItemKind::Fn(_, header, ..) if header.is_const() => {
             return true;
         }
         hir::ItemKind::Impl(..) |
@@ -56,7 +56,7 @@ fn method_might_be_inlined(
         return true
     }
     if let hir::ImplItemKind::Method(method_sig, _) = &impl_item.node {
-        if method_sig.header.constness == hir::Constness::Const {
+        if method_sig.header.is_const() {
             return true
         }
     }
