@@ -11,7 +11,7 @@ use syntax::source_map::respan;
 use syntax::symbol::sym;
 use syntax::tokenstream::*;
 use syntax_pos::{Span, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnId, ExpnInfo, ExpnKind, MacroKind};
+use syntax_pos::hygiene::{ExpnData, ExpnKind, MacroKind};
 
 use std::mem;
 
@@ -43,12 +43,12 @@ pub fn inject(
 ) {
     if !named_exts.is_empty() {
         let mut extra_items = Vec::new();
-        let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+        let span = DUMMY_SP.fresh_expansion(ExpnData::allow_unstable(
             ExpnKind::Macro(MacroKind::Attr, sym::plugin), DUMMY_SP, edition,
             [sym::rustc_attrs][..].into(),
         ));
         for (name, ext) in named_exts {
-            resolver.register_builtin_macro(Ident::with_empty_ctxt(name), ext);
+            resolver.register_builtin_macro(Ident::with_dummy_span(name), ext);
             extra_items.push(plugin_macro_def(name, span));
         }
         // The `macro_rules` items must be inserted before any other items.

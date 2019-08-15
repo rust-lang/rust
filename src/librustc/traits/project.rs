@@ -1417,7 +1417,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
                 projection_ty: ty::ProjectionTy::from_ref_and_name(
                     tcx,
                     trait_ref,
-                    Ident::with_empty_ctxt(FN_OUTPUT_NAME),
+                    Ident::with_dummy_span(FN_OUTPUT_NAME),
                 ),
                 ty: ret_type
             }

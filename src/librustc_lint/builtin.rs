@@ -42,7 +42,7 @@ use syntax::source_map::Spanned;
 use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeGate, AttributeType};
 use syntax::feature_gate::{Stability, deprecated_attributes};
-use syntax_pos::{BytePos, Span, SyntaxContext};
+use syntax_pos::{BytePos, Span};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::expr_to_string;
@@ -78,7 +78,7 @@ impl EarlyLintPass for WhileTrue {
         if let ast::ExprKind::While(cond, ..) = &e.node {
             if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).node {
                 if let ast::LitKind::Bool(true) = lit.node {
-                    if lit.span.ctxt() == SyntaxContext::empty() {
+                    if !lit.span.from_expansion() {
                         let msg = "denote infinite loops with `loop { ... }`";
                         let condition_span = cx.sess.source_map().def_span(e.span);
                         cx.struct_span_lint(WHILE_TRUE, condition_span, msg)
@@ -167,7 +167,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 if fieldpat.is_shorthand {
                     continue;
                 }
-                if fieldpat.span.ctxt().outer_expn_info().is_some() {
+                if fieldpat.span.from_expansion() {
                     // Don't lint if this is a macro expansion: macro authors
                     // shouldn't have to worry about this kind of style issue
                     // (Issue #49588)
@@ -1012,7 +1012,7 @@ impl UnreachablePub {
         let mut applicability = Applicability::MachineApplicable;
         match vis.node {
             hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
-                if span.ctxt().outer_expn_info().is_some() {
+                if span.from_expansion() {
                     applicability = Applicability::MaybeIncorrect;
                 }
                 let def_span = cx.tcx.sess.source_map().def_span(span);

@@ -5,7 +5,7 @@ use crate::source_map::respan;
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
 use crate::ext::proc_macro::collect_derives;
-use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnInfo, ExpnKind};
+use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
 use crate::ext::tt::macro_rules::annotate_err_with_kind;
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
 use crate::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
@@ -353,7 +353,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 derives.reserve(traits.len());
                 invocations.reserve(traits.len());
                 for path in traits {
-                    let expn_id = ExpnId::fresh(self.cx.current_expansion.id, None);
+                    let expn_id = ExpnId::fresh(None);
                     derives.push(expn_id);
                     invocations.push(Invocation {
                         kind: InvocationKind::Derive { path, item: item.clone() },
@@ -475,11 +475,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
-            let info = self.cx.current_expansion.id.expn_info().unwrap();
+            let expn_data = self.cx.current_expansion.id.expn_data();
             let suggested_limit = self.cx.ecfg.recursion_limit * 2;
-            let mut err = self.cx.struct_span_err(info.call_site,
+            let mut err = self.cx.struct_span_err(expn_data.call_site,
                 &format!("recursion limit reached while expanding the macro `{}`",
-                         info.kind.descr()));
+                         expn_data.kind.descr()));
             err.help(&format!(
                 "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
                 suggested_limit));
@@ -759,7 +759,7 @@ impl<'a> Parser<'a> {
             let msg = format!("macro expansion ignores token `{}` and any following",
                               self.this_token_to_string());
             // Avoid emitting backtrace info twice.
-            let def_site_span = self.token.span.with_ctxt(SyntaxContext::empty());
+            let def_site_span = self.token.span.with_ctxt(SyntaxContext::root());
             let mut err = self.diagnostic().struct_span_err(def_site_span, &msg);
             err.span_label(span, "caused by the macro expansion here");
             let msg = format!(
@@ -796,17 +796,20 @@ struct InvocationCollector<'a, 'b> {
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
-        // Expansion info for all the collected invocations is set upon their resolution,
+        // Expansion data for all the collected invocations is set upon their resolution,
         // with exception of the derive container case which is not resolved and can get
-        // its expansion info immediately.
-        let expn_info = match &kind {
-            InvocationKind::DeriveContainer { item, .. } => Some(ExpnInfo::default(
-                ExpnKind::Macro(MacroKind::Attr, sym::derive),
-                item.span(), self.cx.parse_sess.edition,
-            )),
+        // its expansion data immediately.
+        let expn_data = match &kind {
+            InvocationKind::DeriveContainer { item, .. } => Some(ExpnData {
+                parent: self.cx.current_expansion.id,
+                ..ExpnData::default(
+                    ExpnKind::Macro(MacroKind::Attr, sym::derive),
+                    item.span(), self.cx.parse_sess.edition,
+                )
+            }),
             _ => None,
         };
-        let expn_id = ExpnId::fresh(self.cx.current_expansion.id, expn_info);
+        let expn_id = ExpnId::fresh(expn_data);
         self.invocations.push(Invocation {
             kind,
             fragment_kind,
@@ -1249,21 +1252,21 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                             let include_info = vec![
                                 ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
-                                        Ident::with_empty_ctxt(sym::file),
+                                        Ident::with_dummy_span(sym::file),
                                         file,
                                         DUMMY_SP,
                                     ),
                                 ),
                                 ast::NestedMetaItem::MetaItem(
                                     attr::mk_name_value_item_str(
-                                        Ident::with_empty_ctxt(sym::contents),
+                                        Ident::with_dummy_span(sym::contents),
                                         src_interned,
                                         DUMMY_SP,
                                     ),
                                 ),
                             ];
 
-                            let include_ident = Ident::with_empty_ctxt(sym::include);
+                            let include_ident = Ident::with_dummy_span(sym::include);
                             let item = attr::mk_list_item(include_ident, include_info);
                             items.push(ast::NestedMetaItem::MetaItem(item));
                         }
@@ -1325,7 +1328,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 }
             }
 
-            let meta = attr::mk_list_item(Ident::with_empty_ctxt(sym::doc), items);
+            let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = attr::Attribute {
                 span: at.span,
                 id: at.id,
