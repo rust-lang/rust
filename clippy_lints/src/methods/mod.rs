@@ -21,11 +21,11 @@ use syntax::symbol::LocalInternedString;
 use crate::utils::sugg;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
-    is_ctor_function, is_expn_of, iter_input_pats, last_path_segment, match_def_path, match_qpath, match_trait_method,
-    match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path,
-    snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, in_macro_or_desugar,
+    is_copy, is_ctor_function, is_expn_of, iter_input_pats, last_path_segment, match_def_path, match_qpath,
+    match_trait_method, match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys,
+    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
+    span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 use crate::utils::{paths, span_help_and_lint};
 
@@ -262,6 +262,32 @@ declare_clippy_lint! {
     pub OPTION_MAP_OR_NONE,
     style,
     "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.and_then(|x| Some(y))`.
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely as
+    /// `_.map(|x| y)`.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let x = Some("foo");
+    /// let _ = x.and_then(|s| Some(s.len()));
+    /// ```
+    ///
+    /// The correct use would be:
+    ///
+    /// ```rust
+    /// let x = Some("foo");
+    /// let _ = x.map(|s| s.len());
+    /// ```
+    pub OPTION_AND_THEN_SOME,
+    complexity,
+    "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`"
 }
 
 declare_clippy_lint! {
@@ -918,6 +944,7 @@ declare_lint_pass!(Methods => [
     OPTION_MAP_UNWRAP_OR_ELSE,
     RESULT_MAP_UNWRAP_OR_ELSE,
     OPTION_MAP_OR_NONE,
+    OPTION_AND_THEN_SOME,
     OR_FUN_CALL,
     EXPECT_FUN_CALL,
     CHARS_NEXT_CMP,
@@ -967,6 +994,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["unwrap_or", "map"] => option_map_unwrap_or::lint(cx, expr, arg_lists[1], arg_lists[0]),
             ["unwrap_or_else", "map"] => lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]),
             ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
+            ["and_then", ..] => lint_option_and_then_some(cx, expr, arg_lists[0]),
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -2069,6 +2097,97 @@ fn lint_map_or_none<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr,
                 );
             });
         }
+    }
+}
+
+/// Lint use of `_.and_then(|x| Some(y))` for `Option`s
+fn lint_option_and_then_some(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
+    const LINT_MSG: &str = "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`";
+    const NO_OP_MSG: &str = "using `Option.and_then(Some)`, which is a no-op";
+
+    // Searches an return expressions in `y` in `_.and_then(|x| Some(y))`, which we don't lint
+    struct RetCallFinder {
+        found: bool,
+    }
+
+    impl<'tcx> intravisit::Visitor<'tcx> for RetCallFinder {
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+            if self.found {
+                return;
+            }
+            if let hir::ExprKind::Ret(..) = &expr.node {
+                self.found = true;
+            } else {
+                intravisit::walk_expr(self, expr);
+            }
+        }
+
+        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+            intravisit::NestedVisitorMap::None
+        }
+    }
+
+    let ty = cx.tables.expr_ty(&args[0]);
+    if !match_type(cx, ty, &paths::OPTION) {
+        return;
+    }
+
+    match args[1].node {
+        hir::ExprKind::Closure(_, _, body_id, closure_args_span, _) => {
+            let closure_body = cx.tcx.hir().body(body_id);
+            let closure_expr = remove_blocks(&closure_body.value);
+            if_chain! {
+                if let hir::ExprKind::Call(ref some_expr, ref some_args) = closure_expr.node;
+                if let hir::ExprKind::Path(ref qpath) = some_expr.node;
+                if match_qpath(qpath, &paths::OPTION_SOME);
+                if some_args.len() == 1;
+                then {
+                    let inner_expr = &some_args[0];
+
+                    let mut finder = RetCallFinder { found: false };
+                    finder.visit_expr(inner_expr);
+                    if finder.found {
+                        return;
+                    }
+
+                    let some_inner_snip = if in_macro_or_desugar(inner_expr.span) {
+                        snippet_with_macro_callsite(cx, inner_expr.span, "_")
+                    } else {
+                        snippet(cx, inner_expr.span, "_")
+                    };
+
+                    let closure_args_snip = snippet(cx, closure_args_span, "..");
+                    let option_snip = snippet(cx, args[0].span, "..");
+                    let note = format!("{}.map({} {})", option_snip, closure_args_snip, some_inner_snip);
+                    span_lint_and_sugg(
+                        cx,
+                        OPTION_AND_THEN_SOME,
+                        expr.span,
+                        LINT_MSG,
+                        "try this",
+                        note,
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        },
+        // `_.and_then(Some)` case, which is no-op.
+        hir::ExprKind::Path(ref qpath) => {
+            if match_qpath(qpath, &paths::OPTION_SOME) {
+                let option_snip = snippet(cx, args[0].span, "..");
+                let note = format!("{}", option_snip);
+                span_lint_and_sugg(
+                    cx,
+                    OPTION_AND_THEN_SOME,
+                    expr.span,
+                    NO_OP_MSG,
+                    "use the expression directly",
+                    note,
+                    Applicability::MachineApplicable,
+                );
+            }
+        },
+        _ => {},
     }
 }
 
