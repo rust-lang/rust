@@ -23,7 +23,7 @@
 
 %-lowernovec.ll: %-unopt.ll
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce -inline -instsimplify -instcombine -correlated-propagation
-	../build/bin/opt $^ -autodiff_inline=true -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce -inline -instsimplify -instcombine -correlated-propagation
+	../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -adce -inline -instsimplify -instcombine -correlated-propagation #-autodiff_optimize=true
 
 %-lowerprint.ll: %-unopt.ll
 	../build/bin/opt $^ -indvars -lower-autodiff -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O3 -print-before-all -print-after-all
