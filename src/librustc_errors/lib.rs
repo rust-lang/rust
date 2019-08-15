@@ -787,9 +787,6 @@ impl Handler {
 pub enum Level {
     Bug,
     Fatal,
-    // An error which while not immediately fatal, should stop the compiler
-    // progressing beyond the current phase.
-    PhaseFatal,
     Error,
     Warning,
     Note,
@@ -808,7 +805,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | Fatal | PhaseFatal | Error => {
+            Bug | Fatal | Error => {
                 spec.set_fg(Some(Color::Red))
                     .set_intense(true);
             }
@@ -833,7 +830,7 @@ impl Level {
     pub fn to_str(self) -> &'static str {
         match self {
             Bug => "error: internal compiler error",
-            Fatal | PhaseFatal | Error => "error",
+            Fatal | Error => "error",
             Warning => "warning",
             Note => "note",
             Help => "help",

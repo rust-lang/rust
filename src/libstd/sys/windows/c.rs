@@ -714,7 +714,7 @@ if #[cfg(target_vendor = "uwp")] {
     pub struct FILE_STANDARD_INFO {
         pub AllocationSize: LARGE_INTEGER,
         pub EndOfFile: LARGE_INTEGER,
-        pub NumberOfLink: DWORD,
+        pub NumberOfLinks: DWORD,
         pub DeletePending: BOOLEAN,
         pub Directory: BOOLEAN,
     }

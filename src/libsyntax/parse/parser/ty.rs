@@ -4,9 +4,9 @@ use crate::{maybe_whole, maybe_recover_from_interpolated_ty_qpath};
 use crate::ptr::P;
 use crate::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
 use crate::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
-use crate::ast::{Mutability, AnonConst, FnDecl, Mac_};
+use crate::ast::{Mutability, AnonConst, FnDecl, Mac};
 use crate::parse::token::{self, Token};
-use crate::source_map::{respan, Span};
+use crate::source_map::Span;
 use crate::symbol::{kw};
 
 use rustc_target::spec::abi::Abi;
@@ -175,13 +175,14 @@ impl<'a> Parser<'a> {
             if self.eat(&token::Not) {
                 // Macro invocation in type position
                 let (delim, tts) = self.expect_delimited_token_tree()?;
-                let node = Mac_ {
+                let mac = Mac {
                     path,
                     tts,
                     delim,
+                    span: lo.to(self.prev_span),
                     prior_type_ascription: self.last_type_ascription,
                 };
-                TyKind::Mac(respan(lo.to(self.prev_span), node))
+                TyKind::Mac(mac)
             } else {
                 // Just a type path or bound list (trait object type) starting with a trait.
                 //   `Type`

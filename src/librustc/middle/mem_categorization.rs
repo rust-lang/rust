@@ -1282,11 +1282,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 };
 
                 for fp in field_pats {
-                    let field_ty = self.pat_ty_adjusted(&fp.node.pat)?; // see (*2)
-                    let f_index = self.tcx.field_index(fp.node.hir_id, self.tables);
+                    let field_ty = self.pat_ty_adjusted(&fp.pat)?; // see (*2)
+                    let f_index = self.tcx.field_index(fp.hir_id, self.tables);
                     let cmt_field = Rc::new(self.cat_field(pat, cmt.clone(), f_index,
-                                                           fp.node.ident, field_ty));
-                    self.cat_pattern_(cmt_field, &fp.node.pat, op)?;
+                                                           fp.ident, field_ty));
+                    self.cat_pattern_(cmt_field, &fp.pat, op)?;
                 }
             }
 

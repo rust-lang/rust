@@ -2,7 +2,7 @@ use super::{Parser, PResult, PathStyle};
 
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use crate::ptr::P;
-use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac_};
+use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
 use crate::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
 use crate::parse::token::{self};
 use crate::print::pprust;
@@ -275,12 +275,13 @@ impl<'a> Parser<'a> {
     fn parse_pat_mac_invoc(&mut self, lo: Span, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let (delim, tts) = self.expect_delimited_token_tree()?;
-        let mac = respan(lo.to(self.prev_span), Mac_ {
+        let mac = Mac {
             path,
             tts,
             delim,
+            span: lo.to(self.prev_span),
             prior_type_ascription: self.last_type_ascription,
-        });
+        };
         Ok(PatKind::Mac(mac))
     }
 
@@ -487,7 +488,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the fields of a struct-like pattern.
-    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<Spanned<FieldPat>>, bool)> {
+    fn parse_pat_fields(&mut self) -> PResult<'a, (Vec<FieldPat>, bool)> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut ate_comma = true;
@@ -619,11 +620,7 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
-    fn parse_pat_field(
-        &mut self,
-        lo: Span,
-        attrs: Vec<Attribute>
-    ) -> PResult<'a, Spanned<FieldPat>> {
+    fn parse_pat_field(&mut self, lo: Span, attrs: Vec<Attribute>) -> PResult<'a, FieldPat> {
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let hi;
         let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
@@ -658,15 +655,13 @@ impl<'a> Parser<'a> {
             (subpat, fieldname, true)
         };
 
-        Ok(Spanned {
+        Ok(FieldPat {
+            ident: fieldname,
+            pat: subpat,
+            is_shorthand,
+            attrs: attrs.into(),
+            id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
-            node: FieldPat {
-                ident: fieldname,
-                pat: subpat,
-                is_shorthand,
-                attrs: attrs.into(),
-                id: ast::DUMMY_NODE_ID,
-           }
         })
     }
 

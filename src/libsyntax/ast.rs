@@ -571,7 +571,7 @@ impl Pat {
 
         match &self.node {
             PatKind::Ident(_, _, Some(p)) => p.walk(it),
-            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.node.pat.walk(it)),
+            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk(it)),
             PatKind::TupleStruct(_, s) | PatKind::Tuple(s) | PatKind::Slice(s) => {
                 s.iter().all(|p| p.walk(it))
             }
@@ -609,6 +609,7 @@ pub struct FieldPat {
     pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
     pub id: NodeId,
+    pub span: Span,
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
@@ -642,7 +643,7 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(Path, Vec<Spanned<FieldPat>>, /* recovered */ bool),
+    Struct(Path, Vec<FieldPat>, /* recovered */ bool),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     TupleStruct(Path, Vec<P<Pat>>),
@@ -938,8 +939,6 @@ pub struct Field {
     pub attrs: ThinVec<Attribute>,
     pub id: NodeId,
 }
-
-pub type SpannedIdent = Spanned<Ident>;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BlockCheckMode {
@@ -1287,8 +1286,6 @@ pub enum Movability {
     Movable,
 }
 
-pub type Mac = Spanned<Mac_>;
-
 /// Represents a macro invocation. The `Path` indicates which macro
 /// is being invoked, and the vector of token-trees contains the source
 /// of the macro invocation.
@@ -1296,10 +1293,11 @@ pub type Mac = Spanned<Mac_>;
 /// N.B., the additional ident for a `macro_rules`-style macro is actually
 /// stored in the enclosing item.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Mac_ {
+pub struct Mac {
     pub path: Path,
     pub delim: MacDelimiter,
     pub tts: TokenStream,
+    pub span: Span,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
 
@@ -1310,7 +1308,7 @@ pub enum MacDelimiter {
     Brace,
 }
 
-impl Mac_ {
+impl Mac {
     pub fn stream(&self) -> TokenStream {
         self.tts.clone()
     }
