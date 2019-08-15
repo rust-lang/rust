@@ -1,10 +1,14 @@
 use std::{
     path::{Path, PathBuf},
+    sync::Arc,
     time::Instant,
 };
 
-use ra_db::{salsa::Database, SourceDatabase};
-use ra_ide_api::{Analysis, AnalysisHost, FilePosition, LineCol};
+use ra_db::{
+    salsa::{Database, Durability},
+    FileId, SourceDatabase,
+};
+use ra_ide_api::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 
 use crate::Result;
 
@@ -16,7 +20,7 @@ pub(crate) enum Op {
 pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
     let start = Instant::now();
     eprint!("loading: ");
-    let (host, roots) = ra_batch::load_cargo(path)?;
+    let (mut host, roots) = ra_batch::load_cargo(path)?;
     let db = host.raw_database();
     eprintln!("{:?}\n", start.elapsed());
 
@@ -44,7 +48,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
 
     match op {
         Op::Highlight { .. } => {
-            let res = do_work(&host, |analysis| {
+            let res = do_work(&mut host, file_id, |analysis| {
                 analysis.diagnostics(file_id).unwrap();
                 analysis.highlight_as_html(file_id, false).unwrap()
             });
@@ -59,7 +63,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
                 .offset(LineCol { line, col_utf16: column });
             let file_postion = FilePosition { file_id, offset };
 
-            let res = do_work(&host, |analysis| analysis.completions(file_postion));
+            let res = do_work(&mut host, file_id, |analysis| analysis.completions(file_postion));
             if verbose {
                 println!("\n{:#?}", res);
             }
@@ -68,7 +72,7 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
     Ok(())
 }
 
-fn do_work<F: Fn(&Analysis) -> T, T>(host: &AnalysisHost, work: F) -> T {
+fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, work: F) -> T {
     {
         let start = Instant::now();
         eprint!("from scratch:   ");
@@ -84,7 +88,27 @@ fn do_work<F: Fn(&Analysis) -> T, T>(host: &AnalysisHost, work: F) -> T {
     {
         let start = Instant::now();
         eprint!("trivial change: ");
-        host.raw_database().salsa_runtime().next_revision();
+        host.raw_database().salsa_runtime().synthetic_write(Durability::LOW);
+        work(&host.analysis());
+        eprintln!("{:?}", start.elapsed());
+    }
+    {
+        let start = Instant::now();
+        eprint!("comment change: ");
+        {
+            let mut text = host.analysis().file_text(file_id).unwrap().to_string();
+            text.push_str("\n/* Hello world */\n");
+            let mut change = AnalysisChange::new();
+            change.change_file(file_id, Arc::new(text));
+            host.apply_change(change);
+        }
+        work(&host.analysis());
+        eprintln!("{:?}", start.elapsed());
+    }
+    {
+        let start = Instant::now();
+        eprint!("const change:   ");
+        host.raw_database().salsa_runtime().synthetic_write(Durability::HIGH);
         let res = work(&host.analysis());
         eprintln!("{:?}", start.elapsed());
         res

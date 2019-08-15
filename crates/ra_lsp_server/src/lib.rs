@@ -1,3 +1,4 @@
+#![recursion_limit = "512"]
 mod caps;
 mod cargo_target_spec;
 mod conv;

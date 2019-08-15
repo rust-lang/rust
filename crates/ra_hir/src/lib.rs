@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 //! HIR (previously known as descriptors) provides a high-level object oriented
 //! access to Rust code.
 //!

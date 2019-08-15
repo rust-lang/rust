@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use parking_lot::Mutex;
 use ra_db::{salsa, SourceDatabase};
 use ra_syntax::{ast, Parse, SmolStr, SyntaxNode};
 
@@ -147,6 +146,7 @@ pub trait DefDatabase: InternDatabase {
 }
 
 #[salsa::query_group(HirDatabaseStorage)]
+#[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::invoke(ExprScopes::expr_scopes_query)]
     fn expr_scopes(&self, def: DefWithBody) -> Arc<ExprScopes>;
@@ -187,11 +187,10 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     /// This provides the Chalk trait solver instance. Because Chalk always
     /// works from a specific crate, this query is keyed on the crate; and
     /// because Chalk does its own internal caching, the solver is wrapped in a
-    /// Mutex and the query is marked volatile, to make sure the cached state is
-    /// thrown away when input facts change.
+    /// Mutex and the query does an untracked read internally, to make sure the
+    /// cached state is thrown away when input facts change.
     #[salsa::invoke(crate::ty::traits::trait_solver_query)]
-    #[salsa::volatile]
-    fn trait_solver(&self, krate: Crate) -> Arc<Mutex<crate::ty::traits::Solver>>;
+    fn trait_solver(&self, krate: Crate) -> crate::ty::traits::TraitSolver;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk_ir::TypeId) -> Arc<chalk_rust_ir::AssociatedTyDatum>;

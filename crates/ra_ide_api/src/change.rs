@@ -1,7 +1,7 @@
 use std::{fmt, sync::Arc, time};
 
 use ra_db::{
-    salsa::{Database, SweepStrategy},
+    salsa::{Database, Durability, SweepStrategy},
     CrateGraph, FileId, SourceDatabase, SourceRoot, SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
@@ -155,54 +155,71 @@ impl RootDatabase {
         log::info!("apply_change {:?}", change);
         {
             let _p = profile("RootDatabase::apply_change/cancellation");
-            self.salsa_runtime().next_revision();
+            self.salsa_runtime().synthetic_write(Durability::LOW);
         }
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());
             for (root_id, is_local) in change.new_roots {
                 let root = if is_local { SourceRoot::new() } else { SourceRoot::new_library() };
-                self.set_source_root(root_id, Arc::new(root));
+                let durability = durability(&root);
+                self.set_source_root_with_durability(root_id, Arc::new(root), durability);
                 if is_local {
                     local_roots.push(root_id);
                 }
             }
-            self.set_local_roots(Arc::new(local_roots));
+            self.set_local_roots_with_durability(Arc::new(local_roots), Durability::HIGH);
         }
 
         for (root_id, root_change) in change.roots_changed {
             self.apply_root_change(root_id, root_change);
         }
         for (file_id, text) in change.files_changed {
-            self.set_file_text(file_id, text)
+            let source_root_id = self.file_source_root(file_id);
+            let source_root = self.source_root(source_root_id);
+            let durability = durability(&source_root);
+            self.set_file_text_with_durability(file_id, text, durability)
         }
         if !change.libraries_added.is_empty() {
             let mut libraries = Vec::clone(&self.library_roots());
             for library in change.libraries_added {
                 libraries.push(library.root_id);
-                self.set_source_root(library.root_id, Default::default());
-                self.set_constant_library_symbols(library.root_id, Arc::new(library.symbol_index));
+                self.set_source_root_with_durability(
+                    library.root_id,
+                    Default::default(),
+                    Durability::HIGH,
+                );
+                self.set_library_symbols_with_durability(
+                    library.root_id,
+                    Arc::new(library.symbol_index),
+                    Durability::HIGH,
+                );
                 self.apply_root_change(library.root_id, library.root_change);
             }
-            self.set_library_roots(Arc::new(libraries));
+            self.set_library_roots_with_durability(Arc::new(libraries), Durability::HIGH);
         }
         if let Some(crate_graph) = change.crate_graph {
-            self.set_crate_graph(Arc::new(crate_graph))
+            self.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH)
         }
     }
 
     fn apply_root_change(&mut self, root_id: SourceRootId, root_change: RootChange) {
         let mut source_root = SourceRoot::clone(&self.source_root(root_id));
+        let durability = durability(&source_root);
         for add_file in root_change.added {
-            self.set_file_text(add_file.file_id, add_file.text);
-            self.set_file_relative_path(add_file.file_id, add_file.path.clone());
-            self.set_file_source_root(add_file.file_id, root_id);
+            self.set_file_text_with_durability(add_file.file_id, add_file.text, durability);
+            self.set_file_relative_path_with_durability(
+                add_file.file_id,
+                add_file.path.clone(),
+                durability,
+            );
+            self.set_file_source_root_with_durability(add_file.file_id, root_id, durability);
             source_root.files.insert(add_file.path, add_file.file_id);
         }
         for remove_file in root_change.removed {
-            self.set_file_text(remove_file.file_id, Default::default());
+            self.set_file_text_with_durability(remove_file.file_id, Default::default(), durability);
             source_root.files.remove(&remove_file.path);
         }
-        self.set_source_root(root_id, Arc::new(source_root));
+        self.set_source_root_with_durability(root_id, Arc::new(source_root), durability);
     }
 
     pub(crate) fn maybe_collect_garbage(&mut self) {
@@ -306,5 +323,13 @@ impl RootDatabase {
         ];
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));
         acc
+    }
+}
+
+fn durability(source_root: &SourceRoot) -> Durability {
+    if source_root.is_library {
+        Durability::HIGH
+    } else {
+        Durability::LOW
     }
 }

@@ -4,6 +4,7 @@ use std::sync::Arc;
 use chalk_ir::cast::Cast;
 use log::debug;
 use parking_lot::Mutex;
+use ra_db::salsa;
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
@@ -14,7 +15,34 @@ use self::chalk::{from_chalk, ToChalk};
 
 pub(crate) mod chalk;
 
-pub(crate) type Solver = chalk_solve::Solver;
+#[derive(Debug, Clone)]
+pub struct TraitSolver {
+    krate: Crate,
+    inner: Arc<Mutex<chalk_solve::Solver>>,
+}
+
+/// We need eq for salsa
+impl PartialEq for TraitSolver {
+    fn eq(&self, other: &TraitSolver) -> bool {
+        Arc::ptr_eq(&self.inner, &other.inner)
+    }
+}
+
+impl Eq for TraitSolver {}
+
+impl TraitSolver {
+    fn solve(
+        &self,
+        db: &impl HirDatabase,
+        goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal>>,
+    ) -> Option<chalk_solve::Solution> {
+        let context = ChalkContext { db, krate: self.krate };
+        debug!("solve goal: {:?}", goal);
+        let solution = self.inner.lock().solve(&context, goal);
+        debug!("solve({:?}) => {:?}", goal, solution);
+        solution
+    }
+}
 
 /// This controls the maximum size of types Chalk considers. If we set this too
 /// high, we can run into slow edge cases; if we set it too low, Chalk won't
@@ -27,11 +55,15 @@ struct ChalkContext<'a, DB> {
     krate: Crate,
 }
 
-pub(crate) fn trait_solver_query(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>> {
+pub(crate) fn trait_solver_query(
+    db: &(impl HirDatabase + salsa::Database),
+    krate: Crate,
+) -> TraitSolver {
+    db.salsa_runtime().report_untracked_read();
     // krate parameter is just so we cache a unique solver per crate
     let solver_choice = chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE };
-    debug!("Creating new solver for crate {:?}", _krate);
-    Arc::new(Mutex::new(solver_choice.into_solver()))
+    debug!("Creating new solver for crate {:?}", krate);
+    TraitSolver { krate, inner: Arc::new(Mutex::new(solver_choice.into_solver())) }
 }
 
 /// Collects impls for the given trait in the whole dependency tree of `krate`.
@@ -52,18 +84,6 @@ pub(crate) fn impls_for_trait_query(
     let crate_impl_blocks = db.impls_in_crate(krate);
     impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_));
     impls.into_iter().collect::<Vec<_>>().into()
-}
-
-fn solve(
-    db: &impl HirDatabase,
-    krate: Crate,
-    goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal>>,
-) -> Option<chalk_solve::Solution> {
-    let context = ChalkContext { db, krate };
-    let solver = db.trait_solver(krate);
-    let solution = solver.lock().solve(&context, goal);
-    debug!("solve({:?}) => {:?}", goal, solution);
-    solution
 }
 
 /// A set of clauses that we assume to be true. E.g. if we are inside this function:
@@ -127,7 +147,7 @@ pub(crate) fn trait_solve_query(
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
-    let solution = solve(db, krate, &u_canonical);
+    let solution = db.trait_solver(krate).solve(db, &u_canonical);
     solution.map(|solution| solution_from_chalk(db, solution))
 }
 

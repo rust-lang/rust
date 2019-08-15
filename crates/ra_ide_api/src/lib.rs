@@ -281,6 +281,9 @@ impl AnalysisHost {
     pub fn raw_database(&self) -> &(impl hir::db::HirDatabase + salsa::Database) {
         &self.db
     }
+    pub fn raw_database_mut(&mut self) -> &mut (impl hir::db::HirDatabase + salsa::Database) {
+        &mut self.db
+    }
 }
 
 /// Analysis is a snapshot of a world state at a moment in time. It is the main
