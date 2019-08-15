@@ -250,8 +250,11 @@ fn main() {
     let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 
     let stdcppname = if target.contains("openbsd") {
-        // llvm-config on OpenBSD doesn't mention stdlib=libc++
-        "c++"
+        if target.contains("sparc64") {
+            "estdc++"
+        } else {
+            "c++"
+        }
     } else if target.contains("freebsd") {
         "c++"
     } else if target.contains("darwin") {
