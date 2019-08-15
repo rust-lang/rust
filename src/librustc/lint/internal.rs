@@ -9,7 +9,6 @@ use errors::Applicability;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Ident, Item, ItemKind};
 use syntax::symbol::{sym, Symbol};
-use syntax_pos::ExpnInfo;
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -108,7 +107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
                             .help("try using `Ty` instead")
                             .emit();
                         } else {
-                            if ty.span.ctxt().outer_expn_info().is_some() {
+                            if ty.span.from_expansion() {
                                 return;
                             }
                             if let Some(t) = is_ty_or_ty_ctxt(cx, ty) {
@@ -228,30 +227,20 @@ impl EarlyLintPass for LintPassImpl {
         if let ItemKind::Impl(_, _, _, _, Some(lint_pass), _, _) = &item.node {
             if let Some(last) = lint_pass.path.segments.last() {
                 if last.ident.name == sym::LintPass {
-                    match &lint_pass.path.span.ctxt().outer_expn_info() {
-                        Some(info) if is_lint_pass_expansion(info) => {}
-                        _ => {
-                            cx.struct_span_lint(
-                                LINT_PASS_IMPL_WITHOUT_MACRO,
-                                lint_pass.path.span,
-                                "implementing `LintPass` by hand",
-                            )
-                            .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
-                            .emit();
-                        }
+                    let expn_data = lint_pass.path.span.ctxt().outer_expn_data();
+                    let call_site = expn_data.call_site;
+                    if expn_data.kind.descr() != sym::impl_lint_pass &&
+                       call_site.ctxt().outer_expn_data().kind.descr() != sym::declare_lint_pass {
+                        cx.struct_span_lint(
+                            LINT_PASS_IMPL_WITHOUT_MACRO,
+                            lint_pass.path.span,
+                            "implementing `LintPass` by hand",
+                        )
+                        .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
+                        .emit();
                     }
                 }
             }
         }
-    }
-}
-
-fn is_lint_pass_expansion(expn_info: &ExpnInfo) -> bool {
-    if expn_info.kind.descr() == sym::impl_lint_pass {
-        true
-    } else if let Some(info) = expn_info.call_site.ctxt().outer_expn_info() {
-        info.kind.descr() == sym::declare_lint_pass
-    } else {
-        false
     }
 }

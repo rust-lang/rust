@@ -60,7 +60,7 @@ impl<'a> Parser<'a> {
                 // Record that we fetched the mod from an external file
                 if warn {
                     let attr = attr::mk_attr_outer(
-                        attr::mk_word_item(Ident::with_empty_ctxt(sym::warn_directory_ownership)));
+                        attr::mk_word_item(Ident::with_dummy_span(sym::warn_directory_ownership)));
                     attr::mark_known(&attr);
                     attrs.push(attr);
                 }

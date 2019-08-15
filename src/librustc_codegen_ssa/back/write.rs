@@ -1775,10 +1775,7 @@ impl SharedEmitterMain {
                     }
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg)) => {
-                    match ExpnId::from_u32(cookie).expn_info() {
-                        Some(ei) => sess.span_err(ei.call_site, &msg),
-                        None     => sess.err(&msg),
-                    }
+                    sess.span_err(ExpnId::from_u32(cookie).expn_data().call_site, &msg)
                 }
                 Ok(SharedEmitterMessage::AbortIfErrors) => {
                     sess.abort_if_errors();
