@@ -32,15 +32,12 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAt
         return true
     }
 
-        match item.node {
-        hir::ItemKind::Fn(_, header, ..) => {
-            if header.constness == hir::Constness::Const {
-                return true;
-            }
-            let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
-            generics.requires_monomorphization(tcx)
+    match item.node {
+        hir::ItemKind::Fn(_, header, ..) if header.constness == hir::Constness::Const => {
+            return true;
         }
-        hir::ItemKind::Impl(..) => {
+        hir::ItemKind::Impl(..) |
+        hir::ItemKind::Fn(..) => {
             let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
             generics.requires_monomorphization(tcx)
         }
