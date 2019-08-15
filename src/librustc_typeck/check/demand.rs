@@ -127,6 +127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.suggest_compatible_variants(&mut err, expr, expected, expr_ty);
         self.suggest_ref_or_into(&mut err, expr, expected, expr_ty);
+        self.suggest_boxing_when_appropriate(&mut err, expr, expected, expr_ty);
         self.suggest_missing_await(&mut err, expr, expected, expr_ty);
 
         (expected, Some(err))
@@ -548,7 +549,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        if self.tcx.hir().is_const_scope(expr.hir_id) {
+        if self.tcx.hir().is_const_context(expr.hir_id) {
             // Shouldn't suggest `.into()` on `const`s.
             // FIXME(estebank): modify once we decide to suggest `as` casts
             return false;

@@ -35,7 +35,6 @@ use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{InlineAttr, OptimizeAttr, list_contains_name, mark_used};
-use syntax::source_map::Spanned;
 use syntax::feature_gate;
 use syntax::symbol::{InternedString, kw, Symbol, sym};
 use syntax_pos::{Span, DUMMY_SP};
@@ -520,7 +519,11 @@ fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
     tcx.predicates_of(def_id);
 }
 
-fn convert_enum_variant_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, variants: &[hir::Variant]) {
+fn convert_enum_variant_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    variants: &[hir::Variant]
+) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
     let initial = repr_type.initial_discriminant(tcx);
@@ -530,7 +533,7 @@ fn convert_enum_variant_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, variants: 
     for variant in variants {
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
         prev_discr = Some(
-            if let Some(ref e) = variant.node.disr_expr {
+            if let Some(ref e) = variant.disr_expr {
                 let expr_did = tcx.hir().local_def_id(e.hir_id);
                 def.eval_explicit_discr(tcx, expr_did)
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
@@ -546,14 +549,14 @@ fn convert_enum_variant_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, variants: 
                     format!("overflowed on value after {}", prev_discr.unwrap()),
                 ).note(&format!(
                     "explicitly set `{} = {}` if that is desired outcome",
-                    variant.node.ident, wrapped_discr
+                    variant.ident, wrapped_discr
                 ))
                 .emit();
                 None
             }.unwrap_or(wrapped_discr),
         );
 
-        for f in variant.node.data.fields() {
+        for f in variant.data.fields() {
             let def_id = tcx.hir().local_def_id(f.hir_id);
             tcx.generics_of(def_id);
             tcx.type_of(def_id);
@@ -562,7 +565,7 @@ fn convert_enum_variant_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, variants: 
 
         // Convert the ctor, if any. This also registers the variant as
         // an item.
-        if let Some(ctor_hir_id) = variant.node.data.ctor_hir_id() {
+        if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
             convert_variant_ctor(tcx, ctor_hir_id);
         }
     }
@@ -641,11 +644,11 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
             let variants = def.variants
                 .iter()
                 .map(|v| {
-                    let variant_did = Some(tcx.hir().local_def_id(v.node.id));
-                    let ctor_did = v.node.data.ctor_hir_id()
+                    let variant_did = Some(tcx.hir().local_def_id(v.id));
+                    let ctor_did = v.data.ctor_hir_id()
                         .map(|hir_id| tcx.hir().local_def_id(hir_id));
 
-                    let discr = if let Some(ref e) = v.node.disr_expr {
+                    let discr = if let Some(ref e) = v.disr_expr {
                         distance_from_explicit = 0;
                         ty::VariantDiscr::Explicit(tcx.hir().local_def_id(e.hir_id))
                     } else {
@@ -653,8 +656,8 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
                     };
                     distance_from_explicit += 1;
 
-                    convert_variant(tcx, variant_did, ctor_did, v.node.ident, discr,
-                                    &v.node.data, AdtKind::Enum, def_id)
+                    convert_variant(tcx, variant_did, ctor_did, v.ident, discr,
+                                    &v.data, AdtKind::Enum, def_id)
                 })
                 .collect();
 
@@ -1314,10 +1317,9 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
             ForeignItemKind::Type => tcx.mk_foreign(def_id),
         },
 
-        Node::Ctor(&ref def) | Node::Variant(&Spanned {
-            node: hir::VariantKind { data: ref def, .. },
-            ..
-        }) => match *def {
+        Node::Ctor(&ref def) | Node::Variant(
+            hir::Variant { data: ref def, .. }
+        ) => match *def {
             VariantData::Unit(..) | VariantData::Struct(..) => {
                 tcx.type_of(tcx.hir().get_parent_did(hir_id))
             }
@@ -1363,12 +1365,8 @@ pub fn checked_type_of(tcx: TyCtxt<'_>, def_id: DefId, fail: bool) -> Option<Ty<
                     tcx.types.usize
                 }
 
-                Node::Variant(&Spanned {
-                    node:
-                        VariantKind {
-                            disr_expr: Some(ref e),
-                            ..
-                        },
+                Node::Variant(Variant {
+                    disr_expr: Some(ref e),
                     ..
                 }) if e.hir_id == hir_id =>
                 {
@@ -1809,10 +1807,9 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             compute_sig_of_foreign_fn_decl(tcx, def_id, fn_decl, abi)
         }
 
-        Ctor(data) | Variant(Spanned {
-            node: hir::VariantKind { data, ..  },
-            ..
-        }) if data.ctor_hir_id().is_some() => {
+        Ctor(data) | Variant(
+            hir::Variant { data, ..  }
+        ) if data.ctor_hir_id().is_some() => {
             let ty = tcx.type_of(tcx.hir().get_parent_did(hir_id));
             let inputs = data.fields()
                 .iter()

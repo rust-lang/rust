@@ -577,15 +577,15 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                         variant: &'v Variant,
                                         generics: &'v Generics,
                                         parent_item_id: HirId) {
-    visitor.visit_ident(variant.node.ident);
-    visitor.visit_id(variant.node.id);
-    visitor.visit_variant_data(&variant.node.data,
-                               variant.node.ident.name,
+    visitor.visit_ident(variant.ident);
+    visitor.visit_id(variant.id);
+    visitor.visit_variant_data(&variant.data,
+                               variant.ident.name,
                                generics,
                                parent_item_id,
                                variant.span);
-    walk_list!(visitor, visit_anon_const, &variant.node.disr_expr);
-    walk_list!(visitor, visit_attribute, &variant.node.attrs);
+    walk_list!(visitor, visit_anon_const, &variant.disr_expr);
+    walk_list!(visitor, visit_attribute, &variant.attrs);
 }
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {

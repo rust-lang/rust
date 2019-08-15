@@ -260,7 +260,7 @@ impl<'a> StripUnconfigured<'a> {
             ast::ItemKind::Enum(ast::EnumDef { variants }, _generics) => {
                 variants.flat_map_in_place(|variant| self.configure(variant));
                 for variant in variants {
-                    self.configure_variant_data(&mut variant.node.data);
+                    self.configure_variant_data(&mut variant.data);
                 }
             }
             _ => {}

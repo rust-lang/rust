@@ -951,7 +951,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
                      v: &'hir hir::Variant,
                      g: &'hir hir::Generics,
                      item_id: hir::HirId) {
-        self.visit_testable(v.node.ident.to_string(), &v.node.attrs, |this| {
+        self.visit_testable(v.ident.to_string(), &v.attrs, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }

@@ -1541,7 +1541,7 @@ pub enum ExprKind {
     Match(P<Expr>, HirVec<Arm>, MatchSource),
     /// A closure (e.g., `move |a, b, c| {a + b + c}`).
     ///
-    /// The final span is the span of the argument block `|...|`.
+    /// The `Span` is the argument block `|...|`.
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
     /// `Option<GeneratorMovability>`.
@@ -2193,7 +2193,7 @@ pub struct EnumDef {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct VariantKind {
+pub struct Variant {
     /// Name of the variant.
     #[stable_hasher(project(name))]
     pub ident: Ident,
@@ -2205,9 +2205,9 @@ pub struct VariantKind {
     pub data: VariantData,
     /// Explicit discriminant (e.g., `Foo = 1`).
     pub disr_expr: Option<AnonConst>,
+    /// Span
+    pub span: Span
 }
-
-pub type Variant = Spanned<VariantKind>;
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum UseKind {

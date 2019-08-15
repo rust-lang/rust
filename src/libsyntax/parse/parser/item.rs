@@ -1564,14 +1564,15 @@ impl<'a> Parser<'a> {
                 None
             };
 
-            let vr = ast::Variant_ {
+            let vr = ast::Variant {
                 ident,
                 id: ast::DUMMY_NODE_ID,
                 attrs: variant_attrs,
                 data: struct_def,
                 disr_expr,
+                span: vlo.to(self.prev_span),
             };
-            variants.push(respan(vlo.to(self.prev_span), vr));
+            variants.push(vr);
 
             if !self.eat(&token::Comma) {
                 if self.token.is_ident() && !self.token.is_reserved_ident() {

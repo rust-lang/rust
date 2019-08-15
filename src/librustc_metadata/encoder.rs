@@ -1676,7 +1676,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
                      id: hir::HirId) {
         intravisit::walk_variant(self, v, g, id);
 
-        if let Some(ref discr) = v.node.disr_expr {
+        if let Some(ref discr) = v.disr_expr {
             let def_id = self.tcx.hir().local_def_id(discr.hir_id);
             self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
         }

@@ -25,7 +25,7 @@ pub fn expand_cfg(
         }
         Err(mut err) => {
             err.emit();
-            DummyResult::expr(sp)
+            DummyResult::any(sp)
         }
     }
 }

@@ -383,10 +383,11 @@ pub fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
 }
 
 pub fn noop_visit_arm<T: MutVisitor>(
-    Arm { attrs, pats, guard, body, span }: &mut Arm,
+    Arm { attrs, pats, guard, body, span, id }: &mut Arm,
     vis: &mut T,
 ) {
     visit_attrs(attrs, vis);
+    vis.visit_id(id);
     visit_vec(pats, |pat| vis.visit_pat(pat));
     visit_opt(guard, |guard| vis.visit_expr(guard));
     vis.visit_expr(body);
@@ -455,7 +456,7 @@ pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: 
 }
 
 pub fn noop_visit_variant<T: MutVisitor>(variant: &mut Variant, vis: &mut T) {
-    let Spanned { node: Variant_ { ident, attrs, id, data, disr_expr }, span } = variant;
+    let Variant { ident, attrs, id, data, disr_expr, span } = variant;
     vis.visit_ident(ident);
     visit_attrs(attrs, vis);
     vis.visit_id(id);
@@ -808,9 +809,10 @@ pub fn noop_visit_struct_field<T: MutVisitor>(f: &mut StructField, visitor: &mut
 }
 
 pub fn noop_visit_field<T: MutVisitor>(f: &mut Field, vis: &mut T) {
-    let Field { ident, expr, span, is_shorthand: _, attrs } = f;
+    let Field { ident, expr, span, is_shorthand: _, attrs, id } = f;
     vis.visit_ident(ident);
     vis.visit_expr(expr);
+    vis.visit_id(id);
     vis.visit_span(span);
     visit_thin_attrs(attrs, vis);
 }
@@ -1040,8 +1042,12 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         }
         PatKind::Struct(path, fields, _etc) => {
             vis.visit_path(path);
-            for Spanned { node: FieldPat { ident, pat, is_shorthand: _, attrs }, span } in fields {
+            for Spanned {
+                node: FieldPat { ident, pat, is_shorthand: _, attrs, id },
+                span
+            } in fields {
                 vis.visit_ident(ident);
+                vis.visit_id(id);
                 vis.visit_pat(pat);
                 visit_thin_attrs(attrs, vis);
                 vis.visit_span(span);

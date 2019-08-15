@@ -405,7 +405,6 @@ impl MacResult for MacEager {
 /// after hitting errors.
 #[derive(Copy, Clone)]
 pub struct DummyResult {
-    expr_only: bool,
     is_error: bool,
     span: Span,
 }
@@ -416,21 +415,12 @@ impl DummyResult {
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
     pub fn any(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, is_error: true, span })
+        Box::new(DummyResult { is_error: true, span })
     }
 
     /// Same as `any`, but must be a valid fragment, not error.
     pub fn any_valid(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, is_error: false, span })
-    }
-
-    /// Creates a default MacResult that can only be an expression.
-    ///
-    /// Use this for macros that must expand to an expression, so even
-    /// if an error is encountered internally, the user will receive
-    /// an error that they also used it in the wrong place.
-    pub fn expr(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: true, is_error: true, span })
+        Box::new(DummyResult { is_error: false, span })
     }
 
     /// A plain dummy expression.
@@ -472,36 +462,19 @@ impl MacResult for DummyResult {
     }
 
     fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
-        // this code needs a comment... why not always just return the Some() ?
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::ImplItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::TraitItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
@@ -947,8 +920,10 @@ pub fn expr_to_spanned_string<'a>(
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     expr.span = expr.span.apply_mark(cx.current_expansion.id);
 
-    // we want to be able to handle e.g., `concat!("foo", "bar")`
-    cx.expander().visit_expr(&mut expr);
+    // Perform eager expansion on the expression.
+    // We want to be able to handle e.g., `concat!("foo", "bar")`.
+    let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
+
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
             ast::LitKind::Str(s, style) => return Ok(respan(expr.span, (s, style))),
@@ -1013,8 +988,12 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>,
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
-        let mut expr = panictry!(p.parse_expr());
-        cx.expander().visit_expr(&mut expr);
+        let expr = panictry!(p.parse_expr());
+
+        // Perform eager expansion on the expression.
+        // We want to be able to handle e.g., `concat!("foo", "bar")`.
+        let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
+
         es.push(expr);
         if p.eat(&token::Comma) {
             continue;

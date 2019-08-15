@@ -758,7 +758,7 @@ impl<'a> TraitDef<'a> {
         let mut field_tys = Vec::new();
 
         for variant in &enum_def.variants {
-            field_tys.extend(variant.node
+            field_tys.extend(variant
                 .data
                 .fields()
                 .iter()
@@ -1220,7 +1220,7 @@ impl<'a> MethodDef<'a> {
         let catch_all_substructure =
             EnumNonMatchingCollapsed(self_arg_idents, &variants[..], &vi_idents[..]);
 
-        let first_fieldless = variants.iter().find(|v| v.node.data.fields().is_empty());
+        let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
 
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
@@ -1229,7 +1229,7 @@ impl<'a> MethodDef<'a> {
         // where each tuple has length = self_args.len()
         let mut match_arms: Vec<ast::Arm> = variants.iter()
             .enumerate()
-            .filter(|&(_, v)| !(self.unify_fieldless_variants && v.node.data.fields().is_empty()))
+            .filter(|&(_, v)| !(self.unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|(index, variant)| {
                 let mk_self_pat = |cx: &mut ExtCtxt<'_>, self_arg_name: &str| {
                     let (p, idents) = trait_.create_enum_variant_pattern(cx,
@@ -1513,8 +1513,8 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|v| {
                 let sp = v.span.with_ctxt(trait_.span.ctxt());
-                let summary = trait_.summarise_struct(cx, &v.node.data);
-                (v.node.ident, sp, summary)
+                let summary = trait_.summarise_struct(cx, &v.data);
+                (v.ident, sp, summary)
             })
             .collect();
         self.call_substructure_method(cx,
@@ -1613,6 +1613,7 @@ impl<'a> TraitDef<'a> {
                         source_map::Spanned {
                             span: pat.span.with_ctxt(self.span.ctxt()),
                             node: ast::FieldPat {
+                                id: ast::DUMMY_NODE_ID,
                                 ident: ident.unwrap(),
                                 pat,
                                 is_shorthand: false,
@@ -1643,9 +1644,9 @@ impl<'a> TraitDef<'a> {
          mutbl: ast::Mutability)
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let sp = variant.span.with_ctxt(self.span.ctxt());
-        let variant_path = cx.path(sp, vec![enum_ident, variant.node.ident]);
+        let variant_path = cx.path(sp, vec![enum_ident, variant.ident]);
         let use_temporaries = false; // enums can't be repr(packed)
-        self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl,
+        self.create_struct_pattern(cx, variant_path, &variant.data, prefix, mutbl,
                                    use_temporaries)
     }
 }
@@ -1776,7 +1777,7 @@ pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {
         match item.node {
             ast::ItemKind::Enum(ref enum_def, _) => {
-                enum_def.variants.iter().all(|v| v.node.data.fields().is_empty())
+                enum_def.variants.iter().all(|v| v.data.fields().is_empty())
             }
             ast::ItemKind::Struct(ref variant_data, _) => variant_data.fields().is_empty(),
             _ => false,

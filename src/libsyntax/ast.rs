@@ -608,6 +608,7 @@ pub struct FieldPat {
     pub pat: P<Pat>,
     pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
+    pub id: NodeId,
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
@@ -925,6 +926,7 @@ pub struct Arm {
     pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
     pub span: Span,
+    pub id: NodeId,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -934,6 +936,7 @@ pub struct Field {
     pub span: Span,
     pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
+    pub id: NodeId,
 }
 
 pub type SpannedIdent = Spanned<Ident>;
@@ -2038,7 +2041,7 @@ pub struct EnumDef {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Variant_ {
+pub struct Variant {
     /// Name of the variant.
     pub ident: Ident,
     /// Attributes of the variant.
@@ -2049,9 +2052,9 @@ pub struct Variant_ {
     pub data: VariantData,
     /// Explicit discriminant, e.g., `Foo = 1`.
     pub disr_expr: Option<AnonConst>,
+    /// Span
+    pub span: Span,
 }
-
-pub type Variant = Spanned<Variant_>;
 
 /// Part of `use` item to the right of its prefix.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

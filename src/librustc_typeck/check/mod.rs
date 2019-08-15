@@ -2048,19 +2048,19 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
     }
 
     for v in vs {
-        if let Some(ref e) = v.node.disr_expr {
+        if let Some(ref e) = v.disr_expr {
             tcx.typeck_tables_of(tcx.hir().local_def_id(e.hir_id));
         }
     }
 
     if tcx.adt_def(def_id).repr.int.is_none() && tcx.features().arbitrary_enum_discriminant {
         let is_unit =
-            |var: &hir::Variant| match var.node.data {
+            |var: &hir::Variant| match var.data {
                 hir::VariantData::Unit(..) => true,
                 _ => false
             };
 
-        let has_disr = |var: &hir::Variant| var.node.disr_expr.is_some();
+        let has_disr = |var: &hir::Variant| var.disr_expr.is_some();
         let has_non_units = vs.iter().any(|var| !is_unit(var));
         let disr_units = vs.iter().any(|var| is_unit(&var) && has_disr(&var));
         let disr_non_unit = vs.iter().any(|var| !is_unit(&var) && has_disr(&var));
@@ -2079,11 +2079,11 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
             let variant_did = def.variants[VariantIdx::new(i)].def_id;
             let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
-            let i_span = match variant_i.node.disr_expr {
+            let i_span = match variant_i.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => tcx.hir().span(variant_i_hir_id)
             };
-            let span = match v.node.disr_expr {
+            let span = match v.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span
             };
@@ -3900,6 +3900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err, &fn_decl, expected, found, can_suggest);
         }
         self.suggest_ref_or_into(err, expression, expected, found);
+        self.suggest_boxing_when_appropriate(err, expression, expected, found);
         pointing_at_return_type
     }
 
@@ -4059,6 +4060,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
     }
+
+    /// When encountering the expected boxed value allocated in the stack, suggest allocating it
+    /// in the heap by calling `Box::new()`.
+    fn suggest_boxing_when_appropriate(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if self.tcx.hir().is_const_context(expr.hir_id) {
+            // Do not suggest `Box::new` in const context.
+            return;
+        }
+        if !expected.is_box() || found.is_box() {
+            return;
+        }
+        let boxed_found = self.tcx.mk_box(found);
+        if let (true, Ok(snippet)) = (
+            self.can_coerce(boxed_found, expected),
+            self.sess().source_map().span_to_snippet(expr.span),
+        ) {
+            err.span_suggestion(
+                expr.span,
+                "store this in the heap by calling `Box::new`",
+                format!("Box::new({})", snippet),
+                Applicability::MachineApplicable,
+            );
+            err.note("for more on the distinction between the stack and the \
+                        heap, read https://doc.rust-lang.org/book/ch15-01-box.html, \
+                        https://doc.rust-lang.org/rust-by-example/std/box.html, and \
+                        https://doc.rust-lang.org/std/boxed/index.html");
+        }
+    }
+
 
     /// A common error is to forget to add a semicolon at the end of a block, e.g.,
     ///

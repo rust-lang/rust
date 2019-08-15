@@ -8,7 +8,6 @@ use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, Token
 use crate::parse::token::{self, TokenKind};
 use crate::print::pprust;
 use crate::ptr::P;
-use crate::source_map::Spanned;
 use crate::symbol::{kw, sym};
 use crate::ThinVec;
 use crate::util::parser::AssocOp;
@@ -592,18 +591,18 @@ impl<'a> Parser<'a> {
 
     crate fn maybe_report_invalid_custom_discriminants(
         sess: &ParseSess,
-        variants: &[Spanned<ast::Variant_>],
+        variants: &[ast::Variant],
     ) {
-        let has_fields = variants.iter().any(|variant| match variant.node.data {
+        let has_fields = variants.iter().any(|variant| match variant.data {
             VariantData::Tuple(..) | VariantData::Struct(..) => true,
             VariantData::Unit(..) => false,
         });
 
-        let discriminant_spans = variants.iter().filter(|variant| match variant.node.data {
+        let discriminant_spans = variants.iter().filter(|variant| match variant.data {
             VariantData::Tuple(..) | VariantData::Struct(..) => false,
             VariantData::Unit(..) => true,
         })
-        .filter_map(|variant| variant.node.disr_expr.as_ref().map(|c| c.value.span))
+        .filter_map(|variant| variant.disr_expr.as_ref().map(|c| c.value.span))
         .collect::<Vec<_>>();
 
         if !discriminant_spans.is_empty() && has_fields {
@@ -618,7 +617,7 @@ impl<'a> Parser<'a> {
                 err.span_label(sp, "disallowed custom discriminant");
             }
             for variant in variants.iter() {
-                match &variant.node.data {
+                match &variant.data {
                     VariantData::Struct(..) => {
                         err.span_label(
                             variant.span,

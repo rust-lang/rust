@@ -290,10 +290,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
-        self.annotate(var.node.id, &var.node.attrs, var.span, AnnotationKind::Required,
+        self.annotate(var.id, &var.attrs, var.span, AnnotationKind::Required,
             |v| {
-                if let Some(ctor_hir_id) = var.node.data.ctor_hir_id() {
-                    v.annotate(ctor_hir_id, &var.node.attrs, var.span, AnnotationKind::Required,
+                if let Some(ctor_hir_id) = var.data.ctor_hir_id() {
+                    v.annotate(ctor_hir_id, &var.attrs, var.span, AnnotationKind::Required,
                                |_| {});
                 }
 
@@ -372,7 +372,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant, g: &'tcx Generics, item_id: HirId) {
-        self.check_missing_stability(var.node.id, var.span, "variant");
+        self.check_missing_stability(var.id, var.span, "variant");
         intravisit::walk_variant(self, var, g, item_id);
     }
 
