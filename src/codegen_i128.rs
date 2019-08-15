@@ -73,39 +73,7 @@ pub fn maybe_codegen<'a, 'tcx>(
         }
         BinOp::Lt | BinOp::Le | BinOp::Eq | BinOp::Ge | BinOp::Gt | BinOp::Ne => {
             assert!(!checked);
-            let (lhs_lsb, lhs_msb) = fx.bcx.ins().isplit(lhs_val);
-            let (rhs_lsb, rhs_msb) = fx.bcx.ins().isplit(rhs_val);
-
-            let res = match bin_op {
-                BinOp::Eq => {
-                    let lsb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_lsb, rhs_lsb);
-                    let msb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_msb, rhs_msb);
-                    fx.bcx.ins().band(lsb_eq, msb_eq)
-                }
-                BinOp::Ne => {
-                    let lsb_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_lsb, rhs_lsb);
-                    let msb_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_msb, rhs_msb);
-                    fx.bcx.ins().bor(lsb_ne, msb_ne)
-                }
-                _ => {
-                    // if msb_eq {
-                    //     lsb_cc
-                    // } else {
-                    //     msb_cc
-                    // }
-                    let cc = crate::num::bin_op_to_intcc(bin_op, is_signed).unwrap();
-
-                    let msb_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_msb, rhs_msb);
-                    let lsb_cc = fx.bcx.ins().icmp(cc, lhs_lsb, rhs_lsb);
-                    let msb_cc = fx.bcx.ins().icmp(cc, lhs_msb, rhs_msb);
-
-                    fx.bcx.ins().select(msb_eq, lsb_cc, msb_cc)
-                }
-            };
-
-            let res = fx.bcx.ins().bint(types::I8, res);
-            let res = CValue::by_val(res, fx.layout_of(fx.tcx.types.bool));
-            return Some(res);
+            return None;
         }
         BinOp::Shl | BinOp::Shr => {
             let is_overflow = if checked {

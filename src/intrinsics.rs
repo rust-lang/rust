@@ -119,8 +119,8 @@ macro_rules! atomic_minmax {
         let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
 
         // Compare
-        let is_eq = $fx.bcx.ins().icmp(IntCC::SignedGreaterThan, old, $src);
-        let new = crate::common::codegen_select(&mut $fx.bcx, is_eq, old, $src);
+        let is_eq = codegen_icmp($fx, IntCC::SignedGreaterThan, old, $src);
+        let new = codegen_select(&mut $fx.bcx, is_eq, old, $src);
 
         // Write new
         $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
@@ -198,7 +198,7 @@ macro_rules! simd_cmp {
     ($fx:expr, $intrinsic:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
         simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
             let res_lane = match lane_layout.ty.sty {
-                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc, x_lane, y_lane),
+                ty::Uint(_) | ty::Int(_) => codegen_icmp(fx, IntCC::$cc, x_lane, y_lane),
                 _ => unreachable!("{:?}", lane_layout.ty),
             };
             bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
@@ -207,8 +207,8 @@ macro_rules! simd_cmp {
     ($fx:expr, $intrinsic:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
         simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
             let res_lane = match lane_layout.ty.sty {
-                ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
-                ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
+                ty::Uint(_) => codegen_icmp(fx, IntCC::$cc_u, x_lane, y_lane),
+                ty::Int(_) => codegen_icmp(fx, IntCC::$cc_s, x_lane, y_lane),
                 _ => unreachable!("{:?}", lane_layout.ty),
             };
             bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
@@ -791,7 +791,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
 
             // Compare
-            let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
+            let is_eq = codegen_icmp(fx, IntCC::Equal, old, test_old);
             let new = crate::common::codegen_select(&mut fx.bcx, is_eq, new, old); // Keep old if not equal to test_old
 
             // Write new

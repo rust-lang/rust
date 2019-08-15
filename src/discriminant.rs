@@ -102,10 +102,7 @@ pub fn codegen_get_discriminant<'tcx>(
             let niche_llty = fx.clif_type(discr_ty).unwrap();
             let dest_clif_ty = fx.clif_type(dest_layout.ty).unwrap();
             if niche_variants.start() == niche_variants.end() {
-                let b = fx
-                    .bcx
-                    .ins()
-                    .icmp_imm(IntCC::Equal, lldiscr, *niche_start as u64 as i64);
+                let b = codegen_icmp_imm(fx, IntCC::Equal, lldiscr, *niche_start as i128);
                 let if_true = fx
                     .bcx
                     .ins()
@@ -121,10 +118,11 @@ pub fn codegen_get_discriminant<'tcx>(
                 let delta = niche_start.wrapping_sub(niche_variants.start().as_u32() as u128);
                 let delta = fx.bcx.ins().iconst(niche_llty, delta as u64 as i64);
                 let lldiscr = fx.bcx.ins().isub(lldiscr, delta);
-                let b = fx.bcx.ins().icmp_imm(
+                let b = codegen_icmp_imm(
+                    fx,
                     IntCC::UnsignedLessThanOrEqual,
                     lldiscr,
-                    niche_variants.end().as_u32() as i64,
+                    i128::from(niche_variants.end().as_u32()),
                 );
                 let if_true =
                     clif_intcast(fx, lldiscr, fx.clif_type(dest_layout.ty).unwrap(), false);

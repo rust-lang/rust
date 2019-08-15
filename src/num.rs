@@ -21,7 +21,8 @@ fn codegen_compare_bin_op<'tcx>(
     lhs: Value,
     rhs: Value,
 ) -> CValue<'tcx> {
-    let val = fx.bcx.ins().icmp(bin_op_to_intcc(bin_op, signed).unwrap(), lhs, rhs);
+    let intcc = crate::num::bin_op_to_intcc(bin_op, signed).unwrap();
+    let val = codegen_icmp(fx, intcc, lhs, rhs);
     let val = fx.bcx.ins().bint(types::I8, val);
     CValue::by_val(val, fx.layout_of(fx.tcx.types.bool))
 }
@@ -35,7 +36,6 @@ pub fn codegen_binop<'tcx>(
     match bin_op {
         BinOp::Eq | BinOp::Lt | BinOp::Le | BinOp::Ne | BinOp::Ge | BinOp::Gt => {
             match in_lhs.layout().ty.sty {
-                ref sty if *sty == fx.tcx.types.u128.sty || *sty == fx.tcx.types.i128.sty => {}
                 ty::Bool | ty::Uint(_) | ty::Int(_) | ty::Char => {
                     let signed = type_sign(in_lhs.layout().ty);
                     let lhs = in_lhs.load_scalar(fx);
@@ -310,7 +310,7 @@ pub fn trans_ptr_binop<'a, 'tcx: 'a>(
                 let lhs = in_lhs.load_scalar(fx);
                 let rhs = in_rhs.load_scalar(fx);
 
-                return codegen_compare_bin_op(fx, bin_op, false, lhs, rhs);
+                return codegen_compare_bin_op(fx, bin_op, false, lhs, rhs);;
             }
             BinOp::Offset => {
                 let (base, offset) = (in_lhs, in_rhs.load_scalar(fx));
