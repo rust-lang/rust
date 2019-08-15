@@ -193,6 +193,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                     source_map.map(|cm| cm as _),
                     short,
                     sessopts.debugging_opts.teach,
+                    sessopts.debugging_opts.terminal_width,
                 ).ui_testing(ui_testing)
             )
         },

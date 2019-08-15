@@ -10,7 +10,14 @@ use errors::{Handler, emitter::EmitterWriter};
 use syntax_pos::{BytePos, Span};
 
 fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
-    let emitter = EmitterWriter::new(Box::new(io::sink()), Some(sm.clone()), false, false, false);
+    let emitter = errors::emitter::EmitterWriter::new(
+        Box::new(io::sink()),
+        Some(sm.clone()),
+        false,
+        false,
+        false,
+        None,
+    );
     ParseSess::with_span_handler(Handler::with_emitter(true, None, Box::new(emitter)), sm)
 }
 

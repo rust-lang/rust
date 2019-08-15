@@ -51,9 +51,11 @@ impl HumanReadableErrorType {
         dst: Box<dyn Write + Send>,
         source_map: Option<Lrc<SourceMapperDyn>>,
         teach: bool,
+        terminal_width: Option<usize>,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
-        EmitterWriter::new(dst, source_map, short, teach, color_config.suggests_using_colors())
+        let color = color_config.suggests_using_colors();
+        EmitterWriter::new(dst, source_map, short, teach, color, terminal_width)
     }
 }
 
@@ -296,6 +298,7 @@ pub struct EmitterWriter {
     short_message: bool,
     teach: bool,
     ui_testing: bool,
+    terminal_width: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -306,11 +309,13 @@ pub struct FileWithAnnotatedLines {
 }
 
 impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig,
-                  source_map: Option<Lrc<SourceMapperDyn>>,
-                  short_message: bool,
-                  teach: bool)
-                  -> EmitterWriter {
+    pub fn stderr(
+        color_config: ColorConfig,
+        source_map: Option<Lrc<SourceMapperDyn>>,
+        short_message: bool,
+        teach: bool,
+        terminal_width: Option<usize>,
+    ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
             dst,
@@ -318,6 +323,7 @@ impl EmitterWriter {
             short_message,
             teach,
             ui_testing: false,
+            terminal_width,
         }
     }
 
@@ -327,6 +333,7 @@ impl EmitterWriter {
         short_message: bool,
         teach: bool,
         colored: bool,
+        terminal_width: Option<usize>,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -334,6 +341,7 @@ impl EmitterWriter {
             short_message,
             teach,
             ui_testing: false,
+            terminal_width,
         }
     }
 
@@ -1295,7 +1303,9 @@ impl EmitterWriter {
                     width_offset + annotated_file.multiline_depth + 1
                 };
 
-                let column_width = if self.ui_testing {
+                let column_width = if let Some(width) = self.terminal_width {
+                    width
+                } else if self.ui_testing {
                     140
                 } else {
                     term_size::dimensions().map(|(w, _)| w - code_offset).unwrap_or(140)
