@@ -750,10 +750,7 @@ impl LoweringContext<'_> {
     }
 
     fn lower_global_asm(&mut self, ga: &GlobalAsm) -> P<hir::GlobalAsm> {
-        P(hir::GlobalAsm {
-            asm: ga.asm,
-            ctxt: ga.ctxt,
-        })
+        P(hir::GlobalAsm { asm: ga.asm })
     }
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
