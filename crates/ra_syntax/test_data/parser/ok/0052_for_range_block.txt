@@ -1,0 +1,79 @@
+SOURCE_FILE@[0; 80)
+  FN_DEF@[0; 79)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 6)
+      IDENT@[3; 6) "foo"
+    PARAM_LIST@[6; 8)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
+    BLOCK@[9; 79)
+      L_CURLY@[9; 10) "{"
+      WHITESPACE@[10; 14) "\n   "
+      FOR_EXPR@[14; 77)
+        FOR_KW@[14; 17) "for"
+        WHITESPACE@[17; 18) " "
+        BIND_PAT@[18; 20)
+          NAME@[18; 20)
+            IDENT@[18; 20) "_x"
+        WHITESPACE@[20; 21) " "
+        IN_KW@[21; 23) "in"
+        WHITESPACE@[23; 24) " "
+        RANGE_EXPR@[24; 56)
+          LITERAL@[24; 25)
+            INT_NUMBER@[24; 25) "0"
+          WHITESPACE@[25; 26) " "
+          DOTDOT@[26; 28) ".."
+          WHITESPACE@[28; 29) " "
+          METHOD_CALL_EXPR@[29; 56)
+            PAREN_EXPR@[29; 43)
+              L_PAREN@[29; 30) "("
+              RANGE_EXPR@[30; 42)
+                LITERAL@[30; 31)
+                  INT_NUMBER@[30; 31) "0"
+                WHITESPACE@[31; 32) " "
+                DOTDOT@[32; 34) ".."
+                WHITESPACE@[34; 35) " "
+                BLOCK_EXPR@[35; 42)
+                  BLOCK@[35; 42)
+                    L_CURLY@[35; 36) "{"
+                    BIN_EXPR@[36; 41)
+                      LITERAL@[36; 37)
+                        INT_NUMBER@[36; 37) "1"
+                      WHITESPACE@[37; 38) " "
+                      PLUS@[38; 39) "+"
+                      WHITESPACE@[39; 40) " "
+                      LITERAL@[40; 41)
+                        INT_NUMBER@[40; 41) "2"
+                    R_CURLY@[41; 42) "}"
+              R_PAREN@[42; 43) ")"
+            DOT@[43; 44) "."
+            NAME_REF@[44; 47)
+              IDENT@[44; 47) "sum"
+            TYPE_ARG_LIST@[47; 54)
+              COLONCOLON@[47; 49) "::"
+              L_ANGLE@[49; 50) "<"
+              TYPE_ARG@[50; 53)
+                PATH_TYPE@[50; 53)
+                  PATH@[50; 53)
+                    PATH_SEGMENT@[50; 53)
+                      NAME_REF@[50; 53)
+                        IDENT@[50; 53) "u32"
+              R_ANGLE@[53; 54) ">"
+            ARG_LIST@[54; 56)
+              L_PAREN@[54; 55) "("
+              R_PAREN@[55; 56) ")"
+        WHITESPACE@[56; 57) " "
+        BLOCK@[57; 77)
+          L_CURLY@[57; 58) "{"
+          WHITESPACE@[58; 66) "\n       "
+          EXPR_STMT@[66; 72)
+            BREAK_EXPR@[66; 71)
+              BREAK_KW@[66; 71) "break"
+            SEMI@[71; 72) ";"
+          WHITESPACE@[72; 76) "\n   "
+          R_CURLY@[76; 77) "}"
+      WHITESPACE@[77; 78) "\n"
+      R_CURLY@[78; 79) "}"
+  WHITESPACE@[79; 80) "\n"

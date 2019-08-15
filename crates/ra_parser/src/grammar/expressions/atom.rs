@@ -110,7 +110,19 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             p.bump();
             block_expr(p, Some(m))
         }
-        T!['{'] => block_expr(p, None),
+        T!['{'] => {
+            // test for_range_from
+            // fn foo() {
+            //    for x in 0 .. {
+            //        break;
+            //    }
+            // }
+            if r.forbid_structs {
+                return None;
+            } else {
+                block_expr(p, None)
+            }
+        }
         T![return] => return_expr(p),
         T![continue] => continue_expr(p),
         T![break] => break_expr(p, r),
