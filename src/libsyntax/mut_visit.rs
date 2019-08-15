@@ -1182,7 +1182,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
         }
         ExprKind::InlineAsm(asm) => {
             let InlineAsm { asm: _, asm_str_style: _, outputs, inputs, clobbers: _, volatile: _,
-                            alignstack: _, dialect: _, ctxt: _ } = asm.deref_mut();
+                            alignstack: _, dialect: _ } = asm.deref_mut();
             for out in outputs {
                 let InlineAsmOutput { constraint: _, expr, is_rw: _, is_indirect: _ } = out;
                 vis.visit_expr(expr);

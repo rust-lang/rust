@@ -63,7 +63,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprKind::InlineAsm(P(inline_asm)),
-        span: sp,
+        span: sp.with_ctxt(cx.backtrace()),
         attrs: ThinVec::new(),
     }))
 }
@@ -277,6 +277,5 @@ fn parse_inline_asm<'a>(
         volatile,
         alignstack,
         dialect,
-        ctxt: cx.backtrace(),
     }))
 }

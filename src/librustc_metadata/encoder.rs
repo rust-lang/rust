@@ -31,7 +31,7 @@ use std::u32;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::{kw, sym};
+use syntax::symbol::{kw, sym, Ident};
 use syntax_pos::{self, FileName, SourceFile, Span};
 use log::{debug, trace};
 
@@ -170,6 +170,13 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         len.encode(self)
 
         // Don't encode the expansion context.
+    }
+}
+
+impl SpecializedEncoder<Ident> for EncodeContext<'tcx> {
+    fn specialized_encode(&mut self, ident: &Ident) -> Result<(), Self::Error> {
+        // FIXME(jseyfried): intercrate hygiene
+        ident.name.encode(self)
     }
 }
 

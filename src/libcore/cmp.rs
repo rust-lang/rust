@@ -202,7 +202,6 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 
 /// Derive macro generating an impl of the trait `PartialEq`.
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]
 pub macro PartialEq($item:item) { /* compiler built-in */ }
@@ -265,7 +264,6 @@ pub trait Eq: PartialEq<Self> {
 
 /// Derive macro generating an impl of the trait `Eq`.
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_eq)]
 pub macro Eq($item:item) { /* compiler built-in */ }
@@ -616,7 +614,6 @@ pub trait Ord: Eq + PartialOrd<Self> {
 
 /// Derive macro generating an impl of the trait `Ord`.
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]
 pub macro Ord($item:item) { /* compiler built-in */ }
@@ -865,7 +862,6 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 
 /// Derive macro generating an impl of the trait `PartialOrd`.
 #[rustc_builtin_macro]
-#[rustc_macro_transparency = "semitransparent"]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics)]
 pub macro PartialOrd($item:item) { /* compiler built-in */ }
