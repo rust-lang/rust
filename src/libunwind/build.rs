@@ -5,14 +5,14 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
 
     if cfg!(feature = "llvm-libunwind") &&
-        (target.contains("linux") ||
+        ((target.contains("linux") && !target.contains("musl")) ||
          target.contains("fuchsia")) {
         // Build the unwinding from libunwind C/C++ source code.
-        #[cfg(feature = "llvm-libunwind")]
         llvm_libunwind::compile();
     } else if target.contains("linux") {
         if target.contains("musl") {
-            // musl is handled in lib.rs
+            // linking for musl is handled in lib.rs
+            llvm_libunwind::compile();
         } else if !target.contains("android") {
             println!("cargo:rustc-link-lib=gcc_s");
         }
@@ -44,7 +44,6 @@ fn main() {
     }
 }
 
-#[cfg(feature = "llvm-libunwind")]
 mod llvm_libunwind {
     use std::env;
     use std::path::Path;
@@ -94,6 +93,15 @@ mod llvm_libunwind {
         cfg.include(root.join("include"));
         for src in unwind_sources {
             cfg.file(root.join("src").join(src));
+        }
+
+        if target_env == "musl" {
+            // use the same C compiler command to compile C++ code so we do not need to setup the
+            // C++ compiler env variables on the builders
+            cfg.cpp(false);
+            // linking for musl is handled in lib.rs
+            cfg.cargo_metadata(false);
+            println!("cargo:rustc-link-search=native={}", env::var("OUT_DIR").unwrap());
         }
 
         cfg.compile("unwind");
