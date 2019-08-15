@@ -151,6 +151,10 @@ fn main() {
         cfg.define("LLVM_RUSTLLVM", None);
     }
 
+    if env::var_os("LLVM_NDEBUG").is_some() {
+        cfg.define("NDEBUG", None);
+    }
+
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
     cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
