@@ -140,7 +140,9 @@ pub struct ParentScope<'a> {
 }
 
 impl<'a> ParentScope<'a> {
-    pub fn default(module: Module<'a>) -> ParentScope<'a> {
+    /// Creates a parent scope with the passed argument used as the module scope component,
+    /// and other scope components set to default empty values.
+    pub fn module(module: Module<'a>) -> ParentScope<'a> {
         ParentScope {
             module,
             expansion: ExpnId::root(),
@@ -1017,7 +1019,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             segments,
         };
 
-        let parent_scope = &ParentScope::default(self.graph_root);
+        let parent_scope = &ParentScope::module(self.graph_root);
         let res = match self.resolve_ast_path(&path, ns, parent_scope) {
             Ok(res) => res,
             Err((span, error)) => {
@@ -1090,7 +1092,7 @@ impl<'a> Resolver<'a> {
         }
 
         let mut invocation_parent_scopes = FxHashMap::default();
-        invocation_parent_scopes.insert(ExpnId::root(), ParentScope::default(graph_root));
+        invocation_parent_scopes.insert(ExpnId::root(), ParentScope::module(graph_root));
 
         let mut macro_defs = FxHashMap::default();
         macro_defs.insert(ExpnId::root(), root_def_id);
@@ -2671,7 +2673,7 @@ impl<'a> Resolver<'a> {
             let def_id = self.definitions.local_def_id(module_id);
             self.module_map.get(&def_id).copied().unwrap_or(self.graph_root)
         });
-        let parent_scope = &ParentScope::default(module);
+        let parent_scope = &ParentScope::module(module);
         let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
         Ok((path, res))
     }

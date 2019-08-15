@@ -166,7 +166,7 @@ impl<'a> Resolver<'a> {
         let def_id = module.def_id().unwrap();
         for child in self.cstore.item_children_untracked(def_id, self.session) {
             let child = child.map_id(|_| panic!("unexpected id"));
-            BuildReducedGraphVisitor { parent_scope: ParentScope::default(module), r: self }
+            BuildReducedGraphVisitor { parent_scope: ParentScope::module(module), r: self }
                 .build_reduced_graph_for_external_crate_res(child);
         }
         module.populated.set(true)
