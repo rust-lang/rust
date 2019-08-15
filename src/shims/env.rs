@@ -13,9 +13,8 @@ pub struct EnvVars {
 impl EnvVars {
     pub(crate) fn init<'mir, 'tcx>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-        communicate: bool,
     ) {
-        if communicate {
+        if ecx.machine.communicate {
             for (name, value) in std::env::vars() {
                 let value = alloc_env_value(value.as_bytes(), ecx.memory_mut());
                 ecx.machine.env_vars.map.insert(name.into_bytes(), value);

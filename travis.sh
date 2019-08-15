@@ -8,6 +8,7 @@ else
   FOREIGN_TARGET=i686-unknown-linux-gnu
 fi
 export CARGO_EXTRA_FLAGS="--all-features"
+export RUSTC_EXTRA_FLAGS="-D warnings"
 
 # Prepare
 echo "Build and install miri"
