@@ -22,21 +22,9 @@ impl EnvVars {
             }
         }
     }
-
-    pub(crate) fn get(&self, name: &[u8]) -> Option<&Pointer<Tag>> {
-        self.map.get(name)
-    }
-
-    pub(crate) fn unset(&mut self, name: &[u8]) -> Option<Pointer<Tag>> {
-        self.map.remove(name)
-    }
-
-    pub(crate) fn set(&mut self, name: Vec<u8>, ptr: Pointer<Tag>) -> Option<Pointer<Tag>>{
-        self.map.insert(name, ptr)
-    }
 }
 
-pub(crate) fn alloc_env_value<'mir, 'tcx>(
+fn alloc_env_value<'mir, 'tcx>(
     bytes: &[u8],
     memory: &mut Memory<'mir, 'tcx, Evaluator<'tcx>>,
 ) -> Pointer<Tag> {
@@ -57,4 +45,73 @@ pub(crate) fn alloc_env_value<'mir, 'tcx>(
     ).unwrap();
     alloc.write_bytes(&tcx, trailing_zero_ptr, &[0]).unwrap();
     ptr
+}
+
+impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    fn getenv(
+        &mut self,
+        name_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+
+        let name_ptr = this.read_scalar(name_op)?.not_undef()?;
+        let name = this.memory().read_c_str(name_ptr)?;
+        Ok(match this.machine.env_vars.map.get(name) {
+            Some(&var) => Scalar::Ptr(var),
+            None => Scalar::ptr_null(&*this.tcx),
+        })
+    }
+
+    fn setenv(
+        &mut self,
+        name_op: OpTy<'tcx, Tag>,
+        value_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        let name_ptr = this.read_scalar(name_op)?.not_undef()?;
+        let value_ptr = this.read_scalar(value_op)?.not_undef()?;
+        let value = this.memory().read_c_str(value_ptr)?;
+        let mut new = None;
+        if !this.is_null(name_ptr)? {
+            let name = this.memory().read_c_str(name_ptr)?;
+            if !name.is_empty() && !name.contains(&b'=') {
+                new = Some((name.to_owned(), value.to_owned()));
+            }
+        }
+        if let Some((name, value)) = new {
+            let value_copy = alloc_env_value(&value, this.memory_mut());
+            if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), value_copy) {
+                this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
+            }
+            Ok(0)
+        } else {
+            Ok(-1)
+        }
+    }
+
+    fn unsetenv(
+        &mut self,
+        name_op: OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        let name_ptr = this.read_scalar(name_op)?.not_undef()?;
+        let mut success = None;
+        if !this.is_null(name_ptr)? {
+            let name = this.memory().read_c_str(name_ptr)?.to_owned();
+            if !name.is_empty() && !name.contains(&b'=') {
+                success = Some(this.machine.env_vars.map.remove(&name));
+            }
+        }
+        if let Some(old) = success {
+            if let Some(var) = old {
+                this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
+            }
+            Ok(0)
+        } else {
+            Ok(-1)
+        }
+    }
 }

@@ -8,7 +8,6 @@ use syntax::attr;
 use syntax::symbol::sym;
 
 use crate::*;
-use crate::shims::env::alloc_env_value;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -423,60 +422,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "getenv" => {
-                let result = {
-                    let name_ptr = this.read_scalar(args[0])?.not_undef()?;
-                    let name = this.memory().read_c_str(name_ptr)?;
-                    match this.machine.env_vars.get(name) {
-                        Some(&var) => Scalar::Ptr(var),
-                        None => Scalar::ptr_null(&*this.tcx),
-                    }
-                };
+                let result = this.getenv(args[0])?;
                 this.write_scalar(result, dest)?;
             }
 
             "unsetenv" => {
-                let mut success = None;
-                {
-                    let name_ptr = this.read_scalar(args[0])?.not_undef()?;
-                    if !this.is_null(name_ptr)? {
-                        let name = this.memory().read_c_str(name_ptr)?.to_owned();
-                        if !name.is_empty() && !name.contains(&b'=') {
-                            success = Some(this.machine.env_vars.unset(&name));
-                        }
-                    }
-                }
-                if let Some(old) = success {
-                    if let Some(var) = old {
-                        this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
-                    }
-                    this.write_null(dest)?;
-                } else {
-                    this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
-                }
+                let result = this.unsetenv(args[0])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
             "setenv" => {
-                let mut new = None;
-                {
-                    let name_ptr = this.read_scalar(args[0])?.not_undef()?;
-                    let value_ptr = this.read_scalar(args[1])?.not_undef()?;
-                    let value = this.memory().read_c_str(value_ptr)?;
-                    if !this.is_null(name_ptr)? {
-                        let name = this.memory().read_c_str(name_ptr)?;
-                        if !name.is_empty() && !name.contains(&b'=') {
-                            new = Some((name.to_owned(), value.to_owned()));
-                        }
-                    }
-                }
-                if let Some((name, value)) = new {
-                    let value_copy = alloc_env_value(&value, this.memory_mut());
-                    if let Some(var) = this.machine.env_vars.set(name.to_owned(), value_copy) {
-                        this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
-                    }
-                    this.write_null(dest)?;
-                } else {
-                    this.write_scalar(Scalar::from_int(-1, dest.layout.size), dest)?;
-                }
+                let result = this.setenv(args[0], args[1])?;
+                this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
             }
 
             "write" => {
