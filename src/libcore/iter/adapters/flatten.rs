@@ -72,8 +72,7 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
 impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F>
 where
     F: FnMut(I::Item) -> U,
-    U: IntoIterator,
-    U::IntoIter: DoubleEndedIterator,
+    U: IntoIterator<IntoIter: DoubleEndedIterator>,
 {
     #[inline]
     fn next_back(&mut self) -> Option<U::Item> { self.inner.next_back() }
@@ -107,10 +106,7 @@ impl<I, U, F> FusedIterator for FlatMap<I, U, F>
 /// [`Iterator`]: trait.Iterator.html
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
-pub struct Flatten<I: Iterator>
-where
-    I::Item: IntoIterator,
-{
+pub struct Flatten<I: Iterator<Item: IntoIterator>> {
     inner: FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>,
 }
 
