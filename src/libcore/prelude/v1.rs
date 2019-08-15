@@ -56,7 +56,6 @@ pub use crate::hash::macros::Hash;
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use crate::{
-    __rust_unstable_column,
     asm,
     assert,
     cfg,

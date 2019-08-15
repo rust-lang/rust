@@ -53,7 +53,7 @@
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(__rust_unstable_column, libstd_sys_internals)]
+#[allow_internal_unstable(libstd_sys_internals)]
 macro_rules! panic {
     () => ({
         $crate::panic!("explicit panic")

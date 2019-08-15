@@ -2,7 +2,7 @@
 ///
 /// For details, see `std::macros`.
 #[macro_export]
-#[allow_internal_unstable(core_panic, __rust_unstable_column)]
+#[allow_internal_unstable(core_panic)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
@@ -926,13 +926,6 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! column { () => { /* compiler built-in */ } }
-
-    /// Same as `column`, but less likely to be shadowed.
-    #[unstable(feature = "__rust_unstable_column", issue = "0",
-               reason = "internal implementation detail of the `panic` macro")]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! __rust_unstable_column { () => { /* compiler built-in */ } }
 
     /// Expands to the file name in which it was invoked.
     ///
