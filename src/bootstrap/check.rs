@@ -245,7 +245,6 @@ impl Step for Rustdoc {
         let libdir = builder.sysroot_libdir(compiler, target);
         let hostdir = builder.sysroot_libdir(compiler, compiler.host);
         add_to_sysroot(&builder, &libdir, &hostdir, &rustdoc_stamp(builder, compiler, target));
-        builder.cargo(compiler, Mode::ToolRustc, target, "clean");
     }
 }
 
