@@ -802,7 +802,7 @@ impl<'a> Builder<'a> {
                 // Build proc macros both for the host and the target
                 if target != compiler.host && cmd != "check" {
                     cargo.arg("-Zdual-proc-macros");
-                    cargo.env("RUST_DUAL_PROC_MACROS", "1");
+                    rustflags.arg("-Zdual-proc-macros");
                 }
             },
         }
