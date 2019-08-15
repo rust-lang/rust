@@ -30,6 +30,12 @@ error: lint `clippy::misaligned_transmute` has been removed: `this lint has been
 LL | #[warn(clippy::misaligned_transmute)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: lint `clippy::unused_collect` has been removed: ``collect` has been marked as #[must_use] in rustc and that covers all cases of this lint`
+  --> $DIR/deprecated.rs:6:8
+   |
+LL | #[warn(clippy::unused_collect)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
 error: lint `clippy::invalid_ref` has been removed: `superseded by rustc lint `invalid_value``
   --> $DIR/deprecated.rs:7:8
    |
@@ -42,5 +48,5 @@ error: lint `clippy::str_to_string` has been removed: `using `str::to_string` is
 LL | #[warn(clippy::str_to_string)]
    |        ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: aborting due to 8 previous errors
 

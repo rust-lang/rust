@@ -24,7 +24,6 @@ impl Unrelated {
     clippy::reverse_range_loop,
     clippy::for_kv_map
 )]
-#[warn(clippy::unused_collect)]
 #[allow(
     clippy::linkedlist,
     clippy::shadow_unrelated,
