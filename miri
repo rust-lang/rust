@@ -45,7 +45,7 @@ fi
 # We set the rpath so that Miri finds the private rustc libraries it needs.
 # We enable debug-assertions to get tracing.
 # We enable line-only debuginfo for backtraces.
-export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1"
+export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR -C debug-assertions -C debuginfo=1 $RUSTC_EXTRA_FLAGS"
 
 ## Helper functions
 
