@@ -945,7 +945,11 @@ impl<'a> Builder<'a> {
         }
 
         if let Some(x) = self.crt_static(target) {
-            cargo.env("RUSTC_CRT_STATIC", x.to_string());
+            if x {
+                rustflags.arg("-Ctarget-feature=+crt-static");
+            } else {
+                rustflags.arg("-Ctarget-feature=-crt-static");
+            }
         }
 
         if let Some(x) = self.crt_static(compiler.host) {

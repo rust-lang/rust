@@ -232,13 +232,8 @@ fn main() {
             }
         }
 
-        if let Ok(s) = env::var("RUSTC_CRT_STATIC") {
-            if s == "true" {
-                cmd.arg("-C").arg("target-feature=+crt-static");
-            }
-            if s == "false" {
-                cmd.arg("-C").arg("target-feature=-crt-static");
-            }
+        if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
+            cmd.arg("--remap-path-prefix").arg(&map);
         }
     } else {
         // Override linker if necessary.
