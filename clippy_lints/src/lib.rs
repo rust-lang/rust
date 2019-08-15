@@ -657,6 +657,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         methods::OPTION_MAP_UNWRAP_OR,
         methods::OPTION_MAP_UNWRAP_OR_ELSE,
         methods::RESULT_MAP_UNWRAP_OR_ELSE,
+        methods::SUSPICIOUS_MAP,
         misc::USED_UNDERSCORE_BINDING,
         misc_early::UNSEPARATED_LITERAL_SUFFIX,
         mut_mut::MUT_MUT,

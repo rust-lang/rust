@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 309] = [
+pub const ALL_LINTS: [Lint; 310] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1735,6 +1735,13 @@ pub const ALL_LINTS: [Lint; 309] = [
         desc: "suspicious formatting of `else`",
         deprecation: None,
         module: "formatting",
+    },
+    Lint {
+        name: "suspicious_map",
+        group: "pedantic",
+        desc: "suspicious usage of map",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "suspicious_op_assign_impl",

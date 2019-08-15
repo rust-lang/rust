@@ -889,6 +889,23 @@ declare_clippy_lint! {
     "using `.into_iter()` on a reference"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `map` followed by a `count`.
+    ///
+    /// **Why is this bad?** It looks suspicious. Maybe `map` was confused with `filter`.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let _ = (0..3).map(|x| x + 2).count();
+    /// ```
+    pub SUSPICIOUS_MAP,
+    pedantic,
+    "suspicious usage of map"
+}
+
 declare_lint_pass!(Methods => [
     OPTION_UNWRAP_USED,
     RESULT_UNWRAP_USED,
@@ -927,6 +944,7 @@ declare_lint_pass!(Methods => [
     UNNECESSARY_FILTER_MAP,
     INTO_ITER_ON_ARRAY,
     INTO_ITER_ON_REF,
+    SUSPICIOUS_MAP,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
@@ -972,6 +990,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0]),
             ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
+            ["count", "map"] => lint_suspicious_map(cx, expr),
             _ => {},
         }
 
@@ -2517,6 +2536,15 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_
             Applicability::MachineApplicable,
         );
     }
+}
+
+fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
+    span_lint(
+        cx,
+        SUSPICIOUS_MAP,
+        expr.span,
+        "Make sure you did not confuse `map` with `filter`.",
+    );
 }
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
