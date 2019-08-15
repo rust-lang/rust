@@ -33,9 +33,10 @@ before_script:
 # Install Rust ("stable" toolchain for better caching, it is just used to build rustup-toolchain-install-master)
 - curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain stable
 - export PATH=$HOME/.cargo/bin:$PATH
+- rustup update
 # Install "master" toolchain
 - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
-- travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c cargo -c rust-src
+- travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c rust-src
 - rustup default master
 - rustc --version
 
