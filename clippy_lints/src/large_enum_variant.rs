@@ -85,7 +85,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
                         "large size difference between variants",
                         |db| {
                             if variant.fields.len() == 1 {
-                                let span = match def.variants[i].node.data {
+                                let span = match def.variants[i].data {
                                     VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => {
                                         fields[0].ty.span
                                     },
