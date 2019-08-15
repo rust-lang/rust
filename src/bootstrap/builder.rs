@@ -796,6 +796,21 @@ impl<'a> Builder<'a> {
             cargo.env("RUST_CHECK", "1");
         }
 
+        let stage;
+        if compiler.stage == 0 && self.local_rebuild {
+            // Assume the local-rebuild rustc already has stage1 features.
+            stage = 1;
+        } else {
+            stage = compiler.stage;
+        }
+
+        let mut rustflags = Rustflags::new();
+        if stage != 0 {
+            rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
+        } else {
+            rustflags.env("RUSTFLAGS_BOOTSTRAP");
+        }
+
         match mode {
             Mode::Std | Mode::ToolBootstrap | Mode::ToolStd => {},
             Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
@@ -851,22 +866,6 @@ impl<'a> Builder<'a> {
             _ => {},
         }
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
-
-        let stage;
-        if compiler.stage == 0 && self.local_rebuild {
-            // Assume the local-rebuild rustc already has stage1 features.
-            stage = 1;
-        } else {
-            stage = compiler.stage;
-        }
-
-        let mut rustflags = Rustflags::new();
-        rustflags.env(&format!("RUSTFLAGS_STAGE_{}", stage));
-        if stage != 0 {
-            rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
-        } else {
-            rustflags.env("RUSTFLAGS_BOOTSTRAP");
-        }
 
         if cmd == "clippy" {
             rustflags.arg("-Zforce-unstable-if-unmarked");
@@ -1064,7 +1063,11 @@ impl<'a> Builder<'a> {
             && self.config.extended
             && compiler.is_final_stage(self)
         {
-            cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
+            rustflags.arg("-Zsave-analysis");
+            cargo.env("RUST_SAVE_ANALYSIS_CONFIG",
+                      "{\"output_file\": null,\"full_docs\": false,\
+                       \"pub_only\": true,\"reachable_only\": false,\
+                       \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}");
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs

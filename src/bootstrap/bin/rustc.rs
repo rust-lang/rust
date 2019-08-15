@@ -184,15 +184,6 @@ fn main() {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
         }
 
-        // Emit save-analysis info.
-        if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
-            cmd.arg("-Zsave-analysis");
-            cmd.env("RUST_SAVE_ANALYSIS_CONFIG",
-                    "{\"output_file\": null,\"full_docs\": false,\
-                     \"pub_only\": true,\"reachable_only\": false,\
-                     \"distro_crate\": true,\"signatures\": false,\"borrow_data\": false}");
-        }
-
         // Dealing with rpath here is a little special, so let's go into some
         // detail. First off, `-rpath` is a linker option on Unix platforms
         // which adds to the runtime dynamic loader path when looking for
