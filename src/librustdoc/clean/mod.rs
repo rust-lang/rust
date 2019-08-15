@@ -29,7 +29,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
 use syntax::ext::base::MacroKind;
-use syntax::source_map::{dummy_spanned, Spanned};
+use syntax::source_map::DUMMY_SP;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::symbol::InternedString;
 use syntax_pos::{self, Pos, FileName};
@@ -930,8 +930,8 @@ impl Attributes {
             if attr.check_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
                     let meta = attr::mk_name_value_item_str(
-                        Ident::with_empty_ctxt(sym::target_feature),
-                        dummy_spanned(feat));
+                        Ident::with_empty_ctxt(sym::target_feature), feat, DUMMY_SP
+                    );
                     if let Ok(feat_cfg) = Cfg::parse(&meta) {
                         cfg &= feat_cfg;
                     }
@@ -4102,8 +4102,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Struct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", qpath_to_string(name),
-                fields.iter().map(|&Spanned { node: ref fp, .. }|
-                                  format!("{}: {}", fp.ident, name_from_pat(&*fp.pat)))
+                fields.iter().map(|fp| format!("{}: {}", fp.ident, name_from_pat(&fp.pat)))
                              .collect::<Vec<String>>().join(", "),
                 if etc { ", .." } else { "" }
             )

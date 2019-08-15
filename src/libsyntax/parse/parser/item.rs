@@ -10,7 +10,7 @@ use crate::ast::{Visibility, VisibilityKind, Mutability, FnDecl, FnHeader};
 use crate::ast::{ForeignItem, ForeignItemKind};
 use crate::ast::{Ty, TyKind, GenericBounds, TraitRef};
 use crate::ast::{EnumDef, VariantData, StructField, AnonConst};
-use crate::ast::{Mac, Mac_, MacDelimiter};
+use crate::ast::{Mac, MacDelimiter};
 use crate::ext::base::DummyResult;
 use crate::parse::token;
 use crate::parse::parser::maybe_append;
@@ -530,12 +530,13 @@ impl<'a> Parser<'a> {
             }
 
             let hi = self.prev_span;
-            let mac = respan(mac_lo.to(hi), Mac_ {
+            let mac = Mac {
                 path,
                 tts,
                 delim,
+                span: mac_lo.to(hi),
                 prior_type_ascription: self.last_type_ascription,
-            });
+            };
             let item =
                 self.mk_item(lo.to(hi), Ident::invalid(), ItemKind::Mac(mac), visibility, attrs);
             return Ok(Some(item));
@@ -604,12 +605,13 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Semi)?;
             }
 
-            Ok(Some(respan(lo.to(self.prev_span), Mac_ {
+            Ok(Some(Mac {
                 path,
                 tts,
                 delim,
+                span: lo.to(self.prev_span),
                 prior_type_ascription: self.last_type_ascription,
-            })))
+            }))
         } else {
             Ok(None)
         }

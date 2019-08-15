@@ -3,7 +3,6 @@ use super::*;
 use syntax_pos::DUMMY_SP;
 use syntax::ast::*;
 use syntax::attr;
-use syntax::source_map::dummy_spanned;
 use syntax::symbol::Symbol;
 use syntax::with_default_globals;
 
@@ -181,7 +180,8 @@ fn test_parse_ok() {
 
         let mi = attr::mk_name_value_item_str(
             Ident::from_str("all"),
-            dummy_spanned(Symbol::intern("done"))
+            Symbol::intern("done"),
+            DUMMY_SP,
         );
         assert_eq!(Cfg::parse(&mi), Ok(name_value_cfg("all", "done")));
 

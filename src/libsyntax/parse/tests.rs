@@ -172,8 +172,8 @@ fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
     impl<'a> crate::visit::Visitor<'a> for PatIdentVisitor {
         fn visit_pat(&mut self, p: &'a ast::Pat) {
             match p.node {
-                PatKind::Ident(_ , ref spannedident, _) => {
-                    self.spans.push(spannedident.span.clone());
+                PatKind::Ident(_ , ref ident, _) => {
+                    self.spans.push(ident.span.clone());
                 }
                 _ => {
                     crate::visit::walk_pat(self, p);
@@ -273,7 +273,7 @@ fn ttdelim_span() {
             "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
         let tts: Vec<_> = match expr.node {
-            ast::ExprKind::Mac(ref mac) => mac.node.stream().trees().collect(),
+            ast::ExprKind::Mac(ref mac) => mac.stream().trees().collect(),
             _ => panic!("not a macro"),
         };
 

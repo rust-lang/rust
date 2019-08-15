@@ -186,7 +186,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
                 (&attr.path, MacroKind::Attr, derives.clone(), after_derive),
             InvocationKind::Bang { ref mac, .. } =>
-                (&mac.node.path, MacroKind::Bang, Vec::new(), false),
+                (&mac.path, MacroKind::Bang, Vec::new(), false),
             InvocationKind::Derive { ref path, .. } =>
                 (path, MacroKind::Derive, Vec::new(), false),
             InvocationKind::DeriveContainer { ref derives, .. } => {

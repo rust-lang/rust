@@ -1075,8 +1075,8 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
                 let variant = adt.variant_of_res(res);
                 for field in fields {
-                    let use_ctxt = field.node.ident.span;
-                    let index = self.tcx.field_index(field.node.hir_id, self.tables);
+                    let use_ctxt = field.ident.span;
+                    let index = self.tcx.field_index(field.hir_id, self.tables);
                     self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
                 }
             }
