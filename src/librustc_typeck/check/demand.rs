@@ -554,6 +554,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME(estebank): modify once we decide to suggest `as` casts
             return false;
         }
+        if !self.tcx.sess.source_map().span_to_filename(expr.span).is_real() {
+            // Ignore if span is from within a macro.
+            return false;
+        }
 
         // If casting this expression to a given numeric type would be appropriate in case of a type
         // mismatch.
