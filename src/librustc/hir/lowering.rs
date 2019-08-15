@@ -72,7 +72,7 @@ use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::{self, Token};
 use syntax::visit::{self, Visitor};
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -1094,7 +1094,7 @@ impl<'a> LoweringContext<'a> {
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
                         ExpnId::root(),
-                        DUMMY_SP
+                        c.span,
                     );
 
                     self.with_dyn_type_scope(false, |this| {
@@ -1102,7 +1102,7 @@ impl<'a> LoweringContext<'a> {
                             &Ty {
                                 id: this.sess.next_node_id(),
                                 node: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
-                                span: DUMMY_SP,
+                                span: c.span,
                             },
                             itctx,
                         );
