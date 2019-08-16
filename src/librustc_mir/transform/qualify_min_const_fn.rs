@@ -379,9 +379,9 @@ fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
         | "add_with_overflow" // ~> .overflowing_add
         | "sub_with_overflow" // ~> .overflowing_sub
         | "mul_with_overflow" // ~> .overflowing_mul
-        | "overflowing_add" // ~> .wrapping_add
-        | "overflowing_sub" // ~> .wrapping_sub
-        | "overflowing_mul" // ~> .wrapping_mul
+        | "wrapping_add" // ~> .wrapping_add
+        | "wrapping_sub" // ~> .wrapping_sub
+        | "wrapping_mul" // ~> .wrapping_mul
         | "saturating_add" // ~> .saturating_add
         | "saturating_sub" // ~> .saturating_sub
         | "unchecked_shl" // ~> .wrapping_shl
