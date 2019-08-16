@@ -25,7 +25,6 @@ use syntax_pos::{Span, DUMMY_SP, FileName};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use std::fs;
 use std::io::ErrorKind;
 use std::{iter, mem};
 use std::ops::DerefMut;
@@ -1241,13 +1240,11 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     }
 
                     let filename = self.cx.resolve_path(&*file.as_str(), it.span());
-                    match fs::read_to_string(&filename) {
-                        Ok(src) => {
-                            let src_interned = Symbol::intern(&src);
-
-                            // Add this input file to the code map to make it available as
-                            // dependency information
-                            self.cx.source_map().new_source_file(filename.into(), src);
+                    match self.cx.source_map().load_file(&filename) {
+                        Ok(source_file) => {
+                            let src = source_file.src.as_ref()
+                                .expect("freshly loaded file should have a source");
+                            let src_interned = Symbol::intern(src.as_str());
 
                             let include_info = vec![
                                 ast::NestedMetaItem::MetaItem(

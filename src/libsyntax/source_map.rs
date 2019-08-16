@@ -171,6 +171,26 @@ impl SourceMap {
         Ok(self.new_source_file(filename, src))
     }
 
+    /// Loads source file as a binary blob.
+    ///
+    /// Unlike `load_file`, guarantees that no normalization like BOM-removal
+    /// takes place.
+    pub fn load_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
+        // Ideally, this should use `self.file_loader`, but it can't
+        // deal with binary files yet.
+        let bytes = fs::read(path)?;
+
+        // We need to add file to the `SourceMap`, so that it is present
+        // in dep-info. There's also an edge case that file might be both
+        // loaded as a binary via `include_bytes!` and as proper `SourceFile`
+        // via `mod`, so we try to use real file contents and not just an
+        // empty string.
+        let text = std::str::from_utf8(&bytes).unwrap_or("")
+            .to_string();
+        self.new_source_file(path.to_owned().into(), text);
+        Ok(bytes)
+    }
+
     pub fn files(&self) -> MappedLockGuard<'_, Vec<Lrc<SourceFile>>> {
         LockGuard::map(self.files.borrow(), |files| &mut files.source_files)
     }
