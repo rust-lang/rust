@@ -66,6 +66,7 @@ use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, MultiSpan, FileName};
 
 pub mod pretty;
+mod args;
 
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
@@ -777,13 +778,19 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     } else {
         "\n    --help -v           Print the full set of options rustc accepts"
     };
-    println!("{}\nAdditional help:
+    let at_path = if verbose && nightly_options::is_nightly_build() {
+        "    @path               Read newline separated options from `path`\n"
+    } else {
+        ""
+    };
+    println!("{options}{at_path}\nAdditional help:
     -C help             Print codegen options
     -W help             \
-              Print 'lint' options and default settings{}{}\n",
-             options.usage(message),
-             nightly_help,
-             verbose_help);
+              Print 'lint' options and default settings{nightly}{verbose}\n",
+             options = options.usage(message),
+             at_path = at_path,
+             nightly = nightly_help,
+             verbose = verbose_help);
 }
 
 fn print_wall_help() {
@@ -1008,6 +1015,12 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
+    // Late check to see if @file was used without unstable options enabled
+    if crate::args::used_unstable_argsfile() && !nightly_options::is_unstable_enabled(&matches) {
+        early_error(ErrorOutputType::default(),
+            "@path is unstable - use -Z unstable-options to enable its use");
+    }
+
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
         usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
@@ -1186,10 +1199,10 @@ pub fn main() {
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
     let result = report_ices_to_stderr_if_any(|| {
-        let args = env::args_os().enumerate()
-            .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
+        let args = args::ArgsIter::new().enumerate()
+            .map(|(i, arg)| arg.unwrap_or_else(|err| {
                 early_error(ErrorOutputType::default(),
-                            &format!("Argument {} is not valid Unicode: {:?}", i, arg))
+                            &format!("Argument {} is not valid: {}", i, err))
             }))
             .collect::<Vec<_>>();
         run_compiler(&args, &mut callbacks, None, None)

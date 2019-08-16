@@ -304,3 +304,10 @@ to customize the output:
 
 Note that it is invalid to combine the `--json` argument with the `--color`
 argument, and it is required to combine `--json` with `--error-format=json`.
+
+## `@path`: load command-line flags from a path
+
+If you specify `@path` on the command-line, then it will open `path` and read
+command line options from it. These options are one per line; a blank line indicates
+an empty option. The file can use Unix or Windows style line endings, and must be
+encoded as UTF-8.
