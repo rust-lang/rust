@@ -1676,7 +1676,7 @@ pub const ALL_LINTS: [Lint; 309] = [
     Lint {
         name: "single_match_else",
         group: "pedantic",
-        desc: "a match statement with a two arms where the second arm\'s pattern is a placeholder instead of a specific match pattern",
+        desc: "a match statement with two arms where the second arm\'s pattern is a placeholder instead of a specific match pattern",
         deprecation: None,
         module: "matches",
     },
