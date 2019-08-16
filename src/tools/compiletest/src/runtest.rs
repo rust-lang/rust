@@ -1725,6 +1725,28 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn is_vxworks_pure_static(&self) -> bool {
+        if self.config.target.contains("vxworks") {
+            match env::var("RUST_TEST_DYLINK") {
+                Ok(s) => s != "1",
+                _ => true
+            }
+        } else {
+            false
+        }
+    }
+
+    fn is_vxworks_pure_dynamic(&self) -> bool {
+        if self.config.target.contains("vxworks") {
+            match env::var("RUST_TEST_DYLINK") {
+                Ok(s) => s == "1",
+                _ => false
+            }
+        } else {
+            false
+        }
+    }
+
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
 
@@ -1768,6 +1790,7 @@ impl<'test> TestCx<'test> {
                     && !self.config.host.contains("musl"))
                 || self.config.target.contains("wasm32")
                 || self.config.target.contains("nvptx")
+                || self.is_vxworks_pure_static()
             {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible
@@ -1999,7 +2022,8 @@ impl<'test> TestCx<'test> {
         }
 
         if !is_rustdoc {
-            if self.config.target == "wasm32-unknown-unknown" {
+            if self.config.target == "wasm32-unknown-unknown"
+                || self.is_vxworks_pure_static() {
                 // rustc.arg("-g"); // get any backtrace at all on errors
             } else if !self.props.no_prefer_dynamic {
                 rustc.args(&["-C", "prefer-dynamic"]);
@@ -2044,7 +2068,8 @@ impl<'test> TestCx<'test> {
         }
 
         // Use dynamic musl for tests because static doesn't allow creating dylibs
-        if self.config.host.contains("musl") {
+        if self.config.host.contains("musl")
+            || self.is_vxworks_pure_dynamic() {
             rustc.arg("-Ctarget-feature=-crt-static");
         }
 
