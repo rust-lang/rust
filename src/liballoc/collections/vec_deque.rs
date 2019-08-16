@@ -18,7 +18,7 @@ use core::ptr::{self, NonNull};
 use core::slice;
 use core::hash::{Hash, Hasher};
 
-use crate::collections::CollectionAllocErr;
+use crate::collections::TryReserveError;
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
@@ -576,10 +576,10 @@ impl<T> VecDeque<T> {
     ///
     /// ```
     /// #![feature(try_reserve)]
-    /// use std::collections::CollectionAllocErr;
+    /// use std::collections::TryReserveError;
     /// use std::collections::VecDeque;
     ///
-    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, CollectionAllocErr> {
+    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {
     ///     let mut output = VecDeque::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
@@ -595,7 +595,7 @@ impl<T> VecDeque<T> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>  {
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError>  {
         self.try_reserve(additional)
     }
 
@@ -614,10 +614,10 @@ impl<T> VecDeque<T> {
     ///
     /// ```
     /// #![feature(try_reserve)]
-    /// use std::collections::CollectionAllocErr;
+    /// use std::collections::TryReserveError;
     /// use std::collections::VecDeque;
     ///
-    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, CollectionAllocErr> {
+    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, TryReserveError> {
     ///     let mut output = VecDeque::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
@@ -633,12 +633,12 @@ impl<T> VecDeque<T> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         let old_cap = self.cap();
         let used_cap = self.len() + 1;
         let new_cap = used_cap.checked_add(additional)
             .and_then(|needed_cap| needed_cap.checked_next_power_of_two())
-            .ok_or(CollectionAllocErr::CapacityOverflow)?;
+            .ok_or(TryReserveError::CapacityOverflow)?;
 
         if new_cap > old_cap {
             self.buf.try_reserve_exact(used_cap, new_cap - used_cap)?;

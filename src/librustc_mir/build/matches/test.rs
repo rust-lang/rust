@@ -63,7 +63,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatternKind::Range(range) => {
-                assert!(range.ty == match_pair.pattern.ty);
+                assert_eq!(range.lo.ty, match_pair.pattern.ty);
+                assert_eq!(range.hi.ty, match_pair.pattern.ty);
                 Test {
                     span: match_pair.pattern.span,
                     kind: TestKind::Range(range),
@@ -270,8 +271,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                 } else {
                     if let [success, fail] = *make_target_blocks(self) {
+                        assert_eq!(value.ty, ty);
+                        let expect = self.literal_operand(test.span, value);
                         let val = Operand::Copy(place.clone());
-                        let expect = self.literal_operand(test.span, ty, value);
                         self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
                     } else {
                         bug!("`TestKind::Eq` should have two target blocks");
@@ -279,13 +281,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Range(PatternRange { ref lo, ref hi, ty, ref end }) => {
+            TestKind::Range(PatternRange { ref lo, ref hi, ref end }) => {
                 let lower_bound_success = self.cfg.start_new_block();
                 let target_blocks = make_target_blocks(self);
 
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
-                let lo = self.literal_operand(test.span, ty, lo);
-                let hi = self.literal_operand(test.span, ty, hi);
+                let lo = self.literal_operand(test.span, lo);
+                let hi = self.literal_operand(test.span, hi);
                 let val = Operand::Copy(place.clone());
 
                 if let [success, fail] = *target_blocks {
@@ -387,7 +389,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         use rustc::middle::lang_items::EqTraitLangItem;
 
-        let mut expect = self.literal_operand(source_info.span, value.ty, value);
+        let mut expect = self.literal_operand(source_info.span, value);
         let mut val = Operand::Copy(place.clone());
 
         // If we're using `b"..."` as a pattern, we need to insert an
@@ -440,7 +442,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         let eq_def_id = self.hir.tcx().require_lang_item(EqTraitLangItem);
-        let (mty, method) = self.hir.trait_method(eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
+        let method = self.hir.trait_method(eq_def_id, sym::eq, deref_ty, &[deref_ty.into()]);
 
         let bool_ty = self.hir.bool_ty();
         let eq_result = self.temp(bool_ty, source_info.span);
@@ -449,7 +451,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, TerminatorKind::Call {
             func: Operand::Constant(box Constant {
                 span: source_info.span,
-                ty: mty,
 
                 // FIXME(#54571): This constant comes from user input (a
                 // constant in a pattern).  Are there forms where users can add
@@ -656,8 +657,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let tcx = self.hir.tcx();
 
-                    let lo = compare_const_vals(tcx, test.lo, pat.hi, self.hir.param_env, test.ty)?;
-                    let hi = compare_const_vals(tcx, test.hi, pat.lo, self.hir.param_env, test.ty)?;
+                    let test_ty = test.lo.ty;
+                    let lo = compare_const_vals(tcx, test.lo, pat.hi, self.hir.param_env, test_ty)?;
+                    let hi = compare_const_vals(tcx, test.hi, pat.lo, self.hir.param_env, test_ty)?;
 
                     match (test.end, pat.end, lo, hi) {
                         // pat < test
@@ -774,8 +776,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let tcx = self.hir.tcx();
 
-        let a = compare_const_vals(tcx, range.lo, value, self.hir.param_env, range.ty)?;
-        let b = compare_const_vals(tcx, value, range.hi, self.hir.param_env, range.ty)?;
+        let a = compare_const_vals(tcx, range.lo, value, self.hir.param_env, range.lo.ty)?;
+        let b = compare_const_vals(tcx, value, range.hi, self.hir.param_env, range.lo.ty)?;
 
         match (b, range.end) {
             (Less, _) |

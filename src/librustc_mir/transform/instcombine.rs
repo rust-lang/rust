@@ -97,8 +97,7 @@ impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
             let place_ty = place.ty(&self.body.local_decls, self.tcx).ty;
             if let ty::Array(_, len) = place_ty.sty {
                 let span = self.body.source_info(location).span;
-                let ty = self.tcx.types.usize;
-                let constant = Constant { span, ty, literal: len, user_ty: None };
+                let constant = Constant { span, literal: len, user_ty: None };
                 self.optimizations.arrays_lengths.insert(location, constant);
             }
         }

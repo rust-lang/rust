@@ -2,21 +2,21 @@
 ///
 /// For details, see `std::macros`.
 #[macro_export]
-#[allow_internal_unstable(core_panic, __rust_unstable_column)]
+#[allow_internal_unstable(core_panic)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
     );
     ($msg:expr) => ({
-        $crate::panicking::panic(&($msg, file!(), line!(), __rust_unstable_column!()))
+        $crate::panicking::panic(&($msg, $crate::file!(), $crate::line!(), $crate::column!()))
     });
     ($msg:expr,) => (
         $crate::panic!($msg)
     );
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)+),
-                                     &(file!(), line!(), __rust_unstable_column!()))
+        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+),
+                                     &($crate::file!(), $crate::line!(), $crate::column!()))
     });
 }
 
@@ -70,7 +70,7 @@ macro_rules! assert_eq {
                     panic!(r#"assertion failed: `(left == right)`
   left: `{:?}`,
  right: `{:?}`: {}"#, &*left_val, &*right_val,
-                           format_args!($($arg)+))
+                           $crate::format_args!($($arg)+))
                 }
             }
         }
@@ -127,7 +127,7 @@ macro_rules! assert_ne {
                     panic!(r#"assertion failed: `(left != right)`
   left: `{:?}`,
  right: `{:?}`: {}"#, &*left_val, &*right_val,
-                           format_args!($($arg)+))
+                           $crate::format_args!($($arg)+))
                 }
             }
         }
@@ -181,7 +181,7 @@ macro_rules! assert_ne {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! debug_assert {
-    ($($arg:tt)*) => (if cfg!(debug_assertions) { assert!($($arg)*); })
+    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert!($($arg)*); })
 }
 
 /// Asserts that two expressions are equal to each other.
@@ -208,7 +208,7 @@ macro_rules! debug_assert {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! debug_assert_eq {
-    ($($arg:tt)*) => (if cfg!(debug_assertions) { $crate::assert_eq!($($arg)*); })
+    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_eq!($($arg)*); })
 }
 
 /// Asserts that two expressions are not equal to each other.
@@ -235,7 +235,7 @@ macro_rules! debug_assert_eq {
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
 macro_rules! debug_assert_ne {
-    ($($arg:tt)*) => (if cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
+    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
 }
 
 /// Unwraps a result or propagates its error.
@@ -386,7 +386,7 @@ macro_rules! r#try {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => ($dst.write_fmt(format_args!($($arg)*)))
+    ($dst:expr, $($arg:tt)*) => ($dst.write_fmt($crate::format_args!($($arg)*)))
 }
 
 /// Write formatted data into a buffer, with a newline appended.
@@ -446,7 +446,7 @@ macro_rules! writeln {
         $crate::writeln!($dst)
     );
     ($dst:expr, $($arg:tt)*) => (
-        $dst.write_fmt(format_args_nl!($($arg)*))
+        $dst.write_fmt($crate::format_args_nl!($($arg)*))
     );
 }
 
@@ -515,7 +515,7 @@ macro_rules! unreachable {
         $crate::unreachable!($msg)
     });
     ($fmt:expr, $($arg:tt)*) => ({
-        panic!(concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
+        panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
     });
 }
 
@@ -573,7 +573,7 @@ macro_rules! unreachable {
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"));
-    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)+)));
+    ($($arg:tt)+) => (panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
 }
 
 /// Indicates unfinished code.
@@ -632,7 +632,7 @@ macro_rules! unimplemented {
 #[unstable(feature = "todo_macro", issue = "59277")]
 macro_rules! todo {
     () => (panic!("not yet implemented"));
-    ($($arg:tt)+) => (panic!("not yet implemented: {}", format_args!($($arg)+)));
+    ($($arg:tt)+) => (panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
 }
 
 /// Definitions of built-in macros.
@@ -926,13 +926,6 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! column { () => { /* compiler built-in */ } }
-
-    /// Same as `column`, but less likely to be shadowed.
-    #[unstable(feature = "__rust_unstable_column", issue = "0",
-               reason = "internal implementation detail of the `panic` macro")]
-    #[rustc_builtin_macro]
-    #[macro_export]
-    macro_rules! __rust_unstable_column { () => { /* compiler built-in */ } }
 
     /// Expands to the file name in which it was invoked.
     ///

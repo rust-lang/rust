@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn ref_Struct(self: &mut Struct, f: &u32) -> &u32 {
    |                                                        ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:15:61
@@ -24,7 +24,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn box_ref_Struct(self: Box<&mut Struct>, f: &u32) -> &u32 {
    |                                                                 ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:19:70
@@ -44,7 +44,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn pin_ref_Struct(self: Pin<&mut Struct>, f: &u32) -> &u32 {
    |                                                                 ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:23:70
@@ -64,7 +64,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn box_box_ref_Struct(self: Box<Box<&mut Struct>>, f: &u32) -> &u32 {
    |                                                                          ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:27:79
@@ -84,7 +84,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn box_pin_ref_Struct(self: Box<Pin<&mut Struct>>, f: &u32) -> &u32 {
    |                                                                          ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-struct-async.rs:31:79

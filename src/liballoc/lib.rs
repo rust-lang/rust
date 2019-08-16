@@ -87,6 +87,7 @@
 #![feature(const_in_array_repeat_expressions)]
 #![feature(dispatch_from_dyn)]
 #![feature(core_intrinsics)]
+#![feature(container_error_extra)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
 #![feature(fmt_internals)]

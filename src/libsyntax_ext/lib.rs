@@ -57,7 +57,6 @@ pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, e
     }
 
     register_bang! {
-        __rust_unstable_column: source_util::expand_column,
         asm: asm::expand_asm,
         assert: assert::expand_assert,
         cfg: cfg::expand_cfg,

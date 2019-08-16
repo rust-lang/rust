@@ -228,7 +228,6 @@
 // std is implemented with unstable features, many of which are internal
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
-#![feature(__rust_unstable_column)]
 #![feature(alloc_error_handler)]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
@@ -251,6 +250,7 @@
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
 #![feature(const_raw_ptr_deref)]
+#![feature(container_error_extra)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
 #![feature(doc_alias)]
@@ -550,7 +550,6 @@ pub use core::{
     option_env,
     stringify,
     // Unstable
-    __rust_unstable_column,
     asm,
     concat_idents,
     format_args_nl,

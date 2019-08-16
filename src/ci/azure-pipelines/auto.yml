@@ -272,7 +272,7 @@ jobs:
       i686-mingw-1:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-        SCRIPT: make ci-subset-1
+        SCRIPT: make ci-mingw-subset-1
         MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
         MINGW_DIR: mingw32
@@ -282,13 +282,13 @@ jobs:
       i686-mingw-2:
         MSYS_BITS: 32
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-        SCRIPT: make ci-subset-2
+        SCRIPT: make ci-mingw-subset-2
         MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
         MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
         MINGW_DIR: mingw32
       x86_64-mingw-1:
         MSYS_BITS: 64
-        SCRIPT: make ci-subset-1
+        SCRIPT: make ci-mingw-subset-1
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
         MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
@@ -298,7 +298,7 @@ jobs:
         NO_LLVM_ASSERTIONS: 1
       x86_64-mingw-2:
         MSYS_BITS: 64
-        SCRIPT: make ci-subset-2
+        SCRIPT: make ci-mingw-subset-2
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
         MINGW_URL: https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc
         MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
