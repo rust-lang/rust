@@ -147,10 +147,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
             }) = higher::range(cx, expr);
             if let Some(y) = y_plus_one(end);
             then {
-                let span = expr.span
-                    .ctxt()
-                    .outer_expn_info()
-                    .map_or(expr.span, |info| info.call_site);
+                let span = if expr.span.from_expansion() {
+                    expr.span
+                        .ctxt()
+                        .outer_expn_data()
+                        .call_site
+                } else {
+                    expr.span
+                };
                 span_lint_and_then(
                     cx,
                     RANGE_PLUS_ONE,

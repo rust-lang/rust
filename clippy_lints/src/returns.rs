@@ -317,7 +317,11 @@ fn attr_is_cfg(attr: &ast::Attribute) -> bool {
 
 // get the def site
 fn get_def(span: Span) -> Option<Span> {
-    span.ctxt().outer_expn_info().and_then(|info| Some(info.def_site))
+    if span.from_expansion() {
+        Some(span.ctxt().outer_expn_data().def_site)
+    } else {
+        None
+    }
 }
 
 // is this expr a `()` unit?

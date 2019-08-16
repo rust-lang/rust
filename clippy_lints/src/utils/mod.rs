@@ -92,15 +92,15 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
     }
 }
 
-/// Returns `true` if this `expn_info` was expanded by any macro or desugaring
+/// Returns `true` if this `span` was expanded by any macro or desugaring
 pub fn in_macro_or_desugar(span: Span) -> bool {
-    span.ctxt().outer_expn_info().is_some()
+    span.from_expansion()
 }
 
-/// Returns `true` if this `expn_info` was expanded by any macro.
+/// Returns `true` if this `span` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
-    if let Some(info) = span.ctxt().outer_expn_info() {
-        if let ExpnKind::Desugaring(..) = info.kind {
+    if span.from_expansion() {
+        if let ExpnKind::Desugaring(..) = span.ctxt().outer_expn_data().kind {
             false
         } else {
             true
@@ -686,12 +686,18 @@ pub fn is_adjusted(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = span.ctxt().outer_expn_info().map(|ei| (ei.kind.descr(), ei.call_site));
+        if span.from_expansion() {
+            let data = span.ctxt().outer_expn_data();
+            let mac_name = data.kind.descr();
+            let new_span = data.call_site;
 
-        match span_name_span {
-            Some((mac_name, new_span)) if mac_name.as_str() == name => return Some(new_span),
-            None => return None,
-            Some((_, new_span)) => span = new_span,
+            if mac_name.as_str() == name {
+                return Some(new_span);
+            } else {
+                span = new_span;
+            }
+        } else {
+            return None;
         }
     }
 }
@@ -706,11 +712,18 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    let span_name_span = span.ctxt().outer_expn_info().map(|ei| (ei.kind.descr(), ei.call_site));
+    if span.from_expansion() {
+        let data = span.ctxt().outer_expn_data();
+        let mac_name = data.kind.descr();
+        let new_span = data.call_site;
 
-    match span_name_span {
-        Some((mac_name, new_span)) if mac_name.as_str() == name => Some(new_span),
-        _ => None,
+        if mac_name.as_str() == name {
+            Some(new_span)
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 
