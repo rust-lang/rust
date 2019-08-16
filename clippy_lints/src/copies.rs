@@ -300,7 +300,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalI
             },
             PatKind::Struct(_, ref fields, _) => {
                 for pat in fields {
-                    bindings_impl(cx, &pat.node.pat, map);
+                    bindings_impl(cx, &pat.pat, map);
                 }
             },
             PatKind::Tuple(ref fields, _) => {

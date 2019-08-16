@@ -190,20 +190,20 @@ fn check_pat<'a, 'tcx>(
             if let Some(init_struct) = init {
                 if let ExprKind::Struct(_, ref efields, _) = init_struct.node {
                     for field in pfields {
-                        let name = field.node.ident.name;
+                        let name = field.ident.name;
                         let efield = efields
                             .iter()
                             .find_map(|f| if f.ident.name == name { Some(&*f.expr) } else { None });
-                        check_pat(cx, &field.node.pat, efield, span, bindings);
+                        check_pat(cx, &field.pat, efield, span, bindings);
                     }
                 } else {
                     for field in pfields {
-                        check_pat(cx, &field.node.pat, init, span, bindings);
+                        check_pat(cx, &field.pat, init, span, bindings);
                     }
                 }
             } else {
                 for field in pfields {
-                    check_pat(cx, &field.node.pat, None, span, bindings);
+                    check_pat(cx, &field.pat, None, span, bindings);
                 }
             }
         },

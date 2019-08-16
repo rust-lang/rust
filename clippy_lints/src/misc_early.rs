@@ -234,7 +234,7 @@ impl EarlyLintPass for MiscEarlyLints {
                 .name;
 
             for field in pfields {
-                if let PatKind::Wild = field.node.pat.node {
+                if let PatKind::Wild = field.pat.node {
                     wilds += 1;
                 }
             }
@@ -252,7 +252,7 @@ impl EarlyLintPass for MiscEarlyLints {
                 let mut normal = vec![];
 
                 for field in pfields {
-                    match field.node.pat.node {
+                    match field.pat.node {
                         PatKind::Wild => {},
                         _ => {
                             if let Ok(n) = cx.sess().source_map().span_to_snippet(field.span) {
@@ -262,7 +262,7 @@ impl EarlyLintPass for MiscEarlyLints {
                     }
                 }
                 for field in pfields {
-                    if let PatKind::Wild = field.node.pat.node {
+                    if let PatKind::Wild = field.pat.node {
                         wilds -= 1;
                         if wilds > 0 {
                             span_lint(
