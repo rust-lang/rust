@@ -131,8 +131,8 @@ impl<'a, 'tcx, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             PatKind::Ident(_, ident, _) => self.check_ident(ident),
             PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    if !field.node.is_shorthand {
-                        self.visit_pat(&field.node.pat);
+                    if !field.is_shorthand {
+                        self.visit_pat(&field.pat);
                     }
                 }
             },

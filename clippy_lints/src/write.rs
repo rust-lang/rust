@@ -183,9 +183,9 @@ declare_lint_pass!(Write => [
 
 impl EarlyLintPass for Write {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
-        if mac.node.path == sym!(println) {
+        if mac.path == sym!(println) {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `println!`");
-            if let (Some(fmt_str), _) = check_tts(cx, &mac.node.tts, false) {
+            if let (Some(fmt_str), _) = check_tts(cx, &mac.tts, false) {
                 if fmt_str.contents.is_empty() {
                     span_lint_and_sugg(
                         cx,
@@ -198,9 +198,9 @@ impl EarlyLintPass for Write {
                     );
                 }
             }
-        } else if mac.node.path == sym!(print) {
+        } else if mac.path == sym!(print) {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `print!`");
-            if let (Some(fmt_str), _) = check_tts(cx, &mac.node.tts, false) {
+            if let (Some(fmt_str), _) = check_tts(cx, &mac.tts, false) {
                 if check_newlines(&fmt_str) {
                     span_lint_and_then(
                         cx,
@@ -211,7 +211,7 @@ impl EarlyLintPass for Write {
                             err.multipart_suggestion(
                                 "use `println!` instead",
                                 vec![
-                                    (mac.node.path.span, String::from("println")),
+                                    (mac.path.span, String::from("println")),
                                     (fmt_str.newline_span(), String::new()),
                                 ],
                                 Applicability::MachineApplicable,
@@ -220,8 +220,8 @@ impl EarlyLintPass for Write {
                     );
                 }
             }
-        } else if mac.node.path == sym!(write) {
-            if let (Some(fmt_str), _) = check_tts(cx, &mac.node.tts, true) {
+        } else if mac.path == sym!(write) {
+            if let (Some(fmt_str), _) = check_tts(cx, &mac.tts, true) {
                 if check_newlines(&fmt_str) {
                     span_lint_and_then(
                         cx,
@@ -232,7 +232,7 @@ impl EarlyLintPass for Write {
                             err.multipart_suggestion(
                                 "use `writeln!()` instead",
                                 vec![
-                                    (mac.node.path.span, String::from("writeln")),
+                                    (mac.path.span, String::from("writeln")),
                                     (fmt_str.newline_span(), String::new()),
                                 ],
                                 Applicability::MachineApplicable,
@@ -241,8 +241,8 @@ impl EarlyLintPass for Write {
                     )
                 }
             }
-        } else if mac.node.path == sym!(writeln) {
-            if let (Some(fmt_str), expr) = check_tts(cx, &mac.node.tts, true) {
+        } else if mac.path == sym!(writeln) {
+            if let (Some(fmt_str), expr) = check_tts(cx, &mac.tts, true) {
                 if fmt_str.contents.is_empty() {
                     let mut applicability = Applicability::MachineApplicable;
                     let suggestion = expr.map_or_else(
