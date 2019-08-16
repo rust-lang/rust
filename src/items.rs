@@ -1822,9 +1822,17 @@ impl Rewrite for ast::FunctionRetTy {
         match *self {
             ast::FunctionRetTy::Default(_) => Some(String::new()),
             ast::FunctionRetTy::Ty(ref ty) => {
-                let inner_width = shape.width.checked_sub(3)?;
-                ty.rewrite(context, Shape::legacy(inner_width, shape.indent + 3))
-                    .map(|r| format!("-> {}", r))
+                if context.config.version() == Version::One
+                    || context.config.indent_style() == IndentStyle::Visual
+                {
+                    let inner_width = shape.width.checked_sub(3)?;
+                    return ty
+                        .rewrite(context, Shape::legacy(inner_width, shape.indent + 3))
+                        .map(|r| format!("-> {}", r));
+                }
+
+                ty.rewrite(context, shape.offset_left(3)?)
+                    .map(|s| format!("-> {}", s))
             }
         }
     }
@@ -2147,20 +2155,39 @@ fn rewrite_fn_base(
                 sig_length > context.config.max_width()
             }
         };
-        let ret_indent = if ret_should_indent {
-            let indent = if arg_str.is_empty() {
-                // Aligning with non-existent args looks silly.
-                force_new_line_for_brace = true;
-                indent + 4
-            } else {
-                // FIXME: we might want to check that using the arg indent
-                // doesn't blow our budget, and if it does, then fallback to
-                // the where-clause indent.
-                arg_indent
-            };
+        let ret_shape = if ret_should_indent {
+            if context.config.version() == Version::One
+                || context.config.indent_style() == IndentStyle::Visual
+            {
+                let indent = if arg_str.is_empty() {
+                    // Aligning with non-existent args looks silly.
+                    force_new_line_for_brace = true;
+                    indent + 4
+                } else {
+                    // FIXME: we might want to check that using the arg indent
+                    // doesn't blow our budget, and if it does, then fallback to
+                    // the where-clause indent.
+                    arg_indent
+                };
 
-            result.push_str(&indent.to_string_with_newline(context.config));
-            indent
+                result.push_str(&indent.to_string_with_newline(context.config));
+                Shape::indented(indent, context.config)
+            } else {
+                let mut ret_shape = Shape::indented(indent, context.config);
+                if arg_str.is_empty() {
+                    // Aligning with non-existent args looks silly.
+                    force_new_line_for_brace = true;
+                    ret_shape = if context.use_block_indent() {
+                        ret_shape.offset_left(4).unwrap_or(ret_shape)
+                    } else {
+                        ret_shape.indent = ret_shape.indent + 4;
+                        ret_shape
+                    };
+                }
+
+                result.push_str(&ret_shape.indent.to_string_with_newline(context.config));
+                ret_shape
+            }
         } else {
             if context.config.version() == Version::Two {
                 if !arg_str.is_empty() || !no_args_and_over_max_width {
@@ -2170,15 +2197,16 @@ fn rewrite_fn_base(
                 result.push(' ');
             }
 
-            Indent::new(indent.block_indent, last_line_width(&result))
+            let ret_shape = Shape::indented(indent, context.config);
+            ret_shape
+                .offset_left(last_line_width(&result))
+                .unwrap_or(ret_shape)
         };
 
         if multi_line_ret_str || ret_should_indent {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
-            let ret_str = fd
-                .output
-                .rewrite(context, Shape::indented(ret_indent, context.config))?;
+            let ret_str = fd.output.rewrite(context, ret_shape)?;
             result.push_str(&ret_str);
         } else {
             result.push_str(&ret_str);

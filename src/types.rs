@@ -6,7 +6,7 @@ use syntax::source_map::{self, BytePos, Span};
 use syntax::symbol::kw;
 
 use crate::config::lists::*;
-use crate::config::{IndentStyle, TypeDensity};
+use crate::config::{IndentStyle, TypeDensity, Version};
 use crate::expr::{format_expr, rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix, ExprType};
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
@@ -678,9 +678,35 @@ impl Rewrite for ast::Ty {
             // FIXME: we drop any comments here, even though it's a silly place to put
             // comments.
             ast::TyKind::Paren(ref ty) => {
-                let budget = shape.width.checked_sub(2)?;
-                ty.rewrite(context, Shape::legacy(budget, shape.indent + 1))
-                    .map(|ty_str| format!("({})", ty_str))
+                if context.config.version() == Version::One
+                    || context.config.indent_style() == IndentStyle::Visual
+                {
+                    let budget = shape.width.checked_sub(2)?;
+                    return ty
+                        .rewrite(context, Shape::legacy(budget, shape.indent + 1))
+                        .map(|ty_str| format!("({})", ty_str));
+                }
+
+                // 2 = ()
+                if let Some(sh) = shape.sub_width(2) {
+                    if let Some(ref s) = ty.rewrite(context, sh) {
+                        if !s.contains('\n') {
+                            return Some(format!("({})", s));
+                        }
+                    }
+                }
+
+                let indent_str = shape.indent.to_string_with_newline(context.config);
+                let shape = shape
+                    .block_indent(context.config.tab_spaces())
+                    .with_max_width(context.config);
+                let rw = ty.rewrite(context, shape)?;
+                Some(format!(
+                    "({}{}{})",
+                    shape.to_string_with_newline(context.config),
+                    rw,
+                    indent_str
+                ))
             }
             ast::TyKind::Slice(ref ty) => {
                 let budget = shape.width.checked_sub(4)?;
@@ -716,7 +742,15 @@ impl Rewrite for ast::Ty {
             ast::TyKind::ImplicitSelf => Some(String::from("")),
             ast::TyKind::ImplTrait(_, ref it) => {
                 // Empty trait is not a parser error.
-                it.rewrite(context, shape).map(|it_str| {
+                if it.is_empty() {
+                    return Some("impl".to_owned());
+                }
+                let rw = if context.config.version() == Version::One {
+                    it.rewrite(context, shape)
+                } else {
+                    join_bounds(context, shape, it, false)
+                };
+                rw.map(|it_str| {
                     let space = if it_str.is_empty() { "" } else { " " };
                     format!("impl{}{}", space, it_str)
                 })
@@ -818,7 +852,9 @@ fn join_bounds(
     // We need to use multiple lines.
     let (type_strs, offset) = if need_indent {
         // Rewrite with additional indentation.
-        let nested_shape = shape.block_indent(context.config.tab_spaces());
+        let nested_shape = shape
+            .block_indent(context.config.tab_spaces())
+            .with_max_width(context.config);
         let type_strs = items
             .iter()
             .map(|item| item.rewrite(context, nested_shape))
