@@ -493,10 +493,9 @@ supported_targets! {
 
     ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
 
-    ("x86_64-wrs-vxworks", x86_64_wrs_vxworks),
     ("i686-wrs-vxworks", i686_wrs_vxworks),
-    ("i586-wrs-vxworks", i586_wrs_vxworks),
-    ("armv7-wrs-vxworks", armv7_wrs_vxworks),
+    ("x86_64-wrs-vxworks", x86_64_wrs_vxworks),
+    ("armv7-wrs-vxworks-eabihf", armv7_wrs_vxworks_eabihf),
     ("aarch64-wrs-vxworks", aarch64_wrs_vxworks),
     ("powerpc-wrs-vxworks", powerpc_wrs_vxworks),
     ("powerpc-wrs-vxworks-spe", powerpc_wrs_vxworks_spe),
