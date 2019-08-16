@@ -1,5 +1,7 @@
 // run-rustfix
 
+#![allow(clippy::option_and_then_some)]
+
 fn main() {
     let opt = Some(1);
 
