@@ -149,7 +149,17 @@ fn adjust_arg_for_abi<'a, 'tcx: 'a>(
 }
 
 fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>, is_vtable_fn: bool) -> Signature {
-    let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
+    let abi = match sig.abi {
+        Abi::System => {
+            if tcx.sess.target.target.options.is_like_windows {
+                unimplemented!()
+            } else {
+                Abi::C
+            }
+        }
+        abi => abi,
+    };
+    let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match abi {
         Abi::Rust => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         Abi::RustCall => {
@@ -162,7 +172,7 @@ fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>, is_vtable_fn:
             inputs.extend(extra_args.types());
             (CallConv::SystemV, inputs, sig.output())
         }
-        Abi::System => bug!("system abi should be selected elsewhere"),
+        Abi::System => unreachable!(),
         Abi::RustIntrinsic => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
         _ => unimplemented!("unsupported abi {:?}", sig.abi),
     };
