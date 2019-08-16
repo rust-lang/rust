@@ -577,12 +577,6 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        // Cargo depends on procedural macros, so make sure the host
-        // libstd/libproc_macro is available.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
         builder.ensure(ToolBuild {
             compiler: self.compiler,
             target: self.target,
@@ -650,31 +644,10 @@ macro_rules! tool_extended {
 
 tool_extended!((self, builder),
     Cargofmt, rustfmt, "src/tools/rustfmt", "cargo-fmt", {};
-    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {
-        // Clippy depends on procedural macros, so make sure that's built for
-        // the compiler itself.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
-    };
-    Clippy, clippy, "src/tools/clippy", "clippy-driver", {
-        // Clippy depends on procedural macros, so make sure that's built for
-        // the compiler itself.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
-    };
+    CargoClippy, clippy, "src/tools/clippy", "cargo-clippy", {};
+    Clippy, clippy, "src/tools/clippy", "clippy-driver", {};
     Miri, miri, "src/tools/miri", "miri", {};
-    CargoMiri, miri, "src/tools/miri", "cargo-miri", {
-        // Miri depends on procedural macros, so make sure that's built for
-        // the compiler itself.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
-    };
+    CargoMiri, miri, "src/tools/miri", "cargo-miri", {};
     Rls, rls, "src/tools/rls", "rls", {
         let clippy = builder.ensure(Clippy {
             compiler: self.compiler,
@@ -684,12 +657,6 @@ tool_extended!((self, builder),
         if clippy.is_some() {
             self.extra_features.push("clippy".to_owned());
         }
-        // RLS depends on procedural macros, so make sure that's built for
-        // the compiler itself.
-        builder.ensure(compile::Test {
-            compiler: self.compiler,
-            target: builder.config.build,
-        });
     };
     Rustfmt, rustfmt, "src/tools/rustfmt", "rustfmt", {};
 );

@@ -1139,10 +1139,12 @@ dependencies = [
 
 [[package]]
 name = "getopts"
-version = "0.2.19"
+version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72327b15c228bfe31f1390f93dd5e9279587f0463836393c9df719ce62a3e450"
+checksum = "14dbbfd5c71d70241ecf9e6f13737f7b5ce823821063188d7e46c41d371eebd5"
 dependencies = [
+ "rustc-std-workspace-core",
+ "rustc-std-workspace-std",
  "unicode-width",
 ]
 
@@ -2375,6 +2377,9 @@ dependencies = [
 [[package]]
 name = "proc_macro"
 version = "0.0.0"
+dependencies = [
+ "std",
+]
 
 [[package]]
 name = "profiler_builtins"
@@ -3061,6 +3066,13 @@ name = "rustc-std-workspace-core"
 version = "1.0.0"
 dependencies = [
  "core",
+]
+
+[[package]]
+name = "rustc-std-workspace-std"
+version = "1.0.0"
+dependencies = [
+ "std",
 ]
 
 [[package]]
@@ -4068,6 +4080,10 @@ dependencies = [
 [[package]]
 name = "term"
 version = "0.0.0"
+dependencies = [
+ "core",
+ "std",
+]
 
 [[package]]
 name = "term"
@@ -4114,8 +4130,13 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
+ "core",
  "getopts",
+ "libc",
+ "panic_abort",
+ "panic_unwind",
  "proc_macro",
+ "std",
  "term 0.0.0",
 ]
 
@@ -4483,9 +4504,14 @@ checksum = "aa6024fc12ddfd1c6dbc14a80fa2324d4568849869b779f6bd37e5e4c03344d1"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "882386231c45df4700b275c7ff55b6f3698780a650026380e72dabe76fa46526"
+checksum = "7007dbd421b92cc6e28410fe7362e2e0a2503394908f417b68ec8d1c364c4e20"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-core",
+ "rustc-std-workspace-std",
+]
 
 [[package]]
 name = "unicode-xid"

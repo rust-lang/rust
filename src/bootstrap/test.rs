@@ -1040,21 +1040,10 @@ impl Step for Compiletest {
             builder.ensure(compile::Rustc { compiler, target });
         }
 
-        if builder.no_std(target) == Some(true) {
-            // the `test` doesn't compile for no-std targets
-            builder.ensure(compile::Std { compiler, target });
-        } else {
-            builder.ensure(compile::Test { compiler, target });
-        }
+        builder.ensure(compile::Std { compiler, target });
+        // ensure that `libproc_macro` is available on the host.
+        builder.ensure(compile::Std { compiler, target: compiler.host });
 
-        if builder.no_std(target) == Some(true) {
-            // for no_std run-make (e.g., thumb*),
-            // we need a host compiler which is called by cargo.
-            builder.ensure(compile::Std { compiler, target: compiler.host });
-        }
-
-        // HACK(eddyb) ensure that `libproc_macro` is available on the host.
-        builder.ensure(compile::Test { compiler, target: compiler.host });
         // Also provide `rust_test_helpers` for the host.
         builder.ensure(native::TestHelpers { target: compiler.host });
 
@@ -1399,7 +1388,7 @@ impl Step for DocTest {
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
-        builder.ensure(compile::Test {
+        builder.ensure(compile::Std {
             compiler,
             target: compiler.host,
         });
@@ -1709,8 +1698,7 @@ impl Step for Crate {
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run = run.krate("test");
-        for krate in run.builder.in_tree_crates("std") {
+        for krate in run.builder.in_tree_crates("test") {
             if !(krate.name.starts_with("rustc_") && krate.name.ends_with("san")) {
                 run = run.path(krate.local_path(&builder).to_str().unwrap());
             }
@@ -1734,14 +1722,9 @@ impl Step for Crate {
             });
         };
 
-        for krate in builder.in_tree_crates("std") {
-            if run.path.ends_with(&krate.local_path(&builder)) {
-                make(Mode::Std, krate);
-            }
-        }
         for krate in builder.in_tree_crates("test") {
             if run.path.ends_with(&krate.local_path(&builder)) {
-                make(Mode::Test, krate);
+                make(Mode::Std, krate);
             }
         }
     }
@@ -1761,7 +1744,7 @@ impl Step for Crate {
         let test_kind = self.test_kind;
         let krate = self.krate;
 
-        builder.ensure(compile::Test { compiler, target });
+        builder.ensure(compile::Std { compiler, target });
         builder.ensure(RemoteCopyLibs { compiler, target });
 
         // If we're not doing a full bootstrap but we're testing a stage2
@@ -1774,9 +1757,6 @@ impl Step for Crate {
         match mode {
             Mode::Std => {
                 compile::std_cargo(builder, &compiler, target, &mut cargo);
-            }
-            Mode::Test => {
-                compile::test_cargo(builder, &compiler, target, &mut cargo);
             }
             Mode::Rustc => {
                 builder.ensure(compile::Rustc { compiler, target });
@@ -1979,7 +1959,7 @@ impl Step for RemoteCopyLibs {
             return;
         }
 
-        builder.ensure(compile::Test { compiler, target });
+        builder.ensure(compile::Std { compiler, target });
 
         builder.info(&format!("REMOTE copy libs to emulator ({})", target));
         t!(fs::create_dir_all(builder.out.join("tmp")));

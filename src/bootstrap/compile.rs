@@ -216,7 +216,7 @@ pub fn std_cargo(builder: &Builder<'_>,
 
         cargo.arg("--features").arg(features)
             .arg("--manifest-path")
-            .arg(builder.src.join("src/libstd/Cargo.toml"));
+            .arg(builder.src.join("src/libtest/Cargo.toml"));
 
         if target.contains("musl") {
             if let Some(p) = builder.musl_root(target) {
@@ -359,129 +359,6 @@ impl Step for StartupObjects {
 }
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Test {
-    pub target: Interned<String>,
-    pub compiler: Compiler,
-}
-
-impl Step for Test {
-    type Output = ();
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("test")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Test {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
-            target: run.target,
-        });
-    }
-
-    /// Builds libtest.
-    ///
-    /// This will build libtest and supporting libraries for a particular stage of
-    /// the build using the `compiler` targeting the `target` architecture. The
-    /// artifacts created will also be linked into the sysroot directory.
-    fn run(self, builder: &Builder<'_>) {
-        let target = self.target;
-        let compiler = self.compiler;
-
-        builder.ensure(Std { compiler, target });
-
-        if builder.config.keep_stage.contains(&compiler.stage) {
-            builder.info("Warning: Using a potentially old libtest. This may not behave well.");
-            builder.ensure(TestLink {
-                compiler,
-                target_compiler: compiler,
-                target,
-            });
-            return;
-        }
-
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
-        if compiler_to_use != compiler {
-            builder.ensure(Test {
-                compiler: compiler_to_use,
-                target,
-            });
-            builder.info(
-                &format!("Uplifting stage1 test ({} -> {})", builder.config.build, target));
-            builder.ensure(TestLink {
-                compiler: compiler_to_use,
-                target_compiler: compiler,
-                target,
-            });
-            return;
-        }
-
-        let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
-        test_cargo(builder, &compiler, target, &mut cargo);
-
-        builder.info(&format!("Building stage{} test artifacts ({} -> {})", compiler.stage,
-                &compiler.host, target));
-        run_cargo(builder,
-                  &mut cargo,
-                  vec![],
-                  &libtest_stamp(builder, compiler, target),
-                  false);
-
-        builder.ensure(TestLink {
-            compiler: builder.compiler(compiler.stage, builder.config.build),
-            target_compiler: compiler,
-            target,
-        });
-    }
-}
-
-/// Same as `std_cargo`, but for libtest
-pub fn test_cargo(builder: &Builder<'_>,
-                  _compiler: &Compiler,
-                  _target: Interned<String>,
-                  cargo: &mut Command) {
-    if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
-        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
-    }
-    cargo.arg("--manifest-path")
-        .arg(builder.src.join("src/libtest/Cargo.toml"));
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TestLink {
-    pub compiler: Compiler,
-    pub target_compiler: Compiler,
-    pub target: Interned<String>,
-}
-
-impl Step for TestLink {
-    type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    /// Same as `std_link`, only for libtest
-    fn run(self, builder: &Builder<'_>) {
-        let compiler = self.compiler;
-        let target_compiler = self.target_compiler;
-        let target = self.target;
-        builder.info(&format!("Copying stage{} test from stage{} ({} -> {} / {})",
-                target_compiler.stage,
-                compiler.stage,
-                &compiler.host,
-                target_compiler.host,
-                target));
-        add_to_sysroot(
-            builder,
-            &builder.sysroot_libdir(target_compiler, target),
-            &builder.sysroot_libdir(target_compiler, compiler.host),
-            &libtest_stamp(builder, compiler, target)
-        );
-    }
-}
-
-#[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     pub target: Interned<String>,
     pub compiler: Compiler,
@@ -512,7 +389,7 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let target = self.target;
 
-        builder.ensure(Test { compiler, target });
+        builder.ensure(Std { compiler, target });
 
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old librustc. This may not behave well.");
@@ -541,7 +418,7 @@ impl Step for Rustc {
         }
 
         // Ensure that build scripts and proc macros have a std / libproc_macro to link against.
-        builder.ensure(Test {
+        builder.ensure(Std {
             compiler: builder.compiler(self.compiler.stage, builder.config.build),
             target: builder.config.build,
         });
@@ -870,16 +747,6 @@ pub fn libstd_stamp(
     target: Interned<String>,
 ) -> PathBuf {
     builder.cargo_out(compiler, Mode::Std, target).join(".libstd.stamp")
-}
-
-/// Cargo's output path for libtest in a given stage, compiled by a particular
-/// compiler for the specified target.
-pub fn libtest_stamp(
-    builder: &Builder<'_>,
-    compiler: Compiler,
-    target: Interned<String>,
-) -> PathBuf {
-    builder.cargo_out(compiler, Mode::Test, target).join(".libtest.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
