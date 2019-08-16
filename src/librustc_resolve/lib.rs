@@ -59,7 +59,6 @@ use std::collections::BTreeSet;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 
-use build_reduced_graph::BuildReducedGraphVisitor;
 use diagnostics::{Suggestion, ImportSuggestion};
 use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
 use late::{PathSource, Rib, RibKind::*};
@@ -1261,12 +1260,7 @@ impl<'a> Resolver<'a> {
     fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
         if module.populate_on_access.get() {
             module.populate_on_access.set(false);
-            let def_id = module.def_id().expect("unpopulated module without a def-id");
-            for child in self.cstore.item_children_untracked(def_id, self.session) {
-                let child = child.map_id(|_| panic!("unexpected id"));
-                BuildReducedGraphVisitor { parent_scope: self.dummy_parent_scope(), r: self }
-                    .build_reduced_graph_for_external_crate_res(module, child);
-            }
+            self.build_reduced_graph_external(module);
         }
         &module.lazy_resolutions
     }

@@ -16,6 +16,7 @@ use crate::{ResolutionError, Determinacy, PathResult, CrateLint};
 use rustc::bug;
 use rustc::hir::def::{self, *};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
+use rustc::hir::map::DefCollector;
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
 use rustc_metadata::cstore::LoadedMacro;
@@ -162,9 +163,19 @@ impl<'a> Resolver<'a> {
     crate fn build_reduced_graph(
         &mut self, fragment: &AstFragment, parent_scope: ParentScope<'a>
     ) -> LegacyScope<'a> {
+        fragment.visit_with(&mut DefCollector::new(&mut self.definitions, parent_scope.expansion));
         let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
         fragment.visit_with(&mut visitor);
         visitor.parent_scope.legacy
+    }
+
+    crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
+        let def_id = module.def_id().expect("unpopulated module without a def-id");
+        for child in self.cstore.item_children_untracked(def_id, self.session) {
+            let child = child.map_id(|_| panic!("unexpected id"));
+            BuildReducedGraphVisitor { r: self, parent_scope: ParentScope::module(module) }
+                .build_reduced_graph_for_external_crate_res(child);
+        }
     }
 }
 
