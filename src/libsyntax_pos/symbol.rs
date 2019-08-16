@@ -609,7 +609,6 @@ symbols! {
         rust_eh_personality,
         rust_eh_unwind_resume,
         rust_oom,
-        __rust_unstable_column,
         rvalue_static_promotion,
         sanitizer_runtime,
         _Self,

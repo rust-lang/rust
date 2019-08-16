@@ -40,7 +40,6 @@ pub use crate::result::Result::{self, Ok, Err};
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use core::prelude::v1::{
-    __rust_unstable_column,
     asm,
     assert,
     cfg,
