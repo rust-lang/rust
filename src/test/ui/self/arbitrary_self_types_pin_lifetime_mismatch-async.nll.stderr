@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                                             ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:50
@@ -30,7 +30,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |                                                          ^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#18r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:19:62
