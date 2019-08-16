@@ -1725,6 +1725,17 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn use_dynamic_linking(&self) -> bool {
+        if self.config.target.contains("vxworks") {
+            match env::var("RUST_TEST_DYLINK") {
+                Ok(s) => s == "1",
+                _ => false
+            }
+        } else {
+            true
+        }
+    }
+
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
 
@@ -1768,6 +1779,7 @@ impl<'test> TestCx<'test> {
                     && !self.config.host.contains("musl"))
                 || self.config.target.contains("wasm32")
                 || self.config.target.contains("nvptx")
+                || !self.use_dynamic_linking()
             {
                 // We primarily compile all auxiliary libraries as dynamic libraries
                 // to avoid code size bloat and large binaries as much as possible
@@ -1999,10 +2011,14 @@ impl<'test> TestCx<'test> {
         }
 
         if !is_rustdoc {
-            if self.config.target == "wasm32-unknown-unknown" {
+            if self.config.target == "wasm32-unknown-unknown"
+            || !self.use_dynamic_linking() {
                 // rustc.arg("-g"); // get any backtrace at all on errors
             } else if !self.props.no_prefer_dynamic {
                 rustc.args(&["-C", "prefer-dynamic"]);
+                if self.config.target.contains("vxworks") {
+                    rustc.args(&["-C", "target-feature=-crt-static"]);
+                }
             }
         }
 
