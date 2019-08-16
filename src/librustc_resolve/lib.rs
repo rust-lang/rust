@@ -431,6 +431,8 @@ impl ModuleKind {
     }
 }
 
+type Resolutions<'a> = RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>;
+
 /// One node in the tree of modules.
 pub struct ModuleData<'a> {
     parent: Option<Module<'a>>,
@@ -439,7 +441,11 @@ pub struct ModuleData<'a> {
     // The def id of the closest normal module (`mod`) ancestor (including this module).
     normal_ancestor_id: DefId,
 
-    resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
+    // Mapping between names and their (possibly in-progress) resolutions in this module.
+    // Resolutions in modules from other crates are not populated until accessed.
+    lazy_resolutions: Resolutions<'a>,
+    // True if this is a module from other crate that needs to be populated on access.
+    populate_on_access: Cell<bool>,
 
     // Macro invocations that can expand into items in this module.
     unresolved_invocations: RefCell<FxHashSet<ExpnId>>,
@@ -451,11 +457,6 @@ pub struct ModuleData<'a> {
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.
     traits: RefCell<Option<Box<[(Ident, &'a NameBinding<'a>)]>>>,
-
-    // Whether this module is populated. If not populated, any attempt to
-    // access the children must be preceded with a
-    // `populate_module_if_necessary` call.
-    populated: Cell<bool>,
 
     /// Span of the module itself. Used for error reporting.
     span: Span,
@@ -475,30 +476,34 @@ impl<'a> ModuleData<'a> {
             parent,
             kind,
             normal_ancestor_id,
-            resolutions: Default::default(),
+            lazy_resolutions: Default::default(),
+            populate_on_access: Cell::new(!normal_ancestor_id.is_local()),
             unresolved_invocations: Default::default(),
             no_implicit_prelude: false,
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new(Vec::new()),
             traits: RefCell::new(None),
-            populated: Cell::new(normal_ancestor_id.is_local()),
             span,
             expansion,
         }
     }
 
-    fn for_each_child<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
-        for (&(ident, ns), name_resolution) in self.resolutions.borrow().iter() {
-            name_resolution.borrow().binding.map(|binding| f(ident, ns, binding));
+    fn for_each_child<R, F>(&'a self, resolver: &mut R, mut f: F)
+        where R: AsMut<Resolver<'a>>, F: FnMut(&mut R, Ident, Namespace, &'a NameBinding<'a>)
+    {
+        for (&(ident, ns), name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
+            name_resolution.borrow().binding.map(|binding| f(resolver, ident, ns, binding));
         }
     }
 
-    fn for_each_child_stable<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
-        let resolutions = self.resolutions.borrow();
+    fn for_each_child_stable<R, F>(&'a self, resolver: &mut R, mut f: F)
+        where R: AsMut<Resolver<'a>>, F: FnMut(&mut R, Ident, Namespace, &'a NameBinding<'a>)
+    {
+        let resolutions = resolver.as_mut().resolutions(self).borrow();
         let mut resolutions = resolutions.iter().collect::<Vec<_>>();
         resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.as_str(), ns));
         for &(&(ident, ns), &resolution) in resolutions.iter() {
-            resolution.borrow().binding.map(|binding| f(ident, ns, binding));
+            resolution.borrow().binding.map(|binding| f(resolver, ident, ns, binding));
         }
     }
 
@@ -983,6 +988,10 @@ impl<'a> ResolverArenas<'a> {
     }
 }
 
+impl<'a> AsMut<Resolver<'a>> for Resolver<'a> {
+    fn as_mut(&mut self) -> &mut Resolver<'a> { self }
+}
+
 impl<'a, 'b> ty::DefIdTree for &'a Resolver<'b> {
     fn parent(self, id: DefId) -> Option<DefId> {
         match id.krate {
@@ -1246,6 +1255,20 @@ impl<'a> Resolver<'a> {
     ) -> Module<'a> {
         let module = ModuleData::new(Some(parent), kind, normal_ancestor_id, expn_id, span);
         self.arenas.alloc_module(module)
+    }
+
+    fn resolutions(&mut self, module: Module<'a>) -> &'a Resolutions<'a> {
+        if module.populate_on_access.get() {
+            module.populate_on_access.set(false);
+            self.build_reduced_graph_external(module);
+        }
+        &module.lazy_resolutions
+    }
+
+    fn resolution(&mut self, module: Module<'a>, ident: Ident, ns: Namespace)
+                  -> &'a RefCell<NameResolution<'a>> {
+        *self.resolutions(module).borrow_mut().entry((ident.modern(), ns))
+               .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
 
     fn record_use(&mut self, ident: Ident, ns: Namespace,
@@ -2634,7 +2657,6 @@ impl<'a> Resolver<'a> {
                     return None;
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                self.populate_module_if_necessary(&crate_root);
                 Some((crate_root, ty::Visibility::Public, DUMMY_SP, ExpnId::root())
                     .to_name_binding(self.arenas))
             }

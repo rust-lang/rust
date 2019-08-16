@@ -8,7 +8,6 @@ use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
 use crate::Namespace::*;
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
-use rustc::hir::map::DefCollector;
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, Ident};
@@ -131,7 +130,6 @@ impl<'a> base::Resolver for Resolver<'a> {
         parent_scope.module.unresolved_invocations.borrow_mut().extend(derives);
 
         // Integrate the new AST fragment into all the definition and module structures.
-        fragment.visit_with(&mut DefCollector::new(&mut self.definitions, expansion));
         let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_legacy_scopes.insert(expansion, output_legacy_scope);
     }
