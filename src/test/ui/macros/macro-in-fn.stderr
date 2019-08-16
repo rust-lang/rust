@@ -1,0 +1,8 @@
+error: cannot find macro `ABC!` in this scope
+  --> $DIR/macro-in-fn.rs:8:5
+   |
+LL |     ABC!();
+   |     ^^^
+
+error: aborting due to previous error
+

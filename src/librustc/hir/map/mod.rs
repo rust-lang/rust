@@ -514,8 +514,11 @@ impl<'hir> Map<'hir> {
         &self.forest.krate.attrs
     }
 
-    pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId)
-    {
+    pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId) {
+        self.get_if_module(module).expect("not a module")
+    }
+
+    pub fn get_if_module(&self, module: DefId) -> Option<(&'hir Mod, Span, HirId)> {
         let hir_id = self.as_local_hir_id(module).unwrap();
         self.read(hir_id);
         match self.find_entry(hir_id).unwrap().node {
@@ -523,9 +526,9 @@ impl<'hir> Map<'hir> {
                 span,
                 node: ItemKind::Mod(ref m),
                 ..
-            }) => (m, span, hir_id),
-            Node::Crate => (&self.forest.krate.module, self.forest.krate.span, hir_id),
-            _ => panic!("not a module")
+            }) => Some((m, span, hir_id)),
+            Node::Crate => Some((&self.forest.krate.module, self.forest.krate.span, hir_id)),
+            _ => None,
         }
     }
 
