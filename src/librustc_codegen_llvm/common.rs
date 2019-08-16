@@ -333,14 +333,19 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
         assert_eq!(alloc.align, layout.align.abi);
-        let init = const_alloc_to_llvm(self, alloc);
-        let base_addr = self.static_addr_of(init, alloc.align, None);
+        let llval = if layout.size == Size::ZERO {
+            let llval = self.const_usize(alloc.align.bytes());
+            unsafe { llvm::LLVMConstIntToPtr(llval, self.type_ptr_to(self.type_i8p())) }
+        } else {
+            let init = const_alloc_to_llvm(self, alloc);
+            let base_addr = self.static_addr_of(init, alloc.align, None);
 
-        let llval = unsafe { llvm::LLVMConstInBoundsGEP(
-            self.const_bitcast(base_addr, self.type_i8p()),
-            &self.const_usize(offset.bytes()),
-            1,
-        )};
+            unsafe { llvm::LLVMConstInBoundsGEP(
+                self.const_bitcast(base_addr, self.type_i8p()),
+                &self.const_usize(offset.bytes()),
+                1,
+            )}
+        };
         let llval = self.const_bitcast(llval, self.type_ptr_to(layout.llvm_type(self)));
         PlaceRef::new_sized(llval, layout, alloc.align)
     }
