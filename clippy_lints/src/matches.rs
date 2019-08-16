@@ -41,7 +41,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
-    /// **What it does:** Checks for matches with a two arms where an `if let else` will
+    /// **What it does:** Checks for matches with two arms where an `if let else` will
     /// usually suffice.
     ///
     /// **Why is this bad?** Just readability – `if let` nests less than a `match`.
@@ -76,7 +76,7 @@ declare_clippy_lint! {
     /// ```
     pub SINGLE_MATCH_ELSE,
     pedantic,
-    "a match statement with a two arms where the second arm's pattern is a placeholder instead of a specific match pattern"
+    "a match statement with two arms where the second arm's pattern is a placeholder instead of a specific match pattern"
 }
 
 declare_clippy_lint! {
