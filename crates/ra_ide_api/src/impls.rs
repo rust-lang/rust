@@ -1,4 +1,4 @@
-use hir::{db::HirDatabase, source_binder};
+use hir::{db::HirDatabase, source_binder, ApplicationTy, Ty, TypeCtor};
 use ra_db::SourceDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
@@ -47,7 +47,8 @@ fn impls_for_def(
 
     Some(
         impls
-            .lookup_impl_blocks(&ty)
+            .all_impls()
+            .filter(|impl_block| is_equal_for_find_impls(&ty, &impl_block.target_ty(db)))
             .map(|imp| NavigationTarget::from_impl_block(db, imp))
             .collect(),
     )
@@ -69,6 +70,19 @@ fn impls_for_trait(
             .map(|imp| NavigationTarget::from_impl_block(db, imp))
             .collect(),
     )
+}
+
+fn is_equal_for_find_impls(original_ty: &Ty, impl_ty: &Ty) -> bool {
+    match (original_ty, impl_ty) {
+        (Ty::Apply(a_original_ty), Ty::Apply(ApplicationTy { ctor, parameters })) => match ctor {
+            TypeCtor::Ref(..) => match parameters.as_single() {
+                Ty::Apply(a_ty) => a_original_ty.ctor == a_ty.ctor,
+                _ => false,
+            },
+            _ => a_original_ty.ctor == *ctor,
+        },
+        _ => false,
+    }
 }
 
 #[cfg(test)]
@@ -171,6 +185,25 @@ mod tests {
             impl crate::T for crate::Foo {}
             ",
             &["impl IMPL_BLOCK FileId(2) [0; 31)", "impl IMPL_BLOCK FileId(3) [0; 31)"],
+        );
+    }
+
+    #[test]
+    fn goto_implementation_all_impls() {
+        check_goto(
+            "
+            //- /lib.rs
+            trait T {}
+            struct Foo<|>;
+            impl Foo {}
+            impl T for Foo {}
+            impl T for &Foo {}
+            ",
+            &[
+                "impl IMPL_BLOCK FileId(1) [23; 34)",
+                "impl IMPL_BLOCK FileId(1) [35; 52)",
+                "impl IMPL_BLOCK FileId(1) [53; 71)",
+            ],
         );
     }
 }
