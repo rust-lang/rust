@@ -58,7 +58,6 @@ impl AllFactsExt for AllFacts {
                 cfg_edge,
                 killed,
                 outlives,
-                region_live_at,
                 invalidates,
                 var_used,
                 var_defined,
