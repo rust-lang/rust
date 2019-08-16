@@ -4,7 +4,7 @@ use crate::symbol::{sym, Symbol};
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 use errors::{FatalError, DiagnosticBuilder};
-use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Pos, Span};
 use rustc_lexer::Base;
 use rustc_lexer::unescape;
 
@@ -84,7 +84,7 @@ impl<'a> StringReader<'a> {
 
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
-        self.override_span.unwrap_or_else(|| Span::new(lo, hi, NO_EXPANSION))
+        self.override_span.unwrap_or_else(|| Span::with_root_ctxt(lo, hi))
     }
 
     /// Returns the next token, including trivia like whitespace or comments.

@@ -930,7 +930,7 @@ impl Attributes {
             if attr.check_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
                     let meta = attr::mk_name_value_item_str(
-                        Ident::with_empty_ctxt(sym::target_feature), feat, DUMMY_SP
+                        Ident::with_dummy_span(sym::target_feature), feat, DUMMY_SP
                     );
                     if let Ok(feat_cfg) = Cfg::parse(&meta) {
                         cfg &= feat_cfg;

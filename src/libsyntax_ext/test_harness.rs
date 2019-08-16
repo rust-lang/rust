@@ -5,14 +5,13 @@ use smallvec::{smallvec, SmallVec};
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
-use syntax::ext::base::{ExtCtxt, Resolver};
+use syntax::ext::base::{ExtCtxt, MacroKind, Resolver};
 use syntax::ext::expand::{AstFragment, ExpansionConfig};
-use syntax::ext::hygiene::{ExpnId, MacroKind};
 use syntax::feature_gate::Features;
 use syntax::mut_visit::{*, ExpectOne};
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
-use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned};
+use syntax::source_map::{ExpnData, ExpnKind, dummy_spanned};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -150,7 +149,7 @@ impl MutVisitor for EntryPointCleaner {
             EntryPointType::MainAttr |
             EntryPointType::Start =>
                 item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
-                    let allow_ident = Ident::with_empty_ctxt(sym::allow);
+                    let allow_ident = Ident::with_dummy_span(sym::allow);
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
@@ -191,7 +190,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
                    tests: Vec<Ident>,
                    tested_submods: Vec<(Ident, Ident)>)
                    -> (P<ast::Item>, Ident) {
-    let super_ = Ident::with_empty_ctxt(kw::Super);
+    let super_ = Ident::with_dummy_span(kw::Super);
 
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),
@@ -269,12 +268,12 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     //            #![main]
     //            test::test_main_static(&[..tests]);
     //        }
-    let sp = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+    let sp = DUMMY_SP.fresh_expansion(ExpnData::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, cx.ext_cx.parse_sess.edition,
         [sym::main, sym::test, sym::rustc_attrs][..].into(),
     ));
     let ecx = &cx.ext_cx;
-    let test_id = Ident::with_empty_ctxt(sym::test);
+    let test_id = Ident::with_dummy_span(sym::test);
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or(

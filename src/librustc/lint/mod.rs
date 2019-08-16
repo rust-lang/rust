@@ -885,21 +885,16 @@ pub fn provide(providers: &mut Providers<'_>) {
 /// This is used to test whether a lint should not even begin to figure out whether it should
 /// be reported on the current node.
 pub fn in_external_macro(sess: &Session, span: Span) -> bool {
-    let info = match span.ctxt().outer_expn_info() {
-        Some(info) => info,
-        // no ExpnInfo means this span doesn't come from a macro
-        None => return false,
-    };
-
-    match info.kind {
+    let expn_data = span.ctxt().outer_expn_data();
+    match expn_data.kind {
         ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
         ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
-            if info.def_site.is_dummy() {
+            if expn_data.def_site.is_dummy() {
                 // dummy span for the def_site means it's an external macro
                 return true;
             }
-            match sess.source_map().span_to_snippet(info.def_site) {
+            match sess.source_map().span_to_snippet(expn_data.def_site) {
                 Ok(code) => !code.starts_with("macro_rules"),
                 // no snippet = external macro or compiler-builtin expansion
                 Err(_) => true,
@@ -911,10 +906,8 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
 
 /// Returns whether `span` originates in a derive macro's expansion
 pub fn in_derive_expansion(span: Span) -> bool {
-    if let Some(info) = span.ctxt().outer_expn_info() {
-        if let ExpnKind::Macro(MacroKind::Derive, _) = info.kind {
-            return true;
-        }
+    if let ExpnKind::Macro(MacroKind::Derive, _) = span.ctxt().outer_expn_data().kind {
+        return true;
     }
     false
 }

@@ -35,7 +35,7 @@ use syntax::ext::proc_macro::BangProcMacro;
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
 use syntax::symbol::{Symbol, sym};
-use syntax_pos::{Span, NO_EXPANSION, FileName};
+use syntax_pos::{Span, FileName};
 use rustc_data_structures::bit_set::BitSet;
 
 macro_rules! provide {
@@ -443,7 +443,7 @@ impl cstore::CStore {
         let source_name = FileName::Macros(macro_full_name);
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
-        let local_span = Span::new(source_file.start_pos, source_file.end_pos, NO_EXPANSION);
+        let local_span = Span::with_root_ctxt(source_file.start_pos, source_file.end_pos);
         let (body, mut errors) = source_file_to_stream(&sess.parse_sess, source_file, None);
         emit_unclosed_delims(&mut errors, &sess.diagnostic());
 

@@ -327,7 +327,7 @@ impl Attribute {
         if self.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
-                Ident::with_empty_ctxt(sym::doc),
+                Ident::with_dummy_span(sym::doc),
                 Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())),
                 DUMMY_SP,
             );
@@ -412,7 +412,7 @@ pub fn mk_sugared_doc_attr(text: Symbol, span: Span) -> Attribute {
     Attribute {
         id: mk_attr_id(),
         style,
-        path: Path::from_ident(Ident::with_empty_ctxt(sym::doc).with_span_pos(span)),
+        path: Path::from_ident(Ident::with_dummy_span(sym::doc).with_span_pos(span)),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
         span,

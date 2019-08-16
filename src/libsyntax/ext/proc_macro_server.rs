@@ -362,10 +362,10 @@ pub(crate) struct Rustc<'a> {
 impl<'a> Rustc<'a> {
     pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
         // No way to determine def location for a proc macro right now, so use call location.
-        let location = cx.current_expansion.id.expn_info().unwrap().call_site;
+        let location = cx.current_expansion.id.expn_data().call_site;
         let to_span = |transparency| {
             location.with_ctxt(
-                SyntaxContext::empty()
+                SyntaxContext::root()
                     .apply_mark_with_transparency(cx.current_expansion.id, transparency),
             )
         };
@@ -677,7 +677,7 @@ impl server::Span for Rustc<'_> {
         self.sess.source_map().lookup_char_pos(span.lo()).file
     }
     fn parent(&mut self, span: Self::Span) -> Option<Self::Span> {
-        span.ctxt().outer_expn_info().map(|i| i.call_site)
+        span.parent()
     }
     fn source(&mut self, span: Self::Span) -> Self::Span {
         span.source_callsite()

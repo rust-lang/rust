@@ -1,9 +1,11 @@
-//! Reduced graph building.
+//! After we obtain a fresh AST fragment from a macro, code in this module helps to integrate
+//! that fragment into the module structures that are already partially built.
 //!
-//! Here we build the "reduced graph": the graph of the module tree without
-//! any imports resolved.
+//! Items from the fragment are placed into modules,
+//! unexpanded macros in the fragment are visited and registered.
+//! Imports are also considered items and placed into modules here, but not resolved yet.
 
-use crate::macros::{InvocationData, LegacyBinding, LegacyScope};
+use crate::macros::{LegacyBinding, LegacyScope};
 use crate::resolve_imports::ImportDirective;
 use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
@@ -30,6 +32,7 @@ use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
+use syntax::ext::expand::AstFragment;
 use syntax::ext::hygiene::ExpnId;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
@@ -67,7 +70,7 @@ impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, ExpnId) {
     }
 }
 
-pub(crate) struct IsMacroExport;
+struct IsMacroExport;
 
 impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, ExpnId, IsMacroExport) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
@@ -84,7 +87,7 @@ impl<'a> ToNameBinding<'a> for (Res, ty::Visibility, Span, ExpnId, IsMacroExport
 impl<'a> Resolver<'a> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
-    pub fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
+    crate fn define<T>(&mut self, parent: Module<'a>, ident: Ident, ns: Namespace, def: T)
         where T: ToNameBinding<'a>,
     {
         let binding = def.to_name_binding(self.arenas);
@@ -93,7 +96,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn get_module(&mut self, def_id: DefId) -> Module<'a> {
+    crate fn get_module(&mut self, def_id: DefId) -> Module<'a> {
         if def_id.krate == LOCAL_CRATE {
             return self.module_map[&def_id]
         }
@@ -119,7 +122,7 @@ impl<'a> Resolver<'a> {
         module
     }
 
-    pub fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
+    crate fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
         let def_id = match self.macro_defs.get(&expn_id) {
             Some(def_id) => *def_id,
             None => return self.graph_root,
@@ -141,7 +144,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
+    fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
         if let Some(ext) = self.macro_map.get(&def_id) {
             return Some(ext.clone());
         }
@@ -158,21 +161,29 @@ impl<'a> Resolver<'a> {
 
     /// Ensures that the reduced graph rooted at the given external module
     /// is built, building it if it is not.
-    pub fn populate_module_if_necessary(&mut self, module: Module<'a>) {
+    crate fn populate_module_if_necessary(&mut self, module: Module<'a>) {
         if module.populated.get() { return }
         let def_id = module.def_id().unwrap();
         for child in self.cstore.item_children_untracked(def_id, self.session) {
             let child = child.map_id(|_| panic!("unexpected id"));
-            BuildReducedGraphVisitor { parent_scope: self.dummy_parent_scope(), r: self }
-                .build_reduced_graph_for_external_crate_res(module, child);
+            BuildReducedGraphVisitor { parent_scope: ParentScope::module(module), r: self }
+                .build_reduced_graph_for_external_crate_res(child);
         }
         module.populated.set(true)
     }
+
+    crate fn build_reduced_graph(
+        &mut self, fragment: &AstFragment, parent_scope: ParentScope<'a>
+    ) -> LegacyScope<'a> {
+        let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
+        fragment.visit_with(&mut visitor);
+        visitor.parent_scope.legacy
+    }
 }
 
-pub struct BuildReducedGraphVisitor<'a, 'b> {
-    pub r: &'b mut Resolver<'a>,
-    pub parent_scope: ParentScope<'a>,
+struct BuildReducedGraphVisitor<'a, 'b> {
+    r: &'b mut Resolver<'a>,
+    parent_scope: ParentScope<'a>,
 }
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
@@ -300,10 +311,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         root_id: NodeId,
         vis: ty::Visibility,
     ) {
-        let parent_scope = &self.parent_scope;
-        let current_module = parent_scope.module;
+        let current_module = self.parent_scope.module;
         let directive = self.r.arenas.alloc_import_directive(ImportDirective {
-            parent_scope: parent_scope.clone(),
+            parent_scope: self.parent_scope,
             module_path,
             imported_module: Cell::new(None),
             subclass,
@@ -601,7 +611,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let directive = self.r.arenas.alloc_import_directive(ImportDirective {
                     root_id: item.id,
                     id: item.id,
-                    parent_scope: self.parent_scope.clone(),
+                    parent_scope: self.parent_scope,
                     imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                     subclass: ImportDirectiveSubclass::ExternCrate {
                         source: orig_name,
@@ -706,7 +716,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
 
                 for variant in &(*enum_definition).variants {
-                    self.build_reduced_graph_for_variant(variant, module, vis, expansion);
+                    self.build_reduced_graph_for_variant(variant, module, vis);
                 }
             }
 
@@ -797,8 +807,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
                                        parent: Module<'a>,
-                                       vis: ty::Visibility,
-                                       expn_id: ExpnId) {
+                                       vis: ty::Visibility) {
+        let expn_id = self.parent_scope.expansion;
         let ident = variant.ident;
 
         // Define a name in the type namespace.
@@ -861,11 +871,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(
-        &mut self,
-        parent: Module<'a>,
-        child: Export<ast::NodeId>,
-    ) {
+    fn build_reduced_graph_for_external_crate_res(&mut self, child: Export<ast::NodeId>) {
+        let parent = self.parent_scope.module;
         let Export { ident, res, vis, span } = child;
         // FIXME: We shouldn't create the gensym here, it should come from metadata,
         // but metadata cannot encode gensyms currently, so we create it here.
@@ -997,7 +1004,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 |this: &Self, span| this.r.arenas.alloc_import_directive(ImportDirective {
             root_id: item.id,
             id: item.id,
-            parent_scope: this.parent_scope.clone(),
+            parent_scope: this.parent_scope,
             imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
             subclass: ImportDirectiveSubclass::MacroUse,
             use_span_with_attributes: item.span_with_attributes(),
@@ -1066,20 +1073,15 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         false
     }
 
-    fn visit_invoc(&mut self, id: ast::NodeId) -> &'a InvocationData<'a> {
+    fn visit_invoc(&mut self, id: ast::NodeId) -> LegacyScope<'a> {
         let invoc_id = id.placeholder_to_expn_id();
 
         self.parent_scope.module.unresolved_invocations.borrow_mut().insert(invoc_id);
 
-        let invocation_data = self.r.arenas.alloc_invocation_data(InvocationData {
-            module: self.parent_scope.module,
-            parent_legacy_scope: self.parent_scope.legacy,
-            output_legacy_scope: Cell::new(None),
-        });
-        let old_invocation_data = self.r.invocations.insert(invoc_id, invocation_data);
-        assert!(old_invocation_data.is_none(), "invocation data is reset for an invocation");
+        let old_parent_scope = self.r.invocation_parent_scopes.insert(invoc_id, self.parent_scope);
+        assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
 
-        invocation_data
+        LegacyScope::Invocation(invoc_id)
     }
 
     fn proc_macro_stub(item: &ast::Item) -> Option<(MacroKind, Ident, Span)> {
@@ -1180,7 +1182,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
                 return
             }
             ItemKind::Mac(..) => {
-                self.parent_scope.legacy = LegacyScope::Invocation(self.visit_invoc(item.id));
+                self.parent_scope.legacy = self.visit_invoc(item.id);
                 return
             }
             ItemKind::Mod(..) => self.contains_macro_use(&item.attrs),
@@ -1199,7 +1201,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_stmt(&mut self, stmt: &'b ast::Stmt) {
         if let ast::StmtKind::Mac(..) = stmt.node {
-            self.parent_scope.legacy = LegacyScope::Invocation(self.visit_invoc(stmt.id));
+            self.parent_scope.legacy = self.visit_invoc(stmt.id);
         } else {
             visit::walk_stmt(self, stmt);
         }
@@ -1267,9 +1269,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
         if !attr.is_sugared_doc && is_builtin_attr(attr) {
-            self.parent_scope.module.builtin_attrs.borrow_mut().push((
-                attr.path.segments[0].ident, self.parent_scope.clone()
-            ));
+            self.r.builtin_attrs.push((attr.path.segments[0].ident, self.parent_scope));
         }
         visit::walk_attribute(self, attr);
     }

@@ -8,7 +8,7 @@
 //! information, source code snippets, etc.
 
 pub use syntax_pos::*;
-pub use syntax_pos::hygiene::{ExpnKind, ExpnInfo};
+pub use syntax_pos::hygiene::{ExpnKind, ExpnData};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -29,14 +29,15 @@ mod tests;
 
 /// Returns the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
-/// following the `expn_info` chain.
+/// following the `expn_data` chain.
 pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
-    let call_site1 = sp.ctxt().outer_expn_info().map(|ei| ei.call_site);
-    let call_site2 = enclosing_sp.ctxt().outer_expn_info().map(|ei| ei.call_site);
-    match (call_site1, call_site2) {
-        (None, _) => sp,
-        (Some(call_site1), Some(call_site2)) if call_site1 == call_site2 => sp,
-        (Some(call_site1), _) => original_sp(call_site1, enclosing_sp),
+    let expn_data1 = sp.ctxt().outer_expn_data();
+    let expn_data2 = enclosing_sp.ctxt().outer_expn_data();
+    if expn_data1.is_root() ||
+       !expn_data2.is_root() && expn_data1.call_site == expn_data2.call_site {
+        sp
+    } else {
+        original_sp(expn_data1.call_site, enclosing_sp)
     }
 }
 

@@ -67,7 +67,7 @@ use syntax::errors;
 use syntax::ext::base::SpecialDerives;
 use syntax::ext::hygiene::ExpnId;
 use syntax::print::pprust;
-use syntax::source_map::{respan, ExpnInfo, ExpnKind, DesugaringKind, Spanned};
+use syntax::source_map::{respan, ExpnData, ExpnKind, DesugaringKind, Spanned};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::{self, Token};
@@ -704,10 +704,9 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         allow_internal_unstable: Option<Lrc<[Symbol]>>,
     ) -> Span {
-        span.fresh_expansion(ExpnId::root(), ExpnInfo {
-            def_site: span,
+        span.fresh_expansion(ExpnData {
             allow_internal_unstable,
-            ..ExpnInfo::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
+            ..ExpnData::default(ExpnKind::Desugaring(reason), span, self.sess.edition())
         })
     }
 
@@ -1224,7 +1223,7 @@ impl<'a> LoweringContext<'a> {
                     P(hir::Path {
                         res,
                         segments: hir_vec![hir::PathSegment::from_ident(
-                            Ident::with_empty_ctxt(kw::SelfUpper)
+                            Ident::with_dummy_span(kw::SelfUpper)
                         )],
                         span: t.span,
                     }),
@@ -1558,7 +1557,7 @@ impl<'a> LoweringContext<'a> {
 
                     let (name, kind) = match name {
                         hir::LifetimeName::Underscore => (
-                            hir::ParamName::Plain(Ident::with_empty_ctxt(kw::UnderscoreLifetime)),
+                            hir::ParamName::Plain(Ident::with_dummy_span(kw::UnderscoreLifetime)),
                             hir::LifetimeParamKind::Elided,
                         ),
                         hir::LifetimeName::Param(param_name) => (
@@ -2002,7 +2001,7 @@ impl<'a> LoweringContext<'a> {
                         bindings: hir_vec![
                             hir::TypeBinding {
                                 hir_id: this.next_id(),
-                                ident: Ident::with_empty_ctxt(FN_OUTPUT_NAME),
+                                ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
                                 kind: hir::TypeBindingKind::Equality {
                                     ty: output
                                         .as_ref()
@@ -2394,7 +2393,7 @@ impl<'a> LoweringContext<'a> {
         let future_params = P(hir::GenericArgs {
             args: hir_vec![],
             bindings: hir_vec![hir::TypeBinding {
-                ident: Ident::with_empty_ctxt(FN_OUTPUT_NAME),
+                ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
                 kind: hir::TypeBindingKind::Equality {
                     ty: output_ty,
                 },
