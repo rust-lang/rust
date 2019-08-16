@@ -207,6 +207,29 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
         }
     }
 
+    #[inline]
+    fn nth_back(&mut self, mut n: usize) -> Option<A::Item> {
+        match self.state {
+            ChainState::Both | ChainState::Back => {
+                for x in self.b.by_ref().rev() {
+                    if n == 0 {
+                        return Some(x)
+                    }
+                    n -= 1;
+                }
+                if let ChainState::Both = self.state {
+                    self.state = ChainState::Front;
+                }
+            }
+            ChainState::Front => {}
+        }
+        if let ChainState::Front = self.state {
+            self.a.nth_back(n)
+        } else {
+            None
+        }
+    }
+
     fn try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R where
         Self: Sized, F: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
