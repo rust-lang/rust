@@ -251,6 +251,7 @@
 #![feature(concat_idents)]
 #![feature(const_cstr_unchecked)]
 #![feature(const_raw_ptr_deref)]
+#![feature(container_error_extra)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
 #![feature(doc_alias)]
