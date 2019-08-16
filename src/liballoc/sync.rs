@@ -1104,8 +1104,10 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// # Safety
     ///
-    /// There must be no other `Arc` or [`Weak`] pointers to the same value.
-    /// This is the case for example immediately after `Rc::new`.
+    /// Any other `Arc` or [`Weak`] pointers to the same value must not be dereferenced
+    /// for the duration of the returned borrow.
+    /// This is trivially the case if no such pointer exist,
+    /// for example immediately after `Arc::new`.
     ///
     /// # Examples
     ///
