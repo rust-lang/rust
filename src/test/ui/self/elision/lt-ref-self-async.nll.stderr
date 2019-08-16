@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    |                                          ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#28r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#23r
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:15:47
@@ -24,7 +24,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                                                ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#28r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#23r
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:21:53
@@ -44,7 +44,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                                                         ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#28r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#23r
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:25:62
@@ -64,7 +64,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                                                         ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#28r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#23r
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:29:62
@@ -84,7 +84,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                                                  ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#28r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#23r
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:33:71
@@ -104,7 +104,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     async fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                                              ^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#28r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#23r
 
 error: lifetime may not live long enough
   --> $DIR/lt-ref-self-async.rs:37:67

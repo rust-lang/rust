@@ -328,7 +328,7 @@ impl Inliner<'tcx> {
                 }
 
                 TerminatorKind::Call {func: Operand::Constant(ref f), .. } => {
-                    if let ty::FnDef(def_id, _) = f.ty.sty {
+                    if let ty::FnDef(def_id, _) = f.literal.ty.sty {
                         // Don't give intrinsics the extra penalty for calls
                         let f = tcx.fn_sig(def_id);
                         if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {

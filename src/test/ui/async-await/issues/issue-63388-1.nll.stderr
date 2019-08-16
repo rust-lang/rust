@@ -4,7 +4,7 @@ error[E0700]: hidden type for `impl Trait` captures lifetime that does not appea
 LL |     ) -> &dyn Foo
    |          ^^^^^^^^
    |
-   = note: hidden type `impl std::future::Future` captures lifetime '_#27r
+   = note: hidden type `impl std::future::Future` captures lifetime '_#22r
 
 error: lifetime may not live long enough
   --> $DIR/issue-63388-1.rs:15:5
