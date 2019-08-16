@@ -334,17 +334,11 @@ impl<T> Arc<T> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
-        let layout = Layout::new::<ArcInner<mem::MaybeUninit<T>>>();
         unsafe {
-            let mut ptr = Global.alloc(layout)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-                .cast::<ArcInner<mem::MaybeUninit<T>>>();
-            ptr::write(&mut ptr.as_mut().strong, atomic::AtomicUsize::new(1));
-            ptr::write(&mut ptr.as_mut().weak, atomic::AtomicUsize::new(1));
-            Arc {
-                ptr,
-                phantom: PhantomData,
-            }
+            Arc::from_ptr(Arc::allocate_for_unsized(
+                Layout::new::<T>(),
+                |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
+            ))
         }
     }
 
@@ -424,24 +418,8 @@ impl<T> Arc<[T]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Arc<[mem::MaybeUninit<T>]> {
-        let data_layout = Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        // This relies on `value` being the last field of `RcBox` in memory,
-        // so that the layout of `RcBox<T>` is the same as that of `RcBox<()>` followed by `T`.
-        let (layout, offset) = Layout::new::<ArcInner<()>>().extend(data_layout).unwrap();
         unsafe {
-            let allocated_ptr = Global.alloc(layout)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-                .as_ptr();
-            let data_ptr = allocated_ptr.add(offset) as *mut mem::MaybeUninit<T>;
-            let slice: *mut [mem::MaybeUninit<T>] = from_raw_parts_mut(data_ptr, len);
-            let wide_ptr = slice as *mut ArcInner<[mem::MaybeUninit<T>]>;
-            let wide_ptr = set_data_ptr(wide_ptr, allocated_ptr);
-            ptr::write(&mut (*wide_ptr).strong, atomic::AtomicUsize::new(1));
-            ptr::write(&mut (*wide_ptr).weak, atomic::AtomicUsize::new(1));
-            Arc {
-                ptr: NonNull::new_unchecked(wide_ptr),
-                phantom: PhantomData,
-            }
+            Arc::from_ptr(Arc::allocate_for_slice(len))
         }
     }
 }
@@ -481,10 +459,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<T> {
-        Arc {
-            ptr: mem::ManuallyDrop::new(self).ptr.cast(),
-            phantom: PhantomData,
-        }
+        Arc::from_inner(mem::ManuallyDrop::new(self).ptr.cast())
     }
 }
 
@@ -525,10 +500,7 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Arc<[T]> {
-        Arc {
-            ptr: NonNull::new_unchecked(mem::ManuallyDrop::new(self).ptr.as_ptr() as _),
-            phantom: PhantomData,
-        }
+        Arc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _)
     }
 }
 

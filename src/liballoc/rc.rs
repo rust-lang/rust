@@ -350,17 +350,11 @@ impl<T> Rc<T> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
-        let layout = Layout::new::<RcBox<mem::MaybeUninit<T>>>();
         unsafe {
-            let mut ptr = Global.alloc(layout)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-                .cast::<RcBox<mem::MaybeUninit<T>>>();
-            ptr::write(&mut ptr.as_mut().strong, Cell::new(1));
-            ptr::write(&mut ptr.as_mut().weak, Cell::new(1));
-            Rc {
-                ptr,
-                phantom: PhantomData,
-            }
+            Rc::from_ptr(Rc::allocate_for_unsized(
+                Layout::new::<T>(),
+                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
+            ))
         }
     }
 
@@ -440,24 +434,8 @@ impl<T> Rc<[T]> {
     /// ```
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
-        let data_layout = Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
-        // This relies on `value` being the last field of `RcBox` in memory,
-        // so that the layout of `RcBox<T>` is the same as that of `RcBox<()>` followed by `T`.
-        let (layout, offset) = Layout::new::<RcBox<()>>().extend(data_layout).unwrap();
         unsafe {
-            let allocated_ptr = Global.alloc(layout)
-                .unwrap_or_else(|_| handle_alloc_error(layout))
-                .as_ptr();
-            let data_ptr = allocated_ptr.add(offset) as *mut mem::MaybeUninit<T>;
-            let slice: *mut [mem::MaybeUninit<T>] = from_raw_parts_mut(data_ptr, len);
-            let wide_ptr = slice as *mut RcBox<[mem::MaybeUninit<T>]>;
-            let wide_ptr = set_data_ptr(wide_ptr, allocated_ptr);
-            ptr::write(&mut (*wide_ptr).strong, Cell::new(1));
-            ptr::write(&mut (*wide_ptr).weak, Cell::new(1));
-            Rc {
-                ptr: NonNull::new_unchecked(wide_ptr),
-                phantom: PhantomData,
-            }
+            Rc::from_ptr(Rc::allocate_for_slice(len))
         }
     }
 }
@@ -497,10 +475,7 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Rc<T> {
-        Rc {
-            ptr: mem::ManuallyDrop::new(self).ptr.cast(),
-            phantom: PhantomData,
-        }
+        Rc::from_inner(mem::ManuallyDrop::new(self).ptr.cast())
     }
 }
 
@@ -541,10 +516,7 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub unsafe fn assume_init(self) -> Rc<[T]> {
-        Rc {
-            ptr: NonNull::new_unchecked(mem::ManuallyDrop::new(self).ptr.as_ptr() as _),
-            phantom: PhantomData,
-        }
+        Rc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _)
     }
 }
 
