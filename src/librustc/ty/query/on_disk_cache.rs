@@ -23,16 +23,16 @@ use std::mem;
 use syntax::ast::NodeId;
 use syntax::source_map::{SourceMap, StableSourceFileId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
-use syntax_pos::hygiene::{ExpnId, SyntaxContext, ExpnInfo};
+use syntax_pos::hygiene::{ExpnId, SyntaxContext, ExpnData};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
 const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
 const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
-const TAG_NO_EXPANSION_INFO: u8 = 0;
-const TAG_EXPANSION_INFO_SHORTHAND: u8 = 1;
-const TAG_EXPANSION_INFO_INLINE: u8 = 2;
+const TAG_NO_EXPN_DATA: u8 = 0;
+const TAG_EXPN_DATA_SHORTHAND: u8 = 1;
+const TAG_EXPN_DATA_INLINE: u8 = 2;
 
 const TAG_VALID_SPAN: u8 = 0;
 const TAG_INVALID_SPAN: u8 = 1;
@@ -58,7 +58,7 @@ pub struct OnDiskCache<'sess> {
 
     // These two fields caches that are populated lazily during decoding.
     file_index_to_file: Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
-    synthetic_expansion_infos: Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
+    synthetic_syntax_contexts: Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
@@ -135,7 +135,7 @@ impl<'sess> OnDiskCache<'sess> {
             current_diagnostics: Default::default(),
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
-            synthetic_expansion_infos: Default::default(),
+            synthetic_syntax_contexts: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(footer.interpret_alloc_index),
         }
     }
@@ -151,7 +151,7 @@ impl<'sess> OnDiskCache<'sess> {
             current_diagnostics: Default::default(),
             query_result_index: Default::default(),
             prev_diagnostics_index: Default::default(),
-            synthetic_expansion_infos: Default::default(),
+            synthetic_syntax_contexts: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
         }
     }
@@ -185,7 +185,7 @@ impl<'sess> OnDiskCache<'sess> {
                 encoder,
                 type_shorthands: Default::default(),
                 predicate_shorthands: Default::default(),
-                expn_info_shorthands: Default::default(),
+                expn_data_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
                 interpret_allocs_inverse: Vec::new(),
                 source_map: CachingSourceMapView::new(tcx.sess.source_map()),
@@ -383,7 +383,7 @@ impl<'sess> OnDiskCache<'sess> {
             cnum_map: self.cnum_map.get(),
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
-            synthetic_expansion_infos: &self.synthetic_expansion_infos,
+            synthetic_syntax_contexts: &self.synthetic_syntax_contexts,
             alloc_decoding_session: self.alloc_decoding_state.new_decoding_session(),
         };
 
@@ -440,7 +440,7 @@ struct CacheDecoder<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
     source_map: &'a SourceMap,
     cnum_map: &'a IndexVec<CrateNum, Option<CrateNum>>,
-    synthetic_expansion_infos: &'a Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
+    synthetic_syntax_contexts: &'a Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
     file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, StableSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
@@ -586,37 +586,37 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
         let lo = file_lo.lines[line_lo - 1] + col_lo;
         let hi = lo + len;
 
-        let expn_info_tag = u8::decode(self)?;
+        let expn_data_tag = u8::decode(self)?;
 
-        // FIXME(mw): This method does not restore `InternalExpnData::parent` or
+        // FIXME(mw): This method does not restore `ExpnData::parent` or
         // `SyntaxContextData::prev_ctxt` or `SyntaxContextData::opaque`. These things
         // don't seem to be used after HIR lowering, so everything should be fine
         // as long as incremental compilation does not kick in before that.
-        let location = || Span::new(lo, hi, SyntaxContext::empty());
-        let recover_from_expn_info = |this: &Self, expn_info, pos| {
-            let span = location().fresh_expansion(ExpnId::root(), expn_info);
-            this.synthetic_expansion_infos.borrow_mut().insert(pos, span.ctxt());
+        let location = || Span::with_root_ctxt(lo, hi);
+        let recover_from_expn_data = |this: &Self, expn_data, pos| {
+            let span = location().fresh_expansion(expn_data);
+            this.synthetic_syntax_contexts.borrow_mut().insert(pos, span.ctxt());
             span
         };
-        Ok(match expn_info_tag {
-            TAG_NO_EXPANSION_INFO => {
+        Ok(match expn_data_tag {
+            TAG_NO_EXPN_DATA => {
                 location()
             }
-            TAG_EXPANSION_INFO_INLINE => {
-                let expn_info = Decodable::decode(self)?;
-                recover_from_expn_info(
-                    self, expn_info, AbsoluteBytePos::new(self.opaque.position())
+            TAG_EXPN_DATA_INLINE => {
+                let expn_data = Decodable::decode(self)?;
+                recover_from_expn_data(
+                    self, expn_data, AbsoluteBytePos::new(self.opaque.position())
                 )
             }
-            TAG_EXPANSION_INFO_SHORTHAND => {
+            TAG_EXPN_DATA_SHORTHAND => {
                 let pos = AbsoluteBytePos::decode(self)?;
-                let cached_ctxt = self.synthetic_expansion_infos.borrow().get(&pos).cloned();
+                let cached_ctxt = self.synthetic_syntax_contexts.borrow().get(&pos).cloned();
                 if let Some(ctxt) = cached_ctxt {
                     Span::new(lo, hi, ctxt)
                 } else {
-                    let expn_info =
-                        self.with_position(pos.to_usize(), |this| ExpnInfo::decode(this))?;
-                    recover_from_expn_info(self, expn_info, pos)
+                    let expn_data =
+                        self.with_position(pos.to_usize(), |this| ExpnData::decode(this))?;
+                    recover_from_expn_data(self, expn_data, pos)
                 }
             }
             _ => {
@@ -725,7 +725,7 @@ struct CacheEncoder<'a, 'tcx, E: ty_codec::TyEncoder> {
     encoder: &'a mut E,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-    expn_info_shorthands: FxHashMap<ExpnId, AbsoluteBytePos>,
+    expn_data_shorthands: FxHashMap<ExpnId, AbsoluteBytePos>,
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
     source_map: CachingSourceMapView<'tcx>,
@@ -816,22 +816,18 @@ where
         col_lo.encode(self)?;
         len.encode(self)?;
 
-        if span_data.ctxt == SyntaxContext::empty() {
-            TAG_NO_EXPANSION_INFO.encode(self)
+        if span_data.ctxt == SyntaxContext::root() {
+            TAG_NO_EXPN_DATA.encode(self)
         } else {
-            let (expn_id, expn_info) = span_data.ctxt.outer_expn_with_info();
-            if let Some(expn_info) = expn_info {
-                if let Some(pos) = self.expn_info_shorthands.get(&expn_id).cloned() {
-                    TAG_EXPANSION_INFO_SHORTHAND.encode(self)?;
-                    pos.encode(self)
-                } else {
-                    TAG_EXPANSION_INFO_INLINE.encode(self)?;
-                    let pos = AbsoluteBytePos::new(self.position());
-                    self.expn_info_shorthands.insert(expn_id, pos);
-                    expn_info.encode(self)
-                }
+            let (expn_id, expn_data) = span_data.ctxt.outer_expn_with_data();
+            if let Some(pos) = self.expn_data_shorthands.get(&expn_id).cloned() {
+                TAG_EXPN_DATA_SHORTHAND.encode(self)?;
+                pos.encode(self)
             } else {
-                TAG_NO_EXPANSION_INFO.encode(self)
+                TAG_EXPN_DATA_INLINE.encode(self)?;
+                let pos = AbsoluteBytePos::new(self.position());
+                self.expn_data_shorthands.insert(expn_id, pos);
+                expn_data.encode(self)
             }
         }
     }

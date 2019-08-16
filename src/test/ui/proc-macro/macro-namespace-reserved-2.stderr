@@ -88,18 +88,6 @@ error: expected derive macro, found macro `crate::my_macro`
 LL | #[derive(crate::my_macro)]
    |          ^^^^^^^^^^^^^^^ not a derive macro
 
-error: cannot find attribute macro `my_macro` in this scope
-  --> $DIR/macro-namespace-reserved-2.rs:38:3
-   |
-LL | #[my_macro]
-   |   ^^^^^^^^
-
-error: cannot find derive macro `my_macro` in this scope
-  --> $DIR/macro-namespace-reserved-2.rs:48:10
-   |
-LL | #[derive(my_macro)]
-   |          ^^^^^^^^
-
 error: cannot find macro `my_macro_attr!` in this scope
   --> $DIR/macro-namespace-reserved-2.rs:28:5
    |
@@ -111,6 +99,18 @@ error: cannot find macro `MyTrait!` in this scope
    |
 LL |     MyTrait!();
    |     ^^^^^^^
+
+error: cannot find attribute macro `my_macro` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:38:3
+   |
+LL | #[my_macro]
+   |   ^^^^^^^^
+
+error: cannot find derive macro `my_macro` in this scope
+  --> $DIR/macro-namespace-reserved-2.rs:48:10
+   |
+LL | #[derive(my_macro)]
+   |          ^^^^^^^^
 
 error: aborting due to 19 previous errors
 

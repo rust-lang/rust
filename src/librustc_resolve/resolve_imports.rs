@@ -1,3 +1,5 @@
+//! A bunch of methods and structures more or less related to resolving imports.
+
 use ImportDirectiveSubclass::*;
 
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
@@ -394,7 +396,7 @@ impl<'a> Resolver<'a> {
             match ident.span.glob_adjust(module.expansion, glob_import.span) {
                 Some(Some(def)) => {
                     tmp_parent_scope =
-                        ParentScope { module: self.macro_def_scope(def), ..parent_scope.clone() };
+                        ParentScope { module: self.macro_def_scope(def), ..*parent_scope };
                     adjusted_parent_scope = &tmp_parent_scope;
                 }
                 Some(None) => {}
@@ -848,7 +850,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         directive.vis.set(orig_vis);
         let module = match path_res {
             PathResult::Module(module) => {
-                // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
+                // Consistency checks, analogous to `finalize_macro_resolutions`.
                 if let Some(initial_module) = directive.imported_module.get() {
                     if !ModuleOrUniformRoot::same_def(module, initial_module) && no_ambiguity {
                         span_bug!(directive.span, "inconsistent resolution for an import");
@@ -973,7 +975,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             match binding {
                 Ok(binding) => {
-                    // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
+                    // Consistency checks, analogous to `finalize_macro_resolutions`.
                     let initial_res = source_bindings[ns].get().map(|initial_binding| {
                         all_ns_err = false;
                         if let Some(target_binding) = target_bindings[ns].get() {

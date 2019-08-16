@@ -35,7 +35,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
             match annitem.node {
                 ItemKind::Struct(_, Generics { ref params, .. }) |
                 ItemKind::Enum(_, Generics { ref params, .. }) => {
-                    let container_id = cx.current_expansion.id.parent();
+                    let container_id = cx.current_expansion.id.expn_data().parent;
                     if cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                         !params.iter().any(|param| match param.kind {
                             ast::GenericParamKind::Type { .. } => true,
@@ -129,7 +129,7 @@ fn cs_clone_shallow(name: &str,
     if is_union {
         // let _: AssertParamIsCopy<Self>;
         let self_ty =
-            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_empty_ctxt(kw::SelfUpper)));
+            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_dummy_span(kw::SelfUpper)));
         assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, "AssertParamIsCopy");
     } else {
         match *substr.fields {

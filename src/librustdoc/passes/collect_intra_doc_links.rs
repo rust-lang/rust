@@ -4,6 +4,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::lint as lint;
 use rustc::ty;
+use rustc_resolve::ParentScope;
 use syntax;
 use syntax::ast::{self, Ident};
 use syntax::ext::base::SyntaxExtensionKind;
@@ -431,7 +432,7 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
     let path = ast::Path::from_ident(Ident::from_str(path_str));
     cx.enter_resolver(|resolver| {
         if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-            &path, None, &resolver.dummy_parent_scope(), false, false
+            &path, None, &ParentScope::module(resolver.graph_root), false, false
         ) {
             if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
                 return Some(res.map_id(|_| panic!("unexpected id")));

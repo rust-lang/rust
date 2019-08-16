@@ -2943,7 +2943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (PlaceOp::Index, false) => (self.tcx.lang_items().index_trait(), sym::index),
             (PlaceOp::Index, true) => (self.tcx.lang_items().index_mut_trait(), sym::index_mut),
         };
-        (tr, ast::Ident::with_empty_ctxt(name))
+        (tr, ast::Ident::with_dummy_span(name))
     }
 
     fn try_overloaded_place_op(&self,

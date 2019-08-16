@@ -23,13 +23,13 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
     let sp = sp.apply_mark(cx.current_expansion.id);
     let e = match env::var(&*var.as_str()) {
         Err(..) => {
-            let lt = cx.lifetime(sp, Ident::with_empty_ctxt(kw::StaticLifetime));
+            let lt = cx.lifetime(sp, Ident::with_dummy_span(kw::StaticLifetime));
             cx.expr_path(cx.path_all(sp,
                                      true,
                                      cx.std_path(&[sym::option, sym::Option, sym::None]),
                                      vec![GenericArg::Type(cx.ty_rptr(sp,
                                                      cx.ty_ident(sp,
-                                                                 Ident::with_empty_ctxt(sym::str)),
+                                                                 Ident::with_dummy_span(sym::str)),
                                                      Some(lt),
                                                      ast::Mutability::Immutable))],
                                      vec![]))

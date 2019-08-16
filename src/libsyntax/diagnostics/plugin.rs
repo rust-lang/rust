@@ -172,7 +172,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
             (descriptions.len(), ecx.expr_vec(span, descriptions))
         });
 
-    let static_ = ecx.lifetime(span, Ident::with_empty_ctxt(kw::StaticLifetime));
+    let static_ = ecx.lifetime(span, Ident::with_dummy_span(kw::StaticLifetime));
     let ty_str = ecx.ty_rptr(
         span,
         ecx.ty_ident(span, ecx.ident_of("str")),

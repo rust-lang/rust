@@ -15,7 +15,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
+use syntax_pos::hygiene::{ExpnData, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -640,10 +640,11 @@ impl SyntaxExtension {
         SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr { mark_used }, edition)
     }
 
-    pub fn expn_info(&self, call_site: Span, descr: Symbol) -> ExpnInfo {
-        ExpnInfo {
-            call_site,
+    pub fn expn_data(&self, parent: ExpnId, call_site: Span, descr: Symbol) -> ExpnData {
+        ExpnData {
             kind: ExpnKind::Macro(self.macro_kind(), descr),
+            parent,
+            call_site,
             def_site: self.span,
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
@@ -707,7 +708,7 @@ pub struct ExpansionData {
 
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
-/// -> expn_info` of their expansion context stored into their span.
+/// -> expn_data` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
@@ -756,13 +757,10 @@ impl<'a> ExtCtxt<'a> {
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
-        match self.current_expansion.id.expn_info() {
-            Some(expn_info) => expn_info.call_site,
-            None => DUMMY_SP,
-        }
+        self.current_expansion.id.expn_data().call_site
     }
     pub fn backtrace(&self) -> SyntaxContext {
-        SyntaxContext::empty().apply_mark(self.current_expansion.id)
+        SyntaxContext::root().apply_mark(self.current_expansion.id)
     }
 
     /// Returns span for the macro which originally caused the current expansion to happen.
@@ -772,17 +770,13 @@ impl<'a> ExtCtxt<'a> {
         let mut ctxt = self.backtrace();
         let mut last_macro = None;
         loop {
-            if ctxt.outer_expn_info().map_or(None, |info| {
-                if info.kind.descr() == sym::include {
-                    // Stop going up the backtrace once include! is encountered
-                    return None;
-                }
-                ctxt = info.call_site.ctxt();
-                last_macro = Some(info.call_site);
-                Some(())
-            }).is_none() {
-                break
+            let expn_data = ctxt.outer_expn_data();
+            // Stop going up the backtrace once include! is encountered
+            if expn_data.is_root() || expn_data.kind.descr() == sym::include {
+                break;
             }
+            ctxt = expn_data.call_site.ctxt();
+            last_macro = Some(expn_data.call_site);
         }
         last_macro
     }
@@ -872,7 +866,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
         let def_site = DUMMY_SP.apply_mark(self.current_expansion.id);
         iter::once(Ident::new(kw::DollarCrate, def_site))
-            .chain(components.iter().map(|&s| Ident::with_empty_ctxt(s)))
+            .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
     }
     pub fn name_of(&self, st: &str) -> ast::Name {

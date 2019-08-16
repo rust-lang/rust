@@ -425,7 +425,7 @@ impl<'a> TraitDef<'a> {
                         return;
                     }
                 };
-                let container_id = cx.current_expansion.id.parent();
+                let container_id = cx.current_expansion.id.expn_data().parent;
                 let is_always_copy =
                     cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                     has_no_type_params;
@@ -928,7 +928,7 @@ impl<'a> MethodDef<'a> {
 
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
-                let ident = Ident::with_empty_ctxt(kw::SelfLower).with_span_pos(trait_.span);
+                let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(trait_.span);
                 ast::Arg::from_self(ThinVec::default(), explicit_self, ident)
             });
             let nonself_args = arg_types.into_iter()

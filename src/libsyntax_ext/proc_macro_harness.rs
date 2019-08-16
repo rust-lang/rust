@@ -3,10 +3,9 @@ use std::mem;
 use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::source_map::{ExpnInfo, ExpnKind, respan};
+use syntax::source_map::{ExpnData, ExpnKind, respan};
 use syntax::ext::base::{ExtCtxt, MacroKind};
 use syntax::ext::expand::{AstFragment, ExpansionConfig};
-use syntax::ext::hygiene::ExpnId;
 use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
@@ -328,7 +327,7 @@ fn mk_decls(
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],
 ) -> P<ast::Item> {
-    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+    let span = DUMMY_SP.fresh_expansion(ExpnData::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
         [sym::rustc_attrs, sym::proc_macro_internals][..].into(),
     ));
@@ -337,7 +336,7 @@ fn mk_decls(
     let doc = cx.meta_list(span, sym::doc, vec![hidden]);
     let doc_hidden = cx.attribute(doc);
 
-    let proc_macro = Ident::with_empty_ctxt(sym::proc_macro);
+    let proc_macro = Ident::with_dummy_span(sym::proc_macro);
     let krate = cx.item(span,
                         proc_macro,
                         Vec::new(),
@@ -349,7 +348,7 @@ fn mk_decls(
     let custom_derive = Ident::from_str("custom_derive");
     let attr = Ident::from_str("attr");
     let bang = Ident::from_str("bang");
-    let crate_kw = Ident::with_empty_ctxt(kw::Crate);
+    let crate_kw = Ident::with_dummy_span(kw::Crate);
 
     let decls = {
         let local_path = |sp: Span, name| {

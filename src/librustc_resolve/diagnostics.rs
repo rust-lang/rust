@@ -376,9 +376,9 @@ impl<'a> Resolver<'a> {
                 Scope::DeriveHelpers => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                     if filter_fn(res) {
-                        for derive in &parent_scope.derives {
+                        for derive in parent_scope.derives {
                             let parent_scope =
-                                &ParentScope { derives: Vec::new(), ..*parent_scope };
+                                &ParentScope { derives: &[], ..*parent_scope };
                             if let Ok((Some(ext), _)) = this.resolve_macro_path(
                                 derive, Some(MacroKind::Derive), parent_scope, false, false
                             ) {
@@ -455,7 +455,7 @@ impl<'a> Resolver<'a> {
                         let mut tmp_suggestions = Vec::new();
                         add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
                         suggestions.extend(tmp_suggestions.into_iter().filter(|s| {
-                            use_prelude || this.is_builtin_macro(s.res.opt_def_id())
+                            use_prelude || this.is_builtin_macro(s.res)
                         }));
                     }
                 }
@@ -595,7 +595,7 @@ impl<'a> Resolver<'a> {
         where FilterFn: Fn(Res) -> bool
     {
         let mut suggestions = self.lookup_import_candidates_from_module(
-            lookup_ident, namespace, self.graph_root, Ident::with_empty_ctxt(kw::Crate), &filter_fn
+            lookup_ident, namespace, self.graph_root, Ident::with_dummy_span(kw::Crate), &filter_fn
         );
 
         if lookup_ident.span.rust_2018() {
