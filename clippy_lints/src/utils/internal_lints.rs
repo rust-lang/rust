@@ -180,10 +180,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             // not able to capture the error.
             // Therefore, we need to climb the macro expansion tree and find the
             // actual span that invoked `declare_tool_lint!`:
-            let lint_span = lint_span
-                .ctxt()
-                .outer_expn_data()
-                .call_site;
+            let lint_span = lint_span.ctxt().outer_expn_data().call_site;
 
             if !self.registered_lints.contains(lint_name) {
                 span_lint(
