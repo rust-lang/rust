@@ -220,6 +220,7 @@ needs to be specified in `rustfmt.toml`, e.g., with `edition = "2018"`.
   | stdout | writes output to stdout | No |
   | coverage | displays how much of the input file was processed | Yes |
   | checkstyle | emits in a checkstyle format | Yes |
+  | json | emits diffs in a json format | Yes |
 
 ## License
 

@@ -486,6 +486,7 @@ pub(crate) fn create_emitter<'a>(config: &Config) -> Box<dyn Emitter + 'a> {
         EmitMode::Stdout | EmitMode::Coverage => {
             Box::new(emitter::StdoutEmitter::new(config.verbose()))
         }
+        EmitMode::Json => Box::new(emitter::JsonEmitter::default()),
         EmitMode::ModifiedLines => Box::new(emitter::ModifiedLinesEmitter::default()),
         EmitMode::Checkstyle => Box::new(emitter::CheckstyleEmitter::default()),
         EmitMode::Diff => Box::new(emitter::DiffEmitter::new(config.clone())),

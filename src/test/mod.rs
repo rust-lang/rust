@@ -201,6 +201,13 @@ fn checkstyle_test() {
 }
 
 #[test]
+fn json_test() {
+    let filename = "tests/writemode/source/json.rs";
+    let expected_filename = "tests/writemode/target/output.json";
+    assert_output(Path::new(filename), Path::new(expected_filename));
+}
+
+#[test]
 fn modified_test() {
     use std::io::BufRead;
 

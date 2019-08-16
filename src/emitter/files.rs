@@ -6,7 +6,7 @@ pub(crate) struct FilesEmitter;
 
 impl Emitter for FilesEmitter {
     fn emit_formatted_file(
-        &self,
+        &mut self,
         _output: &mut dyn Write,
         FormattedFile {
             filename,

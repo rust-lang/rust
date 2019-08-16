@@ -21,7 +21,7 @@ impl Emitter for CheckstyleEmitter {
     }
 
     fn emit_formatted_file(
-        &self,
+        &mut self,
         output: &mut dyn Write,
         FormattedFile {
             filename,

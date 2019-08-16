@@ -15,7 +15,7 @@ impl StdoutEmitter {
 
 impl Emitter for StdoutEmitter {
     fn emit_formatted_file(
-        &self,
+        &mut self,
         output: &mut dyn Write,
         FormattedFile {
             filename,

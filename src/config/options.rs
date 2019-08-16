@@ -119,6 +119,9 @@ pub enum EmitMode {
     Coverage,
     /// Unfancy stdout
     Checkstyle,
+    /// Writes the resulting diffs in a JSON format. Returns an empty array
+    /// `[]` if there were no diffs.
+    Json,
     /// Output the changed lines (for internal value only)
     ModifiedLines,
     /// Checks if a diff can be generated. If so, rustfmt outputs a diff and

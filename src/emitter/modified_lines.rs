@@ -7,7 +7,7 @@ pub(crate) struct ModifiedLinesEmitter;
 
 impl Emitter for ModifiedLinesEmitter {
     fn emit_formatted_file(
-        &self,
+        &mut self,
         output: &mut dyn Write,
         FormattedFile {
             original_text,

@@ -2,6 +2,7 @@ pub(crate) use self::checkstyle::*;
 pub(crate) use self::diff::*;
 pub(crate) use self::files::*;
 pub(crate) use self::files_with_backup::*;
+pub(crate) use self::json::*;
 pub(crate) use self::modified_lines::*;
 pub(crate) use self::stdout::*;
 use crate::FileName;
@@ -12,6 +13,7 @@ mod checkstyle;
 mod diff;
 mod files;
 mod files_with_backup;
+mod json;
 mod modified_lines;
 mod stdout;
 
@@ -28,7 +30,7 @@ pub(crate) struct EmitterResult {
 
 pub(crate) trait Emitter {
     fn emit_formatted_file(
-        &self,
+        &mut self,
         output: &mut dyn Write,
         formatted_file: FormattedFile<'_>,
     ) -> Result<EmitterResult, io::Error>;

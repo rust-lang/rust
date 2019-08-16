@@ -98,7 +98,7 @@ fn make_opts() -> Options {
     );
     let is_nightly = is_nightly();
     let emit_opts = if is_nightly {
-        "[files|stdout|coverage|checkstyle]"
+        "[files|stdout|coverage|checkstyle|json]"
     } else {
         "[files|stdout]"
     };
@@ -631,6 +631,7 @@ fn emit_mode_from_emit_str(emit_str: &str) -> Result<EmitMode, FailureError> {
         "stdout" => Ok(EmitMode::Stdout),
         "coverage" => Ok(EmitMode::Coverage),
         "checkstyle" => Ok(EmitMode::Checkstyle),
+        "json" => Ok(EmitMode::Json),
         _ => Err(format_err!("Invalid value for `--emit`")),
     }
 }

@@ -28,11 +28,11 @@ pub(crate) fn write_all_files<T>(
 where
     T: Write,
 {
-    let emitter = create_emitter(config);
+    let mut emitter = create_emitter(config);
 
     emitter.emit_header(out)?;
     for &(ref filename, ref text) in source_file {
-        write_file(None, filename, text, out, &*emitter)?;
+        write_file(None, filename, text, out, &mut *emitter)?;
     }
     emitter.emit_footer(out)?;
 
@@ -44,7 +44,7 @@ pub(crate) fn write_file<T>(
     filename: &FileName,
     formatted_text: &str,
     out: &mut T,
-    emitter: &dyn Emitter,
+    emitter: &mut dyn Emitter,
 ) -> Result<emitter::EmitterResult, io::Error>
 where
     T: Write,
