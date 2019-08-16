@@ -70,7 +70,7 @@ pub struct CrateMetadata {
     // whichever `TyCtxt` is being used to decode those values.
     pub root: schema::CrateRoot<'static>,
 
-    /// For each public item in this crate, we encode a key. When the
+    /// For each definition in this crate, we encode a key. When the
     /// crate is loaded, we read all the keys and put them in this
     /// hashmap, which gives the reverse mapping. This allows us to
     /// quickly retrace a `DefPath`, which is needed for incremental
