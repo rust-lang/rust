@@ -439,22 +439,19 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
 pub fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, 'tcx, impl Backend>,
     operand: &Operand<'tcx>,
-) -> Result<&'tcx Const<'tcx>, String> {
+) -> Option<&'tcx Const<'tcx>> {
     let place = match operand {
-        Operand::Copy(place) => place,
-        Operand::Constant(const_) => return Ok(force_eval_const(fx, const_.literal)),
-        _ => return Err(format!("{:?}", operand)),
+        Operand::Copy(place) | Operand::Move(place) => place,
+        Operand::Constant(const_) => return Some(force_eval_const(fx, const_.literal)),
     };
 
     assert!(place.projection.is_none());
     let static_ = match &place.base {
-        PlaceBase::Static(static_) => {
-            static_
-        }
-        PlaceBase::Local(_) => return Err("local".to_string()),
+        PlaceBase::Static(static_) => static_,
+        PlaceBase::Local(_) => return None,
     };
 
-    Ok(match &static_.kind {
+    Some(match &static_.kind {
         StaticKind::Static(_) => unimplemented!(),
         StaticKind::Promoted(promoted) => {
             fx.tcx.const_eval(ParamEnv::reveal_all().and(GlobalId {

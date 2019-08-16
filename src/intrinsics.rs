@@ -951,7 +951,17 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
 
         simd_extract, (c v, o idx) {
-            let idx_const = crate::constant::mir_operand_get_const_val(fx, idx).expect("simd_extract* idx not const");
+            let idx_const = if let Some(idx_const) = crate::constant::mir_operand_get_const_val(fx, idx) {
+                idx_const
+            } else {
+                fx.tcx.sess.span_warn(
+                    fx.mir.span,
+                    "`#[rustc_arg_required_const(..)]` is not yet supported. Calling this function will panic.",
+                );
+                crate::trap::trap_panic(fx, "`#[rustc_arg_required_const(..)]` is not yet supported.");
+                return;
+            };
+
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
             let (_lane_type, lane_count) = lane_type_and_count(fx, v.layout(), intrinsic);
             if idx >= lane_count.into() {
