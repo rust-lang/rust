@@ -1949,7 +1949,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
                 FnPtr(..) => Some((format!("Function pointers must be non-null"), None)),
                 Never => Some((format!("The never type (`!`) has no valid value"), None)),
-                // Primitive types with other constraints
+                // Primitive types with other constraints.
                 Bool if init == InitKind::Uninit =>
                     Some((format!("Booleans must be `true` or `false`"), None)),
                 Char if init == InitKind::Uninit =>
