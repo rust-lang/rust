@@ -80,15 +80,6 @@ impl MockAnalysis {
             .expect("no file in this mock");
         FileId(idx as u32 + 1)
     }
-    pub fn id_and_contents_of(&self, path: &str) -> (FileId, String) {
-        let (idx, contents) = self
-            .files
-            .iter()
-            .enumerate()
-            .find(|(_, (p, _text))| path == p)
-            .expect("no file in this mock");
-        (FileId(idx as u32 + 1), contents.1.to_string())
-    }
     pub fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();
         let source_root = SourceRootId(0);
@@ -131,14 +122,6 @@ pub fn single_file(code: &str) -> (Analysis, FileId) {
     let mut mock = MockAnalysis::new();
     let file_id = mock.add_file("/main.rs", code);
     (mock.analysis(), file_id)
-}
-
-/// Creates analysis from a fixture with multiple files
-/// and returns the file id and contents of the target file.
-pub fn fixture_with_target_file(fixture: &str, target_file: &str) -> (Analysis, FileId, String) {
-    let mock = MockAnalysis::with_files(fixture);
-    let (target_file_id, target_file_contents) = mock.id_and_contents_of(target_file);
-    (mock.analysis(), target_file_id, target_file_contents)
 }
 
 /// Creates analysis for a single file, returns position marked with <|>.

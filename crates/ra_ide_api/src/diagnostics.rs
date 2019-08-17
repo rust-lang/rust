@@ -187,7 +187,7 @@ mod tests {
     use ra_syntax::SourceFile;
     use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::{fixture_with_target_file, single_file};
+    use crate::mock_analysis::{analysis_and_position, single_file};
 
     use super::*;
 
@@ -216,14 +216,25 @@ mod tests {
         assert_eq_text!(after, &actual);
     }
 
-    fn check_apply_diagnostic_fix_for_target_file(target_file: &str, fixture: &str, after: &str) {
-        let (analysis, file_id, target_file_contents) =
-            fixture_with_target_file(fixture, target_file);
-        let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
+    /// Takes a multi-file input fixture with annotated cursor positions,
+    /// and checks that:
+    ///  * a diagnostic is produced
+    ///  * this diagnostic touches the input cursor position
+    ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
+    fn check_apply_diagnostic_fix_from_position(fixture: &str, after: &str) {
+        let (analysis, file_position) = analysis_and_position(fixture);
+        let diagnostic = analysis.diagnostics(file_position.file_id).unwrap().pop().unwrap();
         let mut fix = diagnostic.fix.unwrap();
         let edit = fix.source_file_edits.pop().unwrap().edit;
+        let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
         let actual = edit.apply(&target_file_contents);
         assert_eq_text!(after, &actual);
+        assert!(
+            diagnostic.range.start() <= file_position.offset && diagnostic.range.end() >= file_position.offset,
+            "diagnostic range {} does not touch cursor position {}",
+            diagnostic.range,
+            file_position.offset
+        );
     }
 
     fn check_apply_diagnostic_fix(before: &str, after: &str) {
@@ -235,9 +246,11 @@ mod tests {
         assert_eq_text!(after, &actual);
     }
 
-    fn check_no_diagnostic_for_target_file(target_file: &str, fixture: &str) {
-        let (analysis, file_id, _) = fixture_with_target_file(fixture, target_file);
-        let diagnostics = analysis.diagnostics(file_id).unwrap();
+    /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
+    /// apply to the file containing the cursor.
+    fn check_no_diagnostic_for_target_file(fixture: &str) {
+        let (analysis, file_position) = analysis_and_position(fixture);
+        let diagnostics = analysis.diagnostics(file_position.file_id).unwrap();
         assert_eq!(diagnostics.len(), 0);
     }
 
@@ -257,7 +270,7 @@ mod tests {
                 if y == 0 {
                     return Err("div by zero".into());
                 }
-                x / y
+                x / y<|>
             }
 
             //- /std/lib.rs
@@ -279,7 +292,7 @@ fn div(x: i32, y: i32) -> Result<i32, String> {
     Ok(x / y)
 }
 "#;
-        check_apply_diagnostic_fix_for_target_file("/main.rs", before, after);
+        check_apply_diagnostic_fix_from_position(before, after);
     }
 
     #[test]
@@ -292,7 +305,7 @@ fn div(x: i32, y: i32) -> Result<i32, String> {
                 if x == 0 {
                     return Err(7);
                 }
-                x
+                <|>x
             }
 
             //- /std/lib.rs
@@ -311,7 +324,7 @@ fn div<T>(x: T) -> Result<T, i32> {
     Ok(x)
 }
 "#;
-        check_apply_diagnostic_fix_for_target_file("/main.rs", before, after);
+        check_apply_diagnostic_fix_from_position(before, after);
     }
 
     #[test]
@@ -326,7 +339,7 @@ fn div<T>(x: T) -> Result<T, i32> {
                 if y == 0 {
                     return Err("div by zero".into());
                 }
-                x / y
+                x <|>/ y
             }
 
             //- /std/lib.rs
@@ -349,7 +362,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     Ok(x / y)
 }
 "#;
-        check_apply_diagnostic_fix_for_target_file("/main.rs", before, after);
+        check_apply_diagnostic_fix_from_position(before, after);
     }
 
     #[test]
@@ -359,7 +372,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
             use std::{string::String, result::Result::{self, Ok, Err}};
 
             fn foo() -> Result<String, i32> {
-                0
+                0<|>
             }
 
             //- /std/lib.rs
@@ -370,7 +383,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-        check_no_diagnostic_for_target_file("/main.rs", content);
+        check_no_diagnostic_for_target_file(content);
     }
 
     #[test]
@@ -385,7 +398,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
             }
 
             fn foo() -> SomeOtherEnum {
-                0
+                0<|>
             }
 
             //- /std/lib.rs
@@ -396,7 +409,7 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-        check_no_diagnostic_for_target_file("/main.rs", content);
+        check_no_diagnostic_for_target_file(content);
     }
 
     #[test]
