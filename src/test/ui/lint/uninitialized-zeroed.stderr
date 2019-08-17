@@ -1,5 +1,5 @@
 error: the type `&'static T` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:22:32
+  --> $DIR/uninitialized-zeroed.rs:29:32
    |
 LL |         let _val: &'static T = mem::zeroed();
    |                                ^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | #![deny(invalid_value)]
    = note: References must be non-null
 
 error: the type `&'static T` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:23:32
+  --> $DIR/uninitialized-zeroed.rs:30:32
    |
 LL |         let _val: &'static T = mem::uninitialized();
    |                                ^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |         let _val: &'static T = mem::uninitialized();
    = note: References must be non-null
 
 error: the type `Wrap<&'static T>` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:25:38
+  --> $DIR/uninitialized-zeroed.rs:32:38
    |
 LL |         let _val: Wrap<&'static T> = mem::zeroed();
    |                                      ^^^^^^^^^^^^^
@@ -35,13 +35,13 @@ LL |         let _val: Wrap<&'static T> = mem::zeroed();
    |                                      help: use `MaybeUninit<T>` instead
    |
 note: References must be non-null (in this struct field)
-  --> $DIR/uninitialized-zeroed.rs:16:18
+  --> $DIR/uninitialized-zeroed.rs:18:18
    |
 LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 error: the type `Wrap<&'static T>` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:26:38
+  --> $DIR/uninitialized-zeroed.rs:33:38
    |
 LL |         let _val: Wrap<&'static T> = mem::uninitialized();
    |                                      ^^^^^^^^^^^^^^^^^^^^
@@ -50,13 +50,13 @@ LL |         let _val: Wrap<&'static T> = mem::uninitialized();
    |                                      help: use `MaybeUninit<T>` instead
    |
 note: References must be non-null (in this struct field)
-  --> $DIR/uninitialized-zeroed.rs:16:18
+  --> $DIR/uninitialized-zeroed.rs:18:18
    |
 LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 error: the type `!` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:32:23
+  --> $DIR/uninitialized-zeroed.rs:40:23
    |
 LL |         let _val: ! = mem::zeroed();
    |                       ^^^^^^^^^^^^^
@@ -67,7 +67,7 @@ LL |         let _val: ! = mem::zeroed();
    = note: The never type (`!`) has no valid value
 
 error: the type `!` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:33:23
+  --> $DIR/uninitialized-zeroed.rs:41:23
    |
 LL |         let _val: ! = mem::uninitialized();
    |                       ^^^^^^^^^^^^^^^^^^^^
@@ -78,7 +78,7 @@ LL |         let _val: ! = mem::uninitialized();
    = note: The never type (`!`) has no valid value
 
 error: the type `(i32, !)` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:35:30
+  --> $DIR/uninitialized-zeroed.rs:43:30
    |
 LL |         let _val: (i32, !) = mem::zeroed();
    |                              ^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL |         let _val: (i32, !) = mem::zeroed();
    = note: The never type (`!`) has no valid value
 
 error: the type `(i32, !)` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:36:30
+  --> $DIR/uninitialized-zeroed.rs:44:30
    |
 LL |         let _val: (i32, !) = mem::uninitialized();
    |                              ^^^^^^^^^^^^^^^^^^^^
@@ -100,7 +100,7 @@ LL |         let _val: (i32, !) = mem::uninitialized();
    = note: The never type (`!`) has no valid value
 
 error: the type `Void` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:38:26
+  --> $DIR/uninitialized-zeroed.rs:46:26
    |
 LL |         let _val: Void = mem::zeroed();
    |                          ^^^^^^^^^^^^^
@@ -111,7 +111,7 @@ LL |         let _val: Void = mem::zeroed();
    = note: 0-variant enums have no valid value
 
 error: the type `Void` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:39:26
+  --> $DIR/uninitialized-zeroed.rs:47:26
    |
 LL |         let _val: Void = mem::uninitialized();
    |                          ^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +122,7 @@ LL |         let _val: Void = mem::uninitialized();
    = note: 0-variant enums have no valid value
 
 error: the type `&'static i32` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:41:34
+  --> $DIR/uninitialized-zeroed.rs:49:34
    |
 LL |         let _val: &'static i32 = mem::zeroed();
    |                                  ^^^^^^^^^^^^^
@@ -133,7 +133,7 @@ LL |         let _val: &'static i32 = mem::zeroed();
    = note: References must be non-null
 
 error: the type `&'static i32` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:42:34
+  --> $DIR/uninitialized-zeroed.rs:50:34
    |
 LL |         let _val: &'static i32 = mem::uninitialized();
    |                                  ^^^^^^^^^^^^^^^^^^^^
@@ -144,7 +144,7 @@ LL |         let _val: &'static i32 = mem::uninitialized();
    = note: References must be non-null
 
 error: the type `Ref` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:44:25
+  --> $DIR/uninitialized-zeroed.rs:52:25
    |
 LL |         let _val: Ref = mem::zeroed();
    |                         ^^^^^^^^^^^^^
@@ -153,13 +153,13 @@ LL |         let _val: Ref = mem::zeroed();
    |                         help: use `MaybeUninit<T>` instead
    |
 note: References must be non-null (in this struct field)
-  --> $DIR/uninitialized-zeroed.rs:13:12
+  --> $DIR/uninitialized-zeroed.rs:15:12
    |
 LL | struct Ref(&'static i32);
    |            ^^^^^^^^^^^^
 
 error: the type `Ref` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:45:25
+  --> $DIR/uninitialized-zeroed.rs:53:25
    |
 LL |         let _val: Ref = mem::uninitialized();
    |                         ^^^^^^^^^^^^^^^^^^^^
@@ -168,13 +168,13 @@ LL |         let _val: Ref = mem::uninitialized();
    |                         help: use `MaybeUninit<T>` instead
    |
 note: References must be non-null (in this struct field)
-  --> $DIR/uninitialized-zeroed.rs:13:12
+  --> $DIR/uninitialized-zeroed.rs:15:12
    |
 LL | struct Ref(&'static i32);
    |            ^^^^^^^^^^^^
 
 error: the type `fn()` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:47:26
+  --> $DIR/uninitialized-zeroed.rs:55:26
    |
 LL |         let _val: fn() = mem::zeroed();
    |                          ^^^^^^^^^^^^^
@@ -185,7 +185,7 @@ LL |         let _val: fn() = mem::zeroed();
    = note: Function pointers must be non-null
 
 error: the type `fn()` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:48:26
+  --> $DIR/uninitialized-zeroed.rs:56:26
    |
 LL |         let _val: fn() = mem::uninitialized();
    |                          ^^^^^^^^^^^^^^^^^^^^
@@ -196,7 +196,7 @@ LL |         let _val: fn() = mem::uninitialized();
    = note: Function pointers must be non-null
 
 error: the type `Wrap<fn()>` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:50:32
+  --> $DIR/uninitialized-zeroed.rs:58:32
    |
 LL |         let _val: Wrap<fn()> = mem::zeroed();
    |                                ^^^^^^^^^^^^^
@@ -205,13 +205,13 @@ LL |         let _val: Wrap<fn()> = mem::zeroed();
    |                                help: use `MaybeUninit<T>` instead
    |
 note: Function pointers must be non-null (in this struct field)
-  --> $DIR/uninitialized-zeroed.rs:16:18
+  --> $DIR/uninitialized-zeroed.rs:18:18
    |
 LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 error: the type `Wrap<fn()>` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:51:32
+  --> $DIR/uninitialized-zeroed.rs:59:32
    |
 LL |         let _val: Wrap<fn()> = mem::uninitialized();
    |                                ^^^^^^^^^^^^^^^^^^^^
@@ -220,13 +220,13 @@ LL |         let _val: Wrap<fn()> = mem::uninitialized();
    |                                help: use `MaybeUninit<T>` instead
    |
 note: Function pointers must be non-null (in this struct field)
-  --> $DIR/uninitialized-zeroed.rs:16:18
+  --> $DIR/uninitialized-zeroed.rs:18:18
    |
 LL | struct Wrap<T> { wrapped: T }
    |                  ^^^^^^^^^^
 
 error: the type `WrapEnum<fn()>` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:53:36
+  --> $DIR/uninitialized-zeroed.rs:61:36
    |
 LL |         let _val: WrapEnum<fn()> = mem::zeroed();
    |                                    ^^^^^^^^^^^^^
@@ -235,13 +235,13 @@ LL |         let _val: WrapEnum<fn()> = mem::zeroed();
    |                                    help: use `MaybeUninit<T>` instead
    |
 note: Function pointers must be non-null (in this enum field)
-  --> $DIR/uninitialized-zeroed.rs:17:28
+  --> $DIR/uninitialized-zeroed.rs:19:28
    |
 LL | enum WrapEnum<T> { Wrapped(T) }
    |                            ^
 
 error: the type `WrapEnum<fn()>` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:54:36
+  --> $DIR/uninitialized-zeroed.rs:62:36
    |
 LL |         let _val: WrapEnum<fn()> = mem::uninitialized();
    |                                    ^^^^^^^^^^^^^^^^^^^^
@@ -250,13 +250,13 @@ LL |         let _val: WrapEnum<fn()> = mem::uninitialized();
    |                                    help: use `MaybeUninit<T>` instead
    |
 note: Function pointers must be non-null (in this enum field)
-  --> $DIR/uninitialized-zeroed.rs:17:28
+  --> $DIR/uninitialized-zeroed.rs:19:28
    |
 LL | enum WrapEnum<T> { Wrapped(T) }
    |                            ^
 
 error: the type `Wrap<(RefPair, i32)>` does not permit zero-initialization
-  --> $DIR/uninitialized-zeroed.rs:56:42
+  --> $DIR/uninitialized-zeroed.rs:64:42
    |
 LL |         let _val: Wrap<(RefPair, i32)> = mem::zeroed();
    |                                          ^^^^^^^^^^^^^
@@ -265,13 +265,13 @@ LL |         let _val: Wrap<(RefPair, i32)> = mem::zeroed();
    |                                          help: use `MaybeUninit<T>` instead
    |
 note: References must be non-null (in this struct field)
-  --> $DIR/uninitialized-zeroed.rs:14:16
+  --> $DIR/uninitialized-zeroed.rs:16:16
    |
 LL | struct RefPair((&'static i32, i32));
    |                ^^^^^^^^^^^^^^^^^^^
 
 error: the type `Wrap<(RefPair, i32)>` does not permit being left uninitialized
-  --> $DIR/uninitialized-zeroed.rs:57:42
+  --> $DIR/uninitialized-zeroed.rs:65:42
    |
 LL |         let _val: Wrap<(RefPair, i32)> = mem::uninitialized();
    |                                          ^^^^^^^^^^^^^^^^^^^^
@@ -280,10 +280,102 @@ LL |         let _val: Wrap<(RefPair, i32)> = mem::uninitialized();
    |                                          help: use `MaybeUninit<T>` instead
    |
 note: References must be non-null (in this struct field)
-  --> $DIR/uninitialized-zeroed.rs:14:16
+  --> $DIR/uninitialized-zeroed.rs:16:16
    |
 LL | struct RefPair((&'static i32, i32));
    |                ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 22 previous errors
+error: the type `std::ptr::NonNull<i32>` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:67:34
+   |
+LL |         let _val: NonNull<i32> = mem::zeroed();
+   |                                  ^^^^^^^^^^^^^
+   |                                  |
+   |                                  this code causes undefined behavior when executed
+   |                                  help: use `MaybeUninit<T>` instead
+   |
+   = note: std::ptr::NonNull<i32> must be non-null
+
+error: the type `std::ptr::NonNull<i32>` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:68:34
+   |
+LL |         let _val: NonNull<i32> = mem::uninitialized();
+   |                                  ^^^^^^^^^^^^^^^^^^^^
+   |                                  |
+   |                                  this code causes undefined behavior when executed
+   |                                  help: use `MaybeUninit<T>` instead
+   |
+   = note: std::ptr::NonNull<i32> must be non-null
+
+error: the type `bool` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:72:26
+   |
+LL |         let _val: bool = mem::uninitialized();
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          this code causes undefined behavior when executed
+   |                          help: use `MaybeUninit<T>` instead
+   |
+   = note: Booleans must be `true` or `false`
+
+error: the type `Wrap<char>` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:75:32
+   |
+LL |         let _val: Wrap<char> = mem::uninitialized();
+   |                                ^^^^^^^^^^^^^^^^^^^^
+   |                                |
+   |                                this code causes undefined behavior when executed
+   |                                help: use `MaybeUninit<T>` instead
+   |
+note: Characters must be a valid unicode codepoint (in this struct field)
+  --> $DIR/uninitialized-zeroed.rs:18:18
+   |
+LL | struct Wrap<T> { wrapped: T }
+   |                  ^^^^^^^^^^
+
+error: the type `NonBig` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:78:28
+   |
+LL |         let _val: NonBig = mem::uninitialized();
+   |                            ^^^^^^^^^^^^^^^^^^^^
+   |                            |
+   |                            this code causes undefined behavior when executed
+   |                            help: use `MaybeUninit<T>` instead
+   |
+   = note: NonBig must be initialized inside its custom valid range
+
+error: the type `&'static i32` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:81:34
+   |
+LL |         let _val: &'static i32 = mem::transmute(0usize);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^
+   |                                  |
+   |                                  this code causes undefined behavior when executed
+   |                                  help: use `MaybeUninit<T>` instead
+   |
+   = note: References must be non-null
+
+error: the type `&'static [i32]` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:82:36
+   |
+LL |         let _val: &'static [i32] = mem::transmute((0usize, 0usize));
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                    |
+   |                                    this code causes undefined behavior when executed
+   |                                    help: use `MaybeUninit<T>` instead
+   |
+   = note: References must be non-null
+
+error: the type `std::num::NonZeroU32` does not permit zero-initialization
+  --> $DIR/uninitialized-zeroed.rs:83:32
+   |
+LL |         let _val: NonZeroU32 = mem::transmute(0);
+   |                                ^^^^^^^^^^^^^^^^^
+   |                                |
+   |                                this code causes undefined behavior when executed
+   |                                help: use `MaybeUninit<T>` instead
+   |
+   = note: std::num::NonZeroU32 must be non-null
+
+error: aborting due to 30 previous errors
 
