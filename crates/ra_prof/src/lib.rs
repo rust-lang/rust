@@ -1,4 +1,6 @@
 mod memory_usage;
+#[cfg(feature = "cpu_profiler")]
+mod google_cpu_profiler;
 
 use std::{
     cell::RefCell,
@@ -268,25 +270,35 @@ impl Drop for Scope {
     }
 }
 
-/// A wrapper around https://github.com/AtheMathmo/cpuprofiler
+/// A wrapper around google_cpu_profiler.
 ///
-/// It can be used to capture sampling profiles of sections of code.
-/// It is not exactly out-of-the-box, as it relies on gperftools.
-/// See the docs for the crate for more!
+/// Usage:
+/// 1. Install gpref_tools (https://github.com/gperftools/gperftools), probably packaged with your Linux distro.
+/// 2. Build with `cpu_profiler` feature.
+/// 3. Tun the code, the *raw* output would be in the `./out.profile` file.
+/// 4. Install pprof for visualization (https://github.com/google/pprof).
+/// 5. Use something like `pprof -svg target/release/ra_cli ./out.profile` to see the results.
+///
+/// For example, here's how I run profiling on NixOS:
+///
+/// ```bash
+/// $ nix-shell -p gperftools --run \
+///     'cargo run --release -p ra_cli -- parse < ~/projects/rustbench/parser.rs > /dev/null'
+/// ```
 #[derive(Debug)]
 pub struct CpuProfiler {
     _private: (),
 }
 
 pub fn cpu_profiler() -> CpuProfiler {
-    #[cfg(feature = "cpuprofiler")]
+    #[cfg(feature = "cpu_profiler")]
     {
-        cpuprofiler::PROFILER.lock().unwrap().start("./out.profile").unwrap();
+        google_cpu_profiler::start("./out.profile".as_ref())
     }
 
-    #[cfg(not(feature = "cpuprofiler"))]
+    #[cfg(not(feature = "cpu_profiler"))]
     {
-        eprintln!("cpuprofiler feature is disabled")
+        eprintln!("cpu_profiler feature is disabled")
     }
 
     CpuProfiler { _private: () }
@@ -294,9 +306,9 @@ pub fn cpu_profiler() -> CpuProfiler {
 
 impl Drop for CpuProfiler {
     fn drop(&mut self) {
-        #[cfg(feature = "cpuprofiler")]
+        #[cfg(feature = "cpu_profiler")]
         {
-            cpuprofiler::PROFILER.lock().unwrap().stop().unwrap();
+            google_cpu_profiler::stop()
         }
     }
 }
