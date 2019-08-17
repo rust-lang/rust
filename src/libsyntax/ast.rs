@@ -5,7 +5,7 @@ pub use UnsafeSource::*;
 pub use crate::symbol::{Ident, Symbol as Name};
 pub use crate::util::parser::ExprPrecedence;
 
-use crate::ext::hygiene::{ExpnId, SyntaxContext};
+use crate::ext::hygiene::ExpnId;
 use crate::parse::token::{self, DelimToken};
 use crate::print::pprust;
 use crate::ptr::P;
@@ -1782,7 +1782,6 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    pub ctxt: SyntaxContext,
 }
 
 /// An argument in a function header.
@@ -2030,7 +2029,6 @@ pub struct ForeignMod {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub struct GlobalAsm {
     pub asm: Symbol,
-    pub ctxt: SyntaxContext,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

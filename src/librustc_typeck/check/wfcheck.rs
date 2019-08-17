@@ -203,7 +203,6 @@ fn check_associated_item(
                 fcx.register_wf_obligation(ty, span, code.clone());
             }
             ty::AssocKind::Method => {
-                reject_shadowing_parameters(fcx.tcx, item.def_id);
                 let sig = fcx.tcx.fn_sig(item.def_id);
                 let sig = fcx.normalize_associated_types_in(span, &sig);
                 check_fn_or_method(tcx, fcx, span, sig,
@@ -998,34 +997,6 @@ fn report_bivariance(tcx: TyCtxt<'_>, span: Span, param_name: ast::Name) {
     err.emit();
 }
 
-fn reject_shadowing_parameters(tcx: TyCtxt<'_>, def_id: DefId) {
-    let generics = tcx.generics_of(def_id);
-    let parent = tcx.generics_of(generics.parent.unwrap());
-    let impl_params: FxHashMap<_, _> = parent.params.iter().flat_map(|param| match param.kind {
-        GenericParamDefKind::Lifetime => None,
-        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
-            Some((param.name, param.def_id))
-        }
-    }).collect();
-
-    for method_param in &generics.params {
-        // Shadowing is checked in `resolve_lifetime`.
-        if let GenericParamDefKind::Lifetime = method_param.kind {
-            continue
-        }
-        if impl_params.contains_key(&method_param.name) {
-            // Tighten up the span to focus on only the shadowing type.
-            let type_span = tcx.def_span(method_param.def_id);
-
-            // The expectation here is that the original trait declaration is
-            // local so it should be okay to just unwrap everything.
-            let trait_def_id = impl_params[&method_param.name];
-            let trait_decl_span = tcx.def_span(trait_def_id);
-            error_194(tcx, type_span, trait_decl_span, &method_param.name.as_str()[..]);
-        }
-    }
-}
-
 /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
 /// aren't true.
 fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, span: Span, id: hir::HirId) {
@@ -1151,13 +1122,4 @@ fn error_392(
                   "parameter `{}` is never used", param_name);
     err.span_label(span, "unused parameter");
     err
-}
-
-fn error_194(tcx: TyCtxt<'_>, span: Span, trait_decl_span: Span, name: &str) {
-    struct_span_err!(tcx.sess, span, E0194,
-                     "type parameter `{}` shadows another type parameter of the same name",
-                     name)
-        .span_label(span, "shadows another type parameter")
-        .span_label(trait_decl_span, format!("first `{}` declared here", name))
-        .emit();
 }

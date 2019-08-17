@@ -169,12 +169,14 @@ impl<'a> Resolver<'a> {
                 err
             }
             ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => {
-                let mut err = struct_span_err!(self.session,
-                                                span,
-                                                E0403,
-                                                "the name `{}` is already used for a generic \
-                                                parameter in this list of generic parameters",
-                                                name);
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0403,
+                    "the name `{}` is already used for a generic \
+                     parameter in this item's generic parameters",
+                    name,
+                );
                 err.span_label(span, "already used");
                 err.span_label(first_use_span, format!("first use of `{}`", name));
                 err

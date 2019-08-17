@@ -1263,14 +1263,14 @@ pub(crate) mod builtin {
 
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
+    #[cfg_attr(boostrap_stdarch_ignore_this, rustc_macro_transparency = "semitransparent")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics, libstd_sys_internals)]
     pub macro RustcDecodable($item:item) { /* compiler built-in */ }
 
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
+    #[cfg_attr(boostrap_stdarch_ignore_this, rustc_macro_transparency = "semitransparent")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics)]
     pub macro RustcEncodable($item:item) { /* compiler built-in */ }
