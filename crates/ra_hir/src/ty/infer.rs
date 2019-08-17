@@ -1265,9 +1265,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(op) => {
                     let lhs_expectation = match op {
-                        BinaryOp::BooleanAnd | BinaryOp::BooleanOr => {
-                            Expectation::has_type(Ty::simple(TypeCtor::Bool))
-                        }
+                        BinaryOp::LogicOp(..) => Expectation::has_type(Ty::simple(TypeCtor::Bool)),
                         _ => Expectation::none(),
                     };
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);

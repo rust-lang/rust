@@ -102,10 +102,6 @@ pub enum BinOp {
     BitwiseOr,
     /// The `&` operator for bitwise AND
     BitwiseAnd,
-    /// The `..` operator for right-open ranges
-    RangeRightOpen,
-    /// The `..=` operator for right-closed ranges
-    RangeRightClosed,
     /// The `=` operator for assignment
     Assignment,
     /// The `+=` operator for assignment after addition
@@ -152,8 +148,6 @@ impl ast::BinExpr {
                 T![^] => BinOp::BitwiseXor,
                 T![|] => BinOp::BitwiseOr,
                 T![&] => BinOp::BitwiseAnd,
-                T![..] => BinOp::RangeRightOpen,
-                T![..=] => BinOp::RangeRightClosed,
                 T![=] => BinOp::Assignment,
                 T![+=] => BinOp::AddAssign,
                 T![/=] => BinOp::DivAssign,
