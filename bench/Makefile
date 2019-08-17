@@ -34,7 +34,7 @@
 	../build/bin/opt moobar.ll -S -o $@ -O1 -print-before-all -print-after-all
 
 %-lower.ll: %-unopt.ll
-	../build/bin/opt $^ -indvars -lower-autodiff -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O3
+	../build/bin/opt $^ -indvars -lower-autodiff -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - -autodiff_print=1 | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O3
 	#../build/bin/opt $^ -indvars -autodiff_inline=true -lower-autodiff -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O3
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -O3 -S -o $@
 
