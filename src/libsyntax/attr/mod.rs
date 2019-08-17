@@ -255,9 +255,8 @@ impl MetaItem {
     }
 }
 
-impl Attribute {
-    /// Extracts the `MetaItem` from inside this `Attribute`.
-    pub fn meta(&self) -> Option<MetaItem> {
+impl AttrItem {
+    crate fn meta(&self, span: Span) -> Option<MetaItem> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
             path: self.path.clone(),
@@ -269,8 +268,15 @@ impl Attribute {
             } else {
                 return None;
             },
-            span: self.span,
+            span,
         })
+    }
+}
+
+impl Attribute {
+    /// Extracts the MetaItem from inside this Attribute.
+    pub fn meta(&self) -> Option<MetaItem> {
+        self.item.meta(self.span)
     }
 
     pub fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
@@ -524,7 +530,7 @@ impl MetaItem {
             }
             Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. })) => match *nt {
                 token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
-                token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
+                token::Nonterminal::NtMeta(ref item) => return item.meta(item.path.span),
                 token::Nonterminal::NtPath(ref path) => path.clone(),
                 _ => return None,
             },
