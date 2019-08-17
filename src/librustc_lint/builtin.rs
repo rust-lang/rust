@@ -1876,8 +1876,34 @@ declare_lint_pass!(InvalidValue => [INVALID_VALUE]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &hir::Expr) {
 
-        const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
-        const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
+        #[derive(Debug)]
+        enum InitKind { Zeroed, Uninit };
+
+        /// Determine if this expression is a "dangerous initialization".
+        fn is_dangerous_init(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<InitKind> {
+            const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
+            const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
+
+            if let hir::ExprKind::Call(ref path_expr, ref _args) = expr.node {
+                if let hir::ExprKind::Path(ref qpath) = path_expr.node {
+                    if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id)
+                        .opt_def_id()
+                    {
+                        if cx.match_def_path(def_id, &ZEROED_PATH) {
+                            return Some(InitKind::Zeroed);
+                        }
+                        if cx.match_def_path(def_id, &UININIT_PATH) {
+                            return Some(InitKind::Uninit);
+                        }
+                        // FIXME: Also detect `MaybeUninit::zeroed().assume_init()` and
+                        // `MaybeUninit::uninit().assume_init()`.
+                        // FIXME: Also detect `transmute` from 0.
+                    }
+                }
+            }
+
+            None
+        }
 
         /// Information about why a type cannot be initialized this way.
         /// Contains an error message and optionally a span to point at.
@@ -1933,42 +1959,33 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             }
         }
 
-        if let hir::ExprKind::Call(ref path_expr, ref _args) = expr.node {
-            if let hir::ExprKind::Path(ref qpath) = path_expr.node {
-                if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
-                    if cx.match_def_path(def_id, &ZEROED_PATH) ||
-                        cx.match_def_path(def_id, &UININIT_PATH)
-                    {
-                        // This conjures an instance of a type out of nothing,
-                        // using zeroed or uninitialized memory.
-                        // We are extremely conservative with what we warn about.
-                        let conjured_ty = cx.tables.expr_ty(expr);
-                        if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty) {
-                            let mut err = cx.struct_span_lint(
-                                INVALID_VALUE,
-                                expr.span,
-                                &format!(
-                                    "the type `{}` does not permit {}",
-                                    conjured_ty,
-                                    if cx.match_def_path(def_id, &ZEROED_PATH) {
-                                        "zero-initialization"
-                                    } else {
-                                        "being left uninitialized"
-                                    }
-                                ),
-                            );
-                            err.span_label(expr.span,
-                                "this code causes undefined behavior when executed");
-                            err.span_label(expr.span, "help: use `MaybeUninit<T>` instead");
-                            if let Some(span) = span {
-                                err.span_note(span, &msg);
-                            } else {
-                                err.note(&msg);
-                            }
-                            err.emit();
-                        }
-                    }
+        if let Some(init) = is_dangerous_init(cx, expr) {
+            // This conjures an instance of a type out of nothing,
+            // using zeroed or uninitialized memory.
+            // We are extremely conservative with what we warn about.
+            let conjured_ty = cx.tables.expr_ty(expr);
+            if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty) {
+                let mut err = cx.struct_span_lint(
+                    INVALID_VALUE,
+                    expr.span,
+                    &format!(
+                        "the type `{}` does not permit {}",
+                        conjured_ty,
+                        match init {
+                            InitKind::Zeroed => "zero-initialization",
+                            InitKind::Uninit => "being left uninitialized",
+                        },
+                    ),
+                );
+                err.span_label(expr.span,
+                    "this code causes undefined behavior when executed");
+                err.span_label(expr.span, "help: use `MaybeUninit<T>` instead");
+                if let Some(span) = span {
+                    err.span_note(span, &msg);
+                } else {
+                    err.note(&msg);
                 }
+                err.emit();
             }
         }
     }
