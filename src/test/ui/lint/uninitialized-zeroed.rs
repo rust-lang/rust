@@ -7,6 +7,7 @@
 #![deny(invalid_value)]
 
 use std::mem::{self, MaybeUninit};
+use std::ptr::NonNull;
 use std::num::NonZeroU32;
 
 enum Void {}
@@ -63,8 +64,8 @@ fn main() {
         let _val: Wrap<(RefPair, i32)> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: Wrap<(RefPair, i32)> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
-        let _val: Vec<i32> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
-        let _val: Vec<i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: NonNull<i32> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
+        let _val: NonNull<i32> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
         // Things that can be zero, but not uninit.
         let _val: bool = mem::zeroed();
