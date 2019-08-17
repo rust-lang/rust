@@ -74,7 +74,7 @@ impl<'a> DefCollector<'a> {
         })
     }
 
-    fn visit_macro_invoc(&mut self, id: NodeId) {
+    pub fn visit_macro_invoc(&mut self, id: NodeId) {
         self.definitions.set_invocation_parent(id.placeholder_to_expn_id(), self.parent_def);
     }
 }

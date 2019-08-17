@@ -115,23 +115,18 @@ impl<'a> base::Resolver for Resolver<'a> {
         });
     }
 
+
+
     fn visit_ast_fragment_with_placeholders(
         &mut self, expansion: ExpnId, fragment: &AstFragment, derives: &[ExpnId]
     ) {
-        // Fill in some data for derives if the fragment is from a derive container.
+        // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
-        let parent_def = self.definitions.invocation_parent(expansion);
-        self.invocation_parent_scopes.extend(derives.iter().map(|&derive| (derive, parent_scope)));
-        for &derive_invoc_id in derives {
-            self.definitions.set_invocation_parent(derive_invoc_id, parent_def);
-        }
-        parent_scope.module.unresolved_invocations.borrow_mut().remove(&expansion);
-        parent_scope.module.unresolved_invocations.borrow_mut().extend(derives);
-
-        // Integrate the new AST fragment into all the definition and module structures.
-        let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
+        let output_legacy_scope = self.build_reduced_graph(fragment, derives, parent_scope);
         self.output_legacy_scopes.insert(expansion, output_legacy_scope);
+
+        parent_scope.module.unresolved_invocations.borrow_mut().remove(&expansion);
     }
 
     fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension) {
