@@ -8,7 +8,6 @@
 
 // See issue 60414
 
-/////////////////////////////////////////////
 // Reduction to `impl Trait`
 
 struct Foo<T>(T);
@@ -33,7 +32,6 @@ mod impl_trait {
     }
 }
 
-/////////////////////////////////////////////
 // Same with lifetimes in the trait
 
 mod lifetimes {
