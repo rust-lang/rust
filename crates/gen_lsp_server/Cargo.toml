@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 description = "Generic LSP server scaffold."
 
 [dependencies]
-lsp-types = "0.59.0"
+lsp-types = "0.60.0"
 log = "0.4.3"
 serde_json = "1.0.34"
 serde = { version = "1.0.83", features = ["derive"] }
