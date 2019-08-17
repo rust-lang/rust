@@ -790,6 +790,9 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
             if builder.config.llvm_use_libcxx {
                 cargo.env("LLVM_USE_LIBCXX", "1");
             }
+            if builder.config.llvm_optimize && !builder.config.llvm_release_debuginfo {
+                cargo.env("LLVM_NDEBUG", "1");
+            }
         }
         _ => panic!("unknown backend: {}", backend),
     }
