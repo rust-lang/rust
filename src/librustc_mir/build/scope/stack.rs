@@ -4,7 +4,6 @@ use crate::hair::Expr;
 use rustc::middle::region;
 use rustc::mir::{BasicBlock, Local, Operand, Place, PlaceBase, SourceScope};
 use rustc::mir::{SourceInfo, Statement, StatementKind, START_BLOCK, TerminatorKind};
-use rustc::ty::Ty;
 use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;
 use std::mem;
@@ -301,11 +300,10 @@ impl<'tcx> Builder<'_, 'tcx> {
         span: Span,
         region_scope: region::Scope,
         local: Local,
-        place_ty: Ty<'tcx>,
         drop_kind: DropKind,
     ) {
         match drop_kind {
-            DropKind::Value => if !self.hir.needs_drop(place_ty) { return },
+            DropKind::Value => if !self.hir.needs_drop(self.local_decls[local].ty) { return },
             DropKind::Storage => {
                 if local.index() <= self.arg_count {
                     span_bug!(

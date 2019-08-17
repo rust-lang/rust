@@ -85,7 +85,6 @@ should go to.
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use crate::hair::{ExprRef, LintLevel};
 use rustc::middle::region;
-use rustc::ty::Ty;
 use rustc::hir;
 use rustc::mir::*;
 use syntax_pos::{DUMMY_SP, Span};
@@ -483,10 +482,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span: Span,
         region_scope: region::Scope,
         local: Local,
-        place_ty: Ty<'tcx>,
     ) {
-        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Storage);
-        self.schedule_drop(span, region_scope, local, place_ty, DropKind::Value);
+        self.schedule_drop(span, region_scope, local, DropKind::Storage);
+        self.schedule_drop(span, region_scope, local, DropKind::Value);
     }
 
     // Other
