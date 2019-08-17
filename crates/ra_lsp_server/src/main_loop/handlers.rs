@@ -16,7 +16,6 @@ use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
-use url_serde::Ser;
 
 use crate::{
     cargo_target_spec::{runnable_args, CargoTargetSpec},
@@ -736,7 +735,7 @@ pub fn handle_code_lens_resolve(world: WorldSnapshot, code_lens: CodeLens) -> Re
                 title,
                 command: "rust-analyzer.showReferences".into(),
                 arguments: Some(vec![
-                    to_value(&Ser::new(&lens_params.text_document.uri)).unwrap(),
+                    to_value(&lens_params.text_document.uri).unwrap(),
                     to_value(code_lens.range.start).unwrap(),
                     to_value(locations).unwrap(),
                 ]),

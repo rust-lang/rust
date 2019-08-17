@@ -12,8 +12,7 @@ serde = { version = "1.0.83", features = ["derive"] }
 crossbeam-channel = "0.3.5"
 flexi_logger = "0.14.0"
 log = "0.4.3"
-url_serde = "0.2.0"
-lsp-types = { version = "0.59.0", features = ["proposed"] }
+lsp-types = { version = "0.60.0", features = ["proposed"] }
 rustc-hash = "1.0"
 parking_lot = "0.9.0"
 

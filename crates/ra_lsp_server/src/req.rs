@@ -1,7 +1,6 @@
 use lsp_types::{Location, Position, Range, TextDocumentIdentifier, Url};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use url_serde;
 
 pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
@@ -98,7 +97,6 @@ impl Notification for PublishDecorations {
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishDecorationsParams {
-    #[serde(with = "url_serde")]
     pub uri: Url,
     pub decorations: Vec<Decoration>,
 }
