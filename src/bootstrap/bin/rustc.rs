@@ -276,10 +276,6 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
-
-        if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
-            cmd.arg("--remap-path-prefix").arg(&map);
-        }
     } else {
         // Override linker if necessary.
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
@@ -294,6 +290,10 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
+    }
+
+    if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
+        cmd.arg("--remap-path-prefix").arg(&map);
     }
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
