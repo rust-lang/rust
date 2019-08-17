@@ -31,7 +31,7 @@ use std::u32;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::{kw, sym};
+use syntax::symbol::{kw, sym, Ident};
 use syntax_pos::{self, FileName, SourceFile, Span};
 use log::{debug, trace};
 
@@ -170,6 +170,13 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
         len.encode(self)
 
         // Don't encode the expansion context.
+    }
+}
+
+impl SpecializedEncoder<Ident> for EncodeContext<'tcx> {
+    fn specialized_encode(&mut self, ident: &Ident) -> Result<(), Self::Error> {
+        // FIXME(jseyfried): intercrate hygiene
+        ident.name.encode(self)
     }
 }
 
@@ -1676,7 +1683,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
                      id: hir::HirId) {
         intravisit::walk_variant(self, v, g, id);
 
-        if let Some(ref discr) = v.node.disr_expr {
+        if let Some(ref discr) = v.disr_expr {
             let def_id = self.tcx.hir().local_def_id(discr.hir_id);
             self.record(def_id, EncodeContext::encode_info_for_anon_const, def_id);
         }

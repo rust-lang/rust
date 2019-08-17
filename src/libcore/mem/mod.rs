@@ -453,7 +453,7 @@ pub const fn needs_drop<T>() -> bool {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(bootstrap, allow(deprecated_in_future))]
+#[allow(deprecated_in_future)]
 #[allow(deprecated)]
 pub unsafe fn zeroed<T>() -> T {
     intrinsics::panic_if_uninhabited::<T>();
@@ -481,7 +481,7 @@ pub unsafe fn zeroed<T>() -> T {
 #[inline]
 #[rustc_deprecated(since = "1.39.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(bootstrap, allow(deprecated_in_future))]
+#[allow(deprecated_in_future)]
 #[allow(deprecated)]
 pub unsafe fn uninitialized<T>() -> T {
     intrinsics::panic_if_uninhabited::<T>();

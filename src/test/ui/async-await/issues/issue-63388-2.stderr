@@ -1,0 +1,29 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/issue-63388-2.rs:14:10
+   |
+LL |     ) -> &dyn Foo
+   |          ^ help: consider using the named lifetime: `&'a`
+   |
+   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `foo` or `bar`
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/issue-63388-2.rs:13:9
+   |
+LL |         foo: &dyn Foo, bar: &'a dyn Foo
+   |         ^^^ ...but this borrow...
+LL |     ) -> &dyn Foo
+   |          -------- this return type evaluates to the `'static` lifetime...
+   |
+note: ...can't outlive the lifetime '_ as defined on the method body at 13:14
+  --> $DIR/issue-63388-2.rs:13:14
+   |
+LL |         foo: &dyn Foo, bar: &'a dyn Foo
+   |              ^
+help: you can add a constraint to the return type to make it last less than `'static` and match the lifetime '_ as defined on the method body at 13:14
+   |
+LL |     ) -> &dyn Foo + '_
+   |          ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

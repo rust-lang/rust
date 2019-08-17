@@ -591,7 +591,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let n = (!0u128) >> (128 - bits);
         let literal = ty::Const::from_bits(self.hir.tcx(), n, param_ty);
 
-        self.literal_operand(span, ty, literal)
+        self.literal_operand(span, literal)
     }
 
     // Helper to get the minimum value of the appropriate type
@@ -602,6 +602,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let n = 1 << (bits - 1);
         let literal = ty::Const::from_bits(self.hir.tcx(), n, param_ty);
 
-        self.literal_operand(span, ty, literal)
+        self.literal_operand(span, literal)
     }
 }

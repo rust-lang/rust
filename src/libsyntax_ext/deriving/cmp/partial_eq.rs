@@ -13,7 +13,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
                                   mitem: &MetaItem,
                                   item: &Annotatable,
                                   push: &mut dyn FnMut(Annotatable)) {
-    cx.resolver.add_derives(cx.current_expansion.id.parent(), SpecialDerives::PARTIAL_EQ);
+    cx.resolver.add_derives(cx.current_expansion.id.expn_data().parent, SpecialDerives::PARTIAL_EQ);
 
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different

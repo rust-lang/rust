@@ -1,41 +1,17 @@
 use super::*;
 
-use crate::ast::CrateConfig;
 use crate::symbol::Symbol;
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::feature_gate::UnstableFeatures;
 use crate::parse::token;
-use crate::diagnostics::plugin::ErrorMap;
 use crate::with_default_globals;
 use std::io;
 use std::path::PathBuf;
-use syntax_pos::{BytePos, Span, NO_EXPANSION, edition::Edition};
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use rustc_data_structures::sync::{Lock, Once};
+use errors::{Handler, emitter::EmitterWriter};
+use syntax_pos::{BytePos, Span};
 
 fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
-    let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
-                                                        Some(sm.clone()),
-                                                        false,
-                                                        false,
-                                                        false);
-    ParseSess {
-        span_diagnostic: errors::Handler::with_emitter(true, None, Box::new(emitter)),
-        unstable_features: UnstableFeatures::from_environment(),
-        config: CrateConfig::default(),
-        included_mod_stack: Lock::new(Vec::new()),
-        source_map: sm,
-        missing_fragment_specifiers: Lock::new(FxHashSet::default()),
-        raw_identifier_spans: Lock::new(Vec::new()),
-        registered_diagnostics: Lock::new(ErrorMap::new()),
-        buffered_lints: Lock::new(vec![]),
-        edition: Edition::from_session(),
-        ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
-        param_attr_spans: Lock::new(Vec::new()),
-        let_chains_spans: Lock::new(Vec::new()),
-        async_closure_spans: Lock::new(Vec::new()),
-        injected_crate_name: Once::new(),
-    }
+    let emitter = EmitterWriter::new(Box::new(io::sink()), Some(sm.clone()), false, false, false);
+    ParseSess::with_span_handler(Handler::with_emitter(true, None, Box::new(emitter)), sm)
 }
 
 // open a string reader for the given string
@@ -61,7 +37,7 @@ fn t1() {
         let tok1 = string_reader.next_token();
         let tok2 = Token::new(
             mk_ident("fn"),
-            Span::new(BytePos(21), BytePos(23), NO_EXPANSION),
+            Span::with_root_ctxt(BytePos(21), BytePos(23)),
         );
         assert_eq!(tok1.kind, tok2.kind);
         assert_eq!(tok1.span, tok2.span);
@@ -71,7 +47,7 @@ fn t1() {
         assert_eq!(string_reader.pos.clone(), BytePos(28));
         let tok4 = Token::new(
             mk_ident("main"),
-            Span::new(BytePos(24), BytePos(28), NO_EXPANSION),
+            Span::with_root_ctxt(BytePos(24), BytePos(28)),
         );
         assert_eq!(tok3.kind, tok4.kind);
         assert_eq!(tok3.span, tok4.span);

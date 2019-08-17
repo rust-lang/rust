@@ -350,7 +350,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         let line_col_len = col | line | len;
         std_hash::Hash::hash(&line_col_len, hasher);
 
-        if span.ctxt == SyntaxContext::empty() {
+        if span.ctxt == SyntaxContext::root() {
             TAG_NO_EXPANSION.hash_stable(hcx, hasher);
         } else {
             TAG_EXPANSION.hash_stable(hcx, hasher);
@@ -370,7 +370,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
                 }
 
                 let mut hasher = StableHasher::new();
-                expn_id.expn_info().hash_stable(hcx, &mut hasher);
+                expn_id.expn_data().hash_stable(hcx, &mut hasher);
                 let sub_hash: Fingerprint = hasher.finish();
                 let sub_hash = sub_hash.to_smaller_hash();
                 cache.borrow_mut().insert(expn_id, sub_hash);

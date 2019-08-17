@@ -1,6 +1,6 @@
 //! This module contains `TyKind` and its major components.
 
-#![cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
+#![allow(rustc::usage_of_ty_tykind)]
 
 use crate::hir;
 use crate::hir::def_id::DefId;
@@ -2068,6 +2068,9 @@ impl<'tcx> TyS<'tcx> {
             Error => {  // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
             }
+            Closure(..) => bug!(
+                "to get the signature of a closure, use `closure_sig()` not `fn_sig()`",
+            ),
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }

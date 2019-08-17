@@ -65,7 +65,7 @@ pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext<'_, '_>) -> O
     if !scx.config.signatures {
         return None;
     }
-    variant.node.make(0, None, scx).ok()
+    variant.make(0, None, scx).ok()
 }
 
 pub fn method_signature(
@@ -699,7 +699,7 @@ impl Sig for ast::StructField {
 }
 
 
-impl Sig for ast::Variant_ {
+impl Sig for ast::Variant {
     fn make(&self, offset: usize, parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let mut text = self.ident.to_string();
         match self.data {

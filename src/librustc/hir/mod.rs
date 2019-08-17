@@ -23,7 +23,6 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
-use syntax::ext::hygiene::SyntaxContext;
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
 use syntax::util::parser::ExprPrecedence;
@@ -202,7 +201,7 @@ impl ParamName {
         match *self {
             ParamName::Plain(ident) => ident,
             ParamName::Fresh(_) |
-            ParamName::Error => Ident::with_empty_ctxt(kw::UnderscoreLifetime),
+            ParamName::Error => Ident::with_dummy_span(kw::UnderscoreLifetime),
         }
     }
 
@@ -237,8 +236,8 @@ impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
             LifetimeName::Implicit | LifetimeName::Error => Ident::invalid(),
-            LifetimeName::Underscore => Ident::with_empty_ctxt(kw::UnderscoreLifetime),
-            LifetimeName::Static => Ident::with_empty_ctxt(kw::StaticLifetime),
+            LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
+            LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
             LifetimeName::Param(param_name) => param_name.ident(),
         }
     }
@@ -877,7 +876,7 @@ impl Pat {
         match self.node {
             PatKind::Binding(.., Some(ref p)) => p.walk_(it),
             PatKind::Struct(_, ref fields, _) => {
-                fields.iter().all(|field| field.node.pat.walk_(it))
+                fields.iter().all(|field| field.pat.walk_(it))
             }
             PatKind::TupleStruct(_, ref s, _) | PatKind::Tuple(ref s, _) => {
                 s.iter().all(|p| p.walk_(it))
@@ -923,6 +922,7 @@ pub struct FieldPat {
     /// The pattern the field is destructured to.
     pub pat: P<Pat>,
     pub is_shorthand: bool,
+    pub span: Span,
 }
 
 /// Explicit binding annotations given in the HIR for a binding. Note
@@ -968,7 +968,7 @@ pub enum PatKind {
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
     /// The `bool` is `true` in the presence of a `..`.
-    Struct(QPath, HirVec<Spanned<FieldPat>>, bool),
+    Struct(QPath, HirVec<FieldPat>, bool),
 
     /// A tuple struct/variant pattern `Variant(x, y, .., z)`.
     /// If the `..` pattern fragment is present, then `Option<usize>` denotes its position.
@@ -1541,7 +1541,7 @@ pub enum ExprKind {
     Match(P<Expr>, HirVec<Arm>, MatchSource),
     /// A closure (e.g., `move |a, b, c| {a + b + c}`).
     ///
-    /// The final span is the span of the argument block `|...|`.
+    /// The `Span` is the argument block `|...|`.
     ///
     /// This may also be a generator literal or an `async block` as indicated by the
     /// `Option<GeneratorMovability>`.
@@ -2003,8 +2003,6 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    #[stable_hasher(ignore)] // This is used for error reporting
-    pub ctxt: SyntaxContext,
 }
 
 /// Represents an argument in a function header.
@@ -2183,8 +2181,6 @@ pub struct ForeignMod {
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct GlobalAsm {
     pub asm: Symbol,
-    #[stable_hasher(ignore)] // This is used for error reporting
-    pub ctxt: SyntaxContext,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2193,7 +2189,7 @@ pub struct EnumDef {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct VariantKind {
+pub struct Variant {
     /// Name of the variant.
     #[stable_hasher(project(name))]
     pub ident: Ident,
@@ -2205,9 +2201,9 @@ pub struct VariantKind {
     pub data: VariantData,
     /// Explicit discriminant (e.g., `Foo = 1`).
     pub disr_expr: Option<AnonConst>,
+    /// Span
+    pub span: Span
 }
-
-pub type Variant = Spanned<VariantKind>;
 
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum UseKind {

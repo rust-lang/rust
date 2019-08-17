@@ -73,20 +73,23 @@ crate fn add_typo_suggestion(
     false
 }
 
-crate fn add_module_candidates(
-    module: Module<'_>, names: &mut Vec<TypoSuggestion>, filter_fn: &impl Fn(Res) -> bool
-) {
-    for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
-        if let Some(binding) = resolution.borrow().binding {
-            let res = binding.res();
-            if filter_fn(res) {
-                names.push(TypoSuggestion::from_res(ident.name, res));
+impl<'a> Resolver<'a> {
+    crate fn add_module_candidates(
+        &mut self,
+        module: Module<'a>,
+        names: &mut Vec<TypoSuggestion>,
+        filter_fn: &impl Fn(Res) -> bool,
+    ) {
+        for (&(ident, _), resolution) in self.resolutions(module).borrow().iter() {
+            if let Some(binding) = resolution.borrow().binding {
+                let res = binding.res();
+                if filter_fn(res) {
+                    names.push(TypoSuggestion::from_res(ident.name, res));
+                }
             }
         }
     }
-}
 
-impl<'a> Resolver<'a> {
     /// Combines an error with provided span and emits it.
     ///
     /// This takes the error provided, combines it with the span and any additional spans inside the
@@ -166,12 +169,14 @@ impl<'a> Resolver<'a> {
                 err
             }
             ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => {
-                let mut err = struct_span_err!(self.session,
-                                                span,
-                                                E0403,
-                                                "the name `{}` is already used for a generic \
-                                                parameter in this list of generic parameters",
-                                                name);
+                let mut err = struct_span_err!(
+                    self.session,
+                    span,
+                    E0403,
+                    "the name `{}` is already used for a generic \
+                     parameter in this item's generic parameters",
+                    name,
+                );
                 err.span_label(span, "already used");
                 err.span_label(first_use_span, format!("first use of `{}`", name));
                 err
@@ -376,9 +381,9 @@ impl<'a> Resolver<'a> {
                 Scope::DeriveHelpers => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                     if filter_fn(res) {
-                        for derive in &parent_scope.derives {
+                        for derive in parent_scope.derives {
                             let parent_scope =
-                                &ParentScope { derives: Vec::new(), ..*parent_scope };
+                                &ParentScope { derives: &[], ..*parent_scope };
                             if let Ok((Some(ext), _)) = this.resolve_macro_path(
                                 derive, Some(MacroKind::Derive), parent_scope, false, false
                             ) {
@@ -402,10 +407,10 @@ impl<'a> Resolver<'a> {
                 Scope::CrateRoot => {
                     let root_ident = Ident::new(kw::PathRoot, ident.span);
                     let root_module = this.resolve_crate_root(root_ident);
-                    add_module_candidates(root_module, &mut suggestions, filter_fn);
+                    this.add_module_candidates(root_module, &mut suggestions, filter_fn);
                 }
                 Scope::Module(module) => {
-                    add_module_candidates(module, &mut suggestions, filter_fn);
+                    this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(|(name, binding)| {
@@ -453,9 +458,9 @@ impl<'a> Resolver<'a> {
                 Scope::StdLibPrelude => {
                     if let Some(prelude) = this.prelude {
                         let mut tmp_suggestions = Vec::new();
-                        add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
+                        this.add_module_candidates(prelude, &mut tmp_suggestions, filter_fn);
                         suggestions.extend(tmp_suggestions.into_iter().filter(|s| {
-                            use_prelude || this.is_builtin_macro(s.res.opt_def_id())
+                            use_prelude || this.is_builtin_macro(s.res)
                         }));
                     }
                 }
@@ -509,11 +514,9 @@ impl<'a> Resolver<'a> {
         while let Some((in_module,
                         path_segments,
                         in_module_is_extern)) = worklist.pop() {
-            self.populate_module_if_necessary(in_module);
-
             // We have to visit module children in deterministic order to avoid
             // instabilities in reported imports (#43552).
-            in_module.for_each_child_stable(|ident, ns, name_binding| {
+            in_module.for_each_child_stable(self, |this, ident, ns, name_binding| {
                 // avoid imports entirely
                 if name_binding.is_import() && !name_binding.is_extern_crate() { return; }
                 // avoid non-importable candidates as well
@@ -547,7 +550,7 @@ impl<'a> Resolver<'a> {
                         // outside crate private modules => no need to check this)
                         if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                             let did = match res {
-                                Res::Def(DefKind::Ctor(..), did) => self.parent(did),
+                                Res::Def(DefKind::Ctor(..), did) => this.parent(did),
                                 _ => res.opt_def_id(),
                             };
                             candidates.push(ImportSuggestion { did, path });
@@ -595,7 +598,7 @@ impl<'a> Resolver<'a> {
         where FilterFn: Fn(Res) -> bool
     {
         let mut suggestions = self.lookup_import_candidates_from_module(
-            lookup_ident, namespace, self.graph_root, Ident::with_empty_ctxt(kw::Crate), &filter_fn
+            lookup_ident, namespace, self.graph_root, Ident::with_dummy_span(kw::Crate), &filter_fn
         );
 
         if lookup_ident.span.rust_2018() {
@@ -607,8 +610,6 @@ impl<'a> Resolver<'a> {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
                     });
-                    self.populate_module_if_necessary(&crate_root);
-
                     suggestions.extend(self.lookup_import_candidates_from_module(
                         lookup_ident, namespace, crate_root, ident, &filter_fn));
                 }
@@ -805,7 +806,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ///            at the root of the crate instead of the module where it is defined
     /// ```
     pub(crate) fn check_for_module_export_macro(
-        &self,
+        &mut self,
         directive: &'b ImportDirective<'b>,
         module: ModuleOrUniformRoot<'b>,
         ident: Ident,
@@ -826,7 +827,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             return None;
         }
 
-        let resolutions = crate_module.resolutions.borrow();
+        let resolutions = self.r.resolutions(crate_module).borrow();
         let resolution = resolutions.get(&(ident, MacroNS))?;
         let binding = resolution.borrow().binding()?;
         if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {

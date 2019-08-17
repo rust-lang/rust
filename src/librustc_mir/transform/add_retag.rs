@@ -42,9 +42,8 @@ fn is_stable(
     }
 }
 
-/// Determine whether this type may have a reference in it, recursing below compound types but
-/// not below references.
-fn may_have_reference<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+/// Determine whether this type may be a reference (or box), and thus needs retagging.
+fn may_be_reference<'tcx>(ty: Ty<'tcx>) -> bool {
     match ty.sty {
         // Primitive types that are not references
         ty::Bool | ty::Char |
@@ -55,15 +54,12 @@ fn may_have_reference<'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
         // References
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,
-        // Compound types
-        ty::Array(ty, ..) | ty::Slice(ty) =>
-            may_have_reference(ty, tcx),
-        ty::Tuple(tys) =>
-            tys.iter().any(|ty| may_have_reference(ty.expect_ty(), tcx)),
-        ty::Adt(adt, substs) =>
-            adt.variants.iter().any(|v| v.fields.iter().any(|f|
-                may_have_reference(f.ty(tcx, substs), tcx)
-            )),
+        // Compound types are not references
+        ty::Array(..) |
+        ty::Slice(..) |
+        ty::Tuple(..) |
+        ty::Adt(..) =>
+            false,
         // Conservative fallback
         _ => true,
     }
@@ -80,7 +76,7 @@ impl MirPass for AddRetag {
             // FIXME: Instead of giving up for unstable places, we should introduce
             // a temporary and retag on that.
             is_stable(place.as_ref())
-                && may_have_reference(place.ty(&*local_decls, tcx).ty, tcx)
+                && may_be_reference(place.ty(&*local_decls, tcx).ty)
         };
 
         // PART 1

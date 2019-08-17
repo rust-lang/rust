@@ -61,6 +61,7 @@ mod uefi_base;
 mod windows_base;
 mod windows_msvc_base;
 mod windows_uwp_base;
+mod windows_uwp_msvc_base;
 mod thumb_base;
 mod l4re_base;
 mod fuchsia_base;
@@ -371,6 +372,8 @@ supported_targets! {
     ("i586-unknown-linux-musl", i586_unknown_linux_musl),
     ("mips-unknown-linux-musl", mips_unknown_linux_musl),
     ("mipsel-unknown-linux-musl", mipsel_unknown_linux_musl),
+    ("mips64-unknown-linux-muslabi64", mips64_unknown_linux_muslabi64),
+    ("mips64el-unknown-linux-muslabi64", mips64el_unknown_linux_muslabi64),
     ("hexagon-unknown-linux-musl", hexagon_unknown_linux_musl),
 
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
@@ -395,6 +398,7 @@ supported_targets! {
 
     ("aarch64-unknown-openbsd", aarch64_unknown_openbsd),
     ("i686-unknown-openbsd", i686_unknown_openbsd),
+    ("sparc64-unknown-openbsd", sparc64_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
 
     ("aarch64-unknown-netbsd", aarch64_unknown_netbsd),
@@ -425,6 +429,7 @@ supported_targets! {
     ("aarch64-apple-ios", aarch64_apple_ios),
     ("armv7-apple-ios", armv7_apple_ios),
     ("armv7s-apple-ios", armv7s_apple_ios),
+    ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
 
     ("armebv7r-none-eabi", armebv7r_none_eabi),
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
@@ -442,8 +447,11 @@ supported_targets! {
     ("x86_64-uwp-windows-gnu", x86_64_uwp_windows_gnu),
 
     ("aarch64-pc-windows-msvc", aarch64_pc_windows_msvc),
+    ("aarch64-uwp-windows-msvc", aarch64_uwp_windows_msvc),
     ("x86_64-pc-windows-msvc", x86_64_pc_windows_msvc),
+    ("x86_64-uwp-windows-msvc", x86_64_uwp_windows_msvc),
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
+    ("i686-uwp-windows-msvc", i686_uwp_windows_msvc),
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
 
@@ -485,10 +493,9 @@ supported_targets! {
 
     ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
 
-    ("x86_64-wrs-vxworks", x86_64_wrs_vxworks),
     ("i686-wrs-vxworks", i686_wrs_vxworks),
-    ("i586-wrs-vxworks", i586_wrs_vxworks),
-    ("armv7-wrs-vxworks", armv7_wrs_vxworks),
+    ("x86_64-wrs-vxworks", x86_64_wrs_vxworks),
+    ("armv7-wrs-vxworks-eabihf", armv7_wrs_vxworks_eabihf),
     ("aarch64-wrs-vxworks", aarch64_wrs_vxworks),
     ("powerpc-wrs-vxworks", powerpc_wrs_vxworks),
     ("powerpc-wrs-vxworks-spe", powerpc_wrs_vxworks_spe),

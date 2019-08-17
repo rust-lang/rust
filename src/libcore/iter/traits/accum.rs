@@ -85,28 +85,28 @@ macro_rules! float_sum_product {
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Sum for $a {
             fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
-                iter.fold(0.0, |a, b| a + b)
+                iter.fold(0.0, Add::add)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl Product for $a {
             fn product<I: Iterator<Item=$a>>(iter: I) -> $a {
-                iter.fold(1.0, |a, b| a * b)
+                iter.fold(1.0, Mul::mul)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
-                iter.fold(0.0, |a, b| a + *b)
+                iter.fold(0.0, Add::add)
             }
         }
 
         #[stable(feature = "iter_arith_traits", since = "1.12.0")]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
-                iter.fold(1.0, |a, b| a * *b)
+                iter.fold(1.0, Mul::mul)
             }
         }
     )*)

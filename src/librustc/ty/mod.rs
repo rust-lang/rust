@@ -483,7 +483,7 @@ bitflags! {
     }
 }
 
-#[cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
+#[allow(rustc::usage_of_ty_tykind)]
 pub struct TyS<'tcx> {
     pub sty: TyKind<'tcx>,
     pub flags: TypeFlags,

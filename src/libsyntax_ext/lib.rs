@@ -42,7 +42,7 @@ pub mod test_harness;
 
 pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, edition: Edition) {
     let mut register = |name, kind| resolver.register_builtin_macro(
-        Ident::with_empty_ctxt(name), SyntaxExtension {
+        Ident::with_dummy_span(name), SyntaxExtension {
             is_builtin: true, ..SyntaxExtension::default(kind, edition)
         },
     );
@@ -57,7 +57,6 @@ pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, e
     }
 
     register_bang! {
-        __rust_unstable_column: source_util::expand_column,
         asm: asm::expand_asm,
         assert: assert::expand_assert,
         cfg: cfg::expand_cfg,

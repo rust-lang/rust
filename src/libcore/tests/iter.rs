@@ -104,6 +104,22 @@ fn test_iterator_chain_nth() {
 }
 
 #[test]
+fn test_iterator_chain_nth_back() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let zs = [];
+    let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
+    for (i, x) in expected.iter().rev().enumerate() {
+        assert_eq!(Some(x), xs.iter().chain(&ys).nth_back(i));
+    }
+    assert_eq!(zs.iter().chain(&xs).nth_back(0), Some(&5));
+
+    let mut it = xs.iter().chain(&zs);
+    assert_eq!(it.nth_back(5), Some(&0));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
 fn test_iterator_chain_last() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];
@@ -1136,6 +1152,18 @@ fn test_cycle() {
     assert_eq!(empty::<i32>().cycle().fold(0, |acc, x| acc + x), 0);
 
     assert_eq!(once(1).cycle().skip(1).take(4).fold(0, |acc, x| acc + x), 4);
+
+    assert_eq!((0..10).cycle().take(5).sum::<i32>(), 10);
+    assert_eq!((0..10).cycle().take(15).sum::<i32>(), 55);
+    assert_eq!((0..10).cycle().take(25).sum::<i32>(), 100);
+
+    let mut iter = (0..10).cycle();
+    iter.nth(14);
+    assert_eq!(iter.take(8).sum::<i32>(), 38);
+
+    let mut iter = (0..10).cycle();
+    iter.nth(9);
+    assert_eq!(iter.take(3).sum::<i32>(), 3);
 }
 
 #[test]

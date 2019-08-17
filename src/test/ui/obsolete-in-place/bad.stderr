@@ -1,8 +1,12 @@
-error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `<-`
+error: unexpected token: `<-`
   --> $DIR/bad.rs:5:7
    |
 LL |     x <- y;
-   |       ^^ expected one of 8 possible tokens here
+   |       ^^
+help: if you meant to write a comparison against a negative value, add a space in between `<` and `-`
+   |
+LL |     x < - y;
+   |       ^^^
 
 error: expected expression, found keyword `in`
   --> $DIR/bad.rs:10:5

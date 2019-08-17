@@ -340,7 +340,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     pub fn expr_self(&self, span: Span) -> P<ast::Expr> {
-        self.expr_ident(span, Ident::with_empty_ctxt(kw::SelfLower))
+        self.expr_ident(span, Ident::with_dummy_span(kw::SelfLower))
     }
 
     pub fn expr_binary(&self, sp: Span, op: ast::BinOpKind,
@@ -403,6 +403,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             is_shorthand: false,
             attrs: ThinVec::new(),
+            id: ast::DUMMY_NODE_ID,
         }
     }
     pub fn expr_struct(
@@ -574,7 +575,7 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::TupleStruct(path, subpats))
     }
     pub fn pat_struct(&self, span: Span, path: ast::Path,
-                  field_pats: Vec<Spanned<ast::FieldPat>>) -> P<ast::Pat> {
+                      field_pats: Vec<ast::FieldPat>) -> P<ast::Pat> {
         self.pat(span, PatKind::Struct(path, field_pats, false))
     }
     pub fn pat_tuple(&self, span: Span, pats: Vec<P<ast::Pat>>) -> P<ast::Pat> {
@@ -612,6 +613,7 @@ impl<'a> ExtCtxt<'a> {
             guard: None,
             body: expr,
             span,
+            id: ast::DUMMY_NODE_ID,
         }
     }
 
@@ -781,14 +783,14 @@ impl<'a> ExtCtxt<'a> {
             ast::VariantData::Tuple(fields, ast::DUMMY_NODE_ID)
         };
 
-        respan(span,
-               ast::Variant_ {
-                   ident,
-                   id: ast::DUMMY_NODE_ID,
-                   attrs: Vec::new(),
-                   data: vdata,
-                   disr_expr: None,
-               })
+        ast::Variant {
+            attrs: Vec::new(),
+            data: vdata,
+            disr_expr: None,
+            id: ast::DUMMY_NODE_ID,
+            ident,
+            span,
+        }
     }
 
     pub fn item_enum_poly(&self, span: Span, name: Ident,

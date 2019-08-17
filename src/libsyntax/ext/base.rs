@@ -1,6 +1,6 @@
 use crate::ast::{self, Attribute, Name, PatKind};
 use crate::attr::{HasAttrs, Stability, Deprecation};
-use crate::source_map::{SourceMap, Spanned, respan};
+use crate::source_map::SourceMap;
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
 use crate::ext::hygiene::{ExpnId, SyntaxContext, Transparency};
@@ -15,7 +15,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnInfo, ExpnKind};
+use syntax_pos::hygiene::{ExpnData, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -405,7 +405,6 @@ impl MacResult for MacEager {
 /// after hitting errors.
 #[derive(Copy, Clone)]
 pub struct DummyResult {
-    expr_only: bool,
     is_error: bool,
     span: Span,
 }
@@ -416,21 +415,12 @@ impl DummyResult {
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
     pub fn any(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, is_error: true, span })
+        Box::new(DummyResult { is_error: true, span })
     }
 
     /// Same as `any`, but must be a valid fragment, not error.
     pub fn any_valid(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: false, is_error: false, span })
-    }
-
-    /// Creates a default MacResult that can only be an expression.
-    ///
-    /// Use this for macros that must expand to an expression, so even
-    /// if an error is encountered internally, the user will receive
-    /// an error that they also used it in the wrong place.
-    pub fn expr(span: Span) -> Box<dyn MacResult+'static> {
-        Box::new(DummyResult { expr_only: true, is_error: true, span })
+        Box::new(DummyResult { is_error: false, span })
     }
 
     /// A plain dummy expression.
@@ -472,36 +462,19 @@ impl MacResult for DummyResult {
     }
 
     fn make_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::Item>; 1]>> {
-        // this code needs a comment... why not always just return the Some() ?
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::ImplItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVec<[ast::TraitItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_foreign_items(self: Box<Self>) -> Option<SmallVec<[ast::ForeignItem; 1]>> {
-        if self.expr_only {
-            None
-        } else {
-            Some(SmallVec::new())
-        }
+        Some(SmallVec::new())
     }
 
     fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
@@ -667,10 +640,11 @@ impl SyntaxExtension {
         SyntaxExtension::default(SyntaxExtensionKind::NonMacroAttr { mark_used }, edition)
     }
 
-    pub fn expn_info(&self, call_site: Span, descr: Symbol) -> ExpnInfo {
-        ExpnInfo {
-            call_site,
+    pub fn expn_data(&self, parent: ExpnId, call_site: Span, descr: Symbol) -> ExpnData {
+        ExpnData {
             kind: ExpnKind::Macro(self.macro_kind(), descr),
+            parent,
+            call_site,
             def_site: self.span,
             default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
@@ -734,7 +708,7 @@ pub struct ExpansionData {
 
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
-/// -> expn_info` of their expansion context stored into their span.
+/// -> expn_data` of their expansion context stored into their span.
 pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
@@ -783,13 +757,10 @@ impl<'a> ExtCtxt<'a> {
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
-        match self.current_expansion.id.expn_info() {
-            Some(expn_info) => expn_info.call_site,
-            None => DUMMY_SP,
-        }
+        self.current_expansion.id.expn_data().call_site
     }
     pub fn backtrace(&self) -> SyntaxContext {
-        SyntaxContext::empty().apply_mark(self.current_expansion.id)
+        SyntaxContext::root().apply_mark(self.current_expansion.id)
     }
 
     /// Returns span for the macro which originally caused the current expansion to happen.
@@ -799,17 +770,13 @@ impl<'a> ExtCtxt<'a> {
         let mut ctxt = self.backtrace();
         let mut last_macro = None;
         loop {
-            if ctxt.outer_expn_info().map_or(None, |info| {
-                if info.kind.descr() == sym::include {
-                    // Stop going up the backtrace once include! is encountered
-                    return None;
-                }
-                ctxt = info.call_site.ctxt();
-                last_macro = Some(info.call_site);
-                Some(())
-            }).is_none() {
-                break
+            let expn_data = ctxt.outer_expn_data();
+            // Stop going up the backtrace once include! is encountered
+            if expn_data.is_root() || expn_data.kind.descr() == sym::include {
+                break;
             }
+            ctxt = expn_data.call_site.ctxt();
+            last_macro = Some(expn_data.call_site);
         }
         last_macro
     }
@@ -899,7 +866,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
         let def_site = DUMMY_SP.apply_mark(self.current_expansion.id);
         iter::once(Ident::new(kw::DollarCrate, def_site))
-            .chain(components.iter().map(|&s| Ident::with_empty_ctxt(s)))
+            .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
@@ -943,15 +910,17 @@ pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     mut expr: P<ast::Expr>,
     err_msg: &str,
-) -> Result<Spanned<(Symbol, ast::StrStyle)>, Option<DiagnosticBuilder<'a>>> {
+) -> Result<(Symbol, ast::StrStyle, Span), Option<DiagnosticBuilder<'a>>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     expr.span = expr.span.apply_mark(cx.current_expansion.id);
 
-    // we want to be able to handle e.g., `concat!("foo", "bar")`
-    cx.expander().visit_expr(&mut expr);
+    // Perform eager expansion on the expression.
+    // We want to be able to handle e.g., `concat!("foo", "bar")`.
+    let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
+
     Err(match expr.node {
         ast::ExprKind::Lit(ref l) => match l.node {
-            ast::LitKind::Str(s, style) => return Ok(respan(expr.span, (s, style))),
+            ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
             ast::LitKind::Err(_) => None,
             _ => Some(cx.struct_span_err(l.span, err_msg))
         },
@@ -965,7 +934,7 @@ pub fn expr_to_string(cx: &mut ExtCtxt<'_>, expr: P<ast::Expr>, err_msg: &str)
     expr_to_spanned_string(cx, expr, err_msg)
         .map_err(|err| err.map(|mut err| err.emit()))
         .ok()
-        .map(|s| s.node)
+        .map(|(symbol, style, _)| (symbol, style))
 }
 
 /// Non-fatally assert that `tts` is empty. Note that this function
@@ -1013,8 +982,12 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>,
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
-        let mut expr = panictry!(p.parse_expr());
-        cx.expander().visit_expr(&mut expr);
+        let expr = panictry!(p.parse_expr());
+
+        // Perform eager expansion on the expression.
+        // We want to be able to handle e.g., `concat!("foo", "bar")`.
+        let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
+
         es.push(expr);
         if p.eat(&token::Comma) {
             continue;

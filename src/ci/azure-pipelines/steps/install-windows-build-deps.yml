@@ -4,7 +4,7 @@ steps:
 # https://github.com/wixtoolset/wix3 originally
 - bash: |
     set -e
-    curl -O https://rust-lang-ci2.s3-us-west-1.amazonaws.com/rust-ci-mirror/wix311-binaries.zip
+    curl -O https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/wix311-binaries.zip
     echo "##vso[task.setvariable variable=WIX]`pwd`/wix"
     mkdir -p wix/bin
     cd wix/bin
@@ -18,7 +18,7 @@ steps:
 # one is MSI installers and one is EXE, but they're not used so frequently at
 # this point anyway so perhaps it's a wash!
 - script: |
-    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf is-install.exe https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2017-08-22-is.exe"
+    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf is-install.exe https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-08-22-is.exe"
     is-install.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-
     echo ##vso[task.prependpath]C:\Program Files (x86)\Inno Setup 5
   displayName: Install InnoSetup
@@ -109,7 +109,7 @@ steps:
 # Note that this is originally from the github releases patch of Ninja
 - script: |
     md ninja
-    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf 2017-03-15-ninja-win.zip https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2017-03-15-ninja-win.zip"
+    powershell -Command "$ProgressPreference = 'SilentlyContinue'; iwr -outf 2017-03-15-ninja-win.zip https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2017-03-15-ninja-win.zip"
     7z x -oninja 2017-03-15-ninja-win.zip
     del 2017-03-15-ninja-win.zip
     set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --enable-ninja

@@ -155,11 +155,11 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_variant(&mut self, v: &'a Variant, g: &'a Generics, item_id: NodeId) {
-        let def = self.create_def(v.node.id,
-                                  DefPathData::TypeNs(v.node.ident.as_interned_str()),
+        let def = self.create_def(v.id,
+                                  DefPathData::TypeNs(v.ident.as_interned_str()),
                                   v.span);
         self.with_parent(def, |this| {
-            if let Some(ctor_hir_id) = v.node.data.ctor_id() {
+            if let Some(ctor_hir_id) = v.data.ctor_id() {
                 this.create_def(ctor_hir_id, DefPathData::Ctor, v.span);
             }
             visit::walk_variant(this, v, g, item_id)

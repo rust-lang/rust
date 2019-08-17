@@ -296,11 +296,7 @@ pub fn intern_const_alloc_recursive(
                 let err = crate::const_eval::error_to_const_error(&ecx, error);
                 match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
                     Ok(mut diag) => {
-                        diag.note("The rules on what exactly is undefined behavior aren't clear, \
-                            so this check might be overzealous. Please open an issue on the rust \
-                            compiler repository if you believe it should not be considered \
-                            undefined behavior",
-                        );
+                        diag.note(crate::const_eval::note_on_undefined_behavior_error());
                         diag.emit();
                     }
                     Err(ErrorHandled::TooGeneric) |

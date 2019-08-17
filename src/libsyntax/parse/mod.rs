@@ -16,6 +16,7 @@ use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic,
 use rustc_data_structures::sync::{Lrc, Lock, Once};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use syntax_pos::edition::Edition;
+use syntax_pos::hygiene::ExpnId;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use std::borrow::Cow;
@@ -62,6 +63,8 @@ pub struct ParseSess {
     pub let_chains_spans: Lock<Vec<Span>>,
     // Places where `async || ..` exprs were used and should be feature gated.
     pub async_closure_spans: Lock<Vec<Span>>,
+    // Places where `yield e?` exprs were used and should be feature gated.
+    pub yield_spans: Lock<Vec<Span>>,
     pub injected_crate_name: Once<Symbol>,
 }
 
@@ -86,11 +89,12 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
-            edition: Edition::from_session(),
+            edition: ExpnId::root().expn_data().edition,
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             param_attr_spans: Lock::new(Vec::new()),
             let_chains_spans: Lock::new(Vec::new()),
             async_closure_spans: Lock::new(Vec::new()),
+            yield_spans: Lock::new(Vec::new()),
             injected_crate_name: Once::new(),
         }
     }

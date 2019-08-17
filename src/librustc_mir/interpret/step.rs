@@ -240,8 +240,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
-                let val = self.force_allocation(src)?;
-                self.write_immediate(val.to_ref(), dest)?;
+                let place = self.force_allocation(src)?;
+                if place.layout.size.bytes() > 0 {
+                    // definitely not a ZST
+                    assert!(place.ptr.is_ptr(), "non-ZST places should be normalized to `Pointer`");
+                }
+                self.write_immediate(place.to_ref(), dest)?;
             }
 
             NullaryOp(mir::NullOp::Box, _) => {

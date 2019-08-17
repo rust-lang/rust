@@ -1,0 +1,8 @@
+error: `async fn` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
+  --> $DIR/issue-61949-self-return-type.rs:12:40
+   |
+LL |     pub async fn new(_bar: &'a i32) -> Self {
+   |                                        ^^^^
+
+error: aborting due to previous error
+

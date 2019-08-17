@@ -1207,7 +1207,7 @@ fn resolve_local<'tcx>(
             PatKind::Binding(hir::BindingAnnotation::RefMut, ..) => true,
 
             PatKind::Struct(_, ref field_pats, _) => {
-                field_pats.iter().any(|fp| is_binding_pat(&fp.node.pat))
+                field_pats.iter().any(|fp| is_binding_pat(&fp.pat))
             }
 
             PatKind::Slice(ref pats1, ref pats2, ref pats3) => {

@@ -12,7 +12,7 @@ use crate::symbol::{kw, sym};
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
 use crate::tokenstream::{DelimSpan, TokenTree, TokenStream};
 use crate::with_default_globals;
-use syntax_pos::{Span, BytePos, Pos, NO_EXPANSION};
+use syntax_pos::{Span, BytePos, Pos};
 
 use std::path::PathBuf;
 
@@ -27,7 +27,7 @@ fn parse_item_from_source_str(name: FileName, source: String, sess: &ParseSess)
 
 // produce a syntax_pos::span
 fn sp(a: u32, b: u32) -> Span {
-    Span::new(BytePos(a), BytePos(b), NO_EXPANSION)
+    Span::with_root_ctxt(BytePos(a), BytePos(b))
 }
 
 /// Parse a string, return an expr
@@ -172,8 +172,8 @@ fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
     impl<'a> crate::visit::Visitor<'a> for PatIdentVisitor {
         fn visit_pat(&mut self, p: &'a ast::Pat) {
             match p.node {
-                PatKind::Ident(_ , ref spannedident, _) => {
-                    self.spans.push(spannedident.span.clone());
+                PatKind::Ident(_ , ref ident, _) => {
+                    self.spans.push(ident.span.clone());
                 }
                 _ => {
                     crate::visit::walk_pat(self, p);
@@ -273,7 +273,7 @@ fn ttdelim_span() {
             "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
         let tts: Vec<_> = match expr.node {
-            ast::ExprKind::Mac(ref mac) => mac.node.stream().trees().collect(),
+            ast::ExprKind::Mac(ref mac) => mac.stream().trees().collect(),
             _ => panic!("not a macro"),
         };
 

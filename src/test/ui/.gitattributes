@@ -1,2 +1,3 @@
 lexer-crlf-line-endings-string-literal-doc-comment.rs -text
 trailing-carriage-return-in-string.rs -text
+*.bin -text

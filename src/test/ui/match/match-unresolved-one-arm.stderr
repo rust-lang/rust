@@ -2,10 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/match-unresolved-one-arm.rs:4:9
    |
 LL |     let x = match () {
-   |         ^
-   |         |
-   |         cannot infer type
-   |         consider giving `x` a type
+   |         ^ consider giving `x` a type
 
 error: aborting due to previous error
 

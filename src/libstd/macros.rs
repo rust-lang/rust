@@ -53,20 +53,20 @@
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow_internal_unstable(__rust_unstable_column, libstd_sys_internals)]
+#[allow_internal_unstable(libstd_sys_internals)]
 macro_rules! panic {
     () => ({
         $crate::panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_panic($msg, &(file!(), line!(), __rust_unstable_column!()))
+        $crate::rt::begin_panic($msg, &($crate::file!(), $crate::line!(), $crate::column!()))
     });
     ($msg:expr,) => ({
         $crate::panic!($msg)
     });
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&format_args!($fmt, $($arg)+),
-                                    &(file!(), line!(), __rust_unstable_column!()))
+        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+),
+                                    &($crate::file!(), $crate::line!(), $crate::column!()))
     });
 }
 
@@ -113,7 +113,7 @@ macro_rules! panic {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::io::_print($crate::format_args!($($arg)*)));
 }
 
 /// Prints to the standard output, with a newline.
@@ -147,7 +147,7 @@ macro_rules! print {
 macro_rules! println {
     () => ($crate::print!("\n"));
     ($($arg:tt)*) => ({
-        $crate::io::_print(format_args_nl!($($arg)*));
+        $crate::io::_print($crate::format_args_nl!($($arg)*));
     })
 }
 
@@ -176,7 +176,7 @@ macro_rules! println {
 #[stable(feature = "eprint", since = "1.19.0")]
 #[allow_internal_unstable(print_internals)]
 macro_rules! eprint {
-    ($($arg:tt)*) => ($crate::io::_eprint(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::io::_eprint($crate::format_args!($($arg)*)));
 }
 
 /// Prints to the standard error, with a newline.
@@ -206,7 +206,7 @@ macro_rules! eprint {
 macro_rules! eprintln {
     () => ($crate::eprint!("\n"));
     ($($arg:tt)*) => ({
-        $crate::io::_eprint(format_args_nl!($($arg)*));
+        $crate::io::_eprint($crate::format_args_nl!($($arg)*));
     })
 }
 
@@ -337,7 +337,7 @@ macro_rules! eprintln {
 #[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
     () => {
-        $crate::eprintln!("[{}:{}]", file!(), line!());
+        $crate::eprintln!("[{}:{}]", $crate::file!(), $crate::line!());
     };
     ($val:expr) => {
         // Use of `match` here is intentional because it affects the lifetimes
@@ -345,7 +345,7 @@ macro_rules! dbg {
         match $val {
             tmp => {
                 $crate::eprintln!("[{}:{}] {} = {:#?}",
-                    file!(), line!(), stringify!($val), &tmp);
+                    $crate::file!(), $crate::line!(), $crate::stringify!($val), &tmp);
                 tmp
             }
         }

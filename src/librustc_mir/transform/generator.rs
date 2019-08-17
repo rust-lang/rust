@@ -975,7 +975,6 @@ fn insert_panic_block<'tcx>(
     let term = TerminatorKind::Assert {
         cond: Operand::Constant(box Constant {
             span: body.span,
-            ty: tcx.types.bool,
             user_ty: None,
             literal: ty::Const::from_bool(tcx, false),
         }),

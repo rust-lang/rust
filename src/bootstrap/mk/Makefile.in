@@ -81,5 +81,14 @@ ci-subset-1:
 ci-subset-2:
 	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2)
 
+TESTS_IN_MINGW_2 := \
+	src/test/ui \
+	src/test/compile-fail
+
+ci-mingw-subset-1:
+	$(Q)$(BOOTSTRAP) test $(TESTS_IN_MINGW_2:%=--exclude %)
+ci-mingw-subset-2:
+	$(Q)$(BOOTSTRAP) test $(TESTS_IN_MINGW_2)
+
 
 .PHONY: dist

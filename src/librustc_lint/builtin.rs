@@ -42,7 +42,7 @@ use syntax::source_map::Spanned;
 use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeGate, AttributeType};
 use syntax::feature_gate::{Stability, deprecated_attributes};
-use syntax_pos::{BytePos, Span, SyntaxContext};
+use syntax_pos::{BytePos, Span};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::expr_to_string;
@@ -78,7 +78,7 @@ impl EarlyLintPass for WhileTrue {
         if let ast::ExprKind::While(cond, ..) = &e.node {
             if let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).node {
                 if let ast::LitKind::Bool(true) = lit.node {
-                    if lit.span.ctxt() == SyntaxContext::empty() {
+                    if !lit.span.from_expansion() {
                         let msg = "denote infinite loops with `loop { ... }`";
                         let condition_span = cx.sess.source_map().def_span(e.span);
                         cx.struct_span_lint(WHILE_TRUE, condition_span, msg)
@@ -164,18 +164,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                                    .expect("struct pattern type is not an ADT")
                                    .variant_of_res(cx.tables.qpath_res(qpath, pat.hir_id));
             for fieldpat in field_pats {
-                if fieldpat.node.is_shorthand {
+                if fieldpat.is_shorthand {
                     continue;
                 }
-                if fieldpat.span.ctxt().outer_expn_info().is_some() {
+                if fieldpat.span.from_expansion() {
                     // Don't lint if this is a macro expansion: macro authors
                     // shouldn't have to worry about this kind of style issue
                     // (Issue #49588)
                     continue;
                 }
-                if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
+                if let PatKind::Binding(_, _, ident, None) = fieldpat.pat.node {
                     if cx.tcx.find_field_index(ident, &variant) ==
-                       Some(cx.tcx.field_index(fieldpat.node.hir_id, cx.tables)) {
+                       Some(cx.tcx.field_index(fieldpat.hir_id, cx.tables)) {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant", ident));
@@ -484,8 +484,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_variant(&mut self, cx: &LateContext<'_, '_>, v: &hir::Variant, _: &hir::Generics) {
         self.check_missing_docs_attrs(cx,
-                                      Some(v.node.id),
-                                      &v.node.attrs,
+                                      Some(v.id),
+                                      &v.attrs,
                                       v.span,
                                       "a variant");
     }
@@ -1012,7 +1012,7 @@ impl UnreachablePub {
         let mut applicability = Applicability::MachineApplicable;
         match vis.node {
             hir::VisibilityKind::Public if !cx.access_levels.is_reachable(id) => {
-                if span.ctxt().outer_expn_info().is_some() {
+                if span.from_expansion() {
                     applicability = Applicability::MaybeIncorrect;
                 }
                 let def_span = cx.tcx.sess.source_map().def_span(span);
@@ -1493,7 +1493,7 @@ impl EarlyLintPass for KeywordIdents {
         self.check_tokens(cx, mac_def.stream());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
-        self.check_tokens(cx, mac.node.tts.clone().into());
+        self.check_tokens(cx, mac.tts.clone().into());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {
         self.check_ident_token(cx, UnderMacro(false), ident);

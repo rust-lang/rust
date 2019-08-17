@@ -56,7 +56,7 @@ use core::ptr;
 use core::str::{pattern::Pattern, lossy};
 
 use crate::borrow::{Cow, ToOwned};
-use crate::collections::CollectionAllocErr;
+use crate::collections::TryReserveError;
 use crate::boxed::Box;
 use crate::str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
 use crate::vec::Vec;
@@ -937,9 +937,9 @@ impl String {
     ///
     /// ```
     /// #![feature(try_reserve)]
-    /// use std::collections::CollectionAllocErr;
+    /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &str) -> Result<String, CollectionAllocErr> {
+    /// fn process_data(data: &str) -> Result<String, TryReserveError> {
     ///     let mut output = String::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
@@ -953,7 +953,7 @@ impl String {
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.vec.try_reserve(additional)
     }
 
@@ -975,9 +975,9 @@ impl String {
     ///
     /// ```
     /// #![feature(try_reserve)]
-    /// use std::collections::CollectionAllocErr;
+    /// use std::collections::TryReserveError;
     ///
-    /// fn process_data(data: &str) -> Result<String, CollectionAllocErr> {
+    /// fn process_data(data: &str) -> Result<String, TryReserveError> {
     ///     let mut output = String::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
@@ -991,7 +991,7 @@ impl String {
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>  {
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError>  {
         self.vec.try_reserve_exact(additional)
     }
 

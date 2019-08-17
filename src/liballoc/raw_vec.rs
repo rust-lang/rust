@@ -7,8 +7,8 @@ use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use crate::alloc::{Alloc, Layout, Global, handle_alloc_error};
-use crate::collections::CollectionAllocErr::{self, *};
+use crate::alloc::{Alloc, Layout, Global, AllocErr, handle_alloc_error};
+use crate::collections::TryReserveError::{self, *};
 use crate::boxed::Box;
 
 #[cfg(test)]
@@ -385,7 +385,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
     pub fn try_reserve_exact(&mut self, used_capacity: usize, needed_extra_capacity: usize)
-           -> Result<(), CollectionAllocErr> {
+           -> Result<(), TryReserveError> {
 
         self.reserve_internal(used_capacity, needed_extra_capacity, Fallible, Exact)
     }
@@ -413,7 +413,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve_exact(&mut self, used_capacity: usize, needed_extra_capacity: usize) {
         match self.reserve_internal(used_capacity, needed_extra_capacity, Infallible, Exact) {
             Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocErr) => unreachable!(),
+            Err(AllocError { .. }) => unreachable!(),
             Ok(()) => { /* yay */ }
          }
      }
@@ -422,7 +422,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// needed_extra_capacity` elements. This logic is used in amortized reserve methods.
     /// Returns `(new_capacity, new_alloc_size)`.
     fn amortized_new_size(&self, used_capacity: usize, needed_extra_capacity: usize)
-        -> Result<usize, CollectionAllocErr> {
+        -> Result<usize, TryReserveError> {
 
         // Nothing we can really do about these checks :(
         let required_cap = used_capacity.checked_add(needed_extra_capacity)
@@ -435,7 +435,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
     pub fn try_reserve(&mut self, used_capacity: usize, needed_extra_capacity: usize)
-        -> Result<(), CollectionAllocErr> {
+        -> Result<(), TryReserveError> {
         self.reserve_internal(used_capacity, needed_extra_capacity, Fallible, Amortized)
     }
 
@@ -494,7 +494,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve(&mut self, used_capacity: usize, needed_extra_capacity: usize) {
         match self.reserve_internal(used_capacity, needed_extra_capacity, Infallible, Amortized) {
             Err(CapacityOverflow) => capacity_overflow(),
-            Err(AllocErr) => unreachable!(),
+            Err(AllocError { .. }) => unreachable!(),
             Ok(()) => { /* yay */ }
         }
     }
@@ -640,10 +640,8 @@ impl<T, A: Alloc> RawVec<T, A> {
         needed_extra_capacity: usize,
         fallibility: Fallibility,
         strategy: ReserveStrategy,
-    ) -> Result<(), CollectionAllocErr> {
+    ) -> Result<(), TryReserveError> {
         unsafe {
-            use crate::alloc::AllocErr;
-
             // NOTE: we don't early branch on ZSTs here because we want this
             // to actually catch "asking for more than usize::MAX" in that case.
             // If we make it past the first branch then we are guaranteed to
@@ -672,12 +670,16 @@ impl<T, A: Alloc> RawVec<T, A> {
                 None => self.a.alloc(new_layout),
             };
 
-            match (&res, fallibility) {
+            let ptr = match (res, fallibility) {
                 (Err(AllocErr), Infallible) => handle_alloc_error(new_layout),
-                _ => {}
-            }
+                (Err(AllocErr), Fallible) => return Err(TryReserveError::AllocError {
+                    layout: new_layout,
+                    non_exhaustive: (),
+                }),
+                (Ok(ptr), _) => ptr,
+            };
 
-            self.ptr = res?.cast().into();
+            self.ptr = ptr.cast().into();
             self.cap = new_cap;
 
             Ok(())
@@ -737,7 +739,7 @@ unsafe impl<#[may_dangle] T, A: Alloc> Drop for RawVec<T, A> {
 // all 4GB in user-space. e.g., PAE or x32
 
 #[inline]
-fn alloc_guard(alloc_size: usize) -> Result<(), CollectionAllocErr> {
+fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
     if mem::size_of::<usize>() < 8 && alloc_size > core::isize::MAX as usize {
         Err(CapacityOverflow)
     } else {

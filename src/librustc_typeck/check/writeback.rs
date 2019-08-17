@@ -283,7 +283,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             }
             hir::PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    self.visit_field_id(field.node.hir_id);
+                    self.visit_field_id(field.hir_id);
                 }
             }
             _ => {}

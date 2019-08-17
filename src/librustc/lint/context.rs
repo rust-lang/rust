@@ -1060,7 +1060,7 @@ for LateContextAndPass<'a, 'tcx, T> {
                      v: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
-        self.with_lint_attrs(v.node.id, &v.node.attrs, |cx| {
+        self.with_lint_attrs(v.id, &v.attrs, |cx| {
             lint_callback!(cx, check_variant, v, g);
             hir_visit::walk_variant(cx, v, g, item_id);
             lint_callback!(cx, check_variant_post, v, g);
@@ -1236,7 +1236,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_variant(&mut self, v: &'a ast::Variant, g: &'a ast::Generics, item_id: ast::NodeId) {
-        self.with_lint_attrs(item_id, &v.node.attrs, |cx| {
+        self.with_lint_attrs(item_id, &v.attrs, |cx| {
             run_early_pass!(cx, check_variant, v, g);
             ast_visit::walk_variant(cx, v, g, item_id);
             run_early_pass!(cx, check_variant_post, v, g);
@@ -1345,7 +1345,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // part of `walk_mac`, and (b) we should be calling
         // `visit_path`, *but* that would require a `NodeId`, and I
         // want to get #53686 fixed quickly. -nmatsakis
-        ast_visit::walk_path(self, &mac.node.path);
+        ast_visit::walk_path(self, &mac.path);
 
         run_early_pass!(self, check_mac, mac);
     }
@@ -1355,7 +1355,7 @@ struct LateLintPassObjects<'a> {
     lints: &'a mut [LateLintPassObject],
 }
 
-#[cfg_attr(not(bootstrap), allow(rustc::lint_pass_impl_without_macro))]
+#[allow(rustc::lint_pass_impl_without_macro)]
 impl LintPass for LateLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()
@@ -1525,7 +1525,7 @@ struct EarlyLintPassObjects<'a> {
     lints: &'a mut [EarlyLintPassObject],
 }
 
-#[cfg_attr(not(bootstrap), allow(rustc::lint_pass_impl_without_macro))]
+#[allow(rustc::lint_pass_impl_without_macro)]
 impl LintPass for EarlyLintPassObjects<'_> {
     fn name(&self) -> &'static str {
         panic!()

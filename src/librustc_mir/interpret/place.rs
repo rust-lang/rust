@@ -277,6 +277,10 @@ where
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
+    ///
+    /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
+    /// want to ever use the place for memory access!
+    /// Generally prefer `deref_operand`.
     pub fn ref_to_mplace(
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
@@ -304,7 +308,8 @@ where
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_immediate(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
-        self.ref_to_mplace(val)
+        let place = self.ref_to_mplace(val)?;
+        self.mplace_access_checked(place)
     }
 
     /// Check if the given place is good for memory access with the given
@@ -325,6 +330,23 @@ where
             place.layout.size
         });
         self.memory.check_ptr_access(place.ptr, size, place.align)
+    }
+
+    /// Return the "access-checked" version of this `MPlace`, where for non-ZST
+    /// this is definitely a `Pointer`.
+    pub fn mplace_access_checked(
+        &self,
+        mut place: MPlaceTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let (size, align) = self.size_and_align_of_mplace(place)?
+            .unwrap_or((place.layout.size, place.layout.align.abi));
+        assert!(place.mplace.align <= align, "dynamic alignment less strict than static one?");
+        place.mplace.align = align; // maximally strict checking
+        // When dereferencing a pointer, it must be non-NULL, aligned, and live.
+        if let Some(ptr) = self.check_mplace_access(place, Some(size))? {
+            place.mplace.ptr = ptr.into();
+        }
+        Ok(place)
     }
 
     /// Force `place.ptr` to a `Pointer`.
@@ -750,7 +772,9 @@ where
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
 
-        let ptr = match self.check_mplace_access(dest, None)? {
+        let ptr = match self.check_mplace_access(dest, None)
+            .expect("places should be checked on creation")
+        {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
         };
@@ -853,8 +877,10 @@ where
         });
         assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
 
-        let src = self.check_mplace_access(src, Some(size))?;
-        let dest = self.check_mplace_access(dest, Some(size))?;
+        let src = self.check_mplace_access(src, Some(size))
+            .expect("places should be checked on creation");
+        let dest = self.check_mplace_access(dest, Some(size))
+            .expect("places should be checked on creation");
         let (src_ptr, dest_ptr) = match (src, dest) {
             (Some(src_ptr), Some(dest_ptr)) => (src_ptr, dest_ptr),
             (None, None) => return Ok(()), // zero-sized copy
