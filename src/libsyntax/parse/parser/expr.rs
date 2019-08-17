@@ -997,6 +997,9 @@ impl<'a> Parser<'a> {
                     } else {
                         ex = ExprKind::Yield(None);
                     }
+
+                    let span = lo.to(hi);
+                    self.sess.yield_spans.borrow_mut().push(span);
                 } else if self.eat_keyword(kw::Let) {
                     return self.parse_let_expr(attrs);
                 } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
