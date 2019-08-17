@@ -79,7 +79,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
     .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
         let node = d.ast(db);
         let mut builder = TextEditBuilder::default();
-        let replacement = format!("Ok({})", node.syntax().text());
+        let replacement = format!("Ok({})", node.syntax());
         builder.replace(node.syntax().text_range(), replacement);
         let fix = SourceChange::source_file_edit_from("wrap with ok", file_id, builder.finish());
         res.borrow_mut().push(Diagnostic {
@@ -353,12 +353,38 @@ fn div(x: i32, y: i32) -> MyResult<i32> {
     }
 
     #[test]
-    fn test_wrap_return_type_not_applicable() {
+    fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
         let content = r#"
             //- /main.rs
             use std::{string::String, result::Result::{self, Ok, Err}};
 
             fn foo() -> Result<String, i32> {
+                0
+            }
+
+            //- /std/lib.rs
+            pub mod string {
+                pub struct String { }
+            }
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
+        "#;
+        check_no_diagnostic_for_target_file("/main.rs", content);
+    }
+
+    #[test]
+    fn test_wrap_return_type_not_applicable_when_return_type_is_not_result() {
+        let content = r#"
+            //- /main.rs
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            enum SomeOtherEnum {
+                Ok(i32),
+                Err(String),
+            }
+
+            fn foo() -> SomeOtherEnum {
                 0
             }
 

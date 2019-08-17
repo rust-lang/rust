@@ -6,12 +6,11 @@ use ra_syntax::ast::{AstNode, RecordLit};
 use super::{Expr, ExprId, RecordLitField};
 use crate::{
     adt::AdtDef,
-    code_model::Enum,
     diagnostics::{DiagnosticSink, MissingFields, MissingOkInTailExpr},
     expr::AstPtr,
     name,
     path::{PathKind, PathSegment},
-    ty::{InferenceResult, Ty, TypeCtor},
+    ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
     Function, HasSource, HirDatabase, ModuleDef, Name, Path, PerNs, Resolution,
 };
 use ra_syntax::ast;
@@ -120,28 +119,12 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
                 _ => return,
             };
 
-        let std_result_type = std_result_enum.ty(db);
-
-        fn enum_from_type(ty: &Ty) -> Option<Enum> {
-            match ty {
-                Ty::Apply(t) => match t.ctor {
-                    TypeCtor::Adt(AdtDef::Enum(e)) => Some(e),
-                    _ => None,
-                },
-                _ => None,
-            }
-        }
-
-        if enum_from_type(&mismatch.expected) != enum_from_type(&std_result_type) {
-            return;
-        }
-
-        let ret = match &mismatch.expected {
-            Ty::Apply(t) => t,
+        let std_result_ctor = TypeCtor::Adt(AdtDef::Enum(std_result_enum));
+        let params = match &mismatch.expected {
+            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &std_result_ctor => parameters,
             _ => return,
         };
 
-        let params = &ret.parameters;
         if params.len() == 2 && &params[0] == &mismatch.actual {
             let source_map = self.func.body_source_map(db);
             let file_id = self.func.source(db).file_id;
