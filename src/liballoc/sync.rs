@@ -335,7 +335,7 @@ impl<T> Arc<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Arc<mem::MaybeUninit<T>> {
         unsafe {
-            Arc::from_ptr(Arc::allocate_for_unsized(
+            Arc::from_ptr(Arc::allocate_for_layout(
                 Layout::new::<T>(),
                 |mem| mem as *mut ArcInner<mem::MaybeUninit<T>>,
             ))
@@ -736,11 +736,11 @@ impl<T: ?Sized> Arc<T> {
 
 impl<T: ?Sized> Arc<T> {
     /// Allocates an `ArcInner<T>` with sufficient space for
-    /// an unsized value where the value has the layout provided.
+    /// a possibly-unsized value where the value has the layout provided.
     ///
     /// The function `mem_to_arcinner` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `ArcInner<T>`.
-    unsafe fn allocate_for_unsized(
+    unsafe fn allocate_for_layout(
         value_layout: Layout,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>
     ) -> *mut ArcInner<T> {
@@ -768,7 +768,7 @@ impl<T: ?Sized> Arc<T> {
     /// Allocates an `ArcInner<T>` with sufficient space for an unsized value.
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
         // Allocate for the `ArcInner<T>` using the given value.
-        Self::allocate_for_unsized(
+        Self::allocate_for_layout(
             Layout::for_value(&*ptr),
             |mem| set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>,
         )
@@ -799,7 +799,7 @@ impl<T: ?Sized> Arc<T> {
 impl<T> Arc<[T]> {
     /// Allocates an `ArcInner<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut ArcInner<[T]> {
-        Self::allocate_for_unsized(
+        Self::allocate_for_layout(
             Layout::array::<T>(len).unwrap(),
             |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut ArcInner<[T]>,
         )

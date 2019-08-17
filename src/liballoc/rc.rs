@@ -351,7 +351,7 @@ impl<T> Rc<T> {
     #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
         unsafe {
-            Rc::from_ptr(Rc::allocate_for_unsized(
+            Rc::from_ptr(Rc::allocate_for_layout(
                 Layout::new::<T>(),
                 |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
             ))
@@ -880,11 +880,11 @@ impl Rc<dyn Any> {
 
 impl<T: ?Sized> Rc<T> {
     /// Allocates an `RcBox<T>` with sufficient space for
-    /// an unsized value where the value has the layout provided.
+    /// a possibly-unsized value where the value has the layout provided.
     ///
     /// The function `mem_to_rcbox` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
-    unsafe fn allocate_for_unsized(
+    unsafe fn allocate_for_layout(
         value_layout: Layout,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>
     ) -> *mut RcBox<T> {
@@ -913,7 +913,7 @@ impl<T: ?Sized> Rc<T> {
     /// Allocates an `RcBox<T>` with sufficient space for an unsized value
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
         // Allocate for the `RcBox<T>` using the given value.
-        Self::allocate_for_unsized(
+        Self::allocate_for_layout(
             Layout::for_value(&*ptr),
             |mem| set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>,
         )
@@ -944,7 +944,7 @@ impl<T: ?Sized> Rc<T> {
 impl<T> Rc<[T]> {
     /// Allocates an `RcBox<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
-        Self::allocate_for_unsized(
+        Self::allocate_for_layout(
             Layout::array::<T>(len).unwrap(),
             |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
         )
