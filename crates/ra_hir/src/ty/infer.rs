@@ -1265,9 +1265,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(op) => {
                     let lhs_expectation = match op {
-                        BinaryOp::BooleanAnd | BinaryOp::BooleanOr => {
-                            Expectation::has_type(Ty::simple(TypeCtor::Bool))
-                        }
+                        BinaryOp::LogicOp(..) => Expectation::has_type(Ty::simple(TypeCtor::Bool)),
                         _ => Expectation::none(),
                     };
                     let lhs_ty = self.infer_expr(*lhs, &lhs_expectation);
@@ -1281,6 +1279,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 _ => Ty::Unknown,
             },
+            Expr::Index { base, index } => {
+                let _base_ty = self.infer_expr(*base, &Expectation::none());
+                let _index_ty = self.infer_expr(*index, &Expectation::none());
+                // FIXME: use `std::ops::Index::Output` to figure out the real return type
+                Ty::Unknown
+            }
             Expr::Tuple { exprs } => {
                 let mut ty_vec = Vec::with_capacity(exprs.len());
                 for arg in exprs.iter() {

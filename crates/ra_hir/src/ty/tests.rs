@@ -2656,6 +2656,20 @@ fn test() -> u64 {
 }
 
 #[test]
+fn indexing_arrays() {
+    assert_snapshot_matches!(
+        infer("fn main() { &mut [9][2]; }"),
+        @r###"
+[10; 26) '{ &mut...[2]; }': ()
+[12; 23) '&mut [9][2]': &mut {unknown}
+[17; 20) '[9]': [i32;_]
+[17; 23) '[9][2]': {unknown}
+[18; 19) '9': i32
+[21; 22) '2': i32"###
+    )
+}
+
+#[test]
 fn infer_macros_expanded() {
     assert_snapshot_matches!(
         infer(r#"

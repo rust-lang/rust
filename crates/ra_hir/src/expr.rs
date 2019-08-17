@@ -245,6 +245,10 @@ pub enum Expr {
         rhs: ExprId,
         op: Option<BinaryOp>,
     },
+    Index {
+        base: ExprId,
+        index: ExprId,
+    },
     Lambda {
         args: Vec<PatId>,
         arg_types: Vec<Option<TypeRef>>,
@@ -257,7 +261,46 @@ pub enum Expr {
     Literal(Literal),
 }
 
-pub use ra_syntax::ast::BinOp as BinaryOp;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum BinaryOp {
+    LogicOp(LogicOp),
+    ArithOp(ArithOp),
+    CmpOp(CmpOp),
+    Assignment { op: Option<ArithOp> },
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum LogicOp {
+    And,
+    Or,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum CmpOp {
+    Eq { negated: bool },
+    Ord { ordering: Ordering, strict: bool },
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Ordering {
+    Less,
+    Greater,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ArithOp {
+    Add,
+    Mul,
+    Sub,
+    Div,
+    Rem,
+    Shl,
+    Shr,
+    BitXor,
+    BitOr,
+    BitAnd,
+}
+
 pub use ra_syntax::ast::PrefixOp as UnaryOp;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Array {
@@ -359,6 +402,10 @@ impl Expr {
             Expr::BinaryOp { lhs, rhs, .. } => {
                 f(*lhs);
                 f(*rhs);
+            }
+            Expr::Index { base, index } => {
+                f(*base);
+                f(*index);
             }
             Expr::Field { expr, .. }
             | Expr::Await { expr }
@@ -791,7 +838,7 @@ where
             ast::ExprKind::BinExpr(e) => {
                 let lhs = self.collect_expr_opt(e.lhs());
                 let rhs = self.collect_expr_opt(e.rhs());
-                let op = e.op_kind();
+                let op = e.op_kind().map(BinaryOp::from);
                 self.alloc_expr(Expr::BinaryOp { lhs, rhs, op }, syntax_ptr)
             }
             ast::ExprKind::TupleExpr(e) => {
@@ -848,10 +895,14 @@ where
                 };
                 self.alloc_expr(Expr::Literal(lit), syntax_ptr)
             }
+            ast::ExprKind::IndexExpr(e) => {
+                let base = self.collect_expr_opt(e.base());
+                let index = self.collect_expr_opt(e.index());
+                self.alloc_expr(Expr::Index { base, index }, syntax_ptr)
+            }
 
             // FIXME implement HIR for these:
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::MacroCall(e) => {
                 let ast_id = self
@@ -1035,6 +1086,50 @@ where
             body_expr: self.body_expr.expect("A body should have been collected"),
         };
         (body, self.source_map)
+    }
+}
+
+impl From<ast::BinOp> for BinaryOp {
+    fn from(ast_op: ast::BinOp) -> Self {
+        match ast_op {
+            ast::BinOp::BooleanOr => BinaryOp::LogicOp(LogicOp::Or),
+            ast::BinOp::BooleanAnd => BinaryOp::LogicOp(LogicOp::And),
+            ast::BinOp::EqualityTest => BinaryOp::CmpOp(CmpOp::Eq { negated: false }),
+            ast::BinOp::NegatedEqualityTest => BinaryOp::CmpOp(CmpOp::Eq { negated: true }),
+            ast::BinOp::LesserEqualTest => {
+                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less, strict: false })
+            }
+            ast::BinOp::GreaterEqualTest => {
+                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: false })
+            }
+            ast::BinOp::LesserTest => {
+                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less, strict: true })
+            }
+            ast::BinOp::GreaterTest => {
+                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: true })
+            }
+            ast::BinOp::Addition => BinaryOp::ArithOp(ArithOp::Add),
+            ast::BinOp::Multiplication => BinaryOp::ArithOp(ArithOp::Mul),
+            ast::BinOp::Subtraction => BinaryOp::ArithOp(ArithOp::Sub),
+            ast::BinOp::Division => BinaryOp::ArithOp(ArithOp::Div),
+            ast::BinOp::Remainder => BinaryOp::ArithOp(ArithOp::Rem),
+            ast::BinOp::LeftShift => BinaryOp::ArithOp(ArithOp::Shl),
+            ast::BinOp::RightShift => BinaryOp::ArithOp(ArithOp::Shr),
+            ast::BinOp::BitwiseXor => BinaryOp::ArithOp(ArithOp::BitXor),
+            ast::BinOp::BitwiseOr => BinaryOp::ArithOp(ArithOp::BitOr),
+            ast::BinOp::BitwiseAnd => BinaryOp::ArithOp(ArithOp::BitAnd),
+            ast::BinOp::Assignment => BinaryOp::Assignment { op: None },
+            ast::BinOp::AddAssign => BinaryOp::Assignment { op: Some(ArithOp::Add) },
+            ast::BinOp::DivAssign => BinaryOp::Assignment { op: Some(ArithOp::Div) },
+            ast::BinOp::MulAssign => BinaryOp::Assignment { op: Some(ArithOp::Mul) },
+            ast::BinOp::RemAssign => BinaryOp::Assignment { op: Some(ArithOp::Rem) },
+            ast::BinOp::ShlAssign => BinaryOp::Assignment { op: Some(ArithOp::Shl) },
+            ast::BinOp::ShrAssign => BinaryOp::Assignment { op: Some(ArithOp::Shr) },
+            ast::BinOp::SubAssign => BinaryOp::Assignment { op: Some(ArithOp::Sub) },
+            ast::BinOp::BitOrAssign => BinaryOp::Assignment { op: Some(ArithOp::BitOr) },
+            ast::BinOp::BitAndAssign => BinaryOp::Assignment { op: Some(ArithOp::BitAnd) },
+            ast::BinOp::BitXorAssign => BinaryOp::Assignment { op: Some(ArithOp::BitXor) },
+        }
     }
 }
 

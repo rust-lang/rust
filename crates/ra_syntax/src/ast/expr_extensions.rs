@@ -102,10 +102,6 @@ pub enum BinOp {
     BitwiseOr,
     /// The `&` operator for bitwise AND
     BitwiseAnd,
-    /// The `..` operator for right-open ranges
-    RangeRightOpen,
-    /// The `..=` operator for right-closed ranges
-    RangeRightClosed,
     /// The `=` operator for assignment
     Assignment,
     /// The `+=` operator for assignment after addition
@@ -132,41 +128,40 @@ pub enum BinOp {
 
 impl ast::BinExpr {
     fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
-        self.syntax().children_with_tokens().filter_map(|it| it.into_token()).find_map(|c| match c
-            .kind()
-        {
-            T![||] => Some((c, BinOp::BooleanOr)),
-            T![&&] => Some((c, BinOp::BooleanAnd)),
-            T![==] => Some((c, BinOp::EqualityTest)),
-            T![!=] => Some((c, BinOp::NegatedEqualityTest)),
-            T![<=] => Some((c, BinOp::LesserEqualTest)),
-            T![>=] => Some((c, BinOp::GreaterEqualTest)),
-            T![<] => Some((c, BinOp::LesserTest)),
-            T![>] => Some((c, BinOp::GreaterTest)),
-            T![+] => Some((c, BinOp::Addition)),
-            T![*] => Some((c, BinOp::Multiplication)),
-            T![-] => Some((c, BinOp::Subtraction)),
-            T![/] => Some((c, BinOp::Division)),
-            T![%] => Some((c, BinOp::Remainder)),
-            T![<<] => Some((c, BinOp::LeftShift)),
-            T![>>] => Some((c, BinOp::RightShift)),
-            T![^] => Some((c, BinOp::BitwiseXor)),
-            T![|] => Some((c, BinOp::BitwiseOr)),
-            T![&] => Some((c, BinOp::BitwiseAnd)),
-            T![..] => Some((c, BinOp::RangeRightOpen)),
-            T![..=] => Some((c, BinOp::RangeRightClosed)),
-            T![=] => Some((c, BinOp::Assignment)),
-            T![+=] => Some((c, BinOp::AddAssign)),
-            T![/=] => Some((c, BinOp::DivAssign)),
-            T![*=] => Some((c, BinOp::MulAssign)),
-            T![%=] => Some((c, BinOp::RemAssign)),
-            T![>>=] => Some((c, BinOp::ShrAssign)),
-            T![<<=] => Some((c, BinOp::ShlAssign)),
-            T![-=] => Some((c, BinOp::SubAssign)),
-            T![|=] => Some((c, BinOp::BitOrAssign)),
-            T![&=] => Some((c, BinOp::BitAndAssign)),
-            T![^=] => Some((c, BinOp::BitXorAssign)),
-            _ => None,
+        self.syntax().children_with_tokens().filter_map(|it| it.into_token()).find_map(|c| {
+            let bin_op = match c.kind() {
+                T![||] => BinOp::BooleanOr,
+                T![&&] => BinOp::BooleanAnd,
+                T![==] => BinOp::EqualityTest,
+                T![!=] => BinOp::NegatedEqualityTest,
+                T![<=] => BinOp::LesserEqualTest,
+                T![>=] => BinOp::GreaterEqualTest,
+                T![<] => BinOp::LesserTest,
+                T![>] => BinOp::GreaterTest,
+                T![+] => BinOp::Addition,
+                T![*] => BinOp::Multiplication,
+                T![-] => BinOp::Subtraction,
+                T![/] => BinOp::Division,
+                T![%] => BinOp::Remainder,
+                T![<<] => BinOp::LeftShift,
+                T![>>] => BinOp::RightShift,
+                T![^] => BinOp::BitwiseXor,
+                T![|] => BinOp::BitwiseOr,
+                T![&] => BinOp::BitwiseAnd,
+                T![=] => BinOp::Assignment,
+                T![+=] => BinOp::AddAssign,
+                T![/=] => BinOp::DivAssign,
+                T![*=] => BinOp::MulAssign,
+                T![%=] => BinOp::RemAssign,
+                T![>>=] => BinOp::ShrAssign,
+                T![<<=] => BinOp::ShlAssign,
+                T![-=] => BinOp::SubAssign,
+                T![|=] => BinOp::BitOrAssign,
+                T![&=] => BinOp::BitAndAssign,
+                T![^=] => BinOp::BitXorAssign,
+                _ => return None,
+            };
+            Some((c, bin_op))
         })
     }
 
@@ -191,6 +186,15 @@ impl ast::BinExpr {
         let first = children.next();
         let second = children.next();
         (first, second)
+    }
+}
+
+impl ast::IndexExpr {
+    pub fn base(&self) -> Option<ast::Expr> {
+        children(self).nth(0)
+    }
+    pub fn index(&self) -> Option<ast::Expr> {
+        children(self).nth(1)
     }
 }
 
