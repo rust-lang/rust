@@ -10,7 +10,7 @@ use crate::resolve_imports::ImportResolver;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
-use syntax::ast::{self, Ident};
+use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
 use syntax::ext::base::{self, Indeterminate, SpecialDerives};
@@ -26,7 +26,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
 
-type Res = def::Res<ast::NodeId>;
+type Res = def::Res<NodeId>;
 
 /// Binding produced by a `macro_rules` item.
 /// Not modularized, can shadow previous legacy bindings, etc.
@@ -91,11 +91,11 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
-    fn next_node_id(&mut self) -> ast::NodeId {
+    fn next_node_id(&mut self) -> NodeId {
         self.session.next_node_id()
     }
 
-    fn get_module_scope(&mut self, id: ast::NodeId) -> ExpnId {
+    fn get_module_scope(&mut self, id: NodeId) -> ExpnId {
         let expn_id = ExpnId::fresh(Some(ExpnData::default(
             ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
         )));
@@ -115,23 +115,18 @@ impl<'a> base::Resolver for Resolver<'a> {
         });
     }
 
+    // FIXME: `extra_placeholders` should be included into the `fragment` as regular placeholders.
     fn visit_ast_fragment_with_placeholders(
-        &mut self, expansion: ExpnId, fragment: &AstFragment, derives: &[ExpnId]
+        &mut self, expansion: ExpnId, fragment: &AstFragment, extra_placeholders: &[NodeId]
     ) {
-        // Fill in some data for derives if the fragment is from a derive container.
+        // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
-        let parent_def = self.definitions.invocation_parent(expansion);
-        self.invocation_parent_scopes.extend(derives.iter().map(|&derive| (derive, parent_scope)));
-        for &derive_invoc_id in derives {
-            self.definitions.set_invocation_parent(derive_invoc_id, parent_def);
-        }
-        parent_scope.module.unresolved_invocations.borrow_mut().remove(&expansion);
-        parent_scope.module.unresolved_invocations.borrow_mut().extend(derives);
-
-        // Integrate the new AST fragment into all the definition and module structures.
-        let output_legacy_scope = self.build_reduced_graph(fragment, parent_scope);
+        let output_legacy_scope =
+            self.build_reduced_graph(fragment, extra_placeholders, parent_scope);
         self.output_legacy_scopes.insert(expansion, output_legacy_scope);
+
+        parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
     }
 
     fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension) {
@@ -485,7 +480,7 @@ impl<'a> Resolver<'a> {
                 Scope::MacroUsePrelude => match this.macro_use_prelude.get(&ident.name).cloned() {
                     Some(binding) => Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
                     None => Err(Determinacy::determined(
-                        this.graph_root.unresolved_invocations.borrow().is_empty()
+                        this.graph_root.unexpanded_invocations.borrow().is_empty()
                     ))
                 }
                 Scope::BuiltinAttrs => if is_builtin_attr_name(ident.name) {
@@ -508,7 +503,7 @@ impl<'a> Resolver<'a> {
                 Scope::ExternPrelude => match this.extern_prelude_get(ident, !record_used) {
                     Some(binding) => Ok((binding, Flags::PRELUDE)),
                     None => Err(Determinacy::determined(
-                        this.graph_root.unresolved_invocations.borrow().is_empty()
+                        this.graph_root.unexpanded_invocations.borrow().is_empty()
                     )),
                 }
                 Scope::ToolPrelude => if KNOWN_TOOLS.contains(&ident.name) {
