@@ -91,8 +91,10 @@ use core::ops::{
     CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
 };
 use core::ptr::{self, NonNull, Unique};
+use core::slice;
 use core::task::{Context, Poll};
 
+use crate::alloc::{self, Global, Alloc};
 use crate::vec::Vec;
 use crate::raw_vec::RawVec;
 use crate::str::from_boxed_utf8_unchecked;
@@ -121,12 +123,145 @@ impl<T> Box<T> {
         box x
     }
 
+    /// Constructs a new box with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut five = Box::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     five.as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit() -> Box<mem::MaybeUninit<T>> {
+        let layout = alloc::Layout::new::<mem::MaybeUninit<T>>();
+        let ptr = unsafe {
+            Global.alloc(layout)
+                .unwrap_or_else(|_| alloc::handle_alloc_error(layout))
+        };
+        Box(ptr.cast().into())
+    }
+
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
     /// `x` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn pin(x: T) -> Pin<Box<T>> {
         (box x).into()
+    }
+}
+
+impl<T> Box<[T]> {
+    /// Constructs a new boxed slice with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut values = Box::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     values[0].as_mut_ptr().write(1);
+    ///     values[1].as_mut_ptr().write(2);
+    ///     values[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
+        let layout = alloc::Layout::array::<mem::MaybeUninit<T>>(len).unwrap();
+        let ptr = unsafe { alloc::alloc(layout) };
+        let unique = Unique::new(ptr).unwrap_or_else(|| alloc::handle_alloc_error(layout));
+        let slice = unsafe { slice::from_raw_parts_mut(unique.cast().as_ptr(), len) };
+        Box(Unique::from(slice))
+    }
+}
+
+impl<T> Box<mem::MaybeUninit<T>> {
+    /// Converts to `Box<T>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut five = Box::<u32>::new_uninit();
+    ///
+    /// let five: Box<u32> = unsafe {
+    ///     // Deferred initialization:
+    ///     five.as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Box<T> {
+        Box(Box::into_unique(self).cast())
+    }
+}
+
+impl<T> Box<[mem::MaybeUninit<T>]> {
+    /// Converts to `Box<[T]>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the values
+    /// really are in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let mut values = Box::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     values[0].as_mut_ptr().write(1);
+    ///     values[1].as_mut_ptr().write(2);
+    ///     values[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Box<[T]> {
+        Box(Unique::new_unchecked(Box::into_raw(self) as _))
     }
 }
 
