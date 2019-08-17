@@ -110,18 +110,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 self.write_scalar(out_val, dest)?;
             }
-            | "overflowing_add"
-            | "overflowing_sub"
-            | "overflowing_mul"
+            | "wrapping_add"
+            | "wrapping_sub"
+            | "wrapping_mul"
             | "add_with_overflow"
             | "sub_with_overflow"
             | "mul_with_overflow" => {
                 let lhs = self.read_immediate(args[0])?;
                 let rhs = self.read_immediate(args[1])?;
                 let (bin_op, ignore_overflow) = match intrinsic_name {
-                    "overflowing_add" => (BinOp::Add, true),
-                    "overflowing_sub" => (BinOp::Sub, true),
-                    "overflowing_mul" => (BinOp::Mul, true),
+                    "wrapping_add" => (BinOp::Add, true),
+                    "wrapping_sub" => (BinOp::Sub, true),
+                    "wrapping_mul" => (BinOp::Mul, true),
                     "add_with_overflow" => (BinOp::Add, false),
                     "sub_with_overflow" => (BinOp::Sub, false),
                     "mul_with_overflow" => (BinOp::Mul, false),

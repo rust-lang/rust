@@ -1112,7 +1112,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
-                intrinsics::overflowing_add(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_add(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_add(self, rhs)
+                }
             }
         }
 
@@ -1135,7 +1141,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                intrinsics::overflowing_sub(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_sub(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_sub(self, rhs)
+                }
             }
         }
 
@@ -1157,7 +1169,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_mul(self, rhs: Self) -> Self {
-                intrinsics::overflowing_mul(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_mul(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_mul(self, rhs)
+                }
             }
         }
 
@@ -3031,7 +3049,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
-                intrinsics::overflowing_add(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_add(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_add(self, rhs)
+                }
             }
         }
 
@@ -3053,7 +3077,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                intrinsics::overflowing_sub(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_sub(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_sub(self, rhs)
+                }
             }
         }
 
@@ -3076,7 +3106,13 @@ $EndFeature, "
                           without modifying the original"]
         #[inline]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
-            intrinsics::overflowing_mul(self, rhs)
+            #[cfg(boostrap_stdarch_ignore_this)] {
+                intrinsics::overflowing_mul(self, rhs)
+            }
+
+            #[cfg(not(boostrap_stdarch_ignore_this))] {
+                intrinsics::wrapping_mul(self, rhs)
+            }
         }
 
         doc_comment! {

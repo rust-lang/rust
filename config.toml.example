@@ -141,10 +141,10 @@
 # library and facade crates.
 #compiler-docs = false
 
-# Indicate whether submodules are managed and updated automatically.
+# Indicate whether git submodules are managed and updated automatically.
 #submodules = true
 
-# Update submodules only when the checked out commit in the submodules differs
+# Update git submodules only when the checked out commit in the submodules differs
 # from what is committed in the main rustc repo.
 #fast-submodules = true
 
