@@ -187,11 +187,20 @@ impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag>
-{
+impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_scalar(val: Scalar<Tag>, layout: TyLayout<'tcx>) -> Self {
         ImmTy { imm: val.into(), layout }
+    }
+
+    #[inline]
+    pub fn from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> Self {
+        Self::from_scalar(Scalar::from_uint(i, layout.size), layout)
+    }
+
+    #[inline]
+    pub fn from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Self {
+        Self::from_scalar(Scalar::from_int(i, layout.size), layout)
     }
 
     #[inline]
