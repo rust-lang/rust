@@ -45,10 +45,10 @@ crate fn eval_nullary_intrinsic<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     def_id: DefId,
     substs: SubstsRef<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
+) -> InterpResult<'tcx, &'tcx ty::Const<'tcx>> {
     let tp_ty = substs.type_at(0);
     let name = &*tcx.item_name(def_id).as_str();
-    match name {
+    Ok(match name {
         "type_name" => {
             let alloc = type_name::alloc_type_name(tcx, tp_ty);
             tcx.mk_const(ty::Const {
@@ -64,7 +64,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
         "size_of" |
         "min_align_of" |
         "pref_align_of" => {
-            let layout = tcx.layout_of(param_env.and(tp_ty)).unwrap();
+            let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
             let n = match name {
                 "pref_align_of" => layout.align.pref.bytes(),
                 "min_align_of" => layout.align.abi.bytes(),
@@ -79,7 +79,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
             param_env.and(tcx.types.u64),
         ),
         other => bug!("`{}` is not a zero arg intrinsic", other),
-    }
+    })
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
