@@ -160,12 +160,25 @@ impl<'a> Resolver<'a> {
         Some(ext)
     }
 
+    // FIXME: `extra_placeholders` should be included into the `fragment` as regular placeholders.
     crate fn build_reduced_graph(
-        &mut self, fragment: &AstFragment, parent_scope: ParentScope<'a>
+        &mut self,
+        fragment: &AstFragment,
+        extra_placeholders: &[NodeId],
+        parent_scope: ParentScope<'a>,
     ) -> LegacyScope<'a> {
-        fragment.visit_with(&mut DefCollector::new(&mut self.definitions, parent_scope.expansion));
+        let mut def_collector = DefCollector::new(&mut self.definitions, parent_scope.expansion);
+        fragment.visit_with(&mut def_collector);
+        for placeholder in extra_placeholders {
+            def_collector.visit_macro_invoc(*placeholder);
+        }
+
         let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
         fragment.visit_with(&mut visitor);
+        for placeholder in extra_placeholders {
+            visitor.parent_scope.legacy = visitor.visit_invoc(*placeholder);
+        }
+
         visitor.parent_scope.legacy
     }
 
@@ -871,7 +884,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(&mut self, child: Export<ast::NodeId>) {
+    fn build_reduced_graph_for_external_crate_res(&mut self, child: Export<NodeId>) {
         let parent = self.parent_scope.module;
         let Export { ident, res, vis, span } = child;
         // FIXME: We shouldn't create the gensym here, it should come from metadata,
@@ -1060,10 +1073,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         false
     }
 
-    fn visit_invoc(&mut self, id: ast::NodeId) -> LegacyScope<'a> {
+    fn visit_invoc(&mut self, id: NodeId) -> LegacyScope<'a> {
         let invoc_id = id.placeholder_to_expn_id();
 
-        self.parent_scope.module.unresolved_invocations.borrow_mut().insert(invoc_id);
+        self.parent_scope.module.unexpanded_invocations.borrow_mut().insert(invoc_id);
 
         let old_parent_scope = self.r.invocation_parent_scopes.insert(invoc_id, self.parent_scope);
         assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
