@@ -3,6 +3,7 @@
 .PHONY : clean
 
 %-unopt.ll: %.c
+	#../build/bin/clang -fno-unroll-loops $^ -O1 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math | ../build/bin/opt -early-cse-memssa - -S -o $@ -simplifycfg -simplifycfg
 	../build/bin/clang -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math | ../build/bin/opt -early-cse-memssa - -S -o $@ -simplifycfg -simplifycfg
 
 %-unopt.ll: %.cpp
