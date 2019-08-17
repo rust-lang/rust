@@ -609,15 +609,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, (u128, VariantIdx)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
 
-        let (discr_kind, discr_index) = match rval.layout.variants {
+        let (discr_layout, discr_kind, discr_index) = match rval.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = rval.layout.ty.discriminant_for_variant(*self.tcx, index).map_or(
                     index.as_u32() as u128,
                     |discr| discr.val);
                 return Ok((discr_val, index));
             }
-            layout::Variants::Multiple { ref discr_kind, discr_index, .. } =>
-                (discr_kind, discr_index),
+            layout::Variants::Multiple {
+                discr: ref discr_layout,
+                ref discr_kind,
+                discr_index,
+                ..
+            } =>
+                (discr_layout, discr_kind, discr_index),
         };
 
         // read raw discriminant value
@@ -634,7 +639,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .map_err(|_| err_unsup!(InvalidDiscriminant(raw_discr.erase_tag())))?;
                 let real_discr = if discr_val.layout.ty.is_signed() {
                     // going from layout tag type to typeck discriminant type
-                    // requires first sign extending with the layout discriminant
+                    // requires first sign extending with the discriminant layout
                     let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
                     // and then zeroing with the typeck discriminant type
                     let discr_ty = rval.layout.ty
@@ -682,8 +687,31 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
                     Ok(raw_discr) => {
-                        let adjusted_discr = raw_discr.wrapping_sub(niche_start)
-                            .wrapping_add(variants_start);
+                        // FIXME: WTF, some discriminants don't have integer type.
+                        use layout::Primitive;
+                        let discr_layout = self.layout_of(match discr_layout.value {
+                            Primitive::Int(int, signed) => int.to_ty(*self.tcx, signed),
+                            Primitive::Pointer => self.tcx.types.usize,
+                            Primitive::Float(..) => bug!("there are no float discriminants"),
+                        })?;
+                        let discr_val = ImmTy::from_uint(raw_discr, discr_layout);
+                        // We need to use machine arithmetic.
+                        let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
+                        let variants_start_val = ImmTy::from_uint(variants_start, discr_layout);
+                        let adjusted_discr = self.binary_op(
+                            mir::BinOp::Sub,
+                            discr_val,
+                            niche_start_val,
+                        )?;
+                        let adjusted_discr = self.binary_op(
+                            mir::BinOp::Add,
+                            adjusted_discr,
+                            variants_start_val,
+                        )?;
+                        let adjusted_discr = adjusted_discr
+                            .to_scalar()?
+                            .assert_bits(discr_val.layout.size);
+                        // Check if this is in the range that indicates an actual discriminant.
                         if variants_start <= adjusted_discr && adjusted_discr <= variants_end {
                             let index = adjusted_discr as usize;
                             assert_eq!(index as u128, adjusted_discr);

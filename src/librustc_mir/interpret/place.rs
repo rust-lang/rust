@@ -8,7 +8,9 @@ use std::hash::Hash;
 use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
+use rustc::ty::layout::{
+    self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, IntegerExt
+};
 use rustc::ty::TypeFoldable;
 
 use super::{
@@ -1027,7 +1029,7 @@ where
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
-                ref discr,
+                discr: ref discr_layout,
                 discr_index,
                 ..
             } => {
@@ -1038,7 +1040,7 @@ where
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = discr.value.size(self);
+                let size = discr_layout.value.size(self);
                 let discr_val = truncate(discr_val, size);
 
                 let discr_dest = self.place_field(dest, discr_index as u64)?;
@@ -1050,6 +1052,7 @@ where
                     ref niche_variants,
                     niche_start,
                 },
+                discr: ref discr_layout,
                 discr_index,
                 ..
             } => {
@@ -1057,15 +1060,32 @@ where
                     variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len(),
                 );
                 if variant_index != dataful_variant {
-                    let niche_dest =
-                        self.place_field(dest, discr_index as u64)?;
-                    let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
-                    let niche_value = (niche_value as u128)
-                        .wrapping_add(niche_start);
-                    self.write_scalar(
-                        Scalar::from_uint(niche_value, niche_dest.layout.size),
-                        niche_dest
+                    // FIXME: WTF, some discriminants don't have integer type.
+                    use layout::Primitive;
+                    let discr_layout = self.layout_of(match discr_layout.value {
+                        Primitive::Int(int, signed) => int.to_ty(*self.tcx, signed),
+                        Primitive::Pointer => self.tcx.types.usize,
+                        Primitive::Float(..) => bug!("there are no float discriminants"),
+                    })?;
+
+                    // We need to use machine arithmetic.
+                    let variants_start = niche_variants.start().as_u32();
+                    let variants_start_val = ImmTy::from_uint(variants_start, discr_layout);
+                    let niche_start_val = ImmTy::from_uint(niche_start, discr_layout);
+                    let variant_index_val = ImmTy::from_uint(variant_index.as_u32(), discr_layout);
+                    let niche_val = self.binary_op(
+                        mir::BinOp::Sub,
+                        variant_index_val,
+                        variants_start_val,
                     )?;
+                    let niche_val = self.binary_op(
+                        mir::BinOp::Add,
+                        niche_val,
+                        niche_start_val,
+                    )?;
+                    // Write result.
+                    let niche_dest = self.place_field(dest, discr_index as u64)?;
+                    self.write_immediate(*niche_val, niche_dest)?;
                 }
             }
         }
