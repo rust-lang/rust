@@ -1912,23 +1912,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
 
             if let hir::ExprKind::Call(ref path_expr, ref args) = expr.node {
                 if let hir::ExprKind::Path(ref qpath) = path_expr.node {
-                    if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id)
-                        .opt_def_id()
-                    {
-                        if cx.match_def_path(def_id, &ZEROED_PATH) {
+                    let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+
+                    if cx.match_def_path(def_id, &ZEROED_PATH) {
+                        return Some(InitKind::Zeroed);
+                    }
+                    if cx.match_def_path(def_id, &UININIT_PATH) {
+                        return Some(InitKind::Uninit);
+                    }
+                    if cx.match_def_path(def_id, &TRANSMUTE_PATH) {
+                        if is_zero(&args[0]) {
                             return Some(InitKind::Zeroed);
                         }
-                        if cx.match_def_path(def_id, &UININIT_PATH) {
-                            return Some(InitKind::Uninit);
-                        }
-                        if cx.match_def_path(def_id, &TRANSMUTE_PATH) {
-                            if is_zero(&args[0]) {
-                                return Some(InitKind::Zeroed);
-                            }
-                        }
-                        // FIXME: Also detect `MaybeUninit::zeroed().assume_init()` and
-                        // `MaybeUninit::uninit().assume_init()`.
                     }
+                    // FIXME: Also detect `MaybeUninit::zeroed().assume_init()` and
+                    // `MaybeUninit::uninit().assume_init()`.
                 }
             }
 
