@@ -102,8 +102,13 @@ fn main() {
     // FIXME: the fact that core here is excluded is due to core_arch from our stdarch submodule
     // being broken on the beta compiler with bootstrap passed, so this is a temporary workaround
     // (we've just snapped, so there are no cfg(bootstrap) related annotations in core).
-    if stage == "0" && crate_name != Some("core") {
-        cmd.arg("--cfg").arg("bootstrap");
+    if stage == "0" {
+        if crate_name != Some("core") {
+            cmd.arg("--cfg").arg("bootstrap");
+        } else {
+            // NOTE(eddyb) see FIXME above, except now we need annotations again in core.
+            cmd.arg("--cfg").arg("boostrap_stdarch_ignore_this");
+        }
     }
 
     // Print backtrace in case of ICE
