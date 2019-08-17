@@ -228,7 +228,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         // Step 5. Create everything else: the guards and the arms.
-        let match_scope = self.scopes.topmost();
+        let match_scope = self.topmost_scope();
 
         let arm_end_blocks: Vec<_> = arm_candidates.into_iter().map(|(arm, mut candidates)| {
             let arm_source_info = self.source_info(arm.span);
