@@ -8,7 +8,7 @@ authors = ["rust-analyzer developers"]
 log = "0.4.5"
 rustc-hash = "1.0"
 
-cargo_metadata = "0.8.0"
+cargo_metadata = "0.8.2"
 
 ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }
