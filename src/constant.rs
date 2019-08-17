@@ -186,8 +186,9 @@ fn data_id_for_static(
     def_id: DefId,
     linkage: Linkage,
 ) -> DataId {
-    let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
-    let ty = tcx.type_of(def_id);
+    let instance = Instance::mono(tcx, def_id);
+    let symbol_name = tcx.symbol_name(instance).as_str();
+    let ty = instance.ty(tcx);
     let is_mutable = if tcx.is_mutable_static(def_id) {
         true
     } else {
@@ -200,7 +201,7 @@ fn data_id_for_static(
         .unwrap();
 
     if linkage == Linkage::Preemptible {
-        if let ty::RawPtr(_) = tcx.type_of(def_id).sty {
+        if let ty::RawPtr(_) = ty.sty {
         } else {
             tcx.sess.span_fatal(tcx.def_span(def_id), "must have type `*const T` or `*mut T` due to `#[linkage]` attribute")
         }
@@ -297,7 +298,8 @@ fn define_all_allocs(
                 read_target_uint(endianness, bytes).unwrap()
             };
 
-            let data_id = match tcx.alloc_map.lock().get(reloc).unwrap() {
+            let reloc_target_alloc = tcx.alloc_map.lock().get(reloc).unwrap();
+            let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function(instance) => {
                     assert_eq!(addend, 0);
                     let func_id = crate::abi::import_function(tcx, module, instance);
