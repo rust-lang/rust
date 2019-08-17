@@ -615,7 +615,12 @@ pub fn const_eval_provider<'tcx>(
             ty::FnDef(_, substs) => substs,
             _ => bug!("intrinsic with type {:?}", ty),
         };
-        return Ok(eval_nullary_intrinsic(tcx, key.param_env, def_id, substs));
+        return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs)
+            .map_err(|error| {
+                let span = tcx.def_span(def_id);
+                let error = ConstEvalErr { error: error.kind, stacktrace: vec![], span };
+                error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
+            })
     }
 
     tcx.const_eval_raw(key).and_then(|val| {
@@ -680,63 +685,63 @@ pub fn const_eval_raw_provider<'tcx>(
         })
     }).map_err(|error| {
         let err = error_to_const_error(&ecx, error);
-        // errors in statics are always emitted as fatal errors
-        if tcx.is_static(def_id) {
-            // Ensure that if the above error was either `TooGeneric` or `Reported`
-            // an error must be reported.
+    // errors in statics are always emitted as fatal errors
+    if tcx.is_static(def_id) {
+        // Ensure that if the above error was either `TooGeneric` or `Reported`
+        // an error must be reported.
             let v = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
-            tcx.sess.delay_span_bug(
-                err.span,
-                &format!("static eval failure did not emit an error: {:#?}", v)
-            );
-            v
-        } else if def_id.is_local() {
-            // constant defined in this crate, we can figure out a lint level!
-            match tcx.def_kind(def_id) {
-                // constants never produce a hard error at the definition site. Anything else is
-                // a backwards compatibility hazard (and will break old versions of winapi for sure)
-                //
-                // note that validation may still cause a hard error on this very same constant,
-                // because any code that existed before validation could not have failed validation
-                // thus preventing such a hard error from being a backwards compatibility hazard
-                Some(DefKind::Const) | Some(DefKind::AssocConst) => {
-                    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+        tcx.sess.delay_span_bug(
+            err.span,
+            &format!("static eval failure did not emit an error: {:#?}", v)
+        );
+        v
+    } else if def_id.is_local() {
+        // constant defined in this crate, we can figure out a lint level!
+        match tcx.def_kind(def_id) {
+            // constants never produce a hard error at the definition site. Anything else is
+            // a backwards compatibility hazard (and will break old versions of winapi for sure)
+            //
+            // note that validation may still cause a hard error on this very same constant,
+            // because any code that existed before validation could not have failed validation
+            // thus preventing such a hard error from being a backwards compatibility hazard
+            Some(DefKind::Const) | Some(DefKind::AssocConst) => {
+                let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+                err.report_as_lint(
+                    tcx.at(tcx.def_span(def_id)),
+                    "any use of this value will cause an error",
+                    hir_id,
+                    Some(err.span),
+                )
+            },
+            // promoting runtime code is only allowed to error if it references broken constants
+            // any other kind of error will be reported to the user as a deny-by-default lint
+                _ => if let Some(p) = cid.promoted {
+                let span = tcx.promoted_mir(def_id)[p].span;
+                if let err_inval!(ReferencedConstant) = err.error {
+                    err.report_as_error(
+                        tcx.at(span),
+                        "evaluation of constant expression failed",
+                    )
+                } else {
                     err.report_as_lint(
-                        tcx.at(tcx.def_span(def_id)),
-                        "any use of this value will cause an error",
-                        hir_id,
+                        tcx.at(span),
+                        "reaching this expression at runtime will panic or abort",
+                        tcx.hir().as_local_hir_id(def_id).unwrap(),
                         Some(err.span),
                     )
-                },
-                // promoting runtime code is only allowed to error if it references broken constants
-                // any other kind of error will be reported to the user as a deny-by-default lint
-                _ => if let Some(p) = cid.promoted {
-                    let span = tcx.promoted_mir(def_id)[p].span;
-                    if let err_inval!(ReferencedConstant) = err.error {
-                        err.report_as_error(
-                            tcx.at(span),
-                            "evaluation of constant expression failed",
-                        )
-                    } else {
-                        err.report_as_lint(
-                            tcx.at(span),
-                            "reaching this expression at runtime will panic or abort",
-                            tcx.hir().as_local_hir_id(def_id).unwrap(),
-                            Some(err.span),
-                        )
-                    }
-                // anything else (array lengths, enum initializers, constant patterns) are reported
-                // as hard errors
-                } else {
-                    err.report_as_error(
+                }
+            // anything else (array lengths, enum initializers, constant patterns) are reported
+            // as hard errors
+            } else {
+                err.report_as_error(
                         ecx.tcx,
-                        "evaluation of constant value failed",
-                    )
-                },
-            }
-        } else {
-            // use of broken constant from other crate
-            err.report_as_error(ecx.tcx, "could not evaluate constant")
+                    "evaluation of constant value failed",
+                )
+            },
         }
+    } else {
+        // use of broken constant from other crate
+            err.report_as_error(ecx.tcx, "could not evaluate constant")
+    }
     })
 }
