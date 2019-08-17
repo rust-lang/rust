@@ -1879,12 +1879,38 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
         #[derive(Debug, Copy, Clone, PartialEq)]
         enum InitKind { Zeroed, Uninit };
 
+        /// Information about why a type cannot be initialized this way.
+        /// Contains an error message and optionally a span to point at.
+        type InitError = (String, Option<Span>);
+
+        /// Test if this constant is all-0.
+        fn is_zero(expr: &hir::Expr) -> bool {
+            use hir::ExprKind::*;
+            use syntax::ast::LitKind::*;
+            match &expr.node {
+                Lit(lit) =>
+                    if let Int(i, _) = lit.node {
+                        i == 0
+                    } else {
+                        false
+                    },
+                Tup(tup) =>
+                    tup.iter().all(is_zero),
+                _ =>
+                    false
+            }
+        }
+
         /// Determine if this expression is a "dangerous initialization".
         fn is_dangerous_init(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<InitKind> {
             const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
             const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
+            // `transmute` is inside an anonymous module (the `extern` block?);
+            // `Invalid` represents the empty string and matches that.
+            const TRANSMUTE_PATH: &[Symbol] =
+                &[sym::core, sym::intrinsics, kw::Invalid, sym::transmute];
 
-            if let hir::ExprKind::Call(ref path_expr, ref _args) = expr.node {
+            if let hir::ExprKind::Call(ref path_expr, ref args) = expr.node {
                 if let hir::ExprKind::Path(ref qpath) = path_expr.node {
                     if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id)
                         .opt_def_id()
@@ -1895,19 +1921,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                         if cx.match_def_path(def_id, &UININIT_PATH) {
                             return Some(InitKind::Uninit);
                         }
+                        if cx.match_def_path(def_id, &TRANSMUTE_PATH) {
+                            if is_zero(&args[0]) {
+                                return Some(InitKind::Zeroed);
+                            }
+                        }
                         // FIXME: Also detect `MaybeUninit::zeroed().assume_init()` and
                         // `MaybeUninit::uninit().assume_init()`.
-                        // FIXME: Also detect `transmute` from 0.
                     }
                 }
             }
 
             None
         }
-
-        /// Information about why a type cannot be initialized this way.
-        /// Contains an error message and optionally a span to point at.
-        type InitError = (String, Option<Span>);
 
         /// Return `Some` only if we are sure this type does *not*
         /// allow zero initialization.

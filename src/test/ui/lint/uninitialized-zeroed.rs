@@ -7,6 +7,7 @@
 #![deny(invalid_value)]
 
 use std::mem::{self, MaybeUninit};
+use std::num::NonZeroU32;
 
 enum Void {}
 
@@ -74,6 +75,11 @@ fn main() {
 
         let _val: NonBig = mem::zeroed();
         let _val: NonBig = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
+        // Transmute-from-0
+        let _val: &'static i32 = mem::transmute(0usize); //~ ERROR: does not permit zero-initialization
+        let _val: &'static [i32] = mem::transmute((0usize, 0usize)); //~ ERROR: does not permit zero-initialization
+        let _val: NonZeroU32 = mem::transmute(0); //~ ERROR: does not permit zero-initialization
 
         // Some more types that should work just fine.
         let _val: Option<&'static i32> = mem::zeroed();
