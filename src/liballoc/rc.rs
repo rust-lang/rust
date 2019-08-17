@@ -327,7 +327,7 @@ impl<T> Rc<T> {
         }))
     }
 
-    /// Construct a new Rc with uninitialized contents.
+    /// Constructs a new `Rc` with uninitialized contents.
     ///
     /// # Examples
     ///
@@ -409,7 +409,7 @@ impl<T> Rc<T> {
 }
 
 impl<T> Rc<[T]> {
-    /// Construct a new reference-counted slice with uninitialized contents.
+    /// Constructs a new reference-counted slice with uninitialized contents.
     ///
     /// # Examples
     ///
@@ -441,7 +441,7 @@ impl<T> Rc<[T]> {
 }
 
 impl<T> Rc<mem::MaybeUninit<T>> {
-    /// Convert to `Rc<T>`.
+    /// Converts to `Rc<T>`.
     ///
     /// # Safety
     ///
@@ -480,7 +480,7 @@ impl<T> Rc<mem::MaybeUninit<T>> {
 }
 
 impl<T> Rc<[mem::MaybeUninit<T>]> {
-    /// Convert to `Rc<[T]>`.
+    /// Converts to `Rc<[T]>`.
     ///
     /// # Safety
     ///
@@ -721,7 +721,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// Any other `Rc` or [`Weak`] pointers to the same value must not be dereferenced
     /// for the duration of the returned borrow.
-    /// This is trivially the case if no such pointer exist,
+    /// This is trivially the case if no such pointers exist,
     /// for example immediately after `Rc::new`.
     ///
     /// # Examples

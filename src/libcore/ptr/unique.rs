@@ -123,7 +123,7 @@ impl<T: ?Sized> Unique<T> {
         &mut *self.as_ptr()
     }
 
-    /// Cast to a pointer of another type
+    /// Casts to a pointer of another type
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
         unsafe {

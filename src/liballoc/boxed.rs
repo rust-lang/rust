@@ -123,7 +123,7 @@ impl<T> Box<T> {
         box x
     }
 
-    /// Construct a new box with uninitialized contents.
+    /// Constructs a new box with uninitialized contents.
     ///
     /// # Examples
     ///
@@ -161,7 +161,7 @@ impl<T> Box<T> {
 }
 
 impl<T> Box<[T]> {
-    /// Construct a new boxed slice with uninitialized contents.
+    /// Constructs a new boxed slice with uninitialized contents.
     ///
     /// # Examples
     ///
@@ -192,7 +192,7 @@ impl<T> Box<[T]> {
 }
 
 impl<T> Box<mem::MaybeUninit<T>> {
-    /// Convert to `Box<T>`.
+    /// Converts to `Box<T>`.
     ///
     /// # Safety
     ///
@@ -228,7 +228,7 @@ impl<T> Box<mem::MaybeUninit<T>> {
 }
 
 impl<T> Box<[mem::MaybeUninit<T>]> {
-    /// Convert to `Box<[T]>`.
+    /// Converts to `Box<[T]>`.
     ///
     /// # Safety
     ///

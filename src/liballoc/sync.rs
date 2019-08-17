@@ -311,7 +311,7 @@ impl<T> Arc<T> {
         Self::from_inner(Box::into_raw_non_null(x))
     }
 
-    /// Construct a Arc box with uninitialized contents.
+    /// Constructs a new `Arc` with uninitialized contents.
     ///
     /// # Examples
     ///
@@ -393,7 +393,7 @@ impl<T> Arc<T> {
 }
 
 impl<T> Arc<[T]> {
-    /// Construct a new reference-counted slice with uninitialized contents.
+    /// Constructs a new reference-counted slice with uninitialized contents.
     ///
     /// # Examples
     ///
@@ -425,7 +425,7 @@ impl<T> Arc<[T]> {
 }
 
 impl<T> Arc<mem::MaybeUninit<T>> {
-    /// Convert to `Arc<T>`.
+    /// Converts to `Arc<T>`.
     ///
     /// # Safety
     ///
@@ -464,7 +464,7 @@ impl<T> Arc<mem::MaybeUninit<T>> {
 }
 
 impl<T> Arc<[mem::MaybeUninit<T>]> {
-    /// Convert to `Arc<[T]>`.
+    /// Converts to `Arc<[T]>`.
     ///
     /// # Safety
     ///
@@ -1106,7 +1106,7 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// Any other `Arc` or [`Weak`] pointers to the same value must not be dereferenced
     /// for the duration of the returned borrow.
-    /// This is trivially the case if no such pointer exist,
+    /// This is trivially the case if no such pointers exist,
     /// for example immediately after `Arc::new`.
     ///
     /// # Examples
