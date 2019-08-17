@@ -1,14 +1,14 @@
-error[E0267]: `break` inside of a closure
+error[E0267]: `break` inside of an async block
   --> $DIR/async-block-control-flow-static-semantics.rs:35:9
    |
 LL |         break 0u8;
-   |         ^^^^^^^^^ cannot break inside of a closure
+   |         ^^^^^^^^^ cannot break inside of an async block
 
-error[E0267]: `break` inside of a closure
-  --> $DIR/async-block-control-flow-static-semantics.rs:43:13
+error[E0267]: `break` inside of an async block
+  --> $DIR/async-block-control-flow-static-semantics.rs:42:13
    |
 LL |             break 0u8;
-   |             ^^^^^^^^^ cannot break inside of a closure
+   |             ^^^^^^^^^ cannot break inside of an async block
 
 error[E0308]: mismatched types
   --> $DIR/async-block-control-flow-static-semantics.rs:15:43
@@ -52,7 +52,7 @@ LL | async fn return_targets_async_block_not_async_fn() -> u8 {
    = note: the return type of a function must have a statically known size
 
 error[E0308]: mismatched types
-  --> $DIR/async-block-control-flow-static-semantics.rs:51:44
+  --> $DIR/async-block-control-flow-static-semantics.rs:50:44
    |
 LL | fn rethrow_targets_async_block_not_fn() -> Result<u8, MyErr> {
    |    ----------------------------------      ^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found ()
@@ -63,7 +63,7 @@ LL | fn rethrow_targets_async_block_not_fn() -> Result<u8, MyErr> {
               found type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/async-block-control-flow-static-semantics.rs:60:50
+  --> $DIR/async-block-control-flow-static-semantics.rs:59:50
    |
 LL | fn rethrow_targets_async_block_not_async_fn() -> Result<u8, MyErr> {
    |    ----------------------------------------      ^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found ()
