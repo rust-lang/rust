@@ -273,12 +273,14 @@ pub enum LogicOp {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum CmpOp {
-    Equal,
-    NotEqual,
+    Eq { negated: bool },
+    Ord { ordering: Ordering, strict: bool },
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Ordering {
     Less,
-    LessOrEqual,
     Greater,
-    GreaterOrEqual,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -1080,12 +1082,20 @@ impl From<ast::BinOp> for BinaryOp {
         match ast_op {
             ast::BinOp::BooleanOr => BinaryOp::LogicOp(LogicOp::Or),
             ast::BinOp::BooleanAnd => BinaryOp::LogicOp(LogicOp::And),
-            ast::BinOp::EqualityTest => BinaryOp::CmpOp(CmpOp::Equal),
-            ast::BinOp::NegatedEqualityTest => BinaryOp::CmpOp(CmpOp::NotEqual),
-            ast::BinOp::LesserEqualTest => BinaryOp::CmpOp(CmpOp::LessOrEqual),
-            ast::BinOp::GreaterEqualTest => BinaryOp::CmpOp(CmpOp::GreaterOrEqual),
-            ast::BinOp::LesserTest => BinaryOp::CmpOp(CmpOp::Less),
-            ast::BinOp::GreaterTest => BinaryOp::CmpOp(CmpOp::Greater),
+            ast::BinOp::EqualityTest => BinaryOp::CmpOp(CmpOp::Eq { negated: false }),
+            ast::BinOp::NegatedEqualityTest => BinaryOp::CmpOp(CmpOp::Eq { negated: true }),
+            ast::BinOp::LesserEqualTest => {
+                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less, strict: false })
+            }
+            ast::BinOp::GreaterEqualTest => {
+                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: false })
+            }
+            ast::BinOp::LesserTest => {
+                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Less, strict: true })
+            }
+            ast::BinOp::GreaterTest => {
+                BinaryOp::CmpOp(CmpOp::Ord { ordering: Ordering::Greater, strict: true })
+            }
             ast::BinOp::Addition => BinaryOp::ArithOp(ArithOp::Add),
             ast::BinOp::Multiplication => BinaryOp::ArithOp(ArithOp::Mul),
             ast::BinOp::Subtraction => BinaryOp::ArithOp(ArithOp::Sub),
