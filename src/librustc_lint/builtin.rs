@@ -1971,6 +1971,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                                 })
                             })
                         }
+                        // Multi-variant enums are tricky: if all but one variant are
+                        // uninhabited, we might actually do layout like for a single-variant
+                        // enum, and then even leaving them uninitialized could be okay.
                         _ => None, // Conservative fallback for multi-variant enum.
                     }
                 }
@@ -1978,7 +1981,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     // Proceed recursively, check all fields.
                     ty.tuple_fields().find_map(|field| ty_find_init_error(tcx, field, init))
                 }
-                // FIXME: *Only for `mem::uninitialized`*, we could also warn for multivariant enum.
                 // Conservative fallback.
                 _ => None,
             }
