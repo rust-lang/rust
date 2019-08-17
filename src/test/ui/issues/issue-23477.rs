@@ -1,4 +1,5 @@
 // build-pass
+// ignore-asmjs wasm2js does not support source maps yet
 // compile-flags: -g
 
 pub struct Dst {

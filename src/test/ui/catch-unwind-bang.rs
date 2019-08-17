@@ -1,5 +1,5 @@
 // run-pass
-// ignore-wasm32-bare compiled with panic=abort by default
+// ignore-emscripten compiled with panic=abort by default
 
 fn worker() -> ! {
     panic!()

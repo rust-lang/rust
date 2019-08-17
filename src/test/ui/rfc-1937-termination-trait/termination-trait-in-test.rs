@@ -1,6 +1,8 @@
 // compile-flags: --test
 // run-pass
 
+// ignore-emscripten compiled with panic=abort by default
+
 #![feature(test)]
 
 extern crate test;

@@ -1,5 +1,6 @@
 // run-pass
 // compile-flags:-g
+// ignore-asmjs wasm2js does not support source maps yet
 
 // In this test we just want to make sure that the code below does not lead to
 // a debuginfo verification assertion during compilation. This was caused by the

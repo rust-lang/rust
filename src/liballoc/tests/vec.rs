@@ -944,8 +944,10 @@ fn drain_filter_complex() {
     }
 }
 
+// Miri does not support catching panics
+// FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(miri))] // Miri does not support catching panics
+#[cfg(not(any(miri, target_os = "emscripten")))]
 fn drain_filter_consumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;
@@ -995,8 +997,9 @@ fn drain_filter_consumed_panic() {
     }
 }
 
+// FIXME: Re-enable emscripten once it can catch panics
 #[test]
-#[cfg(not(miri))] // Miri does not support catching panics
+#[cfg(not(any(miri, target_os = "emscripten")))] // Miri does not support catching panics
 fn drain_filter_unconsumed_panic() {
     use std::rc::Rc;
     use std::sync::Mutex;

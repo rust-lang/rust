@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// ignore-emscripten compiled with panic=abort by default
 // ignore-tidy-linelength
 // compile-flags: -Z mir-emit-retag -Z mir-opt-level=0 -Z span_free_formats
 
