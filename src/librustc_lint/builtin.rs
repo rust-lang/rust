@@ -1928,8 +1928,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     Some((format!("Booleans must be `true` or `false`"), None)),
                 Char if init == InitKind::Uninit =>
                     Some((format!("Characters must be a valid unicode codepoint"), None)),
-                // Recurse for some compound types.
+                // Recurse and checks for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
+                    // First check f this ADT has a layout attribute (like `NonNull` and friends).
+                    use std::ops::Bound;
+                    match tcx.layout_scalar_valid_range(adt_def.did) {
+                        // We exploit here that `layout_scalar_valid_range` will never
+                        // return `Bound::Excluded`.  (And we have tests checking that we
+                        // handle the attribute correctly.)
+                        (Bound::Included(lo), _) if lo > 0 =>
+                            return Some((format!("{} must be non-null", ty), None)),
+                        (Bound::Included(_), _) | (_, Bound::Included(_))
+                        if init == InitKind::Uninit =>
+                            return Some((
+                                format!("{} must be initialized inside its custom valid range", ty),
+                                None,
+                            )),
+                        _ => {}
+                    }
+                    // Now, recurse.
                     match adt_def.variants.len() {
                         0 => Some((format!("0-variant enums have no valid value"), None)),
                         1 => {
@@ -1961,7 +1978,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                     // Proceed recursively, check all fields.
                     ty.tuple_fields().find_map(|field| ty_find_init_error(tcx, field, init))
                 }
-                // FIXME: Would be nice to also warn for `NonNull`/`NonZero*`.
                 // FIXME: *Only for `mem::uninitialized`*, we could also warn for multivariant enum.
                 // Conservative fallback.
                 _ => None,
