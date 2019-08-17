@@ -1876,7 +1876,7 @@ declare_lint_pass!(InvalidValue => [INVALID_VALUE]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &hir::Expr) {
 
-        #[derive(Debug)]
+        #[derive(Debug, Copy, Clone, PartialEq)]
         enum InitKind { Zeroed, Uninit };
 
         /// Determine if this expression is a "dangerous initialization".
@@ -1911,7 +1911,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
 
         /// Return `Some` only if we are sure this type does *not*
         /// allow zero initialization.
-        fn ty_find_init_error<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<InitError> {
+        fn ty_find_init_error<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            ty: Ty<'tcx>,
+            init: InitKind,
+        ) -> Option<InitError> {
             use rustc::ty::TyKind::*;
             match ty.sty {
                 // Primitive types that don't like 0 as a value.
@@ -1919,6 +1923,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
                 FnPtr(..) => Some((format!("Function pointers must be non-null"), None)),
                 Never => Some((format!("The never type (`!`) has no valid value"), None)),
+                // Primitive types with other constraints
+                Bool if init == InitKind::Uninit =>
+                    Some((format!("Booleans must be `true` or `false`"), None)),
+                Char if init == InitKind::Uninit =>
+                    Some((format!("Characters must be a valid unicode codepoint"), None)),
                 // Recurse for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
                     match adt_def.variants.len() {
@@ -1931,6 +1940,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                                 ty_find_init_error(
                                     tcx,
                                     field.ty(tcx, substs),
+                                    init,
                                 ).map(|(mut msg, span)| if span.is_none() {
                                     // Point to this field, should be helpful for figuring
                                     // out where the source of the error is.
@@ -1949,11 +1959,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 }
                 Tuple(..) => {
                     // Proceed recursively, check all fields.
-                    ty.tuple_fields().find_map(|field| ty_find_init_error(tcx, field))
+                    ty.tuple_fields().find_map(|field| ty_find_init_error(tcx, field, init))
                 }
                 // FIXME: Would be nice to also warn for `NonNull`/`NonZero*`.
-                // FIXME: *Only for `mem::uninitialized`*, we could also warn for `bool`,
-                //        `char`, and any multivariant enum.
+                // FIXME: *Only for `mem::uninitialized`*, we could also warn for multivariant enum.
                 // Conservative fallback.
                 _ => None,
             }
@@ -1964,7 +1973,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
             // using zeroed or uninitialized memory.
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.tables.expr_ty(expr);
-            if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty) {
+            if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty, init) {
                 let mut err = cx.struct_span_lint(
                     INVALID_VALUE,
                     expr.span,

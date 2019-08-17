@@ -285,5 +285,31 @@ note: References must be non-null (in this struct field)
 LL | struct RefPair((&'static i32, i32));
    |                ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 22 previous errors
+error: the type `bool` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:59:26
+   |
+LL |         let _val: bool = mem::uninitialized();
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          this code causes undefined behavior when executed
+   |                          help: use `MaybeUninit<T>` instead
+   |
+   = note: Booleans must be `true` or `false`
+
+error: the type `Wrap<char>` does not permit being left uninitialized
+  --> $DIR/uninitialized-zeroed.rs:60:32
+   |
+LL |         let _val: Wrap<char> = mem::uninitialized();
+   |                                ^^^^^^^^^^^^^^^^^^^^
+   |                                |
+   |                                this code causes undefined behavior when executed
+   |                                help: use `MaybeUninit<T>` instead
+   |
+note: Characters must be a valid unicode codepoint (in this struct field)
+  --> $DIR/uninitialized-zeroed.rs:16:18
+   |
+LL | struct Wrap<T> { wrapped: T }
+   |                  ^^^^^^^^^^
+
+error: aborting due to 24 previous errors
 

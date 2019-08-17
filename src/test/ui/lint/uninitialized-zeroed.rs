@@ -56,6 +56,9 @@ fn main() {
         let _val: Wrap<(RefPair, i32)> = mem::zeroed(); //~ ERROR: does not permit zero-initialization
         let _val: Wrap<(RefPair, i32)> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
 
+        let _val: bool = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+        let _val: Wrap<char> = mem::uninitialized(); //~ ERROR: does not permit being left uninitialized
+
         // Some types that should work just fine.
         let _val: Option<&'static i32> = mem::zeroed();
         let _val: Option<fn()> = mem::zeroed();
