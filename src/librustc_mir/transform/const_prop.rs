@@ -19,7 +19,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::layout::{
-    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout, Size,
+    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
 use crate::interpret::{
@@ -396,17 +396,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 if let ty::Slice(_) = mplace.layout.ty.sty {
                     let len = mplace.meta.unwrap().to_usize(&self.ecx).unwrap();
 
-                    Some(ImmTy {
-                        imm: Immediate::Scalar(
-                            Scalar::from_uint(
-                                len,
-                                Size::from_bits(
-                                    self.tcx.sess.target.usize_ty.bit_width().unwrap() as u64
-                                )
-                            ).into(),
-                        ),
-                        layout: self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
-                    }.into())
+                    Some(ImmTy::from_uint(
+                        len,
+                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
+                    ).into())
                 } else {
                     trace!("not slice: {:?}", mplace.layout.ty.sty);
                     None
@@ -414,12 +407,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             },
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some(
-                    ImmTy {
-                        imm: Immediate::Scalar(
-                            Scalar::from_uint(n, self.tcx.data_layout.pointer_size).into()
-                        ),
-                        layout: self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
-                    }.into()
+                    ImmTy::from_uint(
+                        n,
+                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
+                    ).into()
                 ))
             }
             Rvalue::UnaryOp(op, ref arg) => {
@@ -452,11 +443,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // Now run the actual operation.
                     this.ecx.unary_op(op, prim)
                 })?;
-                let res = ImmTy {
-                    imm: Immediate::Scalar(val.into()),
-                    layout: place_layout,
-                };
-                Some(res.into())
+                Some(val.into())
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
@@ -510,8 +497,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     this.ecx.read_immediate(left)
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
-                let (val, overflow) = self.use_ecx(source_info, |this| {
-                    this.ecx.binary_op(op, l, r)
+                let (val, overflow, _ty) = self.use_ecx(source_info, |this| {
+                    this.ecx.overflowing_binary_op(op, l, r)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
                     Immediate::ScalarPair(

@@ -177,7 +177,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The operand always has the same type as the result.
                 let val = self.read_immediate(self.eval_operand(operand, Some(dest.layout))?)?;
                 let val = self.unary_op(un_op, val)?;
-                self.write_scalar(val, dest)?;
+                assert_eq!(val.layout, dest.layout, "layout mismatch for result of {:?}", un_op);
+                self.write_immediate(*val, dest)?;
             }
 
             Aggregate(ref kind, ref operands) => {
