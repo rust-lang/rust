@@ -195,6 +195,15 @@ impl ast::BinExpr {
     }
 }
 
+impl ast::IndexExpr {
+    pub fn base(&self) -> Option<ast::Expr> {
+        children(self).nth(0)
+    }
+    pub fn index(&self) -> Option<ast::Expr> {
+        children(self).nth(1)
+    }
+}
+
 pub enum ArrayExprKind {
     Repeat { initializer: Option<ast::Expr>, repeat: Option<ast::Expr> },
     ElementList(AstChildren<ast::Expr>),
