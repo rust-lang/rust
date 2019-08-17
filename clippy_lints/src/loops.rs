@@ -48,6 +48,12 @@ declare_clippy_lint! {
     ///     dst[i + 64] = src[i];
     /// }
     /// ```
+    /// Could be written as:
+    /// ```rust
+    /// # let src = vec![1];
+    /// # let mut dst = vec![0; 65];
+    /// dst[64..(src.len() + 64)].clone_from_slice(&src[..]);
+    /// ```
     pub MANUAL_MEMCPY,
     perf,
     "manually copying items between slices"
