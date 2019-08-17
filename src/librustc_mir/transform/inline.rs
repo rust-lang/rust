@@ -479,12 +479,10 @@ impl Inliner<'tcx> {
                     args: &args,
                     local_map,
                     scope_map,
-                    callsite,
                     destination: dest,
                     return_block,
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
-                    tcx: self.tcx,
                 };
 
 
@@ -639,12 +637,10 @@ struct Integrator<'a, 'tcx> {
     args: &'a [Local],
     local_map: IndexVec<Local, Local>,
     scope_map: IndexVec<SourceScope, SourceScope>,
-    callsite: CallSite<'tcx>,
     destination: Place<'tcx>,
     return_block: BasicBlock,
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
-    tcx: TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
@@ -692,17 +688,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
             } => {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
-            },
-            Place {
-                base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_, substs),
-                    ..
-                }),
-                projection: None,
-            } => {
-                let adjusted_substs = substs.subst(self.tcx, self.callsite.substs);
-                debug!("replacing substs {:?} with {:?}", substs, adjusted_substs);
-                *substs = adjusted_substs;
             },
             _ => self.super_place(place, _ctxt, _location)
         }

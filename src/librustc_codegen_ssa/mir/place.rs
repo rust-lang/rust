@@ -1,5 +1,4 @@
 use rustc::ty::{self, Instance, Ty};
-use rustc::ty::subst::Subst;
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
@@ -461,18 +460,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 projection: None,
             } => {
                 let param_env = ty::ParamEnv::reveal_all();
-                let instance = Instance::new(*def_id, substs.subst(bx.tcx(), self.instance.substs));
-                debug!("instance: {:?}", instance);
+                let instance = Instance::new(*def_id, self.monomorphize(substs));
                 let cid = mir::interpret::GlobalId {
                     instance: instance,
                     promoted: Some(*promoted),
                 };
-                let mono_ty = tcx.subst_and_normalize_erasing_regions(
-                    instance.substs,
-                    param_env,
-                    ty,
-                );
-                let layout = cx.layout_of(mono_ty);
+                let layout = cx.layout_of(self.monomorphize(&ty));
                 match bx.tcx().const_eval(param_env.and(cid)) {
                     Ok(val) => match val.val {
                         mir::interpret::ConstValue::ByRef { alloc, offset } => {

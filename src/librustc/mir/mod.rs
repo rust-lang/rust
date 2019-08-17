@@ -1729,7 +1729,7 @@ pub enum PlaceBase<'tcx> {
 }
 
 /// We store the normalized type to avoid requiring normalization when reading MIR
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: StaticKind<'tcx>,
@@ -1737,7 +1737,7 @@ pub struct Static<'tcx> {
 }
 
 #[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable,
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable,
 )]
 pub enum StaticKind<'tcx> {
     Promoted(Promoted, SubstsRef<'tcx>),
@@ -3221,13 +3221,63 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         Place {
-            base: self.base.clone(),
+            base: self.base.fold_with(folder),
             projection: self.projection.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.projection.visit_with(visitor)
+        self.base.visit_with(visitor) || self.projection.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for PlaceBase<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        match self {
+            PlaceBase::Local(local) => PlaceBase::Local(local.fold_with(folder)),
+            PlaceBase::Static(static_) => PlaceBase::Static(static_.fold_with(folder)),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match self {
+            PlaceBase::Local(local) => local.visit_with(visitor),
+            PlaceBase::Static(static_) => (**static_).visit_with(visitor),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Static<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        Static {
+            ty: self.ty.fold_with(folder),
+            kind: self.kind.fold_with(folder),
+            def_id: self.def_id,
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        let Static { ty, kind, def_id: _ } = self;
+
+        ty.visit_with(visitor) || kind.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for StaticKind<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        match self {
+            StaticKind::Promoted(promoted, substs) =>
+                StaticKind::Promoted(promoted.fold_with(folder), substs.fold_with(folder)),
+            StaticKind::Static => StaticKind::Static
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match self {
+            StaticKind::Promoted(promoted, substs) =>
+                promoted.visit_with(visitor) || substs.visit_with(visitor),
+            StaticKind::Static => { false }
+        }
     }
 }
 
