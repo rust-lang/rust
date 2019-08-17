@@ -106,7 +106,7 @@ dependencies = [
  "cfg-if 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.60 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-core 1.0.0",
 ]
 
@@ -2729,7 +2729,7 @@ dependencies = [
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.15"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "compiler_builtins 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2887,7 +2887,7 @@ dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "punycode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
  "rustc_metadata 0.0.0",
  "rustc_target 0.0.0",
@@ -4592,7 +4592,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rustc-ap-serialize 546.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "61673783f2089e01033ffa82d1988f55175402071b31253a358292e1624d4602"
 "checksum rustc-ap-syntax 546.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "28f3dd1346d5b0269c07a4a78855e309a298ab569c9c1302d4d4f57f8eee4e84"
 "checksum rustc-ap-syntax_pos 546.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "45e67b526dbda3a0c7dab91c8947d43685e7697f52686a4949da3c179cd7c979"
-"checksum rustc-demangle 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)" = "a7f4dccf6f4891ebcc0c39f9b6eb1a83b9bf5d747cb439ec6fba4f3b977038af"
+"checksum rustc-demangle 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "4c691c0e608126e00913e33f0ccf3727d5fc84573623b8d65b2df340b5201783"
 "checksum rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7540fc8b0c49f096ee9c961cda096467dce8084bec6bdca2fc83895fd9b28cb8"
 "checksum rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0d2e07e19601f21c59aad953c2632172ba70cb27e685771514ea66e4062b3363"
 "checksum rustc-rayon-core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "79d38ca7cbc22fa59f09d8534ea4b27f67b0facf0cbe274433aceea227a02543"
