@@ -75,7 +75,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `std_detect` by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 
-[azure]: https://dev.azure.com/rust-lang2/stdarch/_apis/build/status/rust-lang.stdarch?branchName=auto)](https://dev.azure.com/rust-lang2/stdarch/_build/latest?definitionId=2&branchName=auto
+[azure]: https://dev.azure.com/rust-lang2/stdarch/_build/latest?definitionId=2&branchName=auto
 [Azure Pipelines Status]: https://dev.azure.com/rust-lang2/stdarch/_apis/build/status/rust-lang.stdarch?branchName=auto
 [std_detect_crate_badge]: https://img.shields.io/crates/v/std_detect.svg
 [std_detect_crate_link]: https://crates.io/crates/std_detect

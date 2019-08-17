@@ -62,7 +62,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in `core_arch` by you, as defined in the Apache-2.0 license,
 shall be dual licensed as above, without any additional terms or conditions.
 
-[azure]: https://dev.azure.com/rust-lang2/stdarch/_apis/build/status/rust-lang.stdarch?branchName=auto@)](https://dev.azure.com/rust-lang2/stdarch/_build/latest?definitionId=2&branchName=auto
+[azure]: https://dev.azure.com/rust-lang2/stdarch/_build/latest?definitionId=2&branchName=auto
 [Azure Pipelines Status]: https://dev.azure.com/rust-lang2/stdarch/_apis/build/status/rust-lang.stdarch?branchName=auto
 [core_arch_crate_badge]: https://img.shields.io/crates/v/core_arch.svg
 [core_arch_crate_link]: https://crates.io/crates/core_arch
