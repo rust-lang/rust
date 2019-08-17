@@ -184,6 +184,7 @@ fn check_struct_shorthand_initialization(
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot_matches;
+    use join_to_string::join;
     use ra_syntax::SourceFile;
     use test_utils::assert_eq_text;
 
@@ -228,9 +229,30 @@ mod tests {
         let edit = fix.source_file_edits.pop().unwrap().edit;
         let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
         let actual = edit.apply(&target_file_contents);
-        assert_eq_text!(after, &actual);
+
+        // Strip indent and empty lines from `after`, to match the behaviour of
+        // `parse_fixture` called from `analysis_and_position`.
+        let margin = fixture
+            .lines()
+            .filter(|it| it.trim_start().starts_with("//-"))
+            .map(|it| it.len() - it.trim_start().len())
+            .next()
+            .expect("empty fixture");
+        let after = join(after.lines().filter_map(|line| {
+            if line.len() > margin {
+                Some(&line[margin..])
+            } else {
+                None
+            }
+        }))
+        .separator("\n")
+        .suffix("\n")
+        .to_string();
+
+        assert_eq_text!(&after, &actual);
         assert!(
-            diagnostic.range.start() <= file_position.offset && diagnostic.range.end() >= file_position.offset,
+            diagnostic.range.start() <= file_position.offset
+                && diagnostic.range.end() >= file_position.offset,
             "diagnostic range {} does not touch cursor position {}",
             diagnostic.range,
             file_position.offset
@@ -281,17 +303,16 @@ mod tests {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-        // The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
-        // it strips empty lines and leading whitespace. The important part of this test is that the final
-        // `x / y` expr is now wrapped in `Ok(..)`
-        let after = r#"use std::{string::String, result::Result::{self, Ok, Err}};
-fn div(x: i32, y: i32) -> Result<i32, String> {
-    if y == 0 {
-        return Err("div by zero".into());
-    }
-    Ok(x / y)
-}
-"#;
+        let after = r#"
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            fn div(x: i32, y: i32) -> Result<i32, String> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                Ok(x / y)
+            }
+        "#;
         check_apply_diagnostic_fix_from_position(before, after);
     }
 
@@ -313,17 +334,16 @@ fn div(x: i32, y: i32) -> Result<i32, String> {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-        // The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
-        // it strips empty lines and leading whitespace. The important part of this test is that the final
-        // expr is now wrapped in `Ok(..)`
-        let after = r#"use std::result::Result::{self, Ok, Err};
-fn div<T>(x: T) -> Result<T, i32> {
-    if x == 0 {
-        return Err(7);
-    }
-    Ok(x)
-}
-"#;
+        let after = r#"
+            use std::result::Result::{self, Ok, Err};
+
+            fn div<T>(x: T) -> Result<T, i32> {
+                if x == 0 {
+                    return Err(7);
+                }
+                Ok(x)
+            }
+        "#;
         check_apply_diagnostic_fix_from_position(before, after);
     }
 
@@ -350,18 +370,17 @@ fn div<T>(x: T) -> Result<T, i32> {
                 pub enum Result<T, E> { Ok(T), Err(E) }
             }
         "#;
-        // The formatting here is a bit odd due to how the parse_fixture function works in test_utils -
-        // it strips empty lines and leading whitespace. The important part of this test is that the final
-        // `x / y` expr is now wrapped in `Ok(..)`
-        let after = r#"use std::{string::String, result::Result::{self, Ok, Err}};
-type MyResult<T> = Result<T, String>;
-fn div(x: i32, y: i32) -> MyResult<i32> {
-    if y == 0 {
-        return Err("div by zero".into());
-    }
-    Ok(x / y)
-}
-"#;
+        let after = r#"
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            type MyResult<T> = Result<T, String>;
+            fn div(x: i32, y: i32) -> MyResult<i32> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                Ok(x / y)
+            }
+        "#;
         check_apply_diagnostic_fix_from_position(before, after);
     }
 
