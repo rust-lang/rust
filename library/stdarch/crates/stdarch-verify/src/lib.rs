@@ -37,13 +37,32 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
 
     let mut functions = Vec::new();
     for &mut (ref mut file, ref path) in &mut files {
-        for item in file.items.drain(..) {
-            if let syn::Item::Fn(f) = item {
-                functions.push((f, path))
+        for mut item in file.items.drain(..) {
+            match item {
+                syn::Item::Fn(f) => functions.push((f, path)),
+                syn::Item::Mod(ref mut m) => {
+                    if let Some(ref mut m) = m.content {
+                        for i in m.1.drain(..) {
+                            if let syn::Item::Fn(f) = i {
+                                functions.push((f, path))
+                            }
+                        }
+                    }
+                }
+                _ => (),
             }
         }
     }
     assert!(!functions.is_empty());
+
+    let mut tests = std::collections::HashSet::<String>::new();
+    for f in &functions {
+        let id = format!("{}", f.0.ident);
+        if id.starts_with("test_") {
+            tests.insert(id);
+        }
+    }
+    assert!(!tests.is_empty());
 
     functions.retain(|&(ref f, _)| {
         if let syn::Visibility::Public(_) = f.vis {
@@ -84,6 +103,16 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                 quote! { None }
             };
             let required_const = find_required_const(&f.attrs);
+
+            // strip leading underscore from fn name when building a test
+            // _mm_foo -> mm_foo such that the test name is test_mm_foo.
+            let test_name_string = format!("{}", name);
+            let mut test_name_id = test_name_string.as_str();
+            while test_name_id.starts_with('_') {
+                test_name_id = &test_name_id[1..];
+            }
+            let has_test = tests.contains(&format!("test_{}", test_name_id));
+
             quote! {
                 Function {
                     name: stringify!(#name),
@@ -93,6 +122,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                     instrs: &[#(#instrs),*],
                     file: stringify!(#path),
                     required_const: &[#(#required_const),*],
+                    has_test: #has_test,
                 }
             }
         })

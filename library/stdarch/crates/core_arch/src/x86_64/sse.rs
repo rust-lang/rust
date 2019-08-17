@@ -128,7 +128,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    pub unsafe fn test_mm_cvtsi64_ss() {
+    unsafe fn test_mm_cvtsi64_ss() {
         let inputs = &[
             (4555i64, 4555.0f32),
             (322223333, 322223330.0),

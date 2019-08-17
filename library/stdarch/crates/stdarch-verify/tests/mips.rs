@@ -16,6 +16,7 @@ struct Function {
     instrs: &'static [&'static str],
     file: &'static str,
     required_const: &'static [usize],
+    has_test: bool,
 }
 
 static F16: Type = Type::PrimFloat(16);
@@ -200,6 +201,34 @@ fn verify_all_signatures() {
 
     let mut all_valid = true;
     for rust in FUNCTIONS {
+        if !rust.has_test {
+            let skip = [
+                "__msa_ceqi_d",
+                "__msa_cfcmsa",
+                "__msa_clei_s_d",
+                "__msa_clti_s_d",
+                "__msa_ctcmsa",
+                "__msa_ldi_d",
+                "__msa_maxi_s_d",
+                "__msa_mini_s_d",
+                "break_",
+            ];
+            if !skip.contains(&rust.name) {
+                println!(
+                    "missing run-time test named `test_{}` for `{}`",
+                    {
+                        let mut id = rust.name;
+                        while id.starts_with('_') {
+                            id = &id[1..];
+                        }
+                        id
+                    },
+                    rust.name
+                );
+                all_valid = false;
+            }
+        }
+
         // Skip some intrinsics that aren't part of MSA
         match rust.name {
             "break_" => continue,
