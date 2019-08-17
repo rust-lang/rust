@@ -22,7 +22,7 @@ error: integer type suffix should be separated by an underscore
   --> $DIR/literals.rs:16:27
    |
 LL |     let fail_multi_zero = 000_123usize;
-   |                           ^^^^^^^^^^^^
+   |                           ^^^^^^^^^^^^ help: add an underscore: `000_123_usize`
    |
    = note: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
 
@@ -46,31 +46,31 @@ error: integer type suffix should be separated by an underscore
   --> $DIR/literals.rs:21:17
    |
 LL |     let fail3 = 1234i32;
-   |                 ^^^^^^^
+   |                 ^^^^^^^ help: add an underscore: `1234_i32`
 
 error: integer type suffix should be separated by an underscore
   --> $DIR/literals.rs:22:17
    |
 LL |     let fail4 = 1234u32;
-   |                 ^^^^^^^
+   |                 ^^^^^^^ help: add an underscore: `1234_u32`
 
 error: integer type suffix should be separated by an underscore
   --> $DIR/literals.rs:23:17
    |
 LL |     let fail5 = 1234isize;
-   |                 ^^^^^^^^^
+   |                 ^^^^^^^^^ help: add an underscore: `1234_isize`
 
 error: integer type suffix should be separated by an underscore
   --> $DIR/literals.rs:24:17
    |
 LL |     let fail6 = 1234usize;
-   |                 ^^^^^^^^^
+   |                 ^^^^^^^^^ help: add an underscore: `1234_usize`
 
 error: float type suffix should be separated by an underscore
   --> $DIR/literals.rs:25:17
    |
 LL |     let fail7 = 1.5f32;
-   |                 ^^^^^^
+   |                 ^^^^^^ help: add an underscore: `1.5_f32`
 
 error: this is a decimal constant
   --> $DIR/literals.rs:29:17
