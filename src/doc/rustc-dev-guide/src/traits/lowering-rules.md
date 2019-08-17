@@ -114,7 +114,7 @@ cover). For each trait, we produce two clauses:
 //
 // For each where clause WC:
 forall<Self, P1..Pn> {
-  FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn)
+  FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)
 }
 ```
 
