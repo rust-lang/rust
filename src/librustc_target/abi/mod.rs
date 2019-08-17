@@ -451,6 +451,154 @@ impl AbiAndPrefAlign {
     }
 }
 
+/// An aligned size preference.
+/// Better name appreciated.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct LayoutPositionPref {
+    /// A size not rounded up to alignment
+    pub size: Size,
+    /// the alignment of the start of the size
+    pub align: AbiAndPrefAlign,
+}
+
+impl LayoutPositionPref {
+    pub fn new_simple(size: Size, align: Align) -> LayoutPositionPref {
+        LayoutPositionPref {
+           size,
+           align: AbiAndPrefAlign::new(align)
+        }
+    }
+
+    pub fn new(size: Size, align: AbiAndPrefAlign) -> LayoutPositionPref {
+        LayoutPositionPref {
+           size,
+           align
+        }
+    }
+
+    #[inline]
+    pub fn from_bits(bits: u64) -> LayoutPositionPref {
+        // Avoid potential overflow from `bits + 7`.
+        LayoutPositionPref::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
+    }
+
+    #[inline]
+    pub fn from_bytes(bytes: u64) -> LayoutPositionPref {
+        LayoutPositionPref::new_simple(Size::from_bytes(bytes), Align::from_bytes(bytes).unwrap())
+    }
+
+    #[inline]
+    pub fn stride_to(self, align: Align) -> LayoutPositionPref {
+        LayoutPositionPref::new(self.size.align_to(align), self.align)
+    }
+
+    #[inline]
+    pub fn max(self, other: LayoutPositionPref) -> LayoutPositionPref {
+        LayoutPositionPref::new(self.size.max(other.size), self.align.max(other.align))
+    }
+
+    pub fn padding_needed_for(self, align: Align) -> Size {
+        self.stride_to(align).size - self.size
+    }
+
+    pub fn repeat(self, count: u64) -> Self {
+        return self * count
+    }
+
+    pub fn extend(self, other: LayoutPositionPref) ->  (Self, Size) {
+        let p2 = self.stride_to(other.align.abi).size;
+        (LayoutPositionPref::new(p2 + other.size, self.align), p2)
+    }
+
+    #[inline]
+    pub fn align_to(self, align: AbiAndPrefAlign) -> LayoutPositionPref {
+        LayoutPositionPref::new(self.size, self.align.max(align))
+    }
+
+    #[inline]
+    pub fn pack_to(self, align: AbiAndPrefAlign) -> LayoutPositionPref {
+        LayoutPositionPref::new(self.size, self.align.min(align))
+    }
+
+    #[inline]
+    pub fn align_and_stride_to(self, align: AbiAndPrefAlign) -> LayoutPositionPref {
+        self.align_to(align).stride_to(align.abi)
+    }
+
+    pub fn strided(self) -> LayoutPositionPref {
+        self.stride_to(self.align.abi)
+    }
+
+    pub fn strided_pref(self) -> LayoutPositionPref {
+        self.stride_to(self.align.pref)
+    }
+
+    pub fn stride(self) -> Size {
+        self.strided().size
+    }
+
+    pub fn pref_stride(self) -> Size {
+        self.strided_pref().size
+    }
+
+    #[inline]
+    pub fn is_aligned(self, align: Align) -> bool {
+        self.size.is_aligned(align)
+    }
+
+    #[inline]
+    pub fn checked_add<C: HasDataLayout>(self, other: LayoutPositionPref, cx: &C)
+    -> Option<LayoutPositionPref> {
+        let size = self.stride_to(other.align.abi).size.checked_add(other.size, cx)?;
+        Some(LayoutPositionPref::new(size, self.align))
+    }
+
+    #[inline]
+    pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: &C) -> Option<LayoutPositionPref> {
+        Some(if count == 0 {
+               LayoutPositionPref::new(Size::ZERO, self.align)
+            } else {
+               LayoutPositionPref::new(self.stride().checked_mul(count - 1, cx)?, self.align) + self
+            })
+    }
+
+}
+
+impl Add for LayoutPositionPref {
+    type Output = LayoutPositionPref;
+    #[inline]
+    fn add(self, other: LayoutPositionPref) -> LayoutPositionPref {
+        self.extend(other).0
+    }
+}
+
+impl Mul<LayoutPositionPref> for u64 {
+    type Output = LayoutPositionPref;
+    #[inline]
+    fn mul(self, size: LayoutPositionPref) -> LayoutPositionPref {
+        size * self
+    }
+}
+
+impl Mul<u64> for LayoutPositionPref {
+    type Output = LayoutPositionPref;
+    #[inline]
+    fn mul(self, count: u64) -> LayoutPositionPref {
+        if count == 0 {
+            LayoutPositionPref::new(Size::ZERO, self.align)
+        } else {
+            LayoutPositionPref::new(self.stride() * (count - 1), self.align) + self
+        }
+    }
+}
+
+impl AddAssign for LayoutPositionPref {
+    #[inline]
+    fn add_assign(&mut self, other: LayoutPositionPref) {
+        *self = *self + other;
+    }
+}
+
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Integer {
