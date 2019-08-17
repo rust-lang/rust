@@ -9,7 +9,7 @@ pub use StabilityLevel::*;
 pub use crate::ast::Attribute;
 
 use crate::ast;
-use crate::ast::{AttrId, AttrStyle, Name, Ident, Path, PathSegment};
+use crate::ast::{AttrItem, AttrId, AttrStyle, Name, Ident, Path, PathSegment};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
@@ -333,10 +333,9 @@ impl Attribute {
                 DUMMY_SP,
             );
             f(&Attribute {
+                item: AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
                 id: self.id,
                 style: self.style,
-                path: meta.path,
-                tokens: meta.kind.tokens(meta.span),
                 is_sugared_doc: true,
                 span: self.span,
             })
@@ -384,10 +383,9 @@ crate fn mk_attr_id() -> AttrId {
 
 pub fn mk_attr(style: AttrStyle, path: Path, tokens: TokenStream, span: Span) -> Attribute {
     Attribute {
+        item: AttrItem { path, tokens },
         id: mk_attr_id(),
         style,
-        path,
-        tokens,
         is_sugared_doc: false,
         span,
     }
@@ -408,10 +406,12 @@ pub fn mk_sugared_doc_attr(text: Symbol, span: Span) -> Attribute {
     let lit_kind = LitKind::Str(text, ast::StrStyle::Cooked);
     let lit = Lit::from_lit_kind(lit_kind, span);
     Attribute {
+        item: AttrItem {
+            path: Path::from_ident(Ident::with_dummy_span(sym::doc).with_span_pos(span)),
+            tokens: MetaItemKind::NameValue(lit).tokens(span),
+        },
         id: mk_attr_id(),
         style,
-        path: Path::from_ident(Ident::with_dummy_span(sym::doc).with_span_pos(span)),
-        tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
         span,
     }

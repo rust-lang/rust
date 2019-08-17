@@ -988,10 +988,12 @@ impl<'a> LoweringContext<'a> {
         // lower attributes (we use the AST version) there is nowhere to keep
         // the `HirId`s. We don't actually need HIR version of attributes anyway.
         Attribute {
+            item: AttrItem {
+                path: attr.path.clone(),
+                tokens: self.lower_token_stream(attr.tokens.clone()),
+            },
             id: attr.id,
             style: attr.style,
-            path: attr.path.clone(),
-            tokens: self.lower_token_stream(attr.tokens.clone()),
             is_sugared_doc: attr.is_sugared_doc,
             span: attr.span,
         }

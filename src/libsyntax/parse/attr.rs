@@ -151,10 +151,9 @@ impl<'a> Parser<'a> {
         };
 
         Ok(ast::Attribute {
+            item: ast::AttrItem { path, tokens },
             id: attr::mk_attr_id(),
             style,
-            path,
-            tokens,
             is_sugared_doc: false,
             span,
         })

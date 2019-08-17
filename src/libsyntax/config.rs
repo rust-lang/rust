@@ -151,10 +151,9 @@ impl<'a> StripUnconfigured<'a> {
             //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
             expanded_attrs.into_iter()
             .flat_map(|(path, tokens, span)| self.process_cfg_attr(ast::Attribute {
+                item: ast::AttrItem { path, tokens },
                 id: attr::mk_attr_id(),
                 style: attr.style,
-                path,
-                tokens,
                 is_sugared_doc: false,
                 span,
             }))

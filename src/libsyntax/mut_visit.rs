@@ -550,7 +550,8 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
-    let Attribute { id: _, style: _, path, tokens, is_sugared_doc: _, span } = attr;
+    let Attribute { item: AttrItem { path, tokens }, id: _, style: _, is_sugared_doc: _, span }
+        = attr;
     vis.visit_path(path);
     vis.visit_tts(tokens);
     vis.visit_span(span);
