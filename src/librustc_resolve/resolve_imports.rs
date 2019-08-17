@@ -202,7 +202,7 @@ impl<'a> Resolver<'a> {
                     Err((Determined, Weak::No))
                 } else if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                     Ok(binding)
-                } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
+                } else if !self.graph_root.unexpanded_invocations.borrow().is_empty() {
                     // Macro-expanded `extern crate` items can add names to extern prelude.
                     Err((Undetermined, Weak::No))
                 } else {
@@ -348,7 +348,7 @@ impl<'a> Resolver<'a> {
         // progress, we have to ignore those potential unresolved invocations from other modules
         // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
-        let unexpanded_macros = !module.unresolved_invocations.borrow().is_empty();
+        let unexpanded_macros = !module.unexpanded_invocations.borrow().is_empty();
         if let Some(binding) = resolution.binding {
             if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
                 return check_usable(self, binding);
