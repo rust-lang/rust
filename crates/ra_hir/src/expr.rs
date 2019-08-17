@@ -245,6 +245,10 @@ pub enum Expr {
         rhs: ExprId,
         op: Option<BinaryOp>,
     },
+    Index {
+        base: ExprId,
+        index: ExprId,
+    },
     Lambda {
         args: Vec<PatId>,
         arg_types: Vec<Option<TypeRef>>,
@@ -398,6 +402,10 @@ impl Expr {
             Expr::BinaryOp { lhs, rhs, .. } => {
                 f(*lhs);
                 f(*rhs);
+            }
+            Expr::Index { base, index } => {
+                f(*base);
+                f(*index);
             }
             Expr::Field { expr, .. }
             | Expr::Await { expr }
@@ -887,10 +895,14 @@ where
                 };
                 self.alloc_expr(Expr::Literal(lit), syntax_ptr)
             }
+            ast::ExprKind::IndexExpr(e) => {
+                let base = self.collect_expr_opt(e.base());
+                let index = self.collect_expr_opt(e.index());
+                self.alloc_expr(Expr::Index { base, index }, syntax_ptr)
+            }
 
             // FIXME implement HIR for these:
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::MacroCall(e) => {
                 let ast_id = self
