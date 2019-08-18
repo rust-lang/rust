@@ -13,6 +13,8 @@ use itertools::Itertools;
 
 pub use teraron::{Mode, Overwrite, Verify};
 
+pub use self::codegen::generate_ast;
+
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
