@@ -1,0 +1,75 @@
+error: expected one of `:` or `@`, found `|`
+  --> $DIR/or-patterns-syntactic-fail.rs:28:14
+   |
+LL |     fn fun(A | B: E) {}
+   |              ^ expected one of `:` or `@` here
+
+error: expected pattern, found `|`
+  --> $DIR/or-patterns-syntactic-fail.rs:35:11
+   |
+LL |     let ( | A | B);
+   |           ^ expected pattern
+
+error: expected pattern, found `|`
+  --> $DIR/or-patterns-syntactic-fail.rs:40:11
+   |
+LL |     let ( | A | B,);
+   |           ^ expected pattern
+
+error: expected pattern, found `|`
+  --> $DIR/or-patterns-syntactic-fail.rs:45:11
+   |
+LL |     let [ | A | B ];
+   |           ^ expected pattern
+
+error: expected pattern, found `|`
+  --> $DIR/or-patterns-syntactic-fail.rs:50:13
+   |
+LL |     let TS( | A | B );
+   |             ^ expected pattern
+
+error: expected pattern, found `|`
+  --> $DIR/or-patterns-syntactic-fail.rs:55:17
+   |
+LL |     let NS { f: | A | B };
+   |                 ^ expected pattern
+
+error: no rules expected the token `|`
+  --> $DIR/or-patterns-syntactic-fail.rs:14:15
+   |
+LL | macro_rules! accept_pat {
+   | ----------------------- when calling this macro
+...
+LL | accept_pat!(p | q);
+   |               ^ no rules expected this token in macro call
+
+error: no rules expected the token `|`
+  --> $DIR/or-patterns-syntactic-fail.rs:15:13
+   |
+LL | macro_rules! accept_pat {
+   | ----------------------- when calling this macro
+...
+LL | accept_pat!(| p | q);
+   |             ^ no rules expected this token in macro call
+
+warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
+  --> $DIR/or-patterns-syntactic-fail.rs:4:12
+   |
+LL | #![feature(or_patterns)]
+   |            ^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0369]: binary operation `|` cannot be applied to type `E`
+  --> $DIR/or-patterns-syntactic-fail.rs:24:22
+   |
+LL |     let _ = |A | B: E| ();
+   |                  ----^ -- ()
+   |                  |
+   |                  E
+   |
+   = note: an implementation of `std::ops::BitOr` might be missing for `E`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0369`.
