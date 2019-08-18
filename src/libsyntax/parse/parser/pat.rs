@@ -29,27 +29,10 @@ impl<'a> Parser<'a> {
         loop {
             pats.push(self.parse_top_level_pat()?);
 
-            if self.token == token::OrOr {
-                self.ban_unexpected_or_or();
-                self.bump();
-            } else if self.eat(&token::BinOp(token::Or)) {
-                // This is a No-op. Continue the loop to parse the next
-                // pattern.
-            } else {
+            if !self.eat_or_separator() {
                 return Ok(pats);
             }
-        };
-    }
-
-    fn ban_unexpected_or_or(&mut self) {
-        self.struct_span_err(self.token.span, "unexpected token `||` after pattern")
-            .span_suggestion(
-                self.token.span,
-                "use a single `|` to specify multiple patterns",
-                "|".to_owned(),
-                Applicability::MachineApplicable
-            )
-            .emit();
+        }
     }
 
     /// A wrapper around `parse_pat` with some special error handling for the
@@ -127,17 +110,7 @@ impl<'a> Parser<'a> {
 
         let lo = first_pat.span;
         let mut pats = vec![first_pat];
-        loop {
-            if self.token == token::OrOr {
-                // Found `||`; Recover and pretend we parsed `|`.
-                self.ban_unexpected_or_or();
-                self.bump();
-            } else if self.eat(&token::BinOp(token::Or)) {
-                // Found `|`. Working towards a proper or-pattern.
-            } else {
-                break;
-            }
-
+        while self.eat_or_separator() {
             let pat = self.parse_pat(expected)?;
             self.maybe_recover_unexpected_comma(pat.span, top_level)?;
             pats.push(pat);
@@ -150,6 +123,31 @@ impl<'a> Parser<'a> {
         }
 
         Ok(self.mk_pat(or_pattern_span, PatKind::Or(pats)))
+    }
+
+    /// Eat the or-pattern `|` separator.
+    /// If instead a `||` token is encountered, recover and pretend we parsed `|`.
+    fn eat_or_separator(&mut self) -> bool {
+        match self.token.kind {
+            token::OrOr => {
+                // Found `||`; Recover and pretend we parsed `|`.
+                self.ban_unexpected_or_or();
+                self.bump();
+                true
+            }
+            _ => self.eat(&token::BinOp(token::Or)),
+        }
+    }
+
+    fn ban_unexpected_or_or(&mut self) {
+        self.struct_span_err(self.token.span, "unexpected token `||` after pattern")
+            .span_suggestion(
+                self.token.span,
+                "use a single `|` to specify multiple patterns",
+                "|".to_owned(),
+                Applicability::MachineApplicable
+            )
+            .emit();
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
