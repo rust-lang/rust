@@ -7,7 +7,7 @@ use rustc::ty::TyCtxt;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Node, Destination};
+use rustc::hir::{self, Node, Destination, GeneratorMovability};
 use syntax::struct_span_err;
 use syntax_pos::Span;
 use errors::Applicability;
@@ -17,6 +17,7 @@ enum Context {
     Normal,
     Loop(hir::LoopSource),
     Closure,
+    AsyncClosure,
     LabeledBlock,
     AnonConst,
 }
@@ -57,9 +58,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprKind::Loop(ref b, _, source) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
-            hir::ExprKind::Closure(_, ref function_decl, b, _, _) => {
+            hir::ExprKind::Closure(_, ref function_decl, b, _, movability) => {
+                let cx = if let Some(GeneratorMovability::Static) = movability {
+                    AsyncClosure
+                } else {
+                    Closure
+                };
                 self.visit_fn_decl(&function_decl);
-                self.with_context(Closure, |v| v.visit_nested_body(b));
+                self.with_context(cx, |v| v.visit_nested_body(b));
             }
             hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
@@ -170,6 +176,11 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
                 .span_label(span, "cannot break inside of a closure")
                 .emit();
+            }
+            AsyncClosure => {
+                struct_span_err!(self.sess, span, E0267, "`{}` inside of an async block", name)
+                    .span_label(span, "cannot break inside of an async block")
+                    .emit();
             }
             Normal | AnonConst => {
                 struct_span_err!(self.sess, span, E0268, "`{}` outside of loop", name)
