@@ -490,7 +490,6 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 alignstack, // bool
                 dialect: _, // syntax::ast::AsmDialect
                 asm_str_style: _,
-                ctxt: _,
             } = asm;
             match &*asm_code.as_str() {
                 "cpuid" | "cpuid\n" => {

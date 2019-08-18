@@ -310,7 +310,7 @@ pub fn trans_ptr_binop<'a, 'tcx: 'a>(
                 let lhs = in_lhs.load_scalar(fx);
                 let rhs = in_rhs.load_scalar(fx);
 
-                return codegen_compare_bin_op(fx, bin_op, false, lhs, rhs);;
+                return codegen_compare_bin_op(fx, bin_op, false, lhs, rhs);
             }
             BinOp::Offset => {
                 let (base, offset) = (in_lhs, in_rhs.load_scalar(fx));

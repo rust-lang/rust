@@ -20,7 +20,7 @@ pub fn maybe_create_entry_wrapper(
         None => return,
     };
 
-    create_entry_fn(tcx, module, main_def_id, use_start_lang_item);;
+    create_entry_fn(tcx, module, main_def_id, use_start_lang_item);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,

@@ -154,7 +154,6 @@ fn trans_const_place<'a, 'tcx: 'a>(
         let op = ecx.eval_operand(
             &Operand::Constant(Box::new(Constant {
                 span: DUMMY_SP,
-                ty: const_.ty,
                 user_ty: None,
                 literal: const_,
             })),
@@ -391,7 +390,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         _: mir::BinOp,
         _: ImmTy<'tcx>,
         _: ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (Scalar, bool)> {
+    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         panic!();
     }
 

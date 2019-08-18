@@ -466,12 +466,12 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             );
             ret.write_cvalue(fx, res);
         };
-        _ if intrinsic.starts_with("overflowing_"), (c x, c y) {
+        _ if intrinsic.starts_with("wrapping_"), (c x, c y) {
             assert_eq!(x.layout().ty, y.layout().ty);
             let bin_op = match intrinsic {
-                "overflowing_add" => BinOp::Add,
-                "overflowing_sub" => BinOp::Sub,
-                "overflowing_mul" => BinOp::Mul,
+                "wrapping_add" => BinOp::Add,
+                "wrapping_sub" => BinOp::Sub,
+                "wrapping_mul" => BinOp::Mul,
                 _ => unimplemented!("intrinsic {}", intrinsic),
             };
             let res = crate::num::trans_int_binop(
