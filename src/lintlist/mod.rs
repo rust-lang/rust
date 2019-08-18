@@ -1738,7 +1738,7 @@ pub const ALL_LINTS: [Lint; 310] = [
     },
     Lint {
         name: "suspicious_map",
-        group: "pedantic",
+        group: "complexity",
         desc: "suspicious usage of map",
         deprecation: None,
         module: "methods",
