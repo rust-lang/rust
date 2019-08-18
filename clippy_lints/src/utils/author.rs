@@ -549,6 +549,12 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("    if {}.len() == {};", fields_pat, fields.len());
                 println!("    // unimplemented: field checks");
             },
+            PatKind::Or(ref fields) => {
+                let fields_pat = self.next("fields");
+                println!("Or(ref {}) = {};", fields_pat, current);
+                println!("    if {}.len() == {};", fields_pat, fields.len());
+                println!("    // unimplemented: field checks");
+            },
             PatKind::TupleStruct(ref path, ref fields, skip_pos) => {
                 let path_pat = self.next("path");
                 let fields_pat = self.next("fields");
