@@ -1,0 +1,23 @@
+From 8956b4fa10af0df2f8912f6116aa1e970dc0283a Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sun, 18 Aug 2019 17:44:47 +0200
+Subject: [PATCH] Workaround rust regression
+
+---
+ src/liballoc/macros.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/liballoc/macros.rs b/src/liballoc/macros.rs
+index 0b5e186..250c419 100644
+--- a/src/liballoc/macros.rs
++++ b/src/liballoc/macros.rs
+@@ -98,5 +98,5 @@ macro_rules! vec {
+ #[macro_export]
+ #[stable(feature = "rust1", since = "1.0.0")]
+ macro_rules! format {
+-    ($($arg:tt)*) => ($crate::fmt::format(::core::format_args!($($arg)*)))
++    ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
+ }
+-- 
+2.20.1 (Apple Git-117)
+
