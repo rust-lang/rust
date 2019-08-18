@@ -1,3 +1,5 @@
+#![feature(new_uninit)]
+
 use std::slice;
 
 fn slice_of_zst() {
@@ -169,7 +171,23 @@ fn test_iter_ref_consistency() {
     test_mut([0u32; 0]); // ZST with alignment > 0
 }
 
+fn uninit_slice() {
+    let mut values = Box::<[Box<u32>]>::new_uninit_slice(3);
+
+    let values = unsafe {
+        // Deferred initialization:
+        values[0].as_mut_ptr().write(Box::new(1));
+        values[1].as_mut_ptr().write(Box::new(2));
+        values[2].as_mut_ptr().write(Box::new(3));
+
+        values.assume_init()
+    };
+
+    assert_eq!(values.iter().map(|x| **x).collect::<Vec<_>>(), vec![1, 2, 3])
+}
+
 fn main() {
     slice_of_zst();
     test_iter_ref_consistency();
+    uninit_slice();
 }
