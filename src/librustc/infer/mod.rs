@@ -418,7 +418,9 @@ pub enum NLLRegionVariableOrigin {
     /// from a `for<'a> T` binder). Meant to represent "any region".
     Placeholder(ty::PlaceholderRegion),
 
-    Existential,
+    Existential {
+        was_placeholder: bool
+    },
 }
 
 impl NLLRegionVariableOrigin {
@@ -426,7 +428,7 @@ impl NLLRegionVariableOrigin {
         match self {
             NLLRegionVariableOrigin::FreeRegion => true,
             NLLRegionVariableOrigin::Placeholder(..) => true,
-            NLLRegionVariableOrigin::Existential => false,
+            NLLRegionVariableOrigin::Existential{ .. } => false,
         }
     }
 

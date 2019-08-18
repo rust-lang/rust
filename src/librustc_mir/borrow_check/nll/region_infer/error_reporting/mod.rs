@@ -98,9 +98,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         from_region: RegionVid,
+        from_region_origin: NLLRegionVariableOrigin,
         target_test: impl Fn(RegionVid) -> bool,
     ) -> (ConstraintCategory, bool, Span) {
-        debug!("best_blame_constraint(from_region={:?})", from_region);
+        debug!("best_blame_constraint(from_region={:?}, from_region_origin={:?})",
+            from_region, from_region_origin);
 
         // Find all paths
         let (path, target_region) =
@@ -153,19 +155,50 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // we still want to screen for an "interesting" point to
         // highlight (e.g., a call site or something).
         let target_scc = self.constraint_sccs.scc(target_region);
-        let best_choice = (0..path.len()).rev().find(|&i| {
-            let constraint = path[i];
+        let mut range = 0..path.len();
+
+        let should_reverse = match from_region_origin {
+            NLLRegionVariableOrigin::FreeRegion
+                | NLLRegionVariableOrigin::Existential { was_placeholder: false  } => {
+                    true
+            }
+            NLLRegionVariableOrigin::Placeholder(_)
+                | NLLRegionVariableOrigin::Existential { was_placeholder: true  } => {
+                    false
+            }
+        };
+
+        let find_region = |i: &usize| {
+            let constraint = path[*i];
 
             let constraint_sup_scc = self.constraint_sccs.scc(constraint.sup);
 
-            match categorized_path[i].0 {
-                ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
-                ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
-                ConstraintCategory::TypeAnnotation | ConstraintCategory::Return |
-                ConstraintCategory::Yield => true,
-                _ => constraint_sup_scc != target_scc,
+            if should_reverse {
+                match categorized_path[*i].0 {
+                    ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
+                    ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
+                    ConstraintCategory::TypeAnnotation | ConstraintCategory::Return |
+                    ConstraintCategory::Yield => true,
+                    _ => constraint_sup_scc != target_scc,
+                }
+            } else {
+                match categorized_path[*i].0 {
+                    ConstraintCategory::OpaqueType | ConstraintCategory::Boring |
+                    ConstraintCategory::BoringNoLocation | ConstraintCategory::Internal => false,
+                    _ => true
+                }
             }
-        });
+        };
+
+        let best_choice = if should_reverse {
+            range.rev().find(find_region)
+        } else {
+            range.find(find_region)
+        };
+
+        debug!("best_blame_constraint: best_choice={:?} should_reverse={}",
+            best_choice, should_reverse);
+
         if let Some(i) = best_choice {
             if let Some(next) = categorized_path.get(i + 1) {
                 if categorized_path[i].0 == ConstraintCategory::Return
@@ -297,12 +330,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &'a InferCtxt<'a, 'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
+        fr_origin: NLLRegionVariableOrigin,
         outlived_fr: RegionVid,
         renctx: &mut RegionErrorNamingCtx,
     ) -> DiagnosticBuilder<'a> {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (category, _, span) = self.best_blame_constraint(body, fr, |r| {
+        let (category, _, span) = self.best_blame_constraint(body, fr, fr_origin, |r| {
             self.provides_universal_region(r, fr, outlived_fr)
         });
 
@@ -709,6 +743,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let (category, from_closure, span) = self.best_blame_constraint(
             body,
             borrow_region,
+            NLLRegionVariableOrigin::FreeRegion,
             |r| self.provides_universal_region(r, borrow_region, outlived_region)
         );
 
@@ -768,11 +803,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         fr1: RegionVid,
+        fr1_origin: NLLRegionVariableOrigin,
         fr2: RegionVid,
     ) -> (ConstraintCategory, Span) {
         let (category, _, span) = self.best_blame_constraint(
             body,
             fr1,
+            fr1_origin,
             |r| self.provides_universal_region(r, fr1, fr2),
         );
         (category, span)
@@ -825,7 +862,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 universe1.cannot_name(placeholder.universe)
             }
 
-            NLLRegionVariableOrigin::FreeRegion | NLLRegionVariableOrigin::Existential => false,
+            NLLRegionVariableOrigin::FreeRegion | NLLRegionVariableOrigin::Existential { .. } => {
+                false
+            }
         }
     }
 }

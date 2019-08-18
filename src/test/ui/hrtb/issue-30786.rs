@@ -114,4 +114,5 @@ fn main() {
     //[nll]~^ ERROR higher-ranked subtype error
     let count = filter.count(); // Assert that we still have a valid stream.
     //[nll]~^ ERROR higher-ranked subtype error
+
 }

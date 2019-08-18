@@ -35,7 +35,7 @@ where
     infcx
         .tcx
         .fold_regions(value, &mut false, |_region, _depth| {
-            let origin = NLLRegionVariableOrigin::Existential;
+            let origin = NLLRegionVariableOrigin::Existential { was_placeholder: false };
             infcx.next_nll_region_var(origin)
         })
 }
