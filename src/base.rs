@@ -367,10 +367,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             _ => unreachable!("cast adt {} -> {}", from_ty, to_ty),
                         }
 
-                        // FIXME avoid forcing to stack
-                        let place =
-                            CPlace::for_addr(operand.force_stack(fx), operand.layout());
-                        let discr = crate::discriminant::codegen_get_discriminant(fx, place, fx.layout_of(to_ty));
+                        let discr = crate::discriminant::codegen_get_discriminant(fx, operand, fx.layout_of(to_ty));
                         lval.write_cvalue(fx, discr);
                     } else {
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
@@ -405,7 +402,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 }
                 Rvalue::Discriminant(place) => {
                     let place = trans_place(fx, place);
-                    let discr = crate::discriminant::codegen_get_discriminant(fx, place, dest_layout);
+                    let value = place.to_cvalue(fx);
+                    let discr = crate::discriminant::codegen_get_discriminant(fx, value, dest_layout);
                     lval.write_cvalue(fx, discr);
                 }
                 Rvalue::Repeat(operand, times) => {

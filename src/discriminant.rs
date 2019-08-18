@@ -58,10 +58,10 @@ pub fn codegen_set_discriminant<'tcx>(
 
 pub fn codegen_get_discriminant<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    place: CPlace<'tcx>,
+    value: CValue<'tcx>,
     dest_layout: TyLayout<'tcx>,
 ) -> CValue<'tcx> {
-    let layout = place.layout();
+    let layout = value.layout();
 
     if layout.abi == layout::Abi::Uninhabited {
         return trap_unreachable_ret_value(fx, dest_layout, "[panic] Tried to get discriminant for uninhabited type.");
@@ -82,7 +82,7 @@ pub fn codegen_get_discriminant<'tcx>(
         }
     };
 
-    let discr = place.place_field(fx, mir::Field::new(discr_index)).to_cvalue(fx);
+    let discr = value.value_field(fx, mir::Field::new(discr_index));
     let discr_ty = discr.layout().ty;
     let lldiscr = discr.load_scalar(fx);
     match discr_kind {
