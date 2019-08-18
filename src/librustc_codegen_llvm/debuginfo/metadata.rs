@@ -338,7 +338,7 @@ fn fixed_vec_metadata(
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
 
-    let (size, align) = cx.size_and_align_of(array_or_slice_type);
+    let mem_pos = cx.mem_pos_of(array_or_slice_type);
 
     let upper_bound = match array_or_slice_type.kind {
         ty::Array(_, len) => len.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong,
@@ -353,8 +353,8 @@ fn fixed_vec_metadata(
     let metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateArrayType(
             DIB(cx),
-            size.bits(),
-            align.bits() as u32,
+            mem_pos.size.bits(),
+            mem_pos.align.bits() as u32,
             element_type_metadata,
             subscripts)
     };
@@ -377,23 +377,24 @@ fn vec_slice_metadata(
 
     let slice_type_name = compute_debuginfo_type_name(cx.tcx, slice_ptr_type, true);
 
-    let (pointer_size, pointer_align) = cx.size_and_align_of(data_ptr_type);
-    let (usize_size, usize_align) = cx.size_and_align_of(cx.tcx.types.usize);
+    let pointer_mem_pos = cx.mem_pos_of(data_ptr_type);
+    let usize_mem_pos = cx.mem_pos_of(cx.tcx.types.usize);
+    let pointer_stride = pointer_mem_pos.stride_to(usize_mem_pos.align).size;
 
     let member_descriptions = vec![
         MemberDescription {
             name: "data_ptr".to_owned(),
             type_metadata: data_ptr_metadata,
             offset: Size::ZERO,
-            mem_pos: MemoryPosition::new(pointer_size, pointer_align),
+            mem_pos: pointer_mem_pos,
             flags: DIFlags::FlagZero,
             discriminant: None,
         },
         MemberDescription {
             name: "length".to_owned(),
             type_metadata: type_metadata(cx, cx.tcx.types.usize, span),
-            offset: pointer_size,
-            mem_pos: MemoryPosition::new(usize_size, usize_align),
+            offset: pointer_stride,
+            mem_pos: usize_mem_pos,
             flags: DIFlags::FlagZero,
             discriminant: None,
         },
@@ -652,7 +653,8 @@ pub fn type_metadata(
                     // anything reading the debuginfo for a recursive
                     // type is going to see *somthing* weird - the only
                     // question is what exactly it will see
-                    let (size, align) = cx.size_and_align_of(t);
+                    let mem_pos = cx.mem_pos_of(t);
+                    let (size, align) = (mem_pos.size, mem_pos.align);
                     llvm::LLVMRustDIBuilderCreateBasicType(
                         DIB(cx),
                         SmallCStr::new("<recur_type>").as_ptr(),
@@ -850,7 +852,8 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
         _ => bug!("debuginfo::basic_type_metadata - t is invalid type")
     };
 
-    let (size, align) = cx.size_and_align_of(t);
+    let mem_pos = cx.mem_pos_of(t);
+    let (size, align) = (mem_pos.size, mem_pos.align);
     let name = SmallCStr::new(name);
     let ty_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateBasicType(
@@ -880,15 +883,15 @@ fn pointer_type_metadata(
     pointer_type: Ty<'tcx>,
     pointee_type_metadata: &'ll DIType,
 ) -> &'ll DIType {
-    let (pointer_size, pointer_align) = cx.size_and_align_of(pointer_type);
+    let pointer_mem_pos = cx.mem_pos_of(pointer_type);
     let name = compute_debuginfo_type_name(cx.tcx, pointer_type, false);
     let name = SmallCStr::new(&name);
     unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
             pointee_type_metadata,
-            pointer_size.bits(),
-            pointer_align.bits() as u32,
+            pointer_mem_pos.size.bits(),
+            pointer_mem_pos.align.bits() as u32,
             name.as_ptr())
     }
 }
@@ -1183,12 +1186,12 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                                   -> Vec<MemberDescription<'ll>> {
         let layout = cx.layout_of(self.ty);
         self.component_types.iter().enumerate().map(|(i, &component_type)| {
-            let (size, align) = cx.size_and_align_of(component_type);
+            let mem_pos = cx.mem_pos_of(component_type);
             MemberDescription {
                 name: format!("__{}", i),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: layout.fields.offset(i),
-                mem_pos: MemoryPosition::new(size, align),
+                mem_pos,
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1567,7 +1570,7 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
                                       -> Vec<MemberDescription<'ll>> {
         self.args.iter().enumerate().map(|(i, &(ref name, ty))| {
-            let (size, align) = cx.size_and_align_of(ty);
+            let mem_pos = cx.mem_pos_of(ty);
             MemberDescription {
                 name: name.to_string(),
                 type_metadata: if use_enum_fallback(cx) {
@@ -1581,7 +1584,7 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
                     type_metadata(cx, ty, self.span)
                 },
                 offset: self.offsets[i],
-                mem_pos:MemoryPosition::new(size, align),
+                mem_pos,
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1919,7 +1922,9 @@ fn prepare_enum_metadata(
             ..
         } => {
             let discr_type = discr.value.to_ty(cx.tcx);
-            let (size, align) = cx.size_and_align_of(discr_type);
+            let mem_pos = cx.mem_pos_of(discr_type);
+            let (size, align) = (mem_pos.size, mem_pos.align);
+
 
             let discr_metadata = basic_type_metadata(cx, discr_type);
             unsafe {
@@ -2131,7 +2136,8 @@ fn create_struct_stub(
     unique_type_id: UniqueTypeId,
     containing_scope: Option<&'ll DIScope>,
 ) -> &'ll DICompositeType {
-    let (struct_size, struct_align) = cx.size_and_align_of(struct_type);
+    let struct_mem_pos = cx.mem_pos_of(struct_type);
+    let (struct_size, struct_align) = (struct_mem_pos.size, struct_mem_pos.align);
 
     let name = SmallCStr::new(struct_type_name);
     let unique_type_id = SmallCStr::new(
@@ -2169,7 +2175,7 @@ fn create_union_stub(
     unique_type_id: UniqueTypeId,
     containing_scope: &'ll DIScope,
 ) -> &'ll DICompositeType {
-    let (union_size, union_align) = cx.size_and_align_of(union_type);
+    let union_mem_pos = cx.mem_pos_of(union_type);
 
     let name = SmallCStr::new(union_type_name);
     let unique_type_id = SmallCStr::new(
@@ -2187,8 +2193,8 @@ fn create_union_stub(
             name.as_ptr(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
-            union_size.bits(),
-            union_align.bits() as u32,
+            union_mem_pos.size.bits(),
+            union_mem_pos.align.bits() as u32,
             DIFlags::FlagZero,
             Some(empty_array),
             0, // RuntimeLang

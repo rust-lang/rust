@@ -769,17 +769,17 @@ fn copy_intrinsic(
     src: &'ll Value,
     count: &'ll Value,
 ) {
-    let (size, align) = bx.size_and_align_of(ty);
-    let size = bx.mul(bx.const_usize(size.bytes()), count);
+    let mem_pos = bx.mem_pos_of(ty);
+    let size = bx.mul(bx.const_usize(mem_pos.size.bytes()), count);
     let flags = if volatile {
         MemFlags::VOLATILE
     } else {
         MemFlags::empty()
     };
     if allow_overlap {
-        bx.memmove(dst, align, src, align, size, flags);
+        bx.memmove(dst, mem_pos.align, src, mem_pos.align, size, flags);
     } else {
-        bx.memcpy(dst, align, src, align, size, flags);
+        bx.memcpy(dst, mem_pos.align, src, mem_pos.align, size, flags);
     }
 }
 
@@ -791,14 +791,14 @@ fn memset_intrinsic(
     val: &'ll Value,
     count: &'ll Value
 ) {
-    let (size, align) = bx.size_and_align_of(ty);
-    let size = bx.mul(bx.const_usize(size.bytes()), count);
+    let mem_pos = bx.mem_pos_of(ty);
+    let size = bx.mul(bx.const_usize(mem_pos.size.bytes()), count);
     let flags = if volatile {
         MemFlags::VOLATILE
     } else {
         MemFlags::empty()
     };
-    bx.memset(dst, val, size, align, flags);
+    bx.memset(dst, val, size, mem_pos.align, flags);
 }
 
 fn try_intrinsic(

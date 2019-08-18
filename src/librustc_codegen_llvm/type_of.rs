@@ -2,7 +2,9 @@ use crate::abi::{FnAbi};
 use crate::common::*;
 use crate::type_::Type;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, LayoutOf, FnAbiExt, PointeeInfo, Size, TyLayout};
+use rustc::ty::layout::{
+    self, Align, MemoryPosition, LayoutOf, FnAbiExt, PointeeInfo, Size, TyLayout
+};
 use rustc_target::abi::TyLayoutMethods;
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc_codegen_ssa::traits::*;
@@ -167,9 +169,8 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
         self.layout_of(ty).pref_pos.size
     }
 
-    pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, Align) {
-        let layout = self.layout_of(ty);
-        (layout.pref_pos.size, layout.pref_pos.align.abi)
+    pub fn mem_pos_of(&self, ty: Ty<'tcx>) -> MemoryPosition {
+        self.layout_of(ty).pref_pos.mem_pos()
     }
 }
 
