@@ -12,4 +12,5 @@ itertools = "0.8.0"
 clap = "2.32.0"
 quote = "1.0.2"
 ron = "0.5.1"
+heck = "0.3.0"
 serde = { version = "1.0.0", features = ["derive"] }

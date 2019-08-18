@@ -263,7 +263,7 @@ Grammar(
         "SourceFile": (
             traits: [ "ModuleItemOwner", "FnDefOwner" ],
             collections: [
-                ["modules", "Module"],
+                ("modules", "Module"),
             ]
         ),
         "FnDef": (
@@ -286,7 +286,7 @@ Grammar(
                 "DocCommentsOwner"
             ]
         ),
-        "NamedFieldDefList": (collections: [["fields", "NamedFieldDef"]]),
+        "NamedFieldDefList": (collections: [("fields", "NamedFieldDef")]),
         "NamedFieldDef": (
             traits: [
                 "VisibilityOwner",
@@ -296,7 +296,7 @@ Grammar(
                 "TypeAscriptionOwner"
             ]
         ),
-        "PosFieldDefList": (collections: [["fields", "PosFieldDef"]]),
+        "PosFieldDefList": (collections: [("fields", "PosFieldDef")]),
         "PosFieldDef": ( traits: ["VisibilityOwner", "AttrsOwner"], options: ["TypeRef"]),
         "EnumDef": ( traits: [
             "VisibilityOwner",
@@ -305,7 +305,7 @@ Grammar(
             "AttrsOwner",
             "DocCommentsOwner"
         ], options: [["variant_list", "EnumVariantList"]] ),
-        "EnumVariantList": ( collections: [["variants", "EnumVariant"]] ),
+        "EnumVariantList": ( collections: [("variants", "EnumVariant")] ),
         "EnumVariant": ( traits: ["NameOwner", "DocCommentsOwner", "AttrsOwner"], options: ["Expr"] ),
         "TraitDef": (
             traits: ["VisibilityOwner", "NameOwner", "AttrsOwner", "DocCommentsOwner", "TypeParamsOwner", "TypeBoundsOwner"],
@@ -316,7 +316,7 @@ Grammar(
             options: [ "ItemList" ]
         ),
         "ItemList": (
-            collections: [["impl_items", "ImplItem"]],
+            collections: [("impl_items", "ImplItem")],
             traits: [ "FnDefOwner", "ModuleItemOwner" ],
         ),
         "ConstDef": (
@@ -355,7 +355,7 @@ Grammar(
         "ImplBlock": (options: ["ItemList"], traits: ["TypeParamsOwner", "AttrsOwner"]),
 
         "ParenType": (options: ["TypeRef"]),
-        "TupleType": ( collections: [["fields", "TypeRef"]] ),
+        "TupleType": ( collections: [("fields", "TypeRef")] ),
         "NeverType": (),
         "PathType": (options: ["Path"]),
         "PointerType": (options: ["TypeRef"]),
@@ -405,10 +405,10 @@ Grammar(
         ),
 
         "TupleExpr": (
-            collections: [["exprs", "Expr"]]
+            collections: [("exprs", "Expr")]
         ),
         "ArrayExpr": (
-            collections: [["exprs", "Expr"]]
+            collections: [("exprs", "Expr")]
         ),
         "ParenExpr": (options: ["Expr"]),
         "PathExpr": (options: ["Path"]),
@@ -449,7 +449,7 @@ Grammar(
             options: [ "Expr", "MatchArmList" ],
         ),
         "MatchArmList": (
-            collections: [ ["arms", "MatchArm"] ],
+            collections: [ ("arms", "MatchArm") ],
             traits: [ "AttrsOwner" ]
         ),
         "MatchArm": (
@@ -457,13 +457,13 @@ Grammar(
                 [ "guard", "MatchGuard" ],
                 "Expr",
             ],
-            collections: [ [ "pats", "Pat" ] ],
+            collections: [ ("pats", "Pat") ],
             traits: [ "AttrsOwner" ]
         ),
         "MatchGuard": (options: ["Expr"]),
         "StructLit": (options: ["Path", "NamedFieldList"]),
         "NamedFieldList": (
-            collections: [ ["fields", "NamedField"] ],
+            collections: [ ("fields", "NamedField") ],
             options: [["spread", "Expr"]]
         ),
         "NamedField": (options: ["NameRef", "Expr"]),
@@ -532,8 +532,8 @@ Grammar(
         "StructPat": ( options: ["FieldPatList", "Path"] ),
         "FieldPatList": (
             collections: [
-                ["field_pats", "FieldPat"],
-                ["bind_pats", "BindPat"],
+                ("field_pats", "FieldPat"),
+                ("bind_pats", "BindPat"),
             ]
         ),
         "FieldPat": (
@@ -542,9 +542,9 @@ Grammar(
         ),
         "TupleStructPat": (
             options: ["Path"],
-            collections: [["args", "Pat"]],
+            collections: [("args", "Pat")],
         ),
-        "TuplePat": ( collections: [["args", "Pat"]] ),
+        "TuplePat": ( collections: [("args", "Pat")] ),
         "SlicePat": (),
         "RangePat": (),
         "LiteralPat": (options: ["Literal"]),
@@ -575,8 +575,8 @@ Grammar(
         "TokenTree": (),
         "TypeParamList": (
             collections: [
-                ["type_params", "TypeParam" ],
-                ["lifetime_params", "LifetimeParam" ],
+                ("type_params", "TypeParam" ),
+                ("lifetime_params", "LifetimeParam" ),
             ]
         ),
         "TypeParam": ( traits: ["NameOwner", "AttrsOwner", "TypeBoundsOwner", "DefaultTypeParamOwner"] ),
@@ -590,7 +590,7 @@ Grammar(
         ),
         "TypeBoundList": (
             collections: [
-                ["bounds", "TypeBound"],
+                ("bounds", "TypeBound"),
             ]
         ),
         "WherePred": (
@@ -603,7 +603,7 @@ Grammar(
         ),
         "WhereClause": (
             collections: [
-                ["predicates", "WherePred"],
+                ("predicates", "WherePred"),
             ],
         ),
         "ExprStmt": (
@@ -627,7 +627,7 @@ Grammar(
         "Block": (
             options: [ "Expr" ],
             collections: [
-                ["statements", "Stmt"],
+                ("statements", "Stmt"),
             ],
             traits: [
                 "AttrsOwner",
@@ -636,7 +636,7 @@ Grammar(
         "ParamList": (
             options: [ "SelfParam" ],
             collections: [
-                ["params", "Param"]
+                ("params", "Param"),
             ]
         ),
         "SelfParam": (
@@ -663,14 +663,14 @@ Grammar(
             traits: ["NameOwner"],
         ),
         "UseTreeList": (
-            collections: [["use_trees", "UseTree"]]
+            collections: [("use_trees", "UseTree")]
         ),
         "ExternCrateItem": (
             options: ["NameRef", "Alias"],
         ),
         "ArgList": (
             collections: [
-                ["args", "Expr"]
+                ("args", "Expr"),
             ]
         ),
         "Path": (
@@ -683,9 +683,9 @@ Grammar(
             options: [ "NameRef", "TypeArgList" ]
         ),
         "TypeArgList": (collections: [
-            ["type_args", "TypeArg"],
-            ["lifetime_args", "LifetimeArg"],
-            ["assoc_type_args", "AssocTypeArg"],
+            ("type_args", "TypeArg"),
+            ("lifetime_args", "LifetimeArg"),
+            ("assoc_type_args", "AssocTypeArg"),
         ]),
         "TypeArg": (options: ["TypeRef"]),
         "AssocTypeArg": (options: ["NameRef", "TypeRef"]),
@@ -698,7 +698,7 @@ Grammar(
         "MacroStmts" : (
             options: [ "Expr" ],
             collections: [
-                ["statements", "Stmt"],
+                ("statements", "Stmt"),
             ],
         )
     },
