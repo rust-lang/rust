@@ -110,18 +110,25 @@ impl<'a> Parser<'a> {
 
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
-        if !self.check(&token::BinOp(token::Or)) {
+        if !self.check(&token::BinOp(token::Or)) && self.token != token::OrOr {
             return Ok(first_pat)
         }
 
         let lo = first_pat.span;
-
         let mut pats = vec![first_pat];
+        loop {
+            if self.token == token::OrOr {
+                // Found `||`; Recover and pretend we parsed `|`.
+                self.ban_unexpected_or_or();
+                self.bump();
+            } else if self.eat(&token::BinOp(token::Or)) {
+                // Found `|`. Working towards a proper or-pattern.
+            } else {
+                break;
+            }
 
-        while self.eat(&token::BinOp(token::Or)) {
             pats.push(self.parse_pat_with_range_pat(true, expected)?);
         }
-
         let or_pattern_span = lo.to(self.prev_span);
 
         // Feature gate the or-pattern if instructed:
