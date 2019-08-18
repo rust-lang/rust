@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            pats.push(self.parse_pat_with_range_pat(true, expected)?);
+            pats.push(self.parse_pat(expected)?);
         }
         let or_pattern_span = lo.to(self.prev_span);
 
