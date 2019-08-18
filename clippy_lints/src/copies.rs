@@ -298,14 +298,14 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalI
                     bindings_impl(cx, as_pat, map);
                 }
             },
+            PatKind::Or(ref fields) | PatKind::Tuple(ref fields, _) => {
+                for pat in fields {
+                    bindings_impl(cx, pat, map);
+                }
+            },
             PatKind::Struct(_, ref fields, _) => {
                 for pat in fields {
                     bindings_impl(cx, &pat.pat, map);
-                }
-            },
-            PatKind::Tuple(ref fields, _) => {
-                for pat in fields {
-                    bindings_impl(cx, pat, map);
                 }
             },
             PatKind::Slice(ref lhs, ref mid, ref rhs) => {

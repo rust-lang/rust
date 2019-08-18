@@ -791,7 +791,7 @@ pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat) -> bool {
         PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => is_refutable(cx, pat),
         PatKind::Lit(..) | PatKind::Range(..) => true,
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
-        PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
+        PatKind::Or(ref pats) | PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
         PatKind::Struct(ref qpath, ref fields, _) => {
             if is_enum_variant(cx, qpath, pat.hir_id) {
                 true

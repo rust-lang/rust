@@ -410,6 +410,12 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, inner, indent + 1);
             }
         },
+        hir::PatKind::Or(ref fields) => {
+            println!("{}Or", ind);
+            for field in fields {
+                print_pat(cx, field, indent + 1);
+            }
+        },
         hir::PatKind::Struct(ref path, ref fields, ignore) => {
             println!("{}Struct", ind);
             println!(
