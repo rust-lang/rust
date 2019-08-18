@@ -525,3 +525,7 @@ pub macro file() { /* compiler built-in */ }
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro line() { /* compiler built-in */ }
+
+#[rustc_builtin_macro]
+#[rustc_macro_transparency = "semitransparent"]
+pub macro cfg() { /* compiler built-in */ }
