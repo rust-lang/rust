@@ -696,6 +696,17 @@ pub enum Primitive {
 }
 
 impl Primitive {
+    pub fn pref_pos<C: HasDataLayout>(self, cx: &C) -> LayoutPositionPref {
+        let dl = cx.data_layout();
+
+        match self {
+            Int(i, _) => LayoutPositionPref::new(i.size(), i.align(dl)),
+            F32 => LayoutPositionPref::new(Size::from_bits(32), dl.f32_align),
+            F64 => LayoutPositionPref::new(Size::from_bits(64), dl.f64_align),
+            Pointer => dl.pointer_pos
+        }
+    }
+
     pub fn size<C: HasDataLayout>(self, cx: &C) -> Size {
         let dl = cx.data_layout();
 
@@ -1069,9 +1080,7 @@ pub struct LayoutDetails {
 impl LayoutDetails {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
-        let size = scalar.value.size(cx);
-        let align = scalar.value.align(cx);
-        let pref_pos = LayoutPositionPref::new(size, align);
+        let pref_pos = scalar.value.pref_pos(cx);
         LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Union(0),
