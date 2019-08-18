@@ -91,7 +91,8 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses a pattern, that may be a or-pattern (e.g. `Some(Foo | Bar)`).
+    /// Parses a pattern, that may be a or-pattern (e.g. `Foo | Bar` in `Some(Foo | Bar)`).
+    /// Corresponds to `pat<allow_top_alt>` in RFC 2535.
     fn parse_pat_with_or(
         &mut self,
         expected: Expected,
