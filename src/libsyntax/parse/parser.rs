@@ -971,15 +971,12 @@ impl<'a> Parser<'a> {
     /// Skips unexpected attributes and doc comments in this position and emits an appropriate
     /// error.
     /// This version of parse arg doesn't necessarily require identifier names.
-    fn parse_arg_general<F>(
+    fn parse_arg_general(
         &mut self,
         is_trait_item: bool,
         allow_c_variadic: bool,
-        is_name_required: F,
-    ) -> PResult<'a, Arg>
-    where
-        F: Fn(&token::Token) -> bool
-    {
+        is_name_required: impl Fn(&token::Token) -> bool,
+    ) -> PResult<'a, Arg> {
         let lo = self.token.span;
         let attrs = self.parse_arg_attributes()?;
         if let Some(mut arg) = self.parse_self_arg()? {
