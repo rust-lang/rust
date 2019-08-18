@@ -410,6 +410,12 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
                 print_pat(cx, inner, indent + 1);
             }
         },
+        hir::PatKind::Or(ref fields) => {
+            println!("{}Or", ind);
+            for field in fields {
+                print_pat(cx, field, indent + 1);
+            }
+        },
         hir::PatKind::Struct(ref path, ref fields, ignore) => {
             println!("{}Struct", ind);
             println!(
@@ -420,11 +426,11 @@ fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
             println!("{}ignore leftover fields: {}", ind, ignore);
             println!("{}fields:", ind);
             for field in fields {
-                println!("{}  field name: {}", ind, field.node.ident.name);
-                if field.node.is_shorthand {
+                println!("{}  field name: {}", ind, field.ident.name);
+                if field.is_shorthand {
                     println!("{}  in shorthand notation", ind);
                 }
-                print_pat(cx, &field.node.pat, indent + 1);
+                print_pat(cx, &field.pat, indent + 1);
             }
         },
         hir::PatKind::TupleStruct(ref path, ref fields, opt_dots_position) => {
