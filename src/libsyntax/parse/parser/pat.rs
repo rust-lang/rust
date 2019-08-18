@@ -45,12 +45,6 @@ impl<'a> Parser<'a> {
         self.parse_pat_with_or(None, gate_or, true)
     }
 
-    pub(super) fn parse_top_level_pat(&mut self) -> PResult<'a, P<Pat>> {
-        let pat = self.parse_pat(None)?;
-        self.maybe_recover_unexpected_comma(pat.span, true)?;
-        Ok(pat)
-    }
-
     /// Parses a pattern, that may be a or-pattern (e.g. `Foo | Bar` in `Some(Foo | Bar)`).
     /// Corresponds to `pat<allow_top_alt>` in RFC 2535.
     fn parse_pat_with_or(

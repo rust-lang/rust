@@ -207,7 +207,7 @@ impl<'a> Parser<'a> {
     /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Local>> {
         let lo = self.prev_span;
-        let pat = self.parse_top_level_pat()?;
+        let pat = self.parse_top_pat(true)?;
 
         let (err, ty) = if self.eat(&token::Colon) {
             // Save the state of the parser before parsing type normally, in case there is a `:`

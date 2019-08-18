@@ -1284,7 +1284,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        let pat = self.parse_top_level_pat()?;
+        let pat = self.parse_top_pat(true)?;
         if !self.eat_keyword(kw::In) {
             let in_span = self.prev_span.between(self.token.span);
             self.struct_span_err(in_span, "missing `in` in `for` loop")
