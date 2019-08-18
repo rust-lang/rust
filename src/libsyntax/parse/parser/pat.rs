@@ -16,6 +16,10 @@ type Expected = Option<&'static str>;
 
 impl<'a> Parser<'a> {
     /// Parses a pattern.
+    ///
+    /// Corresponds to `pat<no_top_alt>` in RFC 2535 and does not admit or-patterns
+    /// at the top level. Used when parsing the parameters of lambda expressions,
+    /// functions, function pointers, and `pat` macro fragments.
     pub fn parse_pat(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
         self.parse_pat_with_range_pat(true, expected)
     }
