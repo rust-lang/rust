@@ -572,9 +572,10 @@ impl Pat {
         match &self.node {
             PatKind::Ident(_, _, Some(p)) => p.walk(it),
             PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk(it)),
-            PatKind::TupleStruct(_, s) | PatKind::Tuple(s) | PatKind::Slice(s) => {
-                s.iter().all(|p| p.walk(it))
-            }
+            PatKind::TupleStruct(_, s)
+            | PatKind::Tuple(s)
+            | PatKind::Slice(s)
+            | PatKind::Or(s) => s.iter().all(|p| p.walk(it)),
             PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
             PatKind::Wild
             | PatKind::Rest
@@ -647,6 +648,10 @@ pub enum PatKind {
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     TupleStruct(Path, Vec<P<Pat>>),
+
+    /// An or-pattern `A | B | C`.
+    /// Invariant: `pats.len() >= 2`.
+    Or(Vec<P<Pat>>),
 
     /// A possibly qualified path pattern.
     /// Unqualified path patterns `A::B::C` can legally refer to variants, structs, constants

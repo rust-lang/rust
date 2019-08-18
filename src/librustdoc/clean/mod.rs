@@ -4107,6 +4107,9 @@ fn name_from_pat(p: &hir::Pat) -> String {
                 if etc { ", .." } else { "" }
             )
         }
+        PatKind::Or(ref pats) => {
+            pats.iter().map(|p| name_from_pat(&**p)).collect::<Vec<String>>().join(" | ")
+        }
         PatKind::Tuple(ref elts, _) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
                                             .collect::<Vec<String>>().join(", ")),
         PatKind::Box(ref p) => name_from_pat(&**p),

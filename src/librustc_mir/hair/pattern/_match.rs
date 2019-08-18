@@ -1359,6 +1359,9 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                 Some(vec![Slice(pat_len)])
             }
         }
+        PatternKind::Or { .. } => {
+            bug!("support for or-patterns has not been fully implemented yet.");
+        }
     }
 }
 
@@ -1883,6 +1886,10 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                 _ => span_bug!(pat.span,
                     "unexpected ctor {:?} for slice pat", constructor)
             }
+        }
+
+        PatternKind::Or { .. } => {
+            bug!("support for or-patterns has not been fully implemented yet.");
         }
     };
     debug!("specialize({:#?}, {:#?}) = {:#?}", r[0], wild_patterns, head);

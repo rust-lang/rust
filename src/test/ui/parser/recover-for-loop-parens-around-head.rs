@@ -8,7 +8,7 @@ fn main() {
     let vec = vec![1, 2, 3];
 
     for ( elem in vec ) {
-        //~^ ERROR expected one of `)`, `,`, or `@`, found `in`
+        //~^ ERROR expected one of `)`, `,`, `@`, or `|`, found `in`
         //~| ERROR unexpected closing `)`
         const RECOVERY_WITNESS: () = 0; //~ ERROR mismatched types
     }
