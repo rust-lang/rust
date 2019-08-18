@@ -133,8 +133,8 @@ fn get_pass_mode<'tcx>(
     }
 }
 
-fn adjust_arg_for_abi<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn adjust_arg_for_abi<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
 ) -> EmptySinglePair<Value> {
     match get_pass_mode(fx.tcx, arg.layout()) {
@@ -250,7 +250,7 @@ pub fn import_function<'tcx>(
         .unwrap()
 }
 
-impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
+impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     /// Instance must be monomorphized
     pub fn get_function_ref(&mut self, inst: Instance<'tcx>) -> FuncRef {
         let func_id = import_function(self.tcx, self.module, inst);
@@ -337,8 +337,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
 }
 
 #[cfg(debug_assertions)]
-fn add_arg_comment<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn add_arg_comment<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     msg: &str,
     local: mir::Local,
     local_field: Option<usize>,
@@ -377,8 +377,8 @@ fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
     ));
 }
 
-fn local_place<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn local_place<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     local: Local,
     layout: TyLayout<'tcx>,
     is_ssa: bool,
@@ -432,8 +432,8 @@ fn local_place<'a, 'tcx: 'a>(
     fx.local_map[&local]
 }
 
-fn cvalue_for_param<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn cvalue_for_param<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     start_ebb: Ebb,
     local: mir::Local,
     local_field: Option<usize>,
@@ -473,8 +473,8 @@ fn cvalue_for_param<'a, 'tcx: 'a>(
     }
 }
 
-pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn codegen_fn_prelude(
+    fx: &mut FunctionCx<'_, '_, impl Backend>,
     start_ebb: Ebb,
 ) {
     let ssa_analyzed = crate::analyze::analyze(fx);
@@ -622,8 +622,8 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
         .jump(*fx.ebb_map.get(&START_BLOCK).unwrap(), &[]);
 }
 
-pub fn codegen_terminator_call<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn codegen_terminator_call<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     func: &Operand<'tcx>,
     args: &[Operand<'tcx>],
     destination: &Option<(Place<'tcx>, BasicBlock)>,
@@ -698,8 +698,8 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
     }
 }
 
-fn codegen_call_inner<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn codegen_call_inner<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     func: Option<&Operand<'tcx>>,
     fn_ty: Ty<'tcx>,
     args: Vec<CValue<'tcx>>,
@@ -827,8 +827,8 @@ fn codegen_call_inner<'a, 'tcx: 'a>(
     }
 }
 
-pub fn codegen_drop<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn codegen_drop<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     drop_place: CPlace<'tcx>,
 ) {
     let ty = drop_place.layout().ty;

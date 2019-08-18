@@ -275,8 +275,8 @@ macro_rules! simd_flt_binop {
     }
 }
 
-pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn codegen_intrinsic_call<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     def_id: DefId,
     substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],

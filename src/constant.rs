@@ -38,12 +38,12 @@ impl ConstantCx {
     }
 }
 
-pub fn codegen_static(ccx: &mut ConstantCx, def_id: DefId) {
-    ccx.todo.insert(TodoItem::Static(def_id));
+pub fn codegen_static(constants_cx: &mut ConstantCx, def_id: DefId) {
+    constants_cx.todo.insert(TodoItem::Static(def_id));
 }
 
-pub fn codegen_static_ref<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn codegen_static_ref<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     def_id: DefId,
     ty: Ty<'tcx>,
 ) -> CPlace<'tcx> {
@@ -52,8 +52,8 @@ pub fn codegen_static_ref<'a, 'tcx: 'a>(
     cplace_for_dataid(fx, ty, data_id)
 }
 
-pub fn trans_promoted<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn trans_promoted<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     promoted: Promoted,
     dest_ty: Ty<'tcx>,
 ) -> CPlace<'tcx> {
@@ -79,16 +79,16 @@ pub fn trans_promoted<'a, 'tcx: 'a>(
     }
 }
 
-pub fn trans_constant<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn trans_constant<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
     let const_ = force_eval_const(fx, &constant.literal);
     trans_const_value(fx, const_)
 }
 
-pub fn force_eval_const<'a, 'tcx: 'a>(
-    fx: &FunctionCx<'a, 'tcx, impl Backend>,
+pub fn force_eval_const<'tcx>(
+    fx: &FunctionCx<'_, 'tcx, impl Backend>,
     const_: &'tcx Const,
 ) -> &'tcx Const<'tcx> {
     match const_.val {
@@ -106,8 +106,8 @@ pub fn force_eval_const<'a, 'tcx: 'a>(
     }
 }
 
-pub fn trans_const_value<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn trans_const_value<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> CValue<'tcx> {
     let ty = fx.monomorphize(&const_.ty);
@@ -131,8 +131,8 @@ pub fn trans_const_value<'a, 'tcx: 'a>(
     }
 }
 
-fn trans_const_place<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn trans_const_place<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     const_: &'tcx Const<'tcx>,
 ) -> CPlace<'tcx> {
     // Adapted from https://github.com/rust-lang/rust/pull/53671/files#diff-e0b58bb6712edaa8595ad7237542c958L551
@@ -168,7 +168,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
 
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
-    fx.constants.todo.insert(TodoItem::Alloc(alloc_id));
+    fx.constants_cx.todo.insert(TodoItem::Alloc(alloc_id));
     let data_id = data_id_for_alloc_id(fx.module, alloc_id, alloc.align);
     cplace_for_dataid(fx, const_.ty, data_id)
 }
@@ -222,8 +222,8 @@ fn data_id_for_static(
     data_id
 }
 
-fn cplace_for_dataid<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn cplace_for_dataid<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ty: Ty<'tcx>,
     data_id: DataId,
 ) -> CPlace<'tcx> {

@@ -1,7 +1,6 @@
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift::codegen::ir::{Opcode, InstructionData, ValueDef};
-use cranelift_module::Module;
 
 use crate::prelude::*;
 
@@ -73,8 +72,8 @@ pub fn codegen_select(bcx: &mut FunctionBuilder, cond: Value, lhs: Value, rhs: V
     }
 }
 
-pub fn codegen_icmp<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+pub fn codegen_icmp(
+    fx: &mut FunctionCx<'_, '_, impl Backend>,
     intcc: IntCC,
     lhs: Value,
     rhs: Value,
@@ -118,8 +117,8 @@ pub fn codegen_icmp<'tcx>(
     }
 }
 
-pub fn codegen_icmp_imm<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+pub fn codegen_icmp_imm(
+    fx: &mut FunctionCx<'_, '_, impl Backend>,
     intcc: IntCC,
     lhs: Value,
     rhs: i128,
@@ -245,26 +244,26 @@ pub fn type_sign(ty: Ty<'_>) -> bool {
     }
 }
 
-pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
+pub struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     // FIXME use a reference to `CodegenCx` instead of `tcx`, `module` and `constants` and `caches`
     pub tcx: TyCtxt<'tcx>,
-    pub module: &'a mut Module<B>,
+    pub module: &'clif mut Module<B>,
     pub pointer_type: Type, // Cached from module
 
     pub instance: Instance<'tcx>,
     pub mir: &'tcx Body<'tcx>,
 
-    pub bcx: FunctionBuilder<'a>,
+    pub bcx: FunctionBuilder<'clif>,
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
 
     pub clif_comments: crate::pretty_clif::CommentWriter,
-    pub constants: &'a mut crate::constant::ConstantCx,
-    pub caches: &'a mut Caches<'tcx>,
+    pub constants_cx: &'clif mut crate::constant::ConstantCx,
+    pub caches: &'clif mut Caches<'tcx>,
     pub source_info_set: indexmap::IndexSet<SourceInfo>,
 }
 
-impl<'a, 'tcx: 'a, B: Backend> LayoutOf for FunctionCx<'a, 'tcx, B> {
+impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
@@ -279,31 +278,31 @@ impl<'a, 'tcx: 'a, B: Backend> LayoutOf for FunctionCx<'a, 'tcx, B> {
     }
 }
 
-impl<'a, 'tcx, B: Backend + 'a> layout::HasTyCtxt<'tcx> for FunctionCx<'a, 'tcx, B> {
+impl<'tcx, B: Backend + 'static> layout::HasTyCtxt<'tcx> for FunctionCx<'_, 'tcx, B> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'tcx, B: Backend + 'a> layout::HasDataLayout for FunctionCx<'a, 'tcx, B> {
+impl<'tcx, B: Backend + 'static> layout::HasDataLayout for FunctionCx<'_, 'tcx, B> {
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx, B: Backend + 'a> layout::HasParamEnv<'tcx> for FunctionCx<'a, 'tcx, B> {
+impl<'tcx, B: Backend + 'static> layout::HasParamEnv<'tcx> for FunctionCx<'_, 'tcx, B> {
     fn param_env(&self) -> ParamEnv<'tcx> {
         ParamEnv::reveal_all()
     }
 }
 
-impl<'a, 'tcx, B: Backend + 'a> HasTargetSpec for FunctionCx<'a, 'tcx, B> {
+impl<'tcx, B: Backend + 'static> HasTargetSpec for FunctionCx<'_, 'tcx, B> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }
 }
 
-impl<'a, 'tcx, B: Backend> BackendTypes for FunctionCx<'a, 'tcx, B> {
+impl<'tcx, B: Backend> BackendTypes for FunctionCx<'_, 'tcx, B> {
     type Value = Value;
     type BasicBlock = Ebb;
     type Type = Type;
@@ -311,7 +310,7 @@ impl<'a, 'tcx, B: Backend> BackendTypes for FunctionCx<'a, 'tcx, B> {
     type DIScope = !;
 }
 
-impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
+impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     pub fn monomorphize<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,

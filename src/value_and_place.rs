@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-fn codegen_field<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn codegen_field<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     base: Value,
     layout: TyLayout<'tcx>,
     field: mir::Field,
@@ -51,10 +51,7 @@ impl<'tcx> CValue<'tcx> {
         self.1
     }
 
-    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value
-    where
-        'tcx: 'a,
-    {
+    pub fn force_stack<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(value) => value,
@@ -67,10 +64,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value with layout.abi of scalar
-    pub fn load_scalar<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value
-    where
-        'tcx: 'a,
-    {
+    pub fn load_scalar<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(addr) => {
@@ -87,10 +81,7 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value pair with layout.abi of scalar pair
-    pub fn load_scalar_pair<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> (Value, Value)
-    where
-        'tcx: 'a,
-    {
+    pub fn load_scalar_pair<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> (Value, Value) {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(addr) => {
@@ -117,12 +108,9 @@ impl<'tcx> CValue<'tcx> {
 
     pub fn value_field<'a>(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         field: mir::Field,
-    ) -> CValue<'tcx>
-    where
-        'tcx: 'a,
-    {
+    ) -> CValue<'tcx> {
         let layout = self.1;
         let base = match self.0 {
             CValueInner::ByRef(addr) => addr,
@@ -133,19 +121,16 @@ impl<'tcx> CValue<'tcx> {
         CValue::by_ref(field_ptr, field_layout)
     }
 
-    pub fn unsize_value<'a>(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
+    pub fn unsize_value<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
         crate::unsize::coerce_unsized_into(fx, self, dest);
     }
 
     /// If `ty` is signed, `const_val` must already be sign extended.
     pub fn const_val<'a>(
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         ty: Ty<'tcx>,
         const_val: u128,
-    ) -> CValue<'tcx>
-    where
-        'tcx: 'a,
-    {
+    ) -> CValue<'tcx> {
         let clif_ty = fx.clif_type(ty).unwrap();
         let layout = fx.layout_of(ty);
 
@@ -185,7 +170,7 @@ pub enum CPlace<'tcx> {
     NoPlace(TyLayout<'tcx>),
 }
 
-impl<'a, 'tcx: 'a> CPlace<'tcx> {
+impl<'tcx> CPlace<'tcx> {
     pub fn layout(&self) -> TyLayout<'tcx> {
         match *self {
             CPlace::Var(_, layout)
@@ -200,7 +185,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 
     pub fn new_stack_slot(
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         ty: Ty<'tcx>,
     ) -> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
@@ -218,7 +203,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 
     pub fn new_var(
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         local: Local,
         layout: TyLayout<'tcx>,
     ) -> CPlace<'tcx> {
@@ -235,7 +220,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         CPlace::Addr(addr, Some(extra), layout)
     }
 
-    pub fn to_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CValue<'tcx> {
+    pub fn to_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> CValue<'tcx> {
         match self {
             CPlace::Var(var, layout) => CValue::by_val(fx.bcx.use_var(mir_var(var)), layout),
             CPlace::Addr(addr, extra, layout) => {
@@ -255,7 +240,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn to_addr(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> Value {
+    pub fn to_addr(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
         match self.to_addr_maybe_unsized(fx) {
             (addr, None) => addr,
             (_, Some(_)) => bug!("Expected sized cplace, found {:?}", self),
@@ -264,7 +249,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn to_addr_maybe_unsized(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ) -> (Value, Option<Value>) {
         match self {
             CPlace::Addr(addr, extra, _layout) => (addr, extra),
@@ -277,13 +262,13 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, from: CValue<'tcx>) {
+    pub fn write_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, from: CValue<'tcx>) {
         use rustc::hir::Mutability::*;
 
         let from_ty = from.layout().ty;
         let to_ty = self.layout().ty;
 
-        fn assert_assignable<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) {
+        fn assert_assignable<'tcx>(fx: &FunctionCx<'_, 'tcx, impl Backend>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) {
             match (&from_ty.sty, &to_ty.sty) {
                 (ty::Ref(_, t, MutImmutable), ty::Ref(_, u, MutImmutable))
                 | (ty::Ref(_, t, MutMutable), ty::Ref(_, u, MutImmutable))
@@ -403,7 +388,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn place_field(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         field: mir::Field,
     ) -> CPlace<'tcx> {
         let layout = self.layout();
@@ -421,7 +406,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn place_index(
         self,
-        fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         index: Value,
     ) -> CPlace<'tcx> {
         let (elem_layout, addr) = match self.layout().ty.sty {
@@ -438,7 +423,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         CPlace::Addr(fx.bcx.ins().iadd(addr, offset), None, elem_layout)
     }
 
-    pub fn place_deref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>) -> CPlace<'tcx> {
+    pub fn place_deref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> CPlace<'tcx> {
         let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap().ty);
         if !inner_layout.is_unsized() {
             CPlace::Addr(self.to_cvalue(fx).load_scalar(fx), None, inner_layout)
@@ -448,7 +433,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn write_place_ref(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
+    pub fn write_place_ref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>, dest: CPlace<'tcx>) {
         if !self.layout().is_unsized() {
             let ptr = CValue::by_val(self.to_addr(fx), dest.layout());
             dest.write_cvalue(fx, ptr);
@@ -474,7 +459,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
     pub fn downcast_variant(
         self,
-        fx: &FunctionCx<'a, 'tcx, impl Backend>,
+        fx: &FunctionCx<'_, 'tcx, impl Backend>,
         variant: VariantIdx,
     ) -> Self {
         let layout = self.layout().for_variant(fx, variant);

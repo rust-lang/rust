@@ -93,7 +93,7 @@ pub struct DebugContext<'tcx> {
 }
 
 impl<'tcx> DebugContext<'tcx> {
-    pub fn new(tcx: TyCtxt, address_size: u8) -> Self {
+    pub fn new(tcx: TyCtxt<'tcx>, address_size: u8) -> Self {
         let encoding = Encoding {
             format: Format::Dwarf32,
             // TODO: this should be configurable

@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
-pub fn clif_intcast<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn clif_intcast(
+    fx: &mut FunctionCx<'_, '_, impl Backend>,
     val: Value,
     to: Type,
     signed: bool,
@@ -73,7 +73,7 @@ pub fn clif_int_or_float_cast(
     } else if from_ty.is_float() && to_ty.is_int() {
         // float -> int-like
         if to_ty == types::I8 || to_ty == types::I16 {
-            // FIXME implement fcbt_to_*int_sat.i8/i16
+            // FIXME implement fcvt_to_*int_sat.i8/i16
             let val = if to_signed {
                 fx.bcx.ins().fcvt_to_sint_sat(types::I32, from)
             } else {

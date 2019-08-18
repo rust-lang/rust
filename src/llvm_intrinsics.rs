@@ -3,8 +3,8 @@ use crate::intrinsics::*;
 
 use rustc::ty::subst::SubstsRef;
 
-pub fn codegen_llvm_intrinsic_call<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn codegen_llvm_intrinsic_call<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     intrinsic: &str,
     substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],

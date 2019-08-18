@@ -132,7 +132,7 @@ impl Default for Caches<'_> {
 pub struct CodegenCx<'clif, 'tcx, B: Backend + 'static> {
     tcx: TyCtxt<'tcx>,
     module: &'clif mut Module<B>,
-    ccx: ConstantCx,
+    constants_cx: ConstantCx,
     caches: Caches<'tcx>,
     debug_context: Option<&'clif mut DebugContext<'tcx>>,
 }
@@ -146,14 +146,14 @@ impl<'clif, 'tcx, B: Backend + 'static> CodegenCx<'clif, 'tcx, B> {
         CodegenCx {
             tcx,
             module,
-            ccx: ConstantCx::default(),
+            constants_cx: ConstantCx::default(),
             caches: Caches::default(),
             debug_context,
         }
     }
 
     fn finalize(self) {
-        self.ccx.finalize(self.tcx, self.module);
+        self.constants_cx.finalize(self.tcx, self.module);
     }
 }
 

@@ -2,7 +2,7 @@ use rustc::ty::adjustment::PointerCast;
 
 use crate::prelude::*;
 
-pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
+pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     cx: &mut crate::CodegenCx<'clif, 'tcx, B>,
     instance: Instance<'tcx>,
     linkage: Linkage,
@@ -48,7 +48,7 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         local_map: HashMap::new(),
 
         clif_comments,
-        constants: &mut cx.ccx,
+        constants_cx: &mut cx.constants_cx,
         caches: &mut cx.caches,
         source_info_set: indexmap::IndexSet::new(),
     };
@@ -110,7 +110,7 @@ fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &F
     }
 }
 
-fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>) {
+fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
     for (bb, bb_data) in fx.mir.basic_blocks().iter_enumerated() {
         if bb_data.is_cleanup {
             // Unwinding after panicking is not supported
@@ -222,8 +222,8 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
     fx.bcx.finalize();
 }
 
-fn trans_stmt<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn trans_stmt<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     cur_ebb: Ebb,
     stmt: &Statement<'tcx>,
 ) {
@@ -343,7 +343,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let operand = trans_operand(fx, operand);
                     let from_ty = operand.layout().ty;
 
-                    fn is_fat_ptr<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>, ty: Ty<'tcx>) -> bool {
+                    fn is_fat_ptr<'tcx>(fx: &FunctionCx<'_, 'tcx, impl Backend>, ty: Ty<'tcx>) -> bool {
                         ty
                             .builtin_deref(true)
                             .map(|ty::TypeAndMut {ty: pointee_ty, mutbl: _ }| fx.layout_of(pointee_ty).is_unsized())
@@ -533,8 +533,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
     }
 }
 
-fn codegen_array_len<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn codegen_array_len<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     place: CPlace<'tcx>,
 ) -> Value {
     match place.layout().ty.sty {
@@ -551,8 +551,8 @@ fn codegen_array_len<'a, 'tcx: 'a>(
     }
 }
 
-pub fn trans_place<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn trans_place<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     place: &Place<'tcx>,
 ) -> CPlace<'tcx> {
     let base = match &place.base {
@@ -570,8 +570,8 @@ pub fn trans_place<'a, 'tcx: 'a>(
     trans_place_projection(fx, base, &place.projection)
 }
 
-pub fn trans_place_projection<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn trans_place_projection<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     base: CPlace<'tcx>,
     projection: &Option<Box<Projection<'tcx>>>,
 ) -> CPlace<'tcx> {
@@ -635,8 +635,8 @@ pub fn trans_place_projection<'a, 'tcx: 'a>(
     }
 }
 
-pub fn trans_operand<'a, 'tcx>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn trans_operand<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     operand: &Operand<'tcx>,
 ) -> CValue<'tcx> {
     match operand {

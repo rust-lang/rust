@@ -8,7 +8,7 @@ bitflags::bitflags! {
     }
 }
 
-pub fn analyze<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>) -> HashMap<Local, Flags> {
+pub fn analyze(fx: &FunctionCx<'_, '_, impl Backend>) -> HashMap<Local, Flags> {
     let mut flag_map = HashMap::new();
 
     for local in fx.mir.local_decls.indices() {

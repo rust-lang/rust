@@ -2,8 +2,8 @@
 
 use crate::prelude::*;
 
-pub fn maybe_codegen<'a, 'tcx>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn maybe_codegen<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     bin_op: BinOp,
     checked: bool,
     lhs: CValue<'tcx>,

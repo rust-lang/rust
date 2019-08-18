@@ -6,8 +6,8 @@ const DROP_FN_INDEX: usize = 0;
 const SIZE_INDEX: usize = 1;
 const ALIGN_INDEX: usize = 2;
 
-pub fn drop_fn_of_obj<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn drop_fn_of_obj(
+    fx: &mut FunctionCx<'_, '_, impl Backend>,
     vtable: Value,
 ) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
@@ -19,8 +19,8 @@ pub fn drop_fn_of_obj<'a, 'tcx: 'a>(
     )
 }
 
-pub fn size_of_obj<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn size_of_obj(
+    fx: &mut FunctionCx<'_, '_, impl Backend>,
     vtable: Value,
 ) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
@@ -32,8 +32,8 @@ pub fn size_of_obj<'a, 'tcx: 'a>(
     )
 }
 
-pub fn min_align_of_obj<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn min_align_of_obj(
+    fx: &mut FunctionCx<'_, '_, impl Backend>,
     vtable: Value,
 ) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
@@ -45,8 +45,8 @@ pub fn min_align_of_obj<'a, 'tcx: 'a>(
     )
 }
 
-pub fn get_ptr_and_method_ref<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn get_ptr_and_method_ref<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     arg: CValue<'tcx>,
     idx: usize,
 ) -> (Value, Value) {
@@ -61,8 +61,8 @@ pub fn get_ptr_and_method_ref<'a, 'tcx: 'a>(
     (ptr, func_ref)
 }
 
-pub fn get_vtable<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn get_vtable<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
@@ -78,8 +78,8 @@ pub fn get_vtable<'a, 'tcx: 'a>(
     fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
 }
 
-fn build_vtable<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+fn build_vtable<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> DataId {

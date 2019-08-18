@@ -8,8 +8,8 @@ use crate::prelude::*;
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn unsized_info<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
     old_info: Option<Value>,
@@ -40,8 +40,8 @@ pub fn unsized_info<'a, 'tcx: 'a>(
 }
 
 /// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
-pub fn unsize_thin_ptr<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn unsize_thin_ptr<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     src: Value,
     src_ty: Ty<'tcx>,
     dst_ty: Ty<'tcx>,
@@ -86,8 +86,8 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a>(
 
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
-pub fn coerce_unsized_into<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn coerce_unsized_into<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     src: CValue<'tcx>,
     dst: CPlace<'tcx>,
 ) {
@@ -139,8 +139,8 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a>(
 
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs
 
-pub fn size_and_align_of_dst<'a, 'tcx: 'a>(
-    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+pub fn size_and_align_of_dst<'tcx>(
+    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ty: Ty<'tcx>,
     info: Value,
 ) -> (Value, Value) {

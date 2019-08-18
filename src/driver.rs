@@ -344,7 +344,7 @@ fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
             crate::base::trans_fn(cx, inst, linkage);
         }
         MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(&mut cx.ccx, def_id);
+            crate::constant::codegen_static(&mut cx.constants_cx, def_id);
         }
         MonoItem::GlobalAsm(node_id) => tcx
             .sess
