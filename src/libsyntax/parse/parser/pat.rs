@@ -31,14 +31,7 @@ impl<'a> Parser<'a> {
             pats.push(self.parse_top_level_pat()?);
 
             if self.token == token::OrOr {
-                self.struct_span_err(self.token.span, "unexpected token `||` after pattern")
-                    .span_suggestion(
-                        self.token.span,
-                        "use a single `|` to specify multiple patterns",
-                        "|".to_owned(),
-                        Applicability::MachineApplicable
-                    )
-                    .emit();
+                self.ban_unexpected_or_or();
                 self.bump();
             } else if self.eat(&token::BinOp(token::Or)) {
                 // This is a No-op. Continue the loop to parse the next
@@ -47,6 +40,17 @@ impl<'a> Parser<'a> {
                 return Ok(pats);
             }
         };
+    }
+
+    fn ban_unexpected_or_or(&mut self) {
+        self.struct_span_err(self.token.span, "unexpected token `||` after pattern")
+            .span_suggestion(
+                self.token.span,
+                "use a single `|` to specify multiple patterns",
+                "|".to_owned(),
+                Applicability::MachineApplicable
+            )
+            .emit();
     }
 
     /// A wrapper around `parse_pat` with some special error handling for the
@@ -116,9 +120,7 @@ impl<'a> Parser<'a> {
         let mut pats = vec![first_pat];
 
         while self.eat(&token::BinOp(token::Or)) {
-            pats.push(self.parse_pat_with_range_pat(
-                true, expected
-            )?);
+            pats.push(self.parse_pat_with_range_pat(true, expected)?);
         }
 
         let or_pattern_span = lo.to(self.prev_span);
