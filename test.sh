@@ -12,6 +12,16 @@ fi
 
 source config.sh
 
+jit() {
+    if [[ `uname` == 'Darwin' ]]; then
+        # FIXME(#671) `dlsym` returns "symbol not found" for existing symbols on macOS.
+        echo "[JIT] $1 (Ignored on macOS)"
+    else
+        echo "[JIT] $1"
+        SHOULD_RUN=1 $RUSTC --crate-type bin -Cprefer-dynamic $2
+    fi
+}
+
 rm -r target/out || true
 mkdir -p target/out/clif
 
@@ -21,8 +31,7 @@ $RUSTC example/mini_core.rs --crate-name mini_core --crate-type dylib
 echo "[BUILD] example"
 $RUSTC example/example.rs --crate-type lib
 
-echo "[JIT] mini_core_hello_world"
-SHOULD_RUN=1 JIT_ARGS="abc bcd" $RUSTC --crate-type bin example/mini_core_hello_world.rs --cfg jit
+JIT_ARGS="abc bcd" jit mini_core_hello_world example/mini_core_hello_world.rs
 
 echo "[AOT] mini_core_hello_world"
 $RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin
@@ -39,8 +48,7 @@ echo "[AOT] alloc_example"
 $RUSTC example/alloc_example.rs --crate-type bin
 ./target/out/alloc_example
 
-echo "[JIT] std_example"
-SHOULD_RUN=1 $RUSTC example/std_example.rs --crate-type bin -Cprefer-dynamic
+jit std_example example/std_example.rs
 
 echo "[AOT] std_example"
 $RUSTC example/std_example.rs --crate-type bin
