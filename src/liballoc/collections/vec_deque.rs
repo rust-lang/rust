@@ -1199,6 +1199,31 @@ impl<T> VecDeque<T> {
         }
     }
 
+    /// Removes the last element from the `VecDeque` and returns it, or `None` if
+    /// it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// assert_eq!(buf.pop_back(), None);
+    /// buf.push_back(1);
+    /// buf.push_back(3);
+    /// assert_eq!(buf.pop_back(), Some(3));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn pop_back(&mut self) -> Option<T> {
+        if self.is_empty() {
+            None
+        } else {
+            self.head = self.wrap_sub(self.head, 1);
+            let head = self.head;
+            unsafe { Some(self.buffer_read(head)) }
+        }
+    }
+
     /// Prepends an element to the `VecDeque`.
     ///
     /// # Examples
@@ -1243,69 +1268,9 @@ impl<T> VecDeque<T> {
         unsafe { self.buffer_write(head, value) }
     }
 
-    /// Removes the last element from the `VecDeque` and returns it, or `None` if
-    /// it is empty.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut buf = VecDeque::new();
-    /// assert_eq!(buf.pop_back(), None);
-    /// buf.push_back(1);
-    /// buf.push_back(3);
-    /// assert_eq!(buf.pop_back(), Some(3));
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn pop_back(&mut self) -> Option<T> {
-        if self.is_empty() {
-            None
-        } else {
-            self.head = self.wrap_sub(self.head, 1);
-            let head = self.head;
-            unsafe { Some(self.buffer_read(head)) }
-        }
-    }
-
     #[inline]
     fn is_contiguous(&self) -> bool {
         self.tail <= self.head
-    }
-
-    /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
-    /// last element.
-    ///
-    /// This does not preserve ordering, but is O(1).
-    ///
-    /// Returns `None` if `index` is out of bounds.
-    ///
-    /// Element at index 0 is the front of the queue.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut buf = VecDeque::new();
-    /// assert_eq!(buf.swap_remove_back(0), None);
-    /// buf.push_back(1);
-    /// buf.push_back(2);
-    /// buf.push_back(3);
-    /// assert_eq!(buf, [1, 2, 3]);
-    ///
-    /// assert_eq!(buf.swap_remove_back(0), Some(1));
-    /// assert_eq!(buf, [3, 2]);
-    /// ```
-    #[stable(feature = "deque_extras_15", since = "1.5.0")]
-    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
-        let length = self.len();
-        if length > 0 && index < length - 1 {
-            self.swap(index, length - 1);
-        } else if index >= length {
-            return None;
-        }
-        self.pop_back()
     }
 
     /// Removes an element from anywhere in the `VecDeque` and returns it,
@@ -1341,6 +1306,41 @@ impl<T> VecDeque<T> {
             return None;
         }
         self.pop_front()
+    }
+
+    /// Removes an element from anywhere in the `VecDeque` and returns it, replacing it with the
+    /// last element.
+    ///
+    /// This does not preserve ordering, but is O(1).
+    ///
+    /// Returns `None` if `index` is out of bounds.
+    ///
+    /// Element at index 0 is the front of the queue.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// assert_eq!(buf.swap_remove_back(0), None);
+    /// buf.push_back(1);
+    /// buf.push_back(2);
+    /// buf.push_back(3);
+    /// assert_eq!(buf, [1, 2, 3]);
+    ///
+    /// assert_eq!(buf.swap_remove_back(0), Some(1));
+    /// assert_eq!(buf, [3, 2]);
+    /// ```
+    #[stable(feature = "deque_extras_15", since = "1.5.0")]
+    pub fn swap_remove_back(&mut self, index: usize) -> Option<T> {
+        let length = self.len();
+        if length > 0 && index < length - 1 {
+            self.swap(index, length - 1);
+        } else if index >= length {
+            return None;
+        }
+        self.pop_back()
     }
 
     /// Inserts an element at `index` within the `VecDeque`, shifting all elements with indices
