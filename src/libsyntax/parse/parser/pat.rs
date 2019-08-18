@@ -12,12 +12,11 @@ use crate::ThinVec;
 
 use errors::{Applicability, DiagnosticBuilder};
 
+type Expected = Option<&'static str>;
+
 impl<'a> Parser<'a> {
     /// Parses a pattern.
-    pub fn parse_pat(
-        &mut self,
-        expected: Option<&'static str>
-    ) -> PResult<'a, P<Pat>> {
+    pub fn parse_pat(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
@@ -105,7 +104,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a pattern, that may be a or-pattern (e.g. `Some(Foo | Bar)`).
-    fn parse_pat_with_or(&mut self, expected: Option<&'static str>) -> PResult<'a, P<Pat>> {
+    fn parse_pat_with_or(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
         // Parse the first pattern.
         let first_pat = self.parse_pat(expected)?;
 
@@ -135,7 +134,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_with_range_pat(
         &mut self,
         allow_range_pat: bool,
-        expected: Option<&'static str>,
+        expected: Expected,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
         maybe_whole!(self, NtPat, |x| x);
@@ -257,7 +256,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `&pat` / `&mut pat`.
-    fn parse_pat_deref(&mut self, expected: Option<&'static str>) -> PResult<'a, PatKind> {
+    fn parse_pat_deref(&mut self, expected: Expected) -> PResult<'a, PatKind> {
         self.expect_and()?;
         let mutbl = self.parse_mutability();
 
@@ -363,7 +362,7 @@ impl<'a> Parser<'a> {
     fn fatal_unexpected_non_pat(
         &mut self,
         mut err: DiagnosticBuilder<'a>,
-        expected: Option<&'static str>,
+        expected: Expected,
     ) -> PResult<'a, P<Pat>> {
         self.cancel(&mut err);
 
