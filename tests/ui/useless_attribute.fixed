@@ -4,8 +4,8 @@
 #![warn(clippy::useless_attribute)]
 #![warn(unreachable_pub)]
 
-#[allow(dead_code)]
-#[cfg_attr(feature = "cargo-clippy", allow(dead_code))]
+#![allow(dead_code)]
+#![cfg_attr(feature = "cargo-clippy", allow(dead_code))]
 #[rustfmt::skip]
 #[cfg_attr(feature = "cargo-clippy",
            allow(dead_code))]
