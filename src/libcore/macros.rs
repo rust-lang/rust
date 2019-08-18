@@ -978,7 +978,9 @@ pub(crate) mod builtin {
     /// modules are found)
     ///
     /// This macro will yield an expression of type `&'static str` which is the
-    /// contents of the file.
+    /// contents of the file. The string is normalized:
+    ///   * Byte Order Mark (BOM), if any, is removed,
+    ///   * DOS line endings (`\r\n`) are converted to `\n`.
     ///
     /// # Examples
     ///

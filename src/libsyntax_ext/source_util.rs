@@ -112,16 +112,12 @@ pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::To
         None => return DummyResult::any(sp)
     };
     let file = cx.resolve_path(file, sp);
-    match cx.source_map().load_binary_file(&file) {
-        Ok(bytes) => match std::str::from_utf8(&bytes) {
-            Ok(src) => {
-                let interned_src = Symbol::intern(&src);
-                base::MacEager::expr(cx.expr_str(sp, interned_src))
-            }
-            Err(_) => {
-                cx.span_err(sp, &format!("{} wasn't a utf-8 file", file.display()));
-                DummyResult::any(sp)
-            }
+    match cx.source_map().load_file(&file) {
+        Ok(source_file) => {
+            let src = source_file.src.as_ref()
+                .expect("freshly loaded file should have a source");
+            let interned_src = Symbol::intern(src.as_str());
+            base::MacEager::expr(cx.expr_str(sp, interned_src))
         },
         Err(e) => {
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));

@@ -7,6 +7,6 @@ fn main() {
     );
     assert_eq!(
         include_str!("data.bin"),
-        "\u{FEFF}This file starts with BOM.\r\nLines are separated by \\r\\n.\r\n",
+        "This file starts with BOM.\nLines are separated by \\r\\n.\n",
     );
 }

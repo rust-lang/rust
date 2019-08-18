@@ -36,6 +36,7 @@ literal";
     assert_eq!(s, "byte string\nliteral".as_bytes());
 
     // validate that our source file has CRLF endings
-    let source = include_str!("lexer-crlf-line-endings-string-literal-doc-comment.rs");
+    let source = include_bytes!("lexer-crlf-line-endings-string-literal-doc-comment.rs");
+    let source = std::str::from_utf8(&source[..]).unwrap();
     assert!(source.contains("string\r\nliteral"));
 }
