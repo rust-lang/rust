@@ -48,7 +48,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let align = layout.align.abi.bytes();
 
         let ptr_size = self.pointer_size();
-        let ptr_align = self.tcx.data_layout.pointer_align.abi;
+        let ptr_align = self.tcx.data_layout.pointer_pos.align.abi;
         // /////////////////////////////////////////////////////////////////////////////////////////
         // If you touch this code, be sure to also make the corresponding changes to
         // `get_vtable` in rust_codegen_llvm/meth.rs
@@ -105,8 +105,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // we don't care about the pointee type, we just want a pointer
         let vtable = self.memory.check_ptr_access(
             vtable,
-            self.tcx.data_layout.pointer_size,
-            self.tcx.data_layout.pointer_align.abi,
+            self.tcx.data_layout.pointer_pos.size,
+            self.tcx.data_layout.pointer_pos.align.abi,
         )?.expect("cannot be a ZST");
         let drop_fn = self.memory
             .get_raw(vtable.alloc_id)?
@@ -133,7 +133,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable = self.memory.check_ptr_access(
             vtable,
             3*pointer_size,
-            self.tcx.data_layout.pointer_align.abi,
+            self.tcx.data_layout.pointer_pos.align.abi,
         )?.expect("cannot be a ZST");
         let alloc = self.memory.get_raw(vtable.alloc_id)?;
         let size = alloc.read_ptr_sized(

@@ -26,7 +26,7 @@ use std::ffi::{CStr, CString};
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
-    let pointer_size = dl.pointer_size.bytes() as usize;
+    let pointer_size = dl.pointer_pos.size.bytes() as usize;
 
     let mut next_offset = 0;
     for &(offset, ((), alloc_id)) in alloc.relocations().iter() {

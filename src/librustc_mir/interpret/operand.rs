@@ -54,7 +54,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     ) -> Self {
         Immediate::ScalarPair(
             val.into(),
-            Scalar::from_uint(len, cx.data_layout().pointer_size).into(),
+            Scalar::from_uint(len, cx.data_layout().pointer_pos.size).into(),
         )
     }
 

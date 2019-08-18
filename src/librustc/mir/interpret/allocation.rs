@@ -398,7 +398,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         // Now we do the actual reading.
         let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
         // See if we got a pointer.
-        if size != cx.data_layout().pointer_size {
+        if size != cx.data_layout().pointer_pos.size {
             // *Now*, we better make sure that the inside is free of relocations too.
             self.check_relocations(cx, ptr, size)?;
         } else {
@@ -424,7 +424,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
     ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>>
     {
-        self.read_scalar(cx, ptr, cx.data_layout().pointer_size)
+        self.read_scalar(cx, ptr, cx.data_layout().pointer_pos.size)
     }
 
     /// Writes a *non-ZST* scalar.
@@ -486,7 +486,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         val: ScalarMaybeUndef<Tag>
     ) -> InterpResult<'tcx>
     {
-        let ptr_size = cx.data_layout().pointer_size;
+        let ptr_size = cx.data_layout().pointer_pos.size;
         self.write_scalar(cx, ptr.into(), val, ptr_size)
     }
 }
@@ -500,9 +500,10 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> &[(Size, (Tag, AllocId))] {
+        let ptr_pos = cx.data_layout().pointer_pos;
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
-        let start = ptr.offset.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
+        let start = ptr.offset.bytes().saturating_sub(ptr_pos.size.bytes() - 1);
         let end = ptr.offset + size; // This does overflow checking.
         self.relocations.range(Size::from_bytes(start)..end)
     }
@@ -543,7 +544,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
             }
 
             (relocations.first().unwrap().0,
-             relocations.last().unwrap().0 + cx.data_layout().pointer_size)
+             relocations.last().unwrap().0 + cx.data_layout().pointer_pos.size)
         };
         let start = ptr.offset;
         let end = start + size;

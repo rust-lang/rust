@@ -443,7 +443,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let vtable_slot = self.memory.check_ptr_access(
                     vtable_slot,
                     ptr_size,
-                    self.tcx.data_layout.pointer_align.abi,
+                    self.tcx.data_layout.pointer_pos.align.abi,
                 )?.expect("cannot be a ZST");
                 let fn_ptr = self.memory.get_raw(vtable_slot.alloc_id)?
                     .read_ptr_sized(self, vtable_slot)?.not_undef()?;

@@ -191,7 +191,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     pub fn ptr_null(cx: &impl HasDataLayout) -> Self {
         Scalar::Raw {
             data: 0,
-            size: cx.data_layout().pointer_size.bytes() as u8,
+            size: cx.data_layout().pointer_pos.size.bytes() as u8,
         }
     }
 
@@ -205,7 +205,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         let dl = cx.data_layout();
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, dl.pointer_size.bytes());
+                assert_eq!(size as u64, dl.pointer_pos.size.bytes());
                 Ok(Scalar::Raw {
                     data: dl.offset(data as u64, i.bytes())? as u128,
                     size,
@@ -220,7 +220,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         let dl = cx.data_layout();
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, dl.pointer_size.bytes());
+                assert_eq!(size as u64, dl.pointer_pos.size.bytes());
                 Scalar::Raw {
                     data: dl.overflowing_offset(data as u64, i.bytes()).0 as u128,
                     size,
@@ -250,7 +250,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         let dl = cx.data_layout();
         match self {
             Scalar::Raw { data, size } => {
-                assert_eq!(size as u64, dl.pointer_size.bytes());
+                assert_eq!(size as u64, dl.pointer_pos.size.bytes());
                 Scalar::Raw {
                     data: dl.overflowing_signed_offset(data as u64, i128::from(i)).0 as u128,
                     size,
@@ -342,7 +342,7 @@ impl<'tcx, Tag> Scalar<Tag> {
                 Ok(data)
             }
             Scalar::Ptr(ptr) => {
-                assert_eq!(target_size, cx.data_layout().pointer_size);
+                assert_eq!(target_size, cx.data_layout().pointer_pos.size);
                 Err(ptr)
             }
         }
@@ -440,7 +440,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
-        let b = self.to_bits(cx.data_layout().pointer_size)?;
+        let b = self.to_bits(cx.data_layout().pointer_pos.size)?;
         Ok(b as u64)
     }
 
@@ -466,7 +466,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
-        let sz = cx.data_layout().pointer_size;
+        let sz = cx.data_layout().pointer_pos.size;
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
         Ok(b as i64)

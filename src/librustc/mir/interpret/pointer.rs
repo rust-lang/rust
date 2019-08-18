@@ -37,7 +37,7 @@ pub trait PointerArithmetic: layout::HasDataLayout {
 
     #[inline(always)]
     fn pointer_size(&self) -> Size {
-        self.data_layout().pointer_size
+        self.data_layout().pointer_pos.size
     }
 
     /// Helper function: truncate given value-"overflowed flag" pair to pointer size and

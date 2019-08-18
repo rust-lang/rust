@@ -810,7 +810,7 @@ fn try_intrinsic(
 ) {
     if bx.sess().no_landing_pads() {
         bx.call(func, &[data], None);
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
+        let ptr_align = bx.tcx().data_layout.pointer_pos.align.abi;
         bx.store(bx.const_null(bx.type_i8p()), dest, ptr_align);
     } else if wants_msvc_seh(bx.sess()) {
         codegen_msvc_try(bx, func, data, local_ptr, dest);
@@ -984,7 +984,7 @@ fn codegen_gnu_try(
         };
         catch.add_clause(vals, tydesc);
         let ptr = catch.extract_value(vals, 0);
-        let ptr_align = bx.tcx().data_layout.pointer_align.abi;
+        let ptr_align = bx.tcx().data_layout.pointer_pos.align.abi;
         let bitcast = catch.bitcast(local_ptr, bx.type_ptr_to(bx.type_i8p()));
         catch.store(ptr, bitcast, ptr_align);
         catch.ret(bx.const_i32(1));
@@ -1262,11 +1262,11 @@ fn generic_simd_intrinsic(
         let (i_xn, in_elem_bitwidth) = match in_elem.kind {
             ty::Int(i) => (
                 args[0].immediate(),
-                i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits() as _)
+                i.bit_width().unwrap_or(bx.data_layout().pointer_pos.size.bits() as _)
             ),
             ty::Uint(i) => (
                 args[0].immediate(),
-                i.bit_width().unwrap_or(bx.data_layout().pointer_size.bits() as _)
+                i.bit_width().unwrap_or(bx.data_layout().pointer_pos.size.bits() as _)
             ),
             _ => return_error!(
                 "vector argument `{}`'s element type `{}`, expected integer element type",
@@ -1876,7 +1876,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
         let is_add = name == "simd_saturating_add";
-        let ptr_bits = bx.tcx().data_layout.pointer_size.bits() as _;
+        let ptr_bits = bx.tcx().data_layout.pointer_pos.size.bits() as _;
         let (signed, elem_width, elem_ty) = match in_elem.kind {
             ty::Int(i) =>
                 (

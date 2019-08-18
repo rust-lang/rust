@@ -2304,7 +2304,7 @@ pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
             Size::ZERO.bits(),
-            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
+            cx.tcx.data_layout.pointer_pos.align.abi.bits() as u32,
             DIFlags::FlagArtificial,
             None,
             empty_array,

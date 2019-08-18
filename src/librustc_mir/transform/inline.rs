@@ -354,7 +354,7 @@ impl Inliner<'tcx> {
         // Count up the cost of local variables and temps, if we know the size
         // use that, otherwise we use a moderately-large dummy cost.
 
-        let ptr_size = tcx.data_layout.pointer_size.bytes();
+        let ptr_size = tcx.data_layout.pointer_pos.size.bytes();
 
         for v in callee_body.vars_and_temps_iter() {
             let v = &callee_body.local_decls[v];
