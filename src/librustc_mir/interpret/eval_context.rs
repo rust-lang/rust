@@ -262,12 +262,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn sign_extend(&self, value: u128, ty: TyLayout<'_>) -> u128 {
         assert!(ty.abi.is_signed());
-        sign_extend(value, ty.size)
+        sign_extend(value, ty.pref_pos.size)
     }
 
     #[inline(always)]
     pub fn truncate(&self, value: u128, ty: TyLayout<'_>) -> u128 {
-        truncate(value, ty.size)
+        truncate(value, ty.pref_pos.size)
     }
 
     #[inline]
@@ -375,7 +375,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: TyLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
         if !layout.is_unsized() {
-            return Ok(Some((layout.size, layout.align.abi)));
+            return Ok(Some((layout.pref_pos.size, layout.pref_pos.align.abi)));
         }
         match layout.ty.kind {
             ty::Adt(..) | ty::Tuple(..) => {
@@ -387,7 +387,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 trace!("DST layout: {:?}", layout);
 
                 let sized_size = layout.fields.offset(layout.fields.count() - 1);
-                let sized_align = layout.align.abi;
+                let sized_align = layout.pref_pos.align.abi;
                 trace!(
                     "DST {} statically sized prefix size: {:?} align: {:?}",
                     layout.ty,
@@ -451,10 +451,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let elem = layout.field(self, 0)?;
 
                 // Make sure the slice is not too big.
-                let size = elem.size.checked_mul(len, &*self.tcx)
+                let pref_pos = elem.pref_pos.checked_mul(len, &*self.tcx)
                     .ok_or_else(|| err_ub_format!("invalid slice: \
                         total size is bigger than largest supported object"))?;
-                Ok(Some((size, elem.align.abi)))
+                Ok(Some((pref_pos.size, pref_pos.align.abi)))
             }
 
             ty::Foreign(_) => {

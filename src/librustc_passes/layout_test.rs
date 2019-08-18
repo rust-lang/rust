@@ -65,13 +65,15 @@ impl VarianceTest<'tcx> {
                         sym::align => {
                             self.tcx
                                 .sess
-                                .span_err(item.span, &format!("align: {:?}", ty_layout.align));
+                                .span_err(item.span, &format!("align: {:?}",
+                                    ty_layout.pref_pos.align));
                         }
 
                         sym::size => {
                             self.tcx
                                 .sess
-                                .span_err(item.span, &format!("size: {:?}", ty_layout.size));
+                                .span_err(item.span, &format!("size: {:?}",
+                                    ty_layout.pref_pos.size));
                         }
 
                         sym::homogeneous_aggregate => {

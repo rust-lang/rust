@@ -301,7 +301,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         scratch.llval
                     }
                     Ref(llval, _, align) => {
-                        assert_eq!(align, op.layout.align.abi,
+                        assert_eq!(align, op.layout.pref_pos.align.abi,
                                    "return place is unaligned!");
                         llval
                     }
@@ -309,7 +309,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let addr = bx.pointercast(llslot, bx.type_ptr_to(
                     bx.cast_backend_type(&cast_ty)
                 ));
-                bx.load(addr, self.fn_abi.ret.layout.align.abi)
+                bx.load(addr, self.fn_abi.ret.layout.pref_pos.align.abi)
             }
         };
         bx.ret(llval);
@@ -915,12 +915,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (scratch.llval, scratch.align, true)
                     }
                     _ => {
-                        (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false)
+                        (op.immediate_or_packed_pair(bx), arg.layout.pref_pos.align.abi, false)
                     }
                 }
             }
             Ref(llval, _, align) => {
-                if arg.is_indirect() && align < arg.layout.align.abi {
+                if arg.is_indirect() && align < arg.layout.pref_pos.align.abi {
                     // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
                     // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                     // have scary latent bugs around.
@@ -941,7 +941,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let addr = bx.pointercast(llval, bx.type_ptr_to(
                     bx.cast_backend_type(&ty))
                 );
-                llval = bx.load(addr, align.min(arg.layout.align.abi));
+                llval = bx.load(addr, align.min(arg.layout.pref_pos.align.abi));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
                 // may have a type we don't treat as immediate, but the ABI
@@ -1139,7 +1139,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             })
         };
         if fn_ret.is_indirect() {
-            if dest.align < dest.layout.align.abi {
+            if dest.align < dest.layout.pref_pos.align.abi {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
                 // fact, the calls it creates write only to temps).
@@ -1195,7 +1195,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let src = self.codegen_operand(bx, src);
         let llty = bx.backend_type(src.layout);
         let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
-        let align = src.layout.align.abi.min(dst.align);
+        let align = src.layout.pref_pos.align.abi.min(dst.align);
         src.val.store(bx, PlaceRef::new_sized_aligned(cast_ptr, src.layout, align));
     }
 

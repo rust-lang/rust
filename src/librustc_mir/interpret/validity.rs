@@ -376,7 +376,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
-                let size = value.layout.size;
+                let size = value.layout.pref_pos.size;
                 let value = value.to_scalar_or_undef();
                 if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
@@ -409,7 +409,8 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // for the purpose of validity, consider foreign types to have
                     // alignment and size determined by the layout (size will be 0,
                     // alignment should take attributes into account).
-                    .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
+                    .unwrap_or_else(|| (place.layout.pref_pos.size,
+                        place.layout.pref_pos.align.abi));
                 let ptr: Option<_> = match
                     self.ecx.memory.check_ptr_access_align(
                         place.ptr,
@@ -508,7 +509,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Determine the allowed range
         let (lo, hi) = layout.valid_range.clone().into_inner();
         // `max_hi` is as big as the size fits
-        let max_hi = u128::max_value() >> (128 - op.layout.size.bits());
+        let max_hi = u128::max_value() >> (128 - op.layout.pref_pos.size.bits());
         assert!(hi <= max_hi);
         // We could also write `(hi + 1) % (max_hi + 1) == lo` but `max_hi + 1` overflows for `u128`
         if (lo == 0 && hi == max_hi) || (hi + 1 == lo) {
@@ -524,7 +525,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 wrapping_range_format(&layout.valid_range, max_hi),
             )
         );
-        let bits = match value.to_bits_or_ptr(op.layout.size, self.ecx) {
+        let bits = match value.to_bits_or_ptr(op.layout.pref_pos.size, self.ecx) {
             Err(ptr) => {
                 if lo == 1 && hi == max_hi {
                     // Only NULL is the niche.  So make sure the ptr is NOT NULL.
@@ -601,9 +602,9 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     return Ok(());
                 }
                 // This is the element type size.
-                let ty_size = self.ecx.layout_of(tys)?.size;
+                let ty_pref_pos = self.ecx.layout_of(tys)?.pref_pos;
                 // This is the size in bytes of the whole array.
-                let size = ty_size * len;
+                let pref_pos = ty_pref_pos * len;
                 // Size is not 0, get a pointer.
                 let ptr = self.ecx.force_ptr(mplace.ptr)?;
 
@@ -620,7 +621,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 match self.ecx.memory.get_raw(ptr.alloc_id)?.check_bytes(
                     self.ecx,
                     ptr,
-                    size,
+                    pref_pos.size,
                     /*allow_ptr_and_undef*/ self.ref_tracking_for_consts.is_none(),
                 ) {
                     // In the happy case, we needn't check anything else.
@@ -633,7 +634,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                                 // Some byte was undefined, determine which
                                 // element that byte belongs to so we can
                                 // provide an index.
-                                let i = (offset.bytes() / ty_size.bytes()) as usize;
+                                let i = (offset.bytes() / ty_pref_pos.size.bytes()) as usize;
                                 self.path.push(PathElem::ArrayElem(i));
 
                                 throw_validation_failure!("undefined bytes", self.path)

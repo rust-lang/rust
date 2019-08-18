@@ -128,7 +128,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             let signed = left_layout.abi.is_signed();
             let mut oflo = (r as u32 as u128) != r;
             let mut r = r as u32;
-            let size = left_layout.size;
+            let size = left_layout.pref_pos.size;
             oflo |= r >= size.bits() as u32;
             if oflo {
                 r %= size.bits() as u32;
@@ -189,7 +189,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             if let Some(op) = op {
                 let l128 = self.sign_extend(l, left_layout) as i128;
                 let r = self.sign_extend(r, right_layout) as i128;
-                let size = left_layout.size;
+                let size = left_layout.pref_pos.size;
                 match bin_op {
                     Rem | Div => {
                         // int_min / -1
@@ -213,7 +213,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        let size = left_layout.size;
+        let size = left_layout.pref_pos.size;
 
         let (val, ty) = match bin_op {
             Eq => (Scalar::from_bool(l == r), self.tcx.types.bool),
@@ -307,8 +307,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     left.layout.ty, bin_op, right.layout.ty
                 );
 
-                let l = self.force_bits(left.to_scalar()?, left.layout.size)?;
-                let r = self.force_bits(right.to_scalar()?, right.layout.size)?;
+                let l = self.force_bits(left.to_scalar()?, left.layout.pref_pos.size)?;
+                let r = self.force_bits(right.to_scalar()?, right.layout.pref_pos.size)?;
                 self.binary_int_op(bin_op, l, left.layout, r, right.layout)
             }
             _ if left.layout.ty.is_any_ptr() => {
@@ -367,7 +367,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             _ => {
                 assert!(layout.ty.is_integral());
-                let val = self.force_bits(val, layout.size)?;
+                let val = self.force_bits(val, layout.pref_pos.size)?;
                 let res = match un_op {
                     Not => !val,
                     Neg => {

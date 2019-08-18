@@ -44,8 +44,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
-        let size = layout.size.bytes();
-        let align = layout.align.abi.bytes();
+        let size = layout.pref_pos.size.bytes();
+        let align = layout.pref_pos.align.abi.bytes();
 
         let ptr_size = self.pointer_size();
         let ptr_align = self.tcx.data_layout.pointer_pos.align.abi;

@@ -496,8 +496,8 @@ fn trait_pointer_metadata(
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
                 syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(0),
-            size: data_ptr_field.size,
-            align: data_ptr_field.align.abi,
+            size: data_ptr_field.pref_pos.size,
+            align: data_ptr_field.pref_pos.align.abi,
             flags: DIFlags::FlagArtificial,
             discriminant: None,
         },
@@ -505,8 +505,8 @@ fn trait_pointer_metadata(
             name: "vtable".to_owned(),
             type_metadata: type_metadata(cx, vtable_field.ty, syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(1),
-            size: vtable_field.size,
-            align: vtable_field.align.abi,
+            size: vtable_field.pref_pos.size,
+            align: vtable_field.pref_pos.align.abi,
             flags: DIFlags::FlagArtificial,
             discriminant: None,
         },
@@ -1128,8 +1128,8 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 name,
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: layout.fields.offset(i),
-                size: field.size,
-                align: field.align.abi,
+                size: field.pref_pos.size,
+                align: field.pref_pos.align.abi,
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1252,8 +1252,8 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                 name: f.ident.to_string(),
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: Size::ZERO,
-                size: field.size,
-                align: field.align.abi,
+                size: field.pref_pos.size,
+                align: field.pref_pos.align.abi,
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1386,8 +1386,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         },
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
-                        size: self.layout.size,
-                        align: self.layout.align.abi,
+                        size: self.layout.pref_pos.size,
+                        align: self.layout.pref_pos.align.abi,
                         flags: DIFlags::FlagZero,
                         discriminant: None,
                     }
@@ -1435,8 +1435,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         },
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
-                        size: self.layout.size,
-                        align: self.layout.align.abi,
+                        size: self.layout.pref_pos.size,
+                        align: self.layout.pref_pos.align.abi,
                         flags: DIFlags::FlagZero,
                         discriminant: Some(
                             self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val as u64
@@ -1490,7 +1490,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             }
                             let inner_offset = offset - field_offset;
                             let field = layout.field(cx, i);
-                            if inner_offset + size <= field.size {
+                            if inner_offset + size <= field.pref_pos.size {
                                 write!(name, "{}$", i).unwrap();
                                 compute_field_path(cx, name, field, inner_offset, size);
                             }
@@ -1499,7 +1499,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     compute_field_path(cx, &mut name,
                                        self.layout,
                                        self.layout.fields.offset(discr_index),
-                                       self.layout.field(cx, discr_index).size);
+                                       self.layout.field(cx, discr_index).pref_pos.size);
                     variant_info_for(*niche_variants.start()).map_struct_name(|variant_name| {
                         name.push_str(variant_name);
                     });
@@ -1510,8 +1510,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             name,
                             type_metadata: variant_type_metadata,
                             offset: Size::ZERO,
-                            size: variant.size,
-                            align: variant.align.abi,
+                            size: variant.pref_pos.size,
+                            align: variant.pref_pos.align.abi,
                             flags: DIFlags::FlagZero,
                             discriminant: None,
                         }
@@ -1554,8 +1554,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             name: variant_info.variant_name(),
                             type_metadata: variant_type_metadata,
                             offset: Size::ZERO,
-                            size: self.layout.size,
-                            align: self.layout.align.abi,
+                            size: self.layout.pref_pos.size,
+                            align: self.layout.pref_pos.align.abi,
                             flags: DIFlags::FlagZero,
                             discriminant: niche_value,
                         }
@@ -1859,8 +1859,8 @@ fn prepare_enum_metadata(
                 enum_name.as_ptr(),
                 file_metadata,
                 UNKNOWN_LINE_NUMBER,
-                layout.size.bits(),
-                layout.align.abi.bits() as u32,
+                layout.pref_pos.size.bits(),
+                layout.pref_pos.align.abi.bits() as u32,
                 DIFlags::FlagZero,
                 None,
                 0, // RuntimeLang
@@ -1980,8 +1980,8 @@ fn prepare_enum_metadata(
             ptr::null_mut(),
             file_metadata,
             UNKNOWN_LINE_NUMBER,
-            layout.size.bits(),
-            layout.align.abi.bits() as u32,
+            layout.pref_pos.size.bits(),
+            layout.pref_pos.align.abi.bits() as u32,
             DIFlags::FlagZero,
             discriminator_metadata,
             empty_array,
@@ -1998,8 +1998,8 @@ fn prepare_enum_metadata(
             enum_name.as_ptr(),
             file_metadata,
             UNKNOWN_LINE_NUMBER,
-            layout.size.bits(),
-            layout.align.abi.bits() as u32,
+            layout.pref_pos.size.bits(),
+            layout.pref_pos.align.abi.bits() as u32,
             DIFlags::FlagZero,
             None,
             type_array,

@@ -36,7 +36,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             llval,
             llextra: None,
             layout,
-            align: layout.align.abi
+            align: layout.pref_pos.align.abi
         }
     }
 
@@ -64,7 +64,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             llval,
             llextra: None,
             layout,
-            align: layout.align.abi
+            align: layout.pref_pos.align.abi
         }
     }
 
@@ -75,7 +75,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         layout: TyLayout<'tcx>,
     ) -> Self {
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
-        let tmp = bx.alloca(bx.cx().backend_type(layout), layout.align.abi);
+        let tmp = bx.alloca(bx.cx().backend_type(layout), layout.pref_pos.align.abi);
         Self::new_sized(tmp, layout)
     }
 
@@ -160,7 +160,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 if def.repr.packed() {
                     // FIXME(eddyb) generalize the adjustment when we
                     // start supporting packing to larger alignments.
-                    assert_eq!(self.layout.align.abi.bytes(), 1);
+                    assert_eq!(self.layout.pref_pos.align.abi.bytes(), 1);
                     return simple();
                 }
             }
@@ -368,7 +368,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                         // FIXME(#34427): as workaround for LLVM bug on ARM,
                         // use memset of 0 before assigning niche value.
                         let fill_byte = bx.cx().const_u8(0);
-                        let size = bx.cx().const_usize(self.layout.size.bytes());
+                        let size = bx.cx().const_usize(self.layout.pref_pos.size.bytes());
                         bx.memset(self.llval, fill_byte, size, self.align, MemFlags::empty());
                     }
 
@@ -399,9 +399,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // as this will yield the lowest alignment.
         let layout = self.layout.field(bx, 0);
         let offset = if let Some(llindex) = bx.const_to_opt_uint(llindex) {
-            layout.size.checked_mul(llindex, bx).unwrap_or(layout.size)
+            layout.pref_pos.size.checked_mul(llindex, bx).unwrap_or(layout.pref_pos.size)
         } else {
-            layout.size
+            layout.pref_pos.size
         };
 
         PlaceRef {
@@ -428,11 +428,11 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     pub fn storage_live<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
-        bx.lifetime_start(self.llval, self.layout.size);
+        bx.lifetime_start(self.llval, self.layout.pref_pos.size);
     }
 
     pub fn storage_dead<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
-        bx.lifetime_end(self.llval, self.layout.size);
+        bx.lifetime_end(self.llval, self.layout.pref_pos.size);
     }
 }
 

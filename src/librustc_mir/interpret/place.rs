@@ -154,8 +154,8 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         MPlaceTy {
             mplace: MemPlace::from_scalar_ptr(
-                Scalar::from_uint(layout.align.abi.bytes(), cx.pointer_size()),
-                layout.align.abi
+                Scalar::from_uint(layout.pref_pos.align.abi.bytes(), cx.pointer_size()),
+                layout.pref_pos.align.abi
             ),
             layout
         }
@@ -186,7 +186,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
 
     #[inline]
     fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyLayout<'tcx>) -> Self {
-        MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align.abi), layout }
+        MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.pref_pos.align.abi), layout }
     }
 
     #[inline]
@@ -302,7 +302,7 @@ where
             // the point of tracking the alignment here is to make sure that the *static*
             // alignment information emitted with the loads is correct. The run-time
             // alignment can only be more restrictive.
-            align: layout.align.abi,
+            align: layout.pref_pos.align.abi,
             meta,
         };
         Ok(MPlaceTy { mplace, layout })
@@ -335,7 +335,7 @@ where
         let size = size.unwrap_or_else(|| {
             assert!(!place.layout.is_unsized());
             assert!(place.meta.is_none());
-            place.layout.size
+            place.layout.pref_pos.size
         });
         self.memory.check_ptr_access(place.ptr, size, place.align)
     }
@@ -347,7 +347,7 @@ where
         mut place: MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let (size, align) = self.size_and_align_of_mplace(place)?
-            .unwrap_or((place.layout.size, place.layout.align.abi));
+            .unwrap_or((place.layout.pref_pos.size, place.layout.pref_pos.align.abi));
         assert!(place.mplace.align <= align, "dynamic alignment less strict than static one?");
         place.mplace.align = align; // maximally strict checking
         // When dereferencing a pointer, it must be non-NULL, aligned, and live.
@@ -414,7 +414,7 @@ where
                     // FIXME: Once we have made decisions for how to handle size and alignment
                     // of `extern type`, this should be adapted.  It is just a temporary hack
                     // to get some code to work that probably ought to work.
-                    field_layout.align.abi,
+                    field_layout.pref_pos.align.abi,
                 None =>
                     bug!("Cannot compute offset for extern type field at non-0 offset"),
             };
@@ -425,7 +425,7 @@ where
             (None, offset)
         };
 
-        // We do not look at `base.layout.align` nor `field_layout.align`, unlike
+        // We do not look at `base.layout.pref_pos.align` nor `field_layout.pref_pos.align`, unlike
         // codegen -- mostly to see if we can get away with that
         base.offset(offset, meta, field_layout, self)
     }
@@ -740,10 +740,10 @@ where
             assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
             match src {
                 Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Ptr(_))) =>
-                    assert_eq!(self.pointer_size(), dest.layout.size,
+                    assert_eq!(self.pointer_size(), dest.layout.pref_pos.size,
                         "Size mismatch when writing pointer"),
                 Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Raw { size, .. })) =>
-                    assert_eq!(Size::from_bytes(size.into()), dest.layout.size,
+                    assert_eq!(Size::from_bytes(size.into()), dest.layout.pref_pos.size,
                         "Size mismatch when writing bits"),
                 Immediate::Scalar(ScalarMaybeUndef::Undef) => {}, // undef can have any size
                 Immediate::ScalarPair(_, _) => {
@@ -798,7 +798,7 @@ where
         };
 
         let tcx = &*self.tcx;
-        // FIXME: We should check that there are dest.layout.size many bytes available in
+        // FIXME: We should check that there are dest.layout.pref_pos.size many bytes available in
         // memory.  The code below is not sufficient, with enough padding it might not
         // cover all the bytes!
         match value {
@@ -809,7 +809,7 @@ where
                             dest.layout)
                 }
                 self.memory.get_raw_mut(ptr.alloc_id)?.write_scalar(
-                    tcx, ptr, scalar, dest.layout.size
+                    tcx, ptr, scalar, dest.layout.pref_pos.size
                 )
             }
             Immediate::ScalarPair(a_val, b_val) => {
@@ -891,7 +891,7 @@ where
         let size = size.unwrap_or_else(|| {
             assert!(!dest.layout.is_unsized(),
                 "Cannot copy into already initialized unsized place");
-            dest.layout.size
+            dest.layout.pref_pos.size
         });
         assert_eq!(src.meta, dest.meta, "Can only copy between equally-sized instances");
 
@@ -925,7 +925,7 @@ where
             return self.copy_op(src, dest);
         }
         // We still require the sizes to match.
-        assert!(src.layout.size == dest.layout.size,
+        assert!(src.layout.pref_pos.size == dest.layout.pref_pos.size,
             "Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
         // Unsized copies rely on interpreting `src.meta` with `dest.layout`, we want
         // to avoid that here.
@@ -1028,7 +1028,7 @@ where
         layout: TyLayout<'tcx>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let ptr = self.memory.allocate(layout.size, layout.align.abi, kind);
+        let ptr = self.memory.allocate(layout.pref_pos.size, layout.pref_pos.align.abi, kind);
         MPlaceTy::from_aligned_ptr(ptr, layout)
     }
 
@@ -1127,9 +1127,9 @@ where
         // More sanity checks
         if cfg!(debug_assertions) {
             let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
-            assert_eq!(size, layout.size);
+            assert_eq!(size, layout.pref_pos.size);
             // only ABI alignment is preserved
-            assert_eq!(align, layout.align.abi);
+            assert_eq!(align, layout.pref_pos.align.abi);
         }
 
         let mplace = MPlaceTy {

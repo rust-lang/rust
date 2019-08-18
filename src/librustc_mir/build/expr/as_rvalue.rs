@@ -583,7 +583,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
-        let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
+        let bits = self.hir.tcx().layout_of(param_ty).unwrap().pref_pos.size.bits();
         let n = (!0u128) >> (128 - bits);
         let literal = ty::Const::from_bits(self.hir.tcx(), n, param_ty);
 
@@ -594,7 +594,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
         let param_ty = ty::ParamEnv::empty().and(ty);
-        let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
+        let bits = self.hir.tcx().layout_of(param_ty).unwrap().pref_pos.size.bits();
         let n = 1 << (bits - 1);
         let literal = ty::Const::from_bits(self.hir.tcx(), n, param_ty);
 

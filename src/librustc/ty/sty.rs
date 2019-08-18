@@ -2276,7 +2276,7 @@ impl<'tcx> Const<'tcx> {
     pub fn from_bits(tcx: TyCtxt<'tcx>, bits: u128, ty: ParamEnvAnd<'tcx, Ty<'tcx>>) -> &'tcx Self {
         let size = tcx.layout_of(ty).unwrap_or_else(|e| {
             panic!("could not compute layout for {:?}: {:?}", ty, e)
-        }).size;
+        }).pref_pos.size;
         Self::from_scalar(tcx, Scalar::from_uint(bits, size), ty.value)
     }
 
@@ -2303,7 +2303,7 @@ impl<'tcx> Const<'tcx> {
         ty: Ty<'tcx>,
     ) -> Option<u128> {
         assert_eq!(self.ty, ty);
-        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
+        let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.pref_pos.size;
         // if `ty` does not depend on generic parameters, use an empty param_env
         self.eval(tcx, param_env).val.try_to_bits(size)
     }

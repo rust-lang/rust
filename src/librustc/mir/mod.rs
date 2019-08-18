@@ -1502,7 +1502,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             SwitchInt { ref values, switch_ty, .. } => ty::tls::with(|tcx| {
                 let param_env = ty::ParamEnv::empty();
                 let switch_ty = tcx.lift(&switch_ty).unwrap();
-                let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
+                let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().pref_pos.size;
                 values
                     .iter()
                     .map(|&u| {

@@ -10,7 +10,7 @@ use crate::abi::call::{ArgAbi, FnAbi};
 // places its address in the appropriate location: either in a register or on
 // the stack, according to its position in the argument list. (..)"
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
-    if ret.layout.is_aggregate() && ret.layout.size.bits() > 32 {
+    if ret.layout.is_aggregate() && ret.layout.pref_pos.size.bits() > 32 {
         ret.make_indirect();
     } else {
         ret.extend_integer_width_to(16);
@@ -18,7 +18,7 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
 }
 
 fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
-    if arg.layout.is_aggregate() && arg.layout.size.bits() > 32 {
+    if arg.layout.is_aggregate() && arg.layout.pref_pos.size.bits() > 32 {
         arg.make_indirect();
     } else {
         arg.extend_integer_width_to(16);

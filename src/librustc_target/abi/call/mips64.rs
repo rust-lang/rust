@@ -40,7 +40,7 @@ fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
         return;
     }
 
-    let size = ret.layout.size;
+    let size = ret.layout.pref_pos.size;
     let bits = size.bits();
     if bits <= 128 {
         // Unlike other architectures which return aggregates in registers, MIPS n64 limits the
@@ -83,7 +83,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
     }
 
     let dl = cx.data_layout();
-    let size = arg.layout.size;
+    let size = arg.layout.pref_pos.size;
     let mut prefix = [None; 8];
     let mut prefix_index = 0;
 

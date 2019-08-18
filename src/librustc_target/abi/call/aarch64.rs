@@ -7,7 +7,7 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
     arg.layout.homogeneous_aggregate(cx).unit().and_then(|unit| {
-        let size = arg.layout.size;
+        let size = arg.layout.pref_pos.size;
 
         // Ensure we have at most four uniquely addressable members.
         if size > unit.size.checked_mul(4, cx).unwrap() {
@@ -43,7 +43,7 @@ fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
         ret.cast_to(uniform);
         return;
     }
-    let size = ret.layout.size;
+    let size = ret.layout.pref_pos.size;
     let bits = size.bits();
     if bits <= 128 {
         let unit = if bits <= 8 {
@@ -77,7 +77,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
         arg.cast_to(uniform);
         return;
     }
-    let size = arg.layout.size;
+    let size = arg.layout.pref_pos.size;
     let bits = size.bits();
     if bits <= 128 {
         let unit = if bits <= 8 {

@@ -910,6 +910,7 @@ pub trait PrettyPrinter<'tcx>:
                 let ty = self.tcx().lift(&ct.ty).unwrap();
                 let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
                     .unwrap()
+                    .pref_pos
                     .size;
                 let i_str = i.name_str();
                 match data {

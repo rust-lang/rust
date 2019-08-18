@@ -9,7 +9,7 @@ pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
             Abi::Uninhabited => {}
             Abi::ScalarPair(..) |
             Abi::Aggregate { .. } => {
-                match a.layout.size.bits() {
+                match a.layout.pref_pos.size.bits() {
                     8 => a.cast_to(Reg::i8()),
                     16 => a.cast_to(Reg::i16()),
                     32 => a.cast_to(Reg::i32()),
@@ -22,7 +22,7 @@ pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
                 // (probably what clang calls "illegal vectors").
             }
             Abi::Scalar(_) => {
-                if a.layout.size.bytes() > 8 {
+                if a.layout.pref_pos.size.bytes() > 8 {
                     a.make_indirect();
                 } else {
                     a.extend_integer_width_to(32);

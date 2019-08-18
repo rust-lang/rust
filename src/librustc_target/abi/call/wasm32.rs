@@ -7,7 +7,7 @@ fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
 {
     if val.layout.is_aggregate() {
         if let Some(unit) = val.layout.homogeneous_aggregate(cx).unit() {
-            let size = val.layout.size;
+            let size = val.layout.pref_pos.size;
             if unit.size == size {
                 val.cast_to(Uniform {
                     unit,

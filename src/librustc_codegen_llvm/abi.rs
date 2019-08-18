@@ -200,7 +200,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             return;
         }
         if self.is_sized_indirect() {
-            OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
+            OperandValue::Ref(val, None, self.layout.pref_pos.align.abi).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized ArgAbi must be handled through store_fn_arg");
         } else if let PassMode::Cast(cast) = self.mode {
@@ -210,7 +210,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             if can_store_through_cast_ptr {
                 let cast_ptr_llty = bx.type_ptr_to(cast.llvm_type(bx));
                 let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
-                bx.store(val, cast_dst, self.layout.align.abi);
+                bx.store(val, cast_dst, self.layout.pref_pos.align.abi);
             } else {
                 // The actual return type is a struct, but the ABI
                 // adaptation code has cast it into some scalar type.  The
@@ -238,10 +238,10 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 // ...and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.llval,
-                    self.layout.align.abi,
+                    self.layout.pref_pos.align.abi,
                     llscratch,
                     scratch_align,
-                    bx.const_usize(self.layout.size.bytes()),
+                    bx.const_usize(self.layout.pref_pos.size.bytes()),
                     MemFlags::empty()
                 );
 
@@ -269,7 +269,8 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
             PassMode::Indirect(_, Some(_)) => {
-                OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
+                let align = self.layout.pref_pos.align.abi;
+                OperandValue::Ref(next(), Some(next()), align).store(bx, dst);
             }
             PassMode::Direct(_) | PassMode::Indirect(_, None) | PassMode::Cast(_) => {
                 let next_arg = next();

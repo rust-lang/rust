@@ -23,7 +23,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             // x86_mmx" type. In general there shouldn't be a need for other
             // one-element SIMD vectors, so it's assumed this won't clash with
             // much else.
-            let use_x86_mmx = count == 1 && layout.size.bits() == 64 &&
+            let use_x86_mmx = count == 1 && layout.pref_pos.size.bits() == 64 &&
                 (cx.sess().target.target.arch == "x86" ||
                  cx.sess().target.target.arch == "x86_64");
             if use_x86_mmx {
@@ -74,7 +74,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     match layout.fields {
         layout::FieldPlacement::Union(_) => {
-            let fill = cx.type_padding_filler(layout.size, layout.align.abi);
+            let fill = cx.type_padding_filler(layout.pref_pos.size, layout.pref_pos.align.abi);
             let packed = false;
             match name {
                 None => {
@@ -114,15 +114,15 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     let mut packed = false;
     let mut offset = Size::ZERO;
-    let mut prev_effective_align = layout.align.abi;
+    let mut prev_effective_align = layout.pref_pos.align.abi;
     let mut result: Vec<_> = Vec::with_capacity(1 + field_count * 2);
     for i in layout.fields.index_by_increasing_offset() {
         let target_offset = layout.fields.offset(i as usize);
         let field = layout.field(cx, i);
-        let effective_field_align = layout.align.abi
-            .min(field.align.abi)
+        let effective_field_align = layout.pref_pos.align.abi
+            .min(field.pref_pos.align.abi)
             .restrict_for_offset(target_offset);
-        packed |= effective_field_align < field.align.abi;
+        packed |= effective_field_align < field.pref_pos.align.abi;
 
         debug!("struct_llfields: {}: {:?} offset: {:?} target_offset: {:?} \
                 effective_field_align: {}",
@@ -135,24 +135,24 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         debug!("    padding before: {:?}", padding);
 
         result.push(field.llvm_type(cx));
-        offset = target_offset + field.size;
+        offset = target_offset + field.pref_pos.size;
         prev_effective_align = effective_field_align;
     }
     if !layout.is_unsized() && field_count > 0 {
-        if offset > layout.size {
+        if offset > layout.pref_pos.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}",
-                 layout, layout.size, offset);
+                 layout, layout.pref_pos.size, offset);
         }
-        let padding = layout.size - offset;
+        let padding = layout.pref_pos.size - offset;
         let padding_align = prev_effective_align;
-        assert_eq!(offset.align_to(padding_align) + padding, layout.size);
+        assert_eq!(offset.align_to(padding_align) + padding, layout.pref_pos.size);
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
-               padding, offset, layout.size);
+               padding, offset, layout.pref_pos.size);
         result.push(cx.type_padding_filler(padding, padding_align));
         assert_eq!(result.len(), 1 + field_count * 2);
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}",
-               offset, layout.size);
+               offset, layout.pref_pos.size);
     }
 
     (result, packed)
@@ -160,16 +160,16 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
 impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
     pub fn align_of(&self, ty: Ty<'tcx>) -> Align {
-        self.layout_of(ty).align.abi
+        self.layout_of(ty).pref_pos.align.abi
     }
 
     pub fn size_of(&self, ty: Ty<'tcx>) -> Size {
-        self.layout_of(ty).size
+        self.layout_of(ty).pref_pos.size
     }
 
     pub fn size_and_align_of(&self, ty: Ty<'tcx>) -> (Size, Align) {
         let layout = self.layout_of(ty);
-        (layout.size, layout.align.abi)
+        (layout.pref_pos.size, layout.pref_pos.align.abi)
     }
 }
 

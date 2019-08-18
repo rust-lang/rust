@@ -31,7 +31,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &ArgAbi<'a, Ty>)
         where Ty: TyLayoutMethods<'a, C> + Copy,
             C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
     {
-        if !off.is_aligned(layout.align.abi) {
+        if !off.is_aligned(layout.pref_pos.align.abi) {
             if !layout.is_zst() {
                 return Err(Memory);
             }
@@ -69,7 +69,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &ArgAbi<'a, Ty>)
 
         // Fill in `cls` for scalars (Int/Sse) and vectors (Sse).
         let first = (off.bytes() / 8) as usize;
-        let last = ((off.bytes() + layout.size.bytes() - 1) / 8) as usize;
+        let last = ((off.bytes() + layout.pref_pos.size.bytes() - 1) / 8) as usize;
         for cls in &mut cls[first..=last] {
             *cls = Some(cls.map_or(c, |old| old.min(c)));
 
@@ -83,7 +83,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &ArgAbi<'a, Ty>)
         Ok(())
     }
 
-    let n = ((arg.layout.size.bytes() + 7) / 8) as usize;
+    let n = ((arg.layout.pref_pos.size.bytes() + 7) / 8) as usize;
     if n > MAX_EIGHTBYTES {
         return Err(Memory);
     }
@@ -225,7 +225,7 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
             Ok(ref cls) => {
                 // split into sized chunks passed individually
                 if arg.layout.is_aggregate() {
-                    let size = arg.layout.size;
+                    let size = arg.layout.pref_pos.size;
                     arg.cast_to(cast_target(cls, size))
                 } else {
                     arg.extend_integer_width_to(32);

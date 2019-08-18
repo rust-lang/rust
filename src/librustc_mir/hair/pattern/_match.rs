@@ -2287,8 +2287,8 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                 let ptr = Pointer::new(AllocId(0), offset);
                 (0..n)
                     .map(|i| {
-                        let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
-                        let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.size).ok()?;
+                        let ptr = ptr.offset((layout.pref_pos * i).size, &cx.tcx).ok()?;
+                        let scalar = alloc.read_scalar(&cx.tcx, ptr, layout.pref_pos.size).ok()?;
                         let scalar = scalar.not_undef().ok()?;
                         let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
                         let pattern =

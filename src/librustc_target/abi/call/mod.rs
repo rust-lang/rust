@@ -291,7 +291,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                 };
                 HomogeneousAggregate::Homogeneous(Reg {
                     kind,
-                    size: self.size
+                    size: self.pref_pos.size
                 })
             }
 
@@ -299,7 +299,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                 assert!(!self.is_zst());
                 HomogeneousAggregate::Homogeneous(Reg {
                     kind: RegKind::Vector,
-                    size: self.size
+                    size: self.pref_pos.size
                 })
             }
 
@@ -348,7 +348,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                     }
 
                     // Keep track of the offset (without padding).
-                    let size = field.size;
+                    let size = field.pref_pos.size;
                     if is_union {
                         total = total.max(size);
                     } else {
@@ -357,7 +357,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
                 }
 
                 // There needs to be no padding.
-                if total != self.size {
+                if total != self.pref_pos.size {
                     HomogeneousAggregate::Heterogeneous
                 } else {
                     match result {
@@ -409,10 +409,10 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         attrs.set(ArgAttribute::NoAlias)
              .set(ArgAttribute::NoCapture)
              .set(ArgAttribute::NonNull);
-        attrs.pointee_size = self.layout.size;
+        attrs.pointee_size = self.layout.pref_pos.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
-        // attrs.pointee_align = Some(self.layout.align.abi);
+        // attrs.pointee_align = Some(self.layout.pref_pos.align.abi);
 
         let extra_attrs = if self.layout.is_unsized() {
             Some(ArgAttributes::new())

@@ -1,7 +1,7 @@
 use crate::abi::call::{FnAbi, ArgAbi};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
-    if ret.layout.is_aggregate() && ret.layout.size.bits() > 64 {
+    if ret.layout.is_aggregate() && ret.layout.pref_pos.size.bits() > 64 {
         ret.make_indirect();
     } else {
         ret.extend_integer_width_to(32);
@@ -9,7 +9,7 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
 }
 
 fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
-    if arg.layout.is_aggregate() && arg.layout.size.bits() > 64 {
+    if arg.layout.is_aggregate() && arg.layout.pref_pos.size.bits() > 64 {
         arg.make_indirect();
     } else {
         arg.extend_integer_width_to(32);

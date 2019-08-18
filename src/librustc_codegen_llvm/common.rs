@@ -314,9 +314,9 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
-        assert_eq!(alloc.align, layout.align.abi);
+        assert_eq!(alloc.align, layout.pref_pos.align.abi);
         let llty = self.type_ptr_to(layout.llvm_type(self));
-        let llval = if layout.size == Size::ZERO {
+        let llval = if layout.pref_pos.size == Size::ZERO {
             let llval = self.const_usize(alloc.align.bytes());
             unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
         } else {

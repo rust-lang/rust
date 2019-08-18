@@ -480,7 +480,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         let prim = this.ecx.read_immediate(arg)?;
                         // Need to do overflow check here: For actual CTFE, MIR
                         // generation emits code that does this before calling the op.
-                        if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
+                        if prim.to_bits()? == (1 << (prim.layout.pref_pos.size.bits() - 1)) {
                             throw_panic!(OverflowNeg)
                         }
                     }
@@ -498,8 +498,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     this.ecx.read_immediate(this.ecx.eval_operand(right, None)?)
                 })?;
                 if *op == BinOp::Shr || *op == BinOp::Shl {
-                    let left_bits = place_layout.size.bits();
-                    let right_size = r.layout.size;
+                    let left_bits = place_layout.pref_pos.size.bits();
+                    let right_size = r.layout.pref_pos.size;
                     let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
                     if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
                         let source_scope_local_data = match self.source_scope_local_data {

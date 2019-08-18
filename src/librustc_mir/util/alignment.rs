@@ -21,7 +21,7 @@ where
 
     let ty = place.ty(local_decls, tcx).ty;
     match tcx.layout_raw(param_env.and(ty)) {
-        Ok(layout) if layout.align.abi.bytes() == 1 => {
+        Ok(layout) if layout.pref_pos.align.abi.bytes() == 1 => {
             // if the alignment is 1, the type can't be further
             // disaligned.
             debug!("is_disaligned({:?}) - align = 1", place);

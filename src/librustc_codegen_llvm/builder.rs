@@ -546,7 +546,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
         header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
 
-        let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
+        let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).pref_pos.size);
         cg_elem.val.store(&mut body_bx,
             PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
 

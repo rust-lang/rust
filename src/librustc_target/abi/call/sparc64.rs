@@ -10,20 +10,20 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
 {
     arg.layout.homogeneous_aggregate(cx).unit().and_then(|unit| {
         // Ensure we have at most eight uniquely addressable members.
-        if arg.layout.size > unit.size.checked_mul(8, cx).unwrap() {
+        if arg.layout.pref_pos.size > unit.size.checked_mul(8, cx).unwrap() {
             return None;
         }
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => arg.layout.size.bits() == 128
+            RegKind::Vector => arg.layout.pref_pos.size.bits() == 128
         };
 
         if valid_unit {
             Some(Uniform {
                 unit,
-                total: arg.layout.size
+                total: arg.layout.pref_pos.size
             })
         } else {
             None
@@ -44,7 +44,7 @@ fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
         ret.cast_to(uniform);
         return;
     }
-    let size = ret.layout.size;
+    let size = ret.layout.pref_pos.size;
     let bits = size.bits();
     if bits <= 256 {
         let unit = Reg::i64();
@@ -73,7 +73,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
         return;
     }
 
-    let total = arg.layout.size;
+    let total = arg.layout.pref_pos.size;
     if total.bits() > 128 {
         arg.make_indirect();
         return;

@@ -68,9 +68,9 @@ crate fn eval_nullary_intrinsic<'tcx>(
         "pref_align_of" => {
             let layout = tcx.layout_of(param_env.and(tp_ty)).map_err(|e| err_inval!(Layout(e)))?;
             let n = match name {
-                "pref_align_of" => layout.align.pref.bytes(),
-                "min_align_of" => layout.align.abi.bytes(),
-                "size_of" => layout.size.bytes(),
+                "pref_align_of" => layout.pref_pos.align.pref.bytes(),
+                "min_align_of" => layout.pref_pos.align.abi.bytes(),
+                "size_of" => layout.pref_pos.size.bytes(),
                 _ => bug!(),
             };
             ty::Const::from_usize(tcx, n)
@@ -133,7 +133,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
                 let val = self.read_scalar(args[0])?.not_undef()?;
-                let bits = self.force_bits(val, layout_of.size)?;
+                let bits = self.force_bits(val, layout_of.pref_pos.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
                     _ => throw_unsup!(TypeNotPrimitive(ty)),
@@ -181,13 +181,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     BinOp::Sub
                 }, l, r)?;
                 let val = if overflowed {
-                    let num_bits = l.layout.size.bits();
+                    let num_bits = l.layout.pref_pos.size.bits();
                     if l.layout.abi.is_signed() {
                         // For signed ints the saturated value depends on the sign of the first
                         // term since the sign of the second term can be inferred from this and
                         // the fact that the operation has overflowed (if either is 0 no
                         // overflow can occur)
-                        let first_term: u128 = self.force_bits(l.to_scalar()?, l.layout.size)?;
+                        let first_term: u128 = self.force_bits(l.to_scalar()?,
+                                                                l.layout.pref_pos.size)?;
                         let first_term_positive = first_term & (1 << (num_bits-1)) == 0;
                         if first_term_positive {
                             // Negative overflow not possible since the positive first term
@@ -225,7 +226,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, l, r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
-                    let r_val = self.force_bits(r.to_scalar()?, layout.size)?;
+                    let r_val = self.force_bits(r.to_scalar()?, layout.pref_pos.size)?;
                     throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
                 }
                 self.write_scalar(val, dest)?;
@@ -235,10 +236,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
                 let layout = self.layout_of(substs.type_at(0))?;
                 let val = self.read_scalar(args[0])?.not_undef()?;
-                let val_bits = self.force_bits(val, layout.size)?;
+                let val_bits = self.force_bits(val, layout.pref_pos.size)?;
                 let raw_shift = self.read_scalar(args[1])?.not_undef()?;
-                let raw_shift_bits = self.force_bits(raw_shift, layout.size)?;
-                let width_bits = layout.size.bits() as u128;
+                let raw_shift_bits = self.force_bits(raw_shift, layout.pref_pos.size)?;
+                let width_bits = layout.pref_pos.size.bits() as u128;
                 let shift_bits = raw_shift_bits % width_bits;
                 let inv_shift_bits = (width_bits - shift_bits) % width_bits;
                 let result_bits = if intrinsic_name == "rotate_left" {
@@ -247,7 +248,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
                 };
                 let truncated_bits = self.truncate(result_bits, layout);
-                let result = Scalar::from_uint(truncated_bits, layout.size);
+                let result = Scalar::from_uint(truncated_bits, layout.pref_pos.size);
                 self.write_scalar(result, dest)?;
             }
 
@@ -266,7 +267,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     let a = a.to_machine_usize(self)?;
                     let b = b.to_machine_usize(self)?;
                     if a == b && a != 0 {
-                        self.write_scalar(Scalar::from_int(0, isize_layout.size), dest)?;
+                        self.write_scalar(Scalar::from_int(0, isize_layout.pref_pos.size), dest)?;
                         return Ok(true);
                     }
                 }
@@ -288,7 +289,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
                 let pointee_layout = self.layout_of(substs.type_at(0))?;
                 let val = ImmTy::from_scalar(val, isize_layout);
-                let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
+                let size = ImmTy::from_int(pointee_layout.pref_pos.size.bytes(), isize_layout);
                 self.exact_div(val, size, dest)?;
             }
 
@@ -409,7 +410,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // First, check x % y != 0.
         if self.binary_op(BinOp::Rem, a, b)?.to_bits()? != 0 {
             // Then, check if `b` is -1, which is the "min_value / -1" case.
-            let minus1 = Scalar::from_int(-1, dest.layout.size);
+            let minus1 = Scalar::from_int(-1, dest.layout.pref_pos.size);
             let b = b.to_scalar().unwrap();
             if b == minus1 {
                 throw_ub_format!("exact_div: result of dividing MIN by -1 cannot be represented")

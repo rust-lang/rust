@@ -9,7 +9,7 @@ fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
     // "Aggregates larger than 2✕XLEN bits are passed by reference and are
     // replaced in the argument list with the address, as are C++ aggregates
     // with nontrivial copy constructors, destructors, or vtables."
-    if arg.layout.size.bits() > 2 * xlen {
+    if arg.layout.pref_pos.size.bits() > 2 * xlen {
         arg.make_indirect();
     }
 
@@ -25,7 +25,7 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
     // "Aggregates larger than 2✕XLEN bits are passed by reference and are
     // replaced in the argument list with the address, as are C++ aggregates
     // with nontrivial copy constructors, destructors, or vtables."
-    if arg.layout.size.bits() > 2 * xlen {
+    if arg.layout.pref_pos.size.bits() > 2 * xlen {
         arg.make_indirect();
     }
 

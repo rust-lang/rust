@@ -16,8 +16,8 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'_, Ty>, offset: &mut Size)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
     let dl = cx.data_layout();
-    let size = arg.layout.size;
-    let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align).abi;
+    let size = arg.layout.pref_pos.size;
+    let align = arg.layout.pref_pos.align.max(dl.i32_align).min(dl.i64_align).abi;
 
     if arg.layout.is_aggregate() {
         arg.cast_to(Uniform {

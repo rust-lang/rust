@@ -175,17 +175,17 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
 
     #[inline]
     pub fn from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> Self {
-        Self::from_scalar(Scalar::from_uint(i, layout.size), layout)
+        Self::from_scalar(Scalar::from_uint(i, layout.pref_pos.size), layout)
     }
 
     #[inline]
     pub fn from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Self {
-        Self::from_scalar(Scalar::from_int(i, layout.size), layout)
+        Self::from_scalar(Scalar::from_int(i, layout.pref_pos.size), layout)
     }
 
     #[inline]
     pub fn to_bits(self) -> InterpResult<'tcx, u128> {
-        self.to_scalar()?.to_bits(self.layout.size)
+        self.to_scalar()?.to_bits(self.layout.pref_pos.size)
     }
 }
 
@@ -249,7 +249,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory
                     .get_raw(ptr.alloc_id)?
-                    .read_scalar(self, ptr, mplace.layout.size)?;
+                    .read_scalar(self, ptr, mplace.layout.pref_pos.size)?;
                 Ok(Some(ImmTy {
                     imm: scalar.into(),
                     layout: mplace.layout,
@@ -371,7 +371,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let offset = op.layout.fields.offset(field);
         let immediate = match *base {
             // the field covers the entire type
-            _ if offset.bytes() == 0 && field_layout.size == op.layout.size => *base,
+            _ if offset.bytes() == 0 &&
+                field_layout.pref_pos.size == op.layout.pref_pos.size => *base,
             // extract fields from types with `ScalarPair` ABI
             Immediate::ScalarPair(a, b) => {
                 let val = if offset.bytes() == 0 { a } else { b };
@@ -567,7 +568,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen.
                 let ptr = self.tag_static_base_pointer(Pointer::new(id, offset));
-                Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
+                Operand::Indirect(MemPlace::from_ptr(ptr, layout.pref_pos.align.abi))
             },
             ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x).into()),
             ConstValue::Slice { data, start, end } => {
@@ -626,12 +627,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             layout::DiscriminantKind::Tag => {
                 let bits_discr = raw_discr
                     .not_undef()
-                    .and_then(|raw_discr| self.force_bits(raw_discr, discr_val.layout.size))
+                    .and_then(|raw_discr| self.force_bits(raw_discr,
+                        discr_val.layout.pref_pos.size))
                     .map_err(|_| err_ub!(InvalidDiscriminant(raw_discr.erase_tag())))?;
                 let real_discr = if discr_val.layout.ty.is_signed() {
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the discriminant layout
-                    let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
+                    let sexted = sign_extend(bits_discr, discr_val.layout.pref_pos.size) as i128;
                     // and then zeroing with the typeck discriminant type
                     let discr_ty = rval.layout.ty
                         .ty_adt_def().expect("tagged layout corresponds to adt")
@@ -671,7 +673,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let raw_discr = raw_discr.not_undef().map_err(|_| {
                     err_ub!(InvalidDiscriminant(ScalarMaybeUndef::Undef))
                 })?;
-                match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
+                match raw_discr.to_bits_or_ptr(discr_val.layout.pref_pos.size, self) {
                     Err(ptr) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
@@ -694,7 +696,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         )?;
                         let variant_index_relative = variant_index_relative_val
                             .to_scalar()?
-                            .assert_bits(discr_val.layout.size);
+                            .assert_bits(discr_val.layout.pref_pos.size);
                         // Check if this is in the range that indicates an actual discriminant.
                         if variant_index_relative <= u128::from(variants_end - variants_start) {
                             let variant_index_relative = u32::try_from(variant_index_relative)

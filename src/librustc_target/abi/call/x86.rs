@@ -43,13 +43,13 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: F
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
                 if !t.options.is_like_msvc && is_single_fp_element(cx, fn_abi.ret.layout) {
-                    match fn_abi.ret.layout.size.bytes() {
+                    match fn_abi.ret.layout.pref_pos.size.bytes() {
                         4 => fn_abi.ret.cast_to(Reg::f32()),
                         8 => fn_abi.ret.cast_to(Reg::f64()),
                         _ => fn_abi.ret.make_indirect()
                     }
                 } else {
-                    match fn_abi.ret.layout.size.bytes() {
+                    match fn_abi.ret.layout.pref_pos.size.bytes() {
                         1 => fn_abi.ret.cast_to(Reg::i8()),
                         2 => fn_abi.ret.cast_to(Reg::i16()),
                         4 => fn_abi.ret.cast_to(Reg::i32()),
@@ -100,12 +100,12 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: F
 
             // At this point we know this must be a primitive of sorts.
             let unit = arg.layout.homogeneous_aggregate(cx).unit().unwrap();
-            assert_eq!(unit.size, arg.layout.size);
+            assert_eq!(unit.size, arg.layout.pref_pos.size);
             if unit.kind == RegKind::Float {
                 continue;
             }
 
-            let size_in_regs = (arg.layout.size.bits() + 31) / 32;
+            let size_in_regs = (arg.layout.pref_pos.size.bits() + 31) / 32;
 
             if size_in_regs == 0 {
                 continue;
@@ -117,7 +117,7 @@ pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: F
 
             free_regs -= size_in_regs;
 
-            if arg.layout.size.bits() <= 32 && unit.kind == RegKind::Integer {
+            if arg.layout.pref_pos.size.bits() <= 32 && unit.kind == RegKind::Integer {
                 attrs.set(ArgAttribute::InReg);
             }
 

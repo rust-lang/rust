@@ -181,7 +181,7 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 if src_f.is_zst() {
                     continue;
                 }
-                assert_eq!(src_layout.size, src_f.size);
+                assert_eq!(src_layout.pref_pos.size, src_f.pref_pos.size);
 
                 let dst_f = dst_layout.field(bx.cx(), i);
                 assert_ne!(src_f.ty, dst_f.ty);
@@ -348,7 +348,7 @@ pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     layout: TyLayout<'tcx>,
     flags: MemFlags,
 ) {
-    let size = layout.size.bytes();
+    let size = layout.pref_pos.size.bytes();
     if size == 0 {
         return;
     }

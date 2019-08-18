@@ -130,7 +130,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     src.layout.ty.discriminant_for_variant(*self.tcx, index)
                 {
                     assert!(src.layout.is_zst());
-                    return Ok(Scalar::from_uint(discr.val, dest_layout.size).into());
+                    return Ok(Scalar::from_uint(discr.val, dest_layout.pref_pos.size).into());
                 }
             }
             layout::Variants::Multiple { .. } => {},
@@ -138,10 +138,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Handle casting the metadata away from a fat pointer.
         if src.layout.ty.is_unsafe_ptr() && dest_layout.ty.is_unsafe_ptr() &&
-            dest_layout.size != src.layout.size
+            dest_layout.pref_pos.size != src.layout.pref_pos.size
         {
-            assert_eq!(src.layout.size, 2*self.memory.pointer_size());
-            assert_eq!(dest_layout.size, self.memory.pointer_size());
+            assert_eq!(src.layout.pref_pos.size, 2*self.memory.pointer_size());
+            assert_eq!(dest_layout.pref_pos.size, self.memory.pointer_size());
             assert!(dest_layout.ty.is_unsafe_ptr());
             match *src {
                 Immediate::ScalarPair(data, _) =>
@@ -158,7 +158,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if src.layout.ty.is_any_ptr() && dest_layout.ty.is_unsafe_ptr()
         {
             // The only possible size-unequal case was handled above.
-            assert_eq!(src.layout.size, dest_layout.size);
+            assert_eq!(src.layout.pref_pos.size, dest_layout.pref_pos.size);
             return Ok(*src);
         }
 
@@ -166,7 +166,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // (a) cast a raw ptr to usize, or
         // (b) cast from an integer-like (including bool, char, enums).
         // In both cases we want the bits.
-        let bits = self.force_bits(src.to_scalar()?, src.layout.size)?;
+        let bits = self.force_bits(src.to_scalar()?, src.layout.pref_pos.size)?;
         Ok(self.cast_from_int(bits, src.layout, dest_layout)?.into())
     }
 
@@ -188,7 +188,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match dest_layout.ty.kind {
             Int(_) | Uint(_) | RawPtr(_) => {
                 let v = self.truncate(v, dest_layout);
-                Ok(Scalar::from_uint(v, dest_layout.size))
+                Ok(Scalar::from_uint(v, dest_layout.pref_pos.size))
             }
 
             Float(FloatTy::F32) if signed => Ok(Scalar::from_f32(

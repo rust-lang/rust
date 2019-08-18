@@ -21,21 +21,21 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, abi: AB
     arg.layout.homogeneous_aggregate(cx).unit().and_then(|unit| {
         // ELFv1 only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
-        if (abi == ELFv1 && arg.layout.size > unit.size)
-                || arg.layout.size > unit.size.checked_mul(8, cx).unwrap() {
+        if (abi == ELFv1 && arg.layout.pref_pos.size > unit.size)
+                || arg.layout.pref_pos.size > unit.size.checked_mul(8, cx).unwrap() {
             return None;
         }
 
         let valid_unit = match unit.kind {
             RegKind::Integer => false,
             RegKind::Float => true,
-            RegKind::Vector => arg.layout.size.bits() == 128
+            RegKind::Vector => arg.layout.pref_pos.size.bits() == 128
         };
 
         if valid_unit {
             Some(Uniform {
                 unit,
-                total: arg.layout.size
+                total: arg.layout.pref_pos.size
             })
         } else {
             None
@@ -63,7 +63,7 @@ fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, abi: ABI)
         return;
     }
 
-    let size = ret.layout.size;
+    let size = ret.layout.pref_pos.size;
     let bits = size.bits();
     if bits <= 128 {
         let unit = if cx.data_layout().endian == Endian::Big {
@@ -102,7 +102,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>, abi: ABI)
         return;
     }
 
-    let size = arg.layout.size;
+    let size = arg.layout.pref_pos.size;
     let (unit, total) = if size.bits() <= 64 {
         // Aggregates smaller than a doubleword should appear in
         // the least-significant bits of the parameter doubleword.

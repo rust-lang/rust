@@ -586,7 +586,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // Use size and align of the type.
                 let ty = self.tcx.type_of(did);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                Ok((layout.size, layout.align.abi))
+                Ok((layout.pref_pos.size, layout.pref_pos.align.abi))
             },
             Some(GlobalAlloc::Memory(alloc)) =>
                 // Need to duplicate the logic here, because the global allocations have

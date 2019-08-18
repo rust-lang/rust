@@ -75,8 +75,8 @@ fn emit_ptr_va_arg(
          bx.cx.data_layout().pointer_pos.align)
     } else {
         (layout.llvm_type(bx.cx),
-         layout.size,
-         layout.align)
+         layout.pref_pos.size,
+         layout.pref_pos.align)
     };
     let (addr, addr_align) = emit_direct_ptr_va_arg(bx, list, llty, size, align.abi,
                                                     slot_size, allow_higher_align);

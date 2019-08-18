@@ -1063,8 +1063,7 @@ pub struct LayoutDetails {
     /// (i.e. outside of its `valid_range`), if it exists.
     pub largest_niche: Option<Niche>,
 
-    pub align: AbiAndPrefAlign,
-    pub size: Size
+    pub pref_pos: LayoutPositionPref
 }
 
 impl LayoutDetails {
@@ -1072,13 +1071,13 @@ impl LayoutDetails {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
+        let pref_pos = LayoutPositionPref::new(size, align);
         LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
             largest_niche,
-            size,
-            align,
+            pref_pos,
         }
     }
 }
@@ -1176,8 +1175,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
             Abi::Scalar(_) |
             Abi::ScalarPair(..) |
             Abi::Vector { .. } => false,
-            Abi::Uninhabited => self.size.bytes() == 0,
-            Abi::Aggregate { sized } => sized && self.size.bytes() == 0
+            Abi::Uninhabited => self.pref_pos.size.bytes() == 0,
+            Abi::Aggregate { sized } => sized && self.pref_pos.size.bytes() == 0
         }
     }
 }

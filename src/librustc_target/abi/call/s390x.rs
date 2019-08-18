@@ -7,7 +7,7 @@ use crate::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 fn classify_ret<'a, Ty, C>(ret: &mut ArgAbi<'_, Ty>)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
-    if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
+    if !ret.layout.is_aggregate() && ret.layout.pref_pos.size.bits() <= 64 {
         ret.extend_integer_width_to(64);
     } else {
         ret.make_indirect();
@@ -35,19 +35,19 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
-    if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
+    if !arg.layout.is_aggregate() && arg.layout.pref_pos.size.bits() <= 64 {
         arg.extend_integer_width_to(64);
         return;
     }
 
     if is_single_fp_element(cx, arg.layout) {
-        match arg.layout.size.bytes() {
+        match arg.layout.pref_pos.size.bytes() {
             4 => arg.cast_to(Reg::f32()),
             8 => arg.cast_to(Reg::f64()),
             _ => arg.make_indirect()
         }
     } else {
-        match arg.layout.size.bytes() {
+        match arg.layout.pref_pos.size.bytes() {
             1 => arg.cast_to(Reg::i8()),
             2 => arg.cast_to(Reg::i16()),
             4 => arg.cast_to(Reg::i32()),

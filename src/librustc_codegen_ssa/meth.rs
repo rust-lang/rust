@@ -109,8 +109,8 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
         cx.get_fn_addr(Instance::resolve_drop_in_place(cx.tcx(), ty)),
-        cx.const_usize(layout.size.bytes()),
-        cx.const_usize(layout.align.abi.bytes())
+        cx.const_usize(layout.pref_pos.size.bytes()),
+        cx.const_usize(layout.pref_pos.align.abi.bytes())
     ].iter().cloned().chain(methods).collect();
 
     let vtable_const = cx.const_struct(&components, false);

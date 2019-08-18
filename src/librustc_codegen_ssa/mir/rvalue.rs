@@ -91,7 +91,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if let OperandValue::Immediate(v) = cg_elem.val {
                     let zero = bx.const_usize(0);
                     let start = dest.project_index(&mut bx, zero).llval;
-                    let size = bx.const_usize(dest.layout.size.bytes());
+                    let size = bx.const_usize(dest.layout.pref_pos.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
                     if bx.cx().const_to_opt_uint(v) == Some(0) {
@@ -472,7 +472,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
                 assert!(bx.cx().type_is_sized(ty));
-                let val = bx.cx().const_usize(bx.cx().layout_of(ty).size.bytes());
+                let val = bx.cx().const_usize(bx.cx().layout_of(ty).pref_pos.size.bytes());
                 let tcx = self.cx.tcx();
                 (bx, OperandRef {
                     val: OperandValue::Immediate(val),
@@ -483,8 +483,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::NullaryOp(mir::NullOp::Box, content_ty) => {
                 let content_ty = self.monomorphize(&content_ty);
                 let content_layout = bx.cx().layout_of(content_ty);
-                let llsize = bx.cx().const_usize(content_layout.size.bytes());
-                let llalign = bx.cx().const_usize(content_layout.align.abi.bytes());
+                let llsize = bx.cx().const_usize(content_layout.pref_pos.size.bytes());
+                let llalign = bx.cx().const_usize(content_layout.pref_pos.align.abi.bytes());
                 let box_layout = bx.cx().layout_of(bx.tcx().mk_box(content_ty));
                 let llty_ptr = bx.cx().backend_type(box_layout);
 

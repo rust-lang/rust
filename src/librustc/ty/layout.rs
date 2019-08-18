@@ -256,6 +256,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let b_offset = a.value.size(dl).align_to(b_align.abi);
         let size = (b_offset + b.value.size(dl)).align_to(align.abi);
 
+        let pref_pos = LayoutPositionPref::new(size, align);
+
         // HACK(nox): We iter on `b` and then `a` because `max_by_key`
         // returns the last maximum.
         let largest_niche = Niche::from_scalar(dl, b_offset, b.clone())
@@ -271,8 +273,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             },
             abi: Abi::ScalarPair(a, b),
             largest_niche,
-            align,
-            size
+            pref_pos
         }
     }
 
@@ -310,7 +311,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             };
             let optimizing = &mut inverse_memory_index[..end];
             let field_align = |f: &TyLayout<'_>| {
-                if let Some(pack) = pack { f.align.abi.min(pack) } else { f.align.abi }
+                if let Some(pack) = pack {
+                    f.pref_pos.align.abi.min(pack)
+                } else {
+                    f.pref_pos.align.abi
+                }
             };
             match kind {
                 StructKind::AlwaysSized |
@@ -363,9 +368,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61
             let field_align = if let Some(pack) = pack {
-                field.align.min(AbiAndPrefAlign::new(pack))
+                field.pref_pos.align.min(AbiAndPrefAlign::new(pack))
             } else {
-                field.align
+                field.pref_pos.align
             };
             offset = offset.align_to(field_align.abi);
             align = align.max(field_align);
@@ -382,7 +387,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
             }
 
-            offset = offset.checked_add(field.size, dl)
+            offset = offset.checked_add(field.pref_pos.size, dl)
                 .ok_or(LayoutError::SizeOverflow(ty))?;
         }
 
@@ -424,8 +429,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     (Some((i, field)), None, None) => {
                         // Field fills the struct and it has a scalar or scalar pair ABI.
                         if offsets[i].bytes() == 0 &&
-                           align.abi == field.align.abi &&
-                           size == field.size {
+                           align.abi == field.pref_pos.align.abi &&
+                           size == field.pref_pos.size {
                             match field.abi {
                                 // For plain scalars, or vectors of them, we can't unpack
                                 // newtypes for `#[repr(C)]`, as that affects C ABIs.
@@ -467,8 +472,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         };
                         if offsets[i] == pair_offsets[0] &&
                            offsets[j] == pair_offsets[1] &&
-                           align == pair.align &&
-                           size == pair.size {
+                           align == pair.pref_pos.align &&
+                           size == pair.pref_pos.size {
                             // We can use `ScalarPair` only when it matches our
                             // already computed layout (including `#[repr(C)]`).
                             abi = pair.abi;
@@ -484,6 +489,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             abi = Abi::Uninhabited;
         }
 
+        let pref_pos = LayoutPositionPref::new(size, align);
+
         Ok(LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Arbitrary {
@@ -492,8 +499,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             },
             abi,
             largest_niche,
-            align,
-            size
+            pref_pos
         })
     }
 
@@ -555,8 +561,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     fields: FieldPlacement::Union(0),
                     abi: Abi::Uninhabited,
                     largest_niche: None,
-                    align: dl.i8_align,
-                    size: Size::ZERO
+                    pref_pos: LayoutPositionPref::new(Size::ZERO, dl.i8_align)
                 })
             }
 
@@ -604,7 +609,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                 let count = count.try_eval_usize(tcx, param_env).ok_or(LayoutError::Unknown(ty))?;
                 let element = self.layout_of(element)?;
-                let size = element.size.checked_mul(count, dl)
+                let pref_pos = element.pref_pos.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 
                 let abi = if count != 0 && ty.conservative_is_privately_uninhabited(tcx) {
@@ -622,13 +627,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
-                        stride: element.size,
+                        stride: element.pref_pos.size,
                         count
                     },
                     abi,
                     largest_niche,
-                    align: element.align,
-                    size
+                    pref_pos
                 })
             }
             ty::Slice(element) => {
@@ -636,13 +640,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
-                        stride: element.size,
+                        stride: element.pref_pos.stride(),
                         count: 0
                     },
                     abi: Abi::Aggregate { sized: false },
                     largest_niche: None,
-                    align: element.align,
-                    size: Size::ZERO
+                    pref_pos: LayoutPositionPref::new(Size::ZERO, element.pref_pos.align)
                 })
             }
             ty::Str => {
@@ -654,8 +657,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     },
                     abi: Abi::Aggregate { sized: false },
                     largest_niche: None,
-                    align: dl.i8_align,
-                    size: Size::ZERO
+                    pref_pos: LayoutPositionPref::new(Size::ZERO, dl.i8_align)
                 })
             }
 
@@ -707,15 +709,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                                 ty, element.ty));
                     }
                 };
-                let size = element.size.checked_mul(count, dl)
+                let vec_pos = element.pref_pos.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
-                let align = dl.vector_align(size);
-                let size = size.align_to(align.abi);
+                let align = dl.vector_align(vec_pos.size);
+                let pref_pos = vec_pos.stride_to(align.abi);
 
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
-                        stride: element.size,
+                        stride: element.pref_pos.stride(),
                         count
                     },
                     abi: Abi::Vector {
@@ -723,8 +725,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         count
                     },
                     largest_niche: element.largest_niche.clone(),
-                    size,
-                    align,
+                    pref_pos
                 })
             }
 
@@ -758,7 +759,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     let index = VariantIdx::new(0);
                     for field in &variants[index] {
                         assert!(!field.is_unsized());
-                        align = align.max(field.align);
+                        align = align.max(field.pref_pos.align);
 
                         // If all non-ZST fields have the same ABI, forward this ABI
                         if optimize && !field.is_zst() {
@@ -790,20 +791,21 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             }
                         }
 
-                        size = cmp::max(size, field.size);
+                        size = cmp::max(size, field.pref_pos.size);
                     }
 
                     if let Some(pack) = def.repr.pack {
                         align = align.min(AbiAndPrefAlign::new(pack));
                     }
 
+                    let pref_pos = LayoutPositionPref::new(size, align).strided();
+
                     return Ok(tcx.intern_layout(LayoutDetails {
                         variants: Variants::Single { index },
                         fields: FieldPlacement::Union(variants[index].len()),
                         abi,
                         largest_niche: None,
-                        align,
-                        size: size.align_to(align.abi)
+                        pref_pos
                     }));
                 }
 
@@ -967,13 +969,16 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     &def.repr, StructKind::AlwaysSized)?;
                                 st.variants = Variants::Single { index: j };
 
-                                align = align.max(st.align);
+                                align = align.max(st.pref_pos.align);
 
                                 Ok(st)
                             }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                             let offset = st[i].fields.offset(field_index) + niche.offset;
-                            let size = st[i].size;
+                            let size = st[i].pref_pos.size;
+
+                            let pref_pos =
+                                LayoutPositionPref::new(size, align);
 
                             let mut abi = match st[i].abi {
                                 Abi::Scalar(_) => Abi::Scalar(niche_scalar.clone()),
@@ -1023,8 +1028,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 },
                                 abi,
                                 largest_niche,
-                                size,
-                                align,
+                                pref_pos,
                             }));
                         }
                     }
@@ -1053,8 +1057,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 assert!(min <= max, "discriminant range is {}...{}", min, max);
                 let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
 
-                let mut align = dl.aggregate_align;
-                let mut size = Size::ZERO;
+                let mut pref_pos = LayoutPositionPref::new(Size::ZERO, dl.aggregate_align);
 
                 // We're interested in the smallest alignment, so start large.
                 let mut start_align = Align::from_bytes(256).unwrap();
@@ -1069,7 +1072,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 if def.repr.c() {
                     for fields in &variants {
                         for field in fields {
-                            prefix_align = prefix_align.max(field.align.abi);
+                            prefix_align = prefix_align.max(field.pref_pos.align.abi);
                         }
                     }
                 }
@@ -1082,20 +1085,19 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
                     for field in st.fields.index_by_increasing_offset().map(|j| field_layouts[j]) {
-                        if !field.is_zst() || field.align.abi.bytes() != 1 {
-                            start_align = start_align.min(field.align.abi);
+                        if !field.is_zst() || field.pref_pos.align.abi.bytes() != 1 {
+                            start_align = start_align.min(field.pref_pos.align.abi);
                             break;
                         }
                     }
-                    size = cmp::max(size, st.size);
-                    align = align.max(st.align);
+                    pref_pos = pref_pos.max(st.pref_pos);
                     Ok(st)
                 }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                 // Align the maximum variant size to the largest alignment.
-                size = size.align_to(align.abi);
+                pref_pos = pref_pos.strided();
 
-                if size.bytes() >= dl.obj_size_bound() {
+                if pref_pos.size.bytes() >= dl.obj_size_bound() {
                     return Err(LayoutError::SizeOverflow(ty));
                 }
 
@@ -1150,8 +1152,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                     }
                                 }
                                 // We might be making the struct larger.
-                                if variant.size <= old_ity_size {
-                                    variant.size = new_ity_size;
+                                if variant.pref_pos.size <= old_ity_size {
+                                    variant.pref_pos.size = new_ity_size;
                                 }
                             }
                             _ => bug!()
@@ -1165,7 +1167,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     valid_range: (min as u128 & tag_mask)..=(max as u128 & tag_mask),
                 };
                 let mut abi = Abi::Aggregate { sized: true };
-                if tag.value.size(dl) == size {
+                if tag.value.size(dl) == pref_pos.size {
                     abi = Abi::Scalar(tag.clone());
                 } else {
                     // Try to use a ScalarPair for all tagged enums.
@@ -1221,8 +1223,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         };
                         if pair_offsets[0] == Size::ZERO &&
                             pair_offsets[1] == *offset &&
-                            align == pair.align &&
-                            size == pair.size {
+                            pref_pos == pair.pref_pos {
                             // We can use `ScalarPair` only when it matches our
                             // already computed layout (including `#[repr(C)]`).
                             abi = pair.abi;
@@ -1249,8 +1250,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     },
                     largest_niche,
                     abi,
-                    align,
-                    size
+                    pref_pos
                 })
             }
 
@@ -1448,7 +1448,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             StructKind::AlwaysSized,
         )?;
 
-        let (prefix_size, prefix_align) = (prefix.size, prefix.align);
+        let prefix_pref_pos = prefix.pref_pos;
 
         // Split the prefix layout into the "outer" fields (upvars and
         // discriminant) and the "promoted" fields. Promoted fields will
@@ -1487,8 +1487,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             _ => bug!(),
         };
 
-        let mut size = prefix.size;
-        let mut align = prefix.align;
+        let mut pref_pos = prefix.pref_pos;
         let variants = info.variant_fields.iter_enumerated().map(|(index, variant_fields)| {
             // Only include overlap-eligible fields when we compute our variant layout.
             let variant_only_tys = variant_fields
@@ -1509,7 +1508,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     .map(|ty| self.layout_of(ty))
                     .collect::<Result<Vec<_>, _>>()?,
                 &ReprOptions::default(),
-                StructKind::Prefixed(prefix_size, prefix_align.abi))?;
+                StructKind::Prefixed(prefix_pref_pos.size, prefix_pref_pos.align.abi))?;
             variant.variants = Variants::Single { index };
 
             let (offsets, memory_index) = match variant.fields {
@@ -1558,12 +1557,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 memory_index: combined_memory_index,
             };
 
-            size = size.max(variant.size);
-            align = align.max(variant.align);
+            pref_pos = pref_pos.max(variant.pref_pos);
             Ok(variant)
         }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
-        size = size.align_to(align.abi);
+        // Align the size to the alignment.
+        pref_pos = pref_pos.strided();
 
         let abi = if prefix.abi.is_uninhabited() ||
                      variants.iter().all(|v| v.abi.is_uninhabited()) {
@@ -1582,8 +1581,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             fields: outer_fields,
             abi,
             largest_niche: prefix.largest_niche,
-            size,
-            align,
+            pref_pos,
         });
         debug!("generator layout ({:?}): {:#?}", ty, layout);
         Ok(layout)
@@ -1616,8 +1614,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             let type_desc = format!("{:?}", layout.ty);
             self.tcx.sess.code_stats.record_type_size(kind,
                                                       type_desc,
-                                                      layout.align.abi,
-                                                      layout.size,
+                                                      layout.pref_pos.align.abi,
+                                                      layout.pref_pos.size,
                                                       packed,
                                                       opt_discr_size,
                                                       variants);
@@ -1655,15 +1653,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                     Ok(field_layout) => {
                         let offset = layout.fields.offset(i);
-                        let field_end = offset + field_layout.size;
+                        let field_end = offset + field_layout.pref_pos.size;
                         if min_size < field_end {
                             min_size = field_end;
                         }
                         session::FieldInfo {
                             name: name.to_string(),
                             offset: offset.bytes(),
-                            size: field_layout.size.bytes(),
-                            align: field_layout.align.abi.bytes(),
+                            size: field_layout.pref_pos.size.bytes(),
+                            align: field_layout.pref_pos.align.abi.bytes(),
                         }
                     }
                 }
@@ -1676,9 +1674,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 } else {
                     session::SizeKind::Exact
                 },
-                align: layout.align.abi.bytes(),
+                align: layout.pref_pos.align.abi.bytes(),
                 size: if min_size.bytes() == 0 {
-                    layout.size.bytes()
+                    layout.pref_pos.size.bytes()
                 } else {
                     min_size.bytes()
                 },
@@ -1759,7 +1757,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         // First try computing a static layout.
         let err = match tcx.layout_of(param_env.and(ty)) {
             Ok(layout) => {
-                return Ok(SizeSkeleton::Known(layout.size));
+                return Ok(SizeSkeleton::Known(layout.pref_pos.size));
             }
             Err(err) => err
         };
@@ -2055,8 +2053,7 @@ where
                     fields: FieldPlacement::Union(fields),
                     abi: Abi::Uninhabited,
                     largest_niche: None,
-                    align: tcx.data_layout.i8_align,
-                    size: Size::ZERO
+                    pref_pos: LayoutPositionPref::new(Size::ZERO, tcx.data_layout.i8_align)
                 })
             }
 
@@ -2211,8 +2208,8 @@ where
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 cx.layout_of(mt.ty).to_result().ok()
                     .map(|layout| PointeeInfo {
-                        size: layout.size,
-                        align: layout.align.abi,
+                        size: layout.pref_pos.size,
+                        align: layout.pref_pos.align.abi,
                         safe: None,
                     })
             }
@@ -2250,8 +2247,8 @@ where
 
                 cx.layout_of(ty).to_result().ok()
                     .map(|layout| PointeeInfo {
-                        size: layout.size,
-                        align: layout.align.abi,
+                        size: layout.pref_pos.size,
+                        align: layout.pref_pos.align.abi,
                         safe: Some(kind),
                     })
             }
@@ -2298,7 +2295,7 @@ where
                             let field = variant.field(cx, i);
                             result = field.to_result().ok()
                                 .and_then(|field| {
-                                    if ptr_end <= field_start + field.size {
+                                    if ptr_end <= field_start + field.pref_pos.size {
                                         // We found the right field, look inside it.
                                         field.pointee_info_at(cx, offset - field_start)
                                     } else {
@@ -2443,8 +2440,7 @@ impl_stable_hash_for!(struct crate::ty::layout::LayoutDetails {
     fields,
     abi,
     largest_niche,
-    size,
-    align
+    pref_pos
 });
 
 impl_stable_hash_for!(enum crate::ty::layout::Integer {
@@ -2465,6 +2461,11 @@ impl_stable_hash_for!(enum crate::ty::layout::Primitive {
 impl_stable_hash_for!(struct crate::ty::layout::AbiAndPrefAlign {
     abi,
     pref
+});
+
+impl_stable_hash_for!(struct crate::ty::layout::LayoutPositionPref {
+    size,
+    align
 });
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Align {
@@ -2809,7 +2810,7 @@ where
                     _ => return,
                 }
 
-                let size = arg.layout.size;
+                let size = arg.layout.pref_pos.size;
                 if arg.layout.is_unsized() || size > Pointer.size(cx) {
                     arg.make_indirect();
                 } else {

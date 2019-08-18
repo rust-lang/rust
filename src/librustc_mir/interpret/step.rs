@@ -216,7 +216,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self.copy_op(op, first.into())?;
 
                     if length > 1 {
-                        let elem_size = first.layout.size;
+                        let elem_size = first.layout.pref_pos.size;
                         // Copy the rest. This is performance-sensitive code
                         // for big static/const arrays!
                         let rest_ptr = first_ptr.offset(elem_size, self)?;
@@ -242,7 +242,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(src)?;
-                if place.layout.size.bytes() > 0 {
+                if place.layout.pref_pos.size.bytes() > 0 {
                     // definitely not a ZST
                     assert!(place.ptr.is_ptr(), "non-ZST places should be normalized to `Pointer`");
                 }
@@ -260,7 +260,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         "SizeOf nullary MIR operator called for unsized type");
                 let size = self.pointer_size();
                 self.write_scalar(
-                    Scalar::from_uint(layout.size.bytes(), size),
+                    Scalar::from_uint(layout.pref_pos.size.bytes(), size),
                     dest,
                 )?;
             }
@@ -273,7 +273,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Discriminant(ref place) => {
                 let op = self.eval_place_to_op(place, None)?;
                 let discr_val = self.read_discriminant(op)?.0;
-                let size = dest.layout.size;
+                let size = dest.layout.pref_pos.size;
                 self.write_scalar(Scalar::from_uint(discr_val, size), dest)?;
             }
         }
