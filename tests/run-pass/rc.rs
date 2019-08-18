@@ -1,4 +1,6 @@
 #![feature(weak_into_raw)]
+#![feature(new_uninit)]
+#![feature(get_mut_unchecked)]
 
 use std::cell::{Cell, RefCell};
 use std::rc::{Rc, Weak};
@@ -102,6 +104,33 @@ fn weak_from_raw() {
     assert!(Weak::upgrade(&unsafe { Weak::from_raw(raw_2) }).is_none());
 }
 
+fn rc_uninit() {
+    let mut five = Rc::<Box<u32>>::new_uninit();
+    let five = unsafe {
+        // Deferred initialization:
+        Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(Box::new(5));
+        five.assume_init()
+    };
+    assert_eq!(**five, 5)
+}
+
+fn rc_uninit_slice() {
+    let mut values = Rc::<[Box<usize>]>::new_uninit_slice(3);
+
+    let values = unsafe {
+        // Deferred initialization:
+        Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(Box::new(0));
+        Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(Box::new(1));
+        Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(Box::new(2));
+
+        values.assume_init()
+    };
+
+    for (idx, i) in values.iter().enumerate() {
+        assert_eq!(idx, **i);
+    }
+}
+
 fn main() {
     rc_fat_ptr_eq();
     rc_refcell();
@@ -111,6 +140,8 @@ fn main() {
     rc_from();
     weak_into_raw();
     weak_from_raw();
+    rc_uninit();
+    rc_uninit_slice();
 
     arc();
 }
