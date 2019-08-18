@@ -18,8 +18,8 @@
 //! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
-use crate::core_arch::x86::*;
 use crate::core_arch::simd_llvm::simd_fma;
+use crate::core_arch::x86::*;
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
