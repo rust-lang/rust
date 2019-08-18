@@ -11,7 +11,7 @@ use std::ptr;
 use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
-use rustc::ty::layout::{Align, TargetDataLayout, Size, HasDataLayout};
+use rustc::ty::layout::{Align, MemoryPosition, TargetDataLayout, Size, HasDataLayout};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use syntax::ast::Mutability;
@@ -165,11 +165,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     pub fn allocate(
         &mut self,
-        size: Size,
-        align: Align,
+        mem_pos: MemoryPosition,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
-        let alloc = Allocation::undef(size, align);
+        let alloc = Allocation::undef(mem_pos.size, mem_pos.align);
         self.allocate_with(alloc, kind)
     }
 
@@ -196,9 +195,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn reallocate(
         &mut self,
         ptr: Pointer<M::PointerTag>,
-        old_size_and_align: Option<(Size, Align)>,
-        new_size: Size,
-        new_align: Align,
+        old_mem_pos: Option<MemoryPosition>,
+        new_mem_pos: MemoryPosition,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
         if ptr.offset.bytes() != 0 {
@@ -207,18 +205,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
-        let new_ptr = self.allocate(new_size, new_align, kind);
-        let old_size = match old_size_and_align {
-            Some((size, _align)) => size,
+        let new_ptr = self.allocate(new_mem_pos, kind);
+        let old_size = match old_mem_pos {
+            Some(old_mem_pos) => old_mem_pos.size,
             None => self.get_raw(ptr.alloc_id)?.size,
         };
         self.copy(
             ptr,
             new_ptr,
-            old_size.min(new_size),
+            old_size.min(new_mem_pos.size),
             /*nonoverlapping*/ true,
         )?;
-        self.deallocate(ptr, old_size_and_align, kind)?;
+        self.deallocate(ptr, old_mem_pos, kind)?;
 
         Ok(new_ptr)
     }
@@ -237,7 +235,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn deallocate(
         &mut self,
         ptr: Pointer<M::PointerTag>,
-        old_size_and_align: Option<(Size, Align)>,
+        old_mem_pos: Option<MemoryPosition>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> InterpResult<'tcx> {
         trace!("deallocating: {}", ptr.alloc_id);
@@ -270,7 +268,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 format!("{:?}", kind),
             ))
         }
-        if let Some((size, align)) = old_size_and_align {
+        if let Some(MemoryPosition {size, align}) = old_mem_pos {
             if size != alloc.size || align != alloc.align {
                 let bytes = alloc.size;
                 throw_unsup!(IncorrectAllocationInformation(size, bytes, align, alloc.align))

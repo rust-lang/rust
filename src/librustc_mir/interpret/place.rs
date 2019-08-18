@@ -993,7 +993,7 @@ where
                         let mem_pos = self.mem_pos_of(meta, local_layout)?
                             .expect("Cannot allocate for non-dyn-sized type");
                         let (size, align) = (mem_pos.size, mem_pos.align);
-                        let ptr = self.memory.allocate(size, align, MemoryKind::Stack);
+                        let ptr = self.memory.allocate(mem_pos, MemoryKind::Stack);
                         let mplace = MemPlace { ptr: ptr.into(), align, meta };
                         if let Some(value) = old_val {
                             // Preserve old value.
@@ -1030,7 +1030,7 @@ where
         layout: TyLayout<'tcx>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
-        let ptr = self.memory.allocate(layout.pref_pos.size, layout.pref_pos.align.abi, kind);
+        let ptr = self.memory.allocate(layout.pref_pos.mem_pos(), kind);
         MPlaceTy::from_aligned_ptr(ptr, layout)
     }
 

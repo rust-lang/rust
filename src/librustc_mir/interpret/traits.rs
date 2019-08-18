@@ -47,15 +47,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let size = layout.pref_pos.size.bytes();
         let align = layout.pref_pos.align.abi.bytes();
 
-        let ptr_pref_pos = self.pointer_pos();
+        let ptr_mem_pos = self.tcx.data_layout.pointer_pos.mem_pos();
 
         // /////////////////////////////////////////////////////////////////////////////////////////
         // If you touch this code, be sure to also make the corresponding changes to
         // `get_vtable` in rust_codegen_llvm/meth.rs
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable = self.memory.allocate(
-            (ptr_pref_pos * (3 + methods.len() as u64)).size,
-            ptr_pref_pos.align.abi,
+            ptr_mem_pos * (3 + methods.len() as u64),
             MemoryKind::Vtable,
         );
         let tcx = &*self.tcx;
@@ -69,12 +68,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable_alloc = self.memory.get_raw_mut(vtable.alloc_id)?;
         vtable_alloc.write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
 
-        let size_ptr = vtable.offset(ptr_pref_pos.size, tcx)?;
+        let size_ptr = vtable.offset(ptr_mem_pos.size, tcx)?;
         vtable_alloc.write_ptr_sized(tcx, size_ptr,
-            Scalar::from_uint(size, ptr_pref_pos.size).into())?;
-        let align_ptr = vtable.offset((ptr_pref_pos * 2).size, tcx)?;
+            Scalar::from_uint(size, ptr_mem_pos.size).into())?;
+        let align_ptr = vtable.offset((ptr_mem_pos * 2).size, tcx)?;
         vtable_alloc.write_ptr_sized(tcx, align_ptr,
-            Scalar::from_uint(align, ptr_pref_pos.size).into())?;
+            Scalar::from_uint(align, ptr_mem_pos.size).into())?;
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
@@ -87,7 +86,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ).ok_or_else(|| err_inval!(TooGeneric))?;
                 let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                 // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
-                let method_ptr = vtable.offset((ptr_pref_pos * (3 + i as u64)).size, tcx)?;
+                let method_ptr = vtable.offset((ptr_mem_pos * (3 + i as u64)).size, tcx)?;
                 self.memory.get_raw_mut(vtable.alloc_id)?
                     .write_ptr_sized(tcx, method_ptr, Scalar::Ptr(fn_ptr).into())?;
             }
