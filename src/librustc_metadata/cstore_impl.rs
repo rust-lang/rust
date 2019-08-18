@@ -426,8 +426,8 @@ impl cstore::CStore {
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
-        if let Some(ref proc_macros) = data.proc_macros {
-            return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
+        if data.is_proc_macro_crate() {
+            return LoadedMacro::ProcMacro(data.get_proc_macro(id.index, sess).ext);
         } else if data.name == sym::proc_macro && data.item_name(id.index) == sym::quote {
             let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
             let kind = SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client }));
@@ -439,7 +439,8 @@ impl cstore::CStore {
         }
 
         let def = data.get_macro(id.index);
-        let macro_full_name = data.def_path(id.index).to_string_friendly(|_| data.imported_name);
+        let macro_full_name = data.def_path(id.index)
+            .to_string_friendly(|_| data.imported_name);
         let source_name = FileName::Macros(macro_full_name);
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
