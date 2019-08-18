@@ -430,8 +430,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     (Some((i, field)), None, None) => {
                         // Field fills the struct and it has a scalar or scalar pair ABI.
                         if offsets[i].bytes() == 0 &&
-                           pref_pos.size == field.pref_pos.size &&
-                           pref_pos.align.abi == field.pref_pos.align.abi {
+                           pref_pos.mem_pos() == field.pref_pos.mem_pos() {
                             match field.abi {
                                 // For plain scalars, or vectors of them, we can't unpack
                                 // newtypes for `#[repr(C)]`, as that affects C ABIs.
@@ -625,7 +624,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
-                        stride: element.pref_pos.size,
+                        stride: element.pref_pos.stride(),
                         count
                     },
                     abi,
@@ -741,23 +740,23 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         bug!("union cannot be packed and aligned");
                     }
 
-                    let mut align = if def.repr.pack.is_some() {
+                    let base_align = if def.repr.pack.is_some() {
                         dl.i8_align
                     } else {
                         dl.aggregate_align
                     };
 
+                    let mut pref_pos = LayoutPositionPref::new(Size::ZERO, base_align);
+
                     if let Some(repr_align) = def.repr.align {
-                        align = align.max(AbiAndPrefAlign::new(repr_align));
+                        pref_pos = pref_pos.align_to(AbiAndPrefAlign::new(repr_align));
                     }
 
                     let optimize = !def.repr.inhibit_union_abi_opt();
-                    let mut size = Size::ZERO;
                     let mut abi = Abi::Aggregate { sized: true };
                     let index = VariantIdx::new(0);
                     for field in &variants[index] {
                         assert!(!field.is_unsized());
-                        align = align.max(field.pref_pos.align);
 
                         // If all non-ZST fields have the same ABI, forward this ABI
                         if optimize && !field.is_zst() {
@@ -780,7 +779,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 Abi::Aggregate { .. }  => Abi::Aggregate { sized: true },
                             };
 
-                            if size == Size::ZERO {
+                            if pref_pos.size == Size::ZERO {
                                 // first non ZST: initialize 'abi'
                                 abi = field_abi;
                             } else if abi != field_abi  {
@@ -788,15 +787,15 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 abi = Abi::Aggregate { sized: true };
                             }
                         }
-
-                        size = cmp::max(size, field.pref_pos.size);
+                        pref_pos = pref_pos.max(field.pref_pos);
                     }
 
                     if let Some(pack) = def.repr.pack {
-                        align = align.min(AbiAndPrefAlign::new(pack));
+                        pref_pos = pref_pos.pack_to(AbiAndPrefAlign::new(pack));
                     }
 
-                    let pref_pos = LayoutPositionPref::new(size, align).strided();
+                    // preserve stride == size
+                    let pref_pos = pref_pos.strided();
 
                     return Ok(tcx.intern_layout(LayoutDetails {
                         variants: Variants::Single { index },
