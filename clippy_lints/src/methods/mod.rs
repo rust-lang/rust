@@ -18,7 +18,6 @@ use syntax::ast;
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 
-use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
@@ -28,6 +27,7 @@ use crate::utils::{
     snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg,
     span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
+use crate::utils::{paths, span_help_and_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `.unwrap()` calls on `Option`s.
@@ -889,6 +889,24 @@ declare_clippy_lint! {
     "using `.into_iter()` on a reference"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for calls to `map` followed by a `count`.
+    ///
+    /// **Why is this bad?** It looks suspicious. Maybe `map` was confused with `filter`.
+    /// If the `map` call is intentional, this should be rewritten.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// let _ = (0..3).map(|x| x + 2).count();
+    /// ```
+    pub SUSPICIOUS_MAP,
+    complexity,
+    "suspicious usage of map"
+}
+
 declare_lint_pass!(Methods => [
     OPTION_UNWRAP_USED,
     RESULT_UNWRAP_USED,
@@ -927,6 +945,7 @@ declare_lint_pass!(Methods => [
     UNNECESSARY_FILTER_MAP,
     INTO_ITER_ON_ARRAY,
     INTO_ITER_ON_REF,
+    SUSPICIOUS_MAP,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
@@ -972,6 +991,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0]),
             ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
+            ["count", "map"] => lint_suspicious_map(cx, expr),
             _ => {},
         }
 
@@ -2517,6 +2537,16 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_
             Applicability::MachineApplicable,
         );
     }
+}
+
+fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
+    span_help_and_lint(
+        cx,
+        SUSPICIOUS_MAP,
+        expr.span,
+        "this call to `map()` won't have an effect on the call to `count()`",
+        "make sure you did not confuse `map` with `filter`",
+    );
 }
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
