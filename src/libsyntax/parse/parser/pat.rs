@@ -35,60 +35,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// A wrapper around `parse_pat` with some special error handling for the
-    /// "top-level" patterns in a match arm, `for` loop, `let`, &c. (in contrast
-    /// to subpatterns within such).
     pub(super) fn parse_top_level_pat(&mut self) -> PResult<'a, P<Pat>> {
         let pat = self.parse_pat(None)?;
         self.maybe_recover_unexpected_comma(pat.span, true)?;
         Ok(pat)
-    }
-
-    fn maybe_recover_unexpected_comma(&mut self, lo: Span, top_level: bool) -> PResult<'a, ()> {
-        if !top_level || self.token != token::Comma {
-            return Ok(());
-        }
-
-        // An unexpected comma after a top-level pattern is a clue that the
-        // user (perhaps more accustomed to some other language) forgot the
-        // parentheses in what should have been a tuple pattern; return a
-        // suggestion-enhanced error here rather than choking on the comma later.
-        let comma_span = self.token.span;
-        self.bump();
-        if let Err(mut err) = self.skip_pat_list() {
-            // We didn't expect this to work anyway; we just wanted to advance to the
-            // end of the comma-sequence so we know the span to suggest parenthesizing.
-            err.cancel();
-        }
-        let seq_span = lo.to(self.prev_span);
-        let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
-        if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
-            err.span_suggestion(
-                seq_span,
-                "try adding parentheses to match on a tuple..",
-                format!("({})", seq_snippet),
-                Applicability::MachineApplicable
-            )
-            .span_suggestion(
-                seq_span,
-                "..or a vertical bar to match on multiple alternatives",
-                format!("{}", seq_snippet.replace(",", " |")),
-                Applicability::MachineApplicable
-            );
-        }
-        Err(err)
-    }
-
-    /// Parse and throw away a parentesized comma separated
-    /// sequence of patterns until `)` is reached.
-    fn skip_pat_list(&mut self) -> PResult<'a, ()> {
-        while !self.check(&token::CloseDelim(token::Paren)) {
-            self.parse_pat(None)?;
-            if !self.eat(&token::Comma) {
-                return Ok(())
-            }
-        }
-        Ok(())
     }
 
     /// Parses a pattern, that may be a or-pattern (e.g. `Foo | Bar` in `Some(Foo | Bar)`).
@@ -149,6 +99,55 @@ impl<'a> Parser<'a> {
                 Applicability::MachineApplicable
             )
             .emit();
+    }
+
+    /// Some special error handling for the "top-level" patterns in a match arm,
+    /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
+    fn maybe_recover_unexpected_comma(&mut self, lo: Span, top_level: bool) -> PResult<'a, ()> {
+        if !top_level || self.token != token::Comma {
+            return Ok(());
+        }
+
+        // An unexpected comma after a top-level pattern is a clue that the
+        // user (perhaps more accustomed to some other language) forgot the
+        // parentheses in what should have been a tuple pattern; return a
+        // suggestion-enhanced error here rather than choking on the comma later.
+        let comma_span = self.token.span;
+        self.bump();
+        if let Err(mut err) = self.skip_pat_list() {
+            // We didn't expect this to work anyway; we just wanted to advance to the
+            // end of the comma-sequence so we know the span to suggest parenthesizing.
+            err.cancel();
+        }
+        let seq_span = lo.to(self.prev_span);
+        let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
+        if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
+            err.span_suggestion(
+                seq_span,
+                "try adding parentheses to match on a tuple..",
+                format!("({})", seq_snippet),
+                Applicability::MachineApplicable
+            )
+            .span_suggestion(
+                seq_span,
+                "..or a vertical bar to match on multiple alternatives",
+                format!("{}", seq_snippet.replace(",", " |")),
+                Applicability::MachineApplicable
+            );
+        }
+        Err(err)
+    }
+
+    /// Parse and throw away a parentesized comma separated
+    /// sequence of patterns until `)` is reached.
+    fn skip_pat_list(&mut self) -> PResult<'a, ()> {
+        while !self.check(&token::CloseDelim(token::Paren)) {
+            self.parse_pat(None)?;
+            if !self.eat(&token::Comma) {
+                return Ok(())
+            }
+        }
+        Ok(())
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
