@@ -1864,7 +1864,7 @@ pub const ALL_LINTS: [Lint; 310] = [
     },
     Lint {
         name: "type_repetition_in_bounds",
-        group: "complexity",
+        group: "pedantic",
         desc: "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`",
         deprecation: None,
         module: "trait_bounds",
