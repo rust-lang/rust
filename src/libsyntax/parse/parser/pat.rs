@@ -57,38 +57,43 @@ impl<'a> Parser<'a> {
     /// to subpatterns within such).
     pub(super) fn parse_top_level_pat(&mut self) -> PResult<'a, P<Pat>> {
         let pat = self.parse_pat(None)?;
-        if self.token == token::Comma {
-            // An unexpected comma after a top-level pattern is a clue that the
-            // user (perhaps more accustomed to some other language) forgot the
-            // parentheses in what should have been a tuple pattern; return a
-            // suggestion-enhanced error here rather than choking on the comma
-            // later.
-            let comma_span = self.token.span;
-            self.bump();
-            if let Err(mut err) = self.skip_pat_list() {
-                // We didn't expect this to work anyway; we just wanted
-                // to advance to the end of the comma-sequence so we know
-                // the span to suggest parenthesizing
-                err.cancel();
-            }
-            let seq_span = pat.span.to(self.prev_span);
-            let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
-            if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
-                err.span_suggestion(
-                    seq_span,
-                    "try adding parentheses to match on a tuple..",
-                    format!("({})", seq_snippet),
-                    Applicability::MachineApplicable
-                ).span_suggestion(
-                    seq_span,
-                    "..or a vertical bar to match on multiple alternatives",
-                    format!("{}", seq_snippet.replace(",", " |")),
-                    Applicability::MachineApplicable
-                );
-            }
-            return Err(err);
-        }
+        self.maybe_recover_unexpected_comma(pat.span)?;
         Ok(pat)
+    }
+
+    fn maybe_recover_unexpected_comma(&mut self, lo: Span) -> PResult<'a, ()> {
+        if self.token != token::Comma {
+            return Ok(());
+        }
+
+        // An unexpected comma after a top-level pattern is a clue that the
+        // user (perhaps more accustomed to some other language) forgot the
+        // parentheses in what should have been a tuple pattern; return a
+        // suggestion-enhanced error here rather than choking on the comma later.
+        let comma_span = self.token.span;
+        self.bump();
+        if let Err(mut err) = self.skip_pat_list() {
+            // We didn't expect this to work anyway; we just wanted to advance to the
+            // end of the comma-sequence so we know the span to suggest parenthesizing.
+            err.cancel();
+        }
+        let seq_span = lo.to(self.prev_span);
+        let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
+        if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
+            err.span_suggestion(
+                seq_span,
+                "try adding parentheses to match on a tuple..",
+                format!("({})", seq_snippet),
+                Applicability::MachineApplicable
+            )
+            .span_suggestion(
+                seq_span,
+                "..or a vertical bar to match on multiple alternatives",
+                format!("{}", seq_snippet.replace(",", " |")),
+                Applicability::MachineApplicable
+            );
+        }
+        Err(err)
     }
 
     /// Parse and throw away a parentesized comma separated
