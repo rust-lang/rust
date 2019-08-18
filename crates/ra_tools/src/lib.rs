@@ -1,3 +1,5 @@
+mod codegen;
+
 use std::{
     collections::HashMap,
     error::Error,
