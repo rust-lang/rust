@@ -889,6 +889,10 @@ declare_clippy_lint! {
     /// ```rust
     /// let _ = [1, 2, 3].into_iter().map(|x| *x).collect::<Vec<u32>>();
     /// ```
+    /// Could be written as:
+    /// ```rust
+    /// let _ = [1, 2, 3].iter().map(|x| *x).collect::<Vec<u32>>();
+    /// ```
     pub INTO_ITER_ON_ARRAY,
     correctness,
     "using `.into_iter()` on an array"

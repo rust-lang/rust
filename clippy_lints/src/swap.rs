@@ -52,6 +52,12 @@ declare_clippy_lint! {
     /// a = b;
     /// b = a;
     /// ```
+    /// Could be written as:
+    /// ```rust
+    /// # let mut a = 1;
+    /// # let mut b = 2;
+    /// std::mem::swap(&mut a, &mut b);
+    /// ```
     pub ALMOST_SWAPPED,
     correctness,
     "`foo = bar; bar = foo` sequence"
