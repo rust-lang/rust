@@ -15,5 +15,11 @@ alloc_system = { path = "./alloc_system" }
 rustc-std-workspace-core = { path = "./sysroot_src/src/tools/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./rustc-std-workspace-alloc" }
 
+[profile.dev]
+# FIXME On macOS statics and promoted constants have the wrong alignment. This causes a debug
+# assertion in `copy_nonoverlapping` to panic.
+debug-assertions = false
+
 [profile.release]
 debug = true
+debug-assertions = false
