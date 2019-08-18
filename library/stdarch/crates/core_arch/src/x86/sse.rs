@@ -3437,7 +3437,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    pub unsafe fn test_mm_cvtsi32_ss() {
+    unsafe fn test_mm_cvtsi32_ss() {
         let inputs = &[
             (4555i32, 4555.0f32),
             (322223333, 322223330.0),
@@ -3455,7 +3455,7 @@ mod tests {
     }
 
     #[simd_test(enable = "sse")]
-    pub unsafe fn test_mm_cvtss_f32() {
+    unsafe fn test_mm_cvtss_f32() {
         let a = _mm_setr_ps(312.0134, 5.0, 6.0, 7.0);
         assert_eq!(_mm_cvtss_f32(a), 312.0134);
     }
