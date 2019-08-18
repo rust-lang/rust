@@ -37,7 +37,6 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// # Examples
 ///
 /// ```
-/// use std::collections::HashSet;
 /// // Type inference lets us omit an explicit type signature (which
 /// // would be `HashSet<String>` in this example).
 /// let mut books = HashSet::new();
@@ -68,7 +67,6 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// future be implied by [`Eq`].
 ///
 /// ```
-/// use std::collections::HashSet;
 /// #[derive(Hash, Eq, PartialEq, Debug)]
 /// struct Viking {
 ///     name: String,
@@ -91,8 +89,6 @@ use super::map::{self, HashMap, Keys, RandomState};
 /// A `HashSet` with fixed list of elements can be initialized from an array:
 ///
 /// ```
-/// use std::collections::HashSet;
-///
 /// fn main() {
 ///     let viking_names: HashSet<&'static str> =
 ///         [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
@@ -121,7 +117,6 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let set: HashSet<i32> = HashSet::new();
     /// ```
     #[inline]
@@ -138,7 +133,6 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let set: HashSet<i32> = HashSet::with_capacity(10);
     /// assert!(set.capacity() >= 10);
     /// ```
@@ -155,7 +149,6 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let set: HashSet<i32> = HashSet::with_capacity(100);
     /// assert!(set.capacity() >= 100);
     /// ```
@@ -171,7 +164,6 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let mut set = HashSet::new();
     /// set.insert("a");
     /// set.insert("b");
@@ -192,8 +184,6 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut v = HashSet::new();
     /// assert_eq!(v.len(), 0);
     /// v.insert(1);
@@ -210,8 +200,6 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut v = HashSet::new();
     /// assert!(v.is_empty());
     /// v.insert(1);
@@ -228,8 +216,6 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert!(!set.is_empty());
     ///
@@ -251,8 +237,6 @@ impl<T, S> HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut v = HashSet::new();
     /// v.insert(1);
     /// v.clear();
@@ -282,7 +266,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///
     /// let s = RandomState::new();
@@ -309,7 +292,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///
     /// let s = RandomState::new();
@@ -329,7 +311,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///
     /// let hasher = RandomState::new();
@@ -353,7 +334,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let mut set: HashSet<i32> = HashSet::new();
     /// set.reserve(10);
     /// assert!(set.capacity() >= 10);
@@ -377,7 +357,6 @@ impl<T, S> HashSet<T, S>
     ///
     /// ```
     /// #![feature(try_reserve)]
-    /// use std::collections::HashSet;
     /// let mut set: HashSet<i32> = HashSet::new();
     /// set.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
@@ -394,8 +373,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::with_capacity(100);
     /// set.insert(1);
     /// set.insert(2);
@@ -420,8 +397,6 @@ impl<T, S> HashSet<T, S>
     ///
     /// ```
     /// #![feature(shrink_to)]
-    /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::with_capacity(100);
     /// set.insert(1);
     /// set.insert(2);
@@ -443,7 +418,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
     ///
@@ -475,7 +449,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
     ///
@@ -504,7 +477,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
     ///
@@ -538,7 +510,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
     ///
@@ -573,8 +544,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
@@ -600,8 +569,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
@@ -626,8 +593,6 @@ impl<T, S> HashSet<T, S>
     /// ```
     /// #![feature(hash_set_entry)]
     ///
-    /// use std::collections::HashSet;
-    ///
     /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.len(), 3);
     /// assert_eq!(set.get_or_insert(2), &2);
@@ -649,8 +614,6 @@ impl<T, S> HashSet<T, S>
     ///
     /// ```
     /// #![feature(hash_set_entry)]
-    ///
-    /// use std::collections::HashSet;
     ///
     /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
     ///     .iter().map(|&pet| pet.to_owned()).collect();
@@ -680,8 +643,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let mut b = HashSet::new();
     ///
@@ -706,8 +667,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let sup: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let mut set = HashSet::new();
     ///
@@ -732,8 +691,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let sub: HashSet<_> = [1, 2].iter().cloned().collect();
     /// let mut set = HashSet::new();
     ///
@@ -761,8 +718,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::new();
     ///
     /// assert_eq!(set.insert(2), true);
@@ -781,8 +736,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::new();
     /// set.insert(Vec::<i32>::new());
     ///
@@ -812,8 +765,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut set = HashSet::new();
     ///
     /// set.insert(2);
@@ -841,8 +792,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
@@ -866,8 +815,6 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let xs = [1,2,3,4,5,6];
     /// let mut set: HashSet<i32> = xs.iter().cloned().collect();
     /// set.retain(|&k| k % 2 == 0);
@@ -971,8 +918,6 @@ impl<T, S> BitOr<&HashSet<T, S>> for &HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
     /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
     ///
@@ -1003,8 +948,6 @@ impl<T, S> BitAnd<&HashSet<T, S>> for &HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
     /// let b: HashSet<_> = vec![2, 3, 4].into_iter().collect();
     ///
@@ -1035,8 +978,6 @@ impl<T, S> BitXor<&HashSet<T, S>> for &HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
     /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
     ///
@@ -1067,8 +1008,6 @@ impl<T, S> Sub<&HashSet<T, S>> for &HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
-    ///
     /// let a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
     /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
     ///
@@ -1200,7 +1139,6 @@ impl<T, S> IntoIterator for HashSet<T, S> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::HashSet;
     /// let mut set = HashSet::new();
     /// set.insert("a".to_string());
     /// set.insert("b".to_string());
