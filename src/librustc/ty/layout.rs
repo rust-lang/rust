@@ -232,7 +232,7 @@ enum StructKind {
     /// A univariant, the last field of which may be coerced to unsized.
     MaybeUnsized,
     /// A univariant, but with a prefix of an arbitrary size & alignment (e.g., enum tag).
-    Prefixed(Size, Align),
+    Prefixed(MemoryPosition),
 }
 
 // Invert a bijective mapping, i.e. `invert(map)[y] = x` if `map[x] = y`.
@@ -291,7 +291,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             bug!("struct cannot be packed and aligned");
         }
 
-        let mut align = if pack.is_some() {
+        let base_align = if pack.is_some() {
             dl.i8_align
         } else {
             dl.aggregate_align
@@ -302,8 +302,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
         let mut optimize = !repr.inhibit_struct_field_reordering_opt();
-        if let StructKind::Prefixed(_, align) = kind {
-            optimize &= align.bytes() == 1;
+        if let StructKind::Prefixed(mem_pos) = kind {
+            optimize &= mem_pos.align.bytes() == 1;
         }
 
         if optimize {
@@ -344,18 +344,17 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         // produce `memory_index` (see `invert_mapping`).
 
 
-        let mut offset = Size::ZERO;
+        let mut offset_pos = LayoutPositionPref::new(Size::ZERO, base_align);
         let mut largest_niche = None;
         let mut largest_niche_available = 0;
 
-        if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
+        if let StructKind::Prefixed(prefix_mem_pos) = kind {
             let prefix_align = if let Some(pack) = pack {
-                prefix_align.min(pack)
+                prefix_mem_pos.align.min(pack)
             } else {
-                prefix_align
+                prefix_mem_pos.align
             };
-            align = align.max(AbiAndPrefAlign::new(prefix_align));
-            offset = prefix_size.align_to(prefix_align);
+            offset_pos = prefix_mem_pos.align_and_stride_to(prefix_align).pref_pos();
         }
 
         for &i in &inverse_memory_index {
@@ -369,37 +368,35 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 sized = false;
             }
 
-            // Invariant: offset < dl.obj_size_bound() <= 1<<61
-            let field_align = if let Some(pack) = pack {
-                field.pref_pos.align.min(AbiAndPrefAlign::new(pack))
+            // Invariant: offset_pos.size < dl.obj_size_bound() <= 1<<61
+            let field_pos = if let Some(pack) = pack {
+                field.pref_pos.pack_to(AbiAndPrefAlign::new(pack))
             } else {
-                field.pref_pos.align
+                field.pref_pos
             };
-            offset = offset.align_to(field_align.abi);
-            align = align.max(field_align);
+            offset_pos = offset_pos.align_and_stride_to(field_pos.align);
 
-            debug!("univariant offset: {:?} field: {:#?}", offset, field);
-            offsets[i as usize] = offset;
+            debug!("univariant offset: {:?} field: {:#?}", offset_pos.size, field);
+            offsets[i as usize] = offset_pos.size;
 
             if let Some(mut niche) = field.largest_niche.clone() {
                 let available = niche.available(dl);
                 if available > largest_niche_available {
                     largest_niche_available = available;
-                    niche.offset += offset;
+                    niche.offset += offset_pos.size;
                     largest_niche = Some(niche);
                 }
             }
 
-            offset = offset.checked_add(field.pref_pos.size, dl)
+            offset_pos = offset_pos.checked_add(field_pos, dl)
                 .ok_or(LayoutError::SizeOverflow(ty))?;
         }
 
         if let Some(repr_align) = repr.align {
-            align = align.max(AbiAndPrefAlign::new(repr_align));
+            offset_pos = offset_pos.align_to(AbiAndPrefAlign::new(repr_align));
         }
 
-        debug!("univariant min_size: {:?}", offset);
-        let min_size = offset;
+        debug!("univariant min_size: {:?}", offset_pos.size);
 
         // As stated above, inverse_memory_index holds field indices by increasing offset.
         // This makes it an already-sorted view of the offsets vec.
@@ -415,11 +412,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             memory_index = inverse_memory_index;
         }
 
-        let size = min_size.align_to(align.abi);
+        // preserve stride == size
+        let pref_pos = offset_pos.strided();
         let mut abi = Abi::Aggregate { sized };
 
         // Unpack newtype ABIs and find scalar pairs.
-        if sized && size.bytes() > 0 {
+        if sized && pref_pos.size.bytes() > 0 {
             // All other fields must be ZSTs, and we need them to all start at 0.
             let mut zst_offsets =
                 offsets.iter().enumerate().filter(|&(i, _)| fields[i].is_zst());
@@ -432,8 +430,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     (Some((i, field)), None, None) => {
                         // Field fills the struct and it has a scalar or scalar pair ABI.
                         if offsets[i].bytes() == 0 &&
-                           align.abi == field.pref_pos.align.abi &&
-                           size == field.pref_pos.size {
+                           pref_pos.size == field.pref_pos.size &&
+                           pref_pos.align.abi == field.pref_pos.align.abi {
                             match field.abi {
                                 // For plain scalars, or vectors of them, we can't unpack
                                 // newtypes for `#[repr(C)]`, as that affects C ABIs.
@@ -475,8 +473,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         };
                         if offsets[i] == pair_offsets[0] &&
                            offsets[j] == pair_offsets[1] &&
-                           align == pair.pref_pos.align &&
-                           size == pair.pref_pos.size {
+                           pref_pos == pair.pref_pos {
                             // We can use `ScalarPair` only when it matches our
                             // already computed layout (including `#[repr(C)]`).
                             abi = pair.abi;
@@ -491,8 +488,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         if sized && fields.iter().any(|f| f.abi.is_uninhabited()) {
             abi = Abi::Uninhabited;
         }
-
-        let pref_pos = LayoutPositionPref::new(size, align);
 
         Ok(LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
@@ -1080,10 +1075,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                 }
 
+                let prefix_mem_pos = MemoryPosition::new(min_ity.size(), prefix_align);
+
                 // Create the set of structs that represent each variant.
                 let mut layout_variants = variants.iter_enumerated().map(|(i, field_layouts)| {
                     let mut st = self.univariant_uninterned(ty, &field_layouts,
-                        &def.repr, StructKind::Prefixed(min_ity.size(), prefix_align))?;
+                        &def.repr, StructKind::Prefixed(prefix_mem_pos))?;
                     st.variants = Variants::Single { index: i };
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
@@ -1451,8 +1448,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             StructKind::AlwaysSized,
         )?;
 
-        let prefix_pref_pos = prefix.pref_pos;
-
         // Split the prefix layout into the "outer" fields (upvars and
         // discriminant) and the "promoted" fields. Promoted fields will
         // get included in each variant that requested them in
@@ -1491,6 +1486,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
 
         let mut pref_pos = prefix.pref_pos;
+        let prefix_mem_pos = pref_pos.mem_pos();
         let variants = info.variant_fields.iter_enumerated().map(|(index, variant_fields)| {
             // Only include overlap-eligible fields when we compute our variant layout.
             let variant_only_tys = variant_fields
@@ -1511,7 +1507,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     .map(|ty| self.layout_of(ty))
                     .collect::<Result<Vec<_>, _>>()?,
                 &ReprOptions::default(),
-                StructKind::Prefixed(prefix_pref_pos.size, prefix_pref_pos.align.abi))?;
+                StructKind::Prefixed(prefix_mem_pos))?;
             variant.variants = Variants::Single { index };
 
             let (offsets, memory_index) = match variant.fields {
