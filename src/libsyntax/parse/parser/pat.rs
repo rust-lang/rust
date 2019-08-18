@@ -90,6 +90,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// We have parsed `||` instead of `|`. Error and suggest `|` instead.
     fn ban_unexpected_or_or(&mut self) {
         self.struct_span_err(self.token.span, "unexpected token `||` after pattern")
             .span_suggestion(
