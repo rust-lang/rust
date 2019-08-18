@@ -9,20 +9,20 @@ use rustc_codegen_ssa::back::archive::{ArchiveBuilder, find_library};
 struct ArchiveConfig<'a> {
     sess: &'a Session,
     dst: PathBuf,
-    src: Option<PathBuf>,
     lib_search_paths: Vec<PathBuf>,
+    use_native_ar: bool,
     use_gnu_style_archive: bool,
 }
 
 #[derive(Debug)]
 enum ArchiveEntry {
     FromArchive { archive_index: usize, entry_index: usize },
-    File(File),
+    File(PathBuf),
 }
 
 pub struct ArArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
-    src_archives: Vec<ar::Archive<File>>,
+    src_archives: Vec<(PathBuf, ar::Archive<File>)>,
     // Don't use `HashMap` here, as the order is important. `rust.metadata.bin` must always be at
     // the end of an archive for linkers to not get confused.
     entries: Vec<(String, ArchiveEntry)>,
@@ -35,14 +35,14 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         let config = ArchiveConfig {
             sess,
             dst: output.to_path_buf(),
-            src: input.map(|p| p.to_path_buf()),
             lib_search_paths: archive_search_paths(sess),
+            use_native_ar: true, // FIXME fix rust-ar to not emit corrupted archive files.
             // FIXME test for linux and System V derivatives instead
             use_gnu_style_archive: !sess.target.target.options.is_like_osx,
         };
 
-        let (src_archives, entries) = if let Some(src) = &config.src {
-            let mut archive = ar::Archive::new(File::open(src).unwrap());
+        let (src_archives, entries) = if let Some(input) = input {
+            let mut archive = ar::Archive::new(File::open(input).unwrap());
             let mut entries = Vec::new();
 
             let mut i = 0;
@@ -55,7 +55,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 i += 1;
             }
 
-            (vec![archive], entries)
+            (vec![(input.to_owned(), archive)], entries)
         } else {
             (vec![], Vec::new())
         };
@@ -83,13 +83,13 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     fn add_file(&mut self, file: &Path) {
         self.entries.push((
             file.file_name().unwrap().to_str().unwrap().to_string(),
-            ArchiveEntry::File(File::open(file).unwrap()),
+            ArchiveEntry::File(file.to_owned()),
         ));
     }
 
     fn add_native_library(&mut self, name: &str) {
         let location = find_library(name, &self.config.lib_search_paths, self.config.sess);
-        self.add_archive(&location, |_| false).unwrap_or_else(|e| {
+        self.add_archive(location.clone(), |_| false).unwrap_or_else(|e| {
             panic!("failed to add native library {}: {}", location.to_string_lossy(), e);
         });
     }
@@ -97,7 +97,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     fn add_rlib(&mut self, rlib: &Path, name: &str, lto: bool, skip_objects: bool) -> std::io::Result<()> {
         let obj_start = name.to_owned();
 
-        self.add_archive(rlib, move |fname: &str| {
+        self.add_archive(rlib.to_owned(), move |fname: &str| {
             // Ignore bytecode/metadata files, no matter the name.
             if fname.ends_with(RLIB_BYTECODE_EXTENSION) || fname == METADATA_FILENAME {
                 return true;
@@ -124,43 +124,66 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn build(mut self) {
-        enum BuilderKind {
-            Bsd(ar::Builder<File>),
-            Gnu(ar::GnuBuilder<File>),
+        use std::process::Command;
+
+        fn add_file_using_ar(archive: &Path, file: &Path) {
+            Command::new("ar")
+                .arg("r") // add or replace file
+                .arg("-c") // silence created file message
+                .arg(archive)
+                .arg(&file)
+                .status()
+                .unwrap();
         }
 
-        let archive_file = File::create(&self.config.dst).unwrap();
-        let mut builder = if self.config.use_gnu_style_archive {
+        enum BuilderKind<'a> {
+            Bsd(ar::Builder<File>),
+            Gnu(ar::GnuBuilder<File>),
+            NativeAr(&'a Path),
+        }
+
+        let mut builder = if self.config.use_native_ar {
+            BuilderKind::NativeAr(&self.config.dst)
+        } else if self.config.use_gnu_style_archive {
             BuilderKind::Gnu(ar::GnuBuilder::new(
-                archive_file,
+                File::create(&self.config.dst).unwrap(),
                 self.entries.iter().map(|(name, _)| name.as_bytes().to_vec()).collect(),
             ))
         } else {
-            BuilderKind::Bsd(ar::Builder::new(archive_file))
+            BuilderKind::Bsd(ar::Builder::new(File::create(&self.config.dst).unwrap()))
         };
 
         // Add all files
         for (entry_name, entry) in self.entries.into_iter() {
             match entry {
                 ArchiveEntry::FromArchive { archive_index, entry_index } => {
-                    let entry = self.src_archives[archive_index].jump_to_entry(entry_index).unwrap();
+                    let (ref src_archive_path, ref mut src_archive) = self.src_archives[archive_index];
+                    let entry = src_archive.jump_to_entry(entry_index).unwrap();
                     let orig_header = entry.header();
 
+                    // FIXME implement clone for `ar::Archive`.
                     let mut header =
                         ar::Header::new(orig_header.identifier().to_vec(), orig_header.size());
                     header.set_mtime(orig_header.mtime());
                     header.set_uid(orig_header.uid());
                     header.set_gid(orig_header.gid());
                     header.set_mode(orig_header.mode());
+
                     match builder {
                         BuilderKind::Bsd(ref mut builder) => builder.append(&header, entry).unwrap(),
                         BuilderKind::Gnu(ref mut builder) => builder.append(&header, entry).unwrap(),
+                        BuilderKind::NativeAr(archive_file) => {
+                            Command::new("ar").arg("x").arg(src_archive_path).arg(&entry_name).status().unwrap();
+                            add_file_using_ar(archive_file, Path::new(&entry_name));
+                            std::fs::remove_file(entry_name).unwrap();
+                        }
                     }
                 }
-                ArchiveEntry::File(mut file) => {
+                ArchiveEntry::File(file) => {
                     match builder {
-                        BuilderKind::Bsd(ref mut builder) => builder.append_file(entry_name.as_bytes(), &mut file).unwrap(),
-                        BuilderKind::Gnu(ref mut builder) => builder.append_file(entry_name.as_bytes(), &mut file).unwrap(),
+                        BuilderKind::Bsd(ref mut builder) => builder.append_file(entry_name.as_bytes(), &mut File::open(file).unwrap()).unwrap(),
+                        BuilderKind::Gnu(ref mut builder) => builder.append_file(entry_name.as_bytes(), &mut File::open(file).unwrap()).unwrap(),
+                        BuilderKind::NativeAr(archive_file) => add_file_using_ar(archive_file, &file),
                     }
                 }
             }
@@ -183,10 +206,10 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
 }
 
 impl<'a> ArArchiveBuilder<'a> {
-    fn add_archive<F>(&mut self, archive: &Path, mut skip: F) -> std::io::Result<()>
+    fn add_archive<F>(&mut self, archive_path: PathBuf, mut skip: F) -> std::io::Result<()>
         where F: FnMut(&str) -> bool + 'static
     {
-        let mut archive = ar::Archive::new(std::fs::File::open(archive)?);
+        let mut archive = ar::Archive::new(std::fs::File::open(&archive_path)?);
         let archive_index = self.src_archives.len();
 
         let mut i = 0;
@@ -202,7 +225,7 @@ impl<'a> ArArchiveBuilder<'a> {
             i += 1;
         }
 
-        self.src_archives.push(archive);
+        self.src_archives.push((archive_path, archive));
         Ok(())
     }
 }
