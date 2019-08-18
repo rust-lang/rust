@@ -28,7 +28,7 @@ use rustc::mir::interpret::truncate;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf,
+use rustc::ty::layout::{self, MemoryPosition, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout, VariantIdx};
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::session::config::{self, DebugInfo};
@@ -385,8 +385,7 @@ fn vec_slice_metadata(
             name: "data_ptr".to_owned(),
             type_metadata: data_ptr_metadata,
             offset: Size::ZERO,
-            size: pointer_size,
-            align: pointer_align,
+            mem_pos: MemoryPosition::new(pointer_size, pointer_align),
             flags: DIFlags::FlagZero,
             discriminant: None,
         },
@@ -394,8 +393,7 @@ fn vec_slice_metadata(
             name: "length".to_owned(),
             type_metadata: type_metadata(cx, cx.tcx.types.usize, span),
             offset: pointer_size,
-            size: usize_size,
-            align: usize_align,
+            mem_pos: MemoryPosition::new(usize_size, usize_align),
             flags: DIFlags::FlagZero,
             discriminant: None,
         },
@@ -496,8 +494,7 @@ fn trait_pointer_metadata(
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
                 syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(0),
-            size: data_ptr_field.pref_pos.size,
-            align: data_ptr_field.pref_pos.align.abi,
+            mem_pos: data_ptr_field.pref_pos.mem_pos(),
             flags: DIFlags::FlagArtificial,
             discriminant: None,
         },
@@ -505,8 +502,7 @@ fn trait_pointer_metadata(
             name: "vtable".to_owned(),
             type_metadata: type_metadata(cx, vtable_field.ty, syntax_pos::DUMMY_SP),
             offset: layout.fields.offset(1),
-            size: vtable_field.pref_pos.size,
-            align: vtable_field.pref_pos.align.abi,
+            mem_pos: vtable_field.pref_pos.mem_pos(),
             flags: DIFlags::FlagArtificial,
             discriminant: None,
         },
@@ -1036,8 +1032,7 @@ struct MemberDescription<'ll> {
     name: String,
     type_metadata: &'ll DIType,
     offset: Size,
-    size: Size,
-    align: Align,
+    mem_pos: MemoryPosition,
     flags: DIFlags,
     discriminant: Option<u64>,
 }
@@ -1054,8 +1049,8 @@ impl<'ll> MemberDescription<'ll> {
                 member_name.as_ptr(),
                 unknown_file_metadata(cx),
                 UNKNOWN_LINE_NUMBER,
-                self.size.bits(),
-                self.align.bits() as u32,
+                self.mem_pos.size.bits(),
+                self.mem_pos.align.bits() as u32,
                 self.offset.bits(),
                 match self.discriminant {
                     None => None,
@@ -1128,8 +1123,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
                 name,
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: layout.fields.offset(i),
-                size: field.pref_pos.size,
-                align: field.pref_pos.align.abi,
+                mem_pos: field.pref_pos.mem_pos(),
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1194,8 +1188,7 @@ impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
                 name: format!("__{}", i),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: layout.fields.offset(i),
-                size,
-                align,
+                mem_pos: MemoryPosition::new(size, align),
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1252,8 +1245,7 @@ impl<'tcx> UnionMemberDescriptionFactory<'tcx> {
                 name: f.ident.to_string(),
                 type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: Size::ZERO,
-                size: field.pref_pos.size,
-                align: field.pref_pos.align.abi,
+                mem_pos: field.pref_pos.mem_pos(),
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
@@ -1386,8 +1378,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         },
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
-                        size: self.layout.pref_pos.size,
-                        align: self.layout.pref_pos.align.abi,
+                        mem_pos: self.layout.pref_pos.mem_pos(),
                         flags: DIFlags::FlagZero,
                         discriminant: None,
                     }
@@ -1435,8 +1426,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         },
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
-                        size: self.layout.pref_pos.size,
-                        align: self.layout.pref_pos.align.abi,
+                        mem_pos: self.layout.pref_pos.mem_pos(),
                         flags: DIFlags::FlagZero,
                         discriminant: Some(
                             self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val as u64
@@ -1510,8 +1500,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             name,
                             type_metadata: variant_type_metadata,
                             offset: Size::ZERO,
-                            size: variant.pref_pos.size,
-                            align: variant.pref_pos.align.abi,
+                            mem_pos: variant.pref_pos.mem_pos(),
                             flags: DIFlags::FlagZero,
                             discriminant: None,
                         }
@@ -1554,8 +1543,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             name: variant_info.variant_name(),
                             type_metadata: variant_type_metadata,
                             offset: Size::ZERO,
-                            size: self.layout.pref_pos.size,
-                            align: self.layout.pref_pos.align.abi,
+                            mem_pos: self.layout.pref_pos.mem_pos(),
                             flags: DIFlags::FlagZero,
                             discriminant: niche_value,
                         }
@@ -1593,8 +1581,7 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
                     type_metadata(cx, ty, self.span)
                 },
                 offset: self.offsets[i],
-                size,
-                align,
+                mem_pos:MemoryPosition::new(size, align),
                 flags: DIFlags::FlagZero,
                 discriminant: None,
             }
