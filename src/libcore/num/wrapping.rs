@@ -18,6 +18,8 @@ macro_rules! sh_impl_signed {
                 }
             }
         }
+        forward_ref_binop! { impl Shl, shl for Wrapping<$t>, $f,
+                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
@@ -41,6 +43,8 @@ macro_rules! sh_impl_signed {
                 }
             }
         }
+        forward_ref_binop! { impl Shr, shr for Wrapping<$t>, $f,
+                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
@@ -64,6 +68,8 @@ macro_rules! sh_impl_unsigned {
                 Wrapping(self.0.wrapping_shl((other & self::shift_max::$t as $f) as u32))
             }
         }
+        forward_ref_binop! { impl Shl, shl for Wrapping<$t>, $f,
+                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
@@ -83,6 +89,8 @@ macro_rules! sh_impl_unsigned {
                 Wrapping(self.0.wrapping_shr((other & self::shift_max::$t as $f) as u32))
             }
         }
+        forward_ref_binop! { impl Shr, shr for Wrapping<$t>, $f,
+                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
