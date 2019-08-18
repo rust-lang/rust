@@ -22,8 +22,8 @@ impl<'a> Parser<'a> {
 
     /// Parses patterns, separated by '|' s.
     pub(super) fn parse_pats(&mut self) -> PResult<'a, Vec<P<Pat>>> {
-        // Allow a '|' before the pats (RFC 1925 + RFC 2530)
-        self.eat(&token::BinOp(token::Or));
+        // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
+        self.eat_or_separator();
 
         let mut pats = Vec::new();
         loop {

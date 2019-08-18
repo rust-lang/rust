@@ -37,4 +37,9 @@ fn main() {
         [1 | 2 || 3] => (), //~ ERROR unexpected token `||` after pattern
         _ => (),
     }
+
+    match x {
+        || 1 | 2 | 3 => (), //~ ERROR unexpected token `||` after pattern
+        _ => (),
+    }
 }
