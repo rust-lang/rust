@@ -14,7 +14,7 @@ pub trait EvalContextExt<'tcx> {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, (Scalar<Tag>, bool)>;
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)>;
 
     fn ptr_eq(
         &self,
@@ -43,7 +43,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Tag>,
         right: ImmTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, (Scalar<Tag>, bool)> {
+    ) -> InterpResult<'tcx, (Scalar<Tag>, bool, Ty<'tcx>)> {
         use rustc::mir::BinOp::*;
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
@@ -59,7 +59,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                         self.ptr_eq(left2.not_undef()?, right2.not_undef()?)?,
                     _ => bug!("Type system should not allow comparing Scalar with ScalarPair"),
                 };
-                (Scalar::from_bool(if bin_op == Eq { eq } else { !eq }), false)
+                (Scalar::from_bool(if bin_op == Eq { eq } else { !eq }), false, self.tcx.types.bool)
             }
 
             Lt | Le | Gt | Ge => {
@@ -74,7 +74,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     Ge => left >= right,
                     _ => bug!("We already established it has to be one of these operators."),
                 };
-                (Scalar::from_bool(res), false)
+                (Scalar::from_bool(res), false, self.tcx.types.bool)
             }
 
             Offset => {
@@ -87,7 +87,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                     pointee_ty,
                     right.to_scalar()?.to_isize(self)?,
                 )?;
-                (ptr, false)
+                (ptr, false, left.layout.ty)
             }
 
             _ => bug!("Invalid operator on pointers: {:?}", bin_op)
