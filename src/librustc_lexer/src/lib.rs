@@ -352,7 +352,6 @@ impl Cursor<'_> {
         loop {
             match self.nth_char(0) {
                 '\n' => break,
-                '\r' if self.nth_char(1) == '\n' => break,
                 EOF_CHAR if self.is_eof() => break,
                 _ => {
                     self.bump();
@@ -525,7 +524,6 @@ impl Cursor<'_> {
             match self.nth_char(0) {
                 '/' if !first => break,
                 '\n' if self.nth_char(1) != '\'' => break,
-                '\r' if self.nth_char(1) == '\n' => break,
                 EOF_CHAR if self.is_eof() => break,
                 '\'' => {
                     self.bump();
