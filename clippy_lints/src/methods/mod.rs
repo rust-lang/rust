@@ -1521,30 +1521,30 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
     if is_copy(cx, ty) {
         let snip;
         if let Some(snippet) = sugg::Sugg::hir_opt(cx, arg) {
+            let parent = cx.tcx.hir().get_parent_node(expr.hir_id);
+            match &cx.tcx.hir().get(parent) {
+                hir::Node::Expr(parent) => match parent.node {
+                    // &*x is a nop, &x.clone() is not
+                    hir::ExprKind::AddrOf(..) |
+                    // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
+                    hir::ExprKind::MethodCall(..) => return,
+                    _ => {},
+                },
+                hir::Node::Stmt(stmt) => {
+                    if let hir::StmtKind::Local(ref loc) = stmt.node {
+                        if let hir::PatKind::Ref(..) = loc.pat.node {
+                            // let ref y = *x borrows x, let ref y = x.clone() does not
+                            return;
+                        }
+                    }
+                },
+                _ => {},
+            }
+
             // x.clone() might have dereferenced x, possibly through Deref impls
             if cx.tables.expr_ty(arg) == ty {
                 snip = Some(("try removing the `clone` call", format!("{}", snippet)));
             } else {
-                let parent = cx.tcx.hir().get_parent_node(expr.hir_id);
-                match cx.tcx.hir().get(parent) {
-                    hir::Node::Expr(parent) => match parent.node {
-                        // &*x is a nop, &x.clone() is not
-                        hir::ExprKind::AddrOf(..) |
-                        // (*x).func() is useless, x.clone().func() can work in case func borrows mutably
-                        hir::ExprKind::MethodCall(..) => return,
-                        _ => {},
-                    },
-                    hir::Node::Stmt(stmt) => {
-                        if let hir::StmtKind::Local(ref loc) = stmt.node {
-                            if let hir::PatKind::Ref(..) = loc.pat.node {
-                                // let ref y = *x borrows x, let ref y = x.clone() does not
-                                return;
-                            }
-                        }
-                    },
-                    _ => {},
-                }
-
                 let deref_count = cx
                     .tables
                     .expr_adjustments(arg)

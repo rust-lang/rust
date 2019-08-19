@@ -22,6 +22,11 @@ fn clone_on_copy() {
 
     let rc = RefCell::new(0);
     rc.borrow().clone();
+
+    // Issue #4348
+    let mut x = 43;
+    let _ = &x.clone(); // ok, getting a ref
+    'a'.clone().make_ascii_uppercase(); // ok, clone and then mutate
 }
 
 fn clone_on_ref_ptr() {
