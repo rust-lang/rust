@@ -1,4 +1,6 @@
-use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
+use crate::utils::{
+    constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then,
+};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -399,19 +401,14 @@ impl MiscEarlyLints {
                 for (idx, ch) in src.chars().enumerate() {
                     if ch == 'i' || ch == 'u' {
                         if prev != '_' {
-                            span_lint_and_then(
+                            span_lint_and_sugg(
                                 cx,
                                 UNSEPARATED_LITERAL_SUFFIX,
                                 lit.span,
                                 "integer type suffix should be separated by an underscore",
-                                |db| {
-                                    db.span_suggestion(
-                                        lit.span,
-                                        "add an underscore",
-                                        format!("{}_{}", &src[0..idx], &src[idx..]),
-                                        Applicability::MachineApplicable,
-                                    );
-                                },
+                                "add an underscore",
+                                format!("{}_{}", &src[0..idx], &src[idx..]),
+                                Applicability::MachineApplicable,
                             );
                         }
                         break;
@@ -466,19 +463,14 @@ impl MiscEarlyLints {
                 for (idx, ch) in src.chars().enumerate() {
                     if ch == 'f' {
                         if prev != '_' {
-                            span_lint_and_then(
+                            span_lint_and_sugg(
                                 cx,
                                 UNSEPARATED_LITERAL_SUFFIX,
                                 lit.span,
                                 "float type suffix should be separated by an underscore",
-                                |db| {
-                                    db.span_suggestion(
-                                        lit.span,
-                                        "add an underscore",
-                                        format!("{}_{}", &src[0..idx], &src[idx..]),
-                                        Applicability::MachineApplicable,
-                                    );
-                                },
+                                "add an underscore",
+                                format!("{}_{}", &src[0..idx], &src[idx..]),
+                                Applicability::MachineApplicable,
                             );
                         }
                         break;
