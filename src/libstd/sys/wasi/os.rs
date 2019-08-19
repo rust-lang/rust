@@ -12,6 +12,8 @@ use crate::sys::memchr;
 use crate::sys::{cvt, unsupported, Void};
 use crate::vec;
 
+use wasi::wasi_unstable as wasi;
+
 #[cfg(not(target_feature = "atomics"))]
 pub unsafe fn env_lock() -> impl Any {
     // No need for a lock if we're single-threaded, but this function will need
@@ -19,29 +21,11 @@ pub unsafe fn env_lock() -> impl Any {
 }
 
 pub fn errno() -> i32 {
-    extern {
-        #[thread_local]
-        static errno: libc::c_int;
-    }
-
-    unsafe { errno as i32 }
+    panic!("unsupported")
 }
 
 pub fn error_string(errno: i32) -> String {
-    extern {
-        fn strerror_r(errnum: libc::c_int, buf: *mut libc::c_char,
-                      buflen: libc::size_t) -> libc::c_int;
-    }
-
-    let mut buf = [0 as libc::c_char; 1024];
-
-    let p = buf.as_mut_ptr();
-    unsafe {
-        if strerror_r(errno as libc::c_int, p, buf.len()) < 0 {
-            panic!("strerror_r failure");
-        }
-        str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_owned()
-    }
+    wasi::error_string(errno).to_string()
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
@@ -105,6 +89,7 @@ impl Iterator for Env {
 pub fn env() -> Env {
     unsafe {
         let _guard = env_lock();
+        // FIXME: replace with wasi::environ_get
         let mut environ = libc::environ;
         let mut result = Vec::new();
         while environ != ptr::null_mut() && *environ != ptr::null_mut() {
@@ -174,9 +159,7 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe {
-        libc::exit(code)
-    }
+    unsafe { wasi::proc_exit(code as u32) }
 }
 
 pub fn getpid() -> u32 {

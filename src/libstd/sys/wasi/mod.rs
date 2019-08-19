@@ -14,10 +14,10 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-use libc;
-use crate::io::{Error, ErrorKind};
+use crate::io;
 use crate::mem;
 use crate::os::raw::c_char;
+use wasi::wasi_unstable as wasi;
 
 pub mod alloc;
 pub mod args;
@@ -60,12 +60,12 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> Error {
-    Error::new(ErrorKind::Other, "operation not supported on wasm yet")
+pub fn unsupported_err() -> io::Error {
+    io::Error::new(io::ErrorKind::Other, "operation not supported on wasm yet")
 }
 
-pub fn decode_error_kind(_code: i32) -> ErrorKind {
-    ErrorKind::Other
+pub fn decode_error_kind(_code: i32) -> io::ErrorKind {
+    io::ErrorKind::Other
 }
 
 // This enum is used as the storage for a bunch of types which can't actually
@@ -83,15 +83,18 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
 }
 
 pub unsafe fn abort_internal() -> ! {
-    libc::abort()
+    wasi::proc_exit(127)
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut ret = (0u64, 0u64);
     unsafe {
-        let base = &mut ret as *mut (u64, u64) as *mut libc::c_void;
+        let base = &mut ret as *mut (u64, u64) as *mut core::ffi::c_void;
         let len = mem::size_of_val(&ret);
-        cvt_wasi(libc::__wasi_random_get(base, len)).unwrap();
+        let ret = wasi::raw::__wasi_random_get(base, len);
+        if ret != 0 {
+            panic!("__wasi_random_get failure")
+        }
     }
     return ret
 }
@@ -113,16 +116,14 @@ impl_is_minus_one! { i8 i16 i32 i64 isize }
 
 pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
     if t.is_minus_one() {
-        Err(Error::last_os_error())
+        Err(io::Error::last_os_error())
     } else {
         Ok(t)
     }
 }
 
-pub fn cvt_wasi(r: u16) -> crate::io::Result<()> {
-    if r != libc::__WASI_ESUCCESS {
-        Err(Error::from_raw_os_error(r as i32))
-    } else {
-        Ok(())
+impl From<wasi::Error> for io::Error {
+    fn from(err: wasi::Error) -> Self {
+        Self::from_raw_os_error(err as i32)
     }
 }

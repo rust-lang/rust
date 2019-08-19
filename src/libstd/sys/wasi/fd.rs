@@ -3,348 +3,240 @@
 use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::net::Shutdown;
-use crate::sys::cvt_wasi;
-use libc::{self, c_char, c_void};
+use wasi::wasi_unstable as wasi;
 
 #[derive(Debug)]
 pub struct WasiFd {
-    fd: libc::__wasi_fd_t,
+    fd: wasi::Fd,
 }
 
-// FIXME: these should probably all be fancier structs, builders, enums, etc
-pub type LookupFlags = u32;
-pub type FdFlags = u16;
-pub type Advice = u8;
-pub type Rights = u64;
-pub type Oflags = u16;
-pub type DirCookie = u64;
-pub type Timestamp = u64;
-pub type FstFlags = u16;
-pub type RiFlags = u16;
-pub type RoFlags = u16;
-pub type SiFlags = u16;
-
-fn iovec(a: &mut [IoSliceMut<'_>]) -> (*const libc::__wasi_iovec_t, usize) {
+fn iovec(a: &mut [IoSliceMut<'_>]) -> &[wasi::IoVec] {
     assert_eq!(
         mem::size_of::<IoSliceMut<'_>>(),
-        mem::size_of::<libc::__wasi_iovec_t>()
+        mem::size_of::<wasi::IoVec>()
     );
     assert_eq!(
         mem::align_of::<IoSliceMut<'_>>(),
-        mem::align_of::<libc::__wasi_iovec_t>()
+        mem::align_of::<wasi::IoVec>()
     );
-    (a.as_ptr() as *const libc::__wasi_iovec_t, a.len())
+    /// SAFETY: `IoSliceMut` and `IoVec` have exactly the same memory layout
+    unsafe { mem::transmute(a) }
 }
 
-fn ciovec(a: &[IoSlice<'_>]) -> (*const libc::__wasi_ciovec_t, usize) {
+fn ciovec(a: &[IoSlice<'_>]) -> &[wasi::CIoVec] {
     assert_eq!(
         mem::size_of::<IoSlice<'_>>(),
-        mem::size_of::<libc::__wasi_ciovec_t>()
+        mem::size_of::<wasi::CIoVec>()
     );
     assert_eq!(
         mem::align_of::<IoSlice<'_>>(),
-        mem::align_of::<libc::__wasi_ciovec_t>()
+        mem::align_of::<wasi::CIoVec>()
     );
-    (a.as_ptr() as *const libc::__wasi_ciovec_t, a.len())
+    /// SAFETY: `IoSlice` and `CIoVec` have exactly the same memory layout
+    unsafe { mem::transmute(a) }
 }
 
 impl WasiFd {
-    pub unsafe fn from_raw(fd: libc::__wasi_fd_t) -> WasiFd {
+    pub unsafe fn from_raw(fd: wasi::Fd) -> WasiFd {
         WasiFd { fd }
     }
 
-    pub fn into_raw(self) -> libc::__wasi_fd_t {
+    pub fn into_raw(self) -> wasi::Fd {
         let ret = self.fd;
         mem::forget(self);
         ret
     }
 
-    pub fn as_raw(&self) -> libc::__wasi_fd_t {
+    pub fn as_raw(&self) -> wasi::Fd {
         self.fd
     }
 
     pub fn datasync(&self) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_datasync(self.fd) })
+        wasi::fd_datasync(self.fd).map_err(From::from)
     }
 
     pub fn pread(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        let mut read = 0;
-        let (ptr, len) = iovec(bufs);
-        cvt_wasi(unsafe { libc::__wasi_fd_pread(self.fd, ptr, len, offset, &mut read) })?;
-        Ok(read)
+        wasi::fd_pread(self.fd, iovec(bufs), offset).map_err(From::from)
     }
 
     pub fn pwrite(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        let mut read = 0;
-        let (ptr, len) = ciovec(bufs);
-        cvt_wasi(unsafe { libc::__wasi_fd_pwrite(self.fd, ptr, len, offset, &mut read) })?;
-        Ok(read)
+        wasi::fd_pwrite(self.fd, ciovec(bufs), offset).map_err(From::from)
     }
 
     pub fn read(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let mut read = 0;
-        let (ptr, len) = iovec(bufs);
-        cvt_wasi(unsafe { libc::__wasi_fd_read(self.fd, ptr, len, &mut read) })?;
-        Ok(read)
+        wasi::fd_read(self.fd, iovec(bufs)).map_err(From::from)
     }
 
     pub fn write(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let mut read = 0;
-        let (ptr, len) = ciovec(bufs);
-        cvt_wasi(unsafe { libc::__wasi_fd_write(self.fd, ptr, len, &mut read) })?;
-        Ok(read)
+        wasi::fd_write(self.fd, ciovec(bufs)).map_err(From::from)
     }
 
     pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
         let (whence, offset) = match pos {
-            SeekFrom::Start(pos) => (libc::__WASI_WHENCE_SET, pos as i64),
-            SeekFrom::End(pos) => (libc::__WASI_WHENCE_END, pos),
-            SeekFrom::Current(pos) => (libc::__WASI_WHENCE_CUR, pos),
+            SeekFrom::Start(pos) => (wasi::WHENCE_SET, pos as i64),
+            SeekFrom::End(pos) => (wasi::WHENCE_END, pos),
+            SeekFrom::Current(pos) => (wasi::WHENCE_CUR, pos),
         };
-        let mut pos = 0;
-        cvt_wasi(unsafe { libc::__wasi_fd_seek(self.fd, offset, whence, &mut pos) })?;
-        Ok(pos)
+        wasi::fd_seek(self.fd, offset, whence).map_err(From::from)
     }
 
     pub fn tell(&self) -> io::Result<u64> {
-        let mut pos = 0;
-        cvt_wasi(unsafe { libc::__wasi_fd_tell(self.fd, &mut pos) })?;
-        Ok(pos)
+        wasi::fd_tell(self.fd).map_err(From::from)
     }
 
     // FIXME: __wasi_fd_fdstat_get
 
-    pub fn set_flags(&self, flags: FdFlags) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_fdstat_set_flags(self.fd, flags) })
+    pub fn set_flags(&self, flags: wasi::FdFlags) -> io::Result<()> {
+        wasi::fd_fdstat_set_flags(self.fd, flags).map_err(From::from)
     }
 
-    pub fn set_rights(&self, base: Rights, inheriting: Rights) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_fdstat_set_rights(self.fd, base, inheriting) })
+    pub fn set_rights(&self, base: wasi::Rights, inheriting: wasi::Rights) -> io::Result<()> {
+        wasi::fd_fdstat_set_rights(self.fd, base, inheriting).map_err(From::from)
     }
 
     pub fn sync(&self) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_sync(self.fd) })
+        wasi::fd_sync(self.fd).map_err(From::from)
     }
 
-    pub fn advise(&self, offset: u64, len: u64, advice: Advice) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_advise(self.fd, offset, len, advice as u8) })
+    pub fn advise(&self, offset: u64, len: u64, advice: wasi::Advice) -> io::Result<()> {
+        wasi::fd_advise(self.fd, offset, len, advice).map_err(From::from)
     }
 
     pub fn allocate(&self, offset: u64, len: u64) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_allocate(self.fd, offset, len) })
+        wasi::fd_allocate(self.fd, offset, len).map_err(From::from)
     }
 
     pub fn create_directory(&self, path: &[u8]) -> io::Result<()> {
-        cvt_wasi(unsafe {
-            libc::__wasi_path_create_directory(self.fd, path.as_ptr() as *const c_char, path.len())
-        })
+        wasi::path_create_directory(self.fd, path).map_err(From::from)
     }
 
     pub fn link(
         &self,
-        old_flags: LookupFlags,
+        old_flags: wasi::LookupFlags,
         old_path: &[u8],
         new_fd: &WasiFd,
         new_path: &[u8],
     ) -> io::Result<()> {
-        cvt_wasi(unsafe {
-            libc::__wasi_path_link(
-                self.fd,
-                old_flags,
-                old_path.as_ptr() as *const c_char,
-                old_path.len(),
-                new_fd.fd,
-                new_path.as_ptr() as *const c_char,
-                new_path.len(),
-            )
-        })
+        wasi::path_link(self.fd, old_flags, old_path, new_fd.fd, new_path)
+            .map_err(From::from)
     }
 
     pub fn open(
         &self,
-        dirflags: LookupFlags,
+        dirflags: wasi::LookupFlags,
         path: &[u8],
-        oflags: Oflags,
-        fs_rights_base: Rights,
-        fs_rights_inheriting: Rights,
-        fs_flags: FdFlags,
+        oflags: wasi::OFlags,
+        fs_rights_base: wasi::Rights,
+        fs_rights_inheriting: wasi::Rights,
+        fs_flags: wasi::FdFlags,
     ) -> io::Result<WasiFd> {
-        unsafe {
-            let mut fd = 0;
-            cvt_wasi(libc::__wasi_path_open(
-                self.fd,
-                dirflags,
-                path.as_ptr() as *const c_char,
-                path.len(),
-                oflags,
-                fs_rights_base,
-                fs_rights_inheriting,
-                fs_flags,
-                &mut fd,
-            ))?;
-            Ok(WasiFd::from_raw(fd))
-        }
+        let fd = wasi_path_open(
+            self.fd,
+            dirflags,
+            path,
+            oflags,
+            fs_rights_base,
+            fs_rights_inheriting,
+            fs_flags,
+        )?;
+        Ok(WasiFd::from_raw(fd))
     }
 
-    pub fn readdir(&self, buf: &mut [u8], cookie: DirCookie) -> io::Result<usize> {
-        let mut used = 0;
-        cvt_wasi(unsafe {
-            libc::__wasi_fd_readdir(
-                self.fd,
-                buf.as_mut_ptr() as *mut c_void,
-                buf.len(),
-                cookie,
-                &mut used,
-            )
-        })?;
-        Ok(used)
+    pub fn readdir(&self, buf: &mut [u8], cookie: wasi::DirCookie) -> io::Result<usize> {
+        wasi::fd_readdir(self.fd, buf, cookie).map_err(From::from)
     }
 
     pub fn readlink(&self, path: &[u8], buf: &mut [u8]) -> io::Result<usize> {
-        let mut used = 0;
-        cvt_wasi(unsafe {
-            libc::__wasi_path_readlink(
-                self.fd,
-                path.as_ptr() as *const c_char,
-                path.len(),
-                buf.as_mut_ptr() as *mut c_char,
-                buf.len(),
-                &mut used,
-            )
-        })?;
-        Ok(used)
+        wasi::path_readlink(self.fd, path, buf).map_err(From::from)
     }
 
     pub fn rename(&self, old_path: &[u8], new_fd: &WasiFd, new_path: &[u8]) -> io::Result<()> {
-        cvt_wasi(unsafe {
-            libc::__wasi_path_rename(
-                self.fd,
-                old_path.as_ptr() as *const c_char,
-                old_path.len(),
-                new_fd.fd,
-                new_path.as_ptr() as *const c_char,
-                new_path.len(),
-            )
-        })
+        wasi::path_rename(self.fd, old_path, new_fd.fd, new_path)
+            .map_err(From::from)
     }
 
-    pub fn filestat_get(&self, buf: *mut libc::__wasi_filestat_t) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_filestat_get(self.fd, buf) })
+    pub fn filestat_get(&self) -> io::Result<wasi::Filestat> {
+        wasi::fd_filestat_get(self.fd, buf).map_err(From::from)
     }
 
     pub fn filestat_set_times(
         &self,
-        atim: Timestamp,
-        mtim: Timestamp,
-        fstflags: FstFlags,
+        atim: wasi::Timestamp,
+        mtim: wasi::Timestamp,
+        fstflags: wasi::FstFlags,
     ) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_filestat_set_times(self.fd, atim, mtim, fstflags) })
+        wasi::fd_filestat_set_times(self.fd, atim, mtim, fstflags)
+            .map_err(From::from)
     }
 
     pub fn filestat_set_size(&self, size: u64) -> io::Result<()> {
-        cvt_wasi(unsafe { libc::__wasi_fd_filestat_set_size(self.fd, size) })
+        wasi::fd_filestat_set_size(self.fd, size).map_err(From::from)
     }
 
     pub fn path_filestat_get(
         &self,
-        flags: LookupFlags,
+        flags: wasi::LookupFlags,
         path: &[u8],
-        buf: *mut libc::__wasi_filestat_t,
-    ) -> io::Result<()> {
-        cvt_wasi(unsafe {
-            libc::__wasi_path_filestat_get(
-                self.fd,
-                flags,
-                path.as_ptr() as *const c_char,
-                path.len(),
-                buf,
-            )
-        })
+    ) -> io::Result<wasi::FileStat> {
+        wasi::path_filestat_get(self.fd, flags, path).map_err(From::from)
     }
 
     pub fn path_filestat_set_times(
         &self,
-        flags: LookupFlags,
+        flags: wasi::LookupFlags,
         path: &[u8],
-        atim: Timestamp,
-        mtim: Timestamp,
-        fstflags: FstFlags,
+        atim: wasi::Timestamp,
+        mtim: wasi::Timestamp,
+        fstflags: wasi::FstFlags,
     ) -> io::Result<()> {
-        cvt_wasi(unsafe {
-            libc::__wasi_path_filestat_set_times(
-                self.fd,
-                flags,
-                path.as_ptr() as *const c_char,
-                path.len(),
-                atim,
-                mtim,
-                fstflags,
-            )
-        })
+        wasi::path_filestat_set_times(
+            self.fd,
+            flags,
+            path,
+            atim,
+            mtim,
+            fstflags,
+        ).map_err(From::from)
     }
 
     pub fn symlink(&self, old_path: &[u8], new_path: &[u8]) -> io::Result<()> {
-        cvt_wasi(unsafe {
-            libc::__wasi_path_symlink(
-                old_path.as_ptr() as *const c_char,
-                old_path.len(),
-                self.fd,
-                new_path.as_ptr() as *const c_char,
-                new_path.len(),
-            )
-        })
+        wasi::path_symlink(old_path, self.fd, new_path).map_err(From::from)
     }
 
     pub fn unlink_file(&self, path: &[u8]) -> io::Result<()> {
-        cvt_wasi(unsafe {
-            libc::__wasi_path_unlink_file(self.fd, path.as_ptr() as *const c_char, path.len())
-        })
+        wasi::path_unlink_file(self.fd, path).map_err(From::from)
     }
 
     pub fn remove_directory(&self, path: &[u8]) -> io::Result<()> {
-        cvt_wasi(unsafe {
-            libc::__wasi_path_remove_directory(self.fd, path.as_ptr() as *const c_char, path.len())
-        })
+        wasi::path_remove_directory(self.fd, path).map_err(From::from)
     }
 
     pub fn sock_recv(
         &self,
         ri_data: &mut [IoSliceMut<'_>],
-        ri_flags: RiFlags,
-    ) -> io::Result<(usize, RoFlags)> {
-        let mut ro_datalen = 0;
-        let mut ro_flags = 0;
-        let (ptr, len) = iovec(ri_data);
-        cvt_wasi(unsafe {
-            libc::__wasi_sock_recv(self.fd, ptr, len, ri_flags, &mut ro_datalen, &mut ro_flags)
-        })?;
-        Ok((ro_datalen, ro_flags))
+        ri_flags: wasi::RiFlags,
+    ) -> io::Result<(usize, wasi::RoFlags)> {
+        wasi::sock_recv(self.fd, iovec(ri_data), ri_flags).map_err(From::from)
     }
 
-    pub fn sock_send(&self, si_data: &[IoSlice<'_>], si_flags: SiFlags) -> io::Result<usize> {
-        let mut so_datalen = 0;
-        let (ptr, len) = ciovec(si_data);
-        cvt_wasi(unsafe { libc::__wasi_sock_send(self.fd, ptr, len, si_flags, &mut so_datalen) })?;
-        Ok(so_datalen)
+    pub fn sock_send(&self, si_data: &[IoSlice<'_>], si_flags: wasi::SiFlags) -> io::Result<usize> {
+        wasi::sock_send(self.fd, ciovec(si_data), si_flags).map_err(From::from)
     }
 
     pub fn sock_shutdown(&self, how: Shutdown) -> io::Result<()> {
         let how = match how {
-            Shutdown::Read => libc::__WASI_SHUT_RD,
-            Shutdown::Write => libc::__WASI_SHUT_WR,
-            Shutdown::Both => libc::__WASI_SHUT_WR | libc::__WASI_SHUT_RD,
+            Shutdown::Read => WASI::SHUT_RD,
+            Shutdown::Write => WASI::SHUT_WR,
+            Shutdown::Both => WASI::SHUT_WR | WASI::SHUT_RD,
         };
-        cvt_wasi(unsafe { libc::__wasi_sock_shutdown(self.fd, how) })?;
-        Ok(())
+        wasi::sock_shutdown(self.fd, how).map_err(From::from)
     }
 }
 
 impl Drop for WasiFd {
     fn drop(&mut self) {
-        unsafe {
-            // FIXME: can we handle the return code here even though we can't on
-            // unix?
-            libc::__wasi_fd_close(self.fd);
-        }
+        // FIXME: can we handle the return code here even though we can't on
+        // unix?
+        let _ = wasi::fd_close(self.fd);
     }
 }

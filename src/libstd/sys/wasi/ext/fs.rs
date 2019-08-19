@@ -336,16 +336,16 @@ pub trait FileTypeExt {
 
 impl FileTypeExt for fs::FileType {
     fn is_block_device(&self) -> bool {
-        self.as_inner().bits() == libc::__WASI_FILETYPE_BLOCK_DEVICE
+        self.as_inner().bits() == wasi::FILETYPE_BLOCK_DEVICE
     }
     fn is_character_device(&self) -> bool {
-        self.as_inner().bits() == libc::__WASI_FILETYPE_CHARACTER_DEVICE
+        self.as_inner().bits() == wasi::FILETYPE_CHARACTER_DEVICE
     }
     fn is_socket_dgram(&self) -> bool {
-        self.as_inner().bits() == libc::__WASI_FILETYPE_SOCKET_DGRAM
+        self.as_inner().bits() == wasi::FILETYPE_SOCKET_DGRAM
     }
     fn is_socket_stream(&self) -> bool {
-        self.as_inner().bits() == libc::__WASI_FILETYPE_SOCKET_STREAM
+        self.as_inner().bits() == wasi::FILETYPE_SOCKET_STREAM
     }
 }
 

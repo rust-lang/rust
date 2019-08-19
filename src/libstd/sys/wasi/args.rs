@@ -27,14 +27,24 @@ pub fn args() -> Args {
     })
 }
 
+fn cvt_wasi(r: u16) -> crate::io::Result<()> {
+    if r != 0 {
+        Err(Error::from_raw_os_error(r as i32))
+    } else {
+        Ok(())
+    }
+}
+
 fn maybe_args() -> io::Result<Args> {
+    // FIXME: replace with safe functions
+    use wasi::wasi_unstable::raw::{__wasi_args_sizes_get, __wasi_args_get};
     unsafe {
         let (mut argc, mut argv_buf_size) = (0, 0);
-        cvt_wasi(libc::__wasi_args_sizes_get(&mut argc, &mut argv_buf_size))?;
+        cvt_wasi(__wasi_args_sizes_get(&mut argc, &mut argv_buf_size))?;
 
-        let mut argc = vec![core::ptr::null_mut::<libc::c_char>(); argc];
+        let mut argc = vec![core::ptr::null_mut::<u8>(); argc];
         let mut argv_buf = vec![0; argv_buf_size];
-        cvt_wasi(libc::__wasi_args_get(argc.as_mut_ptr(), argv_buf.as_mut_ptr()))?;
+        cvt_wasi(__wasi_args_get(argc.as_mut_ptr(), argv_buf.as_mut_ptr()))?;
 
         let args = argc.into_iter()
             .map(|ptr| CStr::from_ptr(ptr).to_bytes().to_vec())

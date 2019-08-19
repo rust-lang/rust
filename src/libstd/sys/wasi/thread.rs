@@ -19,8 +19,8 @@ impl Thread {
     }
 
     pub fn yield_now() {
-        let ret = unsafe { libc::__wasi_sched_yield() };
-        debug_assert_eq!(ret, 0);
+        let ret = wasi::sched_yield();
+        debug_assert_eq!(ret, Ok(()));
     }
 
     pub fn set_name(_name: &CStr) {
