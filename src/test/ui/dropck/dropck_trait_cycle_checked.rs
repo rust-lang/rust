@@ -63,14 +63,14 @@ impl<T:HasId> Drop for CheckId<T> {
 }
 
 trait Obj<'a> : HasId {
-    fn set0(&self, b: &'a Box<Obj<'a>>);
-    fn set1(&self, b: &'a Box<Obj<'a>>);
+    fn set0(&self, b: &'a Box<dyn Obj<'a>>);
+    fn set1(&self, b: &'a Box<dyn Obj<'a>>);
 }
 
 struct O<'a> {
     id: Id,
-    obj0: CheckId<Cell<Option<&'a Box<Obj<'a>>>>>,
-    obj1: CheckId<Cell<Option<&'a Box<Obj<'a>>>>>,
+    obj0: CheckId<Cell<Option<&'a Box<dyn Obj<'a>>>>>,
+    obj1: CheckId<Cell<Option<&'a Box<dyn Obj<'a>>>>>,
 }
 
 impl<'a> HasId for O<'a> {
@@ -87,7 +87,7 @@ impl<'a> O<'a> {
     }
 }
 
-impl<'a> HasId for Cell<Option<&'a Box<Obj<'a>>>> {
+impl<'a> HasId for Cell<Option<&'a Box<dyn Obj<'a>>>> {
     fn count(&self) -> usize {
         match self.get() {
             None => 1,
@@ -97,17 +97,17 @@ impl<'a> HasId for Cell<Option<&'a Box<Obj<'a>>>> {
 }
 
 impl<'a> Obj<'a> for O<'a> {
-    fn set0(&self, b: &'a Box<Obj<'a>>) {
+    fn set0(&self, b: &'a Box<dyn Obj<'a>>) {
         self.obj0.v.set(Some(b))
     }
-    fn set1(&self, b: &'a Box<Obj<'a>>) {
+    fn set1(&self, b: &'a Box<dyn Obj<'a>>) {
         self.obj1.v.set(Some(b))
     }
 }
 
 
 fn f() {
-    let (o1, o2, o3): (Box<Obj>, Box<Obj>, Box<Obj>) = (O::new(), O::new(), O::new());
+    let (o1, o2, o3): (Box<dyn Obj>, Box<dyn Obj>, Box<dyn Obj>) = (O::new(), O::new(), O::new());
     o1.set0(&o2); //~ ERROR `o2` does not live long enough
     o1.set1(&o3); //~ ERROR `o3` does not live long enough
     o2.set0(&o2); //~ ERROR `o2` does not live long enough

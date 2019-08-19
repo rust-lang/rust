@@ -4,7 +4,7 @@ error[E0658]: the `#[profiler_runtime]` attribute is used to identify the `profi
 LL | #![profiler_runtime]
    | ^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(profiler_runtime)] to the crate attributes to enable
+   = help: add `#![feature(profiler_runtime)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

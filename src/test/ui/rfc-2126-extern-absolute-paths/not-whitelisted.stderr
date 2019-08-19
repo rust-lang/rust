@@ -1,15 +1,9 @@
-error: cannot import a built-in macro
-  --> $DIR/not-whitelisted.rs:6:5
-   |
-LL | use test;
-   |     ^^^^
-
 error[E0432]: unresolved import `alloc`
   --> $DIR/not-whitelisted.rs:5:5
    |
 LL | use alloc;
    |     ^^^^^ no `alloc` external crate
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0432`.

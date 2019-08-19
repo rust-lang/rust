@@ -2,7 +2,7 @@
 
 #![feature(macro_reexport)] //~ ERROR feature has been removed
 
-#[macro_reexport(macro_one)] //~ ERROR attribute `macro_reexport` is currently unknown
+#[macro_reexport(macro_one)] //~ ERROR cannot find attribute macro `macro_reexport` in this scope
 extern crate two_macros;
 
 fn main() {}

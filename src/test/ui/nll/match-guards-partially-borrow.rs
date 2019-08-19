@@ -5,9 +5,7 @@
 // Test that we don't allow mutating the value being matched on in a way that
 // changes which patterns it matches, until we have chosen an arm.
 
-
 #![feature(bind_by_move_pattern_guards)]
-#![feature(nll)]
 
 fn ok_mutation_in_guard(mut q: i32) {
     match q {

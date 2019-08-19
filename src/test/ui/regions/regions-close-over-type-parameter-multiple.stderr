@@ -1,23 +1,23 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/regions-close-over-type-parameter-multiple.rs:20:5
    |
-LL |     box v as Box<SomeTrait+'a>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     box v as Box<dyn SomeTrait + 'a>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 18:20...
   --> $DIR/regions-close-over-type-parameter-multiple.rs:18:20
    |
-LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<SomeTrait+'c> {
+LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait + 'c> {
    |                    ^^
 note: ...so that the declared lifetime parameter bounds are satisfied
   --> $DIR/regions-close-over-type-parameter-multiple.rs:20:5
    |
-LL |     box v as Box<SomeTrait+'a>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     box v as Box<dyn SomeTrait + 'a>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: but, the lifetime must be valid for the lifetime 'c as defined on the function body at 18:26...
   --> $DIR/regions-close-over-type-parameter-multiple.rs:18:26
    |
-LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<SomeTrait+'c> {
+LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait + 'c> {
    |                          ^^
    = note: ...so that the expression is assignable:
            expected std::boxed::Box<(dyn SomeTrait + 'c)>

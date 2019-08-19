@@ -1,3 +1,4 @@
+// check-pass
 // ignore-android
 // ignore-arm
 // ignore-aarch64
@@ -11,14 +12,11 @@
 // ignore-mips
 // ignore-mips64
 
-// compile-pass
-// skip-codegen
 #![feature(asm)]
-#![allow(dead_code, non_upper_case_globals)]
 
 #[cfg(any(target_arch = "x86",
           target_arch = "x86_64"))]
-pub fn main() {
+fn main() {
     // assignment not dead
     let mut x: isize = 0;
     unsafe {

@@ -29,10 +29,7 @@ use syntax_pos::Span;
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    drop_impl_did: DefId,
-) -> Result<(), ErrorReported> {
+pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.sty {
@@ -64,8 +61,8 @@ pub fn check_drop_impl<'a, 'tcx>(
     }
 }
 
-fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn ensure_drop_params_and_item_params_correspond<'tcx>(
+    tcx: TyCtxt<'tcx>,
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
@@ -140,8 +137,8 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 
 /// Confirms that every predicate imposed by dtor_predicates is
 /// implied by assuming the predicates attached to self_type_did.
-fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
+    tcx: TyCtxt<'tcx>,
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
@@ -216,7 +213,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
         // repeated `contains` calls.
 
         if !assumptions_in_impl_context.contains(&predicate) {
-            let item_span = tcx.hir().span_by_hir_id(self_type_hir_id);
+            let item_span = tcx.hir().span(self_type_hir_id);
             struct_span_err!(
                 tcx.sess,
                 drop_impl_span,
@@ -249,7 +246,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 ///
 /// * (1.) `D` has a lifetime- or type-parametric Drop implementation,
 ///        (where that `Drop` implementation does not opt-out of
-///         this check via the `unsafe_destructor_blind_to_params`
+///         this check via the `may_dangle`
 ///         attribute), and
 /// * (2.) the structure of `D` can reach a reference of type `&'a _`,
 ///
@@ -282,13 +279,13 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// instead Drop-Check now simply assumes that if a destructor has
 /// access (direct or indirect) to a lifetime parameter, then that
 /// lifetime must be forced to outlive that destructor's dynamic
-/// extent. We then provide the `unsafe_destructor_blind_to_params`
+/// extent. We then provide the `may_dangle`
 /// attribute as a way for destructor implementations to opt-out of
 /// this conservative assumption (and thus assume the obligation of
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
-pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
-    rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
+pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(
+    rcx: &mut RegionCtxt<'a, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
     body_id: hir::HirId,

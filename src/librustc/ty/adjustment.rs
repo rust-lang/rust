@@ -103,15 +103,14 @@ pub struct OverloadedDeref<'tcx> {
     pub mutbl: hir::Mutability,
 }
 
-impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
-    pub fn method_call(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, source: Ty<'tcx>)
-                       -> (DefId, SubstsRef<'tcx>) {
+impl<'tcx> OverloadedDeref<'tcx> {
+    pub fn method_call(&self, tcx: TyCtxt<'tcx>, source: Ty<'tcx>) -> (DefId, SubstsRef<'tcx>) {
         let trait_def_id = match self.mutbl {
             hir::MutImmutable => tcx.lang_items().deref_trait(),
             hir::MutMutable => tcx.lang_items().deref_mut_trait()
         };
         let method_def_id = tcx.associated_items(trait_def_id.unwrap())
-            .find(|m| m.kind == ty::AssociatedKind::Method).unwrap().def_id;
+            .find(|m| m.kind == ty::AssocKind::Method).unwrap().def_id;
         (method_def_id, tcx.mk_substs_trait(source, &[]))
     }
 }

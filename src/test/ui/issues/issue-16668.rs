@@ -1,7 +1,7 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 struct Parser<'a, I, O> {
-    parse: Box<FnMut(I) -> Result<O, String> + 'a>
+    parse: Box<dyn FnMut(I) -> Result<O, String> + 'a>
 }
 
 impl<'a, I: 'a, O: 'a> Parser<'a, I, O> {

@@ -5,7 +5,7 @@
 // universe transition (#56105) may eventually become an error.
 
 // revisions: old re
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![cfg_attr(re, feature(re_rebalance_coherence))]
 

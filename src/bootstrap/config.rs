@@ -11,7 +11,6 @@ use std::process;
 use std::cmp;
 
 use build_helper::t;
-use num_cpus;
 use toml;
 use serde::Deserialize;
 use crate::cache::{INTERNER, Interned};
@@ -52,7 +51,7 @@ pub struct Config {
     pub test_compare_mode: bool,
     pub llvm_libunwind: bool,
 
-    pub run_host_only: bool,
+    pub skip_only_host_steps: bool,
 
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
@@ -76,7 +75,7 @@ pub struct Config {
     pub llvm_link_shared: bool,
     pub llvm_clang_cl: Option<String>,
     pub llvm_targets: Option<String>,
-    pub llvm_experimental_targets: String,
+    pub llvm_experimental_targets: Option<String>,
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
@@ -96,15 +95,14 @@ pub struct Config {
     pub rust_codegen_units: Option<u32>,
     pub rust_codegen_units_std: Option<u32>,
     pub rust_debug_assertions: bool,
-    pub rust_debuginfo: bool,
-    pub rust_debuginfo_lines: bool,
-    pub rust_debuginfo_only_std: bool,
-    pub rust_debuginfo_tools: bool,
+    pub rust_debuginfo_level_rustc: u32,
+    pub rust_debuginfo_level_std: u32,
+    pub rust_debuginfo_level_tools: u32,
+    pub rust_debuginfo_level_tests: u32,
     pub rust_rpath: bool,
     pub rustc_parallel: bool,
     pub rustc_default_linker: Option<String>,
     pub rust_optimize_tests: bool,
-    pub rust_debuginfo_tests: bool,
     pub rust_dist_src: bool,
     pub rust_codegen_backends: Vec<Interned<String>>,
     pub rust_codegen_backends_dir: String,
@@ -130,7 +128,6 @@ pub struct Config {
     pub low_priority: bool,
     pub channel: String,
     pub verbose_tests: bool,
-    pub test_miri: bool,
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
     pub missing_tools: bool,
@@ -300,10 +297,11 @@ struct Rust {
     codegen_units: Option<u32>,
     codegen_units_std: Option<u32>,
     debug_assertions: Option<bool>,
-    debuginfo: Option<bool>,
-    debuginfo_lines: Option<bool>,
-    debuginfo_only_std: Option<bool>,
-    debuginfo_tools: Option<bool>,
+    debuginfo_level: Option<u32>,
+    debuginfo_level_rustc: Option<u32>,
+    debuginfo_level_std: Option<u32>,
+    debuginfo_level_tools: Option<u32>,
+    debuginfo_level_tests: Option<u32>,
     parallel_compiler: Option<bool>,
     backtrace: Option<bool>,
     default_linker: Option<String>,
@@ -311,13 +309,11 @@ struct Rust {
     musl_root: Option<String>,
     rpath: Option<bool>,
     optimize_tests: Option<bool>,
-    debuginfo_tests: Option<bool>,
     codegen_tests: Option<bool>,
     ignore_git: Option<bool>,
     debug: Option<bool>,
     dist_src: Option<bool>,
     verbose_tests: Option<bool>,
-    test_miri: Option<bool>,
     incremental: Option<bool>,
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
@@ -377,7 +373,6 @@ impl Config {
         config.codegen_tests = true;
         config.ignore_git = false;
         config.rust_dist_src = true;
-        config.test_miri = false;
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.rust_codegen_backends_dir = "codegen-backends".to_owned();
         config.deny_warnings = true;
@@ -402,12 +397,12 @@ impl Config {
         config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
-        config.jobs = flags.jobs;
+        config.jobs = flags.jobs.map(threads_from_config);
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
         config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
-        if let Some(value) = flags.warnings {
+        if let Some(value) = flags.deny_warnings {
             config.deny_warnings = value;
         }
 
@@ -418,7 +413,9 @@ impl Config {
         }
 
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
-        config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
+        let has_hosts = !flags.host.is_empty();
+        let has_targets = !flags.target.is_empty();
+        config.skip_only_host_steps = !has_hosts && has_targets;
 
         let toml = file.map(|file| {
             let contents = t!(fs::read_to_string(&file));
@@ -495,12 +492,13 @@ impl Config {
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
         let mut llvm_assertions = None;
-        let mut debuginfo_lines = None;
-        let mut debuginfo_only_std = None;
-        let mut debuginfo_tools = None;
         let mut debug = None;
-        let mut debuginfo = None;
         let mut debug_assertions = None;
+        let mut debuginfo_level = None;
+        let mut debuginfo_level_rustc = None;
+        let mut debuginfo_level_std = None;
+        let mut debuginfo_level_tools = None;
+        let mut debuginfo_level_tests = None;
         let mut optimize = None;
         let mut ignore_git = None;
 
@@ -523,8 +521,7 @@ impl Config {
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
             set(&mut config.llvm_link_shared, llvm.link_shared);
             config.llvm_targets = llvm.targets.clone();
-            config.llvm_experimental_targets = llvm.experimental_targets.clone()
-                .unwrap_or_else(|| "WebAssembly;RISCV".to_string());
+            config.llvm_experimental_targets = llvm.experimental_targets.clone();
             config.llvm_link_jobs = llvm.link_jobs;
             config.llvm_version_suffix = llvm.version_suffix.clone();
             config.llvm_clang_cl = llvm.clang_cl.clone();
@@ -540,14 +537,14 @@ impl Config {
         if let Some(ref rust) = toml.rust {
             debug = rust.debug;
             debug_assertions = rust.debug_assertions;
-            debuginfo = rust.debuginfo;
-            debuginfo_lines = rust.debuginfo_lines;
-            debuginfo_only_std = rust.debuginfo_only_std;
-            debuginfo_tools = rust.debuginfo_tools;
+            debuginfo_level = rust.debuginfo_level;
+            debuginfo_level_rustc = rust.debuginfo_level_rustc;
+            debuginfo_level_std = rust.debuginfo_level_std;
+            debuginfo_level_tools = rust.debuginfo_level_tools;
+            debuginfo_level_tests = rust.debuginfo_level_tests;
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
-            set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.jemalloc, rust.jemalloc);
@@ -557,7 +554,6 @@ impl Config {
             set(&mut config.channel, rust.channel.clone());
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.verbose_tests, rust.verbose_tests);
-            set(&mut config.test_miri, rust.test_miri);
             // in the case "false" is set explicitly, do not overwrite the command line args
             if let Some(true) = rust.incremental {
                 config.incremental = true;
@@ -570,7 +566,7 @@ impl Config {
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
-            set(&mut config.deny_warnings, rust.deny_warnings.or(flags.warnings));
+            set(&mut config.deny_warnings, flags.deny_warnings.or(rust.deny_warnings));
             set(&mut config.backtrace_on_ice, rust.backtrace_on_ice);
             set(&mut config.rust_verify_llvm_ir, rust.verify_llvm_ir);
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
@@ -583,13 +579,8 @@ impl Config {
 
             set(&mut config.rust_codegen_backends_dir, rust.codegen_backends_dir.clone());
 
-            match rust.codegen_units {
-                Some(0) => config.rust_codegen_units = Some(num_cpus::get() as u32),
-                Some(n) => config.rust_codegen_units = Some(n),
-                None => {}
-            }
-
-            config.rust_codegen_units_std = rust.codegen_units_std;
+            config.rust_codegen_units = rust.codegen_units.map(threads_from_config);
+            config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
         }
 
         if let Some(ref t) = toml.target {
@@ -639,17 +630,18 @@ impl Config {
         let default = true;
         config.rust_optimize = optimize.unwrap_or(default);
 
-        let default = match &config.channel[..] {
-            "stable" | "beta" | "nightly" => true,
-            _ => false,
-        };
-        config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
-        config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
-        config.rust_debuginfo_tools = debuginfo_tools.unwrap_or(false);
-
         let default = debug == Some(true);
-        config.rust_debuginfo = debuginfo.unwrap_or(default);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
+
+        let with_defaults = |debuginfo_level_specific: Option<u32>| {
+            debuginfo_level_specific
+                .or(debuginfo_level)
+                .unwrap_or(if debug == Some(true) { 2 } else { 0 })
+        };
+        config.rust_debuginfo_level_rustc = with_defaults(debuginfo_level_rustc);
+        config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
+        config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
+        config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(0);
 
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);
@@ -685,5 +677,12 @@ impl Config {
 fn set<T>(field: &mut T, val: Option<T>) {
     if let Some(v) = val {
         *field = v;
+    }
+}
+
+fn threads_from_config(v: u32) -> u32 {
+    match v {
+        0 => num_cpus::get() as u32,
+        n => n,
     }
 }

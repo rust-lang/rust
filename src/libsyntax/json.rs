@@ -92,8 +92,8 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn emit_artifact_notification(&mut self, path: &Path) {
-        let data = ArtifactNotification { artifact: path };
+    fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
+        let data = ArtifactNotification { artifact: path, emit: artifact_type };
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
@@ -122,7 +122,6 @@ struct Diagnostic {
 }
 
 #[derive(RustcEncodable)]
-#[allow(unused_attributes)]
 struct DiagnosticSpan {
     file_name: String,
     byte_start: u32,
@@ -170,7 +169,7 @@ struct DiagnosticSpanMacroExpansion {
     macro_decl_name: String,
 
     /// span where macro was defined (if known)
-    def_site_span: Option<DiagnosticSpan>,
+    def_site_span: DiagnosticSpan,
 }
 
 #[derive(RustcEncodable)]
@@ -185,6 +184,8 @@ struct DiagnosticCode {
 struct ArtifactNotification<'a> {
     /// The path of the artifact.
     artifact: &'a Path,
+    /// What kind of artifact we're emitting.
+    emit: &'a str,
 }
 
 impl Diagnostic {
@@ -298,14 +299,13 @@ impl DiagnosticSpan {
                                      None,
                                      backtrace,
                                      je);
-            let def_site_span = bt.def_site_span.map(|sp| {
-                Self::from_span_full(sp,
+            let def_site_span =
+                Self::from_span_full(bt.def_site_span,
                                      false,
                                      None,
                                      None,
                                      vec![].into_iter(),
-                                     je)
-            });
+                                     je);
             Box::new(DiagnosticSpanMacroExpansion {
                 span: call_site,
                 macro_decl_name: bt.macro_decl_name,

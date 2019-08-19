@@ -2,8 +2,7 @@
 
 use super::metadata::{unknown_file_metadata, UNKNOWN_LINE_NUMBER};
 use super::utils::{DIB, debug_context};
-use crate::monomorphize::Instance;
-use rustc::ty;
+use rustc::ty::{self, Instance};
 
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;

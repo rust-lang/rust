@@ -13,10 +13,10 @@ impl fmt::Display for Number {
 }
 
 struct List {
-    list: Vec<Box<ToString+'static>> }
+    list: Vec<Box<dyn ToString + 'static>> }
 
 impl List {
-    fn push(&mut self, n: Box<ToString+'static>) {
+    fn push(&mut self, n: Box<dyn ToString + 'static>) {
         self.list.push(n);
     }
 }

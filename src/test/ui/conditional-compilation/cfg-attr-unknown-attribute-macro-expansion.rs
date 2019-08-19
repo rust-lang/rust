@@ -1,6 +1,7 @@
 macro_rules! foo {
     () => {
-        #[cfg_attr(all(), unknown)] //~ ERROR `unknown` is currently unknown
+        #[cfg_attr(all(), unknown)]
+        //~^ ERROR cannot find attribute macro `unknown` in this scope
         fn foo() {}
     }
 }

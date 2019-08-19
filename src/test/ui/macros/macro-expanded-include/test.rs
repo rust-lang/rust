@@ -1,5 +1,5 @@
 // ignore-emscripten no asm! support
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![feature(asm)]
 #![allow(unused)]
 

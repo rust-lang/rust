@@ -1,0 +1,8 @@
+error[E0661]: output operand constraint lacks '=' or '+'
+  --> $DIR/E0661.rs:7:18
+   |
+LL |     asm!("nop" : "r"(a));
+   |                  ^^^
+
+error: aborting due to previous error
+

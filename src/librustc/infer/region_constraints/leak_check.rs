@@ -22,7 +22,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     /// refactor the constraint set.
     pub fn leak_check(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         overly_polymorphic: bool,
         placeholder_map: &PlaceholderMap<'tcx>,
         _snapshot: &CombinedSnapshot<'_, 'tcx>,
@@ -78,10 +78,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 }
 
                 return Err(if overly_polymorphic {
-                    debug!("Overly polymorphic!");
+                    debug!("overly polymorphic!");
                     TypeError::RegionsOverlyPolymorphic(placeholder.name, tainted_region)
                 } else {
-                    debug!("Not as polymorphic!");
+                    debug!("not as polymorphic!");
                     TypeError::RegionsInsufficientlyPolymorphic(placeholder.name, tainted_region)
                 });
             }
@@ -109,7 +109,7 @@ impl<'tcx> TaintSet<'tcx> {
 
     fn fixed_point(
         &mut self,
-        tcx: TyCtxt<'_, '_, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         undo_log: &[UndoLog<'tcx>],
         verifys: &[Verify<'tcx>],
     ) {

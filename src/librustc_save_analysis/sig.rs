@@ -65,7 +65,7 @@ pub fn variant_signature(variant: &ast::Variant, scx: &SaveContext<'_, '_>) -> O
     if !scx.config.signatures {
         return None;
     }
-    variant.node.make(0, None, scx).ok()
+    variant.make(0, None, scx).ok()
 }
 
 pub fn method_signature(
@@ -374,7 +374,7 @@ impl Sig for ast::Item {
 
                 Ok(extend_sig(ty, text, defs, vec![]))
             }
-            ast::ItemKind::Fn(ref decl, ref header, ref generics, _) => {
+            ast::ItemKind::Fn(ref decl, header, ref generics, _) => {
                 let mut text = String::new();
                 if header.constness.node == ast::Constness::Const {
                     text.push_str("const ");
@@ -438,19 +438,7 @@ impl Sig for ast::Item {
                     refs: vec![],
                 })
             }
-            ast::ItemKind::Existential(ref bounds, ref generics) => {
-                let text = "existential type ".to_owned();
-                let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
-
-                if !bounds.is_empty() {
-                    sig.text.push_str(": ");
-                    sig.text.push_str(&pprust::bounds_to_string(bounds));
-                }
-                sig.text.push(';');
-
-                Ok(sig)
-            }
-            ast::ItemKind::Ty(ref ty, ref generics) => {
+            ast::ItemKind::TyAlias(ref ty, ref generics) => {
                 let text = "type ".to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
 
@@ -460,6 +448,16 @@ impl Sig for ast::Item {
                 sig.text.push(';');
 
                 Ok(merge_sigs(sig.text.clone(), vec![sig, ty]))
+            }
+            ast::ItemKind::OpaqueTy(ref bounds, ref generics) => {
+                let text = "type ".to_owned();
+                let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
+
+                sig.text.push_str(" = impl ");
+                sig.text.push_str(&pprust::bounds_to_string(bounds));
+                sig.text.push(';');
+
+                Ok(sig)
             }
             ast::ItemKind::Enum(_, ref generics) => {
                 let text = "enum ".to_owned();
@@ -586,7 +584,7 @@ impl Sig for ast::Path {
                     refs: vec![],
                 })
             }
-            Res::Def(DefKind::AssociatedConst, _)
+            Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Variant, _)
             | Res::Def(DefKind::Ctor(..), _) => {
                 let len = self.segments.len();
@@ -701,7 +699,7 @@ impl Sig for ast::StructField {
 }
 
 
-impl Sig for ast::Variant_ {
+impl Sig for ast::Variant {
     fn make(&self, offset: usize, parent_id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
         let mut text = self.ident.to_string();
         match self.data {

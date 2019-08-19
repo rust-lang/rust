@@ -1,3 +1,3 @@
 // compile-flags: --test
 
-#![test] //~ ERROR only functions may be used as tests
+#![test] //~ ERROR cannot determine resolution for the attribute macro `test`

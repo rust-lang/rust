@@ -1,4 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
+use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions, RelroLevel};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
@@ -18,14 +18,17 @@ pub fn opts() -> TargetOptions {
     ]);
 
     TargetOptions {
-        pre_link_args: args,
+        dynamic_linking: true,
         executables: true,
-        relocation_model: "static".to_string(),
-        disable_redzone: true,
-        eliminate_frame_pointer: false,
-        target_family: None,
+        target_family: Some("unix".to_string()),
         linker_is_gnu: true,
+        has_rpath: true,
+        pre_link_args: args,
+        position_independent_executables: true,
+        relro_level: RelroLevel::Full,
         has_elf_tls: true,
+        crt_static_default: true,
+        crt_static_respected: true,
         .. Default::default()
     }
 }

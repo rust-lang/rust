@@ -4,7 +4,7 @@
 // FIXME(#44232) we should warn that this isn't used.
 #![feature(rust1)]
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 
 fn main() {}

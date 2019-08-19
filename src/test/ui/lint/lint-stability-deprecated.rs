@@ -1,11 +1,10 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // aux-build:lint_stability.rs
 // aux-build:inherited_stability.rs
 // aux-build:stability_cfg1.rs
 // aux-build:stability-cfg2.rs
 // ignore-tidy-linelength
 #![warn(deprecated)]
-#![allow(dead_code, unused_extern_crates)]
 #![feature(staged_api, unstable_test_feature)]
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -98,7 +97,7 @@ mod cross_crate {
         struct S1<T: TraitWithAssociatedTypes>(T::TypeUnstable);
         struct S2<T: TraitWithAssociatedTypes>(T::TypeDeprecated);
         //~^ WARN use of deprecated item 'lint_stability::TraitWithAssociatedTypes::TypeDeprecated': text
-        type A = TraitWithAssociatedTypes<
+        type A = dyn TraitWithAssociatedTypes<
             TypeUnstable = u8,
             TypeDeprecated = u16,
             //~^ WARN use of deprecated item 'lint_stability::TraitWithAssociatedTypes::TypeDeprecated'
@@ -170,7 +169,7 @@ mod cross_crate {
         <Foo as Trait>::trait_stable(&foo);
     }
 
-    fn test_method_object(foo: &Trait) {
+    fn test_method_object(foo: &dyn Trait) {
         foo.trait_deprecated(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated'
         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_text': text
         foo.trait_deprecated_unstable(); //~ WARN use of deprecated item 'lint_stability::Trait::trait_deprecated_unstable'
@@ -423,7 +422,7 @@ mod this_crate {
         <Foo as Trait>::trait_stable(&foo);
     }
 
-    fn test_method_object(foo: &Trait) {
+    fn test_method_object(foo: &dyn Trait) {
         foo.trait_deprecated(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated'
         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
         foo.trait_unstable();

@@ -8,7 +8,7 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-synstructure = "0.10.1"
+synstructure = "0.10.2"
 syn = { version = "0.15.22", features = ["full"] }
 proc-macro2 = "0.4.24"
 quote = "0.6.10"

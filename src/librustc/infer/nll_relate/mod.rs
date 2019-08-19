@@ -38,11 +38,11 @@ pub enum NormalizationStrategy {
     Eager,
 }
 
-pub struct TypeRelating<'me, 'gcx: 'tcx, 'tcx: 'me, D>
+pub struct TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+    infcx: &'me InferCtxt<'me, 'tcx>,
 
     /// Callback to use when we deduce an outlives relationship
     delegate: D,
@@ -135,12 +135,12 @@ struct BoundRegionScope<'tcx> {
 #[derive(Copy, Clone)]
 struct UniversallyQuantified(bool);
 
-impl<'me, 'gcx, 'tcx, D> TypeRelating<'me, 'gcx, 'tcx, D>
+impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
     pub fn new(
-        infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+        infcx: &'me InferCtxt<'me, 'tcx>,
         delegate: D,
         ambient_variance: ty::Variance,
     ) -> Self {
@@ -270,15 +270,16 @@ where
         projection_ty: ty::ProjectionTy<'tcx>,
         value_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
-        use crate::infer::type_variable::TypeVariableOrigin;
+        use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
         use crate::traits::WhereClause;
         use syntax_pos::DUMMY_SP;
 
         match value_ty.sty {
             ty::Projection(other_projection_ty) => {
-                let var = self
-                    .infcx
-                    .next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+                let var = self.infcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: DUMMY_SP,
+                });
                 self.relate_projection_ty(projection_ty, var);
                 self.relate_projection_ty(other_projection_ty, var);
                 var
@@ -363,7 +364,7 @@ where
         // been fully instantiated and hence the set of scopes we have
         // doesn't matter -- just to be sure, put an empty vector
         // in there.
-        let old_a_scopes = ::std::mem::replace(pair.vid_scopes(self), vec![]);
+        let old_a_scopes = ::std::mem::take(pair.vid_scopes(self));
 
         // Relate the generalized kind to the original one.
         let result = pair.relate_generalized_ty(self, generalized_ty);
@@ -415,7 +416,7 @@ trait VidValuePair<'tcx>: Debug {
     /// for more details on why we want them.
     fn vid_scopes<D: TypeRelatingDelegate<'tcx>>(
         &self,
-        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>;
 
     /// Given a generalized type G that should replace the vid, relate
@@ -423,7 +424,7 @@ trait VidValuePair<'tcx>: Debug {
     /// appeared.
     fn relate_generalized_ty<D>(
         &self,
-        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &mut TypeRelating<'_, 'tcx, D>,
         generalized_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
@@ -441,7 +442,7 @@ impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
 
     fn vid_scopes<D>(
         &self,
-        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>
     where
         D: TypeRelatingDelegate<'tcx>,
@@ -451,7 +452,7 @@ impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
 
     fn relate_generalized_ty<D>(
         &self,
-        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &mut TypeRelating<'_, 'tcx, D>,
         generalized_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
@@ -473,7 +474,7 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
 
     fn vid_scopes<D>(
         &self,
-        relate: &'r mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>
     where
         D: TypeRelatingDelegate<'tcx>,
@@ -483,7 +484,7 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
 
     fn relate_generalized_ty<D>(
         &self,
-        relate: &mut TypeRelating<'_, '_, 'tcx, D>,
+        relate: &mut TypeRelating<'_, 'tcx, D>,
         generalized_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
@@ -493,13 +494,16 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
     }
 }
 
-impl<D> TypeRelation<'me, 'gcx, 'tcx> for TypeRelating<'me, 'gcx, 'tcx, D>
+impl<D> TypeRelation<'tcx> for TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+
+    // FIXME(oli-obk): not sure how to get the correct ParamEnv
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { ty::ParamEnv::empty() }
 
     fn tag(&self) -> &'static str {
         "nll::subtype"
@@ -740,7 +744,7 @@ where
 /// binder depth, and finds late-bound regions targeting the
 /// `for<..`>.  For each of those, it creates an entry in
 /// `bound_region_scope`.
-struct ScopeInstantiator<'me, 'tcx: 'me> {
+struct ScopeInstantiator<'me, 'tcx> {
     next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
     // The debruijn index of the scope we are instantiating.
     target_index: ty::DebruijnIndex,
@@ -797,11 +801,11 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
 /// scopes.
 ///
 /// [blog post]: https://is.gd/0hKvIr
-struct TypeGeneralizer<'me, 'gcx: 'tcx, 'tcx: 'me, D>
+struct TypeGeneralizer<'me, 'tcx, D>
 where
-    D: TypeRelatingDelegate<'tcx> + 'me,
+    D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+    infcx: &'me InferCtxt<'me, 'tcx>,
 
     delegate: &'me mut D,
 
@@ -822,13 +826,16 @@ where
     universe: ty::UniverseIndex,
 }
 
-impl<D> TypeRelation<'me, 'gcx, 'tcx> for TypeGeneralizer<'me, 'gcx, 'tcx, D>
+impl<D> TypeRelation<'tcx> for TypeGeneralizer<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+
+    // FIXME(oli-obk): not sure how to get the correct ParamEnv
+    fn param_env(&self) -> ty::ParamEnv<'tcx> { ty::ParamEnv::empty() }
 
     fn tag(&self) -> &'static str {
         "nll::generalizer"

@@ -6,9 +6,9 @@ struct A;
 
 impl Foo for A {}
 
-struct B<'a>(&'a (Foo+'a));
+struct B<'a>(&'a (dyn Foo + 'a));
 
-fn foo<'a>(a: &Foo) -> B<'a> {
+fn foo<'a>(a: &dyn Foo) -> B<'a> {
     B(a)    //~ ERROR explicit lifetime required in the type of `a` [E0621]
 }
 

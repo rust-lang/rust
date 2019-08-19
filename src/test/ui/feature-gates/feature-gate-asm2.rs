@@ -1,4 +1,4 @@
-// gate-test-asm
+// ignore-emscripten
 
 fn main() {
     unsafe {

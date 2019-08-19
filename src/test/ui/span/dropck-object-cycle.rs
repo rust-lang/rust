@@ -8,7 +8,7 @@ trait Trait<'a> {
     fn short<'b>(&'b self) -> isize;
 }
 
-fn object_invoke1<'d>(x: &'d Trait<'d>) -> (isize, isize) { loop { } }
+fn object_invoke1<'d>(x: &'d dyn Trait<'d>) -> (isize, isize) { loop { } }
 
 trait MakerTrait {
     fn mk() -> Self;
@@ -18,12 +18,12 @@ fn make_val<T:MakerTrait>() -> T {
     MakerTrait::mk()
 }
 
-impl<'t> MakerTrait for Box<Trait<'t>+'static> {
-    fn mk() -> Box<Trait<'t>+'static> { loop { } }
+impl<'t> MakerTrait for Box<dyn Trait<'t>+'static> {
+    fn mk() -> Box<dyn Trait<'t>+'static> { loop { } }
 }
 
 pub fn main() {
-    let m : Box<Trait+'static> = make_val();
+    let m : Box<dyn Trait+'static> = make_val();
     assert_eq!(object_invoke1(&*m), (4,5));
     //~^ ERROR `*m` does not live long enough
 

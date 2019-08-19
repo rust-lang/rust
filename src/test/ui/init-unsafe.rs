@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 #![feature(core_intrinsics)]
 
 use std::intrinsics::{init};

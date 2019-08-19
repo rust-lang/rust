@@ -23,12 +23,12 @@ use rustc::mir::interpret::truncate;
 
 use std::mem;
 
-impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn simplify_candidate<'pat>(&mut self,
                                     candidate: &mut Candidate<'pat, 'tcx>) {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
-            let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
+            let match_pairs = mem::take(&mut candidate.match_pairs);
             let mut changed = false;
             for match_pair in match_pairs {
                 match self.simplify_match_pair(match_pair, candidate) {
@@ -108,8 +108,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Range(PatternRange { lo, hi, ty, end }) => {
-                let (range, bias) = match ty.sty {
+            PatternKind::Range(PatternRange { lo, hi, end }) => {
+                let (range, bias) = match lo.ty.sty {
                     ty::Char => {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
@@ -161,7 +161,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().features().never_type &&
                         self.hir.tcx().features().exhaustive_patterns &&
                         !v.uninhabited_from(self.hir.tcx(), substs, adt_def.adt_kind()).is_empty()
                     }
@@ -195,6 +194,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let place = match_pair.place.deref();
                 candidate.match_pairs.push(MatchPair::new(place, subpattern));
                 Ok(())
+            }
+
+            PatternKind::Or { .. } => {
+                Err(match_pair)
             }
         }
     }

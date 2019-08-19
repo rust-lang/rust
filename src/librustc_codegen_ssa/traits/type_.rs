@@ -77,11 +77,12 @@ pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
     }
 
     fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        if ty.is_sized(self.tcx().at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
+        let param_env = ty::ParamEnv::reveal_all();
+        if ty.is_sized(self.tcx().at(DUMMY_SP), param_env) {
             return false;
         }
 
-        let tail = self.tcx().struct_tail(ty);
+        let tail = self.tcx().struct_tail_erasing_lifetimes(ty, param_env);
         match tail.sty {
             ty::Foreign(..) => false,
             ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
@@ -101,7 +102,7 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool;
     fn is_backend_scalar_pair(&self, layout: TyLayout<'tcx>) -> bool;
     fn backend_field_index(&self, layout: TyLayout<'tcx>, index: usize) -> u64;
-    fn scalar_pair_element_backend_type<'a>(
+    fn scalar_pair_element_backend_type(
         &self,
         layout: TyLayout<'tcx>,
         index: usize,

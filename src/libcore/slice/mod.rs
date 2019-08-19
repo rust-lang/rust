@@ -25,7 +25,7 @@
 use crate::cmp::Ordering::{self, Less, Equal, Greater};
 use crate::cmp;
 use crate::fmt;
-use crate::intrinsics::assume;
+use crate::intrinsics::{assume, exact_div, unchecked_sub, is_aligned_and_not_null};
 use crate::isize;
 use crate::iter::*;
 use crate::ops::{FnMut, Try, self};
@@ -44,19 +44,6 @@ pub mod memchr;
 
 mod rotate;
 mod sort;
-
-#[repr(C)]
-union Repr<'a, T: 'a> {
-    rust: &'a [T],
-    rust_mut: &'a mut [T],
-    raw: FatPtr<T>,
-}
-
-#[repr(C)]
-struct FatPtr<T> {
-    data: *const T,
-    len: usize,
-}
 
 //
 // Extension traits
@@ -78,7 +65,7 @@ impl<T> [T] {
     #[rustc_const_unstable(feature = "const_slice_len")]
     pub const fn len(&self) -> usize {
         unsafe {
-            Repr { rust: self }.raw.len
+            crate::ptr::Repr { rust: self }.raw.len
         }
     }
 
@@ -305,10 +292,13 @@ impl<T> [T] {
     /// Returns a reference to an element or subslice, without doing bounds
     /// checking.
     ///
-    /// This is generally not recommended, use with caution! For a safe
-    /// alternative see [`get`].
+    /// This is generally not recommended, use with caution!
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    /// For a safe alternative see [`get`].
     ///
     /// [`get`]: #method.get
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///
@@ -330,10 +320,13 @@ impl<T> [T] {
     /// Returns a mutable reference to an element or subslice, without doing
     /// bounds checking.
     ///
-    /// This is generally not recommended, use with caution! For a safe
-    /// alternative see [`get_mut`].
+    /// This is generally not recommended, use with caution!
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    /// For a safe alternative see [`get_mut`].
     ///
     /// [`get_mut`]: #method.get_mut
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///
@@ -624,7 +617,7 @@ impl<T> [T] {
     ///
     /// See [`chunks_exact`] for a variant of this iterator that returns chunks of always exactly
     /// `chunk_size` elements, and [`rchunks`] for the same iterator but starting at the end of the
-    /// slice of the slice.
+    /// slice.
     ///
     /// # Panics
     ///
@@ -658,7 +651,7 @@ impl<T> [T] {
     ///
     /// See [`chunks_exact_mut`] for a variant of this iterator that returns chunks of always
     /// exactly `chunk_size` elements, and [`rchunks_mut`] for the same iterator but starting at
-    /// the end of the slice of the slice.
+    /// the end of the slice.
     ///
     /// # Panics
     ///
@@ -740,7 +733,7 @@ impl<T> [T] {
     ///
     /// See [`chunks_mut`] for a variant of this iterator that also returns the remainder as a
     /// smaller chunk, and [`rchunks_exact_mut`] for the same iterator but starting at the end of
-    /// the slice of the slice.
+    /// the slice.
     ///
     /// # Panics
     ///
@@ -1276,6 +1269,15 @@ impl<T> [T] {
     /// assert!(v.contains(&30));
     /// assert!(!v.contains(&50));
     /// ```
+    ///
+    /// If you do not have an `&T`, but just an `&U` such that `T: Borrow<U>`
+    /// (e.g. `String: Borrow<str>`), you can use `iter().any`:
+    ///
+    /// ```
+    /// let v = [String::from("hello"), String::from("world")]; // slice of `String`
+    /// assert!(v.iter().any(|e| e == "hello")); // search with `&str`
+    /// assert!(!v.iter().any(|e| e == "hi"));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains(&self, x: &T) -> bool
         where T: PartialEq
@@ -1361,6 +1363,17 @@ impl<T> [T] {
     /// assert_eq!(s.binary_search(&100), Err(13));
     /// let r = s.binary_search(&1);
     /// assert!(match r { Ok(1..=4) => true, _ => false, });
+    /// ```
+    ///
+    /// If you want to insert an item to a sorted vector, while maintaining
+    /// sort order:
+    ///
+    /// ```
+    /// let mut s = vec![0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    /// let num = 42;
+    /// let idx = s.binary_search(&num).unwrap_or_else(|x| x);
+    /// s.insert(idx, num);
+    /// assert_eq!(s, [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize>
@@ -2146,14 +2159,13 @@ impl<T> [T] {
     /// Copying four bytes within a slice:
     ///
     /// ```
-    /// # #![feature(copy_within)]
     /// let mut bytes = *b"Hello, World!";
     ///
     /// bytes.copy_within(1..5, 8);
     ///
     /// assert_eq!(&bytes, b"Hello, Wello!");
     /// ```
-    #[unstable(feature = "copy_within", issue = "54236")]
+    #[stable(feature = "copy_within", since = "1.37.0")]
     pub fn copy_within<R: ops::RangeBounds<usize>>(&mut self, src: R, dest: usize)
     where
         T: Copy,
@@ -2178,8 +2190,8 @@ impl<T> [T] {
         assert!(dest <= self.len() - count, "dest is out of bounds");
         unsafe {
             ptr::copy(
-                self.get_unchecked(src_start),
-                self.get_unchecked_mut(dest),
+                self.as_ptr().add(src_start),
+                self.as_mut_ptr().add(dest),
                 count,
             );
         }
@@ -2307,9 +2319,10 @@ impl<T> [T] {
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
-    /// slice of a new type, and the suffix slice. The method does a best effort to make the
-    /// middle slice the greatest length possible for a given type and input slice, but only
-    /// your algorithm's performance should depend on that, not its correctness.
+    /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
+    /// length possible for a given type and input slice, but only your algorithm's performance
+    /// should depend on that, not its correctness. It is permissible for all of the input data to
+    /// be returned as the prefix or suffix slice.
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
@@ -2360,9 +2373,10 @@ impl<T> [T] {
     /// maintained.
     ///
     /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
-    /// slice of a new type, and the suffix slice. The method does a best effort to make the
-    /// middle slice the greatest length possible for a given type and input slice, but only
-    /// your algorithm's performance should depend on that, not its correctness.
+    /// slice of a new type, and the suffix slice. The method may make the middle slice the greatest
+    /// length possible for a given type and input slice, but only your algorithm's performance
+    /// should depend on that, not its correctness. It is permissible for all of the input data to
+    /// be returned as the prefix or suffix slice.
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
@@ -2473,12 +2487,12 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
-    pub fn is_sorted_by_key<F, K>(&self, mut f: F) -> bool
+    pub fn is_sorted_by_key<F, K>(&self, f: F) -> bool
     where
         F: FnMut(&T) -> K,
         K: PartialOrd
     {
-        self.is_sorted_by(|a, b| f(a).partial_cmp(&f(b)))
+        self.iter().is_sorted_by_key(f)
     }
 }
 
@@ -2634,11 +2648,17 @@ pub trait SliceIndex<T: ?Sized>: private_slice_index::Sealed {
 
     /// Returns a shared reference to the output at this location, without
     /// performing any bounds checking.
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "0")]
     unsafe fn get_unchecked(self, slice: &T) -> &Self::Output;
 
     /// Returns a mutable reference to the output at this location, without
     /// performing any bounds checking.
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used.
+    /// [undefined behavior]: ../../reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_index_methods", issue = "0")]
     unsafe fn get_unchecked_mut(self, slice: &mut T) -> &mut Self::Output;
 
@@ -2999,14 +3019,27 @@ macro_rules! is_empty {
 // unexpected way. (Tested by `codegen/slice-position-bounds-check`.)
 macro_rules! len {
     ($self: ident) => {{
+        #![allow(unused_unsafe)] // we're sometimes used within an unsafe block
+
         let start = $self.ptr;
-        let diff = ($self.end as usize).wrapping_sub(start as usize);
         let size = size_from_ptr(start);
         if size == 0 {
+            // This _cannot_ use `unchecked_sub` because we depend on wrapping
+            // to represent the length of long ZST slice iterators.
+            let diff = ($self.end as usize).wrapping_sub(start as usize);
             diff
         } else {
-            // Using division instead of `offset_from` helps LLVM remove bounds checks
-            diff / size
+            // We know that `start <= end`, so can do better than `offset_from`,
+            // which needs to deal in signed.  By setting appropriate flags here
+            // we can tell LLVM this, which helps it remove bounds checks.
+            // SAFETY: By the type invariant, `start <= end`
+            let diff = unsafe { unchecked_sub($self.end as usize, start as usize) };
+            // By also telling LLVM that the pointers are apart by an exact
+            // multiple of the type size, it can optimize `len() == 0` down to
+            // `start == end` instead of `(end - start) < size`.
+            // SAFETY: By the type invariant, the pointers are aligned so the
+            //         distance between them must be a multiple of pointee size
+            unsafe { exact_div(diff, size) }
         }
     }}
 }
@@ -3020,6 +3053,28 @@ macro_rules! iterator {
         {$( $mut_:tt )*},
         {$($extra:tt)*}
     ) => {
+        // Returns the first element and moves the start of the iterator forwards by 1.
+        // Greatly improves performance compared to an inlined function. The iterator
+        // must not be empty.
+        macro_rules! next_unchecked {
+            ($self: ident) => {& $( $mut_ )* *$self.post_inc_start(1)}
+        }
+
+        // Returns the last element and moves the end of the iterator backwards by 1.
+        // Greatly improves performance compared to an inlined function. The iterator
+        // must not be empty.
+        macro_rules! next_back_unchecked {
+            ($self: ident) => {& $( $mut_ )* *$self.pre_dec_end(1)}
+        }
+
+        // Shrinks the iterator when T is a ZST, by moving the end of the iterator
+        // backwards by `n`. `n` must not exceed `self.len()`.
+        macro_rules! zst_shrink {
+            ($self: ident, $n: ident) => {
+                $self.end = ($self.end as * $raw_mut u8).wrapping_offset(-$n) as * $raw_mut T;
+            }
+        }
+
         impl<'a, T> $name<'a, T> {
             // Helper function for creating a slice from the iterator.
             #[inline(always)]
@@ -3029,12 +3084,11 @@ macro_rules! iterator {
 
             // Helper function for moving the start of the iterator forwards by `offset` elements,
             // returning the old start.
-            // Unsafe because the offset must be in-bounds or one-past-the-end.
+            // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn post_inc_start(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
-                    // This is *reducing* the length.  `ptr` never changes with ZST.
-                    self.end = (self.end as * $raw_mut u8).wrapping_offset(-offset) as * $raw_mut T;
+                    zst_shrink!(self, offset);
                     self.ptr
                 } else {
                     let old = self.ptr;
@@ -3045,11 +3099,11 @@ macro_rules! iterator {
 
             // Helper function for moving the end of the iterator backwards by `offset` elements,
             // returning the new end.
-            // Unsafe because the offset must be in-bounds or one-past-the-end.
+            // Unsafe because the offset must not exceed `self.len()`.
             #[inline(always)]
             unsafe fn pre_dec_end(&mut self, offset: isize) -> * $raw_mut T {
                 if mem::size_of::<T>() == 0 {
-                    self.end = (self.end as * $raw_mut u8).wrapping_offset(-offset) as * $raw_mut T;
+                    zst_shrink!(self, offset);
                     self.ptr
                 } else {
                     self.end = self.end.offset(-offset);
@@ -3086,7 +3140,7 @@ macro_rules! iterator {
                     if is_empty!(self) {
                         None
                     } else {
-                        Some(& $( $mut_ )* *self.post_inc_start(1))
+                        Some(next_unchecked!(self))
                     }
                 }
             }
@@ -3115,11 +3169,10 @@ macro_rules! iterator {
                     }
                     return None;
                 }
-                // We are in bounds. `offset` does the right thing even for ZSTs.
+                // We are in bounds. `post_inc_start` does the right thing even for ZSTs.
                 unsafe {
-                    let elem = Some(& $( $mut_ )* *self.ptr.add(n));
-                    self.post_inc_start((n as isize).wrapping_add(1));
-                    elem
+                    self.post_inc_start(n as isize);
+                    Some(next_unchecked!(self))
                 }
             }
 
@@ -3136,13 +3189,13 @@ macro_rules! iterator {
                 let mut accum = init;
                 unsafe {
                     while len!(self) >= 4 {
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
+                        accum = f(accum, next_unchecked!(self))?;
                     }
                     while !is_empty!(self) {
-                        accum = f(accum, & $( $mut_ )* *self.post_inc_start(1))?;
+                        accum = f(accum, next_unchecked!(self))?;
                     }
                 }
                 Try::from_ok(accum)
@@ -3213,8 +3266,22 @@ macro_rules! iterator {
                     if is_empty!(self) {
                         None
                     } else {
-                        Some(& $( $mut_ )* *self.pre_dec_end(1))
+                        Some(next_back_unchecked!(self))
                     }
+                }
+            }
+
+            #[inline]
+            fn nth_back(&mut self, n: usize) -> Option<$elem> {
+                if n >= len!(self) {
+                    // This iterator is now empty.
+                    self.end = self.ptr;
+                    return None;
+                }
+                // We are in bounds. `pre_dec_end` does the right thing even for ZSTs.
+                unsafe {
+                    self.pre_dec_end(n as isize);
+                    Some(next_back_unchecked!(self))
                 }
             }
 
@@ -3226,14 +3293,14 @@ macro_rules! iterator {
                 let mut accum = init;
                 unsafe {
                     while len!(self) >= 4 {
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
                     }
                     // inlining is_empty everywhere makes a huge performance difference
                     while !is_empty!(self) {
-                        accum = f(accum, & $( $mut_ )* *self.pre_dec_end(1))?;
+                        accum = f(accum, next_back_unchecked!(self))?;
                     }
                 }
                 Try::from_ok(accum)
@@ -3547,11 +3614,6 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
             (1, Some(self.v.len() + 1))
         }
     }
-
-    #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3650,11 +3712,6 @@ impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
             (1, Some(self.v.len() + 1))
         }
     }
-
-    #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3720,11 +3777,6 @@ impl<'a, T, P> Iterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
-
-    #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
-    }
 }
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
@@ -3788,11 +3840,6 @@ impl<'a, T, P> Iterator for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
-    }
-
-    #[inline]
-    fn last(mut self) -> Option<Self::Item> {
-        self.next_back()
     }
 }
 
@@ -4178,6 +4225,24 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
             Some(snd)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            let start = (len - 1 - n) * self.chunk_size;
+            let end = match start.checked_add(self.chunk_size) {
+                Some(res) => cmp::min(res, self.v.len()),
+                None => self.v.len(),
+            };
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[..start];
+            Some(nth_back)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -4297,6 +4362,25 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
             let (head, tail) = tmp.split_at_mut(tmp_len - sz);
             self.v = head;
             Some(tail)
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &mut [];
+            None
+        } else {
+            let start = (len - 1 - n) * self.chunk_size;
+            let end = match start.checked_add(self.chunk_size) {
+                Some(res) => cmp::min(res, self.v.len()),
+                None => self.v.len(),
+            };
+            let (temp, _tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
+            let (head, nth_back) = temp.split_at_mut(start);
+            self.v = head;
+            Some(nth_back)
         }
     }
 }
@@ -4420,6 +4504,21 @@ impl<'a, T> DoubleEndedIterator for ChunksExact<'a, T> {
             let (fst, snd) = self.v.split_at(self.v.len() - self.chunk_size);
             self.v = fst;
             Some(snd)
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            let start = (len - 1 - n) * self.chunk_size;
+            let end = start + self.chunk_size;
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[..start];
+            Some(nth_back)
         }
     }
 }
@@ -4669,6 +4768,23 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
             Some(fst)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            // can't underflow because `n < len`
+            let offset_from_end = (len - 1 - n) * self.chunk_size;
+            let end = self.v.len() - offset_from_end;
+            let start = end.saturating_sub(self.chunk_size);
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[end..];
+            Some(nth_back)
+        }
+    }
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4792,6 +4908,24 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
             let (head, tail) = tmp.split_at_mut(sz);
             self.v = tail;
             Some(head)
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &mut [];
+            None
+        } else {
+            // can't underflow because `n < len`
+            let offset_from_end = (len - 1 - n) * self.chunk_size;
+            let end = self.v.len() - offset_from_end;
+            let start = end.saturating_sub(self.chunk_size);
+            let (tmp, tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
+            let (_, nth_back) = tmp.split_at_mut(start);
+            self.v = tail;
+            Some(nth_back)
         }
     }
 }
@@ -4918,6 +5052,24 @@ impl<'a, T> DoubleEndedIterator for RChunksExact<'a, T> {
             Some(fst)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &[];
+            None
+        } else {
+            // now that we know that `n` corresponds to a chunk,
+            // none of these operations can underflow/overflow
+            let offset = (len - n) * self.chunk_size;
+            let start = self.v.len() - offset;
+            let end = start + self.chunk_size;
+            let nth_back = &self.v[start..end];
+            self.v = &self.v[end..];
+            Some(nth_back)
+        }
+    }
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -5036,6 +5188,25 @@ impl<'a, T> DoubleEndedIterator for RChunksExactMut<'a, T> {
             Some(head)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &mut [];
+            None
+        } else {
+            // now that we know that `n` corresponds to a chunk,
+            // none of these operations can underflow/overflow
+            let offset = (len - n) * self.chunk_size;
+            let start = self.v.len() - offset;
+            let end = start + self.chunk_size;
+            let (tmp, tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
+            let (_, nth_back) = tmp.split_at_mut(start);
+            self.v = tail;
+            Some(nth_back)
+        }
+    }
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -5110,10 +5281,10 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
-    debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
+    debug_assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
                   "attempt to create slice covering half the address space");
-    Repr { raw: FatPtr { data, len } }.rust
+    &*ptr::slice_from_raw_parts(data, len)
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -5131,10 +5302,10 @@ pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
-    debug_assert!(data as usize % mem::align_of::<T>() == 0, "attempt to create unaligned slice");
+    debug_assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
                   "attempt to create slice covering half the address space");
-    Repr { raw: FatPtr { data, len } }.rust_mut
+    &mut *ptr::slice_from_raw_parts_mut(data, len)
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
@@ -5224,13 +5395,24 @@ impl<A, B> SlicePartialEq<B> for [A]
             return false;
         }
 
-        for i in 0..self.len() {
-            if !self[i].eq(&other[i]) {
-                return false;
-            }
+        self.iter().zip(other.iter()).all(|(x, y)| x == y)
+    }
+}
+
+// Use an equal-pointer optimization when types are `Eq`
+impl<A> SlicePartialEq<A> for [A]
+    where A: PartialEq<A> + Eq
+{
+    default fn equal(&self, other: &[A]) -> bool {
+        if self.len() != other.len() {
+            return false;
         }
 
-        true
+        if self.as_ptr() == other.as_ptr() {
+            return true;
+        }
+
+        self.iter().zip(other.iter()).all(|(x, y)| x == y)
     }
 }
 
@@ -5339,7 +5521,7 @@ impl SliceOrd<u8> for [u8] {
 #[doc(hidden)]
 /// Trait implemented for types that can be compared for equality using
 /// their bytewise representation
-trait BytewiseEquality { }
+trait BytewiseEquality: Eq + Copy { }
 
 macro_rules! impl_marker_for {
     ($traitname:ident, $($ty:ty)*) => {
@@ -5350,7 +5532,7 @@ macro_rules! impl_marker_for {
 }
 
 impl_marker_for!(BytewiseEquality,
-                 u8 i8 u16 i16 u32 i32 u64 i64 usize isize char bool);
+                 u8 i8 u16 i16 u32 i32 u64 i64 u128 i128 usize isize char bool);
 
 #[doc(hidden)]
 unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {

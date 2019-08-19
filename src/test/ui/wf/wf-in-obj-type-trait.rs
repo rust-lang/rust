@@ -8,7 +8,7 @@ struct MustBeCopy<T:Copy> {
 
 struct Bar<T> {
     // needs T: Copy
-    x: Object<MustBeCopy<T>> //~ ERROR E0277
+    x: dyn Object<MustBeCopy<T>> //~ ERROR E0277
 }
 
 fn main() { }

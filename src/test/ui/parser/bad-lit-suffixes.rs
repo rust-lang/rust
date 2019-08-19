@@ -1,6 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
-
 extern
     "C"suffix //~ ERROR suffixes on an ABI spec are invalid
     fn foo() {}
@@ -22,8 +19,8 @@ fn main() {
     1234f1024; //~ ERROR invalid width `1024` for float literal
     1234.5f1024; //~ ERROR invalid width `1024` for float literal
 
-    1234suffix; //~ ERROR invalid suffix `suffix` for numeric literal
-    0b101suffix; //~ ERROR invalid suffix `suffix` for numeric literal
+    1234suffix; //~ ERROR invalid suffix `suffix` for integer literal
+    0b101suffix; //~ ERROR invalid suffix `suffix` for integer literal
     1.0suffix; //~ ERROR invalid suffix `suffix` for float literal
     1.0e10suffix; //~ ERROR invalid suffix `suffix` for float literal
 }

@@ -1,0 +1,15 @@
+error[E0597]: `x` does not live long enough
+  --> $DIR/issue-61882-2.rs:6:14
+   |
+LL |         Self(&x);
+   |              ^^
+   |              |
+   |              borrowed value does not live long enough
+   |              requires that `x` is borrowed for `'static`
+LL |
+LL |     }
+   |     - `x` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

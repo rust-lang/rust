@@ -9,7 +9,7 @@ pub enum Enum {
 
 impl Stage for Enum {}
 
-pub static ARRAY: [(&Stage, &str); 1] = [
+pub static ARRAY: [(&dyn Stage, &str); 1] = [
     (&Enum::A, ""),
 ];
 

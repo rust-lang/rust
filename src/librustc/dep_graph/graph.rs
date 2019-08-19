@@ -7,6 +7,7 @@ use rustc_data_structures::sync::{Lrc, Lock, AtomicU32, Ordering};
 use std::env;
 use std::hash::Hash;
 use std::collections::hash_map::Entry;
+use std::mem;
 use crate::ty::{self, TyCtxt};
 use crate::util::common::{ProfileQueriesMsg, profq_msg};
 use parking_lot::{Mutex, Condvar};
@@ -61,11 +62,11 @@ struct DepGraphData {
 
     colors: DepNodeColorMap,
 
-    /// A set of loaded diagnostics that have been emitted.
-    emitted_diagnostics: Mutex<FxHashSet<DepNodeIndex>>,
+    /// A set of loaded diagnostics that is in the progress of being emitted.
+    emitting_diagnostics: Mutex<FxHashSet<DepNodeIndex>>,
 
     /// Used to wait for diagnostics to be emitted.
-    emitted_diagnostics_cond_var: Condvar,
+    emitting_diagnostics_cond_var: Condvar,
 
     /// When we load, there may be `.o` files, cached MIR, or other such
     /// things available to us. If we find that they are not dirty, we
@@ -90,7 +91,6 @@ where
 }
 
 impl DepGraph {
-
     pub fn new(prev_graph: PreviousDepGraph,
                prev_work_products: FxHashMap<WorkProductId, WorkProduct>) -> DepGraph {
         let prev_graph_node_count = prev_graph.node_count();
@@ -100,8 +100,8 @@ impl DepGraph {
                 previous_work_products: prev_work_products,
                 dep_node_debug: Default::default(),
                 current: Lock::new(CurrentDepGraph::new(prev_graph_node_count)),
-                emitted_diagnostics: Default::default(),
-                emitted_diagnostics_cond_var: Condvar::new(),
+                emitting_diagnostics: Default::default(),
+                emitting_diagnostics_cond_var: Condvar::new(),
                 previous: prev_graph,
                 colors: DepNodeColorMap::new(prev_graph_node_count),
                 loaded_from_cache: Default::default(),
@@ -558,8 +558,8 @@ impl DepGraph {
     /// a node index can be found for that node.
     pub fn try_mark_green_and_read(
         &self,
-        tcx: TyCtxt<'_, '_, '_>,
-        dep_node: &DepNode
+        tcx: TyCtxt<'_>,
+        dep_node: &DepNode,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
         self.try_mark_green(tcx, dep_node).map(|(prev_index, dep_node_index)| {
             debug_assert!(self.is_green(&dep_node));
@@ -570,8 +570,8 @@ impl DepGraph {
 
     pub fn try_mark_green(
         &self,
-        tcx: TyCtxt<'_, '_, '_>,
-        dep_node: &DepNode
+        tcx: TyCtxt<'_>,
+        dep_node: &DepNode,
     ) -> Option<(SerializedDepNodeIndex, DepNodeIndex)> {
         debug_assert!(!dep_node.kind.is_eval_always());
 
@@ -604,10 +604,10 @@ impl DepGraph {
     /// Try to mark a dep-node which existed in the previous compilation session as green.
     fn try_mark_previous_green<'tcx>(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         data: &DepGraphData,
         prev_dep_node_index: SerializedDepNodeIndex,
-        dep_node: &DepNode
+        dep_node: &DepNode,
     ) -> Option<DepNodeIndex> {
         debug!("try_mark_previous_green({:?}) - BEGIN", dep_node);
 
@@ -745,7 +745,7 @@ impl DepGraph {
 
         // There may be multiple threads trying to mark the same dep node green concurrently
 
-        let (dep_node_index, did_allocation) = {
+        let dep_node_index = {
             let mut current = data.current.borrow_mut();
 
             // Copy the fingerprint from the previous graph,
@@ -759,71 +759,86 @@ impl DepGraph {
 
         // ... emitting any stored diagnostic ...
 
+        // FIXME: Store the fact that a node has diagnostics in a bit in the dep graph somewhere
+        // Maybe store a list on disk and encode this fact in the DepNodeState
         let diagnostics = tcx.queries.on_disk_cache
-                                .load_diagnostics(tcx, prev_dep_node_index);
+                             .load_diagnostics(tcx, prev_dep_node_index);
+
+        #[cfg(not(parallel_compiler))]
+        debug_assert!(data.colors.get(prev_dep_node_index).is_none(),
+                      "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor \
+                      insertion for {:?}", dep_node);
 
         if unlikely!(diagnostics.len() > 0) {
             self.emit_diagnostics(
                 tcx,
                 data,
                 dep_node_index,
-                did_allocation,
+                prev_dep_node_index,
                 diagnostics
             );
         }
 
         // ... and finally storing a "Green" entry in the color map.
         // Multiple threads can all write the same color here
-        #[cfg(not(parallel_compiler))]
-        debug_assert!(data.colors.get(prev_dep_node_index).is_none(),
-                      "DepGraph::try_mark_previous_green() - Duplicate DepNodeColor \
-                      insertion for {:?}", dep_node);
-
         data.colors.insert(prev_dep_node_index, DepNodeColor::Green(dep_node_index));
 
         debug!("try_mark_previous_green({:?}) - END - successfully marked as green", dep_node);
         Some(dep_node_index)
     }
 
-    /// Atomically emits some loaded diagnotics, assuming that this only gets called with
-    /// `did_allocation` set to `true` on a single thread.
+    /// Atomically emits some loaded diagnostics.
+    /// This may be called concurrently on multiple threads for the same dep node.
     #[cold]
     #[inline(never)]
     fn emit_diagnostics<'tcx>(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'tcx>,
+        tcx: TyCtxt<'tcx>,
         data: &DepGraphData,
         dep_node_index: DepNodeIndex,
-        did_allocation: bool,
+        prev_dep_node_index: SerializedDepNodeIndex,
         diagnostics: Vec<Diagnostic>,
     ) {
-        if did_allocation || !cfg!(parallel_compiler) {
-            // Only the thread which did the allocation emits the error messages
-            let handle = tcx.sess.diagnostic();
+        let mut emitting = data.emitting_diagnostics.lock();
+
+        if data.colors.get(prev_dep_node_index) == Some(DepNodeColor::Green(dep_node_index)) {
+            // The node is already green so diagnostics must have been emitted already
+            return;
+        }
+
+        if emitting.insert(dep_node_index) {
+            // We were the first to insert the node in the set so this thread
+            // must emit the diagnostics and signal other potentially waiting
+            // threads after.
+            mem::drop(emitting);
 
             // Promote the previous diagnostics to the current session.
             tcx.queries.on_disk_cache
-                .store_diagnostics(dep_node_index, diagnostics.clone().into());
+               .store_diagnostics(dep_node_index, diagnostics.clone().into());
+
+            let handle = tcx.sess.diagnostic();
 
             for diagnostic in diagnostics {
                 DiagnosticBuilder::new_diagnostic(handle, diagnostic).emit();
             }
 
-            #[cfg(parallel_compiler)]
-            {
-                // Mark the diagnostics and emitted and wake up waiters
-                data.emitted_diagnostics.lock().insert(dep_node_index);
-                data.emitted_diagnostics_cond_var.notify_all();
-            }
-        } else {
-            // The other threads will wait for the diagnostics to be emitted
+            // Mark the node as green now that diagnostics are emitted
+            data.colors.insert(prev_dep_node_index, DepNodeColor::Green(dep_node_index));
 
-            let mut emitted_diagnostics = data.emitted_diagnostics.lock();
+            // Remove the node from the set
+            data.emitting_diagnostics.lock().remove(&dep_node_index);
+
+            // Wake up waiters
+            data.emitting_diagnostics_cond_var.notify_all();
+        } else {
+            // We must wait for the other thread to finish emitting the diagnostic
+
             loop {
-                if emitted_diagnostics.contains(&dep_node_index) {
+                data.emitting_diagnostics_cond_var.wait(&mut emitting);
+                if data.colors
+                       .get(prev_dep_node_index) == Some(DepNodeColor::Green(dep_node_index)) {
                     break;
                 }
-                data.emitted_diagnostics_cond_var.wait(&mut emitted_diagnostics);
             }
         }
     }
@@ -842,32 +857,21 @@ impl DepGraph {
     //
     // This method will only load queries that will end up in the disk cache.
     // Other queries will not be executed.
-    pub fn exec_cache_promotions<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-        let green_nodes: Vec<DepNode> = {
-            let data = self.data.as_ref().unwrap();
-            data.colors.values.indices().filter_map(|prev_index| {
-                match data.colors.get(prev_index) {
-                    Some(DepNodeColor::Green(_)) => {
-                        let dep_node = data.previous.index_to_node(prev_index);
-                        if dep_node.cache_on_disk(tcx) {
-                            Some(dep_node)
-                        } else {
-                            None
-                        }
-                    }
-                    None |
-                    Some(DepNodeColor::Red) => {
-                        // We can skip red nodes because a node can only be marked
-                        // as red if the query result was recomputed and thus is
-                        // already in memory.
-                        None
-                    }
+    pub fn exec_cache_promotions(&self, tcx: TyCtxt<'_>) {
+        let data = self.data.as_ref().unwrap();
+        for prev_index in data.colors.values.indices() {
+            match data.colors.get(prev_index) {
+                Some(DepNodeColor::Green(_)) => {
+                    let dep_node = data.previous.index_to_node(prev_index);
+                    dep_node.try_load_from_on_disk_cache(tcx);
                 }
-            }).collect()
-        };
-
-        for dep_node in green_nodes {
-            dep_node.load_from_on_disk_cache(tcx);
+                None |
+                Some(DepNodeColor::Red) => {
+                    // We can skip red nodes because a node can only be marked
+                    // as red if the query result was recomputed and thus is
+                    // already in memory.
+                }
+            }
         }
     }
 
@@ -1039,7 +1043,7 @@ impl CurrentDepGraph {
             hash: self.anon_id_seed.combine(hasher.finish()),
         };
 
-        self.intern_node(target_dep_node, task_deps.reads, Fingerprint::ZERO).0
+        self.intern_node(target_dep_node, task_deps.reads, Fingerprint::ZERO)
     }
 
     fn alloc_node(
@@ -1049,7 +1053,7 @@ impl CurrentDepGraph {
         fingerprint: Fingerprint
     ) -> DepNodeIndex {
         debug_assert!(!self.node_to_node_index.contains_key(&dep_node));
-        self.intern_node(dep_node, edges, fingerprint).0
+        self.intern_node(dep_node, edges, fingerprint)
     }
 
     fn intern_node(
@@ -1057,11 +1061,11 @@ impl CurrentDepGraph {
         dep_node: DepNode,
         edges: SmallVec<[DepNodeIndex; 8]>,
         fingerprint: Fingerprint
-    ) -> (DepNodeIndex, bool) {
+    ) -> DepNodeIndex {
         debug_assert_eq!(self.node_to_node_index.len(), self.data.len());
 
         match self.node_to_node_index.entry(dep_node) {
-            Entry::Occupied(entry) => (*entry.get(), false),
+            Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
                 let dep_node_index = DepNodeIndex::new(self.data.len());
                 self.data.push(DepNodeData {
@@ -1070,7 +1074,7 @@ impl CurrentDepGraph {
                     fingerprint
                 });
                 entry.insert(dep_node_index);
-                (dep_node_index, true)
+                dep_node_index
             }
         }
     }

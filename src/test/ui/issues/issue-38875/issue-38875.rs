@@ -1,5 +1,5 @@
 // aux-build:issue-38875-b.rs
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 extern crate issue_38875_b;
 

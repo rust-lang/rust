@@ -75,4 +75,6 @@ fn x() {
     #[no_mangle]
     pub static mut P: u8 = 0;
 }
-// CHECK: define internal void @_ZN26external_no_mangle_statics1x{{.*$}}
+// CHECK-LABEL: ; external_no_mangle_statics::x
+// CHECK-NEXT: ; Function Attrs:
+// CHECK-NEXT: define internal

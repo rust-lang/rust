@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 // #11612
 // We weren't updating the auto adjustments with all the resolved
@@ -14,11 +14,11 @@ struct B<'a, T:'a> {
 
 impl<'a, T> A for B<'a, T> {}
 
-fn foo(_: &A) {}
+fn foo(_: &dyn A) {}
 
 fn bar<G>(b: &B<G>) {
     foo(b);       // Coercion should work
-    foo(b as &A); // Explicit cast should work as well
+    foo(b as &dyn A); // Explicit cast should work as well
 }
 
 fn main() {}

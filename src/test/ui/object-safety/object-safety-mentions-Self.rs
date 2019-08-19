@@ -14,22 +14,22 @@ trait Quux {
     fn get(&self, s: &Self) -> Self where Self : Sized;
 }
 
-fn make_bar<T:Bar>(t: &T) -> &Bar {
+fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
         //~^ ERROR E0038
     loop { }
 }
 
-fn make_baz<T:Baz>(t: &T) -> &Baz {
+fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
         //~^ ERROR E0038
     t
 }
 
-fn make_quux<T:Quux>(t: &T) -> &Quux {
+fn make_quux<T:Quux>(t: &T) -> &dyn Quux {
     t
 }
 
-fn make_quux_explicit<T:Quux>(t: &T) -> &Quux {
-    t as &Quux
+fn make_quux_explicit<T:Quux>(t: &T) -> &dyn Quux {
+    t as &dyn Quux
 }
 
 fn main() {

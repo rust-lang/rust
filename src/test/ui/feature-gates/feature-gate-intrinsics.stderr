@@ -6,7 +6,7 @@ LL | |     fn bar();
 LL | | }
    | |_^
    |
-   = help: add #![feature(intrinsics)] to the crate attributes to enable
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
   --> $DIR/feature-gate-intrinsics.rs:5:1
@@ -14,7 +14,7 @@ error[E0658]: intrinsics are subject to change
 LL | extern "rust-intrinsic" fn baz() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(intrinsics)] to the crate attributes to enable
+   = help: add `#![feature(intrinsics)]` to the crate attributes to enable
 
 error[E0093]: unrecognized intrinsic function: `bar`
   --> $DIR/feature-gate-intrinsics.rs:2:5

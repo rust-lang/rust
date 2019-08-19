@@ -2,7 +2,7 @@
 
 fn id<T>(t: T) -> T { t }
 
-fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
+fn f<'r, T>(v: &'r T) -> Box<dyn FnMut() -> T + 'r> {
     id(Box::new(|| *v))
         //~^ ERROR E0373
         //~| ERROR E0507

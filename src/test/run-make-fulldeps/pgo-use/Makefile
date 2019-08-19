@@ -16,7 +16,7 @@
 COMMON_FLAGS=-Copt-level=s -Ccodegen-units=1
 
 # LLVM doesn't support instrumenting binaries that use SEH:
-# https://bugs.llvm.org/show_bug.cgi?id=41279
+# https://github.com/rust-lang/rust/issues/61002
 #
 # Things work fine with -Cpanic=abort though.
 ifdef IS_MSVC
@@ -33,7 +33,7 @@ endif
 
 all:
 	# Compile the test program with instrumentation
-	$(RUSTC) $(COMMON_FLAGS) -Z pgo-gen="$(TMPDIR)" main.rs
+	$(RUSTC) $(COMMON_FLAGS) -Cprofile-generate="$(TMPDIR)" main.rs
 	# Run it in order to generate some profiling data
 	$(call RUN,main some-argument) || exit 1
 	# Postprocess the profiling data so it can be used by the compiler
@@ -41,7 +41,7 @@ all:
 		-o "$(TMPDIR)"/merged.profdata \
 		"$(TMPDIR)"/default_*.profraw
 	# Compile the test program again, making use of the profiling data
-	$(RUSTC) $(COMMON_FLAGS) -Z pgo-use="$(TMPDIR)"/merged.profdata --emit=llvm-ir main.rs
+	$(RUSTC) $(COMMON_FLAGS) -Cprofile-use="$(TMPDIR)"/merged.profdata --emit=llvm-ir main.rs
 	# Check that the generate IR contains some things that we expect
 	#
 	# We feed the file into LLVM FileCheck tool *in reverse* so that we see the

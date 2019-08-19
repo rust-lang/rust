@@ -17,6 +17,7 @@
 //! #![feature(rustc_private)]
 //!
 //! extern crate rustc_plugin;
+//! extern crate rustc_driver;
 //! extern crate syntax;
 //! extern crate syntax_pos;
 //!
@@ -57,8 +58,6 @@
 #![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
-
-#![deny(rust_2018_idioms)]
 
 pub use registry::Registry;
 

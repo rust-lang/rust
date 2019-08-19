@@ -23,7 +23,7 @@ pub unsafe extern "C" fn use_foreign_c_variadic_0() {
 }
 
 // Ensure that we do not remove the `va_list` passed to the foreign function when
-// removing the "spoofed" `VaList` that is used by Rust defined C-variadics.
+// removing the "spoofed" `VaListImpl` that is used by Rust defined C-variadics.
 pub unsafe extern "C" fn use_foreign_c_variadic_1_0(ap: VaList) {
     // CHECK: invoke void ({{.*}}*, ...) @foreign_c_variadic_1({{.*}} %ap)
     foreign_c_variadic_1(ap);

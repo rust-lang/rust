@@ -16,6 +16,6 @@ fn main() {
 //  bb0: {
 //      ...
 //      _2 = (const 2u32, const false);
-//      assert(!move (_2.1: bool), "attempt to add with overflow") -> bb1;
+//      assert(!const false, "attempt to add with overflow") -> bb1;
 //  }
 // END rustc.main.ConstProp.after.mir

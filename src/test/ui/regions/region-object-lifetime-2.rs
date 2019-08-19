@@ -6,7 +6,7 @@ trait Foo {
 }
 
 // Borrowed receiver but two distinct lifetimes, we get an error.
-fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a Foo) -> &'b () {
+fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a dyn Foo) -> &'b () {
     x.borrowed() //~ ERROR cannot infer
 }
 

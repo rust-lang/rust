@@ -4,18 +4,11 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `::`
 LL |     t.0::<isize>;
    |        ^^ expected one of `.`, `;`, `?`, `}`, or an operator here
 
-error[E0308]: mismatched types
-  --> $DIR/issue-19096.rs:3:5
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `::`
+  --> $DIR/issue-19096.rs:8:8
    |
-LL | fn main() {
-   |           - expected `()` because of default return type
-LL |     let t = (42, 42);
 LL |     t.0::<isize>;
-   |     ^^^ expected (), found integer
-   |
-   = note: expected type `()`
-              found type `{integer}`
+   |        ^^ expected one of `.`, `;`, `?`, `}`, or an operator here
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.

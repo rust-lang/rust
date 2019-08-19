@@ -10,5 +10,4 @@ path = "lib.rs"
 
 [dependencies]
 bitflags = "1.0"
-rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }

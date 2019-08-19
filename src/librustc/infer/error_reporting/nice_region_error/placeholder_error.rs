@@ -13,7 +13,7 @@ use crate::ty::print::{Print, RegionHighlightMode, FmtPrinter};
 
 use std::fmt::{self, Write};
 
-impl NiceRegionError<'me, 'gcx, 'tcx> {
+impl NiceRegionError<'me, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit a descriptive diagnostic error.
     pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'me>> {
@@ -210,11 +210,11 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             _ => (),
         }
 
-        let expected_trait_ref = self.infcx.resolve_type_vars_if_possible(&ty::TraitRef {
+        let expected_trait_ref = self.infcx.resolve_vars_if_possible(&ty::TraitRef {
             def_id: trait_def_id,
             substs: expected_substs,
         });
-        let actual_trait_ref = self.infcx.resolve_type_vars_if_possible(&ty::TraitRef {
+        let actual_trait_ref = self.infcx.resolve_vars_if_possible(&ty::TraitRef {
             def_id: trait_def_id,
             substs: actual_substs,
         });
@@ -321,14 +321,14 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
     ) {
         // HACK(eddyb) maybe move this in a more central location.
         #[derive(Copy, Clone)]
-        struct Highlighted<'a, 'gcx, 'tcx, T> {
-            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        struct Highlighted<'tcx, T> {
+            tcx: TyCtxt<'tcx>,
             highlight: RegionHighlightMode,
             value: T,
         }
 
-        impl<'a, 'gcx, 'tcx, T> Highlighted<'a, 'gcx, 'tcx, T> {
-            fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'a, 'gcx, 'tcx, U> {
+        impl<'tcx, T> Highlighted<'tcx, T> {
+            fn map<U>(self, f: impl FnOnce(T) -> U) -> Highlighted<'tcx, U> {
                 Highlighted {
                     tcx: self.tcx,
                     highlight: self.highlight,
@@ -337,9 +337,11 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             }
         }
 
-        impl<'a, 'gcx, 'tcx, T> fmt::Display for Highlighted<'a, 'gcx, 'tcx, T>
-            where T: for<'b, 'c> Print<'gcx, 'tcx,
-                FmtPrinter<'a, 'gcx, 'tcx, &'b mut fmt::Formatter<'c>>,
+        impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
+        where
+            T: for<'a, 'b, 'c> Print<
+                'tcx,
+                FmtPrinter<'a, 'tcx, &'b mut fmt::Formatter<'c>>,
                 Error = fmt::Error,
             >,
         {

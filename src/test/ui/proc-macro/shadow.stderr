@@ -1,13 +1,13 @@
-error[E0259]: the name `derive_a` is defined multiple times
+error[E0259]: the name `test_macros` is defined multiple times
   --> $DIR/shadow.rs:6:1
    |
-LL | extern crate derive_a;
-   | ---------------------- previous import of the extern crate `derive_a` here
+LL | extern crate test_macros;
+   | ------------------------- previous import of the extern crate `test_macros` here
 LL | #[macro_use]
-LL | extern crate derive_a;
-   | ^^^^^^^^^^^^^^^^^^^^^^ `derive_a` reimported here
+LL | extern crate test_macros;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ `test_macros` reimported here
    |
-   = note: `derive_a` must be defined only once in the type namespace of this module
+   = note: `test_macros` must be defined only once in the type namespace of this module
 
 error: aborting due to previous error
 

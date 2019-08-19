@@ -10,7 +10,7 @@ fn main() {
     let _ = {
         let tmp0 = 3;
         let tmp1 = &tmp0;
-        box tmp1 as Box<Foo + '_>
+        box tmp1 as Box<dyn Foo + '_>
     };
     //~^^^ ERROR `tmp0` does not live long enough
 }

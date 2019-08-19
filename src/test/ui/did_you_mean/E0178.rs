@@ -1,3 +1,5 @@
+#![allow(bare_trait_objects)]
+
 trait Foo {}
 
 struct Bar<'a> {

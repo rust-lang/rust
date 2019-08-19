@@ -1,0 +1,21 @@
+error[E0381]: assign to part of possibly uninitialized variable: `t`
+  --> $DIR/partial-initialization-across-yield.rs:12:9
+   |
+LL |         t.0 = 42;
+   |         ^^^^^^^^ use of possibly uninitialized `t`
+
+error[E0381]: assign to part of possibly uninitialized variable: `t`
+  --> $DIR/partial-initialization-across-yield.rs:23:9
+   |
+LL |         t.0 = 42;
+   |         ^^^^^^^^ use of possibly uninitialized `t`
+
+error[E0381]: assign to part of possibly uninitialized variable: `t`
+  --> $DIR/partial-initialization-across-yield.rs:34:9
+   |
+LL |         t.x = 42;
+   |         ^^^^^^^^ use of possibly uninitialized `t`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

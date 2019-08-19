@@ -12,7 +12,7 @@ use rustc_codegen_ssa::traits::*;
 
 use crate::consts::const_alloc_to_llvm;
 use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
-use rustc::mir::interpret::{Scalar, AllocKind, Allocation};
+use rustc::mir::interpret::{Scalar, GlobalAlloc, Allocation};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 
 use libc::{c_uint, c_char};
@@ -166,25 +166,6 @@ impl CodegenCx<'ll, 'tcx> {
             r
         }
     }
-
-    pub fn const_get_real(&self, v: &'ll Value) -> Option<(f64, bool)> {
-        unsafe {
-            if self.is_const_real(v) {
-                let mut loses_info: llvm::Bool = ::std::mem::uninitialized();
-                let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info);
-                let loses_info = if loses_info == 1 { true } else { false };
-                Some((r, loses_info))
-            } else {
-                None
-            }
-        }
-    }
-
-    fn is_const_real(&self, v: &'ll Value) -> bool {
-        unsafe {
-            llvm::LLVMIsAConstantFP(v).is_some()
-        }
-    }
 }
 
 impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -249,6 +230,10 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_uint(self.type_i8(), i as u64)
     }
 
+    fn const_real(&self, t: &'ll Type, val: f64) -> &'ll Value {
+        unsafe { llvm::LLVMConstReal(t, val) }
+    }
+
     fn const_struct(
         &self,
         elts: &[&'ll Value],
@@ -294,13 +279,13 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.value.size(self).bits() };
         match cv {
-            Scalar::Bits { size: 0, .. } => {
+            Scalar::Raw { size: 0, .. } => {
                 assert_eq!(0, layout.value.size(self).bytes());
                 self.const_undef(self.type_ix(0))
             },
-            Scalar::Bits { bits, size } => {
+            Scalar::Raw { data, size } => {
                 assert_eq!(size as u64, layout.value.size(self).bytes());
-                let llval = self.const_uint_big(self.type_ix(bitsize), bits);
+                let llval = self.const_uint_big(self.type_ix(bitsize), data);
                 if layout.value == layout::Pointer {
                     unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                 } else {
@@ -310,7 +295,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             Scalar::Ptr(ptr) => {
                 let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
                 let base_addr = match alloc_kind {
-                    Some(AllocKind::Memory(alloc)) => {
+                    Some(GlobalAlloc::Memory(alloc)) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         if alloc.mutability == Mutability::Mutable {
                             self.static_addr_of_mut(init, alloc.align, None)
@@ -318,10 +303,10 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             self.static_addr_of(init, alloc.align, None)
                         }
                     }
-                    Some(AllocKind::Function(fn_instance)) => {
+                    Some(GlobalAlloc::Function(fn_instance)) => {
                         self.get_fn(fn_instance)
                     }
-                    Some(AllocKind::Static(def_id)) => {
+                    Some(GlobalAlloc::Static(def_id)) => {
                         assert!(self.tcx.is_static(def_id));
                         self.get_static(def_id)
                     }
@@ -347,15 +332,22 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
-        let init = const_alloc_to_llvm(self, alloc);
-        let base_addr = self.static_addr_of(init, layout.align.abi, None);
+        assert_eq!(alloc.align, layout.align.abi);
+        let llty = self.type_ptr_to(layout.llvm_type(self));
+        let llval = if layout.size == Size::ZERO {
+            let llval = self.const_usize(alloc.align.bytes());
+            unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
+        } else {
+            let init = const_alloc_to_llvm(self, alloc);
+            let base_addr = self.static_addr_of(init, alloc.align, None);
 
-        let llval = unsafe { llvm::LLVMConstInBoundsGEP(
-            self.const_bitcast(base_addr, self.type_i8p()),
-            &self.const_usize(offset.bytes()),
-            1,
-        )};
-        let llval = self.const_bitcast(llval, self.type_ptr_to(layout.llvm_type(self)));
+            let llval = unsafe { llvm::LLVMConstInBoundsGEP(
+                self.const_bitcast(base_addr, self.type_i8p()),
+                &self.const_usize(offset.bytes()),
+                1,
+            )};
+            self.const_bitcast(llval, llty)
+        };
         PlaceRef::new_sized(llval, layout, alloc.align)
     }
 

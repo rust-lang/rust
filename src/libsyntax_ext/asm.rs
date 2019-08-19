@@ -8,10 +8,10 @@ use errors::DiagnosticBuilder;
 
 use syntax::ast;
 use syntax::ext::base::{self, *};
-use syntax::feature_gate;
-use syntax::parse::{self, token};
+use syntax::parse;
+use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax::ast::AsmDialect;
 use syntax_pos::Span;
 use syntax::tokenstream;
@@ -45,20 +45,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<dyn base::MacResult + 'cx> {
-    if !cx.ecfg.enable_asm() {
-        feature_gate::emit_feature_err(&cx.parse_sess,
-                                       sym::asm,
-                                       sp,
-                                       feature_gate::GateIssue::Language,
-                                       feature_gate::EXPLAIN_ASM);
-    }
-
     let mut inline_asm = match parse_inline_asm(cx, sp, tts) {
         Ok(Some(inline_asm)) => inline_asm,
-        Ok(None) => return DummyResult::expr(sp),
+        Ok(None) => return DummyResult::any(sp),
         Err(mut err) => {
             err.emit();
-            return DummyResult::expr(sp);
+            return DummyResult::any(sp);
         }
     };
 
@@ -71,7 +63,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
     MacEager::expr(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprKind::InlineAsm(P(inline_asm)),
-        span: sp,
+        span: sp.with_ctxt(cx.backtrace()),
         attrs: ThinVec::new(),
     }))
 }
@@ -86,14 +78,14 @@ fn parse_inline_asm<'a>(
     let first_colon = tts.iter()
         .position(|tt| {
             match *tt {
-                tokenstream::TokenTree::Token(_, token::Colon) |
-                tokenstream::TokenTree::Token(_, token::ModSep) => true,
+                tokenstream::TokenTree::Token(Token { kind: token::Colon, .. }) |
+                tokenstream::TokenTree::Token(Token { kind: token::ModSep, .. }) => true,
                 _ => false,
             }
         })
         .unwrap_or(tts.len());
     let mut p = cx.new_parser_from_tts(&tts[first_colon..]);
-    let mut asm = Symbol::intern("");
+    let mut asm = kw::Invalid;
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
@@ -138,7 +130,11 @@ fn parse_inline_asm<'a>(
                 if p2.token != token::Eof {
                     let mut extra_tts = p2.parse_all_token_trees()?;
                     extra_tts.extend(tts[first_colon..].iter().cloned());
-                    p = parse::stream_to_parser(cx.parse_sess, extra_tts.into_iter().collect());
+                    p = parse::stream_to_parser(
+                        cx.parse_sess,
+                        extra_tts.into_iter().collect(),
+                        Some("inline assembly"),
+                    );
                 }
 
                 asm = s;
@@ -255,7 +251,7 @@ fn parse_inline_asm<'a>(
         loop {
             // MOD_SEP is a double colon '::' without space in between.
             // When encountered, the state must be advanced twice.
-            match (&p.token, state.next(), state.next().next()) {
+            match (&p.token.kind, state.next(), state.next().next()) {
                 (&token::Colon, StateNone, _) |
                 (&token::ModSep, _, StateNone) => {
                     p.bump();
@@ -281,6 +277,5 @@ fn parse_inline_asm<'a>(
         volatile,
         alignstack,
         dialect,
-        ctxt: cx.backtrace(),
     }))
 }

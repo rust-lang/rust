@@ -1,18 +1,18 @@
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/issue-13033.rs:8:30
    |
-LL |     fn bar(&mut self, other: &mut Foo);
-   |                              -------- type in trait
+LL |     fn bar(&mut self, other: &mut dyn Foo);
+   |                              ------------ type in trait
 ...
-LL |     fn bar(&mut self, other: &Foo) {}
-   |                              ^^^^ types differ in mutability
+LL |     fn bar(&mut self, other: &dyn Foo) {}
+   |                              ^^^^^^^^ types differ in mutability
    |
    = note: expected type `fn(&mut Baz, &mut dyn Foo)`
               found type `fn(&mut Baz, &dyn Foo)`
 help: consider change the type to match the mutability in trait
    |
-LL |     fn bar(&mut self, other: &mut Foo) {}
-   |                              ^^^^^^^^
+LL |     fn bar(&mut self, other: &mut dyn Foo) {}
+   |                              ^^^^^^^^^^^^
 
 error: aborting due to previous error
 

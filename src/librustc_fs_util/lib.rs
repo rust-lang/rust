@@ -1,5 +1,3 @@
-#![deny(rust_2018_idioms)]
-
 use std::path::{Path, PathBuf};
 use std::ffi::CString;
 use std::fs;

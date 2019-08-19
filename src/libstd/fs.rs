@@ -468,6 +468,8 @@ impl File {
     /// # Errors
     ///
     /// This function will return an error if the file is not opened for writing.
+    /// Also, std::io::ErrorKind::InvalidInput will be returned if the desired
+    /// length would cause an overflow due to the implementation specifics.
     ///
     /// # Examples
     ///
@@ -1812,6 +1814,8 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///   function.)
 /// * `path` already exists.
 ///
+/// [`create_dir_all`]: fn.create_dir_all.html
+///
 /// # Examples
 ///
 /// ```no_run
@@ -1974,7 +1978,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// use std::path::Path;
 ///
 /// // one possible implementation of walking a directory only visiting files
-/// fn visit_dirs(dir: &Path, cb: &Fn(&DirEntry)) -> io::Result<()> {
+/// fn visit_dirs(dir: &Path, cb: &dyn Fn(&DirEntry)) -> io::Result<()> {
 ///     if dir.is_dir() {
 ///         for entry in fs::read_dir(dir)? {
 ///             let entry = entry?;
@@ -3314,11 +3318,11 @@ mod tests {
         fs::create_dir_all(&d).unwrap();
         File::create(&f).unwrap();
         if cfg!(not(windows)) {
-            symlink_dir("../d/e", &c).unwrap();
+            symlink_file("../d/e", &c).unwrap();
             symlink_file("../f", &e).unwrap();
         }
         if cfg!(windows) {
-            symlink_dir(r"..\d\e", &c).unwrap();
+            symlink_file(r"..\d\e", &c).unwrap();
             symlink_file(r"..\f", &e).unwrap();
         }
 

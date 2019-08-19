@@ -1,0 +1,40 @@
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-62009-1.rs:8:5
+   |
+LL | fn main() {
+   |    ---- this is not `async`
+LL |     async { let (); }.await;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-62009-1.rs:10:5
+   |
+LL |   fn main() {
+   |      ---- this is not `async`
+...
+LL | /     async {
+LL | |
+LL | |         let task1 = print_dur().await;
+LL | |     }.await;
+   | |___________^ only allowed inside `async` functions and blocks
+
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/issue-62009-1.rs:14:5
+   |
+LL | fn main() {
+   |    ---- this is not `async`
+...
+LL |     (|_| 2333).await;
+   |     ^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+
+error[E0277]: the trait bound `[closure@$DIR/issue-62009-1.rs:14:5: 14:15]: std::future::Future` is not satisfied
+  --> $DIR/issue-62009-1.rs:14:5
+   |
+LL |     (|_| 2333).await;
+   |     ^^^^^^^^^^^^^^^^ the trait `std::future::Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:14:5: 14:15]`
+   |
+   = note: required by `std::future::poll_with_tls_context`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -8,7 +8,7 @@ error: non-type macro in type position: cfg
   --> $DIR/macro-error.rs:8:12
    |
 LL |     let _: cfg!(foo) = ();
-   |            ^^^
+   |            ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

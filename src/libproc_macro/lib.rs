@@ -17,14 +17,13 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
-#![deny(rust_2018_idioms)]
-
 #![feature(nll)]
 #![feature(staged_api)]
 #![feature(const_fn)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(optin_builtin_traits)]
+#![feature(mem_take)]
 #![feature(non_exhaustive)]
 #![feature(specialization)]
 

@@ -4,6 +4,12 @@ error: environment variable `NON_EXISTENT` not defined
 LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
    |                      ^^^^^^^^^^^^^^^^^^^^
 
+error: suffixes on a string literal are invalid
+  --> $DIR/issue-55897.rs:16:22
+   |
+LL |     include!(concat!("NON_EXISTENT"suffix, "/data.rs"));
+   |                      ^^^^^^^^^^^^^^^^^^^^ invalid suffix `suffix`
+
 error[E0432]: unresolved import `prelude`
   --> $DIR/issue-55897.rs:1:5
    |
@@ -21,6 +27,6 @@ LL |     include!(concat!(env!("NON_EXISTENT"), "/data.rs"));
    |
    = note: import resolution is stuck, try simplifying macro imports
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0432`.

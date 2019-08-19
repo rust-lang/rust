@@ -1,18 +1,18 @@
 error[E0620]: cast to unsized type: `&{integer}` as `dyn std::marker::Send`
   --> $DIR/cast-to-unsized-trait-object-suggestion.rs:2:5
    |
-LL |     &1 as Send;
-   |     ^^^^^^----
+LL |     &1 as dyn Send;
+   |     ^^^^^^--------
    |           |
-   |           help: try casting to a reference instead: `&Send`
+   |           help: try casting to a reference instead: `&dyn Send`
 
 error[E0620]: cast to unsized type: `std::boxed::Box<{integer}>` as `dyn std::marker::Send`
   --> $DIR/cast-to-unsized-trait-object-suggestion.rs:3:5
    |
-LL |     Box::new(1) as Send;
-   |     ^^^^^^^^^^^^^^^----
+LL |     Box::new(1) as dyn Send;
+   |     ^^^^^^^^^^^^^^^--------
    |                    |
-   |                    help: try casting to a `Box` instead: `Box<Send>`
+   |                    help: try casting to a `Box` instead: `Box<dyn Send>`
 
 error: aborting due to 2 previous errors
 

@@ -19,7 +19,7 @@ use std::iter::repeat;
 use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
 
-/// A Visitor that walks over the HIR and collects Nodes into a HIR map
+/// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
     /// The crate
     krate: &'hir Crate,
@@ -45,7 +45,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
 
     hcx: StableHashingContext<'a>,
 
-    // We are collecting DepNode::HirBody hashes here so we can compute the
+    // We are collecting `DepNode::HirBody` hashes here so we can compute the
     // crate hash from then later on.
     hir_body_nodes: Vec<(DefPathHash, Fingerprint)>,
 }
@@ -109,7 +109,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
         let mut hir_body_nodes = Vec::new();
 
-        // Allocate DepNodes for the root module
+        // Allocate `DepNode`s for the root module.
         let (root_mod_sig_dep_index, root_mod_full_dep_index) = {
             let Crate {
                 ref module,
@@ -119,6 +119,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 span,
                 // These fields are handled separately:
                 exported_macros: _,
+                non_exported_macro_attrs: _,
                 items: _,
                 trait_items: _,
                 impl_items: _,
@@ -226,7 +227,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
-        let local_map = &mut self.map[id.owner.as_array_index()];
+        let local_map = &mut self.map[id.owner.index()];
         let i = id.local_id.as_u32() as usize;
         if local_map.is_none() {
             *local_map = Some(IndexVec::with_capacity(i + 1));
@@ -362,6 +363,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.currently_in_body = prev_in_body;
     }
 
+    fn visit_arg(&mut self, arg: &'hir Arg) {
+        let node = Node::Arg(arg);
+        self.insert(arg.pat.span, arg.hir_id, node);
+        self.with_parent(arg.hir_id, |this| {
+            intravisit::walk_arg(this, arg);
+        });
+    }
+
     fn visit_item(&mut self, i: &'hir Item) {
         debug!("visit_item: {:?}", i);
         debug_assert_eq!(i.hir_id.owner,
@@ -427,6 +436,16 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.with_parent(pat.hir_id, |this| {
             intravisit::walk_pat(this, pat);
+        });
+    }
+
+    fn visit_arm(&mut self, arm: &'hir Arm) {
+        let node = Node::Arm(arm);
+
+        self.insert(arm.span, arm.hir_id, node);
+
+        self.with_parent(arm.hir_id, |this| {
+            intravisit::walk_arm(this, arm);
         });
     }
 
@@ -525,11 +544,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_variant(&mut self, v: &'hir Variant, g: &'hir Generics, item_id: HirId) {
-        self.insert(v.span, v.node.id, Node::Variant(v));
-        self.with_parent(v.node.id, |this| {
+        self.insert(v.span, v.id, Node::Variant(v));
+        self.with_parent(v.id, |this| {
             // Register the constructor of this variant.
-            if let Some(ctor_hir_id) = v.node.data.ctor_hir_id() {
-                this.insert(v.span, ctor_hir_id, Node::Ctor(&v.node.data));
+            if let Some(ctor_hir_id) = v.data.ctor_hir_id() {
+                this.insert(v.span, ctor_hir_id, Node::Ctor(&v.data));
             }
             intravisit::walk_variant(this, v, g, item_id);
         });
@@ -579,8 +598,9 @@ struct HirItemLike<T> {
     hash_bodies: bool,
 }
 
-impl<'a, 'hir, T> HashStable<StableHashingContext<'hir>> for HirItemLike<T>
-    where T: HashStable<StableHashingContext<'hir>>
+impl<'hir, T> HashStable<StableHashingContext<'hir>> for HirItemLike<T>
+where
+    T: HashStable<StableHashingContext<'hir>>,
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'hir>,

@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 // Error messages for EXXXX errors.
 // Each message should start and end with a new line, and be wrapped to 80 characters.
 // In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
@@ -485,7 +483,7 @@ Erroneous code example:
 fn foo() {}
 
 #[main]
-fn f() {} // error: multiple functions with a #[main] attribute
+fn f() {} // error: multiple functions with a `#[main]` attribute
 ```
 
 This error indicates that the compiler found multiple functions with the
@@ -1207,6 +1205,51 @@ fn main() {
 ```
 "##,
 
+E0284: r##"
+This error occurs when the compiler is unable to unambiguously infer the
+return type of a function or method which is generic on return type, such
+as the `collect` method for `Iterator`s.
+
+For example:
+
+```compile_fail,E0284
+fn foo() -> Result<bool, ()> {
+    let results = [Ok(true), Ok(false), Err(())].iter().cloned();
+    let v: Vec<bool> = results.collect()?;
+    // Do things with v...
+    Ok(true)
+}
+```
+
+Here we have an iterator `results` over `Result<bool, ()>`.
+Hence, `results.collect()` can return any type implementing
+`FromIterator<Result<bool, ()>>`. On the other hand, the
+`?` operator can accept any type implementing `Try`.
+
+The author of this code probably wants `collect()` to return a
+`Result<Vec<bool>, ()>`, but the compiler can't be sure
+that there isn't another type `T` implementing both `Try` and
+`FromIterator<Result<bool, ()>>` in scope such that
+`T::Ok == Vec<bool>`. Hence, this code is ambiguous and an error
+is returned.
+
+To resolve this error, use a concrete type for the intermediate expression:
+
+```
+fn foo() -> Result<bool, ()> {
+    let results = [Ok(true), Ok(false), Err(())].iter().cloned();
+    let v = {
+        let temp: Result<Vec<bool>, ()> = results.collect();
+        temp?
+    };
+    // Do things with v...
+    Ok(true)
+}
+```
+
+Note that the type of `v` can now be inferred from the type of `temp`.
+"##,
+
 E0308: r##"
 This error occurs when the compiler was unable to infer the concrete type of a
 variable. It can occur for several cases, the most common of which is a
@@ -1838,7 +1881,7 @@ This pattern should be rewritten. There are a few possible ways to do this:
     # }
     ```
 
-The same applies to transmutes to `*mut fn()`, which were observedin practice.
+The same applies to transmutes to `*mut fn()`, which were observed in practice.
 Note though that use of this type is generally incorrect.
 The intention is typically to describe a function pointer, but just `fn()`
 alone suffices for that. `*mut fn()` is a pointer to a fn pointer.
@@ -2045,11 +2088,11 @@ generator can be constructed.
 Erroneous code example:
 
 ```edition2018,compile-fail,E0698
-#![feature(futures_api, async_await, await_macro)]
+#![feature(async_await)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  await!(bar());  // error: cannot infer type for `T`
+    bar().await; // error: cannot infer type for `T`
 }
 ```
 
@@ -2058,12 +2101,12 @@ To fix this you must bind `T` to a concrete type such as `String`
 so that a generator can then be constructed:
 
 ```edition2018
-#![feature(futures_api, async_await, await_macro)]
+#![feature(async_await)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
-  await!(bar::<String>());
-  //          ^^^^^^^^ specify type explicitly
+  bar::<String>().await;
+  //   ^^^^^^^^ specify type explicitly
 }
 ```
 "##,
@@ -2158,7 +2201,6 @@ register_diagnostics! {
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
-    E0284, // cannot resolve type
 //  E0285, // overflow evaluation builtin bounds
 //  E0296, // replaced with a generic attribute input check
 //  E0300, // unexpanded macro

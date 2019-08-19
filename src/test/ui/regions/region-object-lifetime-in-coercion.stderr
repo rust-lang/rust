@@ -1,15 +1,15 @@
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/region-object-lifetime-in-coercion.rs:8:33
+  --> $DIR/region-object-lifetime-in-coercion.rs:8:37
    |
-LL | fn a(v: &[u8]) -> Box<Foo + 'static> {
+LL | fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
    |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
-LL |     let x: Box<Foo + 'static> = Box::new(v);
-   |                                 ^^^^^^^^^^^ lifetime `'static` required
+LL |     let x: Box<dyn Foo + 'static> = Box::new(v);
+   |                                     ^^^^^^^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `v`
   --> $DIR/region-object-lifetime-in-coercion.rs:14:5
    |
-LL | fn b(v: &[u8]) -> Box<Foo + 'static> {
+LL | fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
    |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
 LL |     Box::new(v)
    |     ^^^^^^^^^^^ lifetime `'static` required
@@ -17,7 +17,7 @@ LL |     Box::new(v)
 error[E0621]: explicit lifetime required in the type of `v`
   --> $DIR/region-object-lifetime-in-coercion.rs:21:5
    |
-LL | fn c(v: &[u8]) -> Box<Foo> {
+LL | fn c(v: &[u8]) -> Box<dyn Foo> {
    |         ----- help: add explicit lifetime `'static` to the type of `v`: `&'static [u8]`
 ...
 LL |     Box::new(v)
@@ -32,7 +32,7 @@ LL |     Box::new(v)
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 25:6...
   --> $DIR/region-object-lifetime-in-coercion.rs:25:6
    |
-LL | fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
+LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |      ^^
    = note: ...so that the expression is assignable:
            expected &[u8]
@@ -40,7 +40,7 @@ LL | fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
 note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 25:9...
   --> $DIR/region-object-lifetime-in-coercion.rs:25:9
    |
-LL | fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
+LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |         ^^
    = note: ...so that the expression is assignable:
            expected std::boxed::Box<(dyn Foo + 'b)>

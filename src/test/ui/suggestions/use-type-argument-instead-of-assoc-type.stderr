@@ -1,10 +1,10 @@
 error[E0107]: wrong number of type arguments: expected 2, found 4
-  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:28
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:32
    |
-LL |     i: Box<T<usize, usize, usize, usize, B=usize>>,
-   |                            ^^^^^  ^^^^^ unexpected type argument
-   |                            |
-   |                            unexpected type argument
+LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
+   |                                ^^^^^  ^^^^^ unexpected type argument
+   |                                |
+   |                                unexpected type argument
 
 error[E0191]: the value of the associated types `A` (from the trait `T`), `C` (from the trait `T`) must be specified
   --> $DIR/use-type-argument-instead-of-assoc-type.rs:7:12
@@ -15,15 +15,15 @@ LL |     type B;
 LL |     type C;
    |     ------- `C` defined here
 ...
-LL |     i: Box<T<usize, usize, usize, usize, B=usize>>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |            |
    |            associated type `A` must be specified
    |            associated type `C` must be specified
 help: if you meant to specify the associated types, write
    |
-LL |     i: Box<T<usize, usize, A = usize, C = usize, B=usize>>,
-   |                            ^^^^^^^^^  ^^^^^^^^^
+LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B=usize>>,
+   |                                ^^^^^^^^^  ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

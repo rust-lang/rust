@@ -1,38 +1,14 @@
-error: macros that expand to items must be delimited with braces or followed by a semicolon
-  --> $DIR/issue-10536.rs:14:22
+error: expected open delimiter
+  --> $DIR/issue-10536.rs:14:19
    |
 LL |     assert!({one! two()});
-   |                      ^^
-help: change the delimiters to curly braces
-   |
-LL |     assert!({one! two {}});
-   |                       ^^
-help: add a semicolon
-   |
-LL |     assert!({one! two();});
-   |                        ^
+   |                   ^^^ expected open delimiter
 
-error: expected `(` or `{`, found `}`
-  --> $DIR/issue-10536.rs:21:22
+error: expected open delimiter
+  --> $DIR/issue-10536.rs:18:19
    |
 LL |     assert!({one! two});
-   |                      ^ expected `(` or `{`
+   |                   ^^^ expected open delimiter
 
-error: cannot find macro `one!` in this scope
-  --> $DIR/issue-10536.rs:14:14
-   |
-LL |     assert!({one! two()});
-   |              ^^^
+error: aborting due to 2 previous errors
 
-error[E0308]: mismatched types
-  --> $DIR/issue-10536.rs:14:13
-   |
-LL |     assert!({one! two()});
-   |             ^^^^^^^^^^^^ expected bool, found ()
-   |
-   = note: expected type `bool`
-              found type `()`
-
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

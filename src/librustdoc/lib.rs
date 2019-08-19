@@ -1,6 +1,3 @@
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
@@ -20,6 +17,8 @@
 #![feature(drain_filter)]
 #![feature(inner_deref)]
 #![feature(never_type)]
+#![feature(mem_take)]
+#![feature(unicode_internals)]
 
 #![recursion_limit="256"]
 
@@ -41,13 +40,10 @@ extern crate test as testing;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
 
-extern crate serialize as rustc_serialize; // used by deriving
-
 use std::default::Default;
 use std::env;
 use std::panic;
 use std::process;
-use std::sync::mpsc::channel;
 
 use rustc::session::{early_warn, early_error};
 use rustc::session::config::{ErrorOutputType, RustcOptGroup};
@@ -58,6 +54,7 @@ mod externalfiles;
 mod clean;
 mod config;
 mod core;
+mod docfs;
 mod doctree;
 mod fold;
 pub mod html {
@@ -82,7 +79,6 @@ struct Output {
     krate: clean::Crate,
     renderinfo: html::render::RenderInfo,
     renderopts: config::RenderOptions,
-    passes: Vec<String>,
 }
 
 pub fn main() {
@@ -94,9 +90,7 @@ pub fn main() {
     rustc_driver::set_sigpipe_handler();
     env_logger::init();
     let res = std::thread::Builder::new().stack_size(thread_stack_size).spawn(move || {
-        rustc_interface::interface::default_thread_pool(move || {
-            get_args().map(|args| main_args(&args)).unwrap_or(1)
-        })
+        get_args().map(|args| main_args(&args)).unwrap_or(1)
     }).unwrap().join().unwrap_or(rustc_driver::EXIT_FAILURE);
     process::exit(res);
 }
@@ -290,6 +284,12 @@ fn opts() -> Vec<RustcOptGroup> {
                      "How errors and other messages are produced",
                      "human|json|short")
         }),
+        stable("json", |o| {
+            o.optopt("",
+                     "json",
+                     "Configure the structure of JSON diagnostics",
+                     "CONFIG")
+        }),
         unstable("disable-minification", |o| {
              o.optflag("",
                        "disable-minification",
@@ -382,7 +382,12 @@ fn main_args(args: &[String]) -> i32 {
         Ok(opts) => opts,
         Err(code) => return code,
     };
+    rustc_interface::interface::default_thread_pool(options.edition, move || {
+        main_options(options)
+    })
+}
 
+fn main_options(options: config::Options) -> i32 {
     let diag = core::new_handler(options.error_format,
                                  None,
                                  options.debugging_options.treat_err_as_bug,
@@ -391,7 +396,10 @@ fn main_args(args: &[String]) -> i32 {
     match (options.should_test, options.markdown_input()) {
         (true, true) => return markdown::test(options, &diag),
         (true, false) => return test::run(options),
-        (false, true) => return markdown::render(options.input, options.render_options, &diag),
+        (false, true) => return markdown::render(options.input,
+                                                 options.render_options,
+                                                 &diag,
+                                                 options.edition),
         (false, false) => {}
     }
 
@@ -399,7 +407,8 @@ fn main_args(args: &[String]) -> i32 {
     // but we can't crates the Handler ahead of time because it's not Send
     let diag_opts = (options.error_format,
                      options.debugging_options.treat_err_as_bug,
-                     options.debugging_options.ui_testing);
+                     options.debugging_options.ui_testing,
+                     options.edition);
     let show_coverage = options.show_coverage;
     rust_input(options, move |out| {
         if show_coverage {
@@ -408,16 +417,16 @@ fn main_args(args: &[String]) -> i32 {
             return rustc_driver::EXIT_SUCCESS;
         }
 
-        let Output { krate, passes, renderinfo, renderopts } = out;
+        let Output { krate, renderinfo, renderopts } = out;
         info!("going to format");
-        let (error_format, treat_err_as_bug, ui_testing) = diag_opts;
+        let (error_format, treat_err_as_bug, ui_testing, edition) = diag_opts;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
         match html::render::run(
             krate,
             renderopts,
-            passes.into_iter().collect(),
             renderinfo,
             &diag,
+            edition,
         ) {
             Ok(_) => rustc_driver::EXIT_SUCCESS,
             Err(e) => {
@@ -442,12 +451,10 @@ where R: 'static + Send,
     // First, parse the crate and extract all relevant information.
     info!("starting to run rustc");
 
-    let (tx, rx) = channel();
-
     let result = rustc_driver::report_ices_to_stderr_if_any(move || {
         let crate_name = options.crate_name.clone();
         let crate_version = options.crate_version.clone();
-        let (mut krate, renderinfo, renderopts, passes) = core::run_core(options);
+        let (mut krate, renderinfo, renderopts) = core::run_core(options);
 
         info!("finished with rustc");
 
@@ -457,16 +464,15 @@ where R: 'static + Send,
 
         krate.version = crate_version;
 
-        tx.send(f(Output {
+        f(Output {
             krate: krate,
             renderinfo: renderinfo,
             renderopts,
-            passes: passes
-        })).unwrap();
+        })
     });
 
     match result {
-        Ok(()) => rx.recv().unwrap(),
+        Ok(output) => output,
         Err(_) => panic::resume_unwind(Box::new(errors::FatalErrorMarker)),
     }
 }

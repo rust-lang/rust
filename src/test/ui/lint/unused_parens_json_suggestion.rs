@@ -1,5 +1,6 @@
 // compile-flags: --error-format pretty-json -Zunstable-options
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
+// run-rustfix
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested
@@ -8,6 +9,7 @@
 // test of the JSON error format.
 
 #![warn(unused_parens)]
+#![allow(unreachable_code)]
 
 fn main() {
     // We want to suggest the properly-balanced expression `1 / (2 + 3)`, not

@@ -4,9 +4,8 @@ use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 pub fn expand_deriving_ord(cx: &mut ExtCtxt<'_>,
@@ -14,8 +13,8 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt<'_>,
                            mitem: &MetaItem,
                            item: &Annotatable,
                            push: &mut dyn FnMut(Annotatable)) {
-    let inline = cx.meta_word(span, Symbol::intern("inline"));
-    let attrs = vec![cx.attribute(span, inline)];
+    let inline = cx.meta_word(span, sym::inline);
+    let attrs = vec![cx.attribute(inline)];
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
@@ -44,20 +43,21 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt<'_>,
 }
 
 
-pub fn ordering_collapsed(cx: &mut ExtCtxt<'_>,
-                          span: Span,
-                          self_arg_tags: &[ast::Ident])
-                          -> P<ast::Expr> {
+pub fn ordering_collapsed(
+    cx: &mut ExtCtxt<'_>,
+    span: Span,
+    self_arg_tags: &[ast::Ident],
+) -> P<ast::Expr> {
     let lft = cx.expr_ident(span, self_arg_tags[0]);
     let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
-    cx.expr_method_call(span, lft, cx.ident_of("cmp"), vec![rgt])
+    cx.expr_method_call(span, lft, ast::Ident::new(sym::cmp, span), vec![rgt])
 }
 
 pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
-    let test_id = cx.ident_of("cmp").gensym();
-    let equals_path = cx.path_global(span, cx.std_path(&["cmp", "Ordering", "Equal"]));
+    let test_id = ast::Ident::new(sym::cmp, span);
+    let equals_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
 
-    let cmp_path = cx.std_path(&["cmp", "Ord", "cmp"]);
+    let cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
 
     // Builds:
     //
@@ -76,34 +76,34 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<
             // as the outermost one, and the last as the innermost.
             false,
             |cx, span, old, self_f, other_fs| {
-        // match new {
-        //     ::std::cmp::Ordering::Equal => old,
-        //     cmp => cmp
-        // }
+                // match new {
+                //     ::std::cmp::Ordering::Equal => old,
+                //     cmp => cmp
+                // }
 
-        let new = {
-            let other_f = match (other_fs.len(), other_fs.get(0)) {
-                (1, Some(o_f)) => o_f,
-                _ => cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`"),
-            };
+                let new = {
+                    let other_f = match other_fs {
+                        [o_f] => o_f,
+                        _ => cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`"),
+                    };
 
-            let args = vec![
-                    cx.expr_addr_of(span, self_f),
-                    cx.expr_addr_of(span, other_f.clone()),
-                ];
+                    let args = vec![
+                            cx.expr_addr_of(span, self_f),
+                            cx.expr_addr_of(span, other_f.clone()),
+                        ];
 
-            cx.expr_call_global(span, cmp_path.clone(), args)
-        };
+                    cx.expr_call_global(span, cmp_path.clone(), args)
+                };
 
-        let eq_arm = cx.arm(span,
-                            vec![cx.pat_path(span, equals_path.clone())],
-                            old);
-        let neq_arm = cx.arm(span,
-                             vec![cx.pat_ident(span, test_id)],
-                             cx.expr_ident(span, test_id));
+                let eq_arm = cx.arm(span,
+                                    vec![cx.pat_path(span, equals_path.clone())],
+                                    old);
+                let neq_arm = cx.arm(span,
+                                     vec![cx.pat_ident(span, test_id)],
+                                     cx.expr_ident(span, test_id));
 
-        cx.expr_match(span, new, vec![eq_arm, neq_arm])
-    },
+                cx.expr_match(span, new, vec![eq_arm, neq_arm])
+            },
             cx.expr_path(equals_path.clone()),
             Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
         if self_args.len() != 2 {

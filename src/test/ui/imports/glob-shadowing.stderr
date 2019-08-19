@@ -4,7 +4,7 @@ error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope
 LL |         let x = env!("PATH");
    |                 ^^^ ambiguous name
    |
-   = note: `env` could refer to a built-in macro
+   = note: `env` could refer to a macro from prelude
 note: `env` could also refer to the macro imported here
   --> $DIR/glob-shadowing.rs:9:9
    |
@@ -19,7 +19,7 @@ error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope
 LL |             let x = env!("PATH");
    |                     ^^^ ambiguous name
    |
-   = note: `env` could refer to a built-in macro
+   = note: `env` could refer to a macro from prelude
 note: `env` could also refer to the macro imported here
   --> $DIR/glob-shadowing.rs:17:13
    |

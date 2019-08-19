@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `(dyn std::fmt::Debug + std::marker::Sync + 'static)` cannot be known at compilation time
   --> $DIR/const-unsized.rs:3:16
    |
-LL | const CONST_0: Debug+Sync = *(&0 as &(Debug+Sync));
-   |                ^^^^^^^^^^ doesn't have a size known at compile-time
+LL | const CONST_0: dyn Debug + Sync = *(&0 as &(dyn Debug + Sync));
+   |                ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::fmt::Debug + std::marker::Sync + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
@@ -19,8 +19,8 @@ LL | const CONST_FOO: str = *"foo";
 error[E0277]: the size for values of type `(dyn std::fmt::Debug + std::marker::Sync + 'static)` cannot be known at compilation time
   --> $DIR/const-unsized.rs:9:18
    |
-LL | static STATIC_1: Debug+Sync = *(&1 as &(Debug+Sync));
-   |                  ^^^^^^^^^^ doesn't have a size known at compile-time
+LL | static STATIC_1: dyn Debug + Sync = *(&1 as &(dyn Debug + Sync));
+   |                  ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::fmt::Debug + std::marker::Sync + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>

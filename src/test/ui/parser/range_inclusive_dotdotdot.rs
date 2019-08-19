@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 // Make sure that inclusive ranges with `...` syntax don't parse.
 
 use std::ops::RangeToInclusive;

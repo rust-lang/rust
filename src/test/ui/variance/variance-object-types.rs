@@ -9,7 +9,7 @@ use std::cell::Cell;
 // get an invariant result for `'a`.
 #[rustc_variance]
 struct Foo<'a> { //~ ERROR [o]
-    x: Box<Fn(i32) -> &'a i32 + 'static>
+    x: Box<dyn Fn(i32) -> &'a i32 + 'static>
 }
 
 fn main() {

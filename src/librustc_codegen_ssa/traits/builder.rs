@@ -22,21 +22,21 @@ pub enum OverflowOp {
     Mul,
 }
 
-pub trait BuilderMethods<'a, 'tcx: 'a>:
+pub trait BuilderMethods<'a, 'tcx>:
     HasCodegen<'tcx>
     + DebugInfoBuilderMethods<'tcx>
     + ArgTypeMethods<'tcx>
     + AbiBuilderMethods<'tcx>
     + IntrinsicCallMethods<'tcx>
     + AsmBuilderMethods<'tcx>
-    + StaticBuilderMethods<'tcx>
+    + StaticBuilderMethods
     + HasParamEnv<'tcx>
     + HasTargetSpec
 
 {
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
-    fn build_sibling_block<'b>(&self, name: &'b str) -> Self;
+    fn build_sibling_block(&self, name: &str) -> Self;
     fn cx(&self) -> &Self::CodegenCx;
     fn llbb(&self) -> Self::BasicBlock;
 
@@ -88,6 +88,12 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn shl(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn lshr(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn ashr(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn unchecked_sadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn unchecked_uadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn unchecked_ssub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn unchecked_usub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn unchecked_smul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn unchecked_umul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn and(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn xor(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;

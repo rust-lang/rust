@@ -4,7 +4,7 @@
 
 pub fn f() {
     trait Trait {}
-    impl Trait {
+    impl dyn Trait {
         const FLAG: u32 = bogus.field; //~ ERROR cannot find value `bogus`
     }
 }

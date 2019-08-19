@@ -1,5 +1,5 @@
 // Encountered while testing #44614.
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 pub fn main() {
     // Constant of generic type (int)

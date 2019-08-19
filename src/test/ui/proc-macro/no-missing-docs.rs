@@ -1,7 +1,7 @@
 //! Verify that the `decls` module implicitly added by the compiler does not cause `missing_docs`
 //! warnings.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // force-host
 // no-prefer-dynamic
 

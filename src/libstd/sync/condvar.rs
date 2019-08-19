@@ -36,7 +36,7 @@ impl WaitTimeoutResult {
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
-    ///     let &(ref lock, ref cvar) = &*pair2;
+    ///     let (lock, cvar) = &*pair2;
     ///
     ///     // Let's wait 20 milliseconds before notifying the condvar.
     ///     thread::sleep(Duration::from_millis(20));
@@ -48,7 +48,7 @@ impl WaitTimeoutResult {
     /// });
     ///
     /// // Wait for the thread to start up.
-    /// let &(ref lock, ref cvar) = &*pair;
+    /// let (lock, cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
     /// loop {
     ///     // Let's put a timeout on the condvar's wait.
@@ -94,7 +94,7 @@ impl WaitTimeoutResult {
 ///
 /// // Inside of our lock, spawn a new thread, and then wait for it to start.
 /// thread::spawn(move|| {
-///     let &(ref lock, ref cvar) = &*pair2;
+///     let (lock, cvar) = &*pair2;
 ///     let mut started = lock.lock().unwrap();
 ///     *started = true;
 ///     // We notify the condvar that the value has changed.
@@ -102,7 +102,7 @@ impl WaitTimeoutResult {
 /// });
 ///
 /// // Wait for the thread to start up.
-/// let &(ref lock, ref cvar) = &*pair;
+/// let (lock, cvar) = &*pair;
 /// let mut started = lock.lock().unwrap();
 /// while !*started {
 ///     started = cvar.wait(started).unwrap();
@@ -180,7 +180,7 @@ impl Condvar {
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
-    ///     let &(ref lock, ref cvar) = &*pair2;
+    ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
@@ -188,7 +188,7 @@ impl Condvar {
     /// });
     ///
     /// // Wait for the thread to start up.
-    /// let &(ref lock, ref cvar) = &*pair;
+    /// let (lock, cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
@@ -245,7 +245,7 @@ impl Condvar {
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
-    ///     let &(ref lock, ref cvar) = &*pair2;
+    ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
@@ -253,7 +253,7 @@ impl Condvar {
     /// });
     ///
     /// // Wait for the thread to start up.
-    /// let &(ref lock, ref cvar) = &*pair;
+    /// let (lock, cvar) = &*pair;
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// let _guard = cvar.wait_until(lock.lock().unwrap(), |started| { *started }).unwrap();
     /// ```
@@ -301,7 +301,7 @@ impl Condvar {
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
-    ///     let &(ref lock, ref cvar) = &*pair2;
+    ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
@@ -309,7 +309,7 @@ impl Condvar {
     /// });
     ///
     /// // Wait for the thread to start up.
-    /// let &(ref lock, ref cvar) = &*pair;
+    /// let (lock, cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// loop {
@@ -374,7 +374,7 @@ impl Condvar {
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
-    ///     let &(ref lock, ref cvar) = &*pair2;
+    ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
@@ -382,7 +382,7 @@ impl Condvar {
     /// });
     ///
     /// // wait for the thread to start up
-    /// let &(ref lock, ref cvar) = &*pair;
+    /// let (lock, cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
     /// // as long as the value inside the `Mutex<bool>` is `false`, we wait
     /// loop {
@@ -449,7 +449,7 @@ impl Condvar {
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
-    ///     let &(ref lock, ref cvar) = &*pair2;
+    ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
@@ -457,7 +457,7 @@ impl Condvar {
     /// });
     ///
     /// // wait for the thread to start up
-    /// let &(ref lock, ref cvar) = &*pair;
+    /// let (lock, cvar) = &*pair;
     /// let result = cvar.wait_timeout_until(
     ///     lock.lock().unwrap(),
     ///     Duration::from_millis(100),
@@ -508,7 +508,7 @@ impl Condvar {
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
-    ///     let &(ref lock, ref cvar) = &*pair2;
+    ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
@@ -516,7 +516,7 @@ impl Condvar {
     /// });
     ///
     /// // Wait for the thread to start up.
-    /// let &(ref lock, ref cvar) = &*pair;
+    /// let (lock, cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {
@@ -548,7 +548,7 @@ impl Condvar {
     /// let pair2 = pair.clone();
     ///
     /// thread::spawn(move|| {
-    ///     let &(ref lock, ref cvar) = &*pair2;
+    ///     let (lock, cvar) = &*pair2;
     ///     let mut started = lock.lock().unwrap();
     ///     *started = true;
     ///     // We notify the condvar that the value has changed.
@@ -556,7 +556,7 @@ impl Condvar {
     /// });
     ///
     /// // Wait for the thread to start up.
-    /// let &(ref lock, ref cvar) = &*pair;
+    /// let (lock, cvar) = &*pair;
     /// let mut started = lock.lock().unwrap();
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// while !*started {

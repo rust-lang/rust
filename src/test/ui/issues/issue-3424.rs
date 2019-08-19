@@ -1,11 +1,11 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 // rustc --test ignores2.rs && ./ignores2
 
 pub struct Path;
 
-type rsrc_loader = Box<FnMut(&Path) -> Result<String, String>>;
+type rsrc_loader = Box<dyn FnMut(&Path) -> Result<String, String>>;
 
 fn tester()
 {

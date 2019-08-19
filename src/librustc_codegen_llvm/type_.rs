@@ -1,5 +1,3 @@
-#![allow(non_upper_case_globals)]
-
 pub use crate::llvm::Type;
 
 use crate::llvm;
@@ -327,7 +325,7 @@ impl LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn backend_field_index(&self, layout: TyLayout<'tcx>, index: usize) -> u64 {
         layout.llvm_field_index(index)
     }
-    fn scalar_pair_element_backend_type<'a>(
+    fn scalar_pair_element_backend_type(
         &self,
         layout: TyLayout<'tcx>,
         index: usize,

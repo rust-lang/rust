@@ -9,19 +9,20 @@ use crate::borrow_check::{ReadKind, WriteKind};
 use crate::borrow_check::nll::facts::AllFacts;
 use crate::borrow_check::path_utils::*;
 use crate::dataflow::indexes::BorrowIndex;
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, Location, Mir, Place, PlaceBase, Rvalue};
+use rustc::mir::{BasicBlock, Location, Body, Place, Rvalue};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::TerminatorKind;
 use rustc::mir::{Operand, BorrowKind};
 use rustc_data_structures::graph::dominators::Dominators;
 
-pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+pub(super) fn generate_invalidates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
-    mir: &Mir<'tcx>,
+    body: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     if all_facts.is_none() {
@@ -30,31 +31,33 @@ pub(super) fn generate_invalidates<'cx, 'gcx, 'tcx>(
     }
 
     if let Some(all_facts) = all_facts {
-        let dominators = mir.dominators();
+        let dominators = body.dominators();
         let mut ig = InvalidationGenerator {
             all_facts,
             borrow_set,
+            param_env,
             tcx,
             location_table,
-            mir,
+            body,
             dominators,
         };
-        ig.visit_mir(mir);
+        ig.visit_body(body);
     }
 }
 
-struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+struct InvalidationGenerator<'cx, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     all_facts: &'cx mut AllFacts,
     location_table: &'cx LocationTable,
-    mir: &'cx Mir<'tcx>,
+    body: &'cx Body<'tcx>,
     dominators: Dominators<BasicBlock>,
     borrow_set: &'cx BorrowSet<'tcx>,
 }
 
 /// Visits the whole MIR and generates `invalidates()` facts.
 /// Most of the code implementing this was stolen from `borrow_check/mod.rs`.
-impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
+impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
     fn visit_statement(
         &mut self,
         statement: &Statement<'tcx>,
@@ -124,7 +127,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     location,
-                    &Place::Base(PlaceBase::Local(local)),
+                    &Place::from(local),
                     (Shallow(None), Write(WriteKind::StorageDeadOrDrop)),
                     LocalMutationIsAllowed::Yes,
                 );
@@ -207,8 +210,8 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                 cleanup: _,
             } => {
                 self.consume_operand(location, cond);
-                use rustc::mir::interpret::InterpError::BoundsCheck;
-                if let BoundsCheck { ref len, ref index } = *msg {
+                use rustc::mir::interpret::PanicInfo;
+                if let PanicInfo::BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(location, len);
                     self.consume_operand(location, index);
                 }
@@ -244,7 +247,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdges {
                 real_target: _,
-                imaginary_targets: _,
+                imaginary_target: _,
             }
             | TerminatorKind::FalseUnwind {
                 real_target: _,
@@ -258,7 +261,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
     }
 }
 
-impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
+impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
     /// Simulates mutation of a place.
     fn mutate_place(
         &mut self,
@@ -400,13 +403,15 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
             rw,
         );
         let tcx = self.tcx;
-        let mir = self.mir;
+        let body = self.body;
+        let param_env = self.param_env;
         let borrow_set = self.borrow_set.clone();
         let indices = self.borrow_set.borrows.indices();
         each_borrow_involving_path(
             self,
             tcx,
-            mir,
+            param_env,
+            body,
             location,
             (sd, place),
             &borrow_set.clone(),

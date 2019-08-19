@@ -11,7 +11,7 @@ use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
 
-struct EntryContext<'a, 'tcx: 'a> {
+struct EntryContext<'a, 'tcx> {
     session: &'a Session,
 
     map: &'a hir_map::Map<'tcx>,
@@ -32,7 +32,7 @@ struct EntryContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx Item) {
-        let def_id = self.map.local_def_id_from_hir_id(item.hir_id);
+        let def_id = self.map.local_def_id(item.hir_id);
         let def_key = self.map.def_key(def_id);
         let at_root = def_key.parent == Some(CRATE_DEF_INDEX);
         find_item(item, self, at_root);
@@ -47,7 +47,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_, '_, '_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
+fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     let any_exe = tcx.sess.crate_types.borrow().iter().any(|ty| {
@@ -120,9 +120,9 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
                 ctxt.attr_main_fn = Some((item.hir_id, item.span));
             } else {
                 struct_span_err!(ctxt.session, item.span, E0137,
-                                 "multiple functions with a #[main] attribute")
-                .span_label(item.span, "additional #[main] function")
-                .span_label(ctxt.attr_main_fn.unwrap().1, "first #[main] function")
+                                 "multiple functions with a `#[main]` attribute")
+                .span_label(item.span, "additional `#[main]` function")
+                .span_label(ctxt.attr_main_fn.unwrap().1, "first `#[main]` function")
                 .emit();
             }
         },
@@ -140,16 +140,13 @@ fn find_item(item: &Item, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
     }
 }
 
-fn configure_main(
-    tcx: TyCtxt<'_, '_, '_>,
-    visitor: &EntryContext<'_, '_>,
-) -> Option<(DefId, EntryFnType)> {
+fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(DefId, EntryFnType)> {
     if let Some((hir_id, _)) = visitor.start_fn {
-        Some((tcx.hir().local_def_id_from_hir_id(hir_id), EntryFnType::Start))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Start))
     } else if let Some((hir_id, _)) = visitor.attr_main_fn {
-        Some((tcx.hir().local_def_id_from_hir_id(hir_id), EntryFnType::Main))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else if let Some((hir_id, _)) = visitor.main_fn {
-        Some((tcx.hir().local_def_id_from_hir_id(hir_id), EntryFnType::Main))
+        Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else {
         // No main function
         let mut err = struct_err!(tcx.sess, E0601,
@@ -179,7 +176,7 @@ fn configure_main(
     }
 }
 
-pub fn find_entry_point(tcx: TyCtxt<'_, '_, '_>) -> Option<(DefId, EntryFnType)> {
+pub fn find_entry_point(tcx: TyCtxt<'_>) -> Option<(DefId, EntryFnType)> {
     tcx.entry_fn(LOCAL_CRATE)
 }
 

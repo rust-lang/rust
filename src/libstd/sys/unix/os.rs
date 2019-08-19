@@ -25,6 +25,13 @@ use libc::{c_int, c_char, c_void};
 
 const TMPBUF_SZ: usize = 128;
 
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "redox")] {
+        const PATH_SEPARATOR: u8 = b';';
+    } else {
+        const PATH_SEPARATOR: u8 = b':';
+    }
+}
 
 extern {
     #[cfg(not(target_os = "dragonfly"))]
@@ -37,6 +44,7 @@ extern {
                    target_os = "openbsd",
                    target_os = "android",
                    target_os = "hermit",
+                   target_os = "redox",
                    target_env = "newlib"),
                link_name = "__errno")]
     #[cfg_attr(target_os = "solaris", link_name = "___errno")]
@@ -155,10 +163,10 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
     fn bytes_to_path(b: &[u8]) -> PathBuf {
         PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
     }
-    fn is_colon(b: &u8) -> bool { *b == b':' }
+    fn is_separator(b: &u8) -> bool { *b == PATH_SEPARATOR }
     let unparsed = unparsed.as_bytes();
     SplitPaths {
-        iter: unparsed.split(is_colon as fn(&u8) -> bool)
+        iter: unparsed.split(is_separator as fn(&u8) -> bool)
                       .map(bytes_to_path as fn(&[u8]) -> PathBuf)
     }
 }
@@ -176,12 +184,11 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
     where I: Iterator<Item=T>, T: AsRef<OsStr>
 {
     let mut joined = Vec::new();
-    let sep = b':';
 
     for (i, path) in paths.enumerate() {
         let path = path.as_ref().as_bytes();
-        if i > 0 { joined.push(sep) }
-        if path.contains(&sep) {
+        if i > 0 { joined.push(PATH_SEPARATOR) }
+        if path.contains(&PATH_SEPARATOR) {
             return Err(JoinPathsError)
         }
         joined.extend_from_slice(path);
@@ -191,7 +198,7 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
 
 impl fmt::Display for JoinPathsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "path segment contains separator `:`".fmt(f)
+        write!(f, "path segment contains separator `{}`", PATH_SEPARATOR)
     }
 }
 
@@ -382,6 +389,11 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
+#[cfg(target_os = "redox")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    crate::fs::read_to_string("sys:exe").map(PathBuf::from)
+}
+
 #[cfg(any(target_os = "fuchsia", target_os = "l4re", target_os = "hermit"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
@@ -511,11 +523,13 @@ pub fn home_dir() -> Option<PathBuf> {
 
     #[cfg(any(target_os = "android",
               target_os = "ios",
-              target_os = "emscripten"))]
+              target_os = "emscripten",
+              target_os = "redox"))]
     unsafe fn fallback() -> Option<OsString> { None }
     #[cfg(not(any(target_os = "android",
                   target_os = "ios",
-                  target_os = "emscripten")))]
+                  target_os = "emscripten",
+                  target_os = "redox")))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {
             n if n < 0 => 512 as usize,

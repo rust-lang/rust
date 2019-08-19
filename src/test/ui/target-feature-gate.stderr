@@ -5,7 +5,7 @@ LL | #[target_feature(enable = "avx512bw")]
    |                  ^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/44839
-   = help: add #![feature(avx512_target_feature)] to the crate attributes to enable
+   = help: add `#![feature(avx512_target_feature)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

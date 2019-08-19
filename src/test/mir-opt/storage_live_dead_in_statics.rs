@@ -182,8 +182,8 @@ fn main() {
 //        _2 = Foo { tup: const "hi", data: move _3 };
 //        _1 = &_2;
 //        _0 = &(*_1);
-//        StorageDead(_1);
 //        StorageDead(_5);
+//        StorageDead(_1);
 //        return;
 //    }
 //}

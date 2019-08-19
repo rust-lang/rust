@@ -5,7 +5,7 @@ trait BrokenAdd: Copy + Add<Output=Self> {
         *self + rhs //~  ERROR mismatched types
                     //~| expected type `Self`
                     //~| found type `T`
-                    //~| expected Self, found type parameter
+                    //~| expected type parameter, found a different type parameter
     }
 }
 

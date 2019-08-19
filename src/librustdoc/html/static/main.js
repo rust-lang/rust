@@ -162,8 +162,15 @@ if (!DOMTokenList.prototype.remove) {
         var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
             from = parseInt(match[1], 10);
-            to = Math.min(50000, parseInt(match[2] || match[1], 10));
-            from = Math.min(from, to);
+            to = from;
+            if (typeof match[2] !== "undefined") {
+                to = parseInt(match[2], 10);
+            }
+            if (to < from) {
+                var tmp = to;
+                to = from;
+                from = tmp;
+            }
             elem = document.getElementById(from);
             if (!elem) {
                 return;
@@ -180,7 +187,11 @@ if (!DOMTokenList.prototype.remove) {
                 });
             });
             for (i = from; i <= to; ++i) {
-                addClass(document.getElementById(i), "line-highlighted");
+                elem = document.getElementById(i);
+                if (!elem) {
+                    break;
+                }
+                addClass(elem, "line-highlighted");
             }
         } else if (ev !== null && search && !hasClass(search, "hidden") && ev.newURL) {
             addClass(search, "hidden");

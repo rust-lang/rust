@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 // defining static with struct that contains enum
 // with &'static str variant used to cause ICE

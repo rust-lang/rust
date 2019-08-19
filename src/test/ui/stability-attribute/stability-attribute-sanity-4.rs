@@ -5,24 +5,24 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod bogus_attribute_types_2 {
-    #[unstable] //~ ERROR attribute must be of the form
+    #[unstable] //~ ERROR malformed `unstable` attribute
     fn f1() { }
 
-    #[unstable = "b"] //~ ERROR attribute must be of the form
+    #[unstable = "b"] //~ ERROR malformed `unstable` attribute
     fn f2() { }
 
-    #[stable] //~ ERROR attribute must be of the form
+    #[stable] //~ ERROR malformed `stable` attribute
     fn f3() { }
 
-    #[stable = "a"] //~ ERROR attribute must be of the form
+    #[stable = "a"] //~ ERROR malformed `stable` attribute
     fn f4() { }
 
     #[stable(feature = "a", since = "b")]
-    #[rustc_deprecated] //~ ERROR attribute must be of the form
+    #[rustc_deprecated] //~ ERROR malformed `rustc_deprecated` attribute
     fn f5() { }
 
     #[stable(feature = "a", since = "b")]
-    #[rustc_deprecated = "a"] //~ ERROR attribute must be of the form
+    #[rustc_deprecated = "a"] //~ ERROR malformed `rustc_deprecated` attribute
     fn f6() { }
 }
 

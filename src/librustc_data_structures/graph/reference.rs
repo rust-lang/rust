@@ -17,15 +17,15 @@ impl<'graph, G: WithStartNode> WithStartNode for &'graph G {
 }
 
 impl<'graph, G: WithSuccessors> WithSuccessors for &'graph G {
-    fn successors<'iter>(&'iter self, node: Self::Node) -> <Self as GraphSuccessors<'iter>>::Iter {
+    fn successors(&self, node: Self::Node) -> <Self as GraphSuccessors<'_>>::Iter {
         (**self).successors(node)
     }
 }
 
 impl<'graph, G: WithPredecessors> WithPredecessors for &'graph G {
-    fn predecessors<'iter>(&'iter self,
-                           node: Self::Node)
-                           -> <Self as GraphPredecessors<'iter>>::Iter {
+    fn predecessors(&self,
+                    node: Self::Node)
+                    -> <Self as GraphPredecessors<'_>>::Iter {
         (**self).predecessors(node)
     }
 }

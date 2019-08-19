@@ -21,8 +21,6 @@ use crate::os::raw::c_char;
 
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 #[path = "../wasm/cmath.rs"]
 pub mod cmath;
 #[path = "../wasm/condvar.rs"]
@@ -49,6 +47,8 @@ pub mod stdio;
 pub mod thread;
 #[path = "../wasm/thread_local.rs"]
 pub mod thread_local;
+#[path = "../wasm/fast_thread_local.rs"]
+pub mod fast_thread_local;
 pub mod time;
 pub mod ext;
 

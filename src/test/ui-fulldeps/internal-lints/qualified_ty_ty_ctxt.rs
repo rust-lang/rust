@@ -1,7 +1,7 @@
 // compile-flags: -Z unstable-options
 
 #![feature(rustc_private)]
-#![deny(usage_of_qualified_ty)]
+#![deny(rustc::usage_of_qualified_ty)]
 #![allow(unused)]
 
 extern crate rustc;
@@ -13,8 +13,8 @@ macro_rules! qualified_macro {
         fn ty_in_macro(
             ty_q: ty::Ty<'_>,
             ty: Ty<'_>,
-            ty_ctxt_q: ty::TyCtxt<'_, '_, '_>,
-            ty_ctxt: TyCtxt<'_, '_, '_>,
+            ty_ctxt_q: ty::TyCtxt<'_>,
+            ty_ctxt: TyCtxt<'_>,
         ) {
             println!("{}", stringify!($a));
         }
@@ -24,8 +24,8 @@ macro_rules! qualified_macro {
 fn ty_qualified(
     ty_q: ty::Ty<'_>, //~ ERROR usage of qualified `ty::Ty<'_>`
     ty: Ty<'_>,
-    ty_ctxt_q: ty::TyCtxt<'_, '_, '_>, //~ ERROR usage of qualified `ty::TyCtxt<'_, '_, '_>`
-    ty_ctxt: TyCtxt<'_, '_, '_>,
+    ty_ctxt_q: ty::TyCtxt<'_>, //~ ERROR usage of qualified `ty::TyCtxt<'_>`
+    ty_ctxt: TyCtxt<'_>,
 ) {
 }
 

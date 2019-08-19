@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio, exit};
 use std::str;
 
-use build_helper::{output, mtime, t, up_to_date};
+use build_helper::{output, t, up_to_date};
 use filetime::FileTime;
 use serde::Deserialize;
 use serde_json;
@@ -70,20 +70,20 @@ impl Step for Std {
 
         builder.ensure(StartupObjects { compiler, target });
 
-        if builder.force_use_stage1(compiler, target) {
-            let from = builder.compiler(1, builder.config.build);
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
             builder.ensure(Std {
-                compiler: from,
+                compiler: compiler_to_use,
                 target,
             });
-            builder.info(&format!("Uplifting stage1 std ({} -> {})", from.host, target));
+            builder.info(&format!("Uplifting stage1 std ({} -> {})", compiler_to_use.host, target));
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
             copy_third_party_objects(builder, &compiler, target);
 
             builder.ensure(StdLink {
-                compiler: from,
+                compiler: compiler_to_use,
                 target_compiler: compiler,
                 target,
             });
@@ -95,11 +95,11 @@ impl Step for Std {
         let mut cargo = builder.cargo(compiler, Mode::Std, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
         builder.info(&format!("Building stage{} std artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &libstd_stamp(builder, compiler, target),
                   false);
 
@@ -161,7 +161,33 @@ pub fn std_cargo(builder: &Builder<'_>,
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
+    // Determine if we're going to compile in optimized C intrinsics to
+    // the `compiler-builtins` crate. These intrinsics live in LLVM's
+    // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
+    // always checked out, so we need to conditionally look for this. (e.g. if
+    // an external LLVM is used we skip the LLVM submodule checkout).
+    //
+    // Note that this shouldn't affect the correctness of `compiler-builtins`,
+    // but only its speed. Some intrinsics in C haven't been translated to Rust
+    // yet but that's pretty rare. Other intrinsics have optimized
+    // implementations in C which have only had slower versions ported to Rust,
+    // so we favor the C version where we can, but it's not critical.
+    //
+    // If `compiler-rt` is available ensure that the `c` feature of the
+    // `compiler-builtins` crate is enabled and it's configured to learn where
+    // `compiler-rt` is located.
+    let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
+    let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
+        cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
+        " compiler-builtins-c".to_string()
+    } else {
+        String::new()
+    };
+
     if builder.no_std(target) == Some(true) {
+        let mut features = "compiler-builtins-mem".to_string();
+        features.push_str(&compiler_builtins_c_feature);
+
         // for no-std targets we only compile a few no_std crates
         cargo
             .args(&["-p", "alloc"])
@@ -170,7 +196,8 @@ pub fn std_cargo(builder: &Builder<'_>,
             .arg("--features")
             .arg("compiler-builtins-mem compiler-builtins-c");
     } else {
-        let features = builder.std_features();
+        let mut features = builder.std_features();
+        features.push_str(&compiler_builtins_c_feature);
 
         if compiler.stage != 0 && builder.config.sanitizers {
             // This variable is used by the sanitizer runtime crates, e.g.
@@ -247,8 +274,6 @@ impl Step for StdLink {
             // for reason why the sanitizers are not built in stage0.
             copy_apple_sanitizer_dylibs(builder, &builder.native_dir(target), "osx", &libdir);
         }
-
-        builder.cargo(target_compiler, Mode::ToolStd, target, "clean");
     }
 }
 
@@ -298,7 +323,7 @@ impl Step for StartupObjects {
     fn run(self, builder: &Builder<'_>) {
         let for_compiler = self.compiler;
         let target = self.target;
-        if !target.contains("pc-windows-gnu") {
+        if !target.contains("windows-gnu") {
             return
         }
 
@@ -313,7 +338,7 @@ impl Step for StartupObjects {
             if !up_to_date(src_file, dst_file) {
                 let mut cmd = Command::new(&builder.initial_rustc);
                 builder.run(cmd.env("RUSTC_BOOTSTRAP", "1")
-                            .arg("--cfg").arg("stage0")
+                            .arg("--cfg").arg("bootstrap")
                             .arg("--target").arg(target)
                             .arg("--emit=obj")
                             .arg("-o").arg(dst_file)
@@ -375,15 +400,16 @@ impl Step for Test {
             return;
         }
 
-        if builder.force_use_stage1(compiler, target) {
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
             builder.ensure(Test {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target,
             });
             builder.info(
                 &format!("Uplifting stage1 test ({} -> {})", builder.config.build, target));
             builder.ensure(TestLink {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target_compiler: compiler,
                 target,
             });
@@ -393,11 +419,11 @@ impl Step for Test {
         let mut cargo = builder.cargo(compiler, Mode::Test, target, "build");
         test_cargo(builder, &compiler, target, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
         builder.info(&format!("Building stage{} test artifacts ({} -> {})", compiler.stage,
                 &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &libtest_stamp(builder, compiler, target),
                   false);
 
@@ -452,8 +478,6 @@ impl Step for TestLink {
             &builder.sysroot_libdir(target_compiler, compiler.host),
             &libtest_stamp(builder, compiler, target)
         );
-
-        builder.cargo(target_compiler, Mode::ToolTest, target, "clean");
     }
 }
 
@@ -500,15 +524,16 @@ impl Step for Rustc {
             return;
         }
 
-        if builder.force_use_stage1(compiler, target) {
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
             builder.ensure(Rustc {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target,
             });
             builder.info(&format!("Uplifting stage1 rustc ({} -> {})",
                 builder.config.build, target));
             builder.ensure(RustcLink {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target_compiler: compiler,
                 target,
             });
@@ -524,11 +549,11 @@ impl Step for Rustc {
         let mut cargo = builder.cargo(compiler, Mode::Rustc, target, "build");
         rustc_cargo(builder, &mut cargo);
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc", compiler.stage));
         builder.info(&format!("Building stage{} compiler artifacts ({} -> {})",
                  compiler.stage, &compiler.host, target));
         run_cargo(builder,
                   &mut cargo,
+                  vec![],
                   &librustc_stamp(builder, compiler, target),
                   false);
 
@@ -558,13 +583,6 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Command) {
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or(Path::new("lib"));
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
-
-    // If we're not building a compiler with debugging information then remove
-    // these two env vars which would be set otherwise.
-    if builder.config.rust_debuginfo_only_std {
-        cargo.env_remove("RUSTC_DEBUGINFO");
-        cargo.env_remove("RUSTC_DEBUGINFO_LINES");
-    }
 
     if let Some(ref ver_date) = builder.rust_info.commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
@@ -617,7 +635,6 @@ impl Step for RustcLink {
             &builder.sysroot_libdir(target_compiler, compiler.host),
             &librustc_stamp(builder, compiler, target)
         );
-        builder.cargo(target_compiler, Mode::ToolRustc, target, "clean");
     }
 }
 
@@ -664,9 +681,10 @@ impl Step for CodegenBackend {
             return;
         }
 
-        if builder.force_use_stage1(compiler, target) {
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        if compiler_to_use != compiler {
             builder.ensure(CodegenBackend {
-                compiler: builder.compiler(1, builder.config.build),
+                compiler: compiler_to_use,
                 target,
                 backend,
             });
@@ -684,9 +702,9 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = out_dir.join(".tmp.stamp");
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         let files = run_cargo(builder,
                               cargo.arg("--features").arg(features),
+                              vec![],
                               &tmp_stamp,
                               false);
         if builder.config.dry_run {
@@ -748,6 +766,10 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
                     cargo.env("CFG_LLVM_ROOT", s);
                 }
             }
+            // Some LLVM linker flags (-L and -l) may be needed to link librustc_llvm.
+            if let Some(ref s) = builder.config.llvm_ldflags {
+                cargo.env("LLVM_LINKER_FLAGS", s);
+            }
             // Building with a static libstdc++ is only supported on linux right now,
             // not for MSVC or macOS
             if builder.config.llvm_static_stdcpp &&
@@ -767,6 +789,9 @@ pub fn build_codegen_backend(builder: &Builder<'_>,
             }
             if builder.config.llvm_use_libcxx {
                 cargo.env("LLVM_USE_LIBCXX", "1");
+            }
+            if builder.config.llvm_optimize && !builder.config.llvm_release_debuginfo {
+                cargo.env("LLVM_NDEBUG", "1");
             }
         }
         _ => panic!("unknown backend: {}", backend),
@@ -1057,6 +1082,7 @@ pub fn add_to_sysroot(
 
 pub fn run_cargo(builder: &Builder<'_>,
                  cargo: &mut Command,
+                 tail_args: Vec<String>,
                  stamp: &Path,
                  is_check: bool)
     -> Vec<PathBuf>
@@ -1079,7 +1105,7 @@ pub fn run_cargo(builder: &Builder<'_>,
     // files we need to probe for later.
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
-    let ok = stream_cargo(builder, cargo, &mut |msg| {
+    let ok = stream_cargo(builder, cargo, tail_args, &mut |msg| {
         let (filenames, crate_types) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
@@ -1094,6 +1120,7 @@ pub fn run_cargo(builder: &Builder<'_>,
             // Skip files like executables
             if !filename.ends_with(".rlib") &&
                !filename.ends_with(".lib") &&
+               !filename.ends_with(".a") &&
                !is_dylib(&filename) &&
                !(is_check && filename.ends_with(".rmeta")) {
                 continue;
@@ -1173,40 +1200,12 @@ pub fn run_cargo(builder: &Builder<'_>,
         deps.push((path_to_add.into(), false));
     }
 
-    // Now we want to update the contents of the stamp file, if necessary. First
-    // we read off the previous contents along with its mtime. If our new
-    // contents (the list of files to copy) is different or if any dep's mtime
-    // is newer then we rewrite the stamp file.
     deps.sort();
-    let stamp_contents = fs::read(stamp);
-    let stamp_mtime = mtime(&stamp);
     let mut new_contents = Vec::new();
-    let mut max = None;
-    let mut max_path = None;
     for (dep, proc_macro) in deps.iter() {
-        let mtime = mtime(dep);
-        if Some(mtime) > max {
-            max = Some(mtime);
-            max_path = Some(dep.clone());
-        }
         new_contents.extend(if *proc_macro { b"h" } else { b"t" });
         new_contents.extend(dep.to_str().unwrap().as_bytes());
         new_contents.extend(b"\0");
-    }
-    let max = max.unwrap();
-    let max_path = max_path.unwrap();
-    let contents_equal = stamp_contents
-        .map(|contents| contents == new_contents)
-        .unwrap_or_default();
-    if contents_equal && max <= stamp_mtime {
-        builder.verbose(&format!("not updating {:?}; contents equal and {:?} <= {:?}",
-                stamp, max, stamp_mtime));
-        return deps.into_iter().map(|(d, _)| d).collect()
-    }
-    if max > stamp_mtime {
-        builder.verbose(&format!("updating {:?} as {:?} changed", stamp, max_path));
-    } else {
-        builder.verbose(&format!("updating {:?} as deps changed", stamp));
     }
     t!(fs::write(&stamp, &new_contents));
     deps.into_iter().map(|(d, _)| d).collect()
@@ -1215,6 +1214,7 @@ pub fn run_cargo(builder: &Builder<'_>,
 pub fn stream_cargo(
     builder: &Builder<'_>,
     cargo: &mut Command,
+    tail_args: Vec<String>,
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     if builder.config.dry_run {
@@ -1222,8 +1222,16 @@ pub fn stream_cargo(
     }
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
-    cargo.arg("--message-format").arg("json")
-         .stdout(Stdio::piped());
+    let mut message_format = String::from("json-render-diagnostics");
+    if let Some(s) = &builder.config.rustc_error_format  {
+        message_format.push_str(",json-diagnostic-");
+        message_format.push_str(s);
+    }
+    cargo.arg("--message-format").arg(message_format).stdout(Stdio::piped());
+
+    for arg in tail_args {
+        cargo.arg(arg);
+    }
 
     builder.verbose(&format!("running: {:?}", cargo));
     let mut child = match cargo.spawn() {
@@ -1271,5 +1279,5 @@ pub enum CargoMessage<'a> {
     },
     BuildScriptExecuted {
         package_id: Cow<'a, str>,
-    }
+    },
 }

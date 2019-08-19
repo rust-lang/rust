@@ -20,7 +20,7 @@ fn dent<C:BoxCar>(c: C, color: C::Color) {
     //~^ ERROR ambiguous associated type `Color` in bounds of `C`
 }
 
-fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
+fn dent_object<COLOR>(c: dyn BoxCar<Color=COLOR>) {
     //~^ ERROR ambiguous associated type
     //~| ERROR the value of the associated type `Color` (from the trait `Vehicle`) must be specified
 }

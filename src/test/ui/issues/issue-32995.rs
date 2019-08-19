@@ -17,11 +17,11 @@ fn main() {
     //~^ ERROR parenthesized type parameters may only be used with a `Fn` trait
     //~| WARN previously accepted
 
-    let o : Box<::std::marker()::Send> = Box::new(1);
+    let o : Box<dyn (::std::marker()::Send)> = Box::new(1);
     //~^ ERROR parenthesized type parameters may only be used with a `Fn` trait
     //~| WARN previously accepted
 
-    let o : Box<Send + ::std::marker()::Sync> = Box::new(1);
+    let o : Box<dyn Send + ::std::marker()::Sync> = Box::new(1);
     //~^ ERROR parenthesized type parameters may only be used with a `Fn` trait
     //~| WARN previously accepted
 }

@@ -1,0 +1,8 @@
+error: expected one of `fn` or `unsafe`, found `const`
+  --> $DIR/no-async-const.rs:7:11
+   |
+LL | pub async const fn x() {}
+   |           ^^^^^ expected one of `fn` or `unsafe` here
+
+error: aborting due to previous error
+

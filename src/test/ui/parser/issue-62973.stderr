@@ -1,0 +1,61 @@
+error: this file contains an un-closed delimiter
+  --> $DIR/issue-62973.rs:8:2
+   |
+LL | fn p() { match s { v, E { [) {) }
+   |        -         - un-closed delimiter
+   |        |
+   |        un-closed delimiter
+LL | 
+LL | 
+   |  ^
+
+error: expected one of `,` or `}`, found `{`
+  --> $DIR/issue-62973.rs:6:25
+   |
+LL | fn p() { match s { v, E { [) {) }
+   |                -        ^ expected one of `,` or `}` here
+   |                |
+   |                while parsing this struct
+
+error: struct literals are not allowed here
+  --> $DIR/issue-62973.rs:6:16
+   |
+LL |   fn p() { match s { v, E { [) {) }
+   |  ________________^
+LL | |
+LL | |
+   | |_^
+help: surround the struct literal with parentheses
+   |
+LL | fn p() { match (s { v, E { [) {) }
+LL | 
+LL | )
+   |
+
+error: expected one of `.`, `?`, `{`, or an operator, found `}`
+  --> $DIR/issue-62973.rs:8:1
+   |
+LL | fn p() { match s { v, E { [) {) }
+   |          ----- while parsing this match expression
+LL | 
+LL | 
+   | ^ expected one of `.`, `?`, `{`, or an operator here
+
+error: incorrect close delimiter: `)`
+  --> $DIR/issue-62973.rs:6:28
+   |
+LL | fn p() { match s { v, E { [) {) }
+   |                           -^ incorrect close delimiter
+   |                           |
+   |                           un-closed delimiter
+
+error: incorrect close delimiter: `)`
+  --> $DIR/issue-62973.rs:6:31
+   |
+LL | fn p() { match s { v, E { [) {) }
+   |                              -^ incorrect close delimiter
+   |                              |
+   |                              un-closed delimiter
+
+error: aborting due to 6 previous errors
+

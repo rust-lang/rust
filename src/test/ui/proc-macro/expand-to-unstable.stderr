@@ -4,7 +4,7 @@ error[E0658]: use of unstable library feature 'core_intrinsics': intrinsics are 
 LL | #[derive(Unstable)]
    |          ^^^^^^^^
    |
-   = help: add #![feature(core_intrinsics)] to the crate attributes to enable
+   = help: add `#![feature(core_intrinsics)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

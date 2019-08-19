@@ -56,18 +56,18 @@ pub struct LivenessResult {
 
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
-pub fn liveness_of_locals<'tcx>(
-    mir: &Mir<'tcx>,
+pub fn liveness_of_locals(
+    body: &Body<'_>,
 ) -> LivenessResult {
-    let num_live_vars = mir.local_decls.len();
+    let num_live_vars = body.local_decls.len();
 
-    let def_use: IndexVec<_, DefsUses> = mir
+    let def_use: IndexVec<_, DefsUses> = body
         .basic_blocks()
         .iter()
         .map(|b| block(b, num_live_vars))
         .collect();
 
-    let mut outs: IndexVec<_, LiveVarSet> = mir
+    let mut outs: IndexVec<_, LiveVarSet> = body
         .basic_blocks()
         .indices()
         .map(|_| LiveVarSet::new_empty(num_live_vars))
@@ -75,11 +75,26 @@ pub fn liveness_of_locals<'tcx>(
 
     let mut bits = LiveVarSet::new_empty(num_live_vars);
 
-    // queue of things that need to be re-processed, and a set containing
-    // the things currently in the queue
-    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_all(mir.basic_blocks().len());
+    // The dirty queue contains the set of basic blocks whose entry sets have changed since they
+    // were last processed. At the start of the analysis, we initialize the queue in post-order to
+    // make it more likely that the entry set for a given basic block will have the effects of all
+    // its successors in the CFG applied before it is processed.
+    //
+    // FIXME(ecstaticmorse): Reverse post-order on the reverse CFG may generate a better iteration
+    // order when cycles are present, but the overhead of computing the reverse CFG may outweigh
+    // any benefits. Benchmark this and find out.
+    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks().len());
+    for (bb, _) in traversal::postorder(body) {
+        dirty_queue.insert(bb);
+    }
 
-    let predecessors = mir.predecessors();
+    // Add blocks which are not reachable from START_BLOCK to the work queue. These blocks will
+    // be processed after the ones added above.
+    for bb in body.basic_blocks().indices() {
+        dirty_queue.insert(bb);
+    }
+
+    let predecessors = body.predecessors();
 
     while let Some(bb) = dirty_queue.pop() {
         // bits = use ∪ (bits - def)
@@ -109,7 +124,7 @@ pub enum DefUse {
     Drop,
 }
 
-pub fn categorize<'tcx>(context: PlaceContext) -> Option<DefUse> {
+pub fn categorize(context: PlaceContext) -> Option<DefUse> {
     match context {
         ///////////////////////////////////////////////////////////////////////////
         // DEFS
@@ -228,8 +243,8 @@ impl<'tcx> Visitor<'tcx> for DefsUsesVisitor
     }
 }
 
-fn block<'tcx>(
-    b: &BasicBlockData<'tcx>,
+fn block(
+    b: &BasicBlockData<'_>,
     locals: usize,
 ) -> DefsUses {
     let mut visitor = DefsUsesVisitor {
@@ -254,11 +269,11 @@ fn block<'tcx>(
     visitor.defs_uses
 }
 
-pub fn dump_mir<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn dump_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
     pass_name: &str,
     source: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    body: &Body<'tcx>,
     result: &LivenessResult,
 ) {
     if !dump_enabled(tcx, pass_name, source) {
@@ -268,15 +283,15 @@ pub fn dump_mir<'a, 'tcx>(
         // see notes on #41697 below
         tcx.def_path_str(source.def_id())
     });
-    dump_matched_mir_node(tcx, pass_name, &node_path, source, mir, result);
+    dump_matched_mir_node(tcx, pass_name, &node_path, source, body, result);
 }
 
-fn dump_matched_mir_node<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn dump_matched_mir_node<'tcx>(
+    tcx: TyCtxt<'tcx>,
     pass_name: &str,
     node_path: &str,
     source: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    body: &Body<'tcx>,
     result: &LivenessResult,
 ) {
     let mut file_path = PathBuf::new();
@@ -289,20 +304,20 @@ fn dump_matched_mir_node<'a, 'tcx>(
         writeln!(file, "// source = {:?}", source)?;
         writeln!(file, "// pass_name = {}", pass_name)?;
         writeln!(file, "")?;
-        write_mir_fn(tcx, source, mir, &mut file, result)?;
+        write_mir_fn(tcx, source, body, &mut file, result)?;
         Ok(())
     });
 }
 
-pub fn write_mir_fn<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn write_mir_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
     src: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    body: &Body<'tcx>,
     w: &mut dyn Write,
     result: &LivenessResult,
 ) -> io::Result<()> {
-    write_mir_intro(tcx, src, mir, w)?;
-    for block in mir.basic_blocks().indices() {
+    write_mir_intro(tcx, src, body, w)?;
+    for block in body.basic_blocks().indices() {
         let print = |w: &mut dyn Write, prefix, result: &IndexVec<BasicBlock, LiveVarSet>| {
             let live: Vec<String> = result[block]
                 .iter()
@@ -310,9 +325,9 @@ pub fn write_mir_fn<'a, 'tcx>(
                 .collect();
             writeln!(w, "{} {{{}}}", prefix, live.join(", "))
         };
-        write_basic_block(tcx, block, mir, &mut |_, _| Ok(()), w)?;
+        write_basic_block(tcx, block, body, &mut |_, _| Ok(()), w)?;
         print(w, "   ", &result.outs)?;
-        if block.index() + 1 != mir.basic_blocks().len() {
+        if block.index() + 1 != body.basic_blocks().len() {
             writeln!(w, "")?;
         }
     }

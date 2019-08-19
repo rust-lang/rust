@@ -9,7 +9,7 @@ fn print_str(string: &'static str) {
     // macros are handled a bit differently
     #[expect_print_expr]
     //~^ ERROR attributes on expressions are experimental
-    //~| HELP add #![feature(stmt_expr_attributes)] to the crate attributes to enable
+    //~| HELP add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
     println!("{}", string)
 }
 
@@ -22,6 +22,6 @@ fn main() {
 
     #[expect_expr]
     //~^ ERROR attributes on expressions are experimental
-    //~| HELP add #![feature(stmt_expr_attributes)] to the crate attributes to enable
+    //~| HELP add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
     print_str("string")
 }

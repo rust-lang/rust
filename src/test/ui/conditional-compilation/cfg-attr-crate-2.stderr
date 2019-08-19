@@ -5,7 +5,7 @@ LL | #![cfg_attr(broken, no_core)]
    |                     ^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29639
-   = help: add #![feature(no_core)] to the crate attributes to enable
+   = help: add `#![feature(no_core)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

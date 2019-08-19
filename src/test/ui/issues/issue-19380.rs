@@ -8,7 +8,7 @@ impl Qiz for Foo {
 }
 
 struct Bar {
-  foos: &'static [&'static (Qiz + 'static)]
+  foos: &'static [&'static (dyn Qiz + 'static)]
 //~^ ERROR E0038
 }
 

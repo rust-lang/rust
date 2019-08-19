@@ -2,7 +2,9 @@ error[E0164]: expected tuple struct/variant, found method `<A>::new`
   --> $DIR/fn-in-pat.rs:11:9
    |
 LL |         A::new() => (),
-   |         ^^^^^^^^ not a tuple variant or struct
+   |         ^^^^^^^^ `fn` calls are not allowed in patterns
+   |
+   = help: for more information, visit https://doc.rust-lang.org/book/ch18-00-patterns.html
 
 error: aborting due to previous error
 

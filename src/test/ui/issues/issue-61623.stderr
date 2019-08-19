@@ -1,0 +1,22 @@
+error[E0596]: cannot borrow `*x.1` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-61623.rs:6:19
+   |
+LL | fn f3<'a>(x: &'a ((), &'a mut ())) {
+   |              -------------------- help: consider changing this to be a mutable reference: `&'a mut ((), &'a mut ())`
+LL |     f2(|| x.0, f1(x.1))
+   |                   ^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+
+error[E0502]: cannot borrow `*x.1` as mutable because it is also borrowed as immutable
+  --> $DIR/issue-61623.rs:6:19
+   |
+LL |     f2(|| x.0, f1(x.1))
+   |     -- -- -       ^^^ mutable borrow occurs here
+   |     |  |  |
+   |     |  |  first borrow occurs due to use of `x` in closure
+   |     |  immutable borrow occurs here
+   |     immutable borrow later used by call
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0502, E0596.
+For more information about an error, try `rustc --explain E0502`.

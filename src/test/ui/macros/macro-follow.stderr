@@ -1,24 +1,24 @@
 error: `$p:pat` is followed by `(`, which is not allowed for `pat` fragments
-  --> $DIR/macro-follow.rs:8:14
+  --> $DIR/macro-follow.rs:8:13
    |
 LL |     ($p:pat ()) => {};
-   |              ^ not allowed after `pat` fragments
+   |             ^ not allowed after `pat` fragments
    |
    = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
 
 error: `$p:pat` is followed by `[`, which is not allowed for `pat` fragments
-  --> $DIR/macro-follow.rs:9:14
+  --> $DIR/macro-follow.rs:9:13
    |
 LL |     ($p:pat []) => {};
-   |              ^ not allowed after `pat` fragments
+   |             ^ not allowed after `pat` fragments
    |
    = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
 
 error: `$p:pat` is followed by `{`, which is not allowed for `pat` fragments
-  --> $DIR/macro-follow.rs:10:14
+  --> $DIR/macro-follow.rs:10:13
    |
 LL |     ($p:pat {}) => {};
-   |              ^ not allowed after `pat` fragments
+   |             ^ not allowed after `pat` fragments
    |
    = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
 
@@ -135,26 +135,26 @@ LL |     ($p:pat $m:meta) => {};
    = note: allowed there are: `=>`, `,`, `=`, `|`, `if` or `in`
 
 error: `$e:expr` is followed by `(`, which is not allowed for `expr` fragments
-  --> $DIR/macro-follow.rs:28:15
+  --> $DIR/macro-follow.rs:28:14
    |
 LL |     ($e:expr ()) => {};
-   |               ^ not allowed after `expr` fragments
+   |              ^ not allowed after `expr` fragments
    |
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$e:expr` is followed by `[`, which is not allowed for `expr` fragments
-  --> $DIR/macro-follow.rs:29:15
+  --> $DIR/macro-follow.rs:29:14
    |
 LL |     ($e:expr []) => {};
-   |               ^ not allowed after `expr` fragments
+   |              ^ not allowed after `expr` fragments
    |
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$e:expr` is followed by `{`, which is not allowed for `expr` fragments
-  --> $DIR/macro-follow.rs:30:15
+  --> $DIR/macro-follow.rs:30:14
    |
 LL |     ($e:expr {}) => {};
-   |               ^ not allowed after `expr` fragments
+   |              ^ not allowed after `expr` fragments
    |
    = note: allowed there are: `=>`, `,` or `;`
 
@@ -303,10 +303,10 @@ LL |     ($e:expr $m:meta) => {};
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$t:ty` is followed by `(`, which is not allowed for `ty` fragments
-  --> $DIR/macro-follow.rs:53:13
+  --> $DIR/macro-follow.rs:53:12
    |
 LL |     ($t:ty ()) => {};
-   |             ^ not allowed after `ty` fragments
+   |            ^ not allowed after `ty` fragments
    |
    = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
@@ -407,26 +407,26 @@ LL |     ($t:ty $m:meta) => {};
    = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$s:stmt` is followed by `(`, which is not allowed for `stmt` fragments
-  --> $DIR/macro-follow.rs:71:15
+  --> $DIR/macro-follow.rs:71:14
    |
 LL |     ($s:stmt ()) => {};
-   |               ^ not allowed after `stmt` fragments
+   |              ^ not allowed after `stmt` fragments
    |
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$s:stmt` is followed by `[`, which is not allowed for `stmt` fragments
-  --> $DIR/macro-follow.rs:72:15
+  --> $DIR/macro-follow.rs:72:14
    |
 LL |     ($s:stmt []) => {};
-   |               ^ not allowed after `stmt` fragments
+   |              ^ not allowed after `stmt` fragments
    |
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$s:stmt` is followed by `{`, which is not allowed for `stmt` fragments
-  --> $DIR/macro-follow.rs:73:15
+  --> $DIR/macro-follow.rs:73:14
    |
 LL |     ($s:stmt {}) => {};
-   |               ^ not allowed after `stmt` fragments
+   |              ^ not allowed after `stmt` fragments
    |
    = note: allowed there are: `=>`, `,` or `;`
 
@@ -575,10 +575,10 @@ LL |     ($s:stmt $m:meta) => {};
    = note: allowed there are: `=>`, `,` or `;`
 
 error: `$p:path` is followed by `(`, which is not allowed for `path` fragments
-  --> $DIR/macro-follow.rs:95:15
+  --> $DIR/macro-follow.rs:95:14
    |
 LL |     ($p:path ()) => {};
-   |               ^ not allowed after `path` fragments
+   |              ^ not allowed after `path` fragments
    |
    = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 

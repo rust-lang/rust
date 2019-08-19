@@ -1,9 +1,3 @@
-warning: the feature `const_generics` is incomplete and may cause the compiler to crash
-  --> $DIR/const-fn-with-const-param.rs:1:12
-   |
-LL | #![feature(const_generics)]
-   |            ^^^^^^^^^^^^^^
-
 error: const parameters are not permitted in `const fn`
   --> $DIR/const-fn-with-const-param.rs:4:1
    |
@@ -12,6 +6,14 @@ LL | |
 LL | |     X
 LL | | }
    | |_^
+
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/const-fn-with-const-param.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 
 error: aborting due to previous error
 

@@ -1,35 +1,25 @@
-#![allow(warnings)]
+use crate::ty::context::TyCtxt;
+use crate::ty::query::plumbing::CycleError;
+use crate::ty::query::Query;
+use crate::ty::tls;
 
-use std::mem;
-use std::process;
-use std::{fmt, ptr};
-
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::{Lock, LockGuard, Lrc, Weak};
-use rustc_data_structures::OnDrop;
-use rustc_data_structures::jobserver;
+use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
 
-use crate::ty::tls;
-use crate::ty::query::Query;
-use crate::ty::query::plumbing::CycleError;
 #[cfg(not(parallel_compiler))]
-use crate::ty::query::{
-    plumbing::TryGetJob,
-    config::QueryDescription,
-};
-use crate::ty::context::TyCtxt;
+use std::ptr;
 
 #[cfg(parallel_compiler)]
 use {
-    rustc_rayon_core as rayon_core,
     parking_lot::{Mutex, Condvar},
-    std::sync::atomic::Ordering,
-    std::thread,
-    std::iter,
-    std::iter::FromIterator,
+    rustc_data_structures::{jobserver, OnDrop},
+    rustc_data_structures::fx::FxHashSet,
+    rustc_data_structures::stable_hasher::{StableHasher, HashStable},
+    rustc_data_structures::sync::Lock,
+    rustc_rayon_core as rayon_core,
     syntax_pos::DUMMY_SP,
-    rustc_data_structures::stable_hasher::{StableHasherResult, StableHasher, HashStable},
+    std::{mem, process, thread},
+    std::iter::FromIterator,
 };
 
 /// Indicates the state of a query for a given key in a query map.
@@ -75,13 +65,13 @@ impl<'tcx> QueryJob<'tcx> {
 
     /// Awaits for the query job to complete.
     #[cfg(parallel_compiler)]
-    pub(super) fn r#await<'lcx>(
+    pub(super) fn r#await(
         &self,
-        tcx: TyCtxt<'_, 'tcx, 'lcx>,
+        tcx: TyCtxt<'tcx>,
         span: Span,
     ) -> Result<(), CycleError<'tcx>> {
         tls::with_related_context(tcx, move |icx| {
-            let mut waiter = Lrc::new(QueryWaiter {
+            let waiter = Lrc::new(QueryWaiter {
                 query: icx.query.clone(),
                 span,
                 cycle: Lock::new(None),
@@ -100,11 +90,7 @@ impl<'tcx> QueryJob<'tcx> {
     }
 
     #[cfg(not(parallel_compiler))]
-    pub(super) fn find_cycle_in_stack<'lcx>(
-        &self,
-        tcx: TyCtxt<'_, 'tcx, 'lcx>,
-        span: Span,
-    ) -> CycleError<'tcx> {
+    pub(super) fn find_cycle_in_stack(&self, tcx: TyCtxt<'tcx>, span: Span) -> CycleError<'tcx> {
         // Get the current executing query (waiter) and find the waitee amongst its parents
         let mut current_job = tls::with_related_context(tcx, |icx| icx.query.clone());
         let mut cycle = Vec::new();
@@ -142,6 +128,7 @@ impl<'tcx> QueryJob<'tcx> {
         self.latch.set();
     }
 
+    #[cfg(parallel_compiler)]
     fn as_ptr(&self) -> *const QueryJob<'tcx> {
         self as *const _
     }
@@ -338,9 +325,9 @@ fn connected_to_root<'tcx>(
 // Deterministically pick an query from a list
 #[cfg(parallel_compiler)]
 fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
-    tcx: TyCtxt<'_, 'tcx, '_>,
+    tcx: TyCtxt<'tcx>,
     queries: &'a [T],
-    f: F
+    f: F,
 ) -> &'a T {
     // Deterministically pick an entry point
     // FIXME: Sort this instead
@@ -366,7 +353,7 @@ fn pick_query<'a, 'tcx, T, F: Fn(&T) -> (Span, Lrc<QueryJob<'tcx>>)>(
 fn remove_cycle<'tcx>(
     jobs: &mut Vec<Lrc<QueryJob<'tcx>>>,
     wakelist: &mut Vec<Lrc<QueryWaiter<'tcx>>>,
-    tcx: TyCtxt<'_, 'tcx, '_>
+    tcx: TyCtxt<'tcx>,
 ) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
@@ -435,7 +422,7 @@ fn remove_cycle<'tcx>(
         let usage = usage.as_ref().map(|(span, query)| (*span, query.info.query.clone()));
 
         // Create the cycle error
-        let mut error = CycleError {
+        let error = CycleError {
             usage,
             cycle: stack.iter().map(|&(s, ref q)| QueryInfo {
                 span: s,
@@ -467,20 +454,12 @@ fn remove_cycle<'tcx>(
 /// Must only be called when a deadlock is about to happen.
 #[cfg(parallel_compiler)]
 pub unsafe fn handle_deadlock() {
-    use syntax;
-    use syntax_pos;
-
     let registry = rayon_core::Registry::current();
 
     let gcx_ptr = tls::GCX_PTR.with(|gcx_ptr| {
         gcx_ptr as *const _
     });
     let gcx_ptr = &*gcx_ptr;
-
-    let syntax_globals = syntax::GLOBALS.with(|syntax_globals| {
-        syntax_globals as *const _
-    });
-    let syntax_globals = &*syntax_globals;
 
     let syntax_pos_globals = syntax_pos::GLOBALS.with(|syntax_pos_globals| {
         syntax_pos_globals as *const _
@@ -505,7 +484,7 @@ pub unsafe fn handle_deadlock() {
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
 #[cfg(parallel_compiler)]
-fn deadlock(tcx: TyCtxt<'_, '_, '_>, registry: &rayon_core::Registry) {
+fn deadlock(tcx: TyCtxt<'_>, registry: &rayon_core::Registry) {
     let on_panic = OnDrop(|| {
         eprintln!("deadlock handler panicked, aborting process");
         process::abort();

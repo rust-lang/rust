@@ -1,7 +1,5 @@
 #![feature(rustc_private)]
 
-#![deny(rust_2018_idioms)]
-
 extern crate env_logger;
 extern crate syntax;
 extern crate serialize as rustc_serialize;
@@ -15,9 +13,10 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::cell::RefCell;
 
+use syntax::edition::DEFAULT_EDITION;
 use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
-use rustdoc::html::markdown::{Markdown, IdMap, ErrorCodes, PLAYGROUND};
+use rustdoc::html::markdown::{Markdown, IdMap, ErrorCodes, Playground};
 use rustc_serialize::json;
 
 enum OutputFormat {
@@ -96,8 +95,13 @@ impl Formatter for HTMLFormatter {
         match info.description {
             Some(ref desc) => {
                 let mut id_map = self.0.borrow_mut();
+                let playground = Playground {
+                    crate_name: None,
+                    url: String::from("https://play.rust-lang.org/"),
+                };
                 write!(output, "{}",
-                    Markdown(desc, &[], RefCell::new(&mut id_map), ErrorCodes::Yes))?
+                    Markdown(desc, &[], &mut id_map,
+                             ErrorCodes::Yes, DEFAULT_EDITION, &Some(playground)).to_string())?
             },
             None => write!(output, "<p>No description.</p>\n")?,
         }
@@ -260,11 +264,8 @@ fn parse_args() -> (OutputFormat, PathBuf) {
 
 fn main() {
     env_logger::init();
-    PLAYGROUND.with(|slot| {
-        *slot.borrow_mut() = Some((None, String::from("https://play.rust-lang.org/")));
-    });
     let (format, dst) = parse_args();
-    let result = syntax::with_globals(move || {
+    let result = syntax::with_default_globals(move || {
         main_with_result(format, &dst)
     });
     if let Err(e) = result {

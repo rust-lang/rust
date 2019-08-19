@@ -1,5 +1,3 @@
-#![feature(reverse_bits)]
-
 fn main() {
     let x: &'static i32 = &(5_i32.reverse_bits());
         //~^ ERROR temporary value dropped while borrowed

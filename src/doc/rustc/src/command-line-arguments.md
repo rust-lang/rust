@@ -161,11 +161,11 @@ of print values are:
 
 ## `-g`: include debug information
 
-A synonym for `-C debuginfo=2`, for more see [here](codegen-options/index.html#debuginfo).
+A synonym for `-C debuginfo=2`, for more see [here](codegen-options/index.md#debuginfo).
 
 ## `-O`: optimize your code
 
-A synonym for `-C opt-level=2`, for more see [here](codegen-options/index.html#opt-level).
+A synonym for `-C opt-level=2`, for more see [here](codegen-options/index.md#opt-level).
 
 ## `-o`: filename of the output
 
@@ -188,23 +188,23 @@ and instead produce a test harness.
 
 ## `--target`: select a target triple to build
 
-This controls which [target](targets/index.html) to produce.
+This controls which [target](targets/index.md) to produce.
 
 ## `-W`: set lint warnings
 
-This flag will set which lints should be set to the [warn level](lints/levels.html#warn).
+This flag will set which lints should be set to the [warn level](lints/levels.md#warn).
 
 ## `-A`: set lint allowed
 
-This flag will set which lints should be set to the [allow level](lints/levels.html#allow).
+This flag will set which lints should be set to the [allow level](lints/levels.md#allow).
 
 ## `-D`: set lint denied
 
-This flag will set which lints should be set to the [deny level](lints/levels.html#deny).
+This flag will set which lints should be set to the [deny level](lints/levels.md#deny).
 
 ## `-F`: set lint forbidden
 
-This flag will set which lints should be set to the [forbid level](lints/levels.html#forbid).
+This flag will set which lints should be set to the [forbid level](lints/levels.md#forbid).
 
 ## `-Z`: set unstable options
 
@@ -215,11 +215,11 @@ run: `rustc -Z help`.
 
 ## `--cap-lints`: set the most restrictive lint level
 
-This flag lets you 'cap' lints, for more, [see here](lints/levels.html#capping-lints).
+This flag lets you 'cap' lints, for more, [see here](lints/levels.md#capping-lints).
 
 ## `-C`/`--codegen`: code generation options
 
-This flag will allow you to set [codegen options](codegen-options/index.html).
+This flag will allow you to set [codegen options](codegen-options/index.md).
 
 ## `-V`/`--version`: print a version
 
@@ -271,3 +271,36 @@ current directory out of pathnames emitted into the object files. The
 replacement is purely textual, with no consideration of the current system's
 pathname syntax. For example `--remap-path-prefix foo=bar` will match
 `foo/lib.rs` but not `./foo/lib.rs`.
+
+## `--json`: configure json messages printed by the compiler
+
+When the `--error-format=json` option is passed to rustc then all of the
+compiler's diagnostic output will be emitted in the form of JSON blobs. The
+`--json` argument can be used in conjunction with `--error-format=json` to
+configure what the JSON blobs contain as well as which ones are emitted.
+
+With `--error-format=json` the compiler will always emit any compiler errors as
+a JSON blob, but the following options are also available to the `--json` flag
+to customize the output:
+
+- `diagnostic-short` - json blobs for diagnostic messages should use the "short"
+  rendering instead of the normal "human" default. This means that the output of
+  `--error-format=short` will be embedded into the JSON diagnostics instead of
+  the default `--error-format=human`.
+
+- `diagnostic-rendered-ansi` - by default JSON blobs in their `rendered` field
+  will contain a plain text rendering of the diagnostic. This option instead
+  indicates that the diagnostic should have embedded ANSI color codes intended
+  to be used to colorize the message in the manner rustc typically already does
+  for terminal outputs. Note that this is usefully combined with crates like
+  `fwdansi` to translate these ANSI codes on Windows to console commands or
+  `strip-ansi-escapes` if you'd like to optionally remove the ansi colors
+  afterwards.
+
+- `artifacts` - this instructs rustc to emit a JSON blob for each artifact that
+  is emitted. An artifact corresponds to a request from the `--emit` CLI
+  argument, and as soon as the artifact is available on the filesystem a
+  notification will be emitted.
+
+Note that it is invalid to combine the `--json` argument with the `--color`
+argument, and it is required to combine `--json` with `--error-format=json`.

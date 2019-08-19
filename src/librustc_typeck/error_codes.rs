@@ -1,7 +1,5 @@
 // ignore-tidy-filelength
 
-#![allow(non_snake_case)]
-
 register_long_diagnostics! {
 
 E0023: r##"
@@ -1482,8 +1480,8 @@ impl <'a> Drop for MyWrapper<'a> {
 "##,
 
 E0121: r##"
-In order to be consistent with Rust's lack of global type inference, type
-placeholders are disallowed by design in item signatures.
+In order to be consistent with Rust's lack of global type inference,
+type and const placeholders are disallowed by design in item signatures.
 
 Examples of this error include:
 
@@ -1718,22 +1716,6 @@ some types will not implement `Clone`, and thus will not get this method.
 In our erroneous example, however, we're referencing a single concrete type.
 Since we know for certain that `Wrapper<u32>` implements `Clone`, there's no
 reason to also specify it in a `where` clause.
-"##,
-
-E0194: r##"
-A type parameter was declared which shadows an existing one. An example of this
-error:
-
-```compile_fail,E0194
-trait Foo<T> {
-    fn do_something(&self) -> T;
-    fn do_something_else<T: Clone>(&self, bar: T);
-}
-```
-
-In this example, the trait `Foo` and the trait method `do_something_else` both
-define a type parameter `T`. This is not allowed: if the method wishes to
-define a type parameter, it must use a different name for it.
 "##,
 
 E0195: r##"
@@ -3497,8 +3479,8 @@ Example of erroneous code:
 
 let r = &[1, 2];
 match r {
-    &[a, b, c, rest..] => { // error: pattern requires at least 3
-                            //        elements but array has 2
+    &[a, b, c, rest @ ..] => { // error: pattern requires at least 3
+                               //        elements but array has 2
         println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
     }
 }
@@ -3512,7 +3494,7 @@ requires. You can match an arbitrary number of remaining elements with `..`:
 
 let r = &[1, 2, 3, 4, 5];
 match r {
-    &[a, b, c, rest..] => { // ok!
+    &[a, b, c, rest @ ..] => { // ok!
         // prints `a=1, b=2, c=3 rest=[4, 5]`
         println!("a={}, b={}, c={} rest={:?}", a, b, c, rest);
     }
@@ -3793,6 +3775,40 @@ details.
 [issue #33685]: https://github.com/rust-lang/rust/issues/33685
 "##,
 
+E0592: r##"
+This error occurs when you defined methods or associated functions with same
+name.
+
+Erroneous code example:
+
+```compile_fail,E0592
+struct Foo;
+
+impl Foo {
+    fn bar() {} // previous definition here
+}
+
+impl Foo {
+    fn bar() {} // duplicate definition here
+}
+```
+
+A similar error is E0201. The difference is whether there is one declaration
+block or not. To avoid this error, you must give each `fn` a unique name.
+
+```
+struct Foo;
+
+impl Foo {
+    fn bar() {}
+}
+
+impl Foo {
+    fn baz() {} // define with different name
+}
+```
+"##,
+
 E0599: r##"
 This error occurs when a method is used on a type which doesn't implement it:
 
@@ -3904,7 +3920,7 @@ x as Vec<u8>; // error: non-primitive cast: `u8` as `std::vec::Vec<u8>`
 
 // Another example
 
-let v = 0 as *const u8; // So here, `v` is a `*const u8`.
+let v = core::ptr::null::<u8>(); // So here, `v` is a `*const u8`.
 v as &u8; // error: non-primitive cast: `*const u8` as `&u8`
 ```
 
@@ -3914,7 +3930,7 @@ Only primitive types can be cast into each other. Examples:
 let x = 0u8;
 x as u32; // ok!
 
-let v = 0 as *const u8;
+let v = core::ptr::null::<u8>();
 v as *const i8; // ok!
 ```
 
@@ -3954,7 +3970,7 @@ A cast between a thin and a fat pointer was attempted.
 Erroneous code example:
 
 ```compile_fail,E0607
-let v = 0 as *const u8;
+let v = core::ptr::null::<u8>();
 v as *const [u8];
 ```
 
@@ -4484,7 +4500,7 @@ let _ = (2.0 as f32).neg();
 
 E0690: r##"
 A struct with the representation hint `repr(transparent)` had zero or more than
-on fields that were not guaranteed to be zero-sized.
+one fields that were not guaranteed to be zero-sized.
 
 Erroneous code example:
 
@@ -4519,8 +4535,8 @@ struct LengthWithUnit<U> {
 "##,
 
 E0691: r##"
-A struct with the `repr(transparent)` representation hint contains a zero-sized
-field that requires non-trivial alignment.
+A struct, enum, or union with the `repr(transparent)` representation hint
+contains a zero-sized field that requires non-trivial alignment.
 
 Erroneous code example:
 
@@ -4535,11 +4551,11 @@ struct Wrapper(f32, ForceAlign32); // error: zero-sized field in transparent
                                    //        struct has alignment larger than 1
 ```
 
-A transparent struct is supposed to be represented exactly like the piece of
-data it contains. Zero-sized fields with different alignment requirements
-potentially conflict with this property. In the example above, `Wrapper` would
-have to be aligned to 32 bytes even though `f32` has a smaller alignment
-requirement.
+A transparent struct, enum, or union is supposed to be represented exactly like
+the piece of data it contains. Zero-sized fields with different alignment
+requirements potentially conflict with this property. In the example above,
+`Wrapper` would have to be aligned to 32 bytes even though `f32` has a smaller
+alignment requirement.
 
 Consider removing the over-aligned zero-sized field:
 
@@ -4568,7 +4584,6 @@ element type `T`. Also note that the error is conservatively reported even when
 the alignment of the zero-sized type is less than or equal to the data field's
 alignment.
 "##,
-
 
 E0699: r##"
 A method was called on a raw pointer whose inner type wasn't completely known.
@@ -4648,7 +4663,137 @@ fn make_recursive_type() -> impl Sized {
 ```
 "##,
 
+E0730: r##"
+An array without a fixed length was pattern-matched.
+
+Example of erroneous code:
+
+```compile_fail,E0730
+#![feature(const_generics)]
+
+fn is_123<const N: usize>(x: [u32; N]) -> bool {
+    match x {
+        [1, 2, 3] => true, // error: cannot pattern-match on an
+                           //        array without a fixed length
+        _ => false
+    }
 }
+```
+
+Ensure that the pattern is consistent with the size of the matched
+array. Additional elements can be matched with `..`:
+
+```
+#![feature(slice_patterns)]
+
+let r = &[1, 2, 3, 4];
+match r {
+    &[a, b, ..] => { // ok!
+        println!("a={}, b={}", a, b);
+    }
+}
+```
+"##,
+
+E0731: r##"
+An enum with the representation hint `repr(transparent)` had zero or more than
+one variants.
+
+Erroneous code example:
+
+```compile_fail,E0731
+#[repr(transparent)]
+enum Status { // error: transparent enum needs exactly one variant, but has 2
+    Errno(u32),
+    Ok,
+}
+```
+
+Because transparent enums are represented exactly like one of their variants at
+run time, said variant must be uniquely determined. If there is no variant, or
+if there are multiple variants, it is not clear how the enum should be
+represented.
+"##,
+
+E0732: r##"
+An `enum` with a discriminant must specify a `#[repr(inttype)]`.
+
+A `#[repr(inttype)]` must be provided on an `enum` if it has a non-unit
+variant with a discriminant, or where there are both unit variants with
+discriminants and non-unit variants. This restriction ensures that there
+is a well-defined way to extract a variant's discriminant from a value;
+for instance:
+
+```
+#![feature(arbitrary_enum_discriminant)]
+
+#[repr(u8)]
+enum Enum {
+    Unit = 3,
+    Tuple(u16) = 2,
+    Struct {
+        a: u8,
+        b: u16,
+    } = 1,
+}
+
+fn discriminant(v : &Enum) -> u8 {
+    unsafe { *(v as *const Enum as *const u8) }
+}
+
+assert_eq!(3, discriminant(&Enum::Unit));
+assert_eq!(2, discriminant(&Enum::Tuple(5)));
+assert_eq!(1, discriminant(&Enum::Struct{a: 7, b: 11}));
+```
+"##,
+
+E0733: r##"
+Recursion in an `async fn` requires boxing. For example, this will not compile:
+
+```edition2018,compile_fail,E0733
+#![feature(async_await)]
+async fn foo(n: usize) {
+    if n > 0 {
+        foo(n - 1).await;
+    }
+}
+```
+
+To achieve async recursion, the `async fn` needs to be desugared
+such that the `Future` is explicit in the return type:
+
+```edition2018,compile_fail,E0720
+# #![feature(async_await)]
+use std::future::Future;
+fn foo_desugered(n: usize) -> impl Future<Output = ()> {
+    async move {
+        if n > 0 {
+            foo_desugered(n - 1).await;
+        }
+    }
+}
+```
+
+Finally, the future is wrapped in a pinned box:
+
+```edition2018
+# #![feature(async_await)]
+use std::future::Future;
+use std::pin::Pin;
+fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
+    Box::pin(async move {
+        if n > 0 {
+            foo_recursive(n - 1).await;
+        }
+    })
+}
+```
+
+The `Box<...>` ensures that the result is of known size,
+and the pin is required to keep it in the same place in memory.
+"##,
+
+}  // (end of detailed error messages)
 
 register_diagnostics! {
 //  E0035, merged into E0087/E0089
@@ -4676,6 +4821,7 @@ register_diagnostics! {
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
+//  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
@@ -4720,7 +4866,6 @@ register_diagnostics! {
            // but `{}` was found in the type `{}`
     E0587, // type has conflicting packed and align representation hints
     E0588, // packed type cannot transitively contain a `[repr(align)]` type
-    E0592, // duplicate definitions with name `{}`
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
@@ -4732,6 +4877,6 @@ register_diagnostics! {
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
     E0719, // duplicate values for associated type binding
-    E0722, // Malformed #[optimize] attribute
+    E0722, // Malformed `#[optimize]` attribute
     E0724, // `#[ffi_returns_twice]` is only allowed in foreign functions
 }

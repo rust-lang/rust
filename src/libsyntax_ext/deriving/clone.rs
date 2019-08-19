@@ -3,11 +3,9 @@ use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
 use syntax::ast::{self, Expr, GenericArg, Generics, ItemKind, MetaItem, VariantData};
-use syntax::attr;
-use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
+use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords, sym};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::Span;
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
@@ -37,7 +35,8 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
             match annitem.node {
                 ItemKind::Struct(_, Generics { ref params, .. }) |
                 ItemKind::Enum(_, Generics { ref params, .. }) => {
-                    if attr::contains_name(&annitem.attrs, sym::rustc_copy_clone_marker) &&
+                    let container_id = cx.current_expansion.id.expn_data().parent;
+                    if cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                         !params.iter().any(|param| match param.kind {
                             ast::GenericParamKind::Type { .. } => true,
                             _ => false,
@@ -73,11 +72,11 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
             }
         }
 
-        _ => cx.span_bug(span, "#[derive(Clone)] on trait item or impl item"),
+        _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
-    let inline = cx.meta_word(span, Symbol::intern("inline"));
-    let attrs = vec![cx.attribute(span, inline)];
+    let inline = cx.meta_word(span, sym::inline);
+    let attrs = vec![cx.attribute(inline)];
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
@@ -115,7 +114,7 @@ fn cs_clone_shallow(name: &str,
         // set the expn ID so we can use the unstable struct.
         let span = span.with_ctxt(cx.backtrace());
         let assert_path = cx.path_all(span, true,
-                                        cx.std_path(&["clone", helper_name]),
+                                        cx.std_path(&[sym::clone, Symbol::intern(helper_name)]),
                                         vec![GenericArg::Type(ty)], vec![]);
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
@@ -129,7 +128,8 @@ fn cs_clone_shallow(name: &str,
     let mut stmts = Vec::new();
     if is_union {
         // let _: AssertParamIsCopy<Self>;
-        let self_ty = cx.ty_path(cx.path_ident(trait_span, keywords::SelfUpper.ident()));
+        let self_ty =
+            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_dummy_span(kw::SelfUpper)));
         assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, "AssertParamIsCopy");
     } else {
         match *substr.fields {
@@ -138,7 +138,7 @@ fn cs_clone_shallow(name: &str,
             }
             StaticEnum(enum_def, ..) => {
                 for variant in &enum_def.variants {
-                    process_variant(cx, &mut stmts, &variant.node.data);
+                    process_variant(cx, &mut stmts, &variant.data);
                 }
             }
             _ => cx.span_bug(trait_span, &format!("unexpected substructure in \
@@ -156,7 +156,7 @@ fn cs_clone(name: &str,
             -> P<Expr> {
     let ctor_path;
     let all_fields;
-    let fn_path = cx.std_path(&["clone", "Clone", "clone"]);
+    let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
     let subcall = |cx: &mut ExtCtxt<'_>, field: &FieldInfo<'_>| {
         let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
         cx.expr_call_global(field.span, fn_path.clone(), args)
@@ -170,9 +170,9 @@ fn cs_clone(name: &str,
             vdata = vdata_;
         }
         EnumMatching(.., variant, ref af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.node.ident]);
+            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
             all_fields = af;
-            vdata = &variant.node.data;
+            vdata = &variant.data;
         }
         EnumNonMatchingCollapsed(..) => {
             cx.span_bug(trait_span,

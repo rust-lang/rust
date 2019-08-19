@@ -1,0 +1,18 @@
+error[E0038]: the trait `std::cmp::Eq` cannot be made into an object
+  --> $DIR/trait-alias-object-fail.rs:7:13
+   |
+LL |     let _: &dyn EqAlias = &123;
+   |             ^^^^^^^^^^^ the trait `std::cmp::Eq` cannot be made into an object
+   |
+   = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
+
+error[E0191]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) must be specified
+  --> $DIR/trait-alias-object-fail.rs:9:13
+   |
+LL |     let _: &dyn IteratorAlias = &vec![123].into_iter();
+   |             ^^^^^^^^^^^^^^^^^ associated type `Item` must be specified
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0191.
+For more information about an error, try `rustc --explain E0038`.

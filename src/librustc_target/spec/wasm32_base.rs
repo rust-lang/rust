@@ -106,6 +106,11 @@ pub fn options() -> TargetOptions {
         // no dynamic linking, no need for default visibility!
         default_hidden_visibility: true,
 
+        // Symbol visibility takes care of this for the WebAssembly.
+        // Additionally the only known linker, LLD, doesn't support the script
+        // arguments just yet
+        limit_rdylib_exports: false,
+
         // we use the LLD shipped with the Rust toolchain by default
         linker: Some("rust-lld".to_owned()),
         lld_flavor: LldFlavor::Wasm,
@@ -126,6 +131,14 @@ pub fn options() -> TargetOptions {
         // works with `static` as well (or works with some method of generating
         // non-relative calls and such later on).
         relocation_model: "static".to_string(),
+
+        // When the atomics feature is activated then these two keys matter,
+        // otherwise they're basically ignored by the standard library. In this
+        // mode, however, the `#[thread_local]` attribute works (i.e.
+        // `has_elf_tls`) and we need to get it to work by specifying
+        // `local-exec` as that's all that's implemented in LLVM today for wasm.
+        has_elf_tls: true,
+        tls_model: "local-exec".to_string(),
 
         .. Default::default()
     }

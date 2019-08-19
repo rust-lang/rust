@@ -155,10 +155,7 @@ impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
     }
 }
 
-crate fn program_clauses_for<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId,
-) -> Clauses<'tcx> {
+crate fn program_clauses_for(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
     // FIXME(eddyb) this should only be using `def_kind`.
     match tcx.def_key(def_id).disambiguated_data.data {
         DefPathData::TypeNs(..) => match tcx.def_kind(def_id) {
@@ -166,17 +163,17 @@ crate fn program_clauses_for<'a, 'tcx>(
             | Some(DefKind::TraitAlias) => program_clauses_for_trait(tcx, def_id),
             // FIXME(eddyb) deduplicate this `associated_item` call with
             // `program_clauses_for_associated_type_{value,def}`.
-            Some(DefKind::AssociatedTy) => match tcx.associated_item(def_id).container {
-                ty::AssociatedItemContainer::ImplContainer(_) =>
+            Some(DefKind::AssocTy) => match tcx.associated_item(def_id).container {
+                ty::AssocItemContainer::ImplContainer(_) =>
                     program_clauses_for_associated_type_value(tcx, def_id),
-                ty::AssociatedItemContainer::TraitContainer(_) =>
+                ty::AssocItemContainer::TraitContainer(_) =>
                     program_clauses_for_associated_type_def(tcx, def_id)
             },
             Some(DefKind::Struct)
             | Some(DefKind::Enum)
             | Some(DefKind::TyAlias)
             | Some(DefKind::Union)
-            | Some(DefKind::Existential) => program_clauses_for_type_def(tcx, def_id),
+            | Some(DefKind::OpaqueTy) => program_clauses_for_type_def(tcx, def_id),
             _ => List::empty(),
         },
         DefPathData::Impl => program_clauses_for_impl(tcx, def_id),
@@ -184,10 +181,7 @@ crate fn program_clauses_for<'a, 'tcx>(
     }
 }
 
-fn program_clauses_for_trait<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId,
-) -> Clauses<'tcx> {
+fn program_clauses_for_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
 
     // Rule Implemented-From-Env (see rustc guide)
@@ -300,7 +294,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     )
 }
 
-fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
+fn program_clauses_for_impl(tcx: TyCtxt<'tcx>, def_id: DefId) -> Clauses<'tcx> {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
         return List::empty();
     }
@@ -343,10 +337,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::bind(clause))))
 }
 
-pub fn program_clauses_for_type_def<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId,
-) -> Clauses<'tcx> {
+pub fn program_clauses_for_type_def(tcx: TyCtxt<'_>, def_id: DefId) -> Clauses<'_> {
     // Rule WellFormed-Type
     //
     // `struct Ty<P1..Pn> where WC1, ..., WCm`
@@ -420,10 +411,10 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     tcx.mk_clauses(iter::once(well_formed_clause).chain(from_env_clauses))
 }
 
-pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn program_clauses_for_associated_type_def(
+    tcx: TyCtxt<'_>,
     item_id: DefId,
-) -> Clauses<'tcx> {
+) -> Clauses<'_> {
     // Rule ProjectionEq-Placeholder
     //
     // ```
@@ -444,9 +435,9 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     // ```
 
     let item = tcx.associated_item(item_id);
-    debug_assert_eq!(item.kind, ty::AssociatedKind::Type);
+    debug_assert_eq!(item.kind, ty::AssocKind::Type);
     let trait_id = match item.container {
-        ty::AssociatedItemContainer::TraitContainer(trait_id) => trait_id,
+        ty::AssocItemContainer::TraitContainer(trait_id) => trait_id,
         _ => bug!("not an trait container"),
     };
 
@@ -558,10 +549,10 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     tcx.mk_clauses(clauses)
 }
 
-pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn program_clauses_for_associated_type_value(
+    tcx: TyCtxt<'_>,
     item_id: DefId,
-) -> Clauses<'tcx> {
+) -> Clauses<'_> {
     // Rule Normalize-From-Impl (see rustc guide)
     //
     // ```
@@ -582,9 +573,9 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     // ```
 
     let item = tcx.associated_item(item_id);
-    debug_assert_eq!(item.kind, ty::AssociatedKind::Type);
+    debug_assert_eq!(item.kind, ty::AssocKind::Type);
     let impl_id = match item.container {
-        ty::AssociatedItemContainer::ImplContainer(impl_id) => impl_id,
+        ty::AssocItemContainer::ImplContainer(impl_id) => impl_id,
         _ => bug!("not an impl container"),
     };
 
@@ -620,7 +611,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     tcx.mk_clauses(iter::once(normalize_clause))
 }
 
-pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn dump_program_clauses(tcx: TyCtxt<'_>) {
     if !tcx.features().rustc_attrs {
         return;
     }
@@ -631,13 +622,13 @@ pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         .visit_all_item_likes(&mut visitor.as_deep_visitor());
 }
 
-struct ClauseDumper<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct ClauseDumper<'tcx> {
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
+impl ClauseDumper<'tcx> {
     fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(hir_id);
+        let def_id = self.tcx.hir().local_def_id(hir_id);
         for attr in attrs {
             let mut clauses = None;
 
@@ -673,7 +664,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ClauseDumper<'a, 'tcx> {
+impl Visitor<'tcx> for ClauseDumper<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }

@@ -9,6 +9,6 @@ fn main() {
     let y = vec![format!("World")];
     call(|| {
         y.into_iter();
-        //~^ ERROR cannot move out of captured variable in an `Fn` closure
+        //~^ ERROR cannot move out of `y`, a captured variable in an `Fn` closure
     });
 }

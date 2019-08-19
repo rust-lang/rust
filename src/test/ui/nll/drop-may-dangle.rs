@@ -3,7 +3,7 @@
 // including) the call to `use_x`. The `else` branch is not included.
 
 // compile-flags:-Zborrowck=mir
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![allow(warnings)]
 #![feature(dropck_eyepatch)]

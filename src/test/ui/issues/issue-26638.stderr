@@ -1,8 +1,8 @@
 error[E0106]: missing lifetime specifier
-  --> $DIR/issue-26638.rs:1:58
+  --> $DIR/issue-26638.rs:1:62
    |
-LL | fn parse_type(iter: Box<Iterator<Item=&str>+'static>) -> &str { iter.next() }
-   |                                                          ^ expected lifetime parameter
+LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.next() }
+   |                                                              ^ expected lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say which one of `iter`'s 2 lifetimes it is borrowed from
 

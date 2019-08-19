@@ -11,7 +11,7 @@ struct MustBeCopy<T:Copy> {
 
 struct Foo<T> {
     // needs T: 'static
-    x: Object<&'static T> //~ ERROR E0310
+    x: dyn Object<&'static T> //~ ERROR E0310
 }
 
 

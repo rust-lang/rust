@@ -4,7 +4,7 @@
 #![feature(no_debug)]
 
 #[no_mangle] const DISCOVERY: usize = 1;
-//~^ ERROR const items should never be #[no_mangle]
+//~^ ERROR const items should never be `#[no_mangle]`
 //~| HELP try a static value
 
 #[no_mangle]
@@ -20,7 +20,7 @@ mod badlands {
     // item is already `pub` (but triggered the lint because, e.g., it's in a
     // private module). (Issue #47383)
     #[no_mangle] pub const DAUNTLESS: bool = true;
-    //~^ ERROR const items should never be #[no_mangle]
+    //~^ ERROR const items should never be `#[no_mangle]`
     //~| HELP try a static value
     #[no_mangle] pub fn val_jean<T>() {}
     //~^ WARN functions generic over types or consts must be mangled
@@ -28,7 +28,7 @@ mod badlands {
 
     // ... but we can suggest just-`pub` instead of restricted
     #[no_mangle] pub(crate) const VETAR: bool = true;
-    //~^ ERROR const items should never be #[no_mangle]
+    //~^ ERROR const items should never be `#[no_mangle]`
     //~| HELP try a static value
     #[no_mangle] pub(crate) fn crossfield<T>() {}
     //~^ WARN functions generic over types or consts must be mangled

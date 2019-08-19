@@ -126,6 +126,9 @@ const UNWIND_DATA_REG: (i32, i32) = (6, 7); // R6, R7
 #[cfg(target_arch = "sparc64")]
 const UNWIND_DATA_REG: (i32, i32) = (24, 25); // I0, I1
 
+#[cfg(target_arch = "hexagon")]
+const UNWIND_DATA_REG: (i32, i32) = (0, 1); // R0, R1
+
 // The following code is based on GCC's C and C++ personality routines.  For reference, see:
 // https://github.com/gcc-mirror/gcc/blob/master/libstdc++-v3/libsupc++/eh_personality.cc
 // https://github.com/gcc-mirror/gcc/blob/trunk/libgcc/unwind-c.c

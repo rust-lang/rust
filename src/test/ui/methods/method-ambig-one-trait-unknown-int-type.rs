@@ -22,7 +22,7 @@ impl Foo for Vec<isize> {
 fn m1() {
     // we couldn't infer the type of the vector just based on calling foo()...
     let mut x = Vec::new();
-    //~^ ERROR type annotations needed [E0282]
+    //~^ ERROR type annotations needed
     x.foo();
 }
 

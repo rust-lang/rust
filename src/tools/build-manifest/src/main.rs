@@ -1,5 +1,3 @@
-#![deny(rust_2018_idioms)]
-
 use toml;
 use serde::Serialize;
 
@@ -48,6 +46,7 @@ static TARGETS: &[&str] = &[
     "aarch64-unknown-cloudabi",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
+    "aarch64-unknown-redox",
     "arm-linux-androideabi",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",
@@ -58,8 +57,10 @@ static TARGETS: &[&str] = &[
     "armv7-apple-ios",
     "armv7-linux-androideabi",
     "thumbv7neon-linux-androideabi",
+    "armv7-unknown-linux-gnueabi",
     "armv7-unknown-linux-gnueabihf",
     "thumbv7neon-unknown-linux-gnueabihf",
+    "armv7-unknown-linux-musleabi",
     "armv7-unknown-linux-musleabihf",
     "armebv7r-none-eabi",
     "armebv7r-none-eabihf",
@@ -92,6 +93,7 @@ static TARGETS: &[&str] = &[
     "powerpc-unknown-linux-gnu",
     "powerpc64-unknown-linux-gnu",
     "powerpc64le-unknown-linux-gnu",
+    "riscv32i-unknown-none-elf",
     "riscv32imc-unknown-none-elf",
     "riscv32imac-unknown-none-elf",
     "riscv64imac-unknown-none-elf",
@@ -118,6 +120,7 @@ static TARGETS: &[&str] = &[
     "x86_64-pc-windows-msvc",
     "x86_64-rumprun-netbsd",
     "x86_64-sun-solaris",
+    "x86_64-pc-solaris",
     "x86_64-unknown-cloudabi",
     "x86_64-unknown-freebsd",
     "x86_64-unknown-linux-gnu",

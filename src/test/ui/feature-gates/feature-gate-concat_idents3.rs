@@ -1,5 +1,3 @@
-// gate-test-concat_idents
-
 const XY_1: i32 = 10;
 
 fn main() {

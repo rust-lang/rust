@@ -1,0 +1,11 @@
+error[E0728]: `await` is only allowed inside `async` functions and blocks
+  --> $DIR/non-async-enclosing-span.rs:10:13
+   |
+LL | fn main() {
+   |    ---- this is not `async`
+LL |     let x = move || {};
+LL |     let y = do_the_thing().await;
+   |             ^^^^^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+
+error: aborting due to previous error
+

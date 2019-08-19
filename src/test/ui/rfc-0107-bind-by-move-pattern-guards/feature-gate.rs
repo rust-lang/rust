@@ -6,7 +6,7 @@
 
 // gate-test-bind_by_move_pattern_guards
 
-// revisions: no_gate gate_and_2015 gate_and_2018 gate_and_znll gate_and_feature_nll
+// revisions: no_gate gate_and_2015 gate_and_2018
 
 // (We're already testing NLL behavior quite explicitly, no need for compare-mode=nll.)
 // ignore-compare-mode-nll
@@ -15,14 +15,9 @@
 
 #![cfg_attr(gate_and_2015, feature(bind_by_move_pattern_guards))]
 #![cfg_attr(gate_and_2018, feature(bind_by_move_pattern_guards))]
-#![cfg_attr(gate_and_znll, feature(bind_by_move_pattern_guards))]
-#![cfg_attr(gate_and_feature_nll, feature(bind_by_move_pattern_guards))]
-
-#![cfg_attr(gate_and_feature_nll, feature(nll))]
 
 //[gate_and_2015] edition:2015
 //[gate_and_2018] edition:2018
-//[gate_and_znll] compile-flags: -Z borrowck=mir
 
 struct A { a: Box<i32> }
 
@@ -43,5 +38,3 @@ fn main() {
 }
 //[gate_and_2015]~^^^ ERROR compilation successful
 //[gate_and_2018]~^^^^ ERROR compilation successful
-//[gate_and_znll]~^^^^^ ERROR compilation successful
-//[gate_and_feature_nll]~^^^^^^ ERROR compilation successful

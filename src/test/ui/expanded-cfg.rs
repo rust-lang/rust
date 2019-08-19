@@ -1,6 +1,5 @@
-// skip-codegen
-// compile-pass
-#![feature(custom_attribute)]
+// check-pass
+
 macro_rules! mac {
     {} => {
         #[cfg(attr)]
@@ -18,6 +17,5 @@ macro_rules! mac {
 }
 
 mac! {}
-
 
 fn main() {}

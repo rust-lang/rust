@@ -1,0 +1,37 @@
+error[E0432]: unresolved import `my_core`
+  --> $DIR/extern-prelude-from-opaque-fail.rs:20:9
+   |
+LL |     use my_core;
+   |         ^^^^^^^
+   |         |
+   |         no `my_core` in the root
+   |         help: a similar name exists in the module: `my_core`
+
+error[E0432]: unresolved import `my_core`
+  --> $DIR/extern-prelude-from-opaque-fail.rs:7:13
+   |
+LL |         use my_core;
+   |             ^^^^^^^ no `my_core` in the root
+...
+LL | a!();
+   | ----- in this macro invocation
+
+error[E0433]: failed to resolve: use of undeclared type or module `my_core`
+  --> $DIR/extern-prelude-from-opaque-fail.rs:11:18
+   |
+LL |         fn f() { my_core::mem::drop(0); }
+   |                  ^^^^^^^ use of undeclared type or module `my_core`
+...
+LL | a!();
+   | ----- in this macro invocation
+
+error[E0433]: failed to resolve: use of undeclared type or module `my_core`
+  --> $DIR/extern-prelude-from-opaque-fail.rs:24:14
+   |
+LL |     fn f() { my_core::mem::drop(0); }
+   |              ^^^^^^^ use of undeclared type or module `my_core`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

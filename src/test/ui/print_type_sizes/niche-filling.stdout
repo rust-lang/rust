@@ -14,6 +14,21 @@ print-type-size         field `.post`: 2 bytes
 print-type-size         field `.pre`: 1 bytes
 print-type-size     variant `None`: 0 bytes
 print-type-size     end padding: 1 bytes
+print-type-size type: `MyOption<Union1<std::num::NonZeroU32>>`: 8 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<Union2<std::num::NonZeroU32, std::num::NonZeroU32>>`: 8 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
+print-type-size type: `MyOption<Union2<std::num::NonZeroU32, u32>>`: 8 bytes, alignment: 4 bytes
+print-type-size     discriminant: 4 bytes
+print-type-size     variant `Some`: 4 bytes
+print-type-size         field `.0`: 4 bytes
+print-type-size     variant `None`: 0 bytes
 print-type-size type: `NestedNonZero`: 8 bytes, alignment: 4 bytes
 print-type-size     field `.val`: 4 bytes
 print-type-size     field `.post`: 2 bytes
@@ -36,6 +51,17 @@ print-type-size type: `MyOption<std::num::NonZeroU32>`: 4 bytes, alignment: 4 by
 print-type-size     variant `Some`: 4 bytes
 print-type-size         field `.0`: 4 bytes
 print-type-size     variant `None`: 0 bytes
+print-type-size type: `Union1<std::num::NonZeroU32>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Union1`: 4 bytes
+print-type-size         field `.a`: 4 bytes
+print-type-size type: `Union2<std::num::NonZeroU32, std::num::NonZeroU32>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Union2`: 4 bytes
+print-type-size         field `.a`: 4 bytes
+print-type-size         field `.b`: 4 bytes, offset: 0 bytes, alignment: 4 bytes
+print-type-size type: `Union2<std::num::NonZeroU32, u32>`: 4 bytes, alignment: 4 bytes
+print-type-size     variant `Union2`: 4 bytes
+print-type-size         field `.a`: 4 bytes
+print-type-size         field `.b`: 4 bytes, offset: 0 bytes, alignment: 4 bytes
 print-type-size type: `std::num::NonZeroU32`: 4 bytes, alignment: 4 bytes
 print-type-size     field `.0`: 4 bytes
 print-type-size type: `Enum4<(), (), (), MyOption<u8>>`: 2 bytes, alignment: 1 bytes

@@ -2,11 +2,10 @@ use crate::attributes;
 use crate::base;
 use crate::context::CodegenCx;
 use crate::llvm;
-use crate::monomorphize::Instance;
 use crate::type_of::LayoutLlvmExt;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
-use rustc::ty::TypeFoldable;
+use rustc::ty::{TypeFoldable, Instance};
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 use rustc_codegen_ssa::traits::*;
 

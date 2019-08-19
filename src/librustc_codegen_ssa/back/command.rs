@@ -50,8 +50,8 @@ impl Command {
     }
 
     pub fn args<I>(&mut self, args: I) -> &mut Command
-        where I: IntoIterator,
-              I::Item: AsRef<OsStr>,
+    where
+        I: IntoIterator<Item: AsRef<OsStr>>,
     {
         for arg in args {
             self._arg(arg.as_ref());
@@ -110,7 +110,7 @@ impl Command {
     }
 
     pub fn take_args(&mut self) -> Vec<OsString> {
-        mem::replace(&mut self.args, Vec::new())
+        mem::take(&mut self.args)
     }
 
     /// Returns a `true` if we're pretty sure that this'll blow OS spawn limits,

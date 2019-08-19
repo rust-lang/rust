@@ -12,7 +12,7 @@ fn main() {
         None => {},
         ref mut foo
             if { (|| { let bar = foo; bar.take() })(); false } => {},
-        //~^ ERROR cannot move out of borrowed content [E0507]
+        //~^ ERROR cannot move out of `foo` in pattern guard [E0507]
         Some(s) => std::process::exit(*s),
     }
 }

@@ -1,7 +1,6 @@
 #![feature(repr_simd)]
-#![feature(repr_align_enum)]
 
-#[repr(C)] //~ ERROR: attribute should be applied to struct, enum or union
+#[repr(C)] //~ ERROR: attribute should be applied to struct, enum, or union
 fn f() {}
 
 #[repr(C)]

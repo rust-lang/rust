@@ -2,25 +2,19 @@ use rustc::session::Session;
 
 use crate::generated_code;
 
-use std::cell::Cell;
-
 use syntax::parse::lexer::{self, StringReader};
-use syntax::parse::token::{self, Token};
+use syntax::parse::token::{self, TokenKind};
 use syntax_pos::*;
 
 #[derive(Clone)]
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
-    // FIXME given that we clone SpanUtils all over the place, this err_count is
-    // probably useless and any logic relying on it is bogus.
-    pub err_count: Cell<isize>,
 }
 
 impl<'a> SpanUtils<'a> {
     pub fn new(sess: &'a Session) -> SpanUtils<'a> {
         SpanUtils {
             sess,
-            err_count: Cell::new(0),
         }
     }
 
@@ -56,15 +50,15 @@ impl<'a> SpanUtils<'a> {
         lexer::StringReader::retokenize(&self.sess.parse_sess, span)
     }
 
-    pub fn sub_span_of_token(&self, span: Span, tok: Token) -> Option<Span> {
+    pub fn sub_span_of_token(&self, span: Span, tok: TokenKind) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
-            let next = toks.real_token();
-            if next.tok == token::Eof {
+            let next = toks.next_token();
+            if next == token::Eof {
                 return None;
             }
-            if next.tok == tok {
-                return Some(next.sp);
+            if next == tok {
+                return Some(next.span);
             }
         }
     }
@@ -74,12 +68,12 @@ impl<'a> SpanUtils<'a> {
     //     let mut toks = self.retokenise_span(span);
     //     loop {
     //         let ts = toks.real_token();
-    //         if ts.tok == token::Eof {
+    //         if ts == token::Eof {
     //             return None;
     //         }
-    //         if ts.tok == token::Not {
+    //         if ts == token::Not {
     //             let ts = toks.real_token();
-    //             if ts.tok.is_ident() {
+    //             if ts.kind.is_ident() {
     //                 return Some(ts.sp);
     //             } else {
     //                 return None;
@@ -93,12 +87,12 @@ impl<'a> SpanUtils<'a> {
     //     let mut toks = self.retokenise_span(span);
     //     let mut prev = toks.real_token();
     //     loop {
-    //         if prev.tok == token::Eof {
+    //         if prev == token::Eof {
     //             return None;
     //         }
     //         let ts = toks.real_token();
-    //         if ts.tok == token::Not {
-    //             if prev.tok.is_ident() {
+    //         if ts == token::Not {
+    //             if prev.kind.is_ident() {
     //                 return Some(prev.sp);
     //             } else {
     //                 return None;

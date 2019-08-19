@@ -1,8 +1,8 @@
 error: missing `fn`, `type`, or `const` for impl-item declaration
-  --> $DIR/issue-40006.rs:1:9
+  --> $DIR/issue-40006.rs:1:13
    |
-LL |   impl X {
-   |  _________^
+LL |   impl dyn X {
+   |  _____________^
 LL | |
 LL | |     Y
    | |____^ missing `fn`, `type`, or `const`
@@ -59,8 +59,8 @@ LL |     pub hello_method(&self) {
 error[E0038]: the trait `X` cannot be made into an object
   --> $DIR/issue-40006.rs:1:6
    |
-LL | impl X {
-   |      ^ the trait `X` cannot be made into an object
+LL | impl dyn X {
+   |      ^^^^^ the trait `X` cannot be made into an object
    |
    = note: method `xxx` has no receiver
 

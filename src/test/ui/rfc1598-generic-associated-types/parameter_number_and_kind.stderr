@@ -3,6 +3,8 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0109]: lifetime arguments are not allowed for this type
   --> $DIR/parameter_number_and_kind.rs:17:27

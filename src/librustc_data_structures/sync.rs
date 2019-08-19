@@ -67,6 +67,51 @@ cfg_if! {
         use std::ops::Add;
         use std::panic::{resume_unwind, catch_unwind, AssertUnwindSafe};
 
+        /// This is a single threaded variant of AtomicCell provided by crossbeam.
+        /// Unlike `Atomic` this is intended for all `Copy` types,
+        /// but it lacks the explicit ordering arguments.
+        #[derive(Debug)]
+        pub struct AtomicCell<T: Copy>(Cell<T>);
+
+        impl<T: Copy> AtomicCell<T> {
+            #[inline]
+            pub fn new(v: T) -> Self {
+                AtomicCell(Cell::new(v))
+            }
+
+            #[inline]
+            pub fn get_mut(&mut self) -> &mut T {
+                self.0.get_mut()
+            }
+        }
+
+        impl<T: Copy> AtomicCell<T> {
+            #[inline]
+            pub fn into_inner(self) -> T {
+                self.0.into_inner()
+            }
+
+            #[inline]
+            pub fn load(&self) -> T {
+                self.0.get()
+            }
+
+            #[inline]
+            pub fn store(&self, val: T) {
+                self.0.set(val)
+            }
+
+            #[inline]
+            pub fn swap(&self, val: T) -> T {
+                self.0.replace(val)
+            }
+        }
+
+        /// This is a single threaded variant of `AtomicU64`, `AtomicUsize`, etc.
+        /// It differs from `AtomicCell` in that it has explicit ordering arguments
+        /// and is only intended for use with the native atomic types.
+        /// You should use this type through the `AtomicU64`, `AtomicUsize`, etc, type aliases
+        /// as it's not intended to be used separately.
         #[derive(Debug)]
         pub struct Atomic<T: Copy>(Cell<T>);
 
@@ -77,7 +122,8 @@ cfg_if! {
             }
         }
 
-        impl<T: Copy + PartialEq> Atomic<T> {
+        impl<T: Copy> Atomic<T> {
+            #[inline]
             pub fn into_inner(self) -> T {
                 self.0.into_inner()
             }
@@ -92,10 +138,14 @@ cfg_if! {
                 self.0.set(val)
             }
 
+            #[inline]
             pub fn swap(&self, val: T, _: Ordering) -> T {
                 self.0.replace(val)
             }
+        }
 
+        impl<T: Copy + PartialEq> Atomic<T> {
+            #[inline]
             pub fn compare_exchange(&self,
                                     current: T,
                                     new: T,
@@ -113,6 +163,7 @@ cfg_if! {
         }
 
         impl<T: Add<Output=T> + Copy> Atomic<T> {
+            #[inline]
             pub fn fetch_add(&self, val: T, _: Ordering) -> T {
                 let old = self.0.get();
                 self.0.set(old + val);
@@ -270,6 +321,8 @@ cfg_if! {
         pub use parking_lot::MappedMutexGuard as MappedLockGuard;
 
         pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
+
+        pub use crossbeam_utils::atomic::AtomicCell;
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;

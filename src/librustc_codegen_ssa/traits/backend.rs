@@ -3,13 +3,12 @@ use rustc::ty::Ty;
 
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
-use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::EncodedMetadata;
-use rustc::mir::mono::Stats;
 use rustc::session::{Session, config};
 use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use std::sync::Arc;
+use syntax::ext::allocator::AllocatorKind;
 use syntax_pos::symbol::InternedString;
 
 pub trait BackendTypes {
@@ -32,24 +31,20 @@ impl<'tcx, T> Backend<'tcx> for T where
 }
 
 pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send {
-    fn new_metadata(&self, sess: TyCtxt<'_, '_, '_>, mod_name: &str) -> Self::Module;
-    fn write_compressed_metadata<'b, 'gcx>(
+    fn new_metadata(&self, sess: TyCtxt<'_>, mod_name: &str) -> Self::Module;
+    fn write_compressed_metadata<'tcx>(
         &self,
-        tcx: TyCtxt<'b, 'gcx, 'gcx>,
+        tcx: TyCtxt<'tcx>,
         metadata: &EncodedMetadata,
         llvm_module: &mut Self::Module,
     );
-    fn codegen_allocator<'b, 'gcx>(
+    fn codegen_allocator<'tcx>(
         &self,
-        tcx: TyCtxt<'b, 'gcx, 'gcx>,
+        tcx: TyCtxt<'tcx>,
         mods: &mut Self::Module,
-        kind: AllocatorKind
+        kind: AllocatorKind,
     );
-    fn compile_codegen_unit<'a, 'tcx: 'a>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        cgu_name: InternedString,
-    ) -> Stats;
+    fn compile_codegen_unit(&self, tcx: TyCtxt<'_>, cgu_name: InternedString);
     // If find_features is true this won't access `sess.crate_types` by assuming
     // that `is_pie_binary` is false. When we discover LLVM target features
     // `sess.crate_types` is uninitialized so we cannot access it.

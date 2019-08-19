@@ -5,27 +5,25 @@ use std::error::Error;
 use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 use std::collections::hash_map::Entry;
+use std::convert::TryInto;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
+use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, VariantIdx, Size};
-use rustc::ty::subst::Subst;
+use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
+use rustc::ty::layout::{self, LayoutOf, VariantIdx};
 use rustc::traits::Reveal;
-use rustc::util::common::ErrorReported;
 use rustc_data_structures::fx::FxHashMap;
 
-use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar,
+    PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue,
-    EvalResult, EvalError, InterpError, GlobalId, InterpretCx, StackPopCleanup,
-    Allocation, AllocId, MemoryKind,
-    snapshot, RefTracking,
+    InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
+    Allocation, AllocId, MemoryKind, Memory,
+    snapshot, RefTracking, intern_const_alloc_recursive,
 };
 
 /// Number of steps until the detector even starts doing anything.
@@ -35,99 +33,134 @@ const STEPS_UNTIL_DETECTOR_ENABLED: isize = 1_000_000;
 /// Should be a power of two for performance reasons.
 const DETECTOR_SNAPSHOT_PERIOD: isize = 256;
 
-/// The `InterpretCx` is only meant to be used to do field and index projections into constants for
+/// The `InterpCx` is only meant to be used to do field and index projections into constants for
 /// `simd_shuffle` and const patterns in match arms.
 ///
 /// The function containing the `match` that is currently being analyzed may have generic bounds
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
-pub(crate) fn mk_eval_cx<'a, 'mir, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn mk_eval_cx<'mir, 'tcx>(
+    tcx: TyCtxt<'tcx>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
-) -> CompileTimeEvalContext<'a, 'mir, 'tcx> {
+) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
-    InterpretCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new())
+    InterpCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), Default::default())
 }
 
-pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub(crate) fn eval_promoted<'mir, 'tcx>(
+    tcx: TyCtxt<'tcx>,
     cid: GlobalId<'tcx>,
-    mir: &'mir mir::Mir<'tcx>,
+    body: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = mk_eval_cx(tcx, span, param_env);
-    eval_body_using_ecx(&mut ecx, cid, mir, param_env)
-}
-
-fn mplace_to_const<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
-    mplace: MPlaceTy<'tcx>,
-) -> ty::Const<'tcx> {
-    let MemPlace { ptr, align, meta } = *mplace;
-    // extract alloc-offset pair
-    assert!(meta.is_none());
-    let ptr = ptr.to_ptr().unwrap();
-    let alloc = ecx.memory.get(ptr.alloc_id).unwrap();
-    assert!(alloc.align >= align);
-    assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= mplace.layout.size.bytes());
-    let mut alloc = alloc.clone();
-    alloc.align = align;
-    // FIXME shouldn't it be the case that `mark_static_initialized` has already
-    // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
-    let alloc = ecx.tcx.intern_const_alloc(alloc);
-    let val = ConstValue::ByRef(ptr, alloc);
-    ty::Const { val, ty: mplace.layout.ty }
+    eval_body_using_ecx(&mut ecx, cid, body, param_env)
 }
 
 fn op_to_const<'tcx>(
-    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
+    ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
-) -> ty::Const<'tcx> {
-    // We do not normalize just any data.  Only non-union scalars and slices.
-    let normalize = match op.layout.abi {
-        layout::Abi::Scalar(..) => op.layout.ty.ty_adt_def().map_or(true, |adt| !adt.is_union()),
-        layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
+) -> &'tcx ty::Const<'tcx> {
+    // We do not have value optmizations for everything.
+    // Only scalars and slices, since they are very common.
+    // Note that further down we turn scalars of undefined bits back to `ByRef`. These can result
+    // from scalar unions that are initialized with one of their zero sized variants. We could
+    // instead allow `ConstValue::Scalar` to store `ScalarMaybeUndef`, but that would affect all
+    // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
+    // `Undef` situation.
+    let try_as_immediate = match op.layout.abi {
+        layout::Abi::Scalar(..) => true,
+        layout::Abi::ScalarPair(..) => match op.layout.ty.sty {
+            ty::Ref(_, inner, _) => match inner.sty {
+                ty::Slice(elem) => elem == ecx.tcx.types.u8,
+                ty::Str => true,
+                _ => false,
+            },
+            _ => false,
+        },
         _ => false,
     };
-    let normalized_op = if normalize {
-        Err(*ecx.read_immediate(op).expect("normalization works on validated constants"))
+    let immediate = if try_as_immediate {
+        Err(ecx.read_immediate(op).expect("normalization works on validated constants"))
     } else {
+        // It is guaranteed that any non-slice scalar pair is actually ByRef here.
+        // When we come back from raw const eval, we are always by-ref. The only way our op here is
+        // by-val is if we are in const_field, i.e., if this is (a field of) something that we
+        // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
+        // structs containing such.
         op.try_as_mplace()
     };
-    let val = match normalized_op {
-        Ok(mplace) => return mplace_to_const(ecx, mplace),
-        Err(Immediate::Scalar(x)) =>
-            ConstValue::Scalar(x.not_undef().unwrap()),
-        Err(Immediate::ScalarPair(a, b)) =>
-            ConstValue::Slice(a.not_undef().unwrap(), b.to_usize(ecx).unwrap()),
+    let val = match immediate {
+        Ok(mplace) => {
+            let ptr = mplace.ptr.to_ptr().unwrap();
+            let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+            ConstValue::ByRef { alloc, offset: ptr.offset }
+        },
+        // see comment on `let try_as_immediate` above
+        Err(ImmTy { imm: Immediate::Scalar(x), .. }) => match x {
+            ScalarMaybeUndef::Scalar(s) => ConstValue::Scalar(s),
+            ScalarMaybeUndef::Undef => {
+                // When coming out of "normal CTFE", we'll always have an `Indirect` operand as
+                // argument and we will not need this. The only way we can already have an
+                // `Immediate` is when we are called from `const_field`, and that `Immediate`
+                // comes from a constant so it can happen have `Undef`, because the indirect
+                // memory that was read had undefined bytes.
+                let mplace = op.assert_mem_place();
+                let ptr = mplace.ptr.to_ptr().unwrap();
+                let alloc = ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
+                ConstValue::ByRef { alloc, offset: ptr.offset }
+            },
+        },
+        Err(ImmTy { imm: Immediate::ScalarPair(a, b), .. }) => {
+            let (data, start) = match a.not_undef().unwrap() {
+                Scalar::Ptr(ptr) => (
+                    ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                    ptr.offset.bytes(),
+                ),
+                Scalar::Raw { .. } => (
+                    ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(
+                        b"" as &[u8],
+                    )),
+                    0,
+                ),
+            };
+            let len = b.to_usize(&ecx.tcx.tcx).unwrap();
+            let start = start.try_into().unwrap();
+            let len: usize = len.try_into().unwrap();
+            ConstValue::Slice {
+                data,
+                start,
+                end: start + len,
+            }
+        },
     };
-    ty::Const { val, ty: op.layout.ty }
+    ecx.tcx.mk_const(ty::Const { val, ty: op.layout.ty })
 }
 
 // Returns a pointer to where the result lives
 fn eval_body_using_ecx<'mir, 'tcx>(
-    ecx: &mut CompileTimeEvalContext<'_, 'mir, 'tcx>,
+    ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     cid: GlobalId<'tcx>,
-    mir: &'mir mir::Mir<'tcx>,
+    body: &'mir mir::Body<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
+) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
-    let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
+    let layout = ecx.layout_of(body.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
 
     let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
-    assert!(mir.arg_count == 0);
+    assert!(body.arg_count == 0);
     ecx.push_stack_frame(
         cid.instance,
-        mir.span,
-        mir,
+        body.span,
+        body,
         Some(ret.into()),
         StackPopCleanup::None { cleanup: false },
     )?;
@@ -136,27 +169,26 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
-    let mutability = if tcx.is_mutable_static(cid.instance.def_id()) ||
-                     !layout.ty.is_freeze(tcx, param_env, mir.span) {
-        Mutability::Mutable
-    } else {
-        Mutability::Immutable
-    };
-    ecx.memory.intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
+    intern_const_alloc_recursive(
+        ecx,
+        cid.instance.def_id(),
+        ret,
+        param_env,
+    )?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
     Ok(ret)
 }
 
-impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
-    fn into(self) -> EvalError<'tcx> {
-        InterpError::MachineError(self.to_string()).into()
-    }
-}
-
 #[derive(Clone, Debug)]
 enum ConstEvalError {
     NeedsRfc(String),
+}
+
+impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalError {
+    fn into(self) -> InterpErrorInfo<'tcx> {
+        err_unsup!(Unsupported(self.to_string())).into()
+    }
 }
 
 impl fmt::Display for ConstEvalError {
@@ -188,7 +220,7 @@ impl Error for ConstEvalError {
 }
 
 // Extra machine state for CTFE, and the Machine instance
-pub struct CompileTimeInterpreter<'a, 'mir, 'tcx: 'a+'mir> {
+pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// When this value is negative, it indicates the number of interpreter
     /// steps *until* the loop detector is enabled. When it is positive, it is
     /// the number of steps after the detector has been enabled modulo the loop
@@ -196,10 +228,10 @@ pub struct CompileTimeInterpreter<'a, 'mir, 'tcx: 'a+'mir> {
     pub(super) steps_since_detector_enabled: isize,
 
     /// Extra state to detect loops.
-    pub(super) loop_detector: snapshot::InfiniteLoopDetector<'a, 'mir, 'tcx>,
+    pub(super) loop_detector: snapshot::InfiniteLoopDetector<'mir, 'tcx>,
 }
 
-impl<'a, 'mir, 'tcx> CompileTimeInterpreter<'a, 'mir, 'tcx> {
+impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
     fn new() -> Self {
         CompileTimeInterpreter {
             loop_detector: Default::default(),
@@ -269,8 +301,8 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
     }
 }
 
-type CompileTimeEvalContext<'a, 'mir, 'tcx> =
-    InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>;
+crate type CompileTimeEvalContext<'mir, 'tcx> =
+    InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
 impl interpret::MayLeak for ! {
     #[inline(always)]
@@ -280,11 +312,10 @@ impl interpret::MayLeak for ! {
     }
 }
 
-impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
-    for CompileTimeInterpreter<'a, 'mir, 'tcx>
-{
+impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     type MemoryKinds = !;
     type PointerTag = ();
+    type ExtraFnVal = !;
 
     type FrameExtra = ();
     type MemoryExtra = ();
@@ -294,22 +325,26 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
 
+    // We do not check for alignment to avoid having to carry an `Align`
+    // in `ConstValue::ByRef`.
+    const CHECK_ALIGN: bool = false;
+
     #[inline(always)]
-    fn enforce_validity(_ecx: &InterpretCx<'a, 'mir, 'tcx, Self>) -> bool {
+    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
     }
 
     fn find_fn(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
+    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         debug!("eval_fn_call: {:?}", instance);
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def_id) = instance.def {
-            // Execution might have wandered off into other crates, so we cannot to a stability-
+            // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
             if !ecx.tcx.is_const_fn_raw(def_id) {
@@ -320,15 +355,15 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
                     ecx.goto_block(ret)?; // fully evaluated and done
                     Ok(None)
                 } else {
-                    err!(MachineError(format!("calling non-const function `{}`", instance)))
+                    throw_unsup_format!("calling non-const function `{}`", instance)
                 };
             }
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def) {
-            Ok(mir) => mir,
+            Ok(body) => body,
             Err(err) => {
-                if let InterpError::NoMirFor(ref path) = err.kind {
+                if let err_unsup!(NoMirFor(ref path)) = err.kind {
                     return Err(
                         ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
                             .into(),
@@ -339,12 +374,22 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         }))
     }
 
+    fn call_extra_fn(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        fn_val: !,
+        _args: &[OpTy<'tcx>],
+        _dest: Option<PlaceTy<'tcx>>,
+        _ret: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        match fn_val {}
+    }
+
     fn call_intrinsic(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         if ecx.emulate_intrinsic(instance, args, dest)? {
             return Ok(());
         }
@@ -355,53 +400,62 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         )
     }
 
-    fn ptr_op(
-        _ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
+    fn ptr_to_int(
+        _mem: &Memory<'mir, 'tcx, Self>,
+        _ptr: Pointer,
+    ) -> InterpResult<'tcx, u64> {
+        Err(
+            ConstEvalError::NeedsRfc("pointer-to-integer cast".to_string()).into(),
+        )
+    }
+
+    fn binary_ptr_op(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
         )
     }
 
     fn find_foreign_static(
+        _tcx: TyCtxt<'tcx>,
         _def_id: DefId,
-        _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
-        _memory_extra: &(),
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
-        err!(ReadForeignStatic)
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
+        throw_unsup!(ReadForeignStatic)
     }
 
     #[inline(always)]
-    fn adjust_static_allocation<'b>(
-        alloc: &'b Allocation,
+    fn tag_allocation<'b>(
         _memory_extra: &(),
-    ) -> Cow<'b, Allocation<Self::PointerTag>> {
-        // We do not use a tag so we can just cheaply forward the reference
-        Cow::Borrowed(alloc)
+        _id: AllocId,
+        alloc: Cow<'b, Allocation>,
+        _kind: Option<MemoryKind<!>>,
+    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
+        // We do not use a tag so we can just cheaply forward the allocation
+        (alloc, ())
     }
 
     #[inline(always)]
-    fn new_allocation(
-        _size: Size,
-        _extra: &Self::MemoryExtra,
-        _kind: MemoryKind<!>,
-    ) -> (Self::AllocExtra, Self::PointerTag) {
-        ((), ())
+    fn tag_static_base_pointer(
+        _memory_extra: &(),
+        _id: AllocId,
+    ) -> Self::PointerTag {
+        ()
     }
 
     fn box_alloc(
-        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Err(
             ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into(),
         )
     }
 
-    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
+    fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         {
             let steps = &mut ecx.machine.steps_since_detector_enabled;
 
@@ -426,32 +480,27 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn stack_push(
-        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-    ) -> EvalResult<'tcx> {
+    fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
 
     /// Called immediately before a stack frame gets popped.
     #[inline(always)]
-    fn stack_pop(
-        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-        _extra: (),
-    ) -> EvalResult<'tcx> {
+    fn stack_pop(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
         Ok(())
     }
 }
 
-/// Projects to a field of a (variant of a) const.
+/// Extracts a field of a (variant of a) const.
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
-pub fn const_field<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn const_field<'tcx>(
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
-    value: ty::Const<'tcx>,
-) -> ty::Const<'tcx> {
+    value: &'tcx ty::Const<'tcx>,
+) -> &'tcx ty::Const<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     // get the operand again
@@ -470,10 +519,10 @@ pub fn const_field<'a, 'tcx>(
 
 // this function uses `unwrap` copiously, because an already validated constant must have valid
 // fields and can thus never fail outside of compiler bugs
-pub fn const_variant_index<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn const_variant_index<'tcx>(
+    tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    val: ty::Const<'tcx>,
+    val: &'tcx ty::Const<'tcx>,
 ) -> VariantIdx {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
@@ -481,17 +530,23 @@ pub fn const_variant_index<'a, 'tcx>(
     ecx.read_discriminant(op).unwrap().1
 }
 
-pub fn error_to_const_error<'a, 'mir, 'tcx>(
-    ecx: &InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
-    mut error: EvalError<'tcx>
+pub fn error_to_const_error<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    mut error: InterpErrorInfo<'tcx>,
 ) -> ConstEvalErr<'tcx> {
     error.print_backtrace();
     let stacktrace = ecx.generate_stacktrace(None);
     ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
 }
 
-fn validate_and_turn_into_const<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn note_on_undefined_behavior_error() -> &'static str {
+    "The rules on what exactly is undefined behavior aren't clear, \
+    so this check might be overzealous. Please open an issue on the rust compiler \
+    repository if you believe it should not be considered undefined behavior"
+}
+
+fn validate_and_turn_into_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
@@ -505,13 +560,21 @@ fn validate_and_turn_into_const<'a, 'tcx>(
                 mplace.into(),
                 path,
                 Some(&mut ref_tracking),
-                true, // const mode
             )?;
         }
         // Now that we validated, turn this into a proper constant.
+        // Statics/promoteds are always `ByRef`, for the rest `op_to_const` decides
+        // whether they become immediates.
         let def_id = cid.instance.def.def_id();
         if tcx.is_static(def_id) || cid.promoted.is_some() {
-            Ok(mplace_to_const(&ecx, mplace))
+            let ptr = mplace.ptr.to_ptr()?;
+            Ok(tcx.mk_const(ty::Const {
+                val: ConstValue::ByRef {
+                    alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                    offset: ptr.offset,
+                },
+                ty: mplace.layout.ty,
+            }))
         } else {
             Ok(op_to_const(&ecx, mplace.into()))
         }
@@ -521,10 +584,7 @@ fn validate_and_turn_into_const<'a, 'tcx>(
         let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
             Ok(mut diag) => {
-                diag.note("The rules on what exactly is undefined behavior aren't clear, \
-                    so this check might be overzealous. Please open an issue on the rust compiler \
-                    repository if you believe it should not be considered undefined behavior",
-                );
+                diag.note(note_on_undefined_behavior_error());
                 diag.emit();
                 ErrorHandled::Reported
             }
@@ -533,8 +593,8 @@ fn validate_and_turn_into_const<'a, 'tcx>(
     })
 }
 
-pub fn const_eval_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn const_eval_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     // see comment in const_eval_provider for what we're doing here
@@ -557,8 +617,8 @@ pub fn const_eval_provider<'a, 'tcx>(
     })
 }
 
-pub fn const_eval_raw_provider<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub fn const_eval_raw_provider<'tcx>(
+    tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalRawResult<'tcx> {
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
@@ -597,20 +657,25 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     }
 
     let span = tcx.def_span(cid.instance.def_id());
-    let mut ecx = InterpretCx::new(tcx.at(span), key.param_env, CompileTimeInterpreter::new());
+    let mut ecx = InterpCx::new(
+        tcx.at(span),
+        key.param_env,
+        CompileTimeInterpreter::new(),
+        Default::default()
+    );
 
     let res = ecx.load_mir(cid.instance.def);
-    res.map(|mir| {
+    res.map(|body| {
         if let Some(index) = cid.promoted {
-            &mir.promoted[index]
+            &body.promoted[index]
         } else {
-            mir
+            body
         }
     }).and_then(
-        |mir| eval_body_using_ecx(&mut ecx, cid, mir, key.param_env)
+        |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
     ).and_then(|place| {
         Ok(RawConst {
-            alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,
+            alloc_id: place.ptr.assert_ptr().alloc_id,
             ty: place.layout.ty
         })
     }).map_err(|error| {
@@ -619,19 +684,12 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         if tcx.is_static(def_id) {
             // Ensure that if the above error was either `TooGeneric` or `Reported`
             // an error must be reported.
-            let reported_err = tcx.sess.track_errors(|| {
-                err.report_as_error(ecx.tcx,
-                                    "could not evaluate static initializer")
-            });
-            match reported_err {
-                Ok(v) => {
-                    tcx.sess.delay_span_bug(err.span,
-                                        &format!("static eval failure did not emit an error: {:#?}",
-                                        v));
-                    v
-                },
-                Err(ErrorReported) => ErrorHandled::Reported,
-            }
+            let v = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
+            tcx.sess.delay_span_bug(
+                err.span,
+                &format!("static eval failure did not emit an error: {:#?}", v)
+            );
+            v
         } else if def_id.is_local() {
             // constant defined in this crate, we can figure out a lint level!
             match tcx.def_kind(def_id) {
@@ -641,7 +699,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                 // note that validation may still cause a hard error on this very same constant,
                 // because any code that existed before validation could not have failed validation
                 // thus preventing such a hard error from being a backwards compatibility hazard
-                Some(DefKind::Const) | Some(DefKind::AssociatedConst) => {
+                Some(DefKind::Const) | Some(DefKind::AssocConst) => {
                     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                     err.report_as_lint(
                         tcx.at(tcx.def_span(def_id)),
@@ -653,8 +711,8 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                 // promoting runtime code is only allowed to error if it references broken constants
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
-                    let span = tcx.optimized_mir(def_id).promoted[p].span;
-                    if let InterpError::ReferencedConstant = err.error {
+                    let span = tcx.promoted_mir(def_id)[p].span;
+                    if let err_inval!(ReferencedConstant) = err.error {
                         err.report_as_error(
                             tcx.at(span),
                             "evaluation of constant expression failed",

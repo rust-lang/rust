@@ -1,6 +1,7 @@
 use super::BackendTypes;
 use crate::mir::place::PlaceRef;
 use rustc::hir::{GlobalAsm, InlineAsm};
+use syntax_pos::Span;
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {
     /// Take an inline assembly expression and splat it out via LLVM
@@ -9,9 +10,10 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
         ia: &InlineAsm,
         outputs: Vec<PlaceRef<'tcx, Self::Value>>,
         inputs: Vec<Self::Value>,
+        span: Span,
     ) -> bool;
 }
 
-pub trait AsmMethods<'tcx> {
+pub trait AsmMethods {
     fn codegen_global_asm(&self, ga: &GlobalAsm);
 }

@@ -1,6 +1,6 @@
 // ignore-tidy-cr
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // This file checks the spans of intra-link warnings in a file with CRLF line endings. The
 // .gitattributes file in this directory should enforce it.

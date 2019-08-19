@@ -6,5 +6,5 @@ trait A {
 }
 
 fn main() {
-    let _x: &A; //~ ERROR E0038
+    let _x: &dyn A; //~ ERROR E0038
 }

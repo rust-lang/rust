@@ -7,45 +7,29 @@ use rustc::ty::TyCtxt;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Node, Destination};
+use rustc::hir::{self, Node, Destination, GeneratorMovability};
 use syntax::struct_span_err;
 use syntax_pos::Span;
 use errors::Applicability;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum LoopKind {
-    Loop(hir::LoopSource),
-    WhileLoop,
-}
-
-impl LoopKind {
-    fn name(self) -> &'static str {
-        match self {
-            LoopKind::Loop(hir::LoopSource::Loop) => "loop",
-            LoopKind::Loop(hir::LoopSource::WhileLet) => "while let",
-            LoopKind::Loop(hir::LoopSource::ForLoop) => "for",
-            LoopKind::WhileLoop => "while",
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
     Normal,
-    Loop(LoopKind),
+    Loop(hir::LoopSource),
     Closure,
+    AsyncClosure,
     LabeledBlock,
     AnonConst,
 }
 
 #[derive(Copy, Clone)]
-struct CheckLoopVisitor<'a, 'hir: 'a> {
+struct CheckLoopVisitor<'a, 'hir> {
     sess: &'a Session,
     hir_map: &'a Map<'hir>,
     cx: Context,
 }
 
-fn check_mod_loops<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, module_def_id: DefId) {
+fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(module_def_id, &mut CheckLoopVisitor {
         sess: &tcx.sess,
         hir_map: &tcx.hir(),
@@ -71,18 +55,17 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
     fn visit_expr(&mut self, e: &'hir hir::Expr) {
         match e.node {
-            hir::ExprKind::While(ref e, ref b, _) => {
-                self.with_context(Loop(LoopKind::WhileLoop), |v| {
-                    v.visit_expr(&e);
-                    v.visit_block(&b);
-                });
-            }
             hir::ExprKind::Loop(ref b, _, source) => {
-                self.with_context(Loop(LoopKind::Loop(source)), |v| v.visit_block(&b));
+                self.with_context(Loop(source), |v| v.visit_block(&b));
             }
-            hir::ExprKind::Closure(_, ref function_decl, b, _, _) => {
+            hir::ExprKind::Closure(_, ref function_decl, b, _, movability) => {
+                let cx = if let Some(GeneratorMovability::Static) = movability {
+                    AsyncClosure
+                } else {
+                    Closure
+                };
                 self.visit_fn_decl(&function_decl);
-                self.with_context(Closure, |v| v.visit_nested_body(b));
+                self.with_context(cx, |v| v.visit_nested_body(b));
             }
             hir::ExprKind::Block(ref b, Some(_label)) => {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
@@ -107,7 +90,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 };
 
                 if loop_id != hir::DUMMY_HIR_ID {
-                    if let Node::Block(_) = self.hir_map.find_by_hir_id(loop_id).unwrap() {
+                    if let Node::Block(_) = self.hir_map.find(loop_id).unwrap() {
                         return
                     }
                 }
@@ -116,16 +99,15 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     let loop_kind = if loop_id == hir::DUMMY_HIR_ID {
                         None
                     } else {
-                        Some(match self.hir_map.expect_expr_by_hir_id(loop_id).node {
-                            hir::ExprKind::While(..) => LoopKind::WhileLoop,
-                            hir::ExprKind::Loop(_, _, source) => LoopKind::Loop(source),
+                        Some(match self.hir_map.expect_expr(loop_id).node {
+                            hir::ExprKind::Loop(_, _, source) => source,
                             ref r => span_bug!(e.span,
                                                "break label resolved to a non-loop: {:?}", r),
                         })
                     };
                     match loop_kind {
                         None |
-                        Some(LoopKind::Loop(hir::LoopSource::Loop)) => (),
+                        Some(hir::LoopSource::Loop) => (),
                         Some(kind) => {
                             struct_span_err!(self.sess, e.span, E0571,
                                              "`break` with value from a `{}` loop",
@@ -155,7 +137,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 match destination.target_id {
                     Ok(loop_id) => {
-                        if let Node::Block(block) = self.hir_map.find_by_hir_id(loop_id).unwrap() {
+                        if let Node::Block(block) = self.hir_map.find(loop_id).unwrap() {
                             struct_span_err!(self.sess, e.span, E0696,
                                             "`continue` pointing to a labeled block")
                                 .span_label(e.span,
@@ -194,6 +176,11 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
                 .span_label(span, "cannot break inside of a closure")
                 .emit();
+            }
+            AsyncClosure => {
+                struct_span_err!(self.sess, span, E0267, "`{}` inside of an async block", name)
+                    .span_label(span, "cannot break inside of an async block")
+                    .emit();
             }
             Normal | AnonConst => {
                 struct_span_err!(self.sess, span, E0268, "`{}` outside of loop", name)

@@ -8,7 +8,7 @@ edition = "2018"
 [lib]
 name = "rustc_plugin"
 path = "lib.rs"
-crate-type = ["dylib"]
+doctest = false
 
 [dependencies]
 rustc = { path = "../librustc" }

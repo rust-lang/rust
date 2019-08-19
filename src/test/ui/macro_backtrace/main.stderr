@@ -24,10 +24,10 @@ LL |       ping!();
    | 
   ::: <::ping::ping macros>:1:1
    |
-LL |   (  ) => { pong ! (  ) ; }
-   |   -------------------------
-   |   |         |
-   |   |         in this macro invocation
+LL |   () => { pong ! () ; }
+   |   ---------------------
+   |   |       |
+   |   |       in this macro invocation
    |   in this expansion of `ping!`
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `error`
@@ -44,34 +44,34 @@ LL |       deep!();
    | 
   ::: <::ping::deep macros>:1:1
    |
-LL |   (  ) => { foo ! (  ) ; }
-   |   ------------------------
-   |   |         |
-   |   |         in this macro invocation (#2)
+LL |   () => { foo ! () ; }
+   |   --------------------
+   |   |       |
+   |   |       in this macro invocation (#2)
    |   in this expansion of `deep!` (#1)
    | 
   ::: <::ping::foo macros>:1:1
    |
-LL |   (  ) => { bar ! (  ) ; }
-   |   ------------------------
-   |   |         |
-   |   |         in this macro invocation (#3)
+LL |   () => { bar ! () ; }
+   |   --------------------
+   |   |       |
+   |   |       in this macro invocation (#3)
    |   in this expansion of `foo!` (#2)
    | 
   ::: <::ping::bar macros>:1:1
    |
-LL |   (  ) => { ping ! (  ) ; }
-   |   -------------------------
-   |   |         |
-   |   |         in this macro invocation (#4)
+LL |   () => { ping ! () ; }
+   |   ---------------------
+   |   |       |
+   |   |       in this macro invocation (#4)
    |   in this expansion of `bar!` (#3)
    | 
   ::: <::ping::ping macros>:1:1
    |
-LL |   (  ) => { pong ! (  ) ; }
-   |   -------------------------
-   |   |         |
-   |   |         in this macro invocation (#5)
+LL |   () => { pong ! () ; }
+   |   ---------------------
+   |   |       |
+   |   |       in this macro invocation (#5)
    |   in this expansion of `ping!` (#4)
 
 error: aborting due to 3 previous errors

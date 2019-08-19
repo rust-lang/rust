@@ -115,6 +115,11 @@ pub struct OnceState {
 /// static START: Once = ONCE_INIT;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(
+    since = "1.38.0",
+    reason = "the `new` function is now preferred",
+    suggestion = "Once::new()",
+)]
 pub const ONCE_INIT: Once = Once::new();
 
 // Four states that a Once can be in, encoded into the lower bits of `state` in

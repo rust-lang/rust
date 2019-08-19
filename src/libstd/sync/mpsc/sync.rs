@@ -33,7 +33,6 @@ use core::ptr;
 
 use crate::sync::atomic::{Ordering, AtomicUsize};
 use crate::sync::mpsc::blocking::{self, WaitToken, SignalToken};
-use crate::sync::mpsc::select::StartResult::{self, Installed, Abort};
 use crate::sync::{Mutex, MutexGuard};
 use crate::time::Instant;
 
@@ -141,7 +140,7 @@ fn wait_timeout_receiver<'a, 'b, T>(lock: &'a Mutex<State<T>>,
     new_guard
 }
 
-fn abort_selection<'a, T>(guard: &mut MutexGuard<'a , State<T>>) -> bool {
+fn abort_selection<T>(guard: &mut MutexGuard<'_, State<T>>) -> bool {
     match mem::replace(&mut guard.blocker, NoneBlocked) {
         NoneBlocked => true,
         BlockedSender(token) => {
@@ -161,20 +160,20 @@ fn wakeup<T>(token: SignalToken, guard: MutexGuard<'_, State<T>>) {
 }
 
 impl<T> Packet<T> {
-    pub fn new(cap: usize) -> Packet<T> {
+    pub fn new(capacity: usize) -> Packet<T> {
         Packet {
             channels: AtomicUsize::new(1),
             lock: Mutex::new(State {
                 disconnected: false,
                 blocker: NoneBlocked,
-                cap,
+                cap: capacity,
                 canceled: None,
                 queue: Queue {
                     head: ptr::null_mut(),
                     tail: ptr::null_mut(),
                 },
                 buf: Buffer {
-                    buf: (0..cap + if cap == 0 {1} else {0}).map(|_| None).collect(),
+                    buf: (0..capacity + if capacity == 0 {1} else {0}).map(|_| None).collect(),
                     start: 0,
                     size: 0,
                 },
@@ -189,7 +188,7 @@ impl<T> Packet<T> {
         loop {
             let mut guard = self.lock.lock().unwrap();
             // are we ready to go?
-            if guard.disconnected || guard.buf.size() < guard.buf.cap() {
+            if guard.disconnected || guard.buf.size() < guard.buf.capacity() {
                 return guard;
             }
             // no room; actually block
@@ -231,7 +230,7 @@ impl<T> Packet<T> {
         let mut guard = self.lock.lock().unwrap();
         if guard.disconnected {
             Err(super::TrySendError::Disconnected(t))
-        } else if guard.buf.size() == guard.buf.cap() {
+        } else if guard.buf.size() == guard.buf.capacity() {
             Err(super::TrySendError::Full(t))
         } else if guard.cap == 0 {
             // With capacity 0, even though we have buffer space we can't
@@ -249,7 +248,7 @@ impl<T> Packet<T> {
             // If the buffer has some space and the capacity isn't 0, then we
             // just enqueue the data for later retrieval, ensuring to wake up
             // any blocked receiver if there is one.
-            assert!(guard.buf.size() < guard.buf.cap());
+            assert!(guard.buf.size() < guard.buf.capacity());
             guard.buf.enqueue(t);
             match mem::replace(&mut guard.blocker, NoneBlocked) {
                 BlockedReceiver(token) => wakeup(token, guard),
@@ -384,7 +383,7 @@ impl<T> Packet<T> {
         // needs to be careful to destroy the data *outside* of the lock to
         // prevent deadlock.
         let _data = if guard.cap != 0 {
-            mem::replace(&mut guard.buf.buf, Vec::new())
+            mem::take(&mut guard.buf.buf)
         } else {
             Vec::new()
         };
@@ -405,42 +404,6 @@ impl<T> Packet<T> {
 
         while let Some(token) = queue.dequeue() { token.signal(); }
         waiter.map(|t| t.signal());
-    }
-
-    ////////////////////////////////////////////////////////////////////////////
-    // select implementation
-    ////////////////////////////////////////////////////////////////////////////
-
-    // If Ok, the value is whether this port has data, if Err, then the upgraded
-    // port needs to be checked instead of this one.
-    pub fn can_recv(&self) -> bool {
-        let guard = self.lock.lock().unwrap();
-        guard.disconnected || guard.buf.size() > 0
-    }
-
-    // Attempts to start selection on this port. This can either succeed or fail
-    // because there is data waiting.
-    pub fn start_selection(&self, token: SignalToken) -> StartResult {
-        let mut guard = self.lock.lock().unwrap();
-        if guard.disconnected || guard.buf.size() > 0 {
-            Abort
-        } else {
-            match mem::replace(&mut guard.blocker, BlockedReceiver(token)) {
-                NoneBlocked => {}
-                BlockedSender(..) => unreachable!(),
-                BlockedReceiver(..) => unreachable!(),
-            }
-            Installed
-        }
-    }
-
-    // Remove a previous selecting thread from this port. This ensures that the
-    // blocked thread will no longer be visible to any other threads.
-    //
-    // The return value indicates whether there's data on this port.
-    pub fn abort_selection(&self) -> bool {
-        let mut guard = self.lock.lock().unwrap();
-        abort_selection(&mut guard)
     }
 }
 
@@ -475,7 +438,7 @@ impl<T> Buffer<T> {
     }
 
     fn size(&self) -> usize { self.size }
-    fn cap(&self) -> usize { self.buf.len() }
+    fn capacity(&self) -> usize { self.buf.len() }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

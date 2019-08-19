@@ -3,6 +3,8 @@ warning: the feature `generic_associated_types` is incomplete and may cause the 
    |
 LL | #![feature(generic_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0109]: type arguments are not allowed for this type
   --> $DIR/collections.rs:56:90

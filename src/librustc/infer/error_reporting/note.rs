@@ -4,7 +4,7 @@ use crate::ty::{self, Region};
 use crate::ty::error::TypeError;
 use errors::DiagnosticBuilder;
 
-impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self,
                                      err: &mut DiagnosticBuilder<'_>,
                                      origin: &SubregionOrigin<'tcx>) {
@@ -31,7 +31,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                               "...so that reference does not outlive borrowed content");
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name_by_hir_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 err.span_note(span,
                               &format!("...so that closure can access `{}`", var_name));
             }
@@ -163,7 +163,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name_by_hir_id(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 let mut err = struct_span_err!(self.tcx.sess,
                                                span,
                                                E0313,

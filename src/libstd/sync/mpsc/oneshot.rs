@@ -24,7 +24,6 @@
 
 pub use self::Failure::*;
 pub use self::UpgradeResult::*;
-pub use self::SelectionResult::*;
 use self::MyUpgrade::*;
 
 use crate::sync::mpsc::Receiver;
@@ -64,12 +63,6 @@ pub enum UpgradeResult {
     UpSuccess,
     UpDisconnected,
     UpWoke(SignalToken),
-}
-
-pub enum SelectionResult<T> {
-    SelCanceled,
-    SelUpgraded(SignalToken, Receiver<T>),
-    SelSuccess,
 }
 
 enum MyUpgrade<T> {
@@ -263,71 +256,6 @@ impl<T> Packet<T> {
     ////////////////////////////////////////////////////////////////////////////
     // select implementation
     ////////////////////////////////////////////////////////////////////////////
-
-    // If Ok, the value is whether this port has data, if Err, then the upgraded
-    // port needs to be checked instead of this one.
-    pub fn can_recv(&self) -> Result<bool, Receiver<T>> {
-        unsafe {
-            match self.state.load(Ordering::SeqCst) {
-                EMPTY => Ok(false), // Welp, we tried
-                DATA => Ok(true),   // we have some un-acquired data
-                DISCONNECTED if (*self.data.get()).is_some() => Ok(true), // we have data
-                DISCONNECTED => {
-                    match ptr::replace(self.upgrade.get(), SendUsed) {
-                        // The other end sent us an upgrade, so we need to
-                        // propagate upwards whether the upgrade can receive
-                        // data
-                        GoUp(upgrade) => Err(upgrade),
-
-                        // If the other end disconnected without sending an
-                        // upgrade, then we have data to receive (the channel is
-                        // disconnected).
-                        up => { ptr::write(self.upgrade.get(), up); Ok(true) }
-                    }
-                }
-                _ => unreachable!(), // we're the "one blocker"
-            }
-        }
-    }
-
-    // Attempts to start selection on this port. This can either succeed, fail
-    // because there is data, or fail because there is an upgrade pending.
-    pub fn start_selection(&self, token: SignalToken) -> SelectionResult<T> {
-        unsafe {
-            let ptr = token.cast_to_usize();
-            match self.state.compare_and_swap(EMPTY, ptr, Ordering::SeqCst) {
-                EMPTY => SelSuccess,
-                DATA => {
-                    drop(SignalToken::cast_from_usize(ptr));
-                    SelCanceled
-                }
-                DISCONNECTED if (*self.data.get()).is_some() => {
-                    drop(SignalToken::cast_from_usize(ptr));
-                    SelCanceled
-                }
-                DISCONNECTED => {
-                    match ptr::replace(self.upgrade.get(), SendUsed) {
-                        // The other end sent us an upgrade, so we need to
-                        // propagate upwards whether the upgrade can receive
-                        // data
-                        GoUp(upgrade) => {
-                            SelUpgraded(SignalToken::cast_from_usize(ptr), upgrade)
-                        }
-
-                        // If the other end disconnected without sending an
-                        // upgrade, then we have data to receive (the channel is
-                        // disconnected).
-                        up => {
-                            ptr::write(self.upgrade.get(), up);
-                            drop(SignalToken::cast_from_usize(ptr));
-                            SelCanceled
-                        }
-                    }
-                }
-                _ => unreachable!(), // we're the "one blocker"
-            }
-        }
-    }
 
     // Remove a previous selecting thread from this port. This ensures that the
     // blocked thread will no longer be visible to any other threads.

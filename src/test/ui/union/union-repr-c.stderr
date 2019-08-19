@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
-   = help: consider adding a #[repr(C)] attribute to this union
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this union
 note: type defined here
   --> $DIR/union-repr-c.rs:9:1
    |

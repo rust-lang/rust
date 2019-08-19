@@ -1,5 +1,4 @@
-// compile-pass
-// skip-codegen
+// check-pass
 
 use std::mem;
 
@@ -8,7 +7,7 @@ trait Trait2<'a> {
   type Ty;
 }
 
-fn _ice(param: Box<for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
+fn _ice(param: Box<dyn for <'a> Trait1<<() as Trait2<'a>>::Ty>>) {
     let _e: (usize, usize) = unsafe{mem::transmute(param)};
 }
 
@@ -24,7 +23,6 @@ fn foo<'a>(x: &'a ()) -> <() as Lifetime<'a>>::Out {
 
 fn takes_lifetime(_f: for<'a> fn(&'a ()) -> <() as Lifetime<'a>>::Out) {
 }
-
 
 fn main() {
     takes_lifetime(foo);

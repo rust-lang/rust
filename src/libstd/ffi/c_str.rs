@@ -195,6 +195,12 @@ pub struct CString {
 /// [`from_ptr`]: #method.from_ptr
 #[derive(Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
+// FIXME:
+// `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
+// on `CStr` being layout-compatible with `[u8]`.
+// When attribute privacy is implemented, `CStr` should be annotated as `#[repr(transparent)]`.
+// Anyway, `CStr` representation and layout are considered implementation detail, are
+// not documented and must not be relied upon.
 pub struct CStr {
     // FIXME: this should not be represented with a DST slice but rather with
     //        just a raw `c_char` along with some form of marker to make
@@ -599,11 +605,12 @@ impl CString {
     ///
     /// [`Drop`]: ../ops/trait.Drop.html
     fn into_inner(self) -> Box<[u8]> {
-        unsafe {
-            let result = ptr::read(&self.inner);
-            mem::forget(self);
-            result
-        }
+        // Rationale: `mem::forget(self)` invalidates the previous call to `ptr::read(&self.inner)`
+        // so we use `ManuallyDrop` to ensure `self` is not dropped.
+        // Then we can return the box directly without invalidating it.
+        // See https://github.com/rust-lang/rust/issues/62553.
+        let this = mem::ManuallyDrop::new(self);
+        unsafe { ptr::read(&this.inner) }
     }
 }
 
@@ -1054,7 +1061,7 @@ impl CStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::{CString};
+    /// use std::ffi::CString;
     ///
     /// let ptr = CString::new("Hello").expect("CString::new failed").as_ptr();
     /// unsafe {
@@ -1070,7 +1077,7 @@ impl CStr {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::ffi::{CString};
+    /// use std::ffi::CString;
     ///
     /// let hello = CString::new("Hello").expect("CString::new failed");
     /// let ptr = hello.as_ptr();

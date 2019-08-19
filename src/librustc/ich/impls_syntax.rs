@@ -89,7 +89,6 @@ impl_stable_hash_for!(enum ::syntax::ext::base::MacroKind {
     Bang,
     Attr,
     Derive,
-    ProcMacroStub,
 });
 
 
@@ -165,20 +164,19 @@ impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
     node,
     token,
-    suffix,
     span
 });
 
 impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Str(value, style),
-    Err(value),
     ByteStr(value),
     Byte(value),
     Char(value),
     Int(value, lit_int_type),
     Float(value, float_ty),
     FloatUnsuffixed(value),
-    Bool(value)
+    Bool(value),
+    Err(value)
 });
 
 impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
@@ -262,9 +260,8 @@ for tokenstream::TokenTree {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            tokenstream::TokenTree::Token(span, ref token) => {
-                span.hash_stable(hcx, hasher);
-                hash_token(token, hcx, hasher);
+            tokenstream::TokenTree::Token(ref token) => {
+                token.hash_stable(hcx, hasher);
             }
             tokenstream::TokenTree::Delimited(span, delim, ref tts) => {
                 span.hash_stable(hcx, hasher);
@@ -288,85 +285,94 @@ for tokenstream::TokenStream {
     }
 }
 
-impl_stable_hash_for!(enum token::Lit {
-    Bool(val),
-    Byte(val),
-    Char(val),
-    Err(val),
-    Integer(val),
-    Float(val),
-    Str_(val),
-    ByteStr(val),
-    StrRaw(val, n),
-    ByteStrRaw(val, n)
+impl_stable_hash_for!(enum token::LitKind {
+    Bool,
+    Byte,
+    Char,
+    Integer,
+    Float,
+    Str,
+    ByteStr,
+    StrRaw(n),
+    ByteStrRaw(n),
+    Err
 });
 
-fn hash_token<'a, 'gcx, W: StableHasherResult>(
-    token: &token::Token,
-    hcx: &mut StableHashingContext<'a>,
-    hasher: &mut StableHasher<W>,
-) {
-    mem::discriminant(token).hash_stable(hcx, hasher);
-    match *token {
-        token::Token::Eq |
-        token::Token::Lt |
-        token::Token::Le |
-        token::Token::EqEq |
-        token::Token::Ne |
-        token::Token::Ge |
-        token::Token::Gt |
-        token::Token::AndAnd |
-        token::Token::OrOr |
-        token::Token::Not |
-        token::Token::Tilde |
-        token::Token::At |
-        token::Token::Dot |
-        token::Token::DotDot |
-        token::Token::DotDotDot |
-        token::Token::DotDotEq |
-        token::Token::Comma |
-        token::Token::Semi |
-        token::Token::Colon |
-        token::Token::ModSep |
-        token::Token::RArrow |
-        token::Token::LArrow |
-        token::Token::FatArrow |
-        token::Token::Pound |
-        token::Token::Dollar |
-        token::Token::Question |
-        token::Token::SingleQuote |
-        token::Token::Whitespace |
-        token::Token::Comment |
-        token::Token::Eof => {}
+impl_stable_hash_for!(struct token::Lit {
+    kind,
+    symbol,
+    suffix
+});
 
-        token::Token::BinOp(bin_op_token) |
-        token::Token::BinOpEq(bin_op_token) => {
-            std_hash::Hash::hash(&bin_op_token, hasher);
-        }
+impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            token::Eq |
+            token::Lt |
+            token::Le |
+            token::EqEq |
+            token::Ne |
+            token::Ge |
+            token::Gt |
+            token::AndAnd |
+            token::OrOr |
+            token::Not |
+            token::Tilde |
+            token::At |
+            token::Dot |
+            token::DotDot |
+            token::DotDotDot |
+            token::DotDotEq |
+            token::Comma |
+            token::Semi |
+            token::Colon |
+            token::ModSep |
+            token::RArrow |
+            token::LArrow |
+            token::FatArrow |
+            token::Pound |
+            token::Dollar |
+            token::Question |
+            token::SingleQuote |
+            token::Whitespace |
+            token::Comment |
+            token::Eof => {}
 
-        token::Token::OpenDelim(delim_token) |
-        token::Token::CloseDelim(delim_token) => {
-            std_hash::Hash::hash(&delim_token, hasher);
-        }
-        token::Token::Literal(lit, opt_name) => {
-            lit.hash_stable(hcx, hasher);
-            opt_name.hash_stable(hcx, hasher);
-        }
+            token::BinOp(bin_op_token) |
+            token::BinOpEq(bin_op_token) => {
+                std_hash::Hash::hash(&bin_op_token, hasher);
+            }
 
-        token::Token::Ident(ident, is_raw) => {
-            ident.name.hash_stable(hcx, hasher);
-            is_raw.hash_stable(hcx, hasher);
-        }
-        token::Token::Lifetime(ident) => ident.name.hash_stable(hcx, hasher),
+            token::OpenDelim(delim_token) |
+            token::CloseDelim(delim_token) => {
+                std_hash::Hash::hash(&delim_token, hasher);
+            }
+            token::Literal(lit) => lit.hash_stable(hcx, hasher),
 
-        token::Token::Interpolated(_) => {
-            bug!("interpolated tokens should not be present in the HIR")
-        }
+            token::Ident(name, is_raw) => {
+                name.hash_stable(hcx, hasher);
+                is_raw.hash_stable(hcx, hasher);
+            }
+            token::Lifetime(name) => name.hash_stable(hcx, hasher),
 
-        token::Token::DocComment(val) |
-        token::Token::Shebang(val) => val.hash_stable(hcx, hasher),
+            token::Interpolated(_) => {
+                bug!("interpolated tokens should not be present in the HIR")
+            }
+
+            token::DocComment(val) |
+            token::Shebang(val) |
+            token::Unknown(val) => val.hash_stable(hcx, hasher),
+        }
     }
 }
+
+impl_stable_hash_for!(struct token::Token {
+    kind,
+    span
+});
 
 impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItem {
     MetaItem(meta_item),
@@ -385,28 +391,36 @@ impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     NameValue(lit)
 });
 
-impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnInfo {
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::Transparency {
+    Transparent,
+    SemiTransparent,
+    Opaque,
+});
+
+impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
+    kind,
+    parent -> _,
     call_site,
     def_site,
-    format,
+    default_transparency,
     allow_internal_unstable,
     allow_internal_unsafe,
     local_inner_macros,
     edition
 });
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnFormat {
-    MacroAttribute(sym),
-    MacroBang(sym),
-    CompilerDesugaring(kind)
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {
+    Root,
+    Macro(kind, descr),
+    Desugaring(kind)
 });
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
-    IfTemporary,
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {
+    CondTemporary,
     Async,
     Await,
     QuestionMark,
-    ExistentialReturnType,
+    OpaqueTy,
     ForLoop,
     TryBlock
 });
@@ -500,12 +514,12 @@ fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
     (pos.0 - source_file_start.0, width as u32)
 }
 
-
-
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for feature_gate::Features {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'gcx>,
-                                          hasher: &mut StableHasher<W>) {
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for feature_gate::Features {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'tcx>,
+        hasher: &mut StableHasher<W>,
+    ) {
         // Unfortunately we cannot exhaustively list fields here, since the
         // struct is macro generated.
         self.declared_lang_features.hash_stable(hcx, hasher);

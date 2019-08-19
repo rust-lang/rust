@@ -1,8 +1,8 @@
 error[E0038]: the trait `Array` cannot be made into an object
   --> $DIR/issue-20692.rs:7:5
    |
-LL |     &Array;
-   |     ^^^^^^ the trait `Array` cannot be made into an object
+LL |     &dyn Array;
+   |     ^^^^^^^^^^ the trait `Array` cannot be made into an object
    |
    = note: the trait cannot require that `Self : Sized`
 

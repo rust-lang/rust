@@ -1,5 +1,4 @@
 use rustc::mir::interpret::ErrorHandled;
-use rustc_mir::const_eval::const_field;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::ty::{self, Ty};
@@ -9,11 +8,11 @@ use crate::traits::*;
 
 use super::FunctionCx;
 
-impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn eval_mir_constant(
         &mut self,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<ty::Const<'tcx>, ErrorHandled> {
+    ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
         match constant.literal.val {
             mir::interpret::ConstValue::Unevaluated(def_id, ref substs) => {
                 let substs = self.monomorphize(substs);
@@ -26,7 +25,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid))
             },
-            _ => Ok(*self.monomorphize(&constant.literal)),
+            _ => Ok(self.monomorphize(&constant.literal)),
         }
     }
 
@@ -36,22 +35,18 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &Bx,
         span: Span,
         ty: Ty<'tcx>,
-        constant: Result<ty::Const<'tcx>, ErrorHandled>,
+        constant: Result<&'tcx ty::Const<'tcx>, ErrorHandled>,
     ) -> (Bx::Value, Ty<'tcx>) {
         constant
             .map(|c| {
                 let field_ty = c.ty.builtin_index().unwrap();
                 let fields = match c.ty.sty {
-                    ty::Array(_, n) => n.unwrap_usize(bx.tcx()),
+                    ty::Array(_, n) => n.eval_usize(bx.tcx(), ty::ParamEnv::reveal_all()),
                     _ => bug!("invalid simd shuffle type: {}", c.ty),
                 };
                 let values: Vec<_> = (0..fields).map(|field| {
-                    let field = const_field(
-                        bx.tcx(),
-                        ty::ParamEnv::reveal_all(),
-                        None,
-                        mir::Field::new(field as usize),
-                        c,
+                    let field = bx.tcx().const_field(
+                        ty::ParamEnv::reveal_all().and((&c, mir::Field::new(field as usize)))
                     );
                     if let Some(prim) = field.val.try_to_scalar() {
                         let layout = bx.layout_of(field_ty);

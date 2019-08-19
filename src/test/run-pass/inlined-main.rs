@@ -1,2 +1,0 @@
-#[inline(always)]
-fn main() {}

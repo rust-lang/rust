@@ -6,7 +6,7 @@
 // parameter `x` -- since `'b` cannot be expressed in the caller's
 // space, that got promoted th `'static`.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 use std::cell::{RefCell, Ref};
 
@@ -14,11 +14,11 @@ trait AnyVec<'a> {
 }
 
 trait GenericVec<T> {
-    fn unwrap<'a, 'b>(vec: &'b AnyVec<'a>) -> &'b [T] where T: 'a;
+    fn unwrap<'a, 'b>(vec: &'b dyn AnyVec<'a>) -> &'b [T] where T: 'a;
 }
 
 struct Scratchpad<'a> {
-    buffers: RefCell<Box<AnyVec<'a>>>,
+    buffers: RefCell<Box<dyn AnyVec<'a>>>,
 }
 
 impl<'a> Scratchpad<'a> {

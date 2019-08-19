@@ -2,4 +2,4 @@
 
 trait Foo { }
 
-type Bar = Foo;
+type Bar = dyn Foo;

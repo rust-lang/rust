@@ -1,6 +1,6 @@
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Coverflow-checks=on
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![allow(warnings)]
 #![warn(const_err)]

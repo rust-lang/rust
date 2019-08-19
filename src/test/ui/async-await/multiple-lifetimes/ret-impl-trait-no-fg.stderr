@@ -1,0 +1,10 @@
+error: ambiguous lifetime bound in `impl Trait`
+  --> $DIR/ret-impl-trait-no-fg.rs:11:64
+   |
+LL | async fn async_ret_impl_trait<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a, 'b> {
+   |                                                                ^^^^^^^^^^^^^^^^^^ neither `'a` nor `'b` outlives the other
+   |
+   = help: add #![feature(member_constraints)] to the crate attributes to enable
+
+error: aborting due to previous error
+

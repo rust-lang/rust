@@ -6,7 +6,7 @@ LL | const FOO: i32 = [][0];
    |                  |
    |                  index out of bounds: the len is 0 but the index is 0
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error
 

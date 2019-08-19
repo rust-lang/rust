@@ -170,19 +170,19 @@ macro_rules! help {
 #[macro_export]
 macro_rules! register_diagnostics {
     ($($code:tt),*) => (
-        $(register_diagnostic! { $code })*
+        $($crate::register_diagnostic! { $code })*
     );
     ($($code:tt),*,) => (
-        $(register_diagnostic! { $code })*
+        $($crate::register_diagnostic! { $code })*
     )
 }
 
 #[macro_export]
 macro_rules! register_long_diagnostics {
     ($($code:tt: $description:tt),*) => (
-        $(register_diagnostic! { $code, $description })*
+        $($crate::register_diagnostic! { $code, $description })*
     );
     ($($code:tt: $description:tt),*,) => (
-        $(register_diagnostic! { $code, $description })*
+        $($crate::register_diagnostic! { $code, $description })*
     )
 }

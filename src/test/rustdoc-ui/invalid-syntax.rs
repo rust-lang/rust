@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 /// ```
 /// \__________pkt->size___________/          \_result->size_/ \__pkt->size__/

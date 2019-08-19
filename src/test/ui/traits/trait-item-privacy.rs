@@ -68,7 +68,7 @@ fn check_method() {
     S.b(); //~ ERROR no method named `b` found for type `S` in the current scope
     S.c(); // OK
     // a, b, c are resolved as inherent items, their traits don't need to be in scope
-    let c = &S as &C;
+    let c = &S as &dyn C;
     c.a(); //~ ERROR method `a` is private
     c.b(); // OK
     c.c(); // OK
@@ -121,10 +121,10 @@ fn check_assoc_ty<T: assoc_ty::C>() {
     let _: T::C; // OK
 
     // Associated types, bindings
-    let _: assoc_ty::B<
+    let _: dyn assoc_ty::B<
         B = u8, // OK
     >;
-    let _: C<
+    let _: dyn C<
         A = u8, //~ ERROR associated type `A` is private
         B = u8, // OK
         C = u8, // OK

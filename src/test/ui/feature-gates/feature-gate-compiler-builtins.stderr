@@ -4,7 +4,7 @@ error[E0658]: the `#[compiler_builtins]` attribute is used to identify the `comp
 LL | #![compiler_builtins]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add #![feature(compiler_builtins)] to the crate attributes to enable
+   = help: add `#![feature(compiler_builtins)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

@@ -1,0 +1,10 @@
+error: proc-macro derive panicked
+  --> $DIR/issue-36935.rs:6:20
+   |
+LL | #[derive(Identity, Panic)]
+   |                    ^^^^^
+   |
+   = help: message: panic-derive
+
+error: aborting due to previous error
+

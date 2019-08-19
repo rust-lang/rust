@@ -18,7 +18,7 @@ crate fn provide(p: &mut Providers<'_>) {
 }
 
 fn dropck_outlives<'tcx>(
-    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
     canonical_goal: CanonicalTyGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>, NoSolution> {
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
@@ -146,8 +146,8 @@ fn dropck_outlives<'tcx>(
 
 /// Returns a set of constraints that needs to be satisfied in
 /// order for `ty` to be valid for destruction.
-fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+fn dtorck_constraint_for_ty<'tcx>(
+    tcx: TyCtxt<'tcx>,
     span: Span,
     for_ty: Ty<'tcx>,
     depth: usize,
@@ -279,10 +279,10 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
 }
 
 /// Calculates the dtorck constraint for a type.
-crate fn adt_dtorck_constraint<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+crate fn adt_dtorck_constraint(
+    tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Result<DtorckConstraint<'tcx>, NoSolution> {
+) -> Result<DtorckConstraint<'_>, NoSolution> {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     debug!("dtorck_constraint: {:?}", def);
@@ -313,7 +313,7 @@ crate fn adt_dtorck_constraint<'a, 'tcx>(
     Ok(result)
 }
 
-fn dedup_dtorck_constraint<'tcx>(c: &mut DtorckConstraint<'tcx>) {
+fn dedup_dtorck_constraint(c: &mut DtorckConstraint<'_>) {
     let mut outlives = FxHashSet::default();
     let mut dtorck_types = FxHashSet::default();
 

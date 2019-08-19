@@ -158,7 +158,6 @@ impl<R> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
-    /// # #![feature(bufreader_buffer)]
     /// use std::io::{BufReader, BufRead};
     /// use std::fs::File;
     ///
@@ -173,7 +172,7 @@ impl<R> BufReader<R> {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    #[stable(feature = "bufreader_buffer", since = "1.37.0")]
     pub fn buffer(&self) -> &[u8] {
         &self.buf[self.pos..self.cap]
     }
@@ -552,7 +551,6 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// # #![feature(bufreader_buffer)]
     /// use std::io::BufWriter;
     /// use std::net::TcpStream;
     ///
@@ -561,7 +559,7 @@ impl<W: Write> BufWriter<W> {
     /// // See how many bytes are currently buffered
     /// let bytes_buffered = buf_writer.buffer().len();
     /// ```
-    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    #[stable(feature = "bufreader_buffer", since = "1.37.0")]
     pub fn buffer(&self) -> &[u8] {
         &self.buf
     }
@@ -754,7 +752,7 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// completed, rather than the entire buffer at once. Enter `LineWriter`. It
 /// does exactly that.
 ///
-/// Like [`BufWriter`], a `LineWriter`’s buffer will also be flushed when the
+/// Like [`BufWriter`][bufwriter], a `LineWriter`’s buffer will also be flushed when the
 /// `LineWriter` goes out of scope or when its internal buffer is full.
 ///
 /// [bufwriter]: struct.BufWriter.html
@@ -1160,6 +1158,41 @@ mod tests {
         // seeking to 0 should empty the buffer.
         assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
         assert_eq!(reader.get_ref().pos, expected);
+    }
+
+    #[test]
+    fn test_buffered_reader_seek_underflow_discard_buffer_between_seeks() {
+        // gimmick reader that returns Err after first seek
+        struct ErrAfterFirstSeekReader {
+            first_seek: bool,
+        }
+        impl Read for ErrAfterFirstSeekReader {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+                for x in &mut *buf {
+                    *x = 0;
+                }
+                Ok(buf.len())
+            }
+        }
+        impl Seek for ErrAfterFirstSeekReader {
+            fn seek(&mut self, _: SeekFrom) -> io::Result<u64> {
+                if self.first_seek {
+                    self.first_seek = false;
+                    Ok(0)
+                } else {
+                    Err(io::Error::new(io::ErrorKind::Other, "oh no!"))
+                }
+            }
+        }
+
+        let mut reader = BufReader::with_capacity(5, ErrAfterFirstSeekReader { first_seek: true });
+        assert_eq!(reader.fill_buf().ok(), Some(&[0, 0, 0, 0, 0][..]));
+
+        // The following seek will require two underlying seeks.  The first will
+        // succeed but the second will fail.  This should still invalidate the
+        // buffer.
+        assert!(reader.seek(SeekFrom::Current(i64::min_value())).is_err());
+        assert_eq!(reader.buffer().len(), 0);
     }
 
     #[test]

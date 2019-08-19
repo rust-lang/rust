@@ -4,5 +4,5 @@ warning: use of deprecated item 'std::sync::atomic::ATOMIC_ISIZE_INIT': the `new
 LL | static FOO: AtomicIsize = ATOMIC_ISIZE_INIT;
    |                           ^^^^^^^^^^^^^^^^^ help: replace the use of the deprecated item: `AtomicIsize::new(0)`
    |
-   = note: #[warn(deprecated)] on by default
+   = note: `#[warn(deprecated)]` on by default
 

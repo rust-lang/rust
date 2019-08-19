@@ -1,8 +1,0 @@
-error: could not find defining uses
-  --> $DIR/declared_but_never_defined.rs:6:1
-   |
-LL | existential type Bar: std::fmt::Debug;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-

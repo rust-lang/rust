@@ -1,4 +1,4 @@
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z parse-only
 
 struct S<
     T: 'a + Tr, // OK

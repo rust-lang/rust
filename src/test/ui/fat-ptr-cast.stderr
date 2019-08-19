@@ -53,10 +53,10 @@ LL |     q as *const [i32];
    |     ^^^^^^^^^^^^^^^^^
 
 error[E0606]: casting `usize` as `*mut (dyn Trait + 'static)` is invalid
-  --> $DIR/fat-ptr-cast.rs:22:37
+  --> $DIR/fat-ptr-cast.rs:22:41
    |
-LL |     let t: *mut (Trait + 'static) = 0 as *mut _;
-   |                                     ^^^^^^^^^^^
+LL |     let t: *mut (dyn Trait + 'static) = 0 as *mut _;
+   |                                         ^^^^^^^^^^^
 
 error[E0606]: casting `usize` as `*const str` is invalid
   --> $DIR/fat-ptr-cast.rs:23:32

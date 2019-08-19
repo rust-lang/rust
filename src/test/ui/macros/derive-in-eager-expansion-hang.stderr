@@ -1,0 +1,17 @@
+error: format argument must be a string literal
+  --> $DIR/derive-in-eager-expansion-hang.rs:4:5
+   |
+LL | /     {
+LL | |         #[derive(Clone)]
+LL | |         struct S;
+LL | |
+LL | |         ""
+LL | |     }
+   | |_____^
+help: you might be missing a string literal to format with
+   |
+LL |     format_args!("{}", hang!());
+   |                  ^^^^^
+
+error: aborting due to previous error
+

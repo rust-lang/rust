@@ -14,7 +14,7 @@ use super::terms::*;
 use super::terms::VarianceTerm::*;
 use super::xform::*;
 
-struct SolveContext<'a, 'tcx: 'a> {
+struct SolveContext<'a, 'tcx> {
     terms_cx: TermsContext<'a, 'tcx>,
     constraints: Vec<Constraint<'a>>,
 
@@ -64,7 +64,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 let old_value = self.solutions[inferred];
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
-                    debug!("Updating inferred {} \
+                    debug!("updating inferred {} \
                             from {:?} to {:?} due to {:?}",
                            inferred,
                            old_value,
@@ -99,7 +99,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
 
         let solutions = &self.solutions;
         self.terms_cx.inferred_starts.iter().map(|(&id, &InferredIndex(start))| {
-            let def_id = tcx.hir().local_def_id_from_hir_id(id);
+            let def_id = tcx.hir().local_def_id(id);
             let generics = tcx.generics_of(def_id);
             let count = generics.count();
 

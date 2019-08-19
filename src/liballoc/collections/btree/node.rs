@@ -106,8 +106,8 @@ impl<K, V> LeafNode<K, V> {
         LeafNode {
             // As a general policy, we leave fields uninitialized if they can be, as this should
             // be both slightly faster and easier to track in Valgrind.
-            keys: uninitialized_array![_; CAPACITY],
-            vals: uninitialized_array![_; CAPACITY],
+            keys: [MaybeUninit::UNINIT; CAPACITY],
+            vals: [MaybeUninit::UNINIT; CAPACITY],
             parent: ptr::null(),
             parent_idx: MaybeUninit::uninit(),
             len: 0
@@ -159,7 +159,7 @@ impl<K, V> InternalNode<K, V> {
     unsafe fn new() -> Self {
         InternalNode {
             data: LeafNode::new(),
-            edges: uninitialized_array![_; 2*B],
+            edges: [MaybeUninit::UNINIT; 2*B]
         }
     }
 }
@@ -394,7 +394,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     /// Temporarily takes out another, immutable reference to the same node.
-    fn reborrow<'a>(&'a self) -> NodeRef<marker::Immut<'a>, K, V, Type> {
+    fn reborrow(&self) -> NodeRef<marker::Immut<'_>, K, V, Type> {
         NodeRef {
             height: self.height,
             node: self.node,

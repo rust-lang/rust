@@ -1,0 +1,8 @@
+warning: the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash
+  --> $DIR/type-alias-impl-trait-const.rs:8:12
+   |
+LL | #![feature(impl_trait_in_bindings)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+

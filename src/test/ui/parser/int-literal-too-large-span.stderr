@@ -1,4 +1,4 @@
-error: int literal is too large
+error: integer literal is too large
   --> $DIR/int-literal-too-large-span.rs:4:5
    |
 LL |     9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999

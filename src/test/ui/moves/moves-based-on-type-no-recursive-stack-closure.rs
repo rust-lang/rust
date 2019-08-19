@@ -6,7 +6,7 @@ struct R<'a> {
     // This struct is needed to create the
     // otherwise infinite type of a fn that
     // accepts itself as argument:
-    c: Box<FnMut(&mut R, bool) + 'a>
+    c: Box<dyn FnMut(&mut R, bool) + 'a>
 }
 
 fn innocent_looking_victim() {

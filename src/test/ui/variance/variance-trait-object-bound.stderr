@@ -2,7 +2,7 @@ error[E0208]: [-]
   --> $DIR/variance-trait-object-bound.rs:14:1
    |
 LL | / struct TOption<'a> {
-LL | |     v: Option<Box<T + 'a>>,
+LL | |     v: Option<Box<dyn T + 'a>>,
 LL | | }
    | |_^
 

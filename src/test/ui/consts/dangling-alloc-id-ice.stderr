@@ -7,7 +7,7 @@ LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
 LL | | };
    | |__^ type validation failed: encountered dangling pointer in final constant
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error: aborting due to previous error
 

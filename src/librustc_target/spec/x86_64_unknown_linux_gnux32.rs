@@ -5,8 +5,7 @@ pub fn target() -> TargetResult {
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-mx32".to_string());
-    // BUG: temporarily workaround #59674
-    base.stack_probes = false;
+    base.stack_probes = true;
     base.has_elf_tls = false;
     // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI
     // breaks code gen. See LLVM bug 36743

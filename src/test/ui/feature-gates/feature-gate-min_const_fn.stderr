@@ -23,7 +23,7 @@ LL |     const fn foo() -> u32;
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/57563
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0658]: const fn is unstable
   --> $DIR/feature-gate-min_const_fn.rs:8:5
@@ -32,7 +32,7 @@ LL |     const fn bar() -> u32 { 0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/57563
-   = help: add #![feature(const_fn)] to the crate attributes to enable
+   = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error: aborting due to 5 previous errors
 

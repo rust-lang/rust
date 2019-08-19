@@ -1,11 +1,8 @@
 // compile-flags:-Zborrowck=mir -Zverbose
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // Test that we assume that universal types like `T` outlive the
 // function body.
-
-#![allow(warnings)]
-#![feature(rustc_attrs)]
 
 use std::cell::Cell;
 
@@ -17,7 +14,6 @@ where
     f(Cell::new(&value));
 }
 
-#[rustc_errors]
 fn generic<T>(value: T) {
     // No error here:
     twice(value, |r| invoke(r));

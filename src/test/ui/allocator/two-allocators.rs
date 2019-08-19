@@ -4,6 +4,6 @@ use std::alloc::System;
 static A: System = System;
 #[global_allocator]
 static B: System = System;
-//~^ ERROR: cannot define more than one #[global_allocator]
+//~^ ERROR: cannot define multiple global allocators
 
 fn main() {}

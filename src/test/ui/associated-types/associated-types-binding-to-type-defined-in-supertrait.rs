@@ -11,21 +11,15 @@ pub trait Car : Vehicle {
     fn honk(&self) { }
 }
 
-///////////////////////////////////////////////////////////////////////////
-
 struct Black;
 struct ModelT;
 impl Vehicle for ModelT { type Color = Black; }
 impl Car for ModelT { }
 
-///////////////////////////////////////////////////////////////////////////
-
 struct Blue;
 struct ModelU;
 impl Vehicle for ModelU { type Color = Blue; }
 impl Car for ModelU { }
-
-///////////////////////////////////////////////////////////////////////////
 
 fn black_car<C:Car<Color=Black>>(c: C) {
 }

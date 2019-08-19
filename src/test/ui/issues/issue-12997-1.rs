@@ -2,6 +2,8 @@
 
 //! Test that makes sure wrongly-typed bench functions aren't ignored
 
+#![feature(test)]
+
 #[bench]
 fn foo() { } //~ ERROR functions used as benches
 

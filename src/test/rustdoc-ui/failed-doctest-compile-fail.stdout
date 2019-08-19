@@ -1,0 +1,14 @@
+
+running 1 test
+test $DIR/failed-doctest-compile-fail.rs - Foo (line 8) ... FAILED
+
+failures:
+
+---- $DIR/failed-doctest-compile-fail.rs - Foo (line 8) stdout ----
+Test compiled successfully, but it's marked `compile_fail`.
+
+failures:
+    $DIR/failed-doctest-compile-fail.rs - Foo (line 8)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out
+

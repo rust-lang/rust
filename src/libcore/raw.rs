@@ -53,7 +53,7 @@
 /// let value: i32 = 123;
 ///
 /// // let the compiler make a trait object
-/// let object: &Foo = &value;
+/// let object: &dyn Foo = &value;
 ///
 /// // look at the raw representation
 /// let raw_object: raw::TraitObject = unsafe { mem::transmute(object) };
@@ -65,7 +65,7 @@
 ///
 /// // construct a new object, pointing to a different `i32`, being
 /// // careful to use the `i32` vtable from `object`
-/// let synthesized: &Foo = unsafe {
+/// let synthesized: &dyn Foo = unsafe {
 ///      mem::transmute(raw::TraitObject {
 ///          data: &other_value as *const _ as *mut (),
 ///          vtable: raw_object.vtable,

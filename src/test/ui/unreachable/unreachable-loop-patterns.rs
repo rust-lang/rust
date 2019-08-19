@@ -19,4 +19,5 @@ impl Iterator for Void {
 fn main() {
     for _ in unimplemented!() as Void {}
     //~^ ERROR unreachable pattern
+    //~^^ ERROR unreachable pattern
 }

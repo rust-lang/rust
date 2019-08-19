@@ -7,12 +7,12 @@ LL | trait Foo: Iterator<Item = i32, Item = i32> {}
    |                     `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
-  --> $DIR/E0719.rs:6:38
+  --> $DIR/E0719.rs:6:42
    |
-LL | fn test() -> Box<Iterator<Item = (), Item = Unit>> {
-   |                           ---------  ^^^^^^^^^^^ re-bound here
-   |                           |
-   |                           `Item` bound here first
+LL | fn test() -> Box<dyn Iterator<Item = (), Item = Unit>> {
+   |                               ---------  ^^^^^^^^^^^ re-bound here
+   |                               |
+   |                               `Item` bound here first
 
 error: aborting due to 2 previous errors
 

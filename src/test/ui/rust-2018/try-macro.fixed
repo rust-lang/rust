@@ -1,11 +1,12 @@
 // Test that `try!` macros are rewritten.
 
 // run-rustfix
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![warn(rust_2018_compatibility)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![allow(deprecated)]
 
 fn foo() -> Result<usize, ()> {
     let x: Result<usize, ()> = Ok(22);

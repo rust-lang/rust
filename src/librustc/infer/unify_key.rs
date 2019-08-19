@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use std::cell::RefMut;
 
 pub trait ToType {
-    fn to_type<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
+    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx>;
 }
 
 impl UnifyKey for ty::IntVid {
@@ -52,7 +52,7 @@ impl UnifyKey for ty::RegionVid {
 }
 
 impl ToType for IntVarValue {
-    fn to_type<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             ty::IntType(i) => tcx.mk_mach_int(i),
             ty::UintType(i) => tcx.mk_mach_uint(i),
@@ -72,20 +72,26 @@ impl UnifyKey for ty::FloatVid {
 impl EqUnifyValue for FloatVarValue {}
 
 impl ToType for FloatVarValue {
-    fn to_type<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    fn to_type<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_mach_float(self.0)
     }
 }
 
 // Generic consts.
 
+#[derive(Copy, Clone, Debug)]
+pub struct ConstVariableOrigin {
+    pub kind: ConstVariableOriginKind,
+    pub span: Span,
+}
+
 /// Reasons to create a const inference variable
 #[derive(Copy, Clone, Debug)]
-pub enum ConstVariableOrigin {
-    MiscVariable(Span),
-    ConstInference(Span),
-    ConstParameterDefinition(Span, InternedString),
-    SubstitutionPlaceholder(Span),
+pub enum ConstVariableOriginKind {
+    MiscVariable,
+    ConstInference,
+    ConstParameterDefinition(InternedString),
+    SubstitutionPlaceholder,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -159,7 +165,10 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
         }?;
 
         Ok(ConstVarValue {
-            origin: ConstVariableOrigin::ConstInference(DUMMY_SP),
+            origin: ConstVariableOrigin {
+                kind: ConstVariableOriginKind::ConstInference,
+                span: DUMMY_SP,
+            },
             val,
         })
     }

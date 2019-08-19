@@ -1,8 +1,8 @@
 error[E0478]: lifetime bound not satisfied
   --> $DIR/regions-wf-trait-object.rs:7:5
    |
-LL |     x: Box<TheTrait<'a>+'b>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+LL |     x: Box<dyn TheTrait<'a>+'b>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime 'b as defined on the struct at 6:15
   --> $DIR/regions-wf-trait-object.rs:6:15

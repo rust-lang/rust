@@ -10,11 +10,11 @@ trait Foo<A> {
 }
 
 fn main() {
-    let x: Box<Foo(isize)>;
+    let x: Box<dyn Foo(isize)>;
     //~^ ERROR parenthetical notation is only stable when used with `Fn`-family
 
     // No errors with these:
-    let x: Box<Fn(isize)>;
-    let x: Box<FnMut(isize)>;
-    let x: Box<FnOnce(isize)>;
+    let x: Box<dyn Fn(isize)>;
+    let x: Box<dyn FnMut(isize)>;
+    let x: Box<dyn FnOnce(isize)>;
 }

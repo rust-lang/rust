@@ -50,6 +50,7 @@ assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", s
                 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
                 #[repr(transparent)]
                 #[rustc_layout_scalar_valid_range_start(1)]
+                #[rustc_nonnull_optimization_guaranteed]
                 pub struct $Ty($Int);
             }
 
@@ -462,16 +463,14 @@ assert_eq!(m, ", $swapped, ");
 Basic usage:
 
 ```
-#![feature(reverse_bits)]
-
 let n = ", $swap_op, stringify!($SelfT), ";
 let m = n.reverse_bits();
 
 assert_eq!(m, ", $reversed, ");
 ```"),
-            #[unstable(feature = "reverse_bits", issue = "48763")]
-            #[rustc_const_unstable(feature = "const_int_conversion")]
+            #[stable(feature = "reverse_bits", since = "1.37.0")]
             #[inline]
+            #[must_use]
             pub const fn reverse_bits(self) -> Self {
                 (self as $UnsignedT).reverse_bits() as Self
             }
@@ -718,13 +717,12 @@ returning `None` if `rhs == 0` or the division results in overflow.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!((", stringify!($SelfT),
 "::min_value() + 1).checked_div_euclid(-1), Some(", stringify!($Max), "));
 assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euclid(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -775,14 +773,13 @@ if `rhs == 0` or the division results in overflow.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1115,7 +1112,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
-                intrinsics::overflowing_add(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_add(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_add(self, rhs)
+                }
             }
         }
 
@@ -1138,7 +1141,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                intrinsics::overflowing_sub(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_sub(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_sub(self, rhs)
+                }
             }
         }
 
@@ -1160,7 +1169,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_mul(self, rhs: Self) -> Self {
-                intrinsics::overflowing_mul(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_mul(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_mul(self, rhs)
+                }
             }
         }
 
@@ -1211,11 +1226,10 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1270,11 +1284,10 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1567,7 +1580,6 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
@@ -1575,7 +1587,7 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
 "::MIN, true));
 ```"),
             #[inline]
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
@@ -1637,13 +1649,12 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1874,7 +1885,6 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 let a: ", stringify!($SelfT), " = 7; // or any other integer type
 let b = 4;
 
@@ -1883,7 +1893,7 @@ assert_eq!(a.div_euclid(-b), -1); // 7 >= -4 * -1
 assert_eq!((-a).div_euclid(b), -2); // -7 >= 4 * -2
 assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1914,7 +1924,6 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 let a: ", stringify!($SelfT), " = 7; // or any other integer type
 let b = 4;
 
@@ -1923,7 +1932,7 @@ assert_eq!((-a).rem_euclid(b), 1);
 assert_eq!(a.rem_euclid(-b), 3);
 assert_eq!((-a).rem_euclid(-b), 1);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1994,13 +2003,10 @@ assert_eq!((-10", stringify!($SelfT), ").signum(), -1);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_const_unstable(feature = "const_int_sign")]
             #[inline]
-            pub fn signum(self) -> Self {
-                match self {
-                    n if n > 0 =>  1,
-                    0          =>  0,
-                    _          => -1,
-                }
+            pub const fn signum(self) -> Self {
+                (self > 0) as Self - (self < 0) as Self
             }
         }
 
@@ -2512,15 +2518,14 @@ assert_eq!(m, ", $swapped, ");
 Basic usage:
 
 ```
-#![feature(reverse_bits)]
-
 let n = ", $swap_op, stringify!($SelfT), ";
 let m = n.reverse_bits();
 
 assert_eq!(m, ", $reversed, ");
 ```"),
-            #[unstable(feature = "reverse_bits", issue = "48763")]
+            #[stable(feature = "reverse_bits", since = "1.37.0")]
             #[inline]
+            #[must_use]
             pub const fn reverse_bits(self) -> Self {
                 intrinsics::bitreverse(self as $ActualT) as Self
             }
@@ -2758,11 +2763,10 @@ if `rhs == 0`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(128", stringify!($SelfT), ".checked_div_euclid(2), Some(64));
 assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -2810,11 +2814,10 @@ if `rhs == 0`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3046,7 +3049,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
-                intrinsics::overflowing_add(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_add(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_add(self, rhs)
+                }
             }
         }
 
@@ -3068,7 +3077,13 @@ $EndFeature, "
                           without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
-                intrinsics::overflowing_sub(self, rhs)
+                #[cfg(boostrap_stdarch_ignore_this)] {
+                    intrinsics::overflowing_sub(self, rhs)
+                }
+
+                #[cfg(not(boostrap_stdarch_ignore_this))] {
+                    intrinsics::wrapping_sub(self, rhs)
+                }
             }
         }
 
@@ -3091,7 +3106,13 @@ $EndFeature, "
                           without modifying the original"]
         #[inline]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
-            intrinsics::overflowing_mul(self, rhs)
+            #[cfg(boostrap_stdarch_ignore_this)] {
+                intrinsics::overflowing_mul(self, rhs)
+            }
+
+            #[cfg(not(boostrap_stdarch_ignore_this))] {
+                intrinsics::wrapping_mul(self, rhs)
+            }
         }
 
         doc_comment! {
@@ -3132,10 +3153,9 @@ is exactly equal to `self.wrapping_div(rhs)`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3184,10 +3204,9 @@ is exactly equal to `self.wrapping_rem(rhs)`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3453,11 +3472,10 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
 ```"),
             #[inline]
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
@@ -3513,11 +3531,10 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 ```"),
             #[inline]
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
@@ -3701,10 +3718,9 @@ is exactly equal to `self / rhs`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer type
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -3727,10 +3743,9 @@ is exactly equal to `self % rhs`.
 Basic usage:
 
 ```
-#![feature(euclidean_division)]
 assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer type
 ```"),
-            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[stable(feature = "euclidean_division", since = "1.38.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -4171,8 +4186,8 @@ impl u8 {
 
     /// Checks if the value is an ASCII alphabetic character:
     ///
-    /// - U+0041 'A' ... U+005A 'Z', or
-    /// - U+0061 'a' ... U+007A 'z'.
+    /// - U+0041 'A' ..= U+005A 'Z', or
+    /// - U+0061 'a' ..= U+007A 'z'.
     ///
     /// # Examples
     ///
@@ -4207,7 +4222,7 @@ impl u8 {
     }
 
     /// Checks if the value is an ASCII uppercase character:
-    /// U+0041 'A' ... U+005A 'Z'.
+    /// U+0041 'A' ..= U+005A 'Z'.
     ///
     /// # Examples
     ///
@@ -4242,7 +4257,7 @@ impl u8 {
     }
 
     /// Checks if the value is an ASCII lowercase character:
-    /// U+0061 'a' ... U+007A 'z'.
+    /// U+0061 'a' ..= U+007A 'z'.
     ///
     /// # Examples
     ///
@@ -4278,9 +4293,9 @@ impl u8 {
 
     /// Checks if the value is an ASCII alphanumeric character:
     ///
-    /// - U+0041 'A' ... U+005A 'Z', or
-    /// - U+0061 'a' ... U+007A 'z', or
-    /// - U+0030 '0' ... U+0039 '9'.
+    /// - U+0041 'A' ..= U+005A 'Z', or
+    /// - U+0061 'a' ..= U+007A 'z', or
+    /// - U+0030 '0' ..= U+0039 '9'.
     ///
     /// # Examples
     ///
@@ -4315,7 +4330,7 @@ impl u8 {
     }
 
     /// Checks if the value is an ASCII decimal digit:
-    /// U+0030 '0' ... U+0039 '9'.
+    /// U+0030 '0' ..= U+0039 '9'.
     ///
     /// # Examples
     ///
@@ -4351,9 +4366,9 @@ impl u8 {
 
     /// Checks if the value is an ASCII hexadecimal digit:
     ///
-    /// - U+0030 '0' ... U+0039 '9', or
-    /// - U+0041 'A' ... U+0046 'F', or
-    /// - U+0061 'a' ... U+0066 'f'.
+    /// - U+0030 '0' ..= U+0039 '9', or
+    /// - U+0041 'A' ..= U+0046 'F', or
+    /// - U+0061 'a' ..= U+0066 'f'.
     ///
     /// # Examples
     ///
@@ -4389,10 +4404,10 @@ impl u8 {
 
     /// Checks if the value is an ASCII punctuation character:
     ///
-    /// - U+0021 ... U+002F `! " # $ % & ' ( ) * + , - . /`, or
-    /// - U+003A ... U+0040 `: ; < = > ? @`, or
-    /// - U+005B ... U+0060 ``[ \ ] ^ _ ` ``, or
-    /// - U+007B ... U+007E `{ | } ~`
+    /// - U+0021 ..= U+002F `! " # $ % & ' ( ) * + , - . /`, or
+    /// - U+003A ..= U+0040 `: ; < = > ? @`, or
+    /// - U+005B ..= U+0060 ``[ \ ] ^ _ ` ``, or
+    /// - U+007B ..= U+007E `{ | } ~`
     ///
     /// # Examples
     ///
@@ -4427,7 +4442,7 @@ impl u8 {
     }
 
     /// Checks if the value is an ASCII graphic character:
-    /// U+0021 '!' ... U+007E '~'.
+    /// U+0021 '!' ..= U+007E '~'.
     ///
     /// # Examples
     ///
@@ -4514,7 +4529,7 @@ impl u8 {
     }
 
     /// Checks if the value is an ASCII control character:
-    /// U+0000 NUL ... U+001F UNIT SEPARATOR, or U+007F DELETE.
+    /// U+0000 NUL ..= U+001F UNIT SEPARATOR, or U+007F DELETE.
     /// Note that most ASCII whitespace characters are control
     /// characters, but SPACE is not.
     ///

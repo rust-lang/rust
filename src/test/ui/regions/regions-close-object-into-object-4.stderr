@@ -1,18 +1,18 @@
 error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
   --> $DIR/regions-close-object-into-object-4.rs:10:11
    |
-LL |     box B(&*v) as Box<X>
+LL |     box B(&*v) as Box<dyn X>
    |           ^^^
    |
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 9:6...
   --> $DIR/regions-close-object-into-object-4.rs:9:6
    |
-LL | fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
+LL | fn i<'a, T, U>(v: Box<dyn A<U>+'a>) -> Box<dyn X + 'static> {
    |      ^^
 note: ...so that the type `(dyn A<U> + 'a)` is not borrowed for too long
   --> $DIR/regions-close-object-into-object-4.rs:10:11
    |
-LL |     box B(&*v) as Box<X>
+LL |     box B(&*v) as Box<dyn X>
    |           ^^^
    = note: but, the lifetime must be valid for the static lifetime...
    = note: ...so that the expression is assignable:

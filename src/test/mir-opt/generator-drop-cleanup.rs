@@ -17,6 +17,8 @@ fn main() {
 //     switchInt(move _5) -> [0u32: bb4, 3u32: bb7, otherwise: bb8];
 // }
 // bb1: {
+//     StorageDead(_3);
+//     StorageDead(_2);
 //     goto -> bb5;
 // }
 // bb2: {
@@ -35,6 +37,7 @@ fn main() {
 //     goto -> bb3;
 // }
 // bb7: {
+//     StorageLive(_2);
 //     StorageLive(_3);
 //     goto -> bb1;
 // }

@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![warn(unused)]
    |         ^^^^^^
-   = note: #[warn(dead_code)] implied by #[warn(unused)]
+   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
 
 warning: struct is never constructed: `Struct`
   --> $DIR/unused-warning-point-at-signature.rs:12:1

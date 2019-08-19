@@ -4,7 +4,7 @@ use crate::hir::def::{DefKind, Export};
 use crate::hir::{self, TraitCandidate, ItemLocalId, CodegenFnAttrs};
 use crate::infer::canonical::{self, Canonical};
 use crate::lint;
-use crate::middle::borrowck::BorrowCheckResult;
+use crate::middle::borrowck::{BorrowCheckResult, SignalledError};
 use crate::middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary, ForeignModule};
 use crate::middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
 use crate::middle::privacy::AccessLevels;
@@ -20,7 +20,7 @@ use crate::mir::mono::CodegenUnit;
 use crate::mir;
 use crate::mir::interpret::GlobalId;
 use crate::session::CrateDisambiguator;
-use crate::session::config::{EntryFnType, OutputFilenames, OptLevel};
+use crate::session::config::{EntryFnType, OutputFilenames, OptLevel, SymbolManglingVersion};
 use crate::traits::{self, Vtable};
 use crate::traits::query::{
     CanonicalPredicateGoal, CanonicalProjectionGoal,
@@ -45,7 +45,7 @@ use crate::util::profiling::ProfileCategory::*;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxIndexMap, FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -54,7 +54,7 @@ use rustc_target::spec::PanicStrategy;
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::sync::Arc;
-use std::intrinsics::type_name;
+use std::any::type_name;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::InternedString;
 use syntax::attr;
@@ -100,8 +100,7 @@ pub use self::on_disk_cache::OnDiskCache;
 
 rustc_query_append! { [define_queries!][ <'tcx>
     Other {
-        /// Run analysis passes on the crate
-        [] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
-
+        /// Runs analysis passes on the crate.
+        [eval_always] fn analysis: Analysis(CrateNum) -> Result<(), ErrorReported>,
     },
 ]}

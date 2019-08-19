@@ -1,24 +1,21 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(box_patterns)]
+#![feature(crate_visibility_modifier)]
 #![feature(drain_filter)]
+#![feature(in_band_lifetimes)]
 #![feature(libc)]
 #![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(crate_visibility_modifier)]
-#![feature(specialization)]
 #![feature(rustc_private)]
+#![feature(slice_patterns)]
+#![feature(specialization)]
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-
 extern crate libc;
-#[allow(unused_extern_crates)]
-extern crate serialize as rustc_serialize; // used by deriving
 extern crate proc_macro;
 
 #[macro_use]
@@ -28,12 +25,10 @@ extern crate rustc_data_structures;
 
 mod error_codes;
 
-mod index_builder;
 mod index;
 mod encoder;
 mod decoder;
 mod cstore_impl;
-mod isolated_encoder;
 mod schema;
 mod native_libs;
 mod link_args;

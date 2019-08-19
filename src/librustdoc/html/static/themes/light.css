@@ -164,21 +164,21 @@ a.test-arrow {
 	color: #555;
 	background-color: white;
 	border-color: #e0e0e0;
-	box-shadow: 0px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 }
 
 .search-input {
 	color: #555;
-	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 	background-color: white;
+	box-shadow: 0 0 0 1px #e0e0e0, 0 0 0 2px transparent;
 }
 
 .search-input:focus {
 	border-color: #66afe9;
 }
 
-#crate-search + .search-input {
-	box-shadow: 1px 0 0 1px #e0e0e0, 0 0 0 2px transparent;
+#crate-search + .search-input:focus {
+	box-shadow: 0 0 8px #078dd8;
 }
 
 .module-item .stab {

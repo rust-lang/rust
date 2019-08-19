@@ -16,9 +16,6 @@
 
 #![recursion_limit="256"]
 
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-
 pub extern crate getopts;
 #[cfg(unix)]
 extern crate libc;
@@ -37,7 +34,8 @@ use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::util::common::{time, ErrorReported, install_panic_hook};
+use rustc::util::common::{ErrorReported, install_panic_hook, print_time_passes_entry};
+use rustc::util::common::{set_time_depth, time};
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -45,7 +43,7 @@ use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
 
-use serialize::json::ToJson;
+use rustc_serialize::json::ToJson;
 
 use std::borrow::Cow;
 use std::cmp::max;
@@ -53,11 +51,12 @@ use std::default::Default;
 use std::env;
 use std::ffi::OsString;
 use std::io::{self, Read, Write};
+use std::mem;
 use std::panic::{self, catch_unwind};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
-use std::mem;
+use std::time::Instant;
 
 use syntax::ast;
 use syntax::source_map::FileLoader;
@@ -71,7 +70,7 @@ pub mod pretty;
 /// Exit status code used for successful compilation and help output.
 pub const EXIT_SUCCESS: i32 = 0;
 
-/// Exit status code used for compilation failures and  invalid flags.
+/// Exit status code used for compilation failures and invalid flags.
 pub const EXIT_FAILURE: i32 = 1;
 
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
@@ -103,19 +102,38 @@ pub fn abort_on_err<T>(result: Result<T, ErrorReported>, sess: &Session) -> T {
 pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
-    /// Called after parsing and returns true to continue execution
-    fn after_parsing(&mut self, _compiler: &interface::Compiler) -> bool {
-        true
+    /// Called after parsing. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_parsing(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
     }
-    /// Called after analysis and returns true to continue execution
-    fn after_analysis(&mut self, _compiler: &interface::Compiler) -> bool {
-        true
+    /// Called after expansion. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_expansion(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
+    }
+    /// Called after analysis. Return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+    fn after_analysis(&mut self, _compiler: &interface::Compiler) -> Compilation {
+        Compilation::Continue
     }
 }
 
 pub struct DefaultCallbacks;
 
 impl Callbacks for DefaultCallbacks {}
+
+#[derive(Default)]
+pub struct TimePassesCallbacks {
+    time_passes: bool,
+}
+
+impl Callbacks for TimePassesCallbacks {
+    fn config(&mut self, config: &mut interface::Config) {
+        self.time_passes =
+            config.opts.debugging_opts.time_passes || config.opts.debugging_opts.time;
+    }
+}
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
@@ -280,7 +298,7 @@ pub fn run_compiler(
             }
         }
 
-        if !callbacks.after_parsing(compiler) {
+        if callbacks.after_parsing(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 
@@ -295,6 +313,11 @@ pub fn run_compiler(
         // Lint plugins are registered; now we can process command line flags.
         if sess.opts.describe_lints {
             describe_lints(&sess, &sess.lint_store.borrow(), true);
+            return sess.compile_status();
+        }
+
+        compiler.expansion()?;
+        if callbacks.after_expansion(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 
@@ -341,7 +364,7 @@ pub fn run_compiler(
 
         compiler.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
-        if !callbacks.after_analysis(compiler) {
+        if callbacks.after_analysis(compiler) == Compilation::Stop {
             return sess.compile_status();
         }
 
@@ -655,7 +678,7 @@ impl RustcDefaultCalls {
 
                     let mut cfgs = sess.parse_sess.config.iter().filter_map(|&(name, ref value)| {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
-                            path: ast::Path::from_ident(ast::Ident::with_empty_ctxt(name)),
+                            path: ast::Path::from_ident(ast::Ident::with_dummy_span(name)),
                             node: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });
@@ -934,14 +957,11 @@ fn print_flag_list<T>(cmdline_opt: &str,
 /// otherwise returns `None`.
 ///
 /// The compiler's handling of options is a little complicated as it ties into
-/// our stability story, and it's even *more* complicated by historical
-/// accidents. The current intention of each compiler option is to have one of
-/// three modes:
+/// our stability story. The current intention of each compiler option is to
+/// have one of two modes:
 ///
 /// 1. An option is stable and can be used everywhere.
-/// 2. An option is unstable, but was historically allowed on the stable
-///    channel.
-/// 3. An option is unstable, and can only be used on nightly.
+/// 2. An option is unstable, and can only be used on nightly.
 ///
 /// Like unstable library and language features, however, unstable options have
 /// always required a form of "opt in" to indicate that you're using them. This
@@ -984,19 +1004,13 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   this option that was passed.
     // * If we're a nightly compiler, then unstable options are now unlocked, so
     //   we're good to go.
-    // * Otherwise, if we're a truly unstable option then we generate an error
+    // * Otherwise, if we're an unstable option then we generate an error
     //   (unstable option being used on stable)
-    // * If we're a historically stable-but-should-be-unstable option then we
-    //   emit a warning that we're going to turn this into an error soon.
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        // Only show unstable options in --help if we *really* accept unstable
-        // options, which catches the case where we got `-Z unstable-options` on
-        // the stable channel of Rust which was accidentally allowed
-        // historically.
-        usage(matches.opt_present("verbose"),
-              nightly_options::is_unstable_enabled(&matches));
+        // Only show unstable options in --help if we accept unstable options.
+        usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
         return None;
     }
 
@@ -1168,7 +1182,9 @@ pub fn init_rustc_env_logger() {
 }
 
 pub fn main() {
+    let start = Instant::now();
     init_rustc_env_logger();
+    let mut callbacks = TimePassesCallbacks::default();
     let result = report_ices_to_stderr_if_any(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
@@ -1176,10 +1192,14 @@ pub fn main() {
                             &format!("Argument {} is not valid Unicode: {:?}", i, arg))
             }))
             .collect::<Vec<_>>();
-        run_compiler(&args, &mut DefaultCallbacks, None, None)
+        run_compiler(&args, &mut callbacks, None, None)
     }).and_then(|result| result);
-    process::exit(match result {
+    let exit_code = match result {
         Ok(_) => EXIT_SUCCESS,
         Err(_) => EXIT_FAILURE,
-    });
+    };
+    // The extra `\t` is necessary to align this label with the others.
+    set_time_depth(0);
+    print_time_passes_entry(callbacks.time_passes, "\ttotal", start.elapsed());
+    process::exit(exit_code);
 }

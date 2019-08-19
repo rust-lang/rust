@@ -2,7 +2,7 @@
 // ignore-tidy-linelength
 
 #![crate_type = "lib"]
-#![feature(custom_attribute)]
+#![feature(rustc_attrs)]
 
 pub struct S {
   _field: [i32; 8],
@@ -146,7 +146,7 @@ pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
 
 // CHECK: noalias i8* @allocator()
 #[no_mangle]
-#[allocator]
+#[rustc_allocator]
 pub fn allocator() -> *const i8 {
   std::ptr::null()
 }

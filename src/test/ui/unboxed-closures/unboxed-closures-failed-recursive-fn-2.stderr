@@ -1,8 +1,8 @@
-error[E0282]: type annotations needed
+error[E0282]: type annotations needed for `std::option::Option<T>`
   --> $DIR/unboxed-closures-failed-recursive-fn-2.rs:16:32
    |
 LL |     let mut closure0 = None;
-   |         ------------ consider giving `closure0` a type
+   |         ------------ consider giving `closure0` the explicit type `std::option::Option<T>`, with the type parameters specified
 ...
 LL |                         return c();
    |                                ^^^ cannot infer type

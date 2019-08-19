@@ -5,7 +5,7 @@
 // `'r` is bound, that leads to badness. This test checks that
 // everything works.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(dead_code)]
 
 trait TheTrait {

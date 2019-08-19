@@ -735,6 +735,47 @@ class RustBuild(object):
         """Set download URL for development environment"""
         self._download_url = 'https://dev-static.rust-lang.org'
 
+    def check_vendored_status(self):
+        """Check that vendoring is configured properly"""
+        vendor_dir = os.path.join(self.rust_root, 'vendor')
+        if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
+            if os.environ.get('USER') != os.environ['SUDO_USER']:
+                self.use_vendored_sources = True
+                print('info: looks like you are running this command under `sudo`')
+                print('      and so in order to preserve your $HOME this will now')
+                print('      use vendored sources by default.')
+                if not os.path.exists(vendor_dir):
+                    print('error: vendoring required, but vendor directory does not exist.')
+                    print('       Run `cargo vendor` without sudo to initialize the '
+                        'vendor directory.')
+                    raise Exception("{} not found".format(vendor_dir))
+
+        if self.use_vendored_sources:
+            if not os.path.exists('.cargo'):
+                os.makedirs('.cargo')
+            with output('.cargo/config') as cargo_config:
+                cargo_config.write(
+                    "[source.crates-io]\n"
+                    "replace-with = 'vendored-sources'\n"
+                    "registry = 'https://example.com'\n"
+                    "\n"
+                    "[source.vendored-sources]\n"
+                    "directory = '{}/vendor'\n"
+                .format(self.rust_root))
+        else:
+            if os.path.exists('.cargo'):
+                shutil.rmtree('.cargo')
+
+    def ensure_vendored(self):
+        """Ensure that the vendored sources are available if needed"""
+        vendor_dir = os.path.join(self.rust_root, 'vendor')
+        # Note that this does not handle updating the vendored dependencies if
+        # the rust git repository is updated. Normal development usually does
+        # not use vendoring, so hopefully this isn't too much of a problem.
+        if self.use_vendored_sources and not os.path.exists(vendor_dir):
+            run([self.cargo(), "vendor"],
+                verbose=self.verbose, cwd=self.rust_root)
+
 
 def bootstrap(help_triggered):
     """Configure, fetch, build and run the initial bootstrap"""
@@ -776,30 +817,7 @@ def bootstrap(help_triggered):
 
     build.use_locked_deps = '\nlocked-deps = true' in build.config_toml
 
-    if 'SUDO_USER' in os.environ and not build.use_vendored_sources:
-        if os.environ.get('USER') != os.environ['SUDO_USER']:
-            build.use_vendored_sources = True
-            print('info: looks like you are running this command under `sudo`')
-            print('      and so in order to preserve your $HOME this will now')
-            print('      use vendored sources by default. Note that if this')
-            print('      does not work you should run a normal build first')
-            print('      before running a command like `sudo ./x.py install`')
-
-    if build.use_vendored_sources:
-        if not os.path.exists('.cargo'):
-            os.makedirs('.cargo')
-        with output('.cargo/config') as cargo_config:
-            cargo_config.write("""
-                [source.crates-io]
-                replace-with = 'vendored-sources'
-                registry = 'https://example.com'
-
-                [source.vendored-sources]
-                directory = '{}/vendor'
-            """.format(build.rust_root))
-    else:
-        if os.path.exists('.cargo'):
-            shutil.rmtree('.cargo')
+    build.check_vendored_status()
 
     data = stage0_data(build.rust_root)
     build.date = data['date']
@@ -815,6 +833,7 @@ def bootstrap(help_triggered):
     build.build = args.build or build.build_triple()
     build.download_stage0()
     sys.stdout.flush()
+    build.ensure_vendored()
     build.build_bootstrap()
     sys.stdout.flush()
 

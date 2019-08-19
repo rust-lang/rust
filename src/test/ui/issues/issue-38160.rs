@@ -1,7 +1,5 @@
-// compile-pass
-// skip-codegen
-#![feature(associated_consts)]
-#![allow(warnings)]
+// check-pass
+
 trait MyTrait {
     const MY_CONST: &'static str;
 }
@@ -17,6 +15,5 @@ macro_rules! my_macro {
 }
 
 my_macro!();
-
 
 fn main() {}

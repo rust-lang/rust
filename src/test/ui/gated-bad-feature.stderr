@@ -1,32 +1,32 @@
-error[E0556]: malformed feature, expected just one word
-  --> $DIR/gated-bad-feature.rs:3:5
+error[E0556]: malformed `feature` attribute input
+  --> $DIR/gated-bad-feature.rs:1:25
    |
-LL |     foo(bar),
-   |     ^^^^^^^^
+LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+   |                         ^^^^^^^^ help: expected just one word: `foo`
 
-error[E0556]: malformed feature, expected just one word
-  --> $DIR/gated-bad-feature.rs:4:5
+error[E0556]: malformed `feature` attribute input
+  --> $DIR/gated-bad-feature.rs:1:35
    |
-LL |     foo = "baz"
-   |     ^^^^^^^^^^^
+LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+   |                                   ^^^^^^^^^^^ help: expected just one word: `foo`
 
 error[E0557]: feature has been removed
-  --> $DIR/gated-bad-feature.rs:12:12
+  --> $DIR/gated-bad-feature.rs:8:12
    |
 LL | #![feature(test_removed_feature)]
-   |            ^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^ feature has been removed
 
-error: attribute must be of the form `#[feature(name1, name1, ...)]`
-  --> $DIR/gated-bad-feature.rs:9:1
+error: malformed `feature` attribute input
+  --> $DIR/gated-bad-feature.rs:5:1
    |
 LL | #![feature]
-   | ^^^^^^^^^^^
+   | ^^^^^^^^^^^ help: must be of the form: `#[feature(name1, name1, ...)]`
 
-error: attribute must be of the form `#[feature(name1, name1, ...)]`
-  --> $DIR/gated-bad-feature.rs:10:1
+error: malformed `feature` attribute input
+  --> $DIR/gated-bad-feature.rs:6:1
    |
 LL | #![feature = "foo"]
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[feature(name1, name1, ...)]`
 
 error: aborting due to 5 previous errors
 

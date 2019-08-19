@@ -1,6 +1,5 @@
-// ignore-windows failing on win32 bot
 // ignore-freebsd: gdb package too new
-// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
+// only-cdb // "Temporarily" ignored on GDB/LLDB due to debuginfo tests being disabled, see PR 47155
 // ignore-android: FIXME(#10381)
 // compile-flags:-g
 // min-gdb-version 7.7
@@ -62,6 +61,56 @@
 // lldb-command: print none
 // lldb-check:[...]$5 = None
 
+
+// === CDB TESTS ==================================================================================
+
+// cdb-command: g
+
+// cdb-command: dx slice,d
+// cdb-check:slice,d [...]
+// NOTE: While slices have a .natvis entry that works in VS & VS Code, it fails in CDB 10.0.18362.1
+
+// cdb-command: dx vec,d
+// cdb-check:vec,d [...] : { size=4 } [Type: [...]::Vec<u64>]
+// cdb-check:    [size]           : 4 [Type: [...]]
+// cdb-check:    [capacity]       : [...] [Type: [...]]
+// cdb-check:    [0]              : 4 [Type: unsigned __int64]
+// cdb-check:    [1]              : 5 [Type: unsigned __int64]
+// cdb-check:    [2]              : 6 [Type: unsigned __int64]
+// cdb-check:    [3]              : 7 [Type: unsigned __int64]
+
+// cdb-command: dx str_slice
+// cdb-check:str_slice [...]
+// NOTE: While string slices have a .natvis entry that works in VS & VS Code, it fails in CDB
+
+// cdb-command: dx string
+// cdb-check:string           : "IAMA string!" [Type: [...]::String]
+// cdb-check:    [<Raw View>]     [Type: [...]::String]
+// cdb-check:    [size]           : 0xc [Type: [...]]
+// cdb-check:    [capacity]       : 0xc [Type: [...]]
+// cdb-check:    [0]              : 73 'I' [Type: char]
+// cdb-check:    [1]              : 65 'A' [Type: char]
+// cdb-check:    [2]              : 77 'M' [Type: char]
+// cdb-check:    [3]              : 65 'A' [Type: char]
+// cdb-check:    [4]              : 32 ' ' [Type: char]
+// cdb-check:    [5]              : 115 's' [Type: char]
+// cdb-check:    [6]              : 116 't' [Type: char]
+// cdb-check:    [7]              : 114 'r' [Type: char]
+// cdb-check:    [8]              : 105 'i' [Type: char]
+// cdb-check:    [9]              : 110 'n' [Type: char]
+// cdb-check:    [10]             : 103 'g' [Type: char]
+// cdb-check:    [11]             : 33 '!' [Type: char]
+
+// cdb-command: dx os_string
+// cdb-check:os_string        [Type: [...]::OsString]
+// NOTE: OsString doesn't have a .natvis entry yet.
+
+// cdb-command: dx some
+// cdb-check:some             : { Some 8 } [Type: [...]::Option<i16>]
+// cdb-command: dx none
+// cdb-check:none             : { None } [Type: [...]::Option<i64>]
+// cdb-command: dx some_string
+// cdb-check:some_string      : { Some "IAMA optional string!" } [[...]::Option<[...]::String>]
 
 #![allow(unused_variables)]
 use std::ffi::OsString;

@@ -96,8 +96,8 @@ pub fn symbols(input: TokenStream) -> TokenStream {
 
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
+    let mut digits_stream = quote! {};
     let mut prefill_stream = quote! {};
-    let mut from_str_stream = quote! {};
     let mut counter = 0u32;
     let mut keys = HashSet::<String>::new();
 
@@ -107,6 +107,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
         }
     };
 
+    // Generate the listed keywords.
     for keyword in &input.keywords.0 {
         let name = &keyword.name;
         let value = &keyword.value;
@@ -115,16 +116,12 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             #value,
         });
         keyword_stream.extend(quote! {
-            pub const #name: Keyword = Keyword {
-                ident: Ident::with_empty_ctxt(super::Symbol::new(#counter))
-            };
-        });
-        from_str_stream.extend(quote! {
-            #value => Ok(#name),
+            pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
     }
 
+    // Generate the listed symbols.
     for symbol in &input.symbols.0 {
         let name = &symbol.name;
         let value = match &symbol.value {
@@ -141,27 +138,33 @@ pub fn symbols(input: TokenStream) -> TokenStream {
         counter += 1;
     }
 
+    // Generate symbols for the strings "0", "1", ..., "9".
+    for n in 0..10 {
+        let n = n.to_string();
+        check_dup(&n);
+        prefill_stream.extend(quote! {
+            #n,
+        });
+        digits_stream.extend(quote! {
+            Symbol::new(#counter),
+        });
+        counter += 1;
+    }
+
     let tt = TokenStream::from(quote! {
         macro_rules! keywords {
             () => {
                 #keyword_stream
-
-                impl std::str::FromStr for Keyword {
-                    type Err = ();
-
-                    fn from_str(s: &str) -> Result<Self, ()> {
-                        match s {
-                            #from_str_stream
-                            _ => Err(()),
-                        }
-                    }
-                }
             }
         }
 
         macro_rules! symbols {
             () => {
                 #symbols_stream
+
+                pub const digits_array: &[Symbol; 10] = &[
+                    #digits_stream
+                ];
             }
         }
 

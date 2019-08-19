@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 // Error messages for EXXXX errors.
 // Each message should start and end with a new line, and be wrapped to 80 characters.
 // In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
@@ -182,7 +180,7 @@ beta compilers will not comply.
 Example of erroneous code (on a stable compiler):
 
 ```ignore (depends on release channel)
-#![feature(non_ascii_idents)] // error: #![feature] may not be used on the
+#![feature(non_ascii_idents)] // error: `#![feature]` may not be used on the
                               //        stable release channel
 ```
 

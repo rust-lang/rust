@@ -104,7 +104,6 @@ impl Step for Llvm {
             }
         }
 
-        let _folder = builder.fold_output(|| "llvm");
         let descriptor = if emscripten { "Emscripten " } else { "" };
         builder.info(&format!("Building {}LLVM for {}", descriptor, target));
         let _time = util::timeit(&builder);
@@ -126,14 +125,18 @@ impl Step for Llvm {
         } else {
             match builder.config.llvm_targets {
                 Some(ref s) => s,
-                None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
+                None => "AArch64;ARM;Hexagon;MSP430;Mips;NVPTX;PowerPC;RISCV;\
+                         Sparc;SystemZ;WebAssembly;X86",
             }
         };
 
         let llvm_exp_targets = if self.emscripten {
             ""
         } else {
-            &builder.config.llvm_experimental_targets[..]
+            match builder.config.llvm_experimental_targets {
+                Some(ref s) => s,
+                None => "",
+            }
         };
 
         let assertions = if builder.config.llvm_assertions {"ON"} else {"OFF"};
@@ -151,6 +154,7 @@ impl Step for Llvm {
            .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
            .define("LLVM_ENABLE_LIBEDIT", "OFF")
+           .define("LLVM_ENABLE_Z3_SOLVER", "OFF")
            .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
@@ -203,8 +207,16 @@ impl Step for Llvm {
             cfg.define("LLVM_BUILD_32_BITS", "ON");
         }
 
+        let mut enabled_llvm_projects = Vec::new();
+
+        if util::forcing_clang_based_tests() {
+            enabled_llvm_projects.push("clang");
+            enabled_llvm_projects.push("compiler-rt");
+        }
+
         if want_lldb {
-            cfg.define("LLVM_ENABLE_PROJECTS", "clang;lldb");
+            enabled_llvm_projects.push("clang");
+            enabled_llvm_projects.push("lldb");
             // For the time being, disable code signing.
             cfg.define("LLDB_CODESIGN_IDENTITY", "");
             cfg.define("LLDB_NO_DEBUGSERVER", "ON");
@@ -212,6 +224,12 @@ impl Step for Llvm {
             // LLDB requires libxml2; but otherwise we want it to be disabled.
             // See https://github.com/rust-lang/rust/pull/50104
             cfg.define("LLVM_ENABLE_LIBXML2", "OFF");
+        }
+
+        if enabled_llvm_projects.len() > 0 {
+            enabled_llvm_projects.sort();
+            enabled_llvm_projects.dedup();
+            cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));
         }
 
         if let Some(num_linkers) = builder.config.llvm_link_jobs {
@@ -402,7 +420,7 @@ fn configure_cmake(builder: &Builder<'_>,
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
     let mut cflags = builder.cflags(target, GitRepo::Llvm).join(" ");
-    if let Some(ref s) = builder.config.llvm_cxxflags {
+    if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push_str(&format!(" {}", s));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
@@ -479,7 +497,6 @@ impl Step for Lld {
             return out_dir
         }
 
-        let _folder = builder.fold_output(|| "lld");
         builder.info(&format!("Building LLD for {}", target));
         let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
@@ -534,7 +551,7 @@ impl Step for TestHelpers {
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various
-    /// `run-pass` test suites for ABI testing.
+    /// `run-pass` tests for ABI testing.
     fn run(self, builder: &Builder<'_>) {
         if builder.config.dry_run {
             return;
@@ -546,7 +563,6 @@ impl Step for TestHelpers {
             return
         }
 
-        let _folder = builder.fold_output(|| "build_test_helpers");
         builder.info("Building test helpers");
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();

@@ -1,6 +1,4 @@
-//~ ERROR Missing code example in this documentation
-
-#![deny(missing_doc_code_examples)]
+#![deny(missing_doc_code_examples)] //~ ERROR Missing code example in this documentation
 
 /// Some docs.
 //~^ ERROR Missing code example in this documentation

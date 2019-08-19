@@ -1,7 +1,7 @@
 #![feature(non_exhaustive)]
 
 #[non_exhaustive(anything)]
-//~^ ERROR attribute must be of the form
+//~^ ERROR malformed `non_exhaustive` attribute
 struct Foo;
 
 #[non_exhaustive]

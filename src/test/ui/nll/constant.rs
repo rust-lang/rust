@@ -2,7 +2,7 @@
 // arbitrary types without ICEs.
 
 // compile-flags:-Zborrowck=mir
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 const HI: &str = "hi";
 

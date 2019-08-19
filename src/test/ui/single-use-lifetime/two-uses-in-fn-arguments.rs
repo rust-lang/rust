@@ -1,7 +1,7 @@
 // Test that we DO NOT warn when lifetime name is used multiple
 // arguments, or more than once in a single argument.
 //
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![deny(single_use_lifetimes)]
 #![allow(dead_code)]

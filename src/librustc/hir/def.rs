@@ -1,4 +1,4 @@
-use crate::hir::def_id::DefId;
+use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::util::nodemap::DefIdMap;
 use syntax::ast;
 use syntax::ext::base::MacroKind;
@@ -55,15 +55,15 @@ pub enum DefKind {
     /// Refers to the variant itself, `DefKind::Ctor` refers to its constructor if it exists.
     Variant,
     Trait,
-    /// `existential type Foo: Bar;`
-    Existential,
+    /// `type Foo = impl Bar;`
+    OpaqueTy,
     /// `type Foo = Bar;`
     TyAlias,
     ForeignTy,
     TraitAlias,
-    AssociatedTy,
-    /// `existential type Foo: Bar;`
-    AssociatedExistential,
+    AssocTy,
+    /// `type Foo = impl Bar;`
+    AssocOpaqueTy,
     TyParam,
 
     // Value namespace
@@ -74,16 +74,18 @@ pub enum DefKind {
     /// Refers to the struct or enum variant's constructor.
     Ctor(CtorOf, CtorKind),
     Method,
-    AssociatedConst,
+    AssocConst,
 
     // Macro namespace
     Macro(MacroKind),
 }
 
 impl DefKind {
-    pub fn descr(self) -> &'static str {
+    pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
+            DefKind::Mod if def_id.index == CRATE_DEF_INDEX && def_id.krate != LOCAL_CRATE =>
+                "crate",
             DefKind::Mod => "module",
             DefKind::Static => "static",
             DefKind::Enum => "enum",
@@ -96,17 +98,17 @@ impl DefKind {
             DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
             DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) =>
                 bug!("impossible struct constructor"),
-            DefKind::Existential => "existential type",
+            DefKind::OpaqueTy => "opaque type",
             DefKind::TyAlias => "type alias",
             DefKind::TraitAlias => "trait alias",
-            DefKind::AssociatedTy => "associated type",
-            DefKind::AssociatedExistential => "associated existential type",
+            DefKind::AssocTy => "associated type",
+            DefKind::AssocOpaqueTy => "associated opaque type",
             DefKind::Union => "union",
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
             DefKind::Method => "method",
             DefKind::Const => "constant",
-            DefKind::AssociatedConst => "associated constant",
+            DefKind::AssocConst => "associated constant",
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
             DefKind::Macro(macro_kind) => macro_kind.descr(),
@@ -116,11 +118,11 @@ impl DefKind {
     /// An English article for the def.
     pub fn article(&self) -> &'static str {
         match *self {
-            DefKind::AssociatedTy
-            | DefKind::AssociatedConst
-            | DefKind::AssociatedExistential
+            DefKind::AssocTy
+            | DefKind::AssocConst
+            | DefKind::AssocOpaqueTy
             | DefKind::Enum
-            | DefKind::Existential => "an",
+            | DefKind::OpaqueTy => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
             _ => "a",
         }
@@ -139,9 +141,6 @@ pub enum Res<Id = hir::HirId> {
     // Value namespace
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Local(Id),
-    Upvar(Id,           // `HirId` of closed over local
-          usize,        // index in the `upvars` list of the closure
-          ast::NodeId), // expr node that creates the closure
 
     // Macro namespace
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
@@ -347,7 +346,6 @@ impl<Id> Res<Id> {
             Res::Def(_, id) => Some(id),
 
             Res::Local(..) |
-            Res::Upvar(..) |
             Res::PrimTy(..) |
             Res::SelfTy(..) |
             Res::SelfCtor(..) |
@@ -370,11 +368,10 @@ impl<Id> Res<Id> {
     /// A human readable name for the res kind ("function", "module", etc.).
     pub fn descr(&self) -> &'static str {
         match *self {
-            Res::Def(kind, _) => kind.descr(),
+            Res::Def(kind, def_id) => kind.descr(def_id),
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
-            Res::Upvar(..) => "closure capture",
             Res::SelfTy(..) => "self type",
             Res::ToolMod => "tool module",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
@@ -397,15 +394,18 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)),
-            Res::Upvar(id, index, closure) => Res::Upvar(
-                map(id),
-                index,
-                closure
-            ),
             Res::SelfTy(a, b) => Res::SelfTy(a, b),
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
+        }
+    }
+
+    pub fn macro_kind(self) -> Option<MacroKind> {
+        match self {
+            Res::Def(DefKind::Macro(kind), _) => Some(kind),
+            Res::NonMacroAttr(..) => Some(MacroKind::Attr),
+            _ => None,
         }
     }
 }

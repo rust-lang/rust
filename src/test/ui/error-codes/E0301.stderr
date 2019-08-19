@@ -4,7 +4,7 @@ error[E0301]: cannot mutably borrow in a pattern guard
 LL |         option if option.take().is_none() => {},
    |                   ^^^^^^ borrowed mutably in pattern guard
    |
-   = help: add #![feature(bind_by_move_pattern_guards)] to the crate attributes to enable
+   = help: add `#![feature(bind_by_move_pattern_guards)]` to the crate attributes to enable
 
 error[E0596]: cannot borrow `option` as mutable, as it is immutable for the pattern guard
   --> $DIR/E0301.rs:4:19

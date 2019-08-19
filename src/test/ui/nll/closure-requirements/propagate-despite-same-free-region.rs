@@ -4,7 +4,7 @@
 // regions is erased.
 
 // compile-flags:-Zborrowck=mir -Zverbose
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(rustc_attrs)]
 

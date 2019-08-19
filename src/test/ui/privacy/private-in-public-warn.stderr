@@ -339,7 +339,7 @@ warning: bounds on generic parameters are not enforced in type aliases
 LL |     pub type Alias<T: PrivTr> = T;
    |                       ^^^^^^
    |
-   = note: #[warn(type_alias_bounds)] on by default
+   = note: `#[warn(type_alias_bounds)]` on by default
    = help: the bound will not be checked when the type alias is used, and should be removed
 
 warning: where clauses are not enforced in type aliases

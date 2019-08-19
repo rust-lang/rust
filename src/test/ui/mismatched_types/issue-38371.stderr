@@ -2,11 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:4:8
    |
 LL | fn foo(&foo: Foo) {
-   |        ^^^^ expected struct `Foo`, found reference
+   |        ^^^^------
+   |        |
+   |        expected struct `Foo`, found reference
+   |        help: did you mean `foo`: `&Foo`
    |
    = note: expected type `Foo`
               found type `&_`
-   = help: did you mean `foo: &Foo`?
 
 error[E0308]: mismatched types
   --> $DIR/issue-38371.rs:18:9

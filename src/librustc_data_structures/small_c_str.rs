@@ -3,6 +3,9 @@ use std::ops::Deref;
 
 use smallvec::SmallVec;
 
+#[cfg(test)]
+mod tests;
+
 const SIZE: usize = 36;
 
 /// Like SmallVec but for C strings.
@@ -65,48 +68,4 @@ impl Deref for SmallCStr {
     fn deref(&self) -> &ffi::CStr {
         self.as_c_str()
     }
-}
-
-#[test]
-fn short() {
-    const TEXT: &str = "abcd";
-    let reference = ffi::CString::new(TEXT.to_string()).unwrap();
-
-    let scs = SmallCStr::new(TEXT);
-
-    assert_eq!(scs.len_with_nul(), TEXT.len() + 1);
-    assert_eq!(scs.as_c_str(), reference.as_c_str());
-    assert!(!scs.spilled());
-}
-
-#[test]
-fn empty() {
-    const TEXT: &str = "";
-    let reference = ffi::CString::new(TEXT.to_string()).unwrap();
-
-    let scs = SmallCStr::new(TEXT);
-
-    assert_eq!(scs.len_with_nul(), TEXT.len() + 1);
-    assert_eq!(scs.as_c_str(), reference.as_c_str());
-    assert!(!scs.spilled());
-}
-
-#[test]
-fn long() {
-    const TEXT: &str = "01234567890123456789012345678901234567890123456789\
-                        01234567890123456789012345678901234567890123456789\
-                        01234567890123456789012345678901234567890123456789";
-    let reference = ffi::CString::new(TEXT.to_string()).unwrap();
-
-    let scs = SmallCStr::new(TEXT);
-
-    assert_eq!(scs.len_with_nul(), TEXT.len() + 1);
-    assert_eq!(scs.as_c_str(), reference.as_c_str());
-    assert!(scs.spilled());
-}
-
-#[test]
-#[should_panic]
-fn internal_nul() {
-    let _ = SmallCStr::new("abcd\0def");
 }

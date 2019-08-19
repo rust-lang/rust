@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 use std::error::Error;
+use std::fs;
 use std::mem::{self, Discriminant};
+use std::path::Path;
 use std::process;
 use std::thread::ThreadId;
 use std::u32;
@@ -71,10 +73,17 @@ pub struct SelfProfiler {
 }
 
 impl SelfProfiler {
-    pub fn new(event_filters: &Option<Vec<String>>) -> Result<SelfProfiler, Box<dyn Error>> {
-        let filename = format!("pid-{}.rustc_profile", process::id());
-        let path = std::path::Path::new(&filename);
-        let profiler = Profiler::new(path)?;
+    pub fn new(
+        output_directory: &Path,
+        crate_name: Option<&str>,
+        event_filters: &Option<Vec<String>>
+    ) -> Result<SelfProfiler, Box<dyn Error>> {
+        fs::create_dir_all(output_directory)?;
+
+        let crate_name = crate_name.unwrap_or("unknown-crate");
+        let filename = format!("{}-{}.rustc_profile", crate_name, process::id());
+        let path = output_directory.join(&filename);
+        let profiler = Profiler::new(&path)?;
 
         let query_event_kind = profiler.alloc_string("Query");
         let generic_activity_event_kind = profiler.alloc_string("GenericActivity");

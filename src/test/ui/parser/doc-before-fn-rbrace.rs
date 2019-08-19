@@ -1,5 +1,3 @@
-// compile-flags: -Z continue-parse-after-error
-
 fn main() {
     /// document
     //~^ ERROR found a documentation comment that doesn't document anything

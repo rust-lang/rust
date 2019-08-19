@@ -1,0 +1,10 @@
+error: expected `{`, found `)`
+  --> $DIR/issue-61858.rs:2:15
+   |
+LL |     (if foobar)
+   |      --       ^ expected `{`
+   |      |
+   |      this `if` statement has a condition, but no block
+
+error: aborting due to previous error
+

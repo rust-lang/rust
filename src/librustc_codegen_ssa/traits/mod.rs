@@ -58,7 +58,7 @@ pub trait CodegenMethods<'tcx>:
     + StaticMethods
     + DebugInfoMethods<'tcx>
     + DeclareMethods<'tcx>
-    + AsmMethods<'tcx>
+    + AsmMethods
     + PreDefineMethods<'tcx>
     + HasParamEnv<'tcx>
     + HasTyCtxt<'tcx>
@@ -74,7 +74,7 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + StaticMethods
         + DebugInfoMethods<'tcx>
         + DeclareMethods<'tcx>
-        + AsmMethods<'tcx>
+        + AsmMethods
         + PreDefineMethods<'tcx>
         + HasParamEnv<'tcx>
         + HasTyCtxt<'tcx>

@@ -1,13 +1,11 @@
-#[deprcated]    //~ ERROR E0658
-fn foo() {}     //~| HELP a built-in attribute with a similar name exists
-                //~| SUGGESTION deprecated
-                //~| HELP add #![feature(custom_attribute)] to the crate attributes to enable
+#[deprcated] //~ ERROR cannot find attribute macro `deprcated` in this scope
+fn foo() {}
 
-#[tests]        //~ ERROR E0658
-fn bar() {}     //~| HELP a built-in attribute with a similar name exists
-                //~| SUGGESTION test
-                //~| HELP add #![feature(custom_attribute)] to the crate attributes to enable
+#[tests] //~ ERROR cannot find attribute macro `tests` in this scope
+fn bar() {}
 
-#[rustc_err]    //~ ERROR E0658
-fn main() {}    //~| HELP add #![feature(rustc_attrs)] to the crate attributes to enable
-                // don't suggest rustc attributes
+#[rustc_err]
+//~^ ERROR cannot find attribute macro `rustc_err` in this scope
+//~| ERROR attributes starting with `rustc` are reserved for use by the `rustc` compiler
+
+fn main() {}

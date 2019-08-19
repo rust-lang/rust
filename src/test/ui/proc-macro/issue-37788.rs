@@ -1,7 +1,7 @@
-// aux-build:derive-a-b.rs
+// aux-build:test-macros.rs
 
 #[macro_use]
-extern crate derive_a_b;
+extern crate test_macros;
 
 fn main() {
     // Test that constructing the `visible_parent_map` (in `cstore_impl.rs`) does not ICE.

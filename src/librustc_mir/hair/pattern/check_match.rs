@@ -4,6 +4,7 @@ use super::_match::WitnessPreference::*;
 
 use super::{Pattern, PatternContext, PatternError, PatternKind};
 
+use rustc::middle::borrowck::SignalledError;
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
@@ -18,40 +19,46 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir::ptr::P;
 use rustc::hir::{self, Pat, PatKind};
 
 use smallvec::smallvec;
 use std::slice;
 
-use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
-pub(crate) fn check_match<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
+crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) -> SignalledError {
     let body_id = if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
         tcx.hir().body_owned_by(id)
     } else {
-        return;
+        return SignalledError::NoErrorsSeen;
     };
 
-    MatchVisitor {
+    let mut visitor = MatchVisitor {
         tcx,
+        body_owner: def_id,
         tables: tcx.body_tables(body_id),
         region_scope_tree: &tcx.region_scope_tree(def_id),
         param_env: tcx.param_env(def_id),
         identity_substs: InternalSubsts::identity_for_item(tcx, def_id),
-    }.visit_body(tcx.hir().body(body_id));
+        signalled_error: SignalledError::NoErrorsSeen,
+    };
+    visitor.visit_body(tcx.hir().body(body_id));
+    visitor.signalled_error
 }
 
-fn create_e0004<'a>(sess: &'a Session, sp: Span, error_message: String) -> DiagnosticBuilder<'a> {
+fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
-struct MatchVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct MatchVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    body_owner: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: SubstsRef<'tcx>,
     region_scope_tree: &'a region::ScopeTree,
+    signalled_error: SignalledError,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
@@ -62,11 +69,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx hir::Expr) {
         intravisit::walk_expr(self, ex);
 
-        match ex.node {
-            hir::ExprKind::Match(ref scrut, ref arms, source) => {
-                self.check_match(scrut, arms, source);
-            }
-            _ => {}
+        if let hir::ExprKind::Match(ref scrut, ref arms, source) = ex.node {
+            self.check_match(scrut, arms, source);
         }
     }
 
@@ -102,7 +106,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternError::StaticInPattern(span) => {
                     self.span_e0158(span, "statics cannot be referenced in patterns")
                 }
-                PatternError::AssociatedConstInPattern(span) => {
+                PatternError::AssocConstInPattern(span) => {
                     self.span_e0158(span, "associated consts cannot be referenced in patterns")
                 }
                 PatternError::FloatBug => {
@@ -128,7 +132,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
-    fn check_patterns(&self, has_guard: bool, pats: &[P<Pat>]) {
+    fn check_patterns(&mut self, has_guard: bool, pats: &[P<Pat>]) {
         check_legality_of_move_bindings(self, has_guard, pats);
         for pat in pats {
             check_legality_of_bindings_in_at_patterns(self, pat);
@@ -136,11 +140,11 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 
     fn check_match(
-        &self,
+        &mut self,
         scrut: &hir::Expr,
         arms: &'tcx [hir::Arm],
-        source: hir::MatchSource)
-    {
+        source: hir::MatchSource
+    ) {
         for arm in arms {
             // First, check legality of move bindings.
             self.check_patterns(arm.guard.is_some(), &arm.pats);
@@ -148,6 +152,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Second, if there is a guard on each arm, make sure it isn't
             // assigning or borrowing anything mutably.
             if let Some(ref guard) = arm.guard {
+                self.signalled_error = SignalledError::SawSomeError;
                 if !self.tcx.features().bind_by_move_pattern_guards {
                     check_for_mutation_in_guard(self, &guard);
                 }
@@ -159,7 +164,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             }
         }
 
-        let module = self.tcx.hir().get_module_parent_by_hir_id(scrut.hir_id);
+        let module = self.tcx.hir().get_module_parent(scrut.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
@@ -168,6 +173,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                     let mut patcx = PatternContext::new(self.tcx,
                                                         self.param_env.and(self.identity_substs),
                                                         self.tables);
+                    patcx.include_lint_checks();
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(pat.span);
@@ -191,7 +197,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
             let pat_ty = self.tables.node_type(scrut.hir_id);
-            let module = self.tcx.hir().get_module_parent_by_hir_id(scrut.hir_id);
+            let module = self.tcx.hir().get_module_parent(scrut.hir_id);
             let mut def_span = None;
             let mut missing_variants = vec![];
             if inlined_arms.is_empty() {
@@ -259,11 +265,12 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
-        let module = self.tcx.hir().get_module_parent_by_hir_id(pat.hir_id);
+        let module = self.tcx.hir().get_module_parent(pat.hir_id);
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
                                                 self.tables);
+            patcx.include_lint_checks();
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
             let pats: Matrix<'_, '_> = vec![smallvec![
@@ -369,7 +376,8 @@ fn check_arms<'a, 'tcx>(
             match is_useful(cx, &seen, &v, LeaveOutWitness) {
                 NotUseful => {
                     match source {
-                        hir::MatchSource::IfDesugar { .. } => bug!(),
+                        hir::MatchSource::IfDesugar { .. } |
+                        hir::MatchSource::WhileDesugar => bug!(),
                         hir::MatchSource::IfLetDesugar { .. } => {
                             cx.tcx.lint_hir(
                                 lint::builtin::IRREFUTABLE_LET_PATTERNS,
@@ -437,7 +445,7 @@ fn check_arms<'a, 'tcx>(
     }
 }
 
-fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(
+fn check_exhaustive<'p, 'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
@@ -543,7 +551,7 @@ fn maybe_point_at_variant(
 
 // Legality of move bindings checking
 fn check_legality_of_move_bindings(
-    cx: &MatchVisitor<'_, '_>,
+    cx: &mut MatchVisitor<'_, '_>,
     has_guard: bool,
     pats: &[P<Pat>],
 ) {
@@ -560,7 +568,12 @@ fn check_legality_of_move_bindings(
         })
     }
     let span_vec = &mut Vec::new();
-    let check_move = |p: &Pat, sub: Option<&Pat>, span_vec: &mut Vec<Span>| {
+    let check_move = |
+        cx: &mut MatchVisitor<'_, '_>,
+        p: &Pat,
+        sub: Option<&Pat>,
+        span_vec: &mut Vec<Span>,
+    | {
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
@@ -569,15 +582,17 @@ fn check_legality_of_move_bindings(
                              "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
-        } else if has_guard && !cx.tcx.features().bind_by_move_pattern_guards {
-            let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
-                                           "cannot bind by-move into a pattern guard");
-            err.span_label(p.span, "moves value into pattern guard");
-            if cx.tcx.sess.opts.unstable_features.is_nightly_build() {
-                err.help("add #![feature(bind_by_move_pattern_guards)] to the \
-                          crate attributes to enable");
+        } else if has_guard {
+            if !cx.tcx.features().bind_by_move_pattern_guards {
+                let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
+                                            "cannot bind by-move into a pattern guard");
+                err.span_label(p.span, "moves value into pattern guard");
+                if cx.tcx.sess.opts.unstable_features.is_nightly_build() {
+                    err.help("add `#![feature(bind_by_move_pattern_guards)]` to the \
+                            crate attributes to enable");
+                }
+                err.emit();
             }
-            err.emit();
         } else if let Some(_by_ref_span) = by_ref_span {
             span_vec.push(p.span);
         }
@@ -591,7 +606,7 @@ fn check_legality_of_move_bindings(
                         ty::BindByValue(..) => {
                             let pat_ty = cx.tables.node_type(p.hir_id);
                             if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
-                                check_move(p, sub.as_ref().map(|p| &**p), span_vec);
+                                check_move(cx, p, sub.as_ref().map(|p| &**p), span_vec);
                             }
                         }
                         _ => {}
@@ -632,6 +647,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
         hir::Guard::If(expr) =>
             ExprUseVisitor::new(&mut checker,
                                 cx.tcx,
+                                cx.body_owner,
                                 cx.param_env,
                                 cx.region_scope_tree,
                                 cx.tables,
@@ -639,7 +655,7 @@ fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
     };
 }
 
-struct MutationChecker<'a, 'tcx: 'a> {
+struct MutationChecker<'a, 'tcx> {
     cx: &'a MatchVisitor<'a, 'tcx>,
 }
 
@@ -660,7 +676,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
                           "cannot mutably borrow in a pattern guard");
                 err.span_label(span, "borrowed mutably in pattern guard");
                 if self.cx.tcx.sess.opts.unstable_features.is_nightly_build() {
-                    err.help("add #![feature(bind_by_move_pattern_guards)] to the \
+                    err.help("add `#![feature(bind_by_move_pattern_guards)]` to the \
                               crate attributes to enable");
                 }
                 err.emit();
@@ -688,7 +704,7 @@ fn check_legality_of_bindings_in_at_patterns(cx: &MatchVisitor<'_, '_>, pat: &Pa
     AtBindingPatternVisitor { cx: cx, bindings_allowed: true }.visit_pat(pat);
 }
 
-struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
+struct AtBindingPatternVisitor<'a, 'b, 'tcx> {
     cx: &'a MatchVisitor<'b, 'tcx>,
     bindings_allowed: bool
 }

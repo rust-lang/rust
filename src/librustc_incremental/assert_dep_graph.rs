@@ -51,7 +51,7 @@ use std::io::Write;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.debugging_opts.dump_dep_graph {
             dump_graph(tcx);
@@ -89,13 +89,13 @@ pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 type Sources = Vec<(Span, DefId, DepNode)>;
 type Targets = Vec<(Span, ast::Name, hir::HirId, DepNode)>;
 
-struct IfThisChanged<'a, 'tcx:'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+struct IfThisChanged<'tcx> {
+    tcx: TyCtxt<'tcx>,
     if_this_changed: Sources,
     then_this_would_need: Targets,
 }
 
-impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
+impl IfThisChanged<'tcx> {
     fn argument(&self, attr: &ast::Attribute) -> Option<ast::Name> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
@@ -111,7 +111,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
     }
 
     fn process_attrs(&mut self, hir_id: hir::HirId, attrs: &[ast::Attribute]) {
-        let def_id = self.tcx.hir().local_def_id_from_hir_id(hir_id);
+        let def_id = self.tcx.hir().local_def_id(hir_id);
         let def_path_hash = self.tcx.def_path_hash(def_id);
         for attr in attrs {
             if attr.check_name(ATTR_IF_THIS_CHANGED) {
@@ -158,7 +158,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
+impl Visitor<'tcx> for IfThisChanged<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
@@ -184,16 +184,13 @@ impl<'a, 'tcx> Visitor<'tcx> for IfThisChanged<'a, 'tcx> {
     }
 }
 
-fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         if_this_changed: &Sources,
-                         then_this_would_need: &Targets)
-{
+fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_would_need: &Targets) {
     // Return early here so as not to construct the query, which is not cheap.
     if if_this_changed.is_empty() {
         for &(target_span, _, _, _) in then_this_would_need {
             tcx.sess.span_err(
                 target_span,
-                "no #[rustc_if_this_changed] annotation detected");
+                "no `#[rustc_if_this_changed]` annotation detected");
 
         }
         return;
@@ -217,7 +214,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-fn dump_graph(tcx: TyCtxt<'_, '_, '_>) {
+fn dump_graph(tcx: TyCtxt<'_>) {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
     let query = tcx.dep_graph.query();
 
@@ -258,7 +255,7 @@ fn dump_graph(tcx: TyCtxt<'_, '_, '_>) {
 pub struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode>,
                                 Vec<(&'q DepNode, &'q DepNode)>);
 
-impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
+impl<'a, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
     type Node = &'q DepNode;
     type Edge = (&'q DepNode, &'q DepNode);
     fn nodes(&self) -> dot::Nodes<'_, &'q DepNode> {
@@ -276,7 +273,7 @@ impl<'a, 'tcx, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
     }
 }
 
-impl<'a, 'tcx, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
+impl<'a, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
     type Node = &'q DepNode;
     type Edge = (&'q DepNode, &'q DepNode);
     fn graph_id(&self) -> dot::Id<'_> {

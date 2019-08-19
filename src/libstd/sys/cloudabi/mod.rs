@@ -4,8 +4,6 @@ use crate::mem;
 #[path = "../unix/alloc.rs"]
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
 pub mod condvar;
@@ -61,8 +59,11 @@ pub use libc::strlen;
 
 pub fn hashmap_random_keys() -> (u64, u64) {
     unsafe {
-        let mut v = mem::uninitialized();
-        libc::arc4random_buf(&mut v as *mut _ as *mut libc::c_void, mem::size_of_val(&v));
-        v
+        let mut v: mem::MaybeUninit<(u64, u64)> = mem::MaybeUninit::uninit();
+        libc::arc4random_buf(
+            v.as_mut_ptr() as *mut libc::c_void,
+            mem::size_of_val(&v)
+        );
+        v.assume_init()
     }
 }

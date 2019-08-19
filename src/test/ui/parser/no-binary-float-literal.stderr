@@ -10,7 +10,7 @@ error: binary float literal is not supported
 LL |     0b101010f64;
    |     ^^^^^^^^^^^ not supported
 
-error: invalid suffix `p4f64` for numeric literal
+error: invalid suffix `p4f64` for integer literal
   --> $DIR/no-binary-float-literal.rs:6:5
    |
 LL |     0b101p4f64;

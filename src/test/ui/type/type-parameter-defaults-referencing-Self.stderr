@@ -1,8 +1,8 @@
 error[E0393]: the type parameter `T` must be explicitly specified
-  --> $DIR/type-parameter-defaults-referencing-Self.rs:10:12
+  --> $DIR/type-parameter-defaults-referencing-Self.rs:10:16
    |
-LL | fn foo(x: &Foo) { }
-   |            ^^^ missing reference to `T`
+LL | fn foo(x: &dyn Foo) { }
+   |                ^^^ missing reference to `T`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 

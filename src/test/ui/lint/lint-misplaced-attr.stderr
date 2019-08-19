@@ -22,7 +22,7 @@ error: unused attribute
 LL | #[crate_type = "bin"] fn main() {}
    | ^^^^^^^^^^^^^^^^^^^^^
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
   --> $DIR/lint-misplaced-attr.rs:11:1
    |
 LL | #[crate_type = "bin"] fn main() {}

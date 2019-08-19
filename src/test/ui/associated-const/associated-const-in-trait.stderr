@@ -1,8 +1,8 @@
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/associated-const-in-trait.rs:9:6
    |
-LL | impl Trait {
-   |      ^^^^^ the trait `Trait` cannot be made into an object
+LL | impl dyn Trait {
+   |      ^^^^^^^^^ the trait `Trait` cannot be made into an object
    |
    = note: the trait cannot contain associated consts like `N`
 

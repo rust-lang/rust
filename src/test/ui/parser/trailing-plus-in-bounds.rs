@@ -1,7 +1,7 @@
-// compile-pass
-// compile-flags: -Z continue-parse-after-error
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(box_syntax)]
+#![allow(bare_trait_objects)]
 
 use std::fmt::Debug;
 

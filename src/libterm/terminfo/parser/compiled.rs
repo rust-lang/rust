@@ -7,6 +7,9 @@ use std::io;
 use std::io::prelude::*;
 use super::super::TermInfo;
 
+#[cfg(test)]
+mod tests;
+
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.
 
 #[rustfmt::skip]
@@ -329,18 +332,5 @@ pub fn msys_terminfo() -> TermInfo {
         bools: HashMap::new(),
         numbers,
         strings,
-    }
-}
-
-#[cfg(test)]
-mod test {
-
-    use super::{boolnames, boolfnames, numnames, numfnames, stringnames, stringfnames};
-
-    #[test]
-    fn test_veclens() {
-        assert_eq!(boolfnames.len(), boolnames.len());
-        assert_eq!(numfnames.len(), numnames.len());
-        assert_eq!(stringfnames.len(), stringnames.len());
     }
 }

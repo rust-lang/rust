@@ -138,9 +138,9 @@ impl<T> IndexMut<Location> for LocationMap<T> {
 }
 
 impl<T> LocationMap<T> where T: Default + Clone {
-    fn new(mir: &Mir<'_>) -> Self {
+    fn new(body: &Body<'_>) -> Self {
         LocationMap {
-            map: mir.basic_blocks().iter().map(|block| {
+            map: body.basic_blocks().iter().map(|block| {
                 vec![T::default(); block.statements.len()+1]
             }).collect()
         }
@@ -205,10 +205,10 @@ impl fmt::Debug for Init {
 }
 
 impl Init {
-    crate fn span<'gcx>(&self, mir: &Mir<'gcx>) -> Span {
+    crate fn span<'tcx>(&self, body: &Body<'tcx>) -> Span {
         match self.location {
-            InitLocation::Argument(local) => mir.local_decls[local].source_info.span,
-            InitLocation::Statement(location) => mir.source_info(location).span,
+            InitLocation::Argument(local) => body.local_decls[local].source_info.span,
+            InitLocation::Statement(location) => body.source_info(location).span,
         }
     }
 }
@@ -240,22 +240,23 @@ impl MovePathLookup {
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, place: &Place<'tcx>) -> LookupResult {
-        match *place {
-            Place::Base(PlaceBase::Local(local)) => LookupResult::Exact(self.locals[local]),
-            Place::Base(PlaceBase::Static(..)) => LookupResult::Parent(None),
-            Place::Projection(ref proj) => {
-                match self.find(&proj.base) {
-                    LookupResult::Exact(base_path) => {
-                        match self.projections.get(&(base_path, proj.elem.lift())) {
-                            Some(&subpath) => LookupResult::Exact(subpath),
-                            None => LookupResult::Parent(Some(base_path))
-                        }
-                    }
-                    inexact => inexact
+    pub fn find(&self, place_ref: PlaceRef<'cx, 'tcx>) -> LookupResult {
+        place_ref.iterate(|place_base, place_projection| {
+            let mut result = match place_base {
+                PlaceBase::Local(local) => self.locals[*local],
+                PlaceBase::Static(..) => return LookupResult::Parent(None),
+            };
+
+            for proj in place_projection {
+                if let Some(&subpath) = self.projections.get(&(result, proj.elem.lift())) {
+                    result = subpath;
+                } else {
+                    return LookupResult::Parent(Some(result));
                 }
             }
-        }
+
+            LookupResult::Exact(result)
+        })
     }
 
     pub fn find_local(&self, local: Local) -> MovePathIndex {
@@ -304,10 +305,12 @@ impl<'tcx> MoveError<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> MoveData<'tcx> {
-    pub fn gather_moves(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                        -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
-        builder::gather_moves(mir, tcx)
+impl<'tcx> MoveData<'tcx> {
+    pub fn gather_moves(
+        body: &Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> Result<Self, (Self, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+        builder::gather_moves(body, tcx)
     }
 
     /// For the move path `mpi`, returns the root local variable (if any) that starts the path.
@@ -315,7 +318,10 @@ impl<'a, 'gcx, 'tcx> MoveData<'tcx> {
     pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
         loop {
             let path = &self.move_paths[mpi];
-            if let Place::Base(PlaceBase::Local(l)) = path.place { return Some(l); }
+            if let Place {
+                base: PlaceBase::Local(l),
+                projection: None,
+            } = path.place { return Some(l); }
             if let Some(parent) = path.parent { mpi = parent; continue } else { return None }
         }
     }

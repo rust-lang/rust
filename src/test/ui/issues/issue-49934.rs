@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(stmt_expr_attributes)]
 #![warn(unused_attributes)] //~ NOTE lint level defined here

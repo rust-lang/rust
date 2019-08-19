@@ -47,12 +47,12 @@ pub struct AutoTraitInfo<'cx> {
     pub vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'cx>>,
 }
 
-pub struct AutoTraitFinder<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct AutoTraitFinder<'tcx> {
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+impl<'tcx> AutoTraitFinder<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         AutoTraitFinder { tcx }
     }
 
@@ -79,7 +79,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         ty: Ty<'tcx>,
         orig_env: ty::ParamEnv<'tcx>,
         trait_did: DefId,
-        auto_trait_callback: impl for<'i> Fn(&InferCtxt<'_, 'tcx, 'i>, AutoTraitInfo<'i>) -> A,
+        auto_trait_callback: impl Fn(&InferCtxt<'_, 'tcx>, AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
@@ -232,7 +232,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
+impl AutoTraitFinder<'tcx> {
     // The core logic responsible for computing the bounds for our synthesized impl.
     //
     // To calculate the bounds, we call SelectionContext.select in a loop. Like FulfillmentContext,
@@ -270,16 +270,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // the final synthesized generics: we don't want our generated docs page to contain something
     // like 'T: Copy + Clone', as that's redundant. Therefore, we keep track of a separate
     // 'user_env', which only holds the predicates that will actually be displayed to the user.
-    fn evaluate_predicates<'b, 'gcx, 'c>(
+    fn evaluate_predicates(
         &self,
-        infcx: &InferCtxt<'b, 'tcx, 'c>,
+        infcx: &InferCtxt<'_, 'tcx>,
         trait_did: DefId,
-        ty: Ty<'c>,
-        param_env: ty::ParamEnv<'c>,
-        user_env: ty::ParamEnv<'c>,
-        fresh_preds: &mut FxHashSet<ty::Predicate<'c>>,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        user_env: ty::ParamEnv<'tcx>,
+        fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
         only_projections: bool,
-    ) -> Option<(ty::ParamEnv<'c>, ty::ParamEnv<'c>)> {
+    ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
         let tcx = infcx.tcx;
 
         let mut select = SelectionContext::with_negative(&infcx, true);
@@ -307,9 +307,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 continue;
             }
 
-            // Call infcx.resolve_type_vars_if_possible to see if we can
+            // Call infcx.resolve_vars_if_possible to see if we can
             // get rid of any inference variables.
-            let obligation = infcx.resolve_type_vars_if_possible(
+            let obligation = infcx.resolve_vars_if_possible(
                 &Obligation::new(dummy_cause.clone(), new_env, pred)
             );
             let result = select.select(&obligation);
@@ -617,20 +617,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         }
     }
 
-    fn evaluate_nested_obligations<
-        'b,
-        'c,
-        'd,
-        'cx,
-        T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>,
-    >(
+    fn evaluate_nested_obligations(
         &self,
         ty: Ty<'_>,
-        nested: T,
-        computed_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
-        fresh_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
-        predicates: &'b mut VecDeque<ty::PolyTraitPredicate<'cx>>,
-        select: &mut SelectionContext<'c, 'd, 'cx>,
+        nested: impl Iterator<Item = Obligation<'tcx, ty::Predicate<'tcx>>>,
+        computed_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
+        predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
+        select: &mut SelectionContext<'_, 'tcx>,
         only_projections: bool,
     ) -> bool {
         let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
@@ -642,7 +636,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 fresh_preds.insert(self.clean_pred(select.infcx(), predicate));
 
             // Resolve any inference variables that we can, to help selection succeed
-            predicate = select.infcx().resolve_type_vars_if_possible(&predicate);
+            predicate = select.infcx().resolve_vars_if_possible(&predicate);
 
             // We only add a predicate as a user-displayable bound if
             // it involves a generic parameter, and doesn't contain
@@ -700,22 +694,64 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             }
                     }
 
-                    // We can only call poly_project_and_unify_type when our predicate's
-                    // Ty contains an inference variable - otherwise, there won't be anything to
-                    // unify
-                    if p.ty().skip_binder().has_infer_types() {
-                        debug!("Projecting and unifying projection predicate {:?}",
-                               predicate);
-                        match poly_project_and_unify_type(select, &obligation.with(p)) {
-                            Err(e) => {
-                                debug!(
-                                    "evaluate_nested_obligations: Unable to unify predicate \
-                                     '{:?}' '{:?}', bailing out",
-                                    ty, e
-                                );
-                                return false;
-                            }
-                            Ok(Some(v)) => {
+                    // There are three possible cases when we project a predicate:
+                    //
+                    // 1. We encounter an error. This means that it's impossible for
+                    // our current type to implement the auto trait - there's bound
+                    // that we could add to our ParamEnv that would 'fix' this kind
+                    // of error, as it's not caused by an unimplemented type.
+                    //
+                    // 2. We succesfully project the predicate (Ok(Some(_))), generating
+                    //  some subobligations. We then process these subobligations
+                    //  like any other generated sub-obligations.
+                    //
+                    // 3. We receieve an 'ambiguous' result (Ok(None))
+                    // If we were actually trying to compile a crate,
+                    // we would need to re-process this obligation later.
+                    // However, all we care about is finding out what bounds
+                    // are needed for our type to implement a particular auto trait.
+                    // We've already added this obligation to our computed ParamEnv
+                    // above (if it was necessary). Therefore, we don't need
+                    // to do any further processing of the obligation.
+                    //
+                    // Note that we *must* try to project *all* projection predicates
+                    // we encounter, even ones without inference variable.
+                    // This ensures that we detect any projection errors,
+                    // which indicate that our type can *never* implement the given
+                    // auto trait. In that case, we will generate an explicit negative
+                    // impl (e.g. 'impl !Send for MyType'). However, we don't
+                    // try to process any of the generated subobligations -
+                    // they contain no new information, since we already know
+                    // that our type implements the projected-through trait,
+                    // and can lead to weird region issues.
+                    //
+                    // Normally, we'll generate a negative impl as a result of encountering
+                    // a type with an explicit negative impl of an auto trait
+                    // (for example, raw pointers have !Send and !Sync impls)
+                    // However, through some **interesting** manipulations of the type
+                    // system, it's actually possible to write a type that never
+                    // implements an auto trait due to a projection error, not a normal
+                    // negative impl error. To properly handle this case, we need
+                    // to ensure that we catch any potential projection errors,
+                    // and turn them into an explicit negative impl for our type.
+                    debug!("Projecting and unifying projection predicate {:?}",
+                           predicate);
+
+                    match poly_project_and_unify_type(select, &obligation.with(p)) {
+                        Err(e) => {
+                            debug!(
+                                "evaluate_nested_obligations: Unable to unify predicate \
+                                 '{:?}' '{:?}', bailing out",
+                                ty, e
+                            );
+                            return false;
+                        }
+                        Ok(Some(v)) => {
+                            // We only care about sub-obligations
+                            // when we started out trying to unify
+                            // some inference variables. See the comment above
+                            // for more infomration
+                            if p.ty().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
                                     v.clone().iter().cloned(),
@@ -728,7 +764,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                     return false;
                                 }
                             }
-                            Ok(None) => {
+                        }
+                        Ok(None) => {
+                            // It's ok not to make progress when hvave no inference variables -
+                            // in that case, we were only performing unifcation to check if an
+                            // error occured (which would indicate that it's impossible for our
+                            // type to implement the auto trait).
+                            // However, we should always make progress (either by generating
+                            // subobligations or getting an error) when we started off with
+                            // inference variables
+                            if p.ty().skip_binder().has_infer_types() {
                                 panic!("Unexpected result when selecting {:?} {:?}", ty, obligation)
                             }
                         }
@@ -771,23 +816,23 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         return true;
     }
 
-    pub fn clean_pred<'c, 'd, 'cx>(
+    pub fn clean_pred(
         &self,
-        infcx: &InferCtxt<'c, 'd, 'cx>,
-        p: ty::Predicate<'cx>,
-    ) -> ty::Predicate<'cx> {
+        infcx: &InferCtxt<'_, 'tcx>,
+        p: ty::Predicate<'tcx>,
+    ) -> ty::Predicate<'tcx> {
         infcx.freshen(p)
     }
 }
 
 // Replaces all ReVars in a type with ty::Region's, using the provided map
-pub struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+pub struct RegionReplacer<'a, 'tcx> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

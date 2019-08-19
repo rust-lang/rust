@@ -75,10 +75,10 @@ use Entry::*;
 ///
 /// // look up the values associated with some keys.
 /// let to_find = ["Up!", "Office Space"];
-/// for book in &to_find {
-///     match movie_reviews.get(book) {
-///        Some(review) => println!("{}: {}", book, review),
-///        None => println!("{} is unreviewed.", book)
+/// for movie in &to_find {
+///     match movie_reviews.get(movie) {
+///        Some(review) => println!("{}: {}", movie, review),
+///        None => println!("{} is unreviewed.", movie)
 ///     }
 /// }
 ///
@@ -200,7 +200,7 @@ impl<K: Clone, V: Clone> Clone for BTreeMap<K, V> {
             }
         }
 
-        if self.len() == 0 {
+        if self.is_empty() {
             // Ideally we'd call `BTreeMap::new` here, but that has the `K:
             // Ord` constraint, which this method lacks.
             BTreeMap {
@@ -759,19 +759,19 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "btree_append", since = "1.11.0")]
     pub fn append(&mut self, other: &mut Self) {
         // Do we have to append anything at all?
-        if other.len() == 0 {
+        if other.is_empty() {
             return;
         }
 
         // We can just swap `self` and `other` if `self` is empty.
-        if self.len() == 0 {
+        if self.is_empty() {
             mem::swap(self, other);
             return;
         }
 
         // First, we merge `self` and `other` into a sorted sequence in linear time.
-        let self_iter = mem::replace(self, BTreeMap::new()).into_iter();
-        let other_iter = mem::replace(other, BTreeMap::new()).into_iter();
+        let self_iter = mem::take(self).into_iter();
+        let other_iter = mem::take(other).into_iter();
         let iter = MergeIter {
             left: self_iter.peekable(),
             right: other_iter.peekable(),
@@ -1194,7 +1194,6 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
         (self.length, Some(self.length))
     }
 
-    #[inline]
     fn last(mut self) -> Option<(&'a K, &'a V)> {
         self.next_back()
     }
@@ -1259,7 +1258,6 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V> {
         (self.length, Some(self.length))
     }
 
-    #[inline]
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
         self.next_back()
     }
@@ -1369,11 +1367,6 @@ impl<K, V> Iterator for IntoIter<K, V> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.length, Some(self.length))
     }
-
-    #[inline]
-    fn last(mut self) -> Option<(K, V)> {
-        self.next_back()
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1437,7 +1430,6 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
         self.inner.size_hint()
     }
 
-    #[inline]
     fn last(mut self) -> Option<&'a K> {
         self.next_back()
     }
@@ -1479,7 +1471,6 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
         self.inner.size_hint()
     }
 
-    #[inline]
     fn last(mut self) -> Option<&'a V> {
         self.next_back()
     }
@@ -1521,7 +1512,6 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
         }
     }
 
-    #[inline]
     fn last(mut self) -> Option<(&'a K, &'a V)> {
         self.next_back()
     }
@@ -1539,7 +1529,6 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
         self.inner.size_hint()
     }
 
-    #[inline]
     fn last(mut self) -> Option<&'a mut V> {
         self.next_back()
     }
@@ -1662,7 +1651,6 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
         }
     }
 
-    #[inline]
     fn last(mut self) -> Option<(&'a K, &'a mut V)> {
         self.next_back()
     }
@@ -2044,7 +2032,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(keys, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
+    pub fn keys(&self) -> Keys<'_, K, V> {
         Keys { inner: self.iter() }
     }
 
@@ -2065,7 +2053,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(values, ["hello", "goodbye"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn values<'a>(&'a self) -> Values<'a, K, V> {
+    pub fn values(&self) -> Values<'_, K, V> {
         Values { inner: self.iter() }
     }
 
@@ -2569,8 +2557,8 @@ enum UnderflowResult<'a, K, V> {
     Stole(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
 }
 
-fn handle_underfull_node<'a, K, V>(node: NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>)
-                                   -> UnderflowResult<'a, K, V> {
+fn handle_underfull_node<K, V>(node: NodeRef<marker::Mut<'_>, K, V, marker::LeafOrInternal>)
+                               -> UnderflowResult<'_, K, V> {
     let parent = if let Ok(parent) = node.ascend() {
         parent
     } else {

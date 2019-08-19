@@ -1,11 +1,9 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of index of `std::vec::Vec<(std::string::String, std::string::String)>`
   --> $DIR/issue-40402-2.rs:5:18
    |
 LL |     let (a, b) = x[0];
-   |          -  -    ^^^^
-   |          |  |    |
-   |          |  |    cannot move out of borrowed content
-   |          |  |    help: consider borrowing here: `&x[0]`
+   |          -  -    ^^^^ help: consider borrowing here: `&x[0]`
+   |          |  |
    |          |  ...and here
    |          data moved here
    |

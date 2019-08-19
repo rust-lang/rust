@@ -7,7 +7,7 @@ LL |     x.borrowed()
 note: first, the lifetime cannot outlive the lifetime 'a as defined on the function body at 11:41...
   --> $DIR/region-object-lifetime-4.rs:11:41
    |
-LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (Foo+'b)) -> &'b () {
+LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (dyn Foo + 'b)) -> &'b () {
    |                                         ^^
 note: ...so that reference does not outlive borrowed content
   --> $DIR/region-object-lifetime-4.rs:12:5
@@ -17,7 +17,7 @@ LL |     x.borrowed()
 note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 11:44...
   --> $DIR/region-object-lifetime-4.rs:11:44
    |
-LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (Foo+'b)) -> &'b () {
+LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (dyn Foo + 'b)) -> &'b () {
    |                                            ^^
 note: ...so that reference does not outlive borrowed content
   --> $DIR/region-object-lifetime-4.rs:12:5

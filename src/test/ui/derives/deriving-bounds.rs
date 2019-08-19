@@ -1,9 +1,9 @@
 #[derive(Send)]
-//~^ ERROR this unsafe trait should be implemented explicitly
+//~^ ERROR cannot find derive macro `Send` in this scope
 struct Test;
 
 #[derive(Sync)]
-//~^ ERROR this unsafe trait should be implemented explicitly
+//~^ ERROR cannot find derive macro `Sync` in this scope
 struct Test1;
 
 pub fn main() {}

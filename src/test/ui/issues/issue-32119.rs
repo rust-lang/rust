@@ -1,6 +1,5 @@
-// compile-pass
-// skip-codegen
-#![allow(dead_code)]
+// check-pass
+
 pub type T = ();
 mod foo { pub use super::T; }
 mod bar { pub use super::T; }
@@ -14,6 +13,5 @@ mod baz {
     mod bar { pub use super::foo::S as T; }
     pub use self::bar::*;
 }
-
 
 fn main() {}

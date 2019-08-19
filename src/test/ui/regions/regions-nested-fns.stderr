@@ -4,11 +4,11 @@ error[E0495]: cannot infer an appropriate lifetime due to conflicting requiremen
 LL |     let mut ay = &y;
    |                  ^^
    |
-note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 7:54...
-  --> $DIR/regions-nested-fns.rs:7:54
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the body at 7:58...
+  --> $DIR/regions-nested-fns.rs:7:58
    |
-LL |       ignore::<Box<for<'z> FnMut(&'z isize)>>(Box::new(|z| {
-   |  ______________________________________________________^
+LL |       ignore::<Box<dyn for<'z> FnMut(&'z isize)>>(Box::new(|z| {
+   |  __________________________________________________________^
 LL | |         ay = x;
 LL | |         ay = &y;
 LL | |         ay = z;
@@ -19,11 +19,11 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |         ay = z;
    |              ^
-note: but, the lifetime must be valid for the anonymous lifetime #2 defined on the body at 13:68...
-  --> $DIR/regions-nested-fns.rs:13:68
+note: but, the lifetime must be valid for the anonymous lifetime #2 defined on the body at 13:72...
+  --> $DIR/regions-nested-fns.rs:13:72
    |
-LL |       ignore::< Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
-   |  ____________________________________________________________________^
+LL |       ignore::< Box<dyn for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
+   |  ________________________________________________________________________^
 LL | |         if false { return x; }
 LL | |         if false { return ay; }
 LL | |         return z;
@@ -39,11 +39,11 @@ error[E0312]: lifetime of reference outlives lifetime of borrowed content...
 LL |         if false { return x; }
    |                           ^
    |
-note: ...the reference is valid for the anonymous lifetime #2 defined on the body at 13:68...
-  --> $DIR/regions-nested-fns.rs:13:68
+note: ...the reference is valid for the anonymous lifetime #2 defined on the body at 13:72...
+  --> $DIR/regions-nested-fns.rs:13:72
    |
-LL |       ignore::< Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
-   |  ____________________________________________________________________^
+LL |       ignore::< Box<dyn for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
+   |  ________________________________________________________________________^
 LL | |         if false { return x; }
 LL | |         if false { return ay; }
 LL | |         return z;

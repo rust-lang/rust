@@ -3,12 +3,12 @@ trait Foo: Iterator<Item = i32, Item = i32> {}
 
 type Unit = ();
 
-fn test() -> Box<Iterator<Item = (), Item = Unit>> {
+fn test() -> Box<dyn Iterator<Item = (), Item = Unit>> {
 //~^ ERROR is already specified
     Box::new(None.into_iter())
 }
 
 fn main() {
-    let _: &Iterator<Item = i32, Item = i32>;
+    let _: &dyn Iterator<Item = i32, Item = i32>;
     test();
 }

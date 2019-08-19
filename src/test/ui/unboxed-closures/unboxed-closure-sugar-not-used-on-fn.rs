@@ -1,6 +1,6 @@
 // Test that the `Fn` traits require `()` form without a feature gate.
 
-fn bar1(x: &Fn<(), Output=()>) {
+fn bar1(x: &dyn Fn<(), Output=()>) {
     //~^ ERROR of `Fn`-family traits' type parameters is subject to change
 }
 

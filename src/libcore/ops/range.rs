@@ -696,6 +696,29 @@ pub enum Bound<T> {
     Unbounded,
 }
 
+impl<T: Clone> Bound<&T> {
+    /// Map a `Bound<&T>` to a `Bound<T>` by cloning the contents of the bound.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(bound_cloned)]
+    /// use std::ops::Bound::*;
+    /// use std::ops::RangeBounds;
+    ///
+    /// assert_eq!((1..12).start_bound(), Included(&1));
+    /// assert_eq!((1..12).start_bound().cloned(), Included(1));
+    /// ```
+    #[unstable(feature = "bound_cloned", issue = "61356")]
+    pub fn cloned(self) -> Bound<T> {
+        match self {
+            Bound::Unbounded => Bound::Unbounded,
+            Bound::Included(x) => Bound::Included(x.clone()),
+            Bound::Excluded(x) => Bound::Excluded(x.clone()),
+        }
+    }
+}
+
 #[stable(feature = "collections_range", since = "1.28.0")]
 /// `RangeBounds` is implemented by Rust's built-in range types, produced
 /// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.

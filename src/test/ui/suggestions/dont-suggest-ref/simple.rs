@@ -37,26 +37,26 @@ pub fn main() {
 
     let X(_t) = *s;
     //~^ ERROR cannot move
-    //~| HELP consider removing the `*`
+    //~| HELP consider borrowing here
     //~| SUGGESTION s
     if let Either::One(_t) = *r { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `*`
+    //~| HELP consider borrowing here
     //~| SUGGESTION r
     while let Either::One(_t) = *r { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `*`
+    //~| HELP consider borrowing here
     //~| SUGGESTION r
     match *r {
         //~^ ERROR cannot move
-        //~| HELP consider removing the `*`
+        //~| HELP consider borrowing here
         //~| SUGGESTION r
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match *r {
         //~^ ERROR cannot move
-        //~| HELP consider removing the `*`
+        //~| HELP consider borrowing here
         //~| SUGGESTION r
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
@@ -65,26 +65,26 @@ pub fn main() {
 
     let X(_t) = *sm;
     //~^ ERROR cannot move
-    //~| HELP consider removing the `*`
+    //~| HELP consider borrowing here
     //~| SUGGESTION sm
     if let Either::One(_t) = *rm { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `*`
+    //~| HELP consider borrowing here
     //~| SUGGESTION rm
     while let Either::One(_t) = *rm { }
     //~^ ERROR cannot move
-    //~| HELP consider removing the `*`
+    //~| HELP consider borrowing here
     //~| SUGGESTION rm
     match *rm {
         //~^ ERROR cannot move
-        //~| HELP consider removing the `*`
+        //~| HELP consider borrowing here
         //~| SUGGESTION rm
         Either::One(_t)
         | Either::Two(_t) => (),
     }
     match *rm {
         //~^ ERROR cannot move
-        //~| HELP consider removing the `*`
+        //~| HELP consider borrowing here
         //~| SUGGESTION rm
         Either::One(_t) => (),
         Either::Two(ref _t) => (),
@@ -92,7 +92,7 @@ pub fn main() {
     }
     match *rm {
         //~^ ERROR cannot move
-        //~| HELP consider removing the `*`
+        //~| HELP consider borrowing here
         //~| SUGGESTION rm
         Either::One(_t) => (),
         Either::Two(ref mut _t) => (),

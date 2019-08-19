@@ -1,0 +1,12 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/issue-51301.rs:25:20
+   |
+LL |             .find(|(&event_type, _)| event == event_type)
+   |                    ^^----------^^^^
+   |                      |
+   |                      data moved here
+   |                      move occurs because `event_type` has type `EventType`, which does not implement the `Copy` trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -186,12 +186,11 @@ use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
-use syntax::ext::base::{Annotatable, ExtCtxt};
-use syntax::ext::build::AstBuilder;
-use syntax::source_map::{self, respan};
+use syntax::ext::base::{Annotatable, ExtCtxt, SpecialDerives};
+use syntax::source_map::respan;
 use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, keywords, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax::parse::ParseSess;
 use syntax_pos::{DUMMY_SP, Span};
 
@@ -331,22 +330,23 @@ pub type CombineSubstructureFunc<'a> =
 pub type EnumNonMatchCollapsedFunc<'a> =
     Box<dyn FnMut(&mut ExtCtxt<'_>, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
 
-pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
-                                -> RefCell<CombineSubstructureFunc<'a>> {
+pub fn combine_substructure(f: CombineSubstructureFunc<'_>)
+                            -> RefCell<CombineSubstructureFunc<'_>> {
     RefCell::new(f)
 }
 
 /// This method helps to extract all the type parameters referenced from a
 /// type. For a type parameter `<T>`, it looks for either a `TyPath` that
 /// is not global and starts with `T`, or a `TyQPath`.
-fn find_type_parameters(ty: &ast::Ty,
-                        ty_param_names: &[ast::Name],
-                        span: Span,
-                        cx: &ExtCtxt<'_>)
-                        -> Vec<P<ast::Ty>> {
+fn find_type_parameters(
+    ty: &ast::Ty,
+    ty_param_names: &[ast::Name],
+    span: Span,
+    cx: &ExtCtxt<'_>,
+) -> Vec<P<ast::Ty>> {
     use syntax::visit;
 
-    struct Visitor<'a, 'b: 'a> {
+    struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
         span: Span,
         ty_param_names: &'a [ast::Name],
@@ -425,8 +425,9 @@ impl<'a> TraitDef<'a> {
                         return;
                     }
                 };
+                let container_id = cx.current_expansion.id.expn_data().parent;
                 let is_always_copy =
-                    attr::contains_name(&item.attrs, sym::rustc_copy_clone_marker) &&
+                    cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                     has_no_type_params;
                 let use_temporaries = is_packed && is_always_copy;
 
@@ -529,7 +530,8 @@ impl<'a> TraitDef<'a> {
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 generics: Generics::default(),
-                node: ast::ImplItemKind::Type(type_def.to_ty(cx, self.span, type_ident, generics)),
+                node: ast::ImplItemKind::TyAlias(
+                    type_def.to_ty(cx, self.span, type_ident, generics)),
                 tokens: None,
             }
         });
@@ -665,15 +667,13 @@ impl<'a> TraitDef<'a> {
         let path = cx.path_all(self.span, false, vec![type_ident], self_params, vec![]);
         let self_type = cx.ty_path(path);
 
-        let attr = cx.attribute(self.span,
-                                cx.meta_word(self.span,
-                                             Symbol::intern("automatically_derived")));
+        let attr = cx.attribute(cx.meta_word(self.span, sym::automatically_derived));
         // Just mark it now since we know that it'll end up used downstream
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let unused_qual = {
             let word = cx.meta_list_item_word(self.span, Symbol::intern("unused_qualifications"));
-            cx.attribute(self.span, cx.meta_list(self.span, Symbol::intern("allow"), vec![word]))
+            cx.attribute(cx.meta_list(self.span, sym::allow, vec![word]))
         };
 
         let mut a = vec![attr, unused_qual];
@@ -686,7 +686,7 @@ impl<'a> TraitDef<'a> {
         };
 
         cx.item(self.span,
-                keywords::Invalid.ident(),
+                Ident::invalid(),
                 a,
                 ast::ItemKind::Impl(unsafety,
                                     ast::ImplPolarity::Positive,
@@ -758,7 +758,7 @@ impl<'a> TraitDef<'a> {
         let mut field_tys = Vec::new();
 
         for variant in &enum_def.variants {
-            field_tys.extend(variant.node
+            field_tys.extend(variant
                 .data
                 .fields()
                 .iter()
@@ -890,7 +890,7 @@ impl<'a> MethodDef<'a> {
 
         for (ty, name) in self.args.iter() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(name).gensym();
+            let ident = ast::Ident::from_str_and_span(name, trait_.span);
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
@@ -923,14 +923,13 @@ impl<'a> MethodDef<'a> {
                      arg_types: Vec<(Ident, P<ast::Ty>)>,
                      body: P<Expr>)
                      -> ast::ImplItem {
-
-        // create the generics that aren't for Self
+        // Create the generics that aren't for `Self`.
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
-                ast::Arg::from_self(explicit_self,
-                                    keywords::SelfLower.ident().with_span_pos(trait_.span))
+                let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(trait_.span);
+                ast::Arg::from_self(ThinVec::default(), explicit_self, ident)
             });
             let nonself_args = arg_types.into_iter()
                 .map(|(name, ty)| cx.arg(trait_.span, name, ty));
@@ -1211,7 +1210,7 @@ impl<'a> MethodDef<'a> {
         let vi_idents = self_arg_names.iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", &name[..]);
-                cx.ident_of(&vi_suffix[..]).gensym()
+                ast::Ident::from_str_and_span(&vi_suffix[..], trait_.span)
             })
             .collect::<Vec<ast::Ident>>();
 
@@ -1221,7 +1220,7 @@ impl<'a> MethodDef<'a> {
         let catch_all_substructure =
             EnumNonMatchingCollapsed(self_arg_idents, &variants[..], &vi_idents[..]);
 
-        let first_fieldless = variants.iter().find(|v| v.node.data.fields().is_empty());
+        let first_fieldless = variants.iter().find(|v| v.data.fields().is_empty());
 
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
@@ -1230,7 +1229,7 @@ impl<'a> MethodDef<'a> {
         // where each tuple has length = self_args.len()
         let mut match_arms: Vec<ast::Arm> = variants.iter()
             .enumerate()
-            .filter(|&(_, v)| !(self.unify_fieldless_variants && v.node.data.fields().is_empty()))
+            .filter(|&(_, v)| !(self.unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|(index, variant)| {
                 let mk_self_pat = |cx: &mut ExtCtxt<'_>, self_arg_name: &str| {
                     let (p, idents) = trait_.create_enum_variant_pattern(cx,
@@ -1388,7 +1387,10 @@ impl<'a> MethodDef<'a> {
                 let variant_value =
                     deriving::call_intrinsic(cx, sp, "discriminant_value", vec![self_addr]);
 
-                let target_ty = cx.ty_ident(sp, cx.ident_of(target_type_name));
+                let target_ty = cx.ty_ident(
+                    sp,
+                    ast::Ident::from_str_and_span(target_type_name, sp),
+                );
                 let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
                 let let_stmt = cx.stmt_let(sp, false, ident, variant_disr);
                 index_let_stmts.push(let_stmt);
@@ -1514,8 +1516,8 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|v| {
                 let sp = v.span.with_ctxt(trait_.span.ctxt());
-                let summary = trait_.summarise_struct(cx, &v.node.data);
-                (v.node.ident, sp, summary)
+                let summary = trait_.summarise_struct(cx, &v.data);
+                (v.ident, sp, summary)
             })
             .collect();
         self.call_substructure_method(cx,
@@ -1589,7 +1591,7 @@ impl<'a> TraitDef<'a> {
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
-            let ident = cx.ident_of(&format!("{}_{}", prefix, i)).gensym();
+            let ident = ast::Ident::from_str_and_span(&format!("{}_{}", prefix, i), self.span);
             paths.push(ident.with_span_pos(sp));
             let val = cx.expr_path(cx.path_ident(sp, ident));
             let val = if use_temporaries {
@@ -1611,14 +1613,13 @@ impl<'a> TraitDef<'a> {
                         if ident.is_none() {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
-                        source_map::Spanned {
+                        ast::FieldPat {
+                            ident: ident.unwrap(),
+                            is_shorthand: false,
+                            attrs: ThinVec::new(),
+                            id: ast::DUMMY_NODE_ID,
                             span: pat.span.with_ctxt(self.span.ctxt()),
-                            node: ast::FieldPat {
-                                ident: ident.unwrap(),
-                                pat,
-                                is_shorthand: false,
-                                attrs: ThinVec::new(),
-                            },
+                            pat,
                         }
                     })
                     .collect();
@@ -1644,9 +1645,9 @@ impl<'a> TraitDef<'a> {
          mutbl: ast::Mutability)
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let sp = variant.span.with_ctxt(self.span.ctxt());
-        let variant_path = cx.path(sp, vec![enum_ident, variant.node.ident]);
+        let variant_path = cx.path(sp, vec![enum_ident, variant.ident]);
         let use_temporaries = false; // enums can't be repr(packed)
-        self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl,
+        self.create_struct_pattern(cx, variant_path, &variant.data, prefix, mutbl,
                                    use_temporaries)
     }
 }
@@ -1771,57 +1772,13 @@ pub fn cs_fold1<F, B>(use_foldl: bool,
     }
 }
 
-/// Call the method that is being derived on all the fields, and then
-/// process the collected results. i.e.
-///
-/// ```ignore (only-for-syntax-highlight)
-/// f(cx, span, vec![self_1.method(__arg_1_1, __arg_2_1),
-///                  self_2.method(__arg_1_2, __arg_2_2)])
-/// ```
-#[inline]
-pub fn cs_same_method<F>(f: F,
-                         mut enum_nonmatch_f: EnumNonMatchCollapsedFunc<'_>,
-                         cx: &mut ExtCtxt<'_>,
-                         trait_span: Span,
-                         substructure: &Substructure<'_>)
-                         -> P<Expr>
-    where F: FnOnce(&mut ExtCtxt<'_>, Span, Vec<P<Expr>>) -> P<Expr>
-{
-    match *substructure.fields {
-        EnumMatching(.., ref all_fields) |
-        Struct(_, ref all_fields) => {
-            // call self_n.method(other_1_n, other_2_n, ...)
-            let called = all_fields.iter()
-                .map(|field| {
-                    cx.expr_method_call(field.span,
-                                        field.self_.clone(),
-                                        substructure.method_ident,
-                                        field.other
-                                            .iter()
-                                            .map(|e| cx.expr_addr_of(field.span, e.clone()))
-                                            .collect())
-                })
-                .collect();
-
-            f(cx, trait_span, called)
-        }
-        EnumNonMatchingCollapsed(ref all_self_args, _, tuple) => {
-            enum_nonmatch_f(cx,
-                            trait_span,
-                            (&all_self_args[..], tuple),
-                            substructure.nonself_args)
-        }
-        StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
-    }
-}
-
 /// Returns `true` if the type has no value fields
 /// (for an enum, no variant has any fields)
 pub fn is_type_without_fields(item: &Annotatable) -> bool {
     if let Annotatable::Item(ref item) = *item {
         match item.node {
             ast::ItemKind::Enum(ref enum_def, _) => {
-                enum_def.variants.iter().all(|v| v.node.data.fields().is_empty())
+                enum_def.variants.iter().all(|v| v.data.fields().is_empty())
             }
             ast::ItemKind::Struct(ref variant_data, _) => variant_data.fields().is_empty(),
             _ => false,

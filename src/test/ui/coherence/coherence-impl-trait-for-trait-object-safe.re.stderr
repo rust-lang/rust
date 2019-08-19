@@ -1,7 +1,7 @@
 error[E0038]: the trait `NotObjectSafe` cannot be made into an object
   --> $DIR/coherence-impl-trait-for-trait-object-safe.rs:11:6
    |
-LL | impl NotObjectSafe for NotObjectSafe { }
+LL | impl NotObjectSafe for dyn NotObjectSafe { }
    |      ^^^^^^^^^^^^^ the trait `NotObjectSafe` cannot be made into an object
    |
    = note: method `eq` references the `Self` type in its arguments or return type

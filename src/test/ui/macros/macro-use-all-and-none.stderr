@@ -1,0 +1,12 @@
+warning: unused attribute
+  --> $DIR/macro-use-all-and-none.rs:7:1
+   |
+LL | #[macro_use()]
+   | ^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/macro-use-all-and-none.rs:4:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+

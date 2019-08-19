@@ -9,7 +9,7 @@ use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
     let start_node = graph.start_node();
@@ -126,11 +126,6 @@ impl<Node: Idx> Dominators<Node> {
     pub fn is_dominated_by(&self, node: Node, dom: Node) -> bool {
         // FIXME -- could be optimized by using post-order-rank
         self.dominators(node).any(|n| n == dom)
-    }
-
-    #[cfg(test)]
-    fn all_immediate_dominators(&self) -> &IndexVec<Node, Option<Node>> {
-        &self.immediate_dominators
     }
 }
 

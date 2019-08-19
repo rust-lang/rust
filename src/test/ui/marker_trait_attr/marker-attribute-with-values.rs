@@ -1,15 +1,12 @@
 #![feature(marker_trait_attr)]
 
-#[marker(always)]
+#[marker(always)] //~ ERROR malformed `marker` attribute
 trait Marker1 {}
-//~^^ ERROR attribute must be of the form
 
-#[marker("never")]
+#[marker("never")] //~ ERROR malformed `marker` attribute
 trait Marker2 {}
-//~^^ ERROR attribute must be of the form
 
-#[marker(key = "value")]
+#[marker(key = "value")] //~ ERROR malformed `marker` attribute
 trait Marker3 {}
-//~^^ ERROR attribute must be of the form `#[marker]`
 
 fn main() {}

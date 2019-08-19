@@ -1,5 +1,5 @@
 use crate::cmp::Ordering;
-use crate::ops::Try;
+use crate::ops::{Add, Try};
 
 use super::super::LoopState;
 use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
@@ -234,11 +234,15 @@ pub trait Iterator {
     /// assert_eq!(a.iter().count(), 5);
     /// ```
     #[inline]
-    #[rustc_inherit_overflow_checks]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn count(self) -> usize where Self: Sized {
-        // Might overflow.
-        self.fold(0, |cnt, _| cnt + 1)
+        #[inline]
+        fn add1<T>(count: usize, _: T) -> usize {
+            // Might overflow.
+            Add::add(count, 1)
+        }
+
+        self.fold(0, add1)
     }
 
     /// Consumes the iterator, returning the last element.
@@ -263,9 +267,12 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn last(self) -> Option<Self::Item> where Self: Sized {
-        let mut last = None;
-        for x in self { last = Some(x); }
-        last
+        #[inline]
+        fn some<T>(_: Option<T>, x: T) -> Option<T> {
+            Some(x)
+        }
+
+        self.fold(None, some)
     }
 
     /// Returns the `n`th element of the iterator.
@@ -356,7 +363,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [0, 1, 2, 3, 4, 5];
-    /// let mut iter = a.into_iter().step_by(2);
+    /// let mut iter = a.iter().step_by(2);
     ///
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), Some(&2));
@@ -531,7 +538,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let mut iter = a.into_iter().map(|x| 2 * x);
+    /// let mut iter = a.iter().map(|x| 2 * x);
     ///
     /// assert_eq!(iter.next(), Some(2));
     /// assert_eq!(iter.next(), Some(4));
@@ -598,10 +605,15 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_for_each", since = "1.21.0")]
-    fn for_each<F>(self, mut f: F) where
+    fn for_each<F>(self, f: F) where
         Self: Sized, F: FnMut(Self::Item),
     {
-        self.fold((), move |(), item| f(item));
+        #[inline]
+        fn call<T>(mut f: impl FnMut(T)) -> impl FnMut((), T) {
+            move |(), item| f(item)
+        }
+
+        self.fold((), call(f));
     }
 
     /// Creates an iterator which uses a closure to determine if an element
@@ -620,7 +632,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0i32, 1, 2];
     ///
-    /// let mut iter = a.into_iter().filter(|x| x.is_positive());
+    /// let mut iter = a.iter().filter(|x| x.is_positive());
     ///
     /// assert_eq!(iter.next(), Some(&1));
     /// assert_eq!(iter.next(), Some(&2));
@@ -634,7 +646,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0, 1, 2];
     ///
-    /// let mut iter = a.into_iter().filter(|x| **x > 1); // need two *s!
+    /// let mut iter = a.iter().filter(|x| **x > 1); // need two *s!
     ///
     /// assert_eq!(iter.next(), Some(&2));
     /// assert_eq!(iter.next(), None);
@@ -646,7 +658,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0, 1, 2];
     ///
-    /// let mut iter = a.into_iter().filter(|&x| *x > 1); // both & and *
+    /// let mut iter = a.iter().filter(|&x| *x > 1); // both & and *
     ///
     /// assert_eq!(iter.next(), Some(&2));
     /// assert_eq!(iter.next(), None);
@@ -657,7 +669,7 @@ pub trait Iterator {
     /// ```
     /// let a = [0, 1, 2];
     ///
-    /// let mut iter = a.into_iter().filter(|&&x| x > 1); // two &s
+    /// let mut iter = a.iter().filter(|&&x| x > 1); // two &s
     ///
     /// assert_eq!(iter.next(), Some(&2));
     /// assert_eq!(iter.next(), None);
@@ -837,7 +849,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1i32, 0, 1];
     ///
-    /// let mut iter = a.into_iter().skip_while(|x| x.is_negative());
+    /// let mut iter = a.iter().skip_while(|x| x.is_negative());
     ///
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), Some(&1));
@@ -851,7 +863,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1, 0, 1];
     ///
-    /// let mut iter = a.into_iter().skip_while(|x| **x < 0); // need two *s!
+    /// let mut iter = a.iter().skip_while(|x| **x < 0); // need two *s!
     ///
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), Some(&1));
@@ -863,7 +875,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1, 0, 1, -2];
     ///
-    /// let mut iter = a.into_iter().skip_while(|x| **x < 0);
+    /// let mut iter = a.iter().skip_while(|x| **x < 0);
     ///
     /// assert_eq!(iter.next(), Some(&0));
     /// assert_eq!(iter.next(), Some(&1));
@@ -898,7 +910,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1i32, 0, 1];
     ///
-    /// let mut iter = a.into_iter().take_while(|x| x.is_negative());
+    /// let mut iter = a.iter().take_while(|x| x.is_negative());
     ///
     /// assert_eq!(iter.next(), Some(&-1));
     /// assert_eq!(iter.next(), None);
@@ -911,7 +923,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1, 0, 1];
     ///
-    /// let mut iter = a.into_iter().take_while(|x| **x < 0); // need two *s!
+    /// let mut iter = a.iter().take_while(|x| **x < 0); // need two *s!
     ///
     /// assert_eq!(iter.next(), Some(&-1));
     /// assert_eq!(iter.next(), None);
@@ -922,7 +934,7 @@ pub trait Iterator {
     /// ```
     /// let a = [-1, 0, 1, -2];
     ///
-    /// let mut iter = a.into_iter().take_while(|x| **x < 0);
+    /// let mut iter = a.iter().take_while(|x| **x < 0);
     ///
     /// assert_eq!(iter.next(), Some(&-1));
     ///
@@ -937,7 +949,7 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3, 4];
-    /// let mut iter = a.into_iter();
+    /// let mut iter = a.iter();
     ///
     /// let result: Vec<i32> = iter.by_ref()
     ///                            .take_while(|n| **n != 3)
@@ -964,6 +976,7 @@ pub trait Iterator {
     /// Creates an iterator that skips the first `n` elements.
     ///
     /// After they have been consumed, the rest of the elements are yielded.
+    /// Rather than overriding this method directly, instead override the `nth` method.
     ///
     /// # Examples
     ///
@@ -1321,7 +1334,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let iter = a.into_iter();
+    /// let iter = a.iter();
     ///
     /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i );
     ///
@@ -1334,7 +1347,7 @@ pub trait Iterator {
     /// // let's try that again
     /// let a = [1, 2, 3];
     ///
-    /// let mut iter = a.into_iter();
+    /// let mut iter = a.iter();
     ///
     /// // instead, we add in a .by_ref()
     /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i );
@@ -1471,6 +1484,11 @@ pub trait Iterator {
     /// `partition()` returns a pair, all of the elements for which it returned
     /// `true`, and all of the elements for which it returned `false`.
     ///
+    /// See also [`is_partitioned()`] and [`partition_in_place()`].
+    ///
+    /// [`is_partitioned()`]: #method.is_partitioned
+    /// [`partition_in_place()`]: #method.partition_in_place
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1479,30 +1497,134 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     ///
     /// let (even, odd): (Vec<i32>, Vec<i32>) = a
-    ///     .into_iter()
+    ///     .iter()
     ///     .partition(|&n| n % 2 == 0);
     ///
     /// assert_eq!(even, vec![2]);
     /// assert_eq!(odd, vec![1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn partition<B, F>(self, mut f: F) -> (B, B) where
+    fn partition<B, F>(self, f: F) -> (B, B) where
         Self: Sized,
         B: Default + Extend<Self::Item>,
         F: FnMut(&Self::Item) -> bool
     {
-        let mut left: B = Default::default();
-        let mut right: B = Default::default();
-
-        for x in self {
-            if f(&x) {
-                left.extend(Some(x))
-            } else {
-                right.extend(Some(x))
+        #[inline]
+        fn extend<'a, T, B: Extend<T>>(
+            mut f: impl FnMut(&T) -> bool + 'a,
+            left: &'a mut B,
+            right: &'a mut B,
+        ) -> impl FnMut(T) + 'a {
+            move |x| {
+                if f(&x) {
+                    left.extend(Some(x));
+                } else {
+                    right.extend(Some(x));
+                }
             }
         }
 
+        let mut left: B = Default::default();
+        let mut right: B = Default::default();
+
+        self.for_each(extend(f, &mut left, &mut right));
+
         (left, right)
+    }
+
+    /// Reorder the elements of this iterator *in-place* according to the given predicate,
+    /// such that all those that return `true` precede all those that return `false`.
+    /// Returns the number of `true` elements found.
+    ///
+    /// The relative order of partitioned items is not maintained.
+    ///
+    /// See also [`is_partitioned()`] and [`partition()`].
+    ///
+    /// [`is_partitioned()`]: #method.is_partitioned
+    /// [`partition()`]: #method.partition
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iter_partition_in_place)]
+    ///
+    /// let mut a = [1, 2, 3, 4, 5, 6, 7];
+    ///
+    /// // Partition in-place between evens and odds
+    /// let i = a.iter_mut().partition_in_place(|&n| n % 2 == 0);
+    ///
+    /// assert_eq!(i, 3);
+    /// assert!(a[..i].iter().all(|&n| n % 2 == 0)); // evens
+    /// assert!(a[i..].iter().all(|&n| n % 2 == 1)); // odds
+    /// ```
+    #[unstable(feature = "iter_partition_in_place", reason = "new API", issue = "62543")]
+    fn partition_in_place<'a, T: 'a, P>(mut self, ref mut predicate: P) -> usize
+    where
+        Self: Sized + DoubleEndedIterator<Item = &'a mut T>,
+        P: FnMut(&T) -> bool,
+    {
+        // FIXME: should we worry about the count overflowing? The only way to have more than
+        // `usize::MAX` mutable references is with ZSTs, which aren't useful to partition...
+
+        // These closure "factory" functions exist to avoid genericity in `Self`.
+
+        #[inline]
+        fn is_false<'a, T>(
+            predicate: &'a mut impl FnMut(&T) -> bool,
+            true_count: &'a mut usize,
+        ) -> impl FnMut(&&mut T) -> bool + 'a {
+            move |x| {
+                let p = predicate(&**x);
+                *true_count += p as usize;
+                !p
+            }
+        }
+
+        #[inline]
+        fn is_true<T>(
+            predicate: &mut impl FnMut(&T) -> bool
+        ) -> impl FnMut(&&mut T) -> bool + '_ {
+            move |x| predicate(&**x)
+        }
+
+        // Repeatedly find the first `false` and swap it with the last `true`.
+        let mut true_count = 0;
+        while let Some(head) = self.find(is_false(predicate, &mut true_count)) {
+            if let Some(tail) = self.rfind(is_true(predicate)) {
+                crate::mem::swap(head, tail);
+                true_count += 1;
+            } else {
+                break;
+            }
+        }
+        true_count
+    }
+
+    /// Checks if the elements of this iterator are partitioned according to the given predicate,
+    /// such that all those that return `true` precede all those that return `false`.
+    ///
+    /// See also [`partition()`] and [`partition_in_place()`].
+    ///
+    /// [`partition()`]: #method.partition
+    /// [`partition_in_place()`]: #method.partition_in_place
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iter_is_partitioned)]
+    ///
+    /// assert!("Iterator".chars().is_partitioned(char::is_uppercase));
+    /// assert!(!"IntoIterator".chars().is_partitioned(char::is_uppercase));
+    /// ```
+    #[unstable(feature = "iter_is_partitioned", reason = "new API", issue = "62544")]
+    fn is_partitioned<P>(mut self, mut predicate: P) -> bool
+    where
+        Self: Sized,
+        P: FnMut(Self::Item) -> bool,
+    {
+        // Either all items test `true`, or the first clause stops at `false`
+        // and we check that there are no more `true` items after that.
+        self.all(&mut predicate) || !self.any(predicate)
     }
 
     /// An iterator method that applies a function as long as it returns
@@ -1603,10 +1725,15 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_try_fold", since = "1.27.0")]
-    fn try_for_each<F, R>(&mut self, mut f: F) -> R where
+    fn try_for_each<F, R>(&mut self, f: F) -> R where
         Self: Sized, F: FnMut(Self::Item) -> R, R: Try<Ok=()>
     {
-        self.try_fold((), move |(), x| f(x))
+        #[inline]
+        fn call<T, R>(mut f: impl FnMut(T) -> R) -> impl FnMut((), T) -> R {
+            move |(), x| f(x)
+        }
+
+        self.try_fold((), call(f))
     }
 
     /// An iterator method that applies a function, producing a single, final value.
@@ -1678,10 +1805,15 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B where
+    fn fold<B, F>(mut self, init: B, f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
-        self.try_fold(init, move |acc, x| Ok::<B, !>(f(acc, x))).unwrap()
+        #[inline]
+        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
+            move |acc, x| Ok(f(acc, x))
+        }
+
+        self.try_fold(init, ok(f)).unwrap()
     }
 
     /// Tests if every element of the iterator matches a predicate.
@@ -1723,13 +1855,18 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn all<F>(&mut self, mut f: F) -> bool where
+    fn all<F>(&mut self, f: F) -> bool where
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
-        self.try_for_each(move |x| {
-            if f(x) { LoopState::Continue(()) }
-            else { LoopState::Break(()) }
-        }) == LoopState::Continue(())
+        #[inline]
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut(T) -> LoopState<(), ()> {
+            move |x| {
+                if f(x) { LoopState::Continue(()) }
+                else { LoopState::Break(()) }
+            }
+        }
+
+        self.try_for_each(check(f)) == LoopState::Continue(())
     }
 
     /// Tests if any element of the iterator matches a predicate.
@@ -1771,14 +1908,19 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn any<F>(&mut self, mut f: F) -> bool where
+    fn any<F>(&mut self, f: F) -> bool where
         Self: Sized,
         F: FnMut(Self::Item) -> bool
     {
-        self.try_for_each(move |x| {
-            if f(x) { LoopState::Break(()) }
-            else { LoopState::Continue(()) }
-        }) == LoopState::Break(())
+        #[inline]
+        fn check<T>(mut f: impl FnMut(T) -> bool) -> impl FnMut(T) -> LoopState<(), ()> {
+            move |x| {
+                if f(x) { LoopState::Break(()) }
+                else { LoopState::Continue(()) }
+            }
+        }
+
+        self.try_for_each(check(f)) == LoopState::Break(())
     }
 
     /// Searches for an element of an iterator that satisfies a predicate.
@@ -1825,14 +1967,19 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
+    fn find<P>(&mut self, predicate: P) -> Option<Self::Item> where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        self.try_for_each(move |x| {
-            if predicate(&x) { LoopState::Break(x) }
-            else { LoopState::Continue(()) }
-        }).break_value()
+        #[inline]
+        fn check<T>(mut predicate: impl FnMut(&T) -> bool) -> impl FnMut(T) -> LoopState<(), T> {
+            move |x| {
+                if predicate(&x) { LoopState::Break(x) }
+                else { LoopState::Continue(()) }
+            }
+        }
+
+        self.try_for_each(check(predicate)).break_value()
     }
 
     /// Applies function to the elements of iterator and returns
@@ -1852,16 +1999,19 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_find_map", since = "1.30.0")]
-    fn find_map<B, F>(&mut self, mut f: F) -> Option<B> where
+    fn find_map<B, F>(&mut self, f: F) -> Option<B> where
         Self: Sized,
         F: FnMut(Self::Item) -> Option<B>,
     {
-        self.try_for_each(move |x| {
-            match f(x) {
+        #[inline]
+        fn check<T, B>(mut f: impl FnMut(T) -> Option<B>) -> impl FnMut(T) -> LoopState<(), B> {
+            move |x| match f(x) {
                 Some(x) => LoopState::Break(x),
                 None => LoopState::Continue(()),
             }
-        }).break_value()
+        }
+
+        self.try_for_each(check(f)).break_value()
     }
 
     /// Searches for an element in an iterator, returning its index.
@@ -1919,17 +2069,23 @@ pub trait Iterator {
     ///
     /// ```
     #[inline]
-    #[rustc_inherit_overflow_checks]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
+    fn position<P>(&mut self, predicate: P) -> Option<usize> where
         Self: Sized,
         P: FnMut(Self::Item) -> bool,
     {
-        // The addition might panic on overflow
-        self.try_fold(0, move |i, x| {
-            if predicate(x) { LoopState::Break(i) }
-            else { LoopState::Continue(i + 1) }
-        }).break_value()
+        #[inline]
+        fn check<T>(
+            mut predicate: impl FnMut(T) -> bool,
+        ) -> impl FnMut(usize, T) -> LoopState<usize, usize> {
+            // The addition might panic on overflow
+            move |i, x| {
+                if predicate(x) { LoopState::Break(i) }
+                else { LoopState::Continue(Add::add(i, 1)) }
+            }
+        }
+
+        self.try_fold(0, check(predicate)).break_value()
     }
 
     /// Searches for an element in an iterator from the right, returning its
@@ -1972,18 +2128,25 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
+    fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
         P: FnMut(Self::Item) -> bool,
         Self: Sized + ExactSizeIterator + DoubleEndedIterator
     {
         // No need for an overflow check here, because `ExactSizeIterator`
         // implies that the number of elements fits into a `usize`.
+        #[inline]
+        fn check<T>(
+            mut predicate: impl FnMut(T) -> bool,
+        ) -> impl FnMut(usize, T) -> LoopState<usize, usize> {
+            move |i, x| {
+                let i = i - 1;
+                if predicate(x) { LoopState::Break(i) }
+                else { LoopState::Continue(i) }
+            }
+        }
+
         let n = self.len();
-        self.try_rfold(n, move |i, x| {
-            let i = i - 1;
-            if predicate(x) { LoopState::Break(i) }
-            else { LoopState::Continue(i) }
-        }).break_value()
+        self.try_rfold(n, check(predicate)).break_value()
     }
 
     /// Returns the maximum element of an iterator.
@@ -2052,11 +2215,22 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_cmp_by_key", since = "1.6.0")]
-    fn max_by_key<B: Ord, F>(self, mut f: F) -> Option<Self::Item>
+    fn max_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item) -> B,
     {
+        #[inline]
+        fn key<T, B>(mut f: impl FnMut(&T) -> B) -> impl FnMut(T) -> (B, T) {
+            move |x| (f(&x), x)
+        }
+
         // switch to y even if it is only equal, to preserve stability.
-        select_fold1(self.map(|x| (f(&x), x)), |(x_p, _), (y_p, _)| x_p <= y_p).map(|(_, x)| x)
+        #[inline]
+        fn select<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> bool {
+            x_p <= y_p
+        }
+
+        let (_, x) = select_fold1(self.map(key(f)), select)?;
+        Some(x)
     }
 
     /// Returns the element that gives the maximum value with respect to the
@@ -2075,11 +2249,16 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_max_by", since = "1.15.0")]
-    fn max_by<F>(self, mut compare: F) -> Option<Self::Item>
+    fn max_by<F>(self, compare: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item, &Self::Item) -> Ordering,
     {
         // switch to y even if it is only equal, to preserve stability.
-        select_fold1(self, |x, y| compare(x, y) != Ordering::Greater)
+        #[inline]
+        fn select<T>(mut compare: impl FnMut(&T, &T) -> Ordering) -> impl FnMut(&T, &T) -> bool {
+            move |x, y| compare(x, y) != Ordering::Greater
+        }
+
+        select_fold1(self, select(compare))
     }
 
     /// Returns the element that gives the minimum value from the
@@ -2096,12 +2275,24 @@ pub trait Iterator {
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by_key(|x| x.abs()).unwrap(), 0);
     /// ```
+    #[inline]
     #[stable(feature = "iter_cmp_by_key", since = "1.6.0")]
-    fn min_by_key<B: Ord, F>(self, mut f: F) -> Option<Self::Item>
+    fn min_by_key<B: Ord, F>(self, f: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item) -> B,
     {
+        #[inline]
+        fn key<T, B>(mut f: impl FnMut(&T) -> B) -> impl FnMut(T) -> (B, T) {
+            move |x| (f(&x), x)
+        }
+
         // only switch to y if it is strictly smaller, to preserve stability.
-        select_fold1(self.map(|x| (f(&x), x)), |(x_p, _), (y_p, _)| x_p > y_p).map(|(_, x)| x)
+        #[inline]
+        fn select<T, B: Ord>((x_p, _): &(B, T), (y_p, _): &(B, T)) -> bool {
+            x_p > y_p
+        }
+
+        let (_, x) = select_fold1(self.map(key(f)), select)?;
+        Some(x)
     }
 
     /// Returns the element that gives the minimum value with respect to the
@@ -2120,11 +2311,16 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iter_min_by", since = "1.15.0")]
-    fn min_by<F>(self, mut compare: F) -> Option<Self::Item>
+    fn min_by<F>(self, compare: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(&Self::Item, &Self::Item) -> Ordering,
     {
         // only switch to y if it is strictly smaller, to preserve stability.
-        select_fold1(self, |x, y| compare(x, y) == Ordering::Greater)
+        #[inline]
+        fn select<T>(mut compare: impl FnMut(&T, &T) -> Ordering) -> impl FnMut(&T, &T) -> bool {
+            move |x, y| compare(x, y) == Ordering::Greater
+        }
+
+        select_fold1(self, select(compare))
     }
 
 
@@ -2185,13 +2381,20 @@ pub trait Iterator {
         FromB: Default + Extend<B>,
         Self: Sized + Iterator<Item=(A, B)>,
     {
+        fn extend<'a, A, B>(
+            ts: &'a mut impl Extend<A>,
+            us: &'a mut impl Extend<B>,
+        ) -> impl FnMut((A, B)) + 'a {
+            move |(t, u)| {
+                ts.extend(Some(t));
+                us.extend(Some(u));
+            }
+        }
+
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        self.for_each(|(t, u)| {
-            ts.extend(Some(t));
-            us.extend(Some(u));
-        });
+        self.for_each(extend(&mut ts, &mut us));
 
         (ts, us)
     }
@@ -2518,7 +2721,7 @@ pub trait Iterator {
         Self: Sized,
         Self::Item: PartialOrd,
     {
-        self.is_sorted_by(|a, b| a.partial_cmp(b))
+        self.is_sorted_by(PartialOrd::partial_cmp)
     }
 
     /// Checks if the elements of this iterator are sorted using the given comparator function.
@@ -2540,10 +2743,7 @@ pub trait Iterator {
         };
 
         while let Some(curr) = self.next() {
-            if compare(&last, &curr)
-                .map(|o| o == Ordering::Greater)
-                .unwrap_or(true)
-            {
+            if let Some(Ordering::Greater) | None = compare(&last, &curr) {
                 return false;
             }
             last = curr;
@@ -2571,13 +2771,13 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]
-    fn is_sorted_by_key<F, K>(self, mut f: F) -> bool
+    fn is_sorted_by_key<F, K>(self, f: F) -> bool
     where
         Self: Sized,
-        F: FnMut(&Self::Item) -> K,
+        F: FnMut(Self::Item) -> K,
         K: PartialOrd
     {
-        self.is_sorted_by(|a, b| f(a).partial_cmp(&f(b)))
+        self.map(f).is_sorted()
     }
 }
 
@@ -2588,17 +2788,21 @@ pub trait Iterator {
 /// commonalities of {max,min}{,_by}. In particular, this avoids
 /// having to implement optimizations several times.
 #[inline]
-fn select_fold1<I, F>(mut it: I, mut f: F) -> Option<I::Item>
+fn select_fold1<I, F>(mut it: I, f: F) -> Option<I::Item>
     where
         I: Iterator,
         F: FnMut(&I::Item, &I::Item) -> bool,
 {
+    #[inline]
+    fn select<T>(mut f: impl FnMut(&T, &T) -> bool) -> impl FnMut(T, T) -> T {
+        move |sel, x| if f(&sel, &x) { x } else { sel }
+    }
+
     // start with the first element as our selection. This avoids
     // having to use `Option`s inside the loop, translating to a
     // sizeable performance gain (6x in one case).
-    it.next().map(|first| {
-        it.fold(first, |sel, x| if f(&sel, &x) { x } else { sel })
-    })
+    let first = it.next()?;
+    Some(it.fold(first, select(f)))
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -27,9 +27,9 @@ impl Range for ThreeDigits {
 
 fn digits(x: u8) -> u32 {
     match x {
-        OneDigit::FIRST...OneDigit::LAST => 1,
-        TwoDigits::FIRST...TwoDigits::LAST => 2,
-        ThreeDigits::FIRST...ThreeDigits::LAST => 3,
+        OneDigit::FIRST..=OneDigit::LAST => 1,
+        TwoDigits::FIRST..=TwoDigits::LAST => 2,
+        ThreeDigits::FIRST..=ThreeDigits::LAST => 3,
         _ => unreachable!(),
     }
 }

@@ -12,12 +12,12 @@ use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_metadata::cstore::CStore;
-use std::io::Write;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
 use syntax;
 use syntax::source_map::{FileLoader, SourceMap};
+use syntax_pos::edition;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
@@ -135,16 +135,17 @@ where
 {
     let stderr = config.stderr.take();
     util::spawn_thread_pool(
+        config.opts.edition,
         config.opts.debugging_opts.threads,
         &stderr,
         || run_compiler_in_existing_thread_pool(config, f),
     )
 }
 
-pub fn default_thread_pool<F, R>(f: F) -> R
+pub fn default_thread_pool<F, R>(edition: edition::Edition, f: F) -> R
 where
     F: FnOnce() -> R + Send,
     R: Send,
 {
-    util::spawn_thread_pool(None, &None, f)
+    util::spawn_thread_pool(edition, None, &None, f)
 }

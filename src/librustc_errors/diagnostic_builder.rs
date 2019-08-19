@@ -348,7 +348,7 @@ impl<'a> DiagnosticBuilder<'a> {
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
-    pub fn new_with_code(handler: &'a Handler,
+    crate fn new_with_code(handler: &'a Handler,
                          level: Level,
                          code: Option<DiagnosticId>,
                          message: &str)
@@ -380,10 +380,13 @@ impl<'a> Debug for DiagnosticBuilder<'a> {
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
         if !panicking() && !self.cancelled() {
-            let mut db = DiagnosticBuilder::new(self.handler,
-                                                Level::Bug,
-                                                "Error constructed but not emitted");
+            let mut db = DiagnosticBuilder::new(
+                self.handler,
+                Level::Bug,
+                "the following error was constructed but not emitted",
+            );
             db.emit();
+            self.emit();
             panic!();
         }
     }

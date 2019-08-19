@@ -94,7 +94,7 @@ pub trait Error: Debug + Display {
     ///         "I'm the superhero of errors"
     ///     }
     ///
-    ///     fn cause(&self) -> Option<&Error> {
+    ///     fn cause(&self) -> Option<&dyn Error> {
     ///         Some(&self.side)
     ///     }
     /// }
@@ -218,6 +218,8 @@ mod private {
 impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     /// Converts a type of [`Error`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -242,7 +244,7 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     ///
     /// let an_error = AnError;
     /// assert!(0 == mem::size_of_val(&an_error));
-    /// let a_boxed_error = Box::<Error>::from(an_error);
+    /// let a_boxed_error = Box::<dyn Error>::from(an_error);
     /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: E) -> Box<dyn Error + 'a> {
@@ -252,8 +254,10 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of dyn [`Error`] +
-    /// [`Send`] + [`Sync`].
+    /// Converts a type of [`Error`] + [`trait@Send`] + [`trait@Sync`] into a box of
+    /// dyn [`Error`] + [`trait@Send`] + [`trait@Sync`].
+    ///
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -283,7 +287,7 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
     ///
     /// let an_error = AnError;
     /// assert!(0 == mem::size_of_val(&an_error));
-    /// let a_boxed_error = Box::<Error + Send + Sync>::from(an_error);
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(an_error);
     /// assert!(
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
@@ -294,7 +298,9 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for Box<dyn Error + Send + Sync> {
-    /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    /// Converts a [`String`] into a box of dyn [`Error`] + [`trait@Send`] + [`trait@Sync`].
+    ///
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -303,12 +309,11 @@ impl From<String> for Box<dyn Error + Send + Sync> {
     /// use std::mem;
     ///
     /// let a_string_error = "a string error".to_string();
-    /// let a_boxed_error = Box::<Error + Send + Sync>::from(a_string_error);
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_string_error);
     /// assert!(
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: String) -> Box<dyn Error + Send + Sync> {
-        #[derive(Debug)]
         struct StringError(String);
 
         impl Error for StringError {
@@ -321,6 +326,13 @@ impl From<String> for Box<dyn Error + Send + Sync> {
             }
         }
 
+        // Purposefully skip printing "StringError(..)"
+        impl Debug for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                Debug::fmt(&self.0, f)
+            }
+        }
+
         Box::new(StringError(err))
     }
 }
@@ -329,6 +341,8 @@ impl From<String> for Box<dyn Error + Send + Sync> {
 impl From<String> for Box<dyn Error> {
     /// Converts a [`String`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -336,7 +350,7 @@ impl From<String> for Box<dyn Error> {
     /// use std::mem;
     ///
     /// let a_string_error = "a string error".to_string();
-    /// let a_boxed_error = Box::<Error>::from(a_string_error);
+    /// let a_boxed_error = Box::<dyn Error>::from(a_string_error);
     /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(str_err: String) -> Box<dyn Error> {
@@ -348,7 +362,9 @@ impl From<String> for Box<dyn Error> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    /// Converts a [`str`] into a box of dyn [`Error`] + [`trait@Send`] + [`trait@Sync`].
+    ///
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -357,7 +373,7 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// use std::mem;
     ///
     /// let a_str_error = "a str error";
-    /// let a_boxed_error = Box::<Error + Send + Sync>::from(a_str_error);
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_str_error);
     /// assert!(
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
@@ -370,6 +386,8 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
 impl From<&str> for Box<dyn Error> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -377,7 +395,7 @@ impl From<&str> for Box<dyn Error> {
     /// use std::mem;
     ///
     /// let a_str_error = "a str error";
-    /// let a_boxed_error = Box::<Error>::from(a_str_error);
+    /// let a_boxed_error = Box::<dyn Error>::from(a_str_error);
     /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: &str) -> Box<dyn Error> {
@@ -387,7 +405,10 @@ impl From<&str> for Box<dyn Error> {
 
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
-    /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    /// Converts a [`Cow`] into a box of dyn [`Error`] + [`trait@Send`] + [`trait@Sync`].
+    ///
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -397,7 +418,7 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     /// use std::borrow::Cow;
     ///
     /// let a_cow_str_error = Cow::from("a str error");
-    /// let a_boxed_error = Box::<Error + Send + Sync>::from(a_cow_str_error);
+    /// let a_boxed_error = Box::<dyn Error + Send + Sync>::from(a_cow_str_error);
     /// assert!(
     ///     mem::size_of::<Box<dyn Error + Send + Sync>>() == mem::size_of_val(&a_boxed_error))
     /// ```
@@ -410,6 +431,9 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
 impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     /// Converts a [`Cow`] into a box of dyn [`Error`].
     ///
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -418,7 +442,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     /// use std::borrow::Cow;
     ///
     /// let a_cow_str_error = Cow::from("a str error");
-    /// let a_boxed_error = Box::<Error>::from(a_cow_str_error);
+    /// let a_boxed_error = Box::<dyn Error>::from(a_cow_str_error);
     /// assert!(mem::size_of::<Box<dyn Error>>() == mem::size_of_val(&a_boxed_error))
     /// ```
     fn from(err: Cow<'a, str>) -> Box<dyn Error> {
@@ -535,6 +559,10 @@ impl<T: Error> Error for Box<T> {
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn Error> {
         Error::cause(&**self)
+    }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Error::source(&**self)
     }
 }
 

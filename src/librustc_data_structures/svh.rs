@@ -7,7 +7,7 @@
 
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use serialize::{Encodable, Decodable, Encoder, Decoder};
+use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
 use crate::stable_hasher;
 

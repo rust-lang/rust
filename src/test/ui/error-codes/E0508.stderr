@@ -1,0 +1,13 @@
+error[E0508]: cannot move out of type `[NonCopy; 1]`, a non-copy array
+  --> $DIR/E0508.rs:5:18
+   |
+LL |     let _value = array[0];
+   |                  ^^^^^^^^
+   |                  |
+   |                  cannot move out of here
+   |                  move occurs because `array[_]` has type `NonCopy`, which does not implement the `Copy` trait
+   |                  help: consider borrowing here: `&array[0]`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0508`.

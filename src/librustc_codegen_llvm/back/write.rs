@@ -13,7 +13,7 @@ use crate::LlvmCodegenBackend;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, run_assembler};
 use rustc_codegen_ssa::traits::*;
-use rustc::session::config::{self, OutputType, Passes, Lto, PgoGenerate};
+use rustc::session::config::{self, OutputType, Passes, Lto, SwitchWithOptPath};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, CompiledModule};
@@ -89,7 +89,7 @@ pub fn create_informational_target_machine(
 }
 
 pub fn create_target_machine(
-    tcx: TyCtxt<'_, '_, '_>,
+    tcx: TyCtxt<'_>,
     find_features: bool,
 ) -> &'static mut llvm::TargetMachine {
     target_machine_factory(&tcx.sess, tcx.backend_optimization_level(LOCAL_CRATE), find_features)()
@@ -239,9 +239,9 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
     }
 }
 
-unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<LlvmCodegenBackend>,
-                                               msg: &'b str,
-                                               cookie: c_uint) {
+unsafe extern "C" fn report_inline_asm(cgcx: &CodegenContext<LlvmCodegenBackend>,
+                                       msg: &str,
+                                       cookie: c_uint) {
     cgcx.diag_emitter.inline_asm_error(cookie as u32, msg.to_owned());
 }
 
@@ -329,33 +329,55 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
         let mpm = llvm::LLVMCreatePassManager();
 
         {
-            // If we're verifying or linting, add them to the function pass
-            // manager.
-            let addpass = |pass_name: &str| {
+            let find_pass = |pass_name: &str| {
                 let pass_name = SmallCStr::new(pass_name);
-                let pass = match llvm::LLVMRustFindAndCreatePass(pass_name.as_ptr()) {
-                    Some(pass) => pass,
-                    None => return false,
-                };
-                let pass_manager = match llvm::LLVMRustPassKind(pass) {
-                    llvm::PassKind::Function => &*fpm,
-                    llvm::PassKind::Module => &*mpm,
-                    llvm::PassKind::Other => {
-                        diag_handler.err("Encountered LLVM pass kind we can't handle");
-                        return true
-                    },
-                };
-                llvm::LLVMRustAddPass(pass_manager, pass);
-                true
+                llvm::LLVMRustFindAndCreatePass(pass_name.as_ptr())
             };
 
-            if config.verify_llvm_ir { assert!(addpass("verify")); }
+            if config.verify_llvm_ir {
+                // Verification should run as the very first pass.
+                llvm::LLVMRustAddPass(fpm, find_pass("verify").unwrap());
+            }
+
+            let mut extra_passes = Vec::new();
+            let mut have_name_anon_globals_pass = false;
+
+            for pass_name in &config.passes {
+                if pass_name == "lint" {
+                    // Linting should also be performed early, directly on the generated IR.
+                    llvm::LLVMRustAddPass(fpm, find_pass("lint").unwrap());
+                    continue;
+                }
+
+                if let Some(pass) = find_pass(pass_name) {
+                    extra_passes.push(pass);
+                } else {
+                    diag_handler.warn(&format!("unknown pass `{}`, ignoring", pass_name));
+                }
+
+                if pass_name == "name-anon-globals" {
+                    have_name_anon_globals_pass = true;
+                }
+            }
+
+            for pass_name in &cgcx.plugin_passes {
+                if let Some(pass) = find_pass(pass_name) {
+                    extra_passes.push(pass);
+                } else {
+                    diag_handler.err(&format!("a plugin asked for LLVM pass \
+                                               `{}` but LLVM does not \
+                                               recognize it", pass_name));
+                }
+
+                if pass_name == "name-anon-globals" {
+                    have_name_anon_globals_pass = true;
+                }
+            }
 
             // Some options cause LLVM bitcode to be emitted, which uses ThinLTOBuffers, so we need
             // to make sure we run LLVM's NameAnonGlobals pass when emitting bitcode; otherwise
             // we'll get errors in LLVM.
             let using_thin_buffers = config.bitcode_needed();
-            let mut have_name_anon_globals_pass = false;
             if !config.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
@@ -364,34 +386,22 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal ||
                     (cgcx.lto != Lto::Fat && cgcx.opts.cg.linker_plugin_lto.enabled());
                 with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
+                    llvm::LLVMRustAddLastExtensionPasses(
+                        b, extra_passes.as_ptr(), extra_passes.len() as size_t);
                     llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
                     llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
                 });
 
                 have_name_anon_globals_pass = have_name_anon_globals_pass || prepare_for_thin_lto;
                 if using_thin_buffers && !prepare_for_thin_lto {
-                    assert!(addpass("name-anon-globals"));
+                    llvm::LLVMRustAddPass(mpm, find_pass("name-anon-globals").unwrap());
                     have_name_anon_globals_pass = true;
                 }
-            }
-
-            for pass in &config.passes {
-                if !addpass(pass) {
-                    diag_handler.warn(&format!("unknown pass `{}`, ignoring", pass));
-                }
-                if pass == "name-anon-globals" {
-                    have_name_anon_globals_pass = true;
-                }
-            }
-
-            for pass in &cgcx.plugin_passes {
-                if !addpass(pass) {
-                    diag_handler.err(&format!("a plugin asked for LLVM pass \
-                                               `{}` but LLVM does not \
-                                               recognize it", pass));
-                }
-                if pass == "name-anon-globals" {
-                    have_name_anon_globals_pass = true;
+            } else {
+                // If we don't use the standard pipeline, directly populate the MPM
+                // with the extra passes.
+                for pass in extra_passes {
+                    llvm::LLVMRustAddPass(mpm, pass);
                 }
             }
 
@@ -707,7 +717,7 @@ pub unsafe fn with_llvm_pmb(llmod: &llvm::Module,
     let inline_threshold = config.inline_threshold;
 
     let pgo_gen_path = match config.pgo_gen {
-        PgoGenerate::Enabled(ref opt_dir_path) => {
+        SwitchWithOptPath::Enabled(ref opt_dir_path) => {
             let path = if let Some(dir_path) = opt_dir_path {
                 dir_path.join("default_%m.profraw")
             } else {
@@ -716,16 +726,14 @@ pub unsafe fn with_llvm_pmb(llmod: &llvm::Module,
 
             Some(CString::new(format!("{}", path.display())).unwrap())
         }
-        PgoGenerate::Disabled => {
+        SwitchWithOptPath::Disabled => {
             None
         }
     };
 
-    let pgo_use_path = if config.pgo_use.is_empty() {
-        None
-    } else {
-        Some(CString::new(config.pgo_use.as_bytes()).unwrap())
-    };
+    let pgo_use_path = config.pgo_use.as_ref().map(|path_buf| {
+        CString::new(path_buf.to_string_lossy().as_bytes()).unwrap()
+    });
 
     llvm::LLVMRustConfigurePassManagerBuilder(
         builder,
@@ -795,10 +803,10 @@ fn create_msvc_imps(
         return
     }
     // The x86 ABI seems to require that leading underscores are added to symbol
-    // names, so we need an extra underscore on 32-bit. There's also a leading
+    // names, so we need an extra underscore on x86. There's also a leading
     // '\x01' here which disables LLVM's symbol mangling (e.g., no extra
     // underscores added in front).
-    let prefix = if cgcx.target_pointer_width == "32" {
+    let prefix = if cgcx.target_arch == "x86" {
         "\x01__imp__"
     } else {
         "\x01__imp_"

@@ -1,5 +1,5 @@
 error: compilation successful
-  --> $DIR/feature-gate.rs:41:1
+  --> $DIR/feature-gate.rs:36:1
    |
 LL | / fn main() {
 LL | |     foo(107)

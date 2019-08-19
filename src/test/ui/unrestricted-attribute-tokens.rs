@@ -1,8 +1,8 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
-#![feature(custom_attribute)]
+#![feature(rustc_attrs)]
 
-#[my_attr(a b c d)]
-#[my_attr[a b c d]]
-#[my_attr{a b c d}]
+#[rustc_dummy(a b c d)]
+#[rustc_dummy[a b c d]]
+#[rustc_dummy{a b c d}]
 fn main() {}

@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // `std::ops::Index` has an `: ?Sized` bound on the `Idx` type param. This is
 // an accidental left-over from the times when it `Index` was by-reference.

@@ -1,0 +1,10 @@
+#![feature(prelude_import)]
+#![no_std]
+#[prelude_import]
+use ::std::prelude::v1::*;
+#[macro_use]
+extern crate std;
+// build-pass (FIXME(62277): could be check-pass?)
+// compile-flags: -Z unpretty=expanded
+
+fn main() { if let 0 = 1 { } }

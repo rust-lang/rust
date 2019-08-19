@@ -1,26 +1,17 @@
 //! The virtual memory representation of the MIR interpreter.
 
 use super::{
-    Pointer, EvalResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
-    truncate,
+    Pointer, InterpResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
 };
 
 use crate::ty::layout::{Size, Align};
 use syntax::ast::Mutability;
 use std::iter;
 use crate::mir;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Range, Deref, DerefMut};
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_macros::HashStable;
 use rustc_target::abi::HasDataLayout;
-
-/// Used by `check_bounds` to indicate whether the pointer needs to be just inbounds
-/// or also inbounds of a *live* allocation.
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum InboundsCheck {
-    Live,
-    MaybeDead,
-}
+use std::borrow::Cow;
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation<Tag=(),Extra=()> {
@@ -60,7 +51,7 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
         _alloc: &Allocation<Tag, Self>,
         _ptr: Pointer<Tag>,
         _size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -70,7 +61,7 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
         _alloc: &mut Allocation<Tag, Self>,
         _ptr: Pointer<Tag>,
         _size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
@@ -81,7 +72,7 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
         _alloc: &mut Allocation<Tag, Self>,
         _ptr: Pointer<Tag>,
         _size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 }
@@ -89,25 +80,27 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
 // For Tag=() and no extra state, we have is a trivial implementation.
 impl AllocationExtra<()> for () { }
 
-impl<Tag, Extra> Allocation<Tag, Extra> {
+// The constructors are all without extra; the extra gets added by a machine hook later.
+impl<Tag> Allocation<Tag> {
     /// Creates a read-only allocation initialized by the given bytes
-    pub fn from_bytes(slice: &[u8], align: Align, extra: Extra) -> Self {
-        let undef_mask = UndefMask::new(Size::from_bytes(slice.len() as u64), true);
+    pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
+        let bytes = slice.into().into_owned();
+        let undef_mask = UndefMask::new(Size::from_bytes(bytes.len() as u64), true);
         Self {
-            bytes: slice.to_owned(),
+            bytes,
             relocations: Relocations::new(),
             undef_mask,
             align,
             mutability: Mutability::Immutable,
-            extra,
+            extra: (),
         }
     }
 
-    pub fn from_byte_aligned_bytes(slice: &[u8], extra: Extra) -> Self {
-        Allocation::from_bytes(slice, Align::from_bytes(1).unwrap(), extra)
+    pub fn from_byte_aligned_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>) -> Self {
+        Allocation::from_bytes(slice, Align::from_bytes(1).unwrap())
     }
 
-    pub fn undef(size: Size, align: Align, extra: Extra) -> Self {
+    pub fn undef(size: Size, align: Align) -> Self {
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         Allocation {
             bytes: vec![0; size.bytes() as usize],
@@ -115,42 +108,37 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
             undef_mask: UndefMask::new(size, false),
             align,
             mutability: Mutability::Mutable,
-            extra,
+            extra: (),
         }
     }
 }
 
-impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
-
-/// Alignment and bounds checks
-impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
-    /// Checks if the pointer is "in-bounds". Notice that a pointer pointing at the end
-    /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
-    /// in-bounds!  This follows C's/LLVM's rules.
-    /// If you want to check bounds before doing a memory access, better use `check_bounds`.
-    fn check_bounds_ptr(
-        &self,
-        ptr: Pointer<Tag>,
-    ) -> EvalResult<'tcx> {
-        let allocation_size = self.bytes.len() as u64;
-        ptr.check_in_alloc(Size::from_bytes(allocation_size), InboundsCheck::Live)
-    }
-
-    /// Checks if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
-    #[inline(always)]
-    pub fn check_bounds(
-        &self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        size: Size,
-    ) -> EvalResult<'tcx> {
-        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds_ptr(ptr.offset(size, cx)?)
-    }
-}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 /// Byte accessors
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
+    /// Just a small local helper function to avoid a bit of code repetition.
+    /// Returns the range of this allocation that was meant.
+    #[inline]
+    fn check_bounds(
+        &self,
+        offset: Size,
+        size: Size
+    ) -> Range<usize> {
+        let end = offset + size; // this does overflow checking
+        assert_eq!(
+            end.bytes() as usize as u64, end.bytes(),
+            "cannot handle this access on this host architecture"
+        );
+        let end = end.bytes() as usize;
+        assert!(
+            end <= self.bytes.len(),
+            "Out-of-bounds access at offset {}, size {} in allocation of size {}",
+            offset.bytes(), size.bytes(), self.bytes.len()
+        );
+        (offset.bytes() as usize)..end
+    }
+
     /// The last argument controls whether we error out when there are undefined
     /// or pointer bytes. You should never call this, call `get_bytes` or
     /// `get_bytes_with_undef_and_ptr` instead,
@@ -158,15 +146,17 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// This function also guarantees that the resulting pointer will remain stable
     /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
     /// on that.
+    ///
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     fn get_bytes_internal(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
         check_defined_and_ptr: bool,
-    ) -> EvalResult<'tcx, &[u8]>
+    ) -> InterpResult<'tcx, &[u8]>
     {
-        self.check_bounds(cx, ptr, size)?;
+        let range = self.check_bounds(ptr.offset, size);
 
         if check_defined_and_ptr {
             self.check_defined(ptr, size)?;
@@ -178,57 +168,58 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
         AllocationExtra::memory_read(self, ptr, size)?;
 
-        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-        let offset = ptr.offset.bytes() as usize;
-        Ok(&self.bytes[offset..offset + size.bytes() as usize])
+        Ok(&self.bytes[range])
     }
 
+    /// Check that these bytes are initialized and not pointer bytes, and then return them
+    /// as a slice.
+    ///
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     #[inline]
     pub fn get_bytes(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx, &[u8]>
+    ) -> InterpResult<'tcx, &[u8]>
     {
         self.get_bytes_internal(cx, ptr, size, true)
     }
 
     /// It is the caller's responsibility to handle undefined and pointer bytes.
     /// However, this still checks that there are no relocations on the *edges*.
+    ///
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     #[inline]
     pub fn get_bytes_with_undef_and_ptr(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx, &[u8]>
+    ) -> InterpResult<'tcx, &[u8]>
     {
         self.get_bytes_internal(cx, ptr, size, false)
     }
 
     /// Just calling this already marks everything as defined and removes relocations,
     /// so be sure to actually put data there!
+    ///
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn get_bytes_mut(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx, &mut [u8]>
+    ) -> InterpResult<'tcx, &mut [u8]>
     {
-        assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
-        self.check_bounds(cx, ptr, size)?;
+        let range = self.check_bounds(ptr.offset, size);
 
-        self.mark_definedness(ptr, size, true)?;
+        self.mark_definedness(ptr, size, true);
         self.clear_relocations(cx, ptr, size)?;
 
         AllocationExtra::memory_written(self, ptr, size)?;
 
-        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-        let offset = ptr.offset.bytes() as usize;
-        Ok(&mut self.bytes[offset..offset + size.bytes() as usize])
+        Ok(&mut self.bytes[range])
     }
 }
 
@@ -240,20 +231,21 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-    ) -> EvalResult<'tcx, &[u8]>
+    ) -> InterpResult<'tcx, &[u8]>
     {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         let offset = ptr.offset.bytes() as usize;
-        match self.bytes[offset..].iter().position(|&c| c == 0) {
+        Ok(match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
                 let size_with_null = Size::from_bytes((size + 1) as u64);
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
                 // We read the null, so we include it in the request, but we want it removed
-                // from the result!
-                Ok(&self.get_bytes(cx, ptr, size_with_null)?[..size])
+                // from the result, so we do subslicing.
+                &self.get_bytes(cx, ptr, size_with_null)?[..size]
             }
-            None => err!(UnterminatedCString(ptr.erase_tag())),
-        }
+            // This includes the case where `offset` is out-of-bounds to begin with.
+            None => throw_unsup!(UnterminatedCString(ptr.erase_tag())),
+        })
     }
 
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
@@ -265,7 +257,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
         allow_ptr_and_undef: bool,
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         // Check bounds and relocations on the edges
         self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
@@ -279,13 +271,13 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     /// Writes `src` to the memory starting at `ptr.offset`.
     ///
-    /// Will do bounds checks on the allocation.
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn write_bytes(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         src: &[u8],
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64))?;
         bytes.clone_from_slice(src);
@@ -293,13 +285,15 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     }
 
     /// Sets `count` bytes starting at `ptr.offset` with `val`. Basically `memset`.
+    ///
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn write_repeat(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         val: u8,
         count: Size
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         let bytes = self.get_bytes_mut(cx, ptr, count)?;
         for b in bytes {
@@ -312,16 +306,16 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     ///
     /// zsts can't be read out of two reasons:
     /// * byteorder cannot work with zero element buffers
-    /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
+    /// * in order to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
     ///   being valid for ZSTs
     ///
-    /// Note: This function does not do *any* alignment checks, you need to do these before calling
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn read_scalar(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size
-    ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>>
+    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>>
     {
         // get_bytes_unchecked tests relocation edges
         let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
@@ -351,12 +345,14 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         Ok(ScalarMaybeUndef::Scalar(Scalar::from_uint(bits, size)))
     }
 
-    /// Note: This function does not do *any* alignment checks, you need to do these before calling
+    /// Read a pointer-sized scalar.
+    ///
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn read_ptr_sized(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-    ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>>
+    ) -> InterpResult<'tcx, ScalarMaybeUndef<Tag>>
     {
         self.read_scalar(cx, ptr, cx.data_layout().pointer_size)
     }
@@ -368,32 +364,26 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
     ///   being valid for ZSTs
     ///
-    /// Note: This function does not do *any* alignment checks, you need to do these before calling
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         val: ScalarMaybeUndef<Tag>,
         type_size: Size,
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
-            ScalarMaybeUndef::Undef => return self.mark_definedness(ptr, type_size, false),
+            ScalarMaybeUndef::Undef => {
+                self.mark_definedness(ptr, type_size, false);
+                return Ok(());
+            },
         };
 
-        let bytes = match val {
-            Scalar::Ptr(val) => {
-                assert_eq!(type_size, cx.data_layout().pointer_size);
-                val.offset.bytes() as u128
-            }
-
-            Scalar::Bits { bits, size } => {
-                assert_eq!(size as u64, type_size.bytes());
-                debug_assert_eq!(truncate(bits, Size::from_bytes(size.into())), bits,
-                    "Unexpected value of size {} when writing to memory", size);
-                bits
-            },
+        let bytes = match val.to_bits_or_ptr(type_size, cx) {
+            Err(val) => val.offset.bytes() as u128,
+            Ok(data) => data,
         };
 
         let endian = cx.data_layout().endian;
@@ -414,13 +404,15 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         Ok(())
     }
 
-    /// Note: This function does not do *any* alignment checks, you need to do these before calling
+    /// Write a pointer-sized scalar.
+    ///
+    /// It is the caller's responsibility to check bounds and alignment beforehand.
     pub fn write_ptr_sized(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         val: ScalarMaybeUndef<Tag>
-    ) -> EvalResult<'tcx>
+    ) -> InterpResult<'tcx>
     {
         let ptr_size = cx.data_layout().pointer_size;
         self.write_scalar(cx, ptr.into(), val, ptr_size)
@@ -450,11 +442,11 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         if self.relocations(cx, ptr, size).is_empty() {
             Ok(())
         } else {
-            err!(ReadPointerAsBytes)
+            throw_unsup!(ReadPointerAsBytes)
         }
     }
 
@@ -469,7 +461,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
@@ -507,7 +499,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         self.check_relocations(cx, ptr, Size::ZERO)?;
         self.check_relocations(cx, ptr.offset(size, cx)?, Size::ZERO)?;
         Ok(())
@@ -520,11 +512,11 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// Checks that a range of bytes is defined. If not, returns the `ReadUndefBytes`
     /// error which will report the first byte which is undefined.
     #[inline]
-    fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
+    fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> InterpResult<'tcx> {
         self.undef_mask.is_range_defined(
             ptr.offset,
             ptr.offset + size,
-        ).or_else(|idx| err!(ReadUndefBytes(idx)))
+        ).or_else(|idx| throw_unsup!(ReadUndefBytes(idx)))
     }
 
     pub fn mark_definedness(
@@ -532,16 +524,15 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
         new_state: bool,
-    ) -> EvalResult<'tcx> {
+    ) {
         if size.bytes() == 0 {
-            return Ok(());
+            return;
         }
         self.undef_mask.set_range(
             ptr.offset,
             ptr.offset + size,
             new_state,
         );
-        Ok(())
     }
 }
 

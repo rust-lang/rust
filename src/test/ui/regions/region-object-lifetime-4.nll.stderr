@@ -1,7 +1,7 @@
 error: lifetime may not live long enough
   --> $DIR/region-object-lifetime-4.rs:12:5
    |
-LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (Foo+'b)) -> &'b () {
+LL | fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (dyn Foo + 'b)) -> &'b () {
    |                                         -- -- lifetime `'b` defined here
    |                                         |
    |                                         lifetime `'a` defined here

@@ -2,10 +2,10 @@
 
 trait Foo { fn dummy(&self); }
 
-fn consume(_: Box<Foo>) {
+fn consume(_: Box<dyn Foo>) {
 }
 
-fn foo(b: Box<Foo+Send>) {
+fn foo(b: Box<dyn Foo + Send>) {
     consume(b);
     consume(b); //~ ERROR use of moved value
 }

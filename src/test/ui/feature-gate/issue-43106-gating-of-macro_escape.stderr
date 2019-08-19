@@ -4,5 +4,5 @@ warning: macro_escape is a deprecated synonym for macro_use
 LL | #![macro_escape]
    | ^^^^^^^^^^^^^^^^
    |
-   = help: consider an outer attribute, #[macro_use] mod ...
+   = help: consider an outer attribute, `#[macro_use]` mod ...
 

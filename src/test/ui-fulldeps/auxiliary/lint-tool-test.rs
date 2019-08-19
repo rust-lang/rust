@@ -7,9 +7,9 @@ extern crate syntax;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate rustc_driver;
 
-use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
-                  LintArray};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use rustc_plugin::Registry;
 use syntax::ast;
 declare_tool_lint!(pub clippy::TEST_LINT, Warn, "Warn about stuff");
@@ -19,7 +19,14 @@ declare_tool_lint!(
     Warn, "Warn about other stuff"
 );
 
-declare_lint_pass!(Pass => [TEST_LINT, TEST_GROUP]);
+declare_tool_lint!(
+    /// Some docs
+    pub rustc::TEST_RUSTC_TOOL_LINT,
+    Deny,
+    "Deny internal stuff"
+);
+
+declare_lint_pass!(Pass => [TEST_LINT, TEST_GROUP, TEST_RUSTC_TOOL_LINT]);
 
 impl EarlyLintPass for Pass {
     fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {

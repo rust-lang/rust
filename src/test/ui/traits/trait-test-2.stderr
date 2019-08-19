@@ -13,8 +13,8 @@ LL |     10.blah::<i32, i32>();
 error[E0038]: the trait `bar` cannot be made into an object
   --> $DIR/trait-test-2.rs:11:16
    |
-LL |     (box 10 as Box<bar>).dup();
-   |                ^^^^^^^^ the trait `bar` cannot be made into an object
+LL |     (box 10 as Box<dyn bar>).dup();
+   |                ^^^^^^^^^^^^ the trait `bar` cannot be made into an object
    |
    = note: method `dup` references the `Self` type in its arguments or return type
    = note: method `blah` has generic type parameters
@@ -22,7 +22,7 @@ LL |     (box 10 as Box<bar>).dup();
 error[E0038]: the trait `bar` cannot be made into an object
   --> $DIR/trait-test-2.rs:11:6
    |
-LL |     (box 10 as Box<bar>).dup();
+LL |     (box 10 as Box<dyn bar>).dup();
    |      ^^^^^^ the trait `bar` cannot be made into an object
    |
    = note: method `dup` references the `Self` type in its arguments or return type

@@ -7,19 +7,19 @@ LL | check!(0u8);
    = help: instead of using a suffixed literal (1u8, 1.0f32, etc.), use an unsuffixed version (1, 1.0, etc.).
 
 error: unexpected token: `-0`
-  --> $DIR/malformed-interpolated.rs:5:21
+  --> $DIR/malformed-interpolated.rs:5:25
    |
-LL |         #[my_attr = $expr]
-   |                     ^^^^^
+LL |         #[rustc_dummy = $expr]
+   |                         ^^^^^
 ...
 LL | check!(-0); // ERROR, see above
    | ----------- in this macro invocation
 
 error: unexpected token: `0 + 0`
-  --> $DIR/malformed-interpolated.rs:5:21
+  --> $DIR/malformed-interpolated.rs:5:25
    |
-LL |         #[my_attr = $expr]
-   |                     ^^^^^
+LL |         #[rustc_dummy = $expr]
+   |                         ^^^^^
 ...
 LL | check!(0 + 0); // ERROR, see above
    | -------------- in this macro invocation

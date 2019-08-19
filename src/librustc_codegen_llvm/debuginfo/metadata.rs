@@ -31,13 +31,14 @@ use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout, VariantIdx};
 use rustc::ty::subst::UnpackedKind;
-use rustc::session::config;
+use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::FxHashMap;
 use rustc_fs_util::path_to_c_string;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_target::abi::HasDataLayout;
 
 use libc::{c_uint, c_longlong};
+use std::collections::hash_map::Entry;
 use std::ffi::CString;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
@@ -45,7 +46,7 @@ use std::iter;
 use std::ptr;
 use std::path::{Path, PathBuf};
 use syntax::ast;
-use syntax::symbol::{Interner, InternedString, Symbol};
+use syntax::symbol::{Interner, InternedString};
 use syntax_pos::{self, Span, FileName};
 
 impl PartialEq for llvm::Metadata {
@@ -221,8 +222,7 @@ impl TypeMap<'ll, 'tcx> {
     // Get the unique type id string for an enum variant part.
     // Variant parts are not types and shouldn't really have their own id,
     // but it makes set_members_of_composite_type() simpler.
-    fn get_unique_type_id_str_of_enum_variant_part<'a>(&mut self,
-                                                       enum_type_id: UniqueTypeId) -> &str {
+    fn get_unique_type_id_str_of_enum_variant_part(&mut self, enum_type_id: UniqueTypeId) -> &str {
         let variant_part_type_id = format!("{}_variant_part",
                                            self.get_unique_type_id_as_string(enum_type_id));
         let interner_key = self.unique_id_interner.intern(&variant_part_type_id);
@@ -341,9 +341,7 @@ fn fixed_vec_metadata(
     let (size, align) = cx.size_and_align_of(array_or_slice_type);
 
     let upper_bound = match array_or_slice_type.sty {
-        ty::Array(_, len) => {
-            len.unwrap_usize(cx.tcx) as c_longlong
-        }
+        ty::Array(_, len) => len.eval_usize(cx.tcx, ty::ParamEnv::reveal_all()) as c_longlong,
         _ => -1
     };
 
@@ -452,11 +450,11 @@ fn subroutine_type_metadata(
         false);
 }
 
-// FIXME(1563) This is all a bit of a hack because 'trait pointer' is an ill-
-// defined concept. For the case of an actual trait pointer (i.e., Box<Trait>,
-// &Trait), trait_object_type should be the whole thing (e.g, Box<Trait>) and
-// trait_type should be the actual trait (e.g., Trait). Where the trait is part
-// of a DST struct, there is no trait_object_type and the results of this
+// FIXME(1563): This is all a bit of a hack because 'trait pointer' is an ill-
+// defined concept. For the case of an actual trait pointer (i.e., `Box<Trait>`,
+// `&Trait`), `trait_object_type` should be the whole thing (e.g, `Box<Trait>`) and
+// `trait_type` should be the actual trait (e.g., `Trait`). Where the trait is part
+// of a DST struct, there is no `trait_object_type` and the results of this
 // function will be a little bit weird.
 fn trait_pointer_metadata(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -466,13 +464,13 @@ fn trait_pointer_metadata(
 ) -> &'ll DIType {
     // The implementation provided here is a stub. It makes sure that the trait
     // type is assigned the correct name, size, namespace, and source location.
-    // But it does not describe the trait's methods.
+    // However, it does not describe the trait's methods.
 
     let containing_scope = match trait_type.sty {
         ty::Dynamic(ref data, ..) =>
             data.principal_def_id().map(|did| get_namespace_for_item(cx, did)),
         _ => {
-            bug!("debuginfo: Unexpected trait-object type in \
+            bug!("debuginfo: unexpected trait-object type in \
                   trait_pointer_metadata(): {:?}",
                  trait_type);
         }
@@ -787,49 +785,48 @@ pub fn file_metadata(cx: &CodegenCx<'ll, '_>,
            file_name,
            defining_crate);
 
-    let file_name = &file_name.to_string();
-    let file_name_symbol = Symbol::intern(file_name);
-    if defining_crate == LOCAL_CRATE {
-        let directory = &cx.sess().working_dir.0.to_string_lossy();
-        file_metadata_raw(cx, file_name, Some(file_name_symbol),
-                          directory, Some(Symbol::intern(directory)))
+    let file_name = Some(file_name.to_string());
+    let directory = if defining_crate == LOCAL_CRATE {
+        Some(cx.sess().working_dir.0.to_string_lossy().to_string())
     } else {
         // If the path comes from an upstream crate we assume it has been made
         // independent of the compiler's working directory one way or another.
-        file_metadata_raw(cx, file_name, Some(file_name_symbol), "", None)
-    }
+        None
+    };
+    file_metadata_raw(cx, file_name, directory)
 }
 
 pub fn unknown_file_metadata(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
-    file_metadata_raw(cx, "<unknown>", None, "", None)
+    file_metadata_raw(cx, None, None)
 }
 
 fn file_metadata_raw(cx: &CodegenCx<'ll, '_>,
-                     file_name: &str,
-                     file_name_symbol: Option<Symbol>,
-                     directory: &str,
-                     directory_symbol: Option<Symbol>)
+                     file_name: Option<String>,
+                     directory: Option<String>)
                      -> &'ll DIFile {
-    let key = (file_name_symbol, directory_symbol);
+    let key = (file_name, directory);
 
-    if let Some(file_metadata) = debug_context(cx).created_files.borrow().get(&key) {
-        return *file_metadata;
+    match debug_context(cx).created_files.borrow_mut().entry(key) {
+        Entry::Occupied(o) => return o.get(),
+        Entry::Vacant(v) => {
+            let (file_name, directory) = v.key();
+            debug!("file_metadata: file_name: {:?}, directory: {:?}", file_name, directory);
+
+            let file_name = SmallCStr::new(
+                if let Some(file_name) = file_name { &file_name } else { "<unknown>" });
+            let directory = SmallCStr::new(
+                if let Some(directory) = directory { &directory } else { "" });
+
+            let file_metadata = unsafe {
+                llvm::LLVMRustDIBuilderCreateFile(DIB(cx),
+                                                  file_name.as_ptr(),
+                                                  directory.as_ptr())
+            };
+
+            v.insert(file_metadata);
+            file_metadata
+        }
     }
-
-    debug!("file_metadata: file_name: {}, directory: {}", file_name, directory);
-
-    let file_name = SmallCStr::new(file_name);
-    let directory = SmallCStr::new(directory);
-
-    let file_metadata = unsafe {
-        llvm::LLVMRustDIBuilderCreateFile(DIB(cx),
-                                          file_name.as_ptr(),
-                                          directory.as_ptr())
-    };
-
-    let mut created_files = debug_context(cx).created_files.borrow_mut();
-    created_files.insert(key, file_metadata);
-    file_metadata
 }
 
 fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
@@ -896,10 +893,11 @@ fn pointer_type_metadata(
     }
 }
 
-pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_, '_>,
-                             codegen_unit_name: &str,
-                             debug_context: &CrateDebugContext<'ll, '_>)
-                             -> &'ll DIDescriptor {
+pub fn compile_unit_metadata(
+    tcx: TyCtxt<'_>,
+    codegen_unit_name: &str,
+    debug_context: &CrateDebugContext<'ll, '_>,
+) -> &'ll DIDescriptor {
     let mut name_in_debuginfo = match tcx.sess.local_crate_source_file {
         Some(ref path) => path.clone(),
         None => PathBuf::from(&*tcx.crate_name(LOCAL_CRATE).as_str()),
@@ -915,9 +913,12 @@ pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_, '_>,
     }
 
     debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
+    let rustc_producer = format!(
+        "rustc version {}",
+        option_env!("CFG_VERSION").expect("CFG_VERSION"),
+    );
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
-    let producer = format!("clang LLVM (rustc version {})",
-                           (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
+    let producer = format!("clang LLVM ({})", rustc_producer);
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let name_in_debuginfo = SmallCStr::new(&name_in_debuginfo);
@@ -925,7 +926,26 @@ pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_, '_>,
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
-    let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
+
+    // FIXME(#60020):
+    //
+    //    This should actually be
+    //
+    //    ```
+    //      let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
+    //    ```
+    //
+    //    that is, we should set LLVM's emission kind to `LineTablesOnly` if
+    //    we are compiling with "limited" debuginfo. However, some of the
+    //    existing tools relied on slightly more debuginfo being generated than
+    //    would be the case with `LineTablesOnly`, and we did not want to break
+    //    these tools in a "drive-by fix", without a good idea or plan about
+    //    what limited debuginfo should exactly look like. So for now we keep
+    //    the emission kind as `FullDebug`.
+    //
+    //    See https://github.com/rust-lang/rust/issues/60020 for details.
+    let kind = DebugEmissionKind::FullDebug;
+    assert!(tcx.sess.opts.debuginfo != DebugInfo::None);
 
     unsafe {
         let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
@@ -961,6 +981,21 @@ pub fn compile_unit_metadata(tcx: TyCtxt<'_, '_, '_>,
             llvm::LLVMAddNamedMetadataOperand(debug_context.llmod,
                                               llvm_gcov_ident.as_ptr(),
                                               gcov_metadata);
+        }
+
+        // Insert `llvm.ident` metadata on the wasm32 targets since that will
+        // get hooked up to the "producer" sections `processed-by` information.
+        if tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
+            let name_metadata = llvm::LLVMMDStringInContext(
+                debug_context.llcontext,
+                rustc_producer.as_ptr() as *const _,
+                rustc_producer.as_bytes().len() as c_uint,
+            );
+            llvm::LLVMAddNamedMetadataOperand(
+                debug_context.llmod,
+                const_cstr!("llvm.ident").as_ptr(),
+                llvm::LLVMMDNodeInContext(debug_context.llcontext, &name_metadata, 1),
+            );
         }
 
         return unit_metadata;
@@ -1592,7 +1627,7 @@ impl<'tcx> VariantInfo<'tcx> {
                 // with every variant, make each variant name be just the value
                 // of the discriminant. The struct name for the variant includes
                 // the actual variant description.
-                format!("{}", variant_index.as_usize()).to_string()
+                format!("{}", variant_index.as_usize())
             }
         }
     }
@@ -2240,11 +2275,7 @@ pub fn create_global_var_metadata(
 /// given type.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_vtable_metadata(
-    cx: &CodegenCx<'ll, 'tcx>,
-    ty: ty::Ty<'tcx>,
-    vtable: &'ll Value,
-) {
+pub fn create_vtable_metadata(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>, vtable: &'ll Value) {
     if cx.dbg_cx.is_none() {
         return;
     }

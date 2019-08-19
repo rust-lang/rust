@@ -1,0 +1,27 @@
+error[E0499]: cannot borrow `list.0.value` as mutable more than once at a time
+  --> $DIR/issue-62007-assign-differing-fields.rs:16:21
+   |
+LL | fn to_refs<'a, T>(mut list: (&'a mut List<T>, &'a mut List<T>)) -> Vec<&'a mut T> {
+   |            -- lifetime `'a` defined here
+...
+LL |         result.push(&mut (list.0).value);
+   |                     ^^^^^^^^^^^^^^^^^^^ mutable borrow starts here in previous iteration of loop
+...
+LL |             return result;
+   |                    ------ returning this value requires that `list.0.value` is borrowed for `'a`
+
+error[E0499]: cannot borrow `list.0.next` as mutable more than once at a time
+  --> $DIR/issue-62007-assign-differing-fields.rs:17:26
+   |
+LL | fn to_refs<'a, T>(mut list: (&'a mut List<T>, &'a mut List<T>)) -> Vec<&'a mut T> {
+   |            -- lifetime `'a` defined here
+...
+LL |         if let Some(n) = (list.0).next.as_mut() {
+   |                          ^^^^^^^^^^^^^---------
+   |                          |
+   |                          mutable borrow starts here in previous iteration of loop
+   |                          argument requires that `list.0.next` is borrowed for `'a`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

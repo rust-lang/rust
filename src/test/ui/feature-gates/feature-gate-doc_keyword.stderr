@@ -1,11 +1,11 @@
-error[E0658]: #[doc(keyword = "...")] is experimental
+error[E0658]: `#[doc(keyword = "...")]` is experimental
   --> $DIR/feature-gate-doc_keyword.rs:1:1
    |
 LL | #[doc(keyword = "match")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51315
-   = help: add #![feature(doc_keyword)] to the crate attributes to enable
+   = help: add `#![feature(doc_keyword)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

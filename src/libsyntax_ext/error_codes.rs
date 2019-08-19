@@ -1,6 +1,4 @@
-#![allow(non_snake_case)]
-
-use syntax::{register_diagnostic, register_long_diagnostics};
+use syntax::register_long_diagnostics;
 
 // Error messages for EXXXX errors.
 // Each message should start and end with a new line, and be wrapped to 80 characters.

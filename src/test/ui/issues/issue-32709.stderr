@@ -4,6 +4,7 @@ error[E0277]: `?` couldn't convert the error to `()`
 LL |     Err(5)?;
    |           ^ the trait `std::convert::From<{integer}>` is not implemented for `()`
    |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required by `std::convert::From::from`
 
 error: aborting due to previous error

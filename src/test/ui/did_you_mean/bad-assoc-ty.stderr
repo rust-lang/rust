@@ -37,8 +37,8 @@ LL | type F = &'static (u8)::AssocTy;
 error: missing angle brackets in associated item path
   --> $DIR/bad-assoc-ty.rs:27:10
    |
-LL | type G = 'static + (Send)::AssocTy;
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<'static + (Send)>::AssocTy`
+LL | type G = dyn 'static + (Send)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `<dyn 'static + (Send)>::AssocTy`
 
 error: missing angle brackets in associated item path
   --> $DIR/bad-assoc-ty.rs:44:10
@@ -94,8 +94,8 @@ LL | type F = &'static (u8)::AssocTy;
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:27:10
    |
-LL | type G = 'static + (Send)::AssocTy;
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn std::marker::Send + 'static) as Trait>::AssocTy`
+LL | type G = dyn 'static + (Send)::AssocTy;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use fully-qualified syntax: `<(dyn std::marker::Send + 'static) as Trait>::AssocTy`
 
 error[E0223]: ambiguous associated type
   --> $DIR/bad-assoc-ty.rs:33:10

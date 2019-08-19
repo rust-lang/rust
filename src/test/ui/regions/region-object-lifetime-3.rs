@@ -1,7 +1,7 @@
 // Various tests related to testing how region inference works
 // with respect to the object receivers.
 
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 #![allow(warnings)]
 
 trait Foo {

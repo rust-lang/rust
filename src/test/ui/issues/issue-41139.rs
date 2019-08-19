@@ -1,8 +1,8 @@
 trait Trait {}
 
-fn get_function<'a>() -> &'a Fn() -> Trait { panic!("") }
+fn get_function<'a>() -> &'a dyn Fn() -> dyn Trait { panic!("") }
 
 fn main() {
-    let t : &Trait = &get_function()();
+    let t : &dyn Trait = &get_function()();
     //~^ ERROR cannot move a value of type dyn Trait
 }

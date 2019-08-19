@@ -1,0 +1,27 @@
+error[E0263]: lifetime name `'a` declared twice in the same scope
+  --> $DIR/duplicate_lifetimes.rs:8:14
+   |
+LL |     fn g<$a, 'a>() {}
+   |              ^^ declared twice
+...
+LL | m!('a);
+   | -------
+   | |  |
+   | |  previous declaration here
+   | in this macro invocation
+
+error[E0263]: lifetime name `'a` declared twice in the same scope
+  --> $DIR/duplicate_lifetimes.rs:13:14
+   |
+LL |     fn h<$a, 'a>() {}
+   |              ^^ declared twice
+...
+LL | n!('a);
+   | -------
+   | |  |
+   | |  previous declaration here
+   | in this macro invocation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0263`.

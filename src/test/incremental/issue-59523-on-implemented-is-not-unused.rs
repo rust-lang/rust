@@ -2,8 +2,8 @@
 // rustc_on_unimplemented, but with this bug we are seeing it fire (on
 // subsequent runs) if incremental compilation is enabled.
 
-// revisions: rpass1 rpass2
-// compile-pass
+// revisions: cfail1 cfail2
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![feature(on_unimplemented)]
 #![deny(unused_attributes)]

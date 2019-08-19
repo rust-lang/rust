@@ -1,0 +1,27 @@
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/dont-print-desugared.rs:4:10
+   |
+LL |     for &ref mut x in s {}
+   |         -^^^^^^^^^
+   |         ||
+   |         |cannot borrow as mutable through `&` reference
+   |         help: consider changing this to be a mutable reference: `&mut ref mut x`
+
+error[E0597]: `y` does not live long enough
+  --> $DIR/dont-print-desugared.rs:17:16
+   |
+LL |     for ref mut d in v {
+   |                      - a temporary with access to the borrow is created here ...
+LL |         let y = ();
+LL |         *d = D(&y);
+   |                ^^ borrowed value does not live long enough
+LL |     }
+   |     -
+   |     |
+   |     `y` dropped here while still borrowed
+   |     ... and the borrow might be used here, when that temporary is dropped and runs the `Drop` code for type `D`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0596, E0597.
+For more information about an error, try `rustc --explain E0596`.

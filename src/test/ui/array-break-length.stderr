@@ -5,11 +5,30 @@ LL |         |_: [_; break]| {}
    |                 ^^^^^ cannot break outside of a loop
 
 error[E0268]: `continue` outside of loop
-  --> $DIR/array-break-length.rs:7:17
+  --> $DIR/array-break-length.rs:8:17
    |
 LL |         |_: [_; continue]| {}
    |                 ^^^^^^^^ cannot break outside of a loop
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/array-break-length.rs:3:9
+   |
+LL |         |_: [_; break]| {}
+   |         ^^^^^^^^^^^^^^^^^^ expected (), found closure
+   |
+   = note: expected type `()`
+              found type `[closure@$DIR/array-break-length.rs:3:9: 3:27]`
 
-For more information about this error, try `rustc --explain E0268`.
+error[E0308]: mismatched types
+  --> $DIR/array-break-length.rs:8:9
+   |
+LL |         |_: [_; continue]| {}
+   |         ^^^^^^^^^^^^^^^^^^^^^ expected (), found closure
+   |
+   = note: expected type `()`
+              found type `[closure@$DIR/array-break-length.rs:8:9: 8:30]`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0268, E0308.
+For more information about an error, try `rustc --explain E0268`.

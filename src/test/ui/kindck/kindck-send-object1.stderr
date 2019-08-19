@@ -1,8 +1,8 @@
 error[E0277]: `(dyn Dummy + 'a)` cannot be shared between threads safely
   --> $DIR/kindck-send-object1.rs:10:5
    |
-LL |     assert_send::<&'a Dummy>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be shared between threads safely
+LL |     assert_send::<&'a dyn Dummy>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be shared between threads safely
    |
    = help: the trait `std::marker::Sync` is not implemented for `(dyn Dummy + 'a)`
    = note: required because of the requirements on the impl of `std::marker::Send` for `&'a (dyn Dummy + 'a)`
@@ -15,16 +15,16 @@ LL | fn assert_send<T:Send+'static>() { }
 error[E0477]: the type `&'a (dyn Dummy + std::marker::Sync + 'a)` does not fulfill the required lifetime
   --> $DIR/kindck-send-object1.rs:14:5
    |
-LL |     assert_send::<&'a (Dummy+Sync)>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     assert_send::<&'a (dyn Dummy + Sync)>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: type must satisfy the static lifetime
 
 error[E0277]: `(dyn Dummy + 'a)` cannot be sent between threads safely
   --> $DIR/kindck-send-object1.rs:29:5
    |
-LL |     assert_send::<Box<Dummy+'a>>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
+LL |     assert_send::<Box<dyn Dummy + 'a>>();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `(dyn Dummy + 'a)` cannot be sent between threads safely
    |
    = help: the trait `std::marker::Send` is not implemented for `(dyn Dummy + 'a)`
    = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<(dyn Dummy + 'a)>`

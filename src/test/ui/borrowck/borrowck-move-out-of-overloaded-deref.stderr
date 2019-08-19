@@ -4,8 +4,8 @@ error[E0507]: cannot move out of an `Rc`
 LL |     let _x = *Rc::new("hi".to_string());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |              |
-   |              cannot move out of an `Rc`
-   |              help: consider removing the `*`: `Rc::new("hi".to_string())`
+   |              move occurs because value has type `std::string::String`, which does not implement the `Copy` trait
+   |              help: consider borrowing here: `&*Rc::new("hi".to_string())`
 
 error: aborting due to previous error
 

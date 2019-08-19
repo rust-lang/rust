@@ -1,8 +1,8 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:39:27
    |
 LL |     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
-   |         ---------------   ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |         ---------------   ^^^^^^^^^^^^^^^^^^^^^^^
    |         |   |      |
    |         |   |      ...and here
    |         |   data moved here
@@ -14,11 +14,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |     let &(X(_t), X(_u)) = &(x.clone(), x.clone());
    |             ^^     ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:43:50
    |
 LL |     if let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
-   |            -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |            -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^
    |            |             |                |
    |            |             |                ...and here
    |            |             data moved here
@@ -30,11 +30,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |     if let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
    |                          ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:47:53
    |
 LL |     while let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
-   |               -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |               -----------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^
    |               |             |                |
    |               |             |                ...and here
    |               |             data moved here
@@ -46,11 +46,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |     while let &(Either::One(_t), Either::Two(_u)) = &(e.clone(), e.clone()) { }
    |                             ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:51:11
    |
 LL |     match &(e.clone(), e.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |                       --               -- ...and here
@@ -77,11 +77,11 @@ help: consider removing the `&`
 LL |         (Either::Two(_t), Either::One(_u)) => (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:61:11
    |
 LL |     match &(e.clone(), e.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &(Either::One(_t), Either::Two(_u))
    |         -----------------------------------
@@ -96,11 +96,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |         &(Either::One(_t), Either::Two(_u))
    |                       ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:70:11
    |
 LL |     match &(e.clone(), e.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |         -----------------------------------
@@ -115,11 +115,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |                       ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:78:11
    |
 LL |     match &(e.clone(), e.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |         -----------------------------------
@@ -134,11 +134,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |         &(Either::One(_t), Either::Two(_u)) => (),
    |                       ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:91:31
    |
 LL |     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
-   |         -------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |         -------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |         |       |      |
    |         |       |      ...and here
    |         |       data moved here
@@ -150,11 +150,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |     let &mut (X(_t), X(_u)) = &mut (xm.clone(), xm.clone());
    |                 ^^     ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:95:54
    |
 LL |     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-   |            ---------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |            ---------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |            |                 |                |
    |            |                 |                ...and here
    |            |                 data moved here
@@ -166,11 +166,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |     if let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
    |                              ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:99:57
    |
 LL |     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
-   |               ---------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |               ---------------------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |               |                 |                |
    |               |                 |                ...and here
    |               |                 data moved here
@@ -182,11 +182,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |     while let &mut (Either::One(_t), Either::Two(_u)) = &mut (em.clone(), em.clone()) { }
    |                                 ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:103:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |                           --               -- ...and here
@@ -213,11 +213,11 @@ help: consider removing the `&mut`
 LL |         (Either::Two(_t), Either::One(_u)) => (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:113:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &mut (Either::One(_t), Either::Two(_u))
    |         ---------------------------------------
@@ -232,11 +232,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |         &mut (Either::One(_t), Either::Two(_u))
    |                           ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:122:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
@@ -251,11 +251,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |                           ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:130:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
@@ -270,11 +270,11 @@ note: move occurs because these variables have types that don't implement the `C
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |                           ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:138:11
    |
 LL |     match &mut (em.clone(), em.clone()) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |         ---------------------------------------
@@ -289,7 +289,7 @@ note: move occurs because these variables have types that don't implement the `C
 LL |         &mut (Either::One(_t), Either::Two(_u)) => (),
    |                           ^^               ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/duplicate-suggestions.rs:86:11
    |
 LL |     fn f5(&(X(_t), X(_u)): &(X, X)) { }
@@ -297,7 +297,6 @@ LL |     fn f5(&(X(_t), X(_u)): &(X, X)) { }
    |           |   |      |
    |           |   |      ...and here
    |           |   data moved here
-   |           cannot move out of borrowed content
    |           help: consider removing the `&`: `(X(_t), X(_u))`
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait
@@ -306,7 +305,7 @@ note: move occurs because these variables have types that don't implement the `C
 LL |     fn f5(&(X(_t), X(_u)): &(X, X)) { }
    |               ^^     ^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a mutable reference
   --> $DIR/duplicate-suggestions.rs:146:11
    |
 LL |     fn f6(&mut (X(_t), X(_u)): &mut (X, X)) { }
@@ -314,7 +313,6 @@ LL |     fn f6(&mut (X(_t), X(_u)): &mut (X, X)) { }
    |           |       |      |
    |           |       |      ...and here
    |           |       data moved here
-   |           cannot move out of borrowed content
    |           help: consider removing the `&mut`: `(X(_t), X(_u))`
    |
 note: move occurs because these variables have types that don't implement the `Copy` trait

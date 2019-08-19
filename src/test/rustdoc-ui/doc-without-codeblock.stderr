@@ -1,25 +1,35 @@
 error: Missing code example in this documentation
+  --> $DIR/doc-without-codeblock.rs:1:1
+   |
+LL | / #![deny(missing_doc_code_examples)]
+LL | |
+LL | | /// Some docs.
+LL | |
+...  |
+LL | |     pub fn bar() {}
+LL | | }
+   | |_^
    |
 note: lint level defined here
-  --> $DIR/doc-without-codeblock.rs:3:9
+  --> $DIR/doc-without-codeblock.rs:1:9
    |
 LL | #![deny(missing_doc_code_examples)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Missing code example in this documentation
-  --> $DIR/doc-without-codeblock.rs:5:1
+  --> $DIR/doc-without-codeblock.rs:3:1
    |
 LL | /// Some docs.
    | ^^^^^^^^^^^^^^
 
 error: Missing code example in this documentation
-  --> $DIR/doc-without-codeblock.rs:9:1
+  --> $DIR/doc-without-codeblock.rs:7:1
    |
 LL | /// And then, the princess died.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: Missing code example in this documentation
-  --> $DIR/doc-without-codeblock.rs:12:5
+  --> $DIR/doc-without-codeblock.rs:10:5
    |
 LL |     /// Or maybe not because she saved herself!
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

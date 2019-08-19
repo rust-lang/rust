@@ -1,4 +1,4 @@
-#![feature(intrinsics, lang_items, no_core)]
+#![feature(intrinsics, lang_items, no_core, rustc_attrs)]
 
 #![crate_type="rlib"]
 #![no_core]
@@ -88,3 +88,7 @@ fn main() {
     cfg!(target_has_atomic = "ptr");
     //~^ ERROR `cfg(target_has_atomic)` is experimental and subject to change
 }
+
+#[macro_export]
+#[rustc_builtin_macro]
+macro_rules! cfg { () => () }

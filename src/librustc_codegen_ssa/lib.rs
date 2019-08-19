@@ -3,7 +3,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![feature(custom_attribute)]
 #![feature(libc)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(stmt_expr_attributes)]
@@ -11,11 +10,8 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(trusted_len)]
-#![allow(unused_attributes)]
-#![allow(dead_code)]
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-#![allow(explicit_outlives_requirements)]
+#![feature(mem_take)]
+#![feature(associated_type_bounds)]
 
 #![recursion_limit="256"]
 
@@ -132,6 +128,7 @@ bitflags::bitflags! {
 }
 
 /// Misc info we load from metadata to persist beyond the tcx.
+#[derive(Debug)]
 pub struct CrateInfo {
     pub panic_runtime: Option<CrateNum>,
     pub compiler_builtins: Option<CrateNum>,

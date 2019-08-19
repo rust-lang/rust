@@ -29,7 +29,7 @@ LL |         f(f(10));
 error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:80:11
    |
-LL |     fn twice_ten_oo(f: Box<FnOnce(i32) -> i32>) {
+LL |     fn twice_ten_oo(f: Box<dyn FnOnce(i32) -> i32>) {
    |                     - move occurs because `f` has type `std::boxed::Box<dyn std::ops::FnOnce(i32) -> i32>`, which does not implement the `Copy` trait
 LL |         f(f(10));
    |         - ^ value used here after move

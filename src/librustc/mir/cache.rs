@@ -1,11 +1,9 @@
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{RwLock, MappedReadGuard, ReadGuard};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use crate::ich::StableHashingContext;
-use crate::mir::{Mir, BasicBlock};
-
-use crate::rustc_serialize as serialize;
+use crate::mir::{Body, BasicBlock};
 
 #[derive(Clone, Debug)]
 pub struct Cache {
@@ -13,15 +11,15 @@ pub struct Cache {
 }
 
 
-impl serialize::Encodable for Cache {
-    fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        serialize::Encodable::encode(&(), s)
+impl rustc_serialize::Encodable for Cache {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        Encodable::encode(&(), s)
     }
 }
 
-impl serialize::Decodable for Cache {
-    fn decode<D: serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        serialize::Decodable::decode(d).map(|_v: ()| Self::new())
+impl rustc_serialize::Decodable for Cache {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        Decodable::decode(d).map(|_v: ()| Self::new())
     }
 }
 
@@ -47,19 +45,19 @@ impl Cache {
 
     pub fn predecessors(
         &self,
-        mir: &Mir<'_>
+        body: &Body<'_>
     ) -> MappedReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
         if self.predecessors.borrow().is_none() {
-            *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));
+            *self.predecessors.borrow_mut() = Some(calculate_predecessors(body));
         }
 
         ReadGuard::map(self.predecessors.borrow(), |p| p.as_ref().unwrap())
     }
 }
 
-fn calculate_predecessors(mir: &Mir<'_>) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
-    let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
-    for (bb, data) in mir.basic_blocks().iter_enumerated() {
+fn calculate_predecessors(body: &Body<'_>) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
+    let mut result = IndexVec::from_elem(vec![], body.basic_blocks());
+    for (bb, data) in body.basic_blocks().iter_enumerated() {
         if let Some(ref term) = data.terminator {
             for &tgt in term.successors() {
                 result[tgt].push(bb);

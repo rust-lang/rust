@@ -1,0 +1,24 @@
+error: lifetime may not live long enough
+  --> $DIR/implied-region-constraints.rs:19:56
+   |
+LL | fn _bad_st<'a, 'b, T>(x: St<'a, 'b, T>)
+   |            --  -- lifetime `'b` defined here
+   |            |
+   |            lifetime `'a` defined here
+...
+LL |     let _failure_proves_not_implied_outlives_region_b: &'b T = &x.f0;
+   |                                                        ^^^^^ type annotation requires that `'a` must outlive `'b`
+
+error: lifetime may not live long enough
+  --> $DIR/implied-region-constraints.rs:40:64
+   |
+LL | fn _bad_en7<'a, 'b, T>(x: En7<'a, 'b, T>)
+   |             --  -- lifetime `'b` defined here
+   |             |
+   |             lifetime `'a` defined here
+...
+LL |             let _failure_proves_not_implied_outlives_region_b: &'b T = &x;
+   |                                                                ^^^^^ type annotation requires that `'a` must outlive `'b`
+
+error: aborting due to 2 previous errors
+

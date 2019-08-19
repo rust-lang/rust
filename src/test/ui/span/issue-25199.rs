@@ -34,7 +34,7 @@ impl Drop for VecHolder {
 
 struct Container<'a> {
     v: VecHolder,
-    d: RefCell<Vec<Box<Obj+'a>>>,
+    d: RefCell<Vec<Box<dyn Obj+'a>>>,
 }
 
 impl<'a> Container<'a> {

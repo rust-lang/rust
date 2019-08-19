@@ -61,9 +61,11 @@ note: the candidate is defined in the trait `ManyImplTrait`
 LL |     fn is_str() -> bool {
    |     ^^^^^^^^^^^^^^^^^^^
    = help: to disambiguate the method call, write `ManyImplTrait::is_str(t)` instead
-   = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following trait defines an item `is_str`, perhaps you need to implement it:
-           candidate #1: `ManyImplTrait`
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `is_str`, perhaps you need to restrict type parameter `T` with it:
+   |
+LL | fn param_bound<T: ManyImplTrait + ManyImplTrait>(t: T) -> bool {
+   |                ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

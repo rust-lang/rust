@@ -5,7 +5,7 @@ LL |     f.call(());
    |       ^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
-   = help: add #![feature(fn_traits)] to the crate attributes to enable
+   = help: add `#![feature(fn_traits)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'fn_traits'
   --> $DIR/feature-gate-unboxed-closures-method-calls.rs:5:7
@@ -14,7 +14,7 @@ LL |     f.call_mut(());
    |       ^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
-   = help: add #![feature(fn_traits)] to the crate attributes to enable
+   = help: add `#![feature(fn_traits)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'fn_traits'
   --> $DIR/feature-gate-unboxed-closures-method-calls.rs:6:7
@@ -23,7 +23,7 @@ LL |     f.call_once(());
    |       ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/29625
-   = help: add #![feature(fn_traits)] to the crate attributes to enable
+   = help: add `#![feature(fn_traits)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 

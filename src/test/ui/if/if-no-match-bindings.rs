@@ -19,4 +19,10 @@ fn main() {
     if b_mut_ref() {} //~ ERROR mismatched types [E0308]
     if &true {} //~ ERROR mismatched types [E0308]
     if &mut true {} //~ ERROR mismatched types [E0308]
+
+    // This is also NOT:
+    while b_ref() {} //~ ERROR mismatched types [E0308]
+    while b_mut_ref() {} //~ ERROR mismatched types [E0308]
+    while &true {} //~ ERROR mismatched types [E0308]
+    while &mut true {} //~ ERROR mismatched types [E0308]
 }

@@ -91,7 +91,9 @@ pub fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
                 PP::AngleBracketed { ref mut bindings, .. } => {
                     bindings.push(clean::TypeBinding {
                         name: name.clone(),
-                        ty: rhs.clone(),
+                        kind: clean::TypeBindingKind::Equality {
+                            ty: rhs.clone(),
+                        },
                     });
                 }
                 PP::Parenthesized { ref mut output, .. } => {
@@ -129,7 +131,7 @@ pub fn ty_params(mut params: Vec<clean::GenericParamDef>) -> Vec<clean::GenericP
     for param in &mut params {
         match param.kind {
             clean::GenericParamDefKind::Type { ref mut bounds, .. } => {
-                *bounds = ty_bounds(mem::replace(bounds, Vec::new()));
+                *bounds = ty_bounds(mem::take(bounds));
             }
             _ => panic!("expected only type parameters"),
         }
@@ -147,9 +149,11 @@ fn trait_is_same_or_supertrait(cx: &DocContext<'_>, child: DefId,
         return true
     }
     let predicates = cx.tcx.super_predicates_of(child);
+    debug_assert!(cx.tcx.generics_of(child).has_self);
+    let self_ty = cx.tcx.types.self_param;
     predicates.predicates.iter().filter_map(|(pred, _)| {
         if let ty::Predicate::Trait(ref pred) = *pred {
-            if pred.skip_binder().trait_ref.self_ty().is_self() {
+            if pred.skip_binder().trait_ref.self_ty() == self_ty {
                 Some(pred.def_id())
             } else {
                 None

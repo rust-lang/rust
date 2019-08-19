@@ -207,15 +207,15 @@ LL |     let _ = cf as *const [u16];
 error[E0606]: casting `*const dyn Foo` as `*const dyn Bar` is invalid
   --> $DIR/cast-rfc0401.rs:69:13
    |
-LL |     let _ = cf as *const Bar;
-   |             ^^^^^^^^^^^^^^^^
+LL |     let _ = cf as *const dyn Bar;
+   |             ^^^^^^^^^^^^^^^^^^^^
    |
    = note: vtable kinds may not match
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:53:13
    |
-LL |     let _ = fat_v as *const Foo;
+LL |     let _ = fat_v as *const dyn Foo;
    |             ^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `[u8]`
@@ -225,7 +225,7 @@ LL |     let _ = fat_v as *const Foo;
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/cast-rfc0401.rs:62:13
    |
-LL |     let _ = a as *const Foo;
+LL |     let _ = a as *const dyn Foo;
    |             ^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`

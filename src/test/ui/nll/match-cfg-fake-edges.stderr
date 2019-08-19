@@ -16,19 +16,7 @@ LL |         true => {
 LL |             x;
    |             ^ value used here after move
 
-error[E0503]: cannot use `y.1` because it was mutably borrowed
-  --> $DIR/match-cfg-fake-edges.rs:49:17
-   |
-LL |     let r = &mut y.1;
-   |             -------- borrow of `y.1` occurs here
-...
-LL |         (false, true) => 1,
-   |                 ^^^^ use of borrowed `y.1`
-LL |         (true, _) => {
-LL |             r;
-   |             - borrow later used here
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0381, E0382, E0503.
+Some errors have detailed explanations: E0381, E0382.
 For more information about an error, try `rustc --explain E0381`.

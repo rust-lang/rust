@@ -23,10 +23,10 @@ LL | type D = for<'a, T> fn();
    |                  ^
 
 error: only lifetime parameters can be used in this context
-  --> $DIR/bounds-lifetime.rs:5:14
+  --> $DIR/bounds-lifetime.rs:5:18
    |
-LL | type E = for<T> Fn();
-   |              ^
+LL | type E = dyn for<T> Fn();
+   |                  ^
 
 error: aborting due to 5 previous errors
 

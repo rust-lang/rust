@@ -17,10 +17,10 @@ LL | fn paren2<T>() where for<'a> T: Fn() -> &'a i32 {
    |                                         ^^^^^^^
 
 error[E0582]: binding for associated type `Output` references lifetime `'a`, which does not appear in the trait input types
-  --> $DIR/bound-lifetime-in-binding-only.rs:47:31
+  --> $DIR/bound-lifetime-in-binding-only.rs:47:35
    |
-LL | fn paren3(_: &for<'a> Fn() -> &'a i32) {
-   |                               ^^^^^^^
+LL | fn paren3(_: &dyn for<'a> Fn() -> &'a i32) {
+   |                                   ^^^^^^^
 
 error: aborting due to 4 previous errors
 

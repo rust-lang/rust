@@ -9,7 +9,7 @@ note: lint level defined here
    |
 LL | #![warn(rust_2018_compatibility)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^
-   = note: #[warn(absolute_paths_not_starting_with_crate)] implied by #[warn(rust_2018_compatibility)]
+   = note: `#[warn(absolute_paths_not_starting_with_crate)]` implied by `#[warn(rust_2018_compatibility)]`
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 

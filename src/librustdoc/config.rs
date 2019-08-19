@@ -3,17 +3,16 @@ use std::fmt;
 use std::path::PathBuf;
 
 use errors;
-use errors::emitter::{ColorConfig, HumanReadableErrorType};
 use getopts;
 use rustc::lint::Level;
-use rustc::session::early_error;
+use rustc::session;
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
                              get_cmd_lint_options, ExternEntry};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
-use syntax::edition::Edition;
+use syntax::edition::{Edition, DEFAULT_EDITION};
 
 use crate::core::new_handler;
 use crate::externalfiles::ExternalHtml;
@@ -221,58 +220,31 @@ impl Options {
                 println!("{:>20} - {}", pass.name, pass.description);
             }
             println!("\nDefault passes for rustdoc:");
-            for &name in passes::DEFAULT_PASSES {
-                println!("{:>20}", name);
+            for pass in passes::DEFAULT_PASSES {
+                println!("{:>20}", pass.name);
             }
             println!("\nPasses run with `--document-private-items`:");
-            for &name in passes::DEFAULT_PRIVATE_PASSES {
-                println!("{:>20}", name);
+            for pass in passes::DEFAULT_PRIVATE_PASSES {
+                println!("{:>20}", pass.name);
             }
 
             if nightly_options::is_nightly_build() {
                 println!("\nPasses run with `--show-coverage`:");
-                for &name in passes::DEFAULT_COVERAGE_PASSES {
-                    println!("{:>20}", name);
+                for pass in passes::DEFAULT_COVERAGE_PASSES {
+                    println!("{:>20}", pass.name);
                 }
                 println!("\nPasses run with `--show-coverage --document-private-items`:");
-                for &name in passes::PRIVATE_COVERAGE_PASSES {
-                    println!("{:>20}", name);
+                for pass in passes::PRIVATE_COVERAGE_PASSES {
+                    println!("{:>20}", pass.name);
                 }
             }
 
             return Err(0);
         }
 
-        let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
-            Some("auto") => ColorConfig::Auto,
-            Some("always") => ColorConfig::Always,
-            Some("never") => ColorConfig::Never,
-            None => ColorConfig::Auto,
-            Some(arg) => {
-                early_error(ErrorOutputType::default(),
-                            &format!("argument for --color must be `auto`, `always` or `never` \
-                                      (instead was `{}`)", arg));
-            }
-        };
-        // FIXME: deduplicate this code from the identical code in librustc/session/config.rs
-        let error_format = match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
-            None |
-            Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
-            Some("json") => ErrorOutputType::Json {
-                pretty: false,
-                json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
-            },
-            Some("pretty-json") => ErrorOutputType::Json {
-                pretty: true,
-                json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
-            },
-            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
-            Some(arg) => {
-                early_error(ErrorOutputType::default(),
-                            &format!("argument for --error-format must be `human`, `json` or \
-                                      `short` (instead was `{}`)", arg));
-            }
-        };
+        let color = session::config::parse_color(&matches);
+        let (json_rendered, _artifacts) = session::config::parse_json(&matches);
+        let error_format = session::config::parse_error_format(&matches, color, json_rendered);
 
         let codegen_options = build_codegen_options(matches, error_format);
         let debugging_options = build_debugging_options(matches, error_format);
@@ -352,7 +324,7 @@ impl Options {
         let mut cfgs = matches.opt_strs("cfg");
         cfgs.push("rustdoc".to_string());
         if should_test {
-            cfgs.push("test".to_string());
+            cfgs.push("doctest".to_string());
         }
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
@@ -386,6 +358,18 @@ impl Options {
             }
         }
 
+        let edition = if let Some(e) = matches.opt_str("edition") {
+            match e.parse() {
+                Ok(e) => e,
+                Err(_) => {
+                    diag.struct_err("could not parse edition").emit();
+                    return Err(1);
+                }
+            }
+        } else {
+            DEFAULT_EDITION
+        };
+
         let mut id_map = html::markdown::IdMap::new();
         id_map.populate(html::render::initial_ids());
         let external_html = match ExternalHtml::load(
@@ -393,18 +377,10 @@ impl Options {
                 &matches.opt_strs("html-before-content"),
                 &matches.opt_strs("html-after-content"),
                 &matches.opt_strs("markdown-before-content"),
-                &matches.opt_strs("markdown-after-content"), &diag, &mut id_map) {
+                &matches.opt_strs("markdown-after-content"),
+                &diag, &mut id_map, edition, &None) {
             Some(eh) => eh,
             None => return Err(3),
-        };
-
-        let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
-        let edition = match edition.parse() {
-            Ok(e) => e,
-            Err(_) => {
-                diag.struct_err("could not parse edition").emit();
-                return Err(1);
-            }
         };
 
         match matches.opt_str("r").as_ref().map(|s| &**s) {
@@ -538,7 +514,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) 
        "passes",
     ];
 
-    for flag in deprecated_flags.into_iter() {
+    for flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
             let mut err = diag.struct_warn(&format!("the '{}' flag is considered deprecated",
                                                     flag));

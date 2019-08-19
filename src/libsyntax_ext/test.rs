@@ -1,32 +1,65 @@
 /// The expansion from a test function to the appropriate test struct for libtest
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
-use syntax::ext::base::*;
-use syntax::ext::build::AstBuilder;
-use syntax::ext::hygiene::{self, Mark, SyntaxContext};
-use syntax::attr;
 use syntax::ast;
+use syntax::attr::{self, check_builtin_macro_attribute};
+use syntax::ext::base::*;
+use syntax::ext::hygiene::SyntaxContext;
 use syntax::print::pprust;
+use syntax::source_map::respan;
 use syntax::symbol::{Symbol, sym};
-use syntax_pos::{DUMMY_SP, Span};
-use syntax::source_map::{ExpnInfo, MacroAttribute};
+use syntax_pos::Span;
+
 use std::iter;
+
+// #[test_case] is used by custom test authors to mark tests
+// When building for test, it needs to make the item public and gensym the name
+// Otherwise, we'll omit the item. This behavior means that any item annotated
+// with #[test_case] is never addressable.
+//
+// We mark item with an inert attribute "rustc_test_marker" which the test generation
+// logic will pick up on.
+pub fn expand_test_case(
+    ecx: &mut ExtCtxt<'_>,
+    attr_sp: Span,
+    meta_item: &ast::MetaItem,
+    anno_item: Annotatable
+) -> Vec<Annotatable> {
+    check_builtin_macro_attribute(ecx, meta_item, sym::test_case);
+
+    if !ecx.ecfg.should_test { return vec![]; }
+
+    let sp = attr_sp.with_ctxt(SyntaxContext::root().apply_mark(ecx.current_expansion.id));
+    let mut item = anno_item.expect_item();
+    item = item.map(|mut item| {
+        item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
+        item.ident = item.ident.gensym();
+        item.attrs.push(
+            ecx.attribute(ecx.meta_word(sp, sym::rustc_test_marker))
+        );
+        item
+    });
+
+    return vec![Annotatable::Item(item)]
+}
 
 pub fn expand_test(
     cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
-    _meta_item: &ast::MetaItem,
+    meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
+    check_builtin_macro_attribute(cx, meta_item, sym::test);
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 
 pub fn expand_bench(
     cx: &mut ExtCtxt<'_>,
     attr_sp: Span,
-    _meta_item: &ast::MetaItem,
+    meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
+    check_builtin_macro_attribute(cx, meta_item, sym::bench);
     expand_test_or_bench(cx, attr_sp, item, true)
 }
 
@@ -43,12 +76,12 @@ pub fn expand_test_or_bench(
         if let Annotatable::Item(i) = item { i }
         else {
             cx.parse_sess.span_diagnostic.span_fatal(item.span(),
-                "#[test] attribute is only allowed on non associated functions").raise();
+                "`#[test]` attribute is only allowed on non associated functions").raise();
         };
 
     if let ast::ItemKind::Mac(_) = item.node {
         cx.parse_sess.span_diagnostic.span_warn(item.span,
-            "#[test] attribute should not be used on macros. Use #[cfg(test)] instead.");
+            "`#[test]` attribute should not be used on macros. Use `#[cfg(test)]` instead.");
         return vec![Annotatable::Item(item)];
     }
 
@@ -60,23 +93,8 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let (sp, attr_sp) = {
-        let mark = Mark::fresh(Mark::root());
-        mark.set_expn_info(ExpnInfo {
-            call_site: DUMMY_SP,
-            def_site: None,
-            format: MacroAttribute(Symbol::intern("test")),
-            allow_internal_unstable: Some(vec![
-                Symbol::intern("rustc_attrs"),
-                Symbol::intern("test"),
-            ].into()),
-            allow_internal_unsafe: false,
-            local_inner_macros: false,
-            edition: hygiene::default_edition(),
-        });
-        (item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark)),
-         attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(mark)))
-    };
+    let ctxt = SyntaxContext::root().apply_mark(cx.current_expansion.id);
+    let (sp, attr_sp) = (item.span.with_ctxt(ctxt), attr_sp.with_ctxt(ctxt));
 
     // Gensym "test" so we can extern crate without conflicting with any local names
     let test_id = cx.ident_of("test").gensym();
@@ -127,14 +145,14 @@ pub fn expand_test_or_bench(
         ])
     };
 
-    let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name.gensymed(), sp),
+    let mut test_const = cx.item(sp, ast::Ident::new(item.ident.name, sp).gensym(),
         vec![
             // #[cfg(test)]
-            cx.attribute(attr_sp, cx.meta_list(attr_sp, Symbol::intern("cfg"), vec![
-                cx.meta_list_item_word(attr_sp, Symbol::intern("test"))
+            cx.attribute(cx.meta_list(attr_sp, sym::cfg, vec![
+                cx.meta_list_item_word(attr_sp, sym::test)
             ])),
             // #[rustc_test_marker]
-            cx.attribute(attr_sp, cx.meta_word(attr_sp, Symbol::intern("rustc_test_marker"))),
+            cx.attribute(cx.meta_word(attr_sp, sym::rustc_test_marker)),
         ],
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
@@ -180,10 +198,10 @@ pub fn expand_test_or_bench(
     let test_extern = cx.item(sp,
         test_id,
         vec![],
-        ast::ItemKind::ExternCrate(Some(Symbol::intern("test")))
+        ast::ItemKind::ExternCrate(Some(sym::test))
     );
 
-    log::debug!("Synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
+    log::debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
     vec![
         // Access to libtest under a gensymed name

@@ -1,8 +1,8 @@
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-trait.rs:8:44
    |
-LL | fn foo() -> impl Future<Item=(), Error=Box<Error>> {
-   |                                            ^^^^^ help: consider giving it a 'static lifetime: `Error + 'static`
+LL | fn foo() -> impl Future<Item=(), Error=Box<dyn Error>> {
+   |                                            ^^^^^^^^^ help: consider giving it a 'static lifetime: `dyn Error + 'static`
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 

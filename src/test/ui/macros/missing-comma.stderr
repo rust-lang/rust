@@ -2,7 +2,7 @@ error: expected token: `,`
   --> $DIR/missing-comma.rs:19:19
    |
 LL |     println!("{}" a);
-   |                   ^
+   |                   ^ expected `,`
 
 error: no rules expected the token `b`
   --> $DIR/missing-comma.rs:21:12

@@ -1,8 +1,8 @@
 error[E0393]: the type parameter `T` must be explicitly specified
-  --> $DIR/E0393.rs:3:43
+  --> $DIR/E0393.rs:3:47
    |
-LL | fn together_we_will_rule_the_galaxy(son: &A) {}
-   |                                           ^ missing reference to `T`
+LL | fn together_we_will_rule_the_galaxy(son: &dyn A) {}
+   |                                               ^ missing reference to `T`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 

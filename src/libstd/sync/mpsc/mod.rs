@@ -116,7 +116,6 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![allow(deprecated)] // for mpsc_select
 
 // A description of how Rust's channel implementation works
 //
@@ -263,6 +262,8 @@
 // believe that there is anything fundamental that needs to change about these
 // channels, however, in order to support a more efficient select().
 //
+// FIXME: Select is now removed, so these factors are ready to be cleaned up!
+//
 // # Conclusion
 //
 // And now that you've seen all the races that I found and attempted to fix,
@@ -275,18 +276,8 @@ use crate::mem;
 use crate::cell::UnsafeCell;
 use crate::time::{Duration, Instant};
 
-#[unstable(feature = "mpsc_select", issue = "27800")]
-pub use self::select::{Select, Handle};
-use self::select::StartResult;
-use self::select::StartResult::*;
-use self::blocking::SignalToken;
-
-#[cfg(all(test, not(target_os = "emscripten")))]
-mod select_tests;
-
 mod blocking;
 mod oneshot;
-mod select;
 mod shared;
 mod stream;
 mod sync;
@@ -1512,78 +1503,6 @@ impl<T> Receiver<T> {
         TryIter { rx: self }
     }
 
-}
-
-impl<T> select::Packet for Receiver<T> {
-    fn can_recv(&self) -> bool {
-        loop {
-            let new_port = match *unsafe { self.inner() } {
-                Flavor::Oneshot(ref p) => {
-                    match p.can_recv() {
-                        Ok(ret) => return ret,
-                        Err(upgrade) => upgrade,
-                    }
-                }
-                Flavor::Stream(ref p) => {
-                    match p.can_recv() {
-                        Ok(ret) => return ret,
-                        Err(upgrade) => upgrade,
-                    }
-                }
-                Flavor::Shared(ref p) => return p.can_recv(),
-                Flavor::Sync(ref p) => return p.can_recv(),
-            };
-            unsafe {
-                mem::swap(self.inner_mut(),
-                          new_port.inner_mut());
-            }
-        }
-    }
-
-    fn start_selection(&self, mut token: SignalToken) -> StartResult {
-        loop {
-            let (t, new_port) = match *unsafe { self.inner() } {
-                Flavor::Oneshot(ref p) => {
-                    match p.start_selection(token) {
-                        oneshot::SelSuccess => return Installed,
-                        oneshot::SelCanceled => return Abort,
-                        oneshot::SelUpgraded(t, rx) => (t, rx),
-                    }
-                }
-                Flavor::Stream(ref p) => {
-                    match p.start_selection(token) {
-                        stream::SelSuccess => return Installed,
-                        stream::SelCanceled => return Abort,
-                        stream::SelUpgraded(t, rx) => (t, rx),
-                    }
-                }
-                Flavor::Shared(ref p) => return p.start_selection(token),
-                Flavor::Sync(ref p) => return p.start_selection(token),
-            };
-            token = t;
-            unsafe {
-                mem::swap(self.inner_mut(), new_port.inner_mut());
-            }
-        }
-    }
-
-    fn abort_selection(&self) -> bool {
-        let mut was_upgrade = false;
-        loop {
-            let result = match *unsafe { self.inner() } {
-                Flavor::Oneshot(ref p) => p.abort_selection(),
-                Flavor::Stream(ref p) => p.abort_selection(was_upgrade),
-                Flavor::Shared(ref p) => return p.abort_selection(was_upgrade),
-                Flavor::Sync(ref p) => return p.abort_selection(),
-            };
-            let new_port = match result { Ok(b) => return b, Err(p) => p };
-            was_upgrade = true;
-            unsafe {
-                mem::swap(self.inner_mut(),
-                          new_port.inner_mut());
-            }
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

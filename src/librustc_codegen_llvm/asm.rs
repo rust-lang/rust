@@ -6,9 +6,9 @@ use crate::value::Value;
 
 use rustc::hir;
 use rustc_codegen_ssa::traits::*;
-
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
+use syntax_pos::Span;
 
 use std::ffi::{CStr, CString};
 use libc::{c_uint, c_char};
@@ -19,7 +19,8 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         ia: &hir::InlineAsm,
         outputs: Vec<PlaceRef<'tcx, &'ll Value>>,
-        mut inputs: Vec<&'ll Value>
+        mut inputs: Vec<&'ll Value>,
+        span: Span,
     ) -> bool {
         let mut ext_constraints = vec![];
         let mut output_types = vec![];
@@ -102,7 +103,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             let kind = llvm::LLVMGetMDKindIDInContext(self.llcx,
                 key.as_ptr() as *const c_char, key.len() as c_uint);
 
-            let val: &'ll Value = self.const_i32(ia.ctxt.outer().as_u32() as i32);
+            let val: &'ll Value = self.const_i32(span.ctxt().outer_expn().as_u32() as i32);
 
             llvm::LLVMSetMetadata(r, kind,
                 llvm::LLVMMDNodeInContext(self.llcx, &val, 1));
@@ -112,7 +113,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-impl AsmMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl AsmMethods for CodegenCx<'ll, 'tcx> {
     fn codegen_global_asm(&self, ga: &hir::GlobalAsm) {
         let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
         unsafe {
@@ -146,7 +147,7 @@ fn inline_asm_call(
     unsafe {
         // Ask LLVM to verify that the constraints are well-formed.
         let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr());
-        debug!("Constraint verification result: {:?}", constraints_ok);
+        debug!("constraint verification result: {:?}", constraints_ok);
         if constraints_ok {
             let v = llvm::LLVMRustInlineAsm(
                 fty,

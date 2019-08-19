@@ -1,0 +1,38 @@
+error: expected expression, found reserved identifier `_`
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:10:24
+   |
+LL |     let _: usize = foo(_, _);
+   |                        ^ expected expression
+
+error: expected expression, found reserved identifier `_`
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:10:27
+   |
+LL |     let _: usize = foo(_, _);
+   |                           ^ expected expression
+
+error: expected expression, found reserved identifier `_`
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:13:18
+   |
+LL |     let _: S = S(_, _);
+   |                  ^ expected expression
+
+error: expected expression, found reserved identifier `_`
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:13:21
+   |
+LL |     let _: S = S(_, _);
+   |                     ^ expected expression
+
+error: expected expression, found reserved identifier `_`
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:16:27
+   |
+LL |     let _: usize = T::baz(_, _);
+   |                           ^ expected expression
+
+error: expected expression, found reserved identifier `_`
+  --> $DIR/fn-or-tuple-struct-with-underscore-args.rs:16:30
+   |
+LL |     let _: usize = T::baz(_, _);
+   |                              ^ expected expression
+
+error: aborting due to 6 previous errors
+

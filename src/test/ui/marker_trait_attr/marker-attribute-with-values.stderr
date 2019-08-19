@@ -1,20 +1,20 @@
-error: attribute must be of the form `#[marker]`
+error: malformed `marker` attribute input
   --> $DIR/marker-attribute-with-values.rs:3:1
    |
 LL | #[marker(always)]
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^ help: must be of the form: `#[marker]`
 
-error: attribute must be of the form `#[marker]`
-  --> $DIR/marker-attribute-with-values.rs:7:1
+error: malformed `marker` attribute input
+  --> $DIR/marker-attribute-with-values.rs:6:1
    |
 LL | #[marker("never")]
-   | ^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[marker]`
 
-error: attribute must be of the form `#[marker]`
-  --> $DIR/marker-attribute-with-values.rs:11:1
+error: malformed `marker` attribute input
+  --> $DIR/marker-attribute-with-values.rs:9:1
    |
 LL | #[marker(key = "value")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[marker]`
 
 error: aborting due to 3 previous errors
 

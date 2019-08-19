@@ -1,7 +1,7 @@
 error: lifetime may not live long enough
   --> $DIR/object-lifetime-default-from-rptr-struct-error.rs:21:5
    |
-LL | fn c<'a>(t: &'a MyBox<Test+'a>, mut ss: SomeStruct<'a>) {
+LL | fn c<'a>(t: &'a MyBox<dyn Test+'a>, mut ss: SomeStruct<'a>) {
    |      -- lifetime `'a` defined here
 LL |     ss.t = t;
    |     ^^^^^^^^ assignment requires that `'a` must outlive `'static`

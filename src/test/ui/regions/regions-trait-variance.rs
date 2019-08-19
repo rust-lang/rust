@@ -23,10 +23,10 @@ impl Drop for B {
 }
 
 struct A<'r> {
-    p: &'r (X+'r)
+    p: &'r (dyn X + 'r)
 }
 
-fn make_a(p:&X) -> A {
+fn make_a(p: &dyn X) -> A {
     A{p:p}
 }
 

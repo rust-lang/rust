@@ -1,6 +1,6 @@
 //! Def-use analysis.
 
-use rustc::mir::{Local, Location, Mir};
+use rustc::mir::{Local, Location, Body};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::mem;
@@ -21,19 +21,19 @@ pub struct Use {
 }
 
 impl DefUseAnalysis {
-    pub fn new(mir: &Mir<'_>) -> DefUseAnalysis {
+    pub fn new(body: &Body<'_>) -> DefUseAnalysis {
         DefUseAnalysis {
-            info: IndexVec::from_elem_n(Info::new(), mir.local_decls.len()),
+            info: IndexVec::from_elem_n(Info::new(), body.local_decls.len()),
         }
     }
 
-    pub fn analyze(&mut self, mir: &Mir<'_>) {
+    pub fn analyze(&mut self, body: &Body<'_>) {
         self.clear();
 
         let mut finder = DefUseFinder {
-            info: mem::replace(&mut self.info, IndexVec::new()),
+            info: mem::take(&mut self.info),
         };
-        finder.visit_mir(mir);
+        finder.visit_body(body);
         self.info = finder.info
     }
 
@@ -47,23 +47,23 @@ impl DefUseAnalysis {
         &self.info[local]
     }
 
-    fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'_>, mut callback: F)
+    fn mutate_defs_and_uses<F>(&self, local: Local, body: &mut Body<'_>, mut callback: F)
                                where F: for<'a> FnMut(&'a mut Local,
                                                       PlaceContext,
                                                       Location) {
         for place_use in &self.info[local].defs_and_uses {
             MutateUseVisitor::new(local,
                                   &mut callback,
-                                  mir).visit_location(mir, place_use.location)
+                                  body).visit_location(body, place_use.location)
         }
     }
 
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          mir: &mut Mir<'_>,
+                                          body: &mut Body<'_>,
                                           new_local: Local) {
-        self.mutate_defs_and_uses(local, mir, |local, _, _| *local = new_local)
+        self.mutate_defs_and_uses(local, body, |local, _, _| *local = new_local)
     }
 }
 
@@ -123,7 +123,7 @@ struct MutateUseVisitor<F> {
 }
 
 impl<F> MutateUseVisitor<F> {
-    fn new(query: Local, callback: F, _: &Mir<'_>)
+    fn new(query: Local, callback: F, _: &Body<'_>)
            -> MutateUseVisitor<F>
            where F: for<'a> FnMut(&'a mut Local, PlaceContext, Location) {
         MutateUseVisitor {

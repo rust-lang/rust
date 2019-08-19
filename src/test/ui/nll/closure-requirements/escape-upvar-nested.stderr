@@ -7,11 +7,11 @@ LL |             let mut closure1 = || p = &y;
    = note: defining type: DefId(0:14 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]::{{closure}}[0]) with closure substs [
                i16,
                extern "rust-call" fn(()),
-               &'_#1r mut &'_#2r i32,
-               &'_#3r i32,
+               &'_#1r i32,
+               &'_#2r mut &'_#3r i32,
            ]
    = note: number of external vids: 4
-   = note: where '_#3r: '_#2r
+   = note: where '_#1r: '_#3r
 
 note: External requirements
   --> $DIR/escape-upvar-nested.rs:20:27
@@ -26,11 +26,11 @@ LL | |         };
    = note: defining type: DefId(0:13 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]) with closure substs [
                i16,
                extern "rust-call" fn(()),
-               &'_#1r mut &'_#2r i32,
-               &'_#3r i32,
+               &'_#1r i32,
+               &'_#2r mut &'_#3r i32,
            ]
    = note: number of external vids: 4
-   = note: where '_#3r: '_#2r
+   = note: where '_#1r: '_#3r
 
 note: No external requirements
   --> $DIR/escape-upvar-nested.rs:13:1

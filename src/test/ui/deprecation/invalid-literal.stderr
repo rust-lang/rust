@@ -1,8 +1,16 @@
-error: attribute must be of the form `#[deprecated]` or `#[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason)]` or `#[deprecated = "reason"]`
+error: malformed `deprecated` attribute input
   --> $DIR/invalid-literal.rs:1:1
    |
 LL | #[deprecated = b"test"]
    | ^^^^^^^^^^^^^^^^^^^^^^^
+help: the following are the possible correct uses
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^
+LL | #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[deprecated = "reason"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

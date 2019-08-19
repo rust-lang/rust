@@ -1,4 +1,4 @@
-use core::ops::{Range, RangeFull, RangeFrom, RangeTo, RangeInclusive};
+use core::ops::{Bound, Range, RangeFull, RangeFrom, RangeTo, RangeInclusive};
 
 // Test the Range structs without the syntactic sugar.
 
@@ -81,4 +81,19 @@ fn test_range_is_empty() {
     assert!( (EPSILON ..= NAN).is_empty());
     assert!( (NAN ..= EPSILON).is_empty());
     assert!( (NAN ..= NAN).is_empty());
+}
+
+#[test]
+fn test_bound_cloned_unbounded() {
+    assert_eq!(Bound::<&u32>::Unbounded.cloned(), Bound::Unbounded);
+}
+
+#[test]
+fn test_bound_cloned_included() {
+    assert_eq!(Bound::Included(&3).cloned(), Bound::Included(3));
+}
+
+#[test]
+fn test_bound_cloned_excluded() {
+    assert_eq!(Bound::Excluded(&3).cloned(), Bound::Excluded(3));
 }

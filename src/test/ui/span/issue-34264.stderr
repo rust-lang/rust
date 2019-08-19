@@ -9,12 +9,32 @@ error: expected one of `:` or `@`, found `)`
    |
 LL | fn foo(Option<i32>, String) {}
    |                           ^ expected one of `:` or `@` here
+   |
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this was a parameter name, give it a type
+   |
+LL | fn foo(Option<i32>, String: TypeName) {}
+   |                     ^^^^^^^^^^^^^^^^
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn foo(Option<i32>, _: String) {}
+   |                     ^^^^^^^^^
 
 error: expected one of `:` or `@`, found `,`
   --> $DIR/issue-34264.rs:3:9
    |
 LL | fn bar(x, y: usize) {}
    |         ^ expected one of `:` or `@` here
+   |
+   = note: anonymous parameters are removed in the 2018 edition (see RFC 1685)
+help: if this was a parameter name, give it a type
+   |
+LL | fn bar(x: TypeName, y: usize) {}
+   |        ^^^^^^^^^^^
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL | fn bar(_: x, y: usize) {}
+   |        ^^^^
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
   --> $DIR/issue-34264.rs:7:5

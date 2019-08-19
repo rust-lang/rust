@@ -5,7 +5,7 @@ LL | const fn bad_const_fn_deref_raw(x: *mut usize) -> &'static usize { unsafe {
    |                                                                             ^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51911
-   = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
+   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constant functions is unstable
   --> $DIR/min_const_fn_unsafe.rs:53:70
@@ -14,7 +14,7 @@ LL | const unsafe fn bad_const_unsafe_deref_raw(x: *mut usize) -> usize { *x }
    |                                                                      ^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51911
-   = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
+   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constant functions is unstable
   --> $DIR/min_const_fn_unsafe.rs:56:83
@@ -23,7 +23,7 @@ LL | const unsafe fn bad_const_unsafe_deref_raw_ref(x: *mut usize) -> &'static u
    |                                                                                   ^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51911
-   = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
+   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
 
 error[E0658]: unions in const fn are unstable
   --> $DIR/min_const_fn_unsafe.rs:63:5
@@ -32,7 +32,7 @@ LL |     Foo { x: () }.y
    |     ^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51909
-   = help: add #![feature(const_fn_union)] to the crate attributes to enable
+   = help: add `#![feature(const_fn_union)]` to the crate attributes to enable
 
 error[E0133]: dereference of raw pointer is unsafe and requires unsafe function or block
   --> $DIR/min_const_fn_unsafe.rs:50:77

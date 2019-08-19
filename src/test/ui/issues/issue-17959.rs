@@ -17,5 +17,5 @@ impl<T> Drop for G<T> {
 }
 
 fn main() {
-    let x:G<Bar>;
+    let x:G<dyn Bar>;
 }

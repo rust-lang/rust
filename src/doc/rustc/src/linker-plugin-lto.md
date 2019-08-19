@@ -100,9 +100,10 @@ LLVM. However, the approximation is usually reliable.
 
 The following table shows known good combinations of toolchain versions.
 
-|           | Clang 7   | Clang 8   |
+|           |  Clang 7  |  Clang 8  |
 |-----------|-----------|-----------|
 | Rust 1.34 |     ✗     |     ✓     |
-| Rust 1.35 |     ✗     |    ✓(?)   |
+| Rust 1.35 |     ✗     |     ✓     |
+| Rust 1.36 |     ✗     |     ✓     |
 
 Note that the compatibility policy for this feature might change in the future.

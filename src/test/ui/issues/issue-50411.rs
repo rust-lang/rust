@@ -4,7 +4,7 @@
 // second time. Uncool.
 
 // compile-flags:-Zmir-opt-level=3
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 fn main() {
     let _ = (0 .. 1).filter(|_| [1].iter().all(|_| true)).count();

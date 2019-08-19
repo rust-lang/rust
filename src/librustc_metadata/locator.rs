@@ -321,7 +321,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    pub fn report_errs(&mut self) -> ! {
+    pub fn report_errs(self) -> ! {
         let add = match self.root {
             &None => String::new(),
             &Some(ref r) => format!(" which `{}` depends on", r.ident),
@@ -716,7 +716,9 @@ impl<'a> Context<'a> {
 
         let root = metadata.get_root();
         if let Some(is_proc_macro) = self.is_proc_macro {
-            if root.proc_macro_decls_static.is_some() != is_proc_macro {
+            if root.proc_macro_data.is_some() != is_proc_macro {
+                info!("Rejecting via proc macro: expected {} got {}",
+                      is_proc_macro, root.proc_macro_data.is_some());
                 return None;
             }
         }
@@ -901,8 +903,7 @@ fn get_metadata_section_imp(target: &Target,
             let mut inflated = Vec::new();
             match DeflateDecoder::new(compressed_bytes).read_to_end(&mut inflated) {
                 Ok(_) => {
-                    let buf = unsafe { OwningRef::new_assert_stable_address(inflated) };
-                    rustc_erase_owner!(buf.map_owner_box())
+                    rustc_erase_owner!(OwningRef::new(inflated).map_owner_box())
                 }
                 Err(_) => {
                     return Err(format!("failed to decompress metadata: {}", filename.display()));

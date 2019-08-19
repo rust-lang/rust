@@ -115,6 +115,7 @@
 
 #![no_std]
 #![allow(non_camel_case_types)]
+#![allow(deprecated)] // FIXME: using `mem::uninitialized()`
 
 include!("bitflags.rs");
 
@@ -1884,7 +1885,7 @@ pub unsafe fn clock_res_get(clock_id_: clockid, resolution_: &mut timestamp) -> 
 /// **time**:
 /// The time value of the clock.
 #[inline]
-pub unsafe fn clock_time_get(clock_id_: clockid, precision_: timestamp, time_: &mut timestamp) -> errno {
+pub unsafe fn clock_time_get(clock_id_: clockid, precision_: timestamp, time_: *mut timestamp) -> errno {
   cloudabi_sys_clock_time_get(clock_id_, precision_, time_)
 }
 
@@ -2643,7 +2644,7 @@ pub unsafe fn mem_unmap(mapping_: &mut [u8]) -> errno {
 /// **nevents**:
 /// The number of events stored.
 #[inline]
-pub unsafe fn poll(in_: *const subscription, out_: *mut event, nsubscriptions_: usize, nevents_: &mut usize) -> errno {
+pub unsafe fn poll(in_: *const subscription, out_: *mut event, nsubscriptions_: usize, nevents_: *mut usize) -> errno {
   cloudabi_sys_poll(in_, out_, nsubscriptions_, nevents_)
 }
 

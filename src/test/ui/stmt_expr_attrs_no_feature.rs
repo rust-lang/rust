@@ -1,4 +1,4 @@
-#![feature(custom_attribute)]
+#![feature(rustc_attrs)]
 
 macro_rules! stmt_mac {
     () => {
@@ -7,18 +7,19 @@ macro_rules! stmt_mac {
 }
 
 fn main() {
-    #[attr]
+    #[rustc_dummy]
     fn a() {}
 
-    #[attr] //~ ERROR attributes on expressions are experimental
+    // Bug: built-in attrs like `rustc_dummy` are not gated on blocks, but other attrs are.
+    #[rustfmt::skip] //~ ERROR attributes on expressions are experimental
     {
 
     }
 
-    #[attr]
+    #[rustc_dummy]
     5;
 
-    #[attr]
+    #[rustc_dummy]
     stmt_mac!();
 }
 
@@ -26,25 +27,25 @@ fn main() {
 
 #[cfg(unset)]
 fn c() {
-    #[attr]
+    #[rustc_dummy]
     5;
 }
 
 #[cfg(not(unset))]
 fn j() {
-    #[attr]
+    #[rustc_dummy]
     5;
 }
 
 #[cfg_attr(not(unset), cfg(unset))]
 fn d() {
-    #[attr]
+    #[rustc_dummy]
     8;
 }
 
 #[cfg_attr(not(unset), cfg(not(unset)))]
 fn i() {
-    #[attr]
+    #[rustc_dummy]
     8;
 }
 
@@ -53,30 +54,30 @@ fn i() {
 macro_rules! item_mac {
     ($e:ident) => {
         fn $e() {
-            #[attr]
+            #[rustc_dummy]
             42;
 
             #[cfg(unset)]
             fn f() {
-                #[attr]
+                #[rustc_dummy]
                 5;
             }
 
             #[cfg(not(unset))]
             fn k() {
-                #[attr]
+                #[rustc_dummy]
                 5;
             }
 
             #[cfg_attr(not(unset), cfg(unset))]
             fn g() {
-                #[attr]
+                #[rustc_dummy]
                 8;
             }
 
             #[cfg_attr(not(unset), cfg(not(unset)))]
             fn h() {
-                #[attr]
+                #[rustc_dummy]
                 8;
             }
 
@@ -90,51 +91,51 @@ item_mac!(e);
 
 extern {
     #[cfg(unset)]
-    fn x(a: [u8; #[attr] 5]);
-    fn y(a: [u8; #[attr] 5]); //~ ERROR attributes on expressions are experimental
+    fn x(a: [u8; #[rustc_dummy] 5]);
+    fn y(a: [u8; #[rustc_dummy] 5]); //~ ERROR attributes on expressions are experimental
 }
 
 struct Foo;
 impl Foo {
     #[cfg(unset)]
-    const X: u8 = #[attr] 5;
-    const Y: u8 = #[attr] 5; //~ ERROR attributes on expressions are experimental
+    const X: u8 = #[rustc_dummy] 5;
+    const Y: u8 = #[rustc_dummy] 5; //~ ERROR attributes on expressions are experimental
 }
 
 trait Bar {
     #[cfg(unset)]
-    const X: [u8; #[attr] 5];
-    const Y: [u8; #[attr] 5]; //~ ERROR attributes on expressions are experimental
+    const X: [u8; #[rustc_dummy] 5];
+    const Y: [u8; #[rustc_dummy] 5]; //~ ERROR attributes on expressions are experimental
 }
 
 struct Joyce {
     #[cfg(unset)]
-    field: [u8; #[attr] 5],
-    field2: [u8; #[attr] 5] //~ ERROR attributes on expressions are experimental
+    field: [u8; #[rustc_dummy] 5],
+    field2: [u8; #[rustc_dummy] 5] //~ ERROR attributes on expressions are experimental
 }
 
 struct Walky(
-    #[cfg(unset)] [u8; #[attr] 5],
-    [u8; #[attr] 5] //~ ERROR attributes on expressions are experimental
+    #[cfg(unset)] [u8; #[rustc_dummy] 5],
+    [u8; #[rustc_dummy] 5] //~ ERROR attributes on expressions are experimental
 );
 
 enum Mike {
     Happy(
-        #[cfg(unset)] [u8; #[attr] 5],
-        [u8; #[attr] 5] //~ ERROR attributes on expressions are experimental
+        #[cfg(unset)] [u8; #[rustc_dummy] 5],
+        [u8; #[rustc_dummy] 5] //~ ERROR attributes on expressions are experimental
     ),
     Angry {
         #[cfg(unset)]
-        field: [u8; #[attr] 5],
-        field2: [u8; #[attr] 5] //~ ERROR attributes on expressions are experimental
+        field: [u8; #[rustc_dummy] 5],
+        field2: [u8; #[rustc_dummy] 5] //~ ERROR attributes on expressions are experimental
     }
 }
 
 fn pat() {
     match 5 {
         #[cfg(unset)]
-        5 => #[attr] (),
-        6 => #[attr] (), //~ ERROR attributes on expressions are experimental
+        5 => #[rustc_dummy] (),
+        6 => #[rustc_dummy] (), //~ ERROR attributes on expressions are experimental
         _ => (),
     }
 }

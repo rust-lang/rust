@@ -7,6 +7,7 @@
 #[macro_use]
 extern crate rustc;
 extern crate rustc_plugin;
+extern crate rustc_driver;
 
 use rustc::hir;
 use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPassObject, LintArray};

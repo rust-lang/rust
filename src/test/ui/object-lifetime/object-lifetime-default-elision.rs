@@ -8,7 +8,7 @@ trait SomeTrait {
 }
 
 struct SomeStruct<'a> {
-    r: Box<SomeTrait+'a>
+    r: Box<dyn SomeTrait+'a>
 }
 
 fn deref<T>(ss: &T) -> T {
@@ -17,7 +17,7 @@ fn deref<T>(ss: &T) -> T {
     loop { }
 }
 
-fn load0<'a>(ss: &'a Box<SomeTrait>) -> Box<SomeTrait> {
+fn load0<'a>(ss: &'a Box<dyn SomeTrait>) -> Box<dyn SomeTrait> {
     // Under old rules, the fully elaborated types of input/output were:
     //
     // for<'a,'b> fn(&'a Box<SomeTrait+'b>) -> Box<SomeTrait+'a>
@@ -31,7 +31,7 @@ fn load0<'a>(ss: &'a Box<SomeTrait>) -> Box<SomeTrait> {
     deref(ss)
 }
 
-fn load1(ss: &SomeTrait) -> &SomeTrait {
+fn load1(ss: &dyn SomeTrait) -> &dyn SomeTrait {
     // Under old rules, the fully elaborated types of input/output were:
     //
     // for<'a,'b> fn(&'a (SomeTrait+'b)) -> &'a (SomeTrait+'a)
@@ -45,13 +45,13 @@ fn load1(ss: &SomeTrait) -> &SomeTrait {
     ss
 }
 
-fn load2<'a>(ss: &'a SomeTrait) -> &SomeTrait {
+fn load2<'a>(ss: &'a dyn SomeTrait) -> &dyn SomeTrait {
     // Same as `load1` but with an explicit name thrown in for fun.
 
     ss
 }
 
-fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
+fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
     // Under old rules, the fully elaborated types of input/output were:
     //
     // for<'a,'b,'c>fn(&'a (SomeTrait+'c)) -> &'b (SomeTrait+'a)

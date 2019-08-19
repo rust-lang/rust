@@ -1,8 +1,8 @@
 error[E0161]: cannot move a value of type dyn Trait: the size of dyn Trait cannot be statically determined
-  --> $DIR/issue-41139.rs:6:23
+  --> $DIR/issue-41139.rs:6:27
    |
-LL |     let t : &Trait = &get_function()();
-   |                       ^^^^^^^^^^^^^^^^
+LL |     let t : &dyn Trait = &get_function()();
+   |                           ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

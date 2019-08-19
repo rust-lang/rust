@@ -1,8 +1,8 @@
-// compile-pass
-// skip-codegen
+// check-pass
 // revisions: old re
 
 #![cfg_attr(re, feature(re_rebalance_coherence))]
+
 pub trait Foo<P> {}
 
 pub trait Bar {
@@ -16,6 +16,5 @@ impl<A:Bar> Foo<A::Output> for A { }
 impl Bar for i32 {
     type Output = u32;
 }
-
 
 fn main() {}

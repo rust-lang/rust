@@ -9,7 +9,7 @@ fn a() {
     // iteration, but it still doesn't work. The weird structure with
     // the `Option` is to avoid giving any useful hints about the `Fn`
     // kind via the expected type.
-    let mut factorial: Option<Box<Fn(u32) -> u32>> = None;
+    let mut factorial: Option<Box<dyn Fn(u32) -> u32>> = None;
 
     let f = |x: u32| -> u32 {
         let g = factorial.as_ref().unwrap();
@@ -22,7 +22,7 @@ fn a() {
 }
 
 fn b() {
-    let mut factorial: Option<Box<Fn(u32) -> u32 + 'static>> = None;
+    let mut factorial: Option<Box<dyn Fn(u32) -> u32 + 'static>> = None;
 
     let f = |x: u32| -> u32 {
         let g = factorial.as_ref().unwrap();

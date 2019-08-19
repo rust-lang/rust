@@ -9,14 +9,13 @@ use std::borrow::Cow;
 use std::fmt;
 
 use rustc::hir::def_id::DefId;
+use rustc::util::nodemap::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 
 use crate::clean::{self, PrimitiveType};
-use crate::core::DocAccessLevels;
 use crate::html::item_type::ItemType;
 use crate::html::render::{self, cache, CURRENT_LOCATION_KEY};
-
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
@@ -107,8 +106,10 @@ impl<'a, T: fmt::Display> fmt::Display for CommaSep<'a, T> {
 
 impl<'a> fmt::Display for GenericBounds<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut bounds_dup = FxHashSet::default();
         let &GenericBounds(bounds) = self;
-        for (i, bound) in bounds.iter().enumerate() {
+
+        for (i, bound) in bounds.iter().filter(|b| bounds_dup.insert(b.to_string())).enumerate() {
             if i > 0 {
                 f.write_str(" + ")?;
             }
@@ -206,16 +207,13 @@ impl<'a> fmt::Display for WhereClause<'a> {
                         clause.push_str(&format!("{}: {}", ty, GenericBounds(bounds)));
                     }
                 }
-                &clean::WherePredicate::RegionPredicate { ref lifetime,
-                                                          ref bounds } => {
-                    clause.push_str(&format!("{}: ", lifetime));
-                    for (i, lifetime) in bounds.iter().enumerate() {
-                        if i > 0 {
-                            clause.push_str(" + ");
-                        }
-
-                        clause.push_str(&lifetime.to_string());
-                    }
+                &clean::WherePredicate::RegionPredicate { ref lifetime, ref bounds } => {
+                    clause.push_str(&format!("{}: {}",
+                                             lifetime,
+                                             bounds.iter()
+                                                   .map(|b| b.to_string())
+                                                   .collect::<Vec<_>>()
+                                                   .join(" + ")));
                 }
                 &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
                     if f.alternate() {
@@ -262,9 +260,7 @@ impl fmt::Display for clean::Lifetime {
 
 impl fmt::Display for clean::Constant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.expr, f)?;
-        f.write_str(": ")?;
-        fmt::Display::fmt(&self.type_, f)
+        fmt::Display::fmt(&self.expr, f)
     }
 }
 
@@ -407,7 +403,7 @@ impl fmt::Display for clean::Path {
 
 pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
-    if !did.is_local() && !cache.access_levels.is_doc_reachable(did) {
+    if !did.is_local() && !cache.access_levels.is_public(did) {
         return None
     }
 
@@ -563,7 +559,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
             if param_names.is_some() {
                 f.write_str("dyn ")?;
             }
-            // Paths like T::Output and Self::Output should be rendered with all segments
+            // Paths like `T::Output` and `Self::Output` should be rendered with all segments.
             resolved_path(f, did, path, is_generic, use_absolute)?;
             tybounds(f, param_names)
         }
@@ -587,7 +583,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 &[] => primitive_link(f, PrimitiveType::Unit, "()"),
                 &[ref one] => {
                     primitive_link(f, PrimitiveType::Tuple, "(")?;
-                    //carry f.alternate() into this display w/o branching manually
+                    // Carry `f.alternate()` into this display w/o branching manually.
                     fmt::Display::fmt(one, f)?;
                     primitive_link(f, PrimitiveType::Tuple, ",)")
                 }
@@ -640,7 +636,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                 "&amp;".to_string()
             };
             match **ty {
-                clean::Slice(ref bt) => { // BorrowedRef{ ... Slice(T) } is &[T]
+                clean::Slice(ref bt) => { // `BorrowedRef{ ... Slice(T) }` is `&[T]`
                     match **bt {
                         clean::Generic(_) => {
                             if f.alternate() {
@@ -724,7 +720,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                                    "<a class=\"type\" href=\"{url}#{shortty}.{name}\" \
                                    title=\"type {path}::{name}\">{name}</a>",
                                    url = url,
-                                   shortty = ItemType::AssociatedType,
+                                   shortty = ItemType::AssocType,
                                    name = name,
                                    path = path.join("::"))?;
                         }
@@ -739,9 +735,6 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter<'_>, use_absolute: bool) -> 
                     write!(f, "{}", name)
                 }
             }
-        }
-        clean::Unique(..) => {
-            panic!("should have been cleaned")
         }
     }
 }
@@ -1022,11 +1015,26 @@ impl fmt::Display for clean::ImportSource {
 
 impl fmt::Display for clean::TypeBinding {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "{} = {:#}", self.name, self.ty)
-        } else {
-            write!(f, "{} = {}", self.name, self.ty)
+        f.write_str(&self.name)?;
+        match self.kind {
+            clean::TypeBindingKind::Equality { ref ty } => {
+                if f.alternate() {
+                    write!(f, " = {:#}", ty)?;
+                } else {
+                    write!(f, " = {}", ty)?;
+                }
+            }
+            clean::TypeBindingKind::Constraint { ref bounds } => {
+                if !bounds.is_empty() {
+                    if f.alternate() {
+                        write!(f, ": {:#}", GenericBounds(bounds))?;
+                    } else {
+                        write!(f, ":&nbsp;{}", GenericBounds(bounds))?;
+                    }
+                }
+            }
         }
+        Ok(())
     }
 }
 

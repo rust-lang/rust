@@ -6,7 +6,10 @@ use crate::spec::Target;
 use std::fmt;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
+use rustc_data_structures::newtype_index;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use syntax_pos::symbol::{sym, Symbol};
+use syntax_pos::Span;
 
 pub mod call;
 
@@ -103,20 +106,28 @@ impl TargetDataLayout {
         let mut dl = TargetDataLayout::default();
         let mut i128_align_src = 64;
         for spec in target.data_layout.split('-') {
-            match spec.split(':').collect::<Vec<_>>()[..] {
+            let spec_parts = spec.split(':').collect::<Vec<_>>();
+
+            match &*spec_parts {
                 ["e"] => dl.endian = Endian::Little,
                 ["E"] => dl.endian = Endian::Big,
                 [p] if p.starts_with("P") => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
-                ["a", ref a..] => dl.aggregate_align = align(a, "a")?,
-                ["f32", ref a..] => dl.f32_align = align(a, "f32")?,
-                ["f64", ref a..] => dl.f64_align = align(a, "f64")?,
-                [p @ "p", s, ref a..] | [p @ "p0", s, ref a..] => {
+                ["a", ref a @ ..] => {
+                    dl.aggregate_align = align(a, "a")?
+                }
+                ["f32", ref a @ ..] => {
+                    dl.f32_align = align(a, "f32")?
+                }
+                ["f64", ref a @ ..] => {
+                    dl.f64_align = align(a, "f64")?
+                }
+                [p @ "p", s, ref a @ ..] | [p @ "p0", s, ref a @ ..] => {
                     dl.pointer_size = size(s, p)?;
                     dl.pointer_align = align(a, p)?;
                 }
-                [s, ref a..] if s.starts_with("i") => {
+                [s, ref a @ ..] if s.starts_with("i") => {
                     let bits = match s[1..].parse::<u64>() {
                         Ok(bits) => bits,
                         Err(_) => {
@@ -135,12 +146,12 @@ impl TargetDataLayout {
                     }
                     if bits >= i128_align_src && bits <= 128 {
                         // Default alignment for i128 is decided by taking the alignment of
-                        // largest-sized i{64...128}.
+                        // largest-sized i{64..=128}.
                         i128_align_src = bits;
                         dl.i128_align = a;
                     }
                 }
-                [s, ref a..] if s.starts_with("v") => {
+                [s, ref a @ ..] if s.starts_with("v") => {
                     let v_size = size(&s[1..], "v")?;
                     let a = align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
@@ -552,6 +563,13 @@ impl FloatTy {
         }
     }
 
+    pub fn to_symbol(self) -> Symbol {
+        match self {
+            FloatTy::F32 => sym::f32,
+            FloatTy::F64 => sym::f64,
+        }
+    }
+
     pub fn bit_width(self) -> usize {
         match self {
             FloatTy::F32 => 32,
@@ -575,7 +593,7 @@ pub enum Primitive {
     Pointer
 }
 
-impl<'a, 'tcx> Primitive {
+impl Primitive {
     pub fn size<C: HasDataLayout>(self, cx: &C) -> Size {
         let dl = cx.data_layout();
 
@@ -691,7 +709,16 @@ pub enum FieldPlacement {
         offsets: Vec<Size>,
 
         /// Maps source order field indices to memory order indices,
-        /// depending how fields were permuted.
+        /// depending on how the fields were reordered (if at all).
+        /// This is a permutation, with both the source order and the
+        /// memory order using the same (0..n) index ranges.
+        ///
+        /// Note that during computation of `memory_index`, sometimes
+        /// it is easier to operate on the inverse mapping (that is,
+        /// from memory order to source order), and that is usually
+        /// named `inverse_memory_index`.
+        ///
+        // FIXME(eddyb) build a better abstraction for permutations, if possible.
         // FIXME(camlorn) also consider small vector  optimization here.
         memory_index: Vec<u32>
     }
@@ -860,23 +887,94 @@ pub enum DiscriminantKind {
     },
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Niche {
+    pub offset: Size,
+    pub scalar: Scalar,
+}
+
+impl Niche {
+    pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
+        let niche = Niche {
+            offset,
+            scalar,
+        };
+        if niche.available(cx) > 0 {
+            Some(niche)
+        } else {
+            None
+        }
+    }
+
+    pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
+        let Scalar { value, valid_range: ref v } = self.scalar;
+        let bits = value.size(cx).bits();
+        assert!(bits <= 128);
+        let max_value = !0u128 >> (128 - bits);
+
+        // Find out how many values are outside the valid range.
+        let niche = v.end().wrapping_add(1)..*v.start();
+        niche.end.wrapping_sub(niche.start) & max_value
+    }
+
+    pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
+        assert!(count > 0);
+
+        let Scalar { value, valid_range: ref v } = self.scalar;
+        let bits = value.size(cx).bits();
+        assert!(bits <= 128);
+        let max_value = !0u128 >> (128 - bits);
+
+        if count > max_value {
+            return None;
+        }
+
+        // Compute the range of invalid values being reserved.
+        let start = v.end().wrapping_add(1) & max_value;
+        let end = v.end().wrapping_add(count) & max_value;
+
+        // If the `end` of our range is inside the valid range,
+        // then we ran out of invalid values.
+        // FIXME(eddyb) abstract this with a wraparound range type.
+        let valid_range_contains = |x| {
+            if v.start() <= v.end() {
+                *v.start() <= x && x <= *v.end()
+            } else {
+                *v.start() <= x || x <= *v.end()
+            }
+        };
+        if valid_range_contains(end) {
+            return None;
+        }
+
+        Some((start, Scalar { value, valid_range: *v.start()..=end }))
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct LayoutDetails {
     pub variants: Variants,
     pub fields: FieldPlacement,
     pub abi: Abi,
+
+    /// The leaf scalar with the largest number of invalid values
+    /// (i.e. outside of its `valid_range`), if it exists.
+    pub largest_niche: Option<Niche>,
+
     pub align: AbiAndPrefAlign,
     pub size: Size
 }
 
 impl LayoutDetails {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
+        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar.clone());
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         LayoutDetails {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
+            largest_niche,
             size,
             align,
         }
@@ -908,6 +1006,9 @@ pub trait LayoutOf {
     type TyLayout;
 
     fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
+    fn spanned_layout_of(&self, ty: Self::Ty, _span: Span) -> Self::TyLayout {
+        self.layout_of(ty)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

@@ -9,18 +9,18 @@ trait Message : Send { }
 // careful with object types, who knows what they close over...
 
 fn object_ref_with_static_bound_not_ok() {
-    assert_send::<&'static (Dummy+'static)>();
+    assert_send::<&'static (dyn Dummy + 'static)>();
     //~^ ERROR `(dyn Dummy + 'static)` cannot be shared between threads safely [E0277]
 }
 
 fn box_object_with_no_bound_not_ok<'a>() {
-    assert_send::<Box<Dummy>>();
+    assert_send::<Box<dyn Dummy>>();
     //~^ ERROR `dyn Dummy` cannot be sent between threads safely
 }
 
 fn object_with_send_bound_ok() {
-    assert_send::<&'static (Dummy+Sync)>();
-    assert_send::<Box<Dummy+Send>>();
+    assert_send::<&'static (dyn Dummy + Sync)>();
+    assert_send::<Box<dyn Dummy + Send>>();
 }
 
 fn main() { }

@@ -1,0 +1,8 @@
+error: expected expression, found end of macro arguments
+  --> $DIR/bad-macro-argument.rs:3:35
+   |
+LL |     println!("Hello, {}", message/);
+   |                                   ^ expected expression
+
+error: aborting due to previous error
+

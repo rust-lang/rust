@@ -1,4 +1,4 @@
 #![feature(plugin)]
-#![plugin="bleh"] //~ ERROR attribute must be of the form
+#![plugin="bleh"] //~ ERROR malformed `plugin` attribute
 
 fn main() {}

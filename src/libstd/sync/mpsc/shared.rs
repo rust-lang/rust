@@ -9,6 +9,7 @@
 /// channels are quite similar, and this is no coincidence!
 
 pub use self::Failure::*;
+use self::StartResult::*;
 
 use core::cmp;
 use core::intrinsics::abort;
@@ -19,8 +20,6 @@ use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, AtomicIsize, AtomicBool, Ordering};
 use crate::sync::mpsc::blocking::{self, SignalToken};
 use crate::sync::mpsc::mpsc_queue as mpsc;
-use crate::sync::mpsc::select::StartResult::*;
-use crate::sync::mpsc::select::StartResult;
 use crate::sync::{Mutex, MutexGuard};
 use crate::thread;
 use crate::time::Instant;
@@ -55,6 +54,12 @@ pub struct Packet<T> {
 pub enum Failure {
     Empty,
     Disconnected,
+}
+
+#[derive(PartialEq, Eq)]
+enum StartResult {
+    Installed,
+    Abort,
 }
 
 impl<T> Packet<T> {
@@ -394,16 +399,6 @@ impl<T> Packet<T> {
     // select implementation
     ////////////////////////////////////////////////////////////////////////////
 
-    // Helper function for select, tests whether this port can receive without
-    // blocking (obviously not an atomic decision).
-    //
-    // This is different than the stream version because there's no need to peek
-    // at the queue, we can just look at the local count.
-    pub fn can_recv(&self) -> bool {
-        let cnt = self.cnt.load(Ordering::SeqCst);
-        cnt == DISCONNECTED || cnt - unsafe { *self.steals.get() } > 0
-    }
-
     // increment the count on the channel (used for selection)
     fn bump(&self, amt: isize) -> isize {
         match self.cnt.fetch_add(amt, Ordering::SeqCst) {
@@ -412,22 +407,6 @@ impl<T> Packet<T> {
                 DISCONNECTED
             }
             n => n
-        }
-    }
-
-    // Inserts the signal token for selection on this port, returning true if
-    // blocking should proceed.
-    //
-    // The code here is the same as in stream.rs, except that it doesn't need to
-    // peek at the channel to see if an upgrade is pending.
-    pub fn start_selection(&self, token: SignalToken) -> StartResult {
-        match self.decrement(token) {
-            Installed => Installed,
-            Abort => {
-                let prev = self.bump(1);
-                assert!(prev == DISCONNECTED || prev >= 0);
-                Abort
-            }
         }
     }
 

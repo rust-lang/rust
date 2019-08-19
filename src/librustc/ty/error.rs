@@ -80,6 +80,12 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
         };
 
+        macro_rules! pluralise {
+            ($x:expr) => {
+                if $x != 1 { "s" } else { "" }
+            };
+        }
+
         match *self {
             CyclicTy(_) => write!(f, "cyclic type of infinite size"),
             Mismatch => write!(f, "types differ"),
@@ -94,17 +100,21 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.found)
             }
             Mutability => write!(f, "types differ in mutability"),
-            FixedArraySize(values) => {
-                write!(f, "expected an array with a fixed size of {} elements, \
-                           found one with {} elements",
-                       values.expected,
-                       values.found)
-            }
             TupleSize(values) => {
-                write!(f, "expected a tuple with {} elements, \
-                           found one with {} elements",
+                write!(f, "expected a tuple with {} element{}, \
+                           found one with {} element{}",
                        values.expected,
-                       values.found)
+                       pluralise!(values.expected),
+                       values.found,
+                       pluralise!(values.found))
+            }
+            FixedArraySize(values) => {
+                write!(f, "expected an array with a fixed size of {} element{}, \
+                           found one with {} element{}",
+                       values.expected,
+                       pluralise!(values.expected),
+                       values.found,
+                       pluralise!(values.found))
             }
             ArgCount => {
                 write!(f, "incorrect number of function parameters")
@@ -157,8 +167,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        tcx.def_path_str(values.found))
             }),
             ProjectionBoundsLength(ref values) => {
-                write!(f, "expected {} associated type bindings, found {}",
+                write!(f, "expected {} associated type binding{}, found {}",
                        values.expected,
+                       pluralise!(values.expected),
                        values.found)
             },
             ExistentialMismatch(ref values) => {
@@ -166,14 +177,14 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                                        &format!("trait `{}`", values.found))
             }
             ConstMismatch(ref values) => {
-                write!(f, "expected `{:?}`, found `{:?}`", values.expected, values.found)
+                write!(f, "expected `{}`, found `{}`", values.expected, values.found)
             }
         }
     }
 }
 
-impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
-    pub fn sort_string(&self, tcx: TyCtxt<'a, 'gcx, 'lcx>) -> Cow<'static, str> {
+impl<'tcx> ty::TyS<'tcx> {
+    pub fn sort_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match self.sty {
             ty::Bool | ty::Char | ty::Int(_) |
             ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => self.to_string().into(),
@@ -181,9 +192,12 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
-            ty::Array(_, n) => match n.assert_usize(tcx) {
-                Some(n) => format!("array of {} elements", n).into(),
-                None => "array".into(),
+            ty::Array(_, n) => {
+                let n = tcx.lift_to_global(&n).unwrap();
+                match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
+                    Some(n) => format!("array of {} elements", n).into(),
+                    None => "array".into(),
+                }
             }
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "*-ptr".into(),
@@ -225,20 +239,14 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
             ty::Projection(_) => "associated type".into(),
             ty::UnnormalizedProjection(_) => "non-normalized associated type".into(),
-            ty::Param(ref p) => {
-                if p.is_self() {
-                    "Self".into()
-                } else {
-                    "type parameter".into()
-                }
-            }
+            ty::Param(_) => "type parameter".into(),
             ty::Opaque(..) => "opaque type".into(),
             ty::Error => "type error".into(),
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn note_and_explain_type_err(self,
                                      db: &mut DiagnosticBuilder<'_>,
                                      err: &TypeError<'tcx>,

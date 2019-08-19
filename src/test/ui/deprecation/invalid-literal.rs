@@ -1,4 +1,4 @@
-#[deprecated = b"test"] //~ ERROR attribute must be of the form
+#[deprecated = b"test"] //~ ERROR malformed `deprecated` attribute
 fn foo() {}
 
 fn main() {}

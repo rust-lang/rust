@@ -1,5 +1,5 @@
 // compile-flags: -Z print-type-sizes
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 // This file illustrates how padding is handled: alignment
 // requirements can lead to the introduction of padding, either before

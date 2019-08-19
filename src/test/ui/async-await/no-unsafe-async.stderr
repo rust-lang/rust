@@ -1,0 +1,14 @@
+error: expected one of `extern` or `fn`, found `async`
+  --> $DIR/no-unsafe-async.rs:7:12
+   |
+LL |     unsafe async fn g() {}
+   |            ^^^^^ expected one of `extern` or `fn` here
+
+error: expected one of `extern`, `fn`, or `{`, found `async`
+  --> $DIR/no-unsafe-async.rs:11:8
+   |
+LL | unsafe async fn f() {}
+   |        ^^^^^ expected one of `extern`, `fn`, or `{` here
+
+error: aborting due to 2 previous errors
+

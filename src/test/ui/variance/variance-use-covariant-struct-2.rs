@@ -2,7 +2,7 @@
 // be shortened.
 
 #![allow(dead_code)]
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 struct SomeStruct<T>(T);
 

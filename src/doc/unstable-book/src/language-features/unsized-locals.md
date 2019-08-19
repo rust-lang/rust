@@ -117,9 +117,7 @@ fn main () {
 }
 ```
 
-One of the objectives of this feature is to allow `Box<dyn FnOnce>`, instead of `Box<dyn FnBox>` in the future. See [#28796] for details.
-
-[#28796]: https://github.com/rust-lang/rust/issues/28796
+One of the objectives of this feature is to allow `Box<dyn FnOnce>`.
 
 ## Variable length arrays
 

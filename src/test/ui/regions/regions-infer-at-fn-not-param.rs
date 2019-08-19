@@ -1,13 +1,13 @@
 struct Parameterized1<'a> {
-    g: Box<FnMut() + 'a>
+    g: Box<dyn FnMut() + 'a>
 }
 
 struct NotParameterized1 {
-    g: Box<FnMut() + 'static>
+    g: Box<dyn FnMut() + 'static>
 }
 
 struct NotParameterized2 {
-    g: Box<FnMut() + 'static>
+    g: Box<dyn FnMut() + 'static>
 }
 
 fn take1<'a>(p: Parameterized1) -> Parameterized1<'a> { p }

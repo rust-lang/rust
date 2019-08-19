@@ -1,11 +1,8 @@
-// aux-build:derive-a.rs
+// aux-build:test-macros.rs
 
-#![allow(warnings)]
+extern crate test_macros;
 
-#[macro_use]
-extern crate derive_a;
-
-use derive_a::derive_a;
-//~^ ERROR: unresolved import `derive_a::derive_a`
+use test_macros::empty_derive;
+//~^ ERROR: unresolved import `test_macros::empty_derive`
 
 fn main() {}

@@ -1,0 +1,16 @@
+error: duplicate matcher binding
+  --> $DIR/issue-61053-duplicate-binder.rs:7:20
+   |
+LL |             ($x:tt $x:tt) => { $x };
+   |              --    ^^
+   |              |
+   |              previous declaration
+   |
+note: lint level defined here
+  --> $DIR/issue-61053-duplicate-binder.rs:1:9
+   |
+LL | #![deny(meta_variable_misuse)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

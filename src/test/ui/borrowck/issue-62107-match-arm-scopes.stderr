@@ -1,0 +1,9 @@
+error[E0381]: use of possibly uninitialized variable: `e`
+  --> $DIR/issue-62107-match-arm-scopes.rs:3:11
+   |
+LL |     match e {
+   |           ^ use of possibly uninitialized `e`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.

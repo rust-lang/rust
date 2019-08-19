@@ -19,6 +19,9 @@ EXE_NAME=an_executable
 COMBINED_CDYLIB_NAME=libcombined_rlib_dylib.dylib
 endif
 
+# `grep` regex for symbols produced by either `legacy` or `v0` mangling
+RE_ANY_RUST_SYMBOL="_ZN.*h.*E\|_R[a-zA-Z0-9_]+"
+
 all:
 	$(RUSTC) -Zshare-generics=no an_rlib.rs
 	$(RUSTC) -Zshare-generics=no a_cdylib.rs
@@ -31,20 +34,20 @@ all:
 	# Check that a cdylib exports the public #[no_mangle] functions of dependencies
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -c public_c_function_from_rlib)" -eq "1" ]
 	# Check that a cdylib DOES NOT export any public Rust functions
-	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -c _ZN.*h.*E)" -eq "0" ]
+	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -c $(RE_ANY_RUST_SYMBOL))" -eq "0" ]
 
 	# Check that a Rust dylib exports its monomorphic functions
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_c_function_from_rust_dylib)" -eq "1" ]
-	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c _ZN.*public_rust_function_from_rust_dylib.*E)" -eq "1" ]
+	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_rust_function_from_rust_dylib)" -eq "1" ]
 	# Check that a Rust dylib does not export generics if -Zshare-generics=no
-	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c _ZN.*public_generic_function_from_rust_dylib.*E)" -eq "0" ]
+	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_generic_function_from_rust_dylib)" -eq "0" ]
 
 
 	# Check that a Rust dylib exports the monomorphic functions from its dependencies
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_c_function_from_rlib)" -eq "1" ]
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_rust_function_from_rlib)" -eq "1" ]
 	# Check that a Rust dylib does not export generics if -Zshare-generics=no
-	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c _ZN.*public_generic_function_from_rlib.*E)" -eq "0" ]
+	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_generic_function_from_rlib)" -eq "0" ]
 
 	# Check that an executable does not export any dynamic symbols
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -c public_c_function_from_rlib)" -eq "0" ]
@@ -58,7 +61,7 @@ all:
 	# Check that a cdylib exports the public #[no_mangle] functions of dependencies
 	[ "$$($(NM) $(TMPDIR)/$(COMBINED_CDYLIB_NAME) | grep -c public_c_function_from_rlib)" -eq "1" ]
 	# Check that a cdylib DOES NOT export any public Rust functions
-	[ "$$($(NM) $(TMPDIR)/$(COMBINED_CDYLIB_NAME) | grep -c _ZN.*h.*E)" -eq "0" ]
+	[ "$$($(NM) $(TMPDIR)/$(COMBINED_CDYLIB_NAME) | grep -c $(RE_ANY_RUST_SYMBOL))" -eq "0" ]
 
 
 	$(RUSTC) -Zshare-generics=yes an_rlib.rs
@@ -71,17 +74,17 @@ all:
 	# Check that a cdylib exports the public #[no_mangle] functions of dependencies
 	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -c public_c_function_from_rlib)" -eq "1" ]
 	# Check that a cdylib DOES NOT export any public Rust functions
-	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -c _ZN.*h.*E)" -eq "0" ]
+	[ "$$($(NM) $(TMPDIR)/$(CDYLIB_NAME) | grep -c $(RE_ANY_RUST_SYMBOL))" -eq "0" ]
 
 	# Check that a Rust dylib exports its monomorphic functions, including generics this time
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_c_function_from_rust_dylib)" -eq "1" ]
-	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c _ZN.*public_rust_function_from_rust_dylib.*E)" -eq "1" ]
-	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c _ZN.*public_generic_function_from_rust_dylib.*E)" -eq "1" ]
+	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_rust_function_from_rust_dylib)" -eq "1" ]
+	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_generic_function_from_rust_dylib)" -eq "1" ]
 
 	# Check that a Rust dylib exports the monomorphic functions from its dependencies
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_c_function_from_rlib)" -eq "1" ]
 	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_rust_function_from_rlib)" -eq "1" ]
-	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c _ZN.*public_generic_function_from_rlib.*E)" -eq "1" ]
+	[ "$$($(NM) $(TMPDIR)/$(RDYLIB_NAME) | grep -c public_generic_function_from_rlib)" -eq "1" ]
 
 	# Check that an executable does not export any dynamic symbols
 	[ "$$($(NM) $(TMPDIR)/$(EXE_NAME) | grep -c public_c_function_from_rlib)" -eq "0" ]

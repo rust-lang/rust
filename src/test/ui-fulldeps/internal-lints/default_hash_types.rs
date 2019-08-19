@@ -7,7 +7,7 @@ extern crate rustc_data_structures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::collections::{HashMap, HashSet};
 
-#[deny(default_hash_types)]
+#[deny(rustc::default_hash_types)]
 fn main() {
     let _map: HashMap<String, String> = HashMap::default();
     //~^ ERROR Prefer FxHashMap over HashMap, it has better performance

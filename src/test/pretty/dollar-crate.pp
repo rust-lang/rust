@@ -10,9 +10,9 @@ extern crate std;
 
 fn main() {
     {
-        ::std::io::_print(::std::fmt::Arguments::new_v1(&["rust\n"],
-                                                        &match () {
-                                                             () => [],
-                                                         }));
+        ::std::io::_print(::core::fmt::Arguments::new_v1(&["rust\n"],
+                                                         &match () {
+                                                              () => [],
+                                                          }));
     };
 }

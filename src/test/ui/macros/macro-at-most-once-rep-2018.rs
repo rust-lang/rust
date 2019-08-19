@@ -6,6 +6,7 @@ macro_rules! foo {
     ($(a)?) => {};
 }
 
+// The Kleene op `?` does not admit a separator before it.
 macro_rules! baz {
     ($(a),?) => {}; //~ERROR the `?` macro repetition operator
 }

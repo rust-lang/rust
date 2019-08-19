@@ -42,7 +42,7 @@ macro_rules! vec {
     ($($x:expr),*) => (
         <[_]>::into_vec(box [$($x),*])
     );
-    ($($x:expr,)*) => (vec![$($x),*])
+    ($($x:expr,)*) => ($crate::vec![$($x),*])
 }
 
 // HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
@@ -98,5 +98,5 @@ macro_rules! vec {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! format {
-    ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::fmt::format(::core::format_args!($($arg)*)))
 }

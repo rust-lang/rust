@@ -1,17 +1,25 @@
-error: discriminator values can only be used with a field-less enum
+error[E0658]: custom discriminant values are not allowed in enums with tuple or struct variants
   --> $DIR/tag-variant-disr-non-nullary.rs:2:11
    |
 LL |     Red = 0xff0000,
-   |           ^^^^^^^^ only valid in field-less enums
+   |           ^^^^^^^^ disallowed custom discriminant
 LL |
 LL |     Green = 0x00ff00,
-   |             ^^^^^^^^ only valid in field-less enums
+   |             ^^^^^^^^ disallowed custom discriminant
 LL |     Blue = 0x0000ff,
-   |            ^^^^^^^^ only valid in field-less enums
+   |            ^^^^^^^^ disallowed custom discriminant
 LL |     Black = 0x000000,
-   |             ^^^^^^^^ only valid in field-less enums
+   |             ^^^^^^^^ disallowed custom discriminant
 LL |     White = 0xffffff,
-   |             ^^^^^^^^ only valid in field-less enums
+   |             ^^^^^^^^ disallowed custom discriminant
+LL |     Other(usize),
+   |     ------------ tuple variant defined here
+LL |     Other2(usize, usize),
+   |     -------------------- tuple variant defined here
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/60553
+   = help: add `#![feature(arbitrary_enum_discriminant)]` to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

@@ -35,8 +35,6 @@ impl Iterator for Args {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.iter.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
-    #[inline]
-    fn last(mut self) -> Option<OsString> { self.next_back() }
 }
 
 impl ExactSizeIterator for Args {
@@ -58,7 +56,8 @@ impl DoubleEndedIterator for Args {
           target_os = "haiku",
           target_os = "l4re",
           target_os = "fuchsia",
-          target_os = "hermit"))]
+          target_os = "hermit",
+          target_os = "redox"))]
 mod imp {
     use crate::os::unix::prelude::*;
     use crate::ptr;

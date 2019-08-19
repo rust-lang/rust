@@ -63,16 +63,15 @@ This API is completely unstable and subject to change.
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(exhaustive_patterns)]
+#![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(never_type)]
+#![feature(inner_deref)]
+#![feature(mem_take)]
 
 #![recursion_limit="256"]
-
-#![deny(rust_2018_idioms)]
-#![deny(internal)]
-#![allow(explicit_outlives_requirements)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -103,17 +102,18 @@ use rustc::lint;
 use rustc::middle;
 use rustc::session;
 use rustc::util::common::ErrorReported;
-use rustc::session::config::{EntryFnType, nightly_options};
+use rustc::session::config::EntryFnType;
 use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::util;
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
 use util::common::time;
 
 use std::iter;
 
+use astconv::{AstConv, Bounds};
 pub use collect::checked_type_of;
 
 pub struct TypeAndSubsts<'tcx> {
@@ -121,26 +121,7 @@ pub struct TypeAndSubsts<'tcx> {
     ty: Ty<'tcx>,
 }
 
-fn check_type_alias_enum_variants_enabled<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                          span: Span) {
-    if !tcx.features().type_alias_enum_variants {
-        let mut err = tcx.sess.struct_span_err(
-            span,
-            "enum variants on type aliases are experimental"
-        );
-        if nightly_options::is_nightly_build() {
-            help!(&mut err,
-                "add `#![feature(type_alias_enum_variants)]` to the \
-                crate attributes to enable");
-        }
-        err.emit();
-    }
-}
-
-fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_, '_>,
-                               decl: &hir::FnDecl,
-                               abi: Abi,
-                               span: Span) {
+fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl, abi: Abi, span: Span) {
     if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
         let mut err = struct_span_err!(tcx.sess, span, E0045,
             "C-variadic function must have C or cdecl calling convention");
@@ -148,11 +129,12 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_, '_, '_>,
     }
 }
 
-fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                cause: &ObligationCause<'tcx>,
-                                expected: Ty<'tcx>,
-                                actual: Ty<'tcx>)
-                                -> bool {
+fn require_same_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    cause: &ObligationCause<'tcx>,
+    expected: Ty<'tcx>,
+    actual: Ty<'tcx>,
+) -> bool {
     tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty();
         let mut fulfill_cx = TraitEngine::new(infcx.tcx);
@@ -176,13 +158,13 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, main_def_id: DefId) {
+fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     let main_id = tcx.hir().as_local_hir_id(main_def_id).unwrap();
     let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
     match main_t.sty {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.hir().find_by_hir_id(main_id) {
+            if let Some(Node::Item(it)) = tcx.hir().find(main_id) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
                     let mut error = false;
                     if !generics.params.is_empty() {
@@ -241,13 +223,13 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, main_def_id: DefId) {
     }
 }
 
-fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, start_def_id: DefId) {
+fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_id = tcx.hir().as_local_hir_id(start_def_id).unwrap();
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
     match start_t.sty {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.hir().find_by_hir_id(start_id) {
+            if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
                 if let hir::ItemKind::Fn(.., ref generics, _) = it.node {
                     let mut error = false;
                     if !generics.params.is_empty() {
@@ -298,7 +280,7 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, start_def_id: DefId)
     }
 }
 
-fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+fn check_for_entry_fn(tcx: TyCtxt<'_>) {
     match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
         Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
@@ -315,17 +297,16 @@ pub fn provide(providers: &mut Providers<'_>) {
     impl_wf_check::provide(providers);
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                             -> Result<(), ErrorReported>
-{
+pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     tcx.sess.profiler(|p| p.start_activity("type-check crate"));
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
+    // FIXME(matthewjasper) We shouldn't need to do this.
     tcx.sess.track_errors(|| {
         time(tcx.sess, "type collecting", || {
             for &module in tcx.hir().krate().modules.keys() {
-                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id(module));
+                tcx.ensure().collect_mod_item_types(tcx.hir().local_def_id_from_node_id(module));
             }
         });
     })?;
@@ -354,11 +335,13 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         })?;
     }
 
-    time(tcx.sess, "wf checking", || check::check_wf_new(tcx))?;
+    tcx.sess.track_errors(|| {
+        time(tcx.sess, "wf checking", || check::check_wf_new(tcx));
+    })?;
 
     time(tcx.sess, "item-types checking", || {
         for &module in tcx.hir().krate().modules.keys() {
-            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id_from_node_id(module));
         }
     });
 
@@ -378,31 +361,33 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get
 /// the type from a HIR node.
-pub fn hir_ty_to_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
-    // In case there are any projections etc, find the "environment"
-    // def-id that will be used to determine the traits/predicates in
+pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
+    // In case there are any projections, etc., find the "environment"
+    // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
     let env_node_id = tcx.hir().get_parent_item(hir_ty.hir_id);
-    let env_def_id = tcx.hir().local_def_id_from_hir_id(env_node_id);
+    let env_def_id = tcx.hir().local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
 
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
-pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait: &hir::TraitRef)
-        -> (ty::PolyTraitRef<'tcx>, Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>) {
-    // In case there are any projections etc, find the "environment"
-    // def-id that will be used to determine the traits/predicates in
+pub fn hir_trait_to_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hir_trait: &hir::TraitRef,
+) -> Bounds<'tcx> {
+    // In case there are any projections, etc., find the "environment"
+    // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
     let env_hir_id = tcx.hir().get_parent_item(hir_trait.hir_ref_id);
-    let env_def_id = tcx.hir().local_def_id_from_hir_id(env_hir_id);
+    let env_def_id = tcx.hir().local_def_id(env_hir_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
-    let mut projections = Vec::new();
-    let (principal, _) = astconv::AstConv::instantiate_poly_trait_ref_inner(
-        &item_cx, hir_trait, tcx.types.err, &mut projections, true
+    let mut bounds = Bounds::default();
+    let _ = AstConv::instantiate_poly_trait_ref_inner(
+        &item_cx, hir_trait, DUMMY_SP, tcx.types.err, &mut bounds, true
     );
 
-    (principal, projections)
+    bounds
 }
 
 __build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }

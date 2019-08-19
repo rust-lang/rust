@@ -7,7 +7,7 @@ use super::*;
 
 pub struct AutoTraitFinder<'a, 'tcx> {
     pub cx: &'a core::DocContext<'tcx>,
-    pub f: auto_trait::AutoTraitFinder<'a, 'tcx>,
+    pub f: auto_trait::AutoTraitFinder<'tcx>,
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
@@ -27,9 +27,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let param_env = self.cx.tcx.param_env(param_env_def_id);
 
         debug!("get_auto_trait_impls({:?})", ty);
-        let auto_traits = self.cx.send_trait.into_iter().chain(
-            Some(self.cx.tcx.require_lang_item(lang_items::SyncTraitLangItem))
-        );
+        let auto_traits = self.cx.auto_traits.iter().cloned();
         auto_traits.filter_map(|trait_def_id| {
             let trait_ref = ty::TraitRef {
                 def_id: trait_def_id,
@@ -104,8 +102,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // Instead, we generate `impl !Send for Foo<T>`, which better
                     // expresses the fact that `Foo<T>` never implements `Send`,
                     // regardless of the choice of `T`.
-                    let params = (self.cx.tcx.generics_of(param_env_def_id), &Default::default())
-                        .clean(self.cx).params;
+                    let params = (
+                        self.cx.tcx.generics_of(param_env_def_id),
+                        &&self.cx.tcx.common.empty_predicates,
+                    ).clean(self.cx).params;
 
                     Generics {
                         params,
@@ -311,10 +311,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         lifetime_predicates
     }
 
-    fn extract_for_generics<'b, 'c, 'd>(
+    fn extract_for_generics(
         &self,
-        tcx: TyCtxt<'b, 'c, 'd>,
-        pred: ty::Predicate<'d>,
+        tcx: TyCtxt<'tcx>,
+        pred: ty::Predicate<'tcx>,
     ) -> FxHashSet<GenericParamDef> {
         pred.walk_tys()
             .flat_map(|t| {
@@ -339,7 +339,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             .collect()
     }
 
-    fn make_final_bounds<'b, 'c, 'cx>(
+    fn make_final_bounds(
         &self,
         ty_to_bounds: FxHashMap<Type, FxHashSet<GenericBound>>,
         ty_to_fn: FxHashMap<Type, (Option<PolyTrait>, Option<Type>)>,
@@ -446,13 +446,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // * Fn bounds are handled specially - instead of leaving it as 'T: Fn(), <T as Fn::Output> =
     // K', we use the dedicated syntax 'T: Fn() -> K'
     // * We explcitly add a '?Sized' bound if we didn't find any 'Sized' predicates for a type
-    fn param_env_to_generics<'b, 'c, 'cx>(
+    fn param_env_to_generics(
         &self,
-        tcx: TyCtxt<'b, 'c, 'cx>,
+        tcx: TyCtxt<'tcx>,
         param_env_def_id: DefId,
-        param_env: ty::ParamEnv<'cx>,
+        param_env: ty::ParamEnv<'tcx>,
         mut existing_predicates: Vec<WherePredicate>,
-        vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'cx>>,
+        vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
     ) -> Generics {
         debug!(
             "param_env_to_generics(param_env_def_id={:?}, param_env={:?}, \
@@ -624,7 +624,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                             } => {
                                                 bindings.push(TypeBinding {
                                                     name: left_name.clone(),
-                                                    ty: rhs,
+                                                    kind: TypeBindingKind::Equality {
+                                                        ty: rhs,
+                                                    },
                                                 });
                                             }
                                             &mut GenericArgs::Parenthesized { .. } => {
@@ -772,7 +774,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         vec.sort_by_cached_key(|x| format!("{:?}", x))
     }
 
-    fn is_fn_ty(&self, tcx: TyCtxt<'_, '_, '_>, ty: &Type) -> bool {
+    fn is_fn_ty(&self, tcx: TyCtxt<'_>, ty: &Type) -> bool {
         match &ty {
             &&Type::ResolvedPath { ref did, .. } => {
                 *did == tcx.require_lang_item(lang_items::FnTraitLangItem)
@@ -785,13 +787,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 }
 
 // Replaces all ReVars in a type with ty::Region's, using the provided map
-struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+struct RegionReplacer<'a, 'tcx> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
 

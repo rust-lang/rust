@@ -4,7 +4,7 @@
 // revisions:cfail1 cfail2
 // compile-flags: -Z query-dep-graph
 // aux-build:point.rs
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]

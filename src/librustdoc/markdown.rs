@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
-use std::cell::RefCell;
 
 use errors;
 use testing;
+use syntax::edition::Edition;
 use syntax::source_map::DUMMY_SP;
 use syntax::feature_gate::UnstableFeatures;
 
@@ -16,7 +16,7 @@ use crate::html::markdown::{ErrorCodes, IdMap, Markdown, MarkdownWithToc, find_t
 use crate::test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
-fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
+fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
     let mut metadata = Vec::new();
     let mut count = 0;
 
@@ -36,7 +36,12 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 
 /// Render `input` (e.g., "foo.md") into an HTML file in `output`
 /// (e.g., output = "bar" => "bar/foo.html").
-pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) -> i32 {
+pub fn render(
+    input: PathBuf,
+    options: RenderOptions,
+    diag: &errors::Handler,
+    edition: Edition
+) -> i32 {
     let mut output = options.output;
     output.push(input.file_stem().unwrap());
     output.set_extension("html");
@@ -54,9 +59,10 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
     };
     let playground_url = options.markdown_playground_url
                             .or(options.playground_url);
-    if let Some(playground) = playground_url {
-        markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
-    }
+    let playground = playground_url.map(|url| markdown::Playground {
+        crate_name: None,
+        url,
+    });
 
     let mut out = match File::create(&output) {
         Err(e) => {
@@ -76,9 +82,9 @@ pub fn render(input: PathBuf, options: RenderOptions, diag: &errors::Handler) ->
     let mut ids = IdMap::new();
     let error_codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
     let text = if !options.markdown_no_toc {
-        MarkdownWithToc(text, RefCell::new(&mut ids), error_codes).to_string()
+        MarkdownWithToc(text, &mut ids, error_codes, edition, &playground).to_string()
     } else {
-        Markdown(text, &[], RefCell::new(&mut ids), error_codes).to_string()
+        Markdown(text, &[], &mut ids, error_codes, edition, &playground).to_string()
     };
 
     let err = write!(

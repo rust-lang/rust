@@ -5,17 +5,15 @@ version = "0.1.0"
 license = "MIT OR Apache-2.0"
 edition = "2018"
 
+[features]
+linkcheck = ["mdbook-linkcheck"]
+
 [dependencies]
 clap = "2.25.0"
+failure = "0.1"
+mdbook-linkcheck = { version = "0.3.0", optional = true }
 
-[dependencies.mdbook_2]
-package = "mdbook"
-version = "0.2.3"
-default-features = false
-features = ["search"]
-
-[dependencies.mdbook_1]
-package = "mdbook"
-version = "0.1.7"
+[dependencies.mdbook]
+version = "0.3.0"
 default-features = false
 features = ["search"]

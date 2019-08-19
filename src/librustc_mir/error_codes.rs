@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 register_long_diagnostics! {
 
 
@@ -331,7 +329,7 @@ An if-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding instead. For instance:
 
-```compile_pass
+```
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -360,7 +358,7 @@ A while-let pattern attempts to match the pattern, and enters the body if the
 match was successful. If the match is irrefutable (when it cannot fail to
 match), use a regular `let`-binding inside a `loop` instead. For instance:
 
-```compile_pass,no_run
+```no_run
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -1991,7 +1989,7 @@ When matching on a variable it cannot be mutated in the match guards, as this
 could cause the match to be non-exhaustive:
 
 ```compile_fail,E0510
-#![feature(nll, bind_by_move_pattern_guards)]
+#![feature(bind_by_move_pattern_guards)]
 let mut x = Some(0);
 match x {
     None => (),
@@ -2029,7 +2027,6 @@ Local variables, function parameters and temporaries are all dropped before the
 end of the function body. So a reference to them cannot be returned.
 
 ```compile_fail,E0515
-#![feature(nll)]
 fn get_dangling_reference() -> &'static i32 {
     let x = 0;
     &x
@@ -2037,7 +2034,6 @@ fn get_dangling_reference() -> &'static i32 {
 ```
 
 ```compile_fail,E0515
-#![feature(nll)]
 use std::slice::Iter;
 fn get_dangling_iterator<'a>() -> Iter<'a, i32> {
     let v = vec![1, 2, 3];
@@ -2235,7 +2231,6 @@ function which outlived the lifetime of the function.
 Example of erroneous code:
 
 ```compile_fail,E0712
-#![feature(nll)]
 #![feature(thread_local)]
 
 #[thread_local]
@@ -2288,8 +2283,6 @@ not run while the string-data is borrowed; for example by taking `S`
 by reference:
 
 ```
-#![feature(nll)]
-
 pub struct S<'a> { data: &'a mut String }
 
 impl<'a> Drop for S<'a> {
@@ -2314,7 +2307,6 @@ while a borrow is still in active use.
 Erroneous code example:
 
 ```compile_fail,E0716
-# #![feature(nll)]
 fn foo() -> i32 { 22 }
 fn bar(x: &i32) -> &i32 { x }
 let p = bar(&foo());
@@ -2424,18 +2416,50 @@ const fn foo() -> impl T {
 ```
 "##,
 
+E0729: r##"
+Support for Non-Lexical Lifetimes (NLL) has been included in the Rust compiler
+since 1.31, and has been enabled on the 2015 edition since 1.36. The new borrow
+checker for NLL uncovered some bugs in the old borrow checker, which in some
+cases allowed unsound code to compile, resulting in memory safety issues.
+
+### What do I do?
+
+Change your code so the warning does no longer trigger. For backwards
+compatibility, this unsound code may still compile (with a warning) right now.
+However, at some point in the future, the compiler will no longer accept this
+code and will throw a hard error.
+
+### Shouldn't you fix the old borrow checker?
+
+The old borrow checker has known soundness issues that are basically impossible
+to fix. The new NLL-based borrow checker is the fix.
+
+### Can I turn these warnings into errors by denying a lint?
+
+No.
+
+### When are these warnings going to turn into errors?
+
+No formal timeline for turning the warnings into errors has been set. See
+[GitHub issue 58781](https://github.com/rust-lang/rust/issues/58781) for more
+information.
+
+### Why do I get this message with code that doesn't involve borrowing?
+
+There are some known bugs that trigger this message.
+"##,
 }
 
 register_diagnostics! {
 //  E0298, // cannot compare constants
 //  E0299, // mismatched types between arms
 //  E0471, // constant evaluation error (in pattern)
-//    E0385, // {} in an aliasable location
+//  E0385, // {} in an aliasable location
     E0493, // destructors cannot be evaluated at compile-time
-    E0521,  // borrowed data escapes outside of closure
+    E0521, // borrowed data escapes outside of closure
     E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
     E0594, // cannot assign to {}
-    E0598, // lifetime of {} is too short to guarantee its contents can be...
+//  E0598, // lifetime of {} is too short to guarantee its contents can be...
     E0625, // thread-local statics cannot be accessed at compile-time
 }

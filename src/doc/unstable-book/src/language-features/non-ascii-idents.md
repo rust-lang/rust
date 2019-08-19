@@ -45,4 +45,4 @@ that does _not_ occur in the set of [strict keywords].
 
 [`XID_start`]:  http://unicode.org/cldr/utility/list-unicodeset.jsp?a=%5B%3AXID_Start%3A%5D&abb=on&g=&i=
 [`XID_continue`]: http://unicode.org/cldr/utility/list-unicodeset.jsp?a=%5B%3AXID_Continue%3A%5D&abb=on&g=&i=
-[strict keywords]: ../reference/keywords.html#strict-keywords
+[strict keywords]: ../../reference/keywords.md#strict-keywords

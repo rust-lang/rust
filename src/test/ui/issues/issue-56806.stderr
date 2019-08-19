@@ -5,7 +5,7 @@ LL |     fn dyn_instead_of_self(self: Box<dyn Trait>);
    |                                  ^^^^^^^^^^^^^^
    |
    = note: type must be `Self` or a type that dereferences to it
-   = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
+   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error: aborting due to previous error
 

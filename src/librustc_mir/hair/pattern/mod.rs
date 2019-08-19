@@ -5,34 +5,37 @@ mod check_match;
 
 pub(crate) use self::check_match::check_match;
 
-use crate::const_eval::{const_field, const_variant_index};
+use crate::const_eval::const_variant_index;
 
 use crate::hair::util::UserAnnotatedTyHelpers;
 use crate::hair::constant::*;
 
-use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
+use rustc::lint;
+use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
-use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
+use rustc::mir::interpret::{GlobalId, ConstValue, sign_extend, AllocId, Pointer};
+use rustc::traits::{ObligationCause, PredicateObligation};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, UserType, DefIdTree};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc::ty::subst::{SubstsRef, Kind};
-use rustc::ty::layout::VariantIdx;
+use rustc::ty::layout::{VariantIdx, Size};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
+use rustc::hir::ptr::P;
 
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::fx::FxHashSet;
 
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
-use syntax::ptr::P;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
-    AssociatedConstInPattern(Span),
+    AssocConstInPattern(Span),
     StaticInPattern(Span),
     FloatBug,
     NonConstPath(Span),
@@ -152,14 +155,14 @@ pub enum PatternKind<'tcx> {
     },
 
     Constant {
-        value: ty::Const<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
     },
 
     Range(PatternRange<'tcx>),
 
     /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
-    /// e.g., `&[ref xs..]`.
+    /// e.g., `&[ref xs @ ..]`.
     Slice {
         prefix: Vec<Pattern<'tcx>>,
         slice: Option<Pattern<'tcx>>,
@@ -172,18 +175,35 @@ pub enum PatternKind<'tcx> {
         slice: Option<Pattern<'tcx>>,
         suffix: Vec<Pattern<'tcx>>,
     },
+
+    /// An or-pattern, e.g. `p | q`.
+    /// Invariant: `pats.len() >= 2`.
+    Or {
+        pats: Vec<Pattern<'tcx>>,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PatternRange<'tcx> {
-    pub lo: ty::Const<'tcx>,
-    pub hi: ty::Const<'tcx>,
-    pub ty: Ty<'tcx>,
+    pub lo: &'tcx ty::Const<'tcx>,
+    pub hi: &'tcx ty::Const<'tcx>,
     pub end: RangeEnd,
 }
 
 impl<'tcx> fmt::Display for Pattern<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Printing lists is a chore.
+        let mut first = true;
+        let mut start_or_continue = |s| {
+            if first {
+                first = false;
+                ""
+            } else {
+                s
+            }
+        };
+        let mut start_or_comma = || start_or_continue(", ");
+
         match *self.kind {
             PatternKind::Wild => write!(f, "_"),
             PatternKind::AscribeUserType { ref subpattern, .. } =>
@@ -222,9 +242,6 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     }
                 };
 
-                let mut first = true;
-                let mut start_or_continue = || if first { first = false; "" } else { ", " };
-
                 if let Some(variant) = variant {
                     write!(f, "{}", variant.ident)?;
 
@@ -239,12 +256,12 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                                 continue;
                             }
                             let name = variant.fields[p.field.index()].ident;
-                            write!(f, "{}{}: {}", start_or_continue(), name, p.pattern)?;
+                            write!(f, "{}{}: {}", start_or_comma(), name, p.pattern)?;
                             printed += 1;
                         }
 
                         if printed < variant.fields.len() {
-                            write!(f, "{}..", start_or_continue())?;
+                            write!(f, "{}..", start_or_comma())?;
                         }
 
                         return write!(f, " }}");
@@ -255,7 +272,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 if num_fields != 0 || variant.is_none() {
                     write!(f, "(")?;
                     for i in 0..num_fields {
-                        write!(f, "{}", start_or_continue())?;
+                        write!(f, "{}", start_or_comma())?;
 
                         // Common case: the field is where we expect it.
                         if let Some(p) = subpatterns.get(i) {
@@ -291,26 +308,24 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatternKind::Constant { value } => {
-                fmt_const_val(f, value)
+                write!(f, "{}", value)
             }
-            PatternKind::Range(PatternRange { lo, hi, ty: _, end }) => {
-                fmt_const_val(f, lo)?;
+            PatternKind::Range(PatternRange { lo, hi, end }) => {
+                write!(f, "{}", lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "..=")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
-                fmt_const_val(f, hi)
+                write!(f, "{}", hi)
             }
             PatternKind::Slice { ref prefix, ref slice, ref suffix } |
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
-                let mut first = true;
-                let mut start_or_continue = || if first { first = false; "" } else { ", " };
                 write!(f, "[")?;
                 for p in prefix {
-                    write!(f, "{}{}", start_or_continue(), p)?;
+                    write!(f, "{}{}", start_or_comma(), p)?;
                 }
                 if let Some(ref slice) = *slice {
-                    write!(f, "{}", start_or_continue())?;
+                    write!(f, "{}", start_or_comma())?;
                     match *slice.kind {
                         PatternKind::Wild => {}
                         _ => write!(f, "{}", slice)?
@@ -318,27 +333,36 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     write!(f, "..")?;
                 }
                 for p in suffix {
-                    write!(f, "{}{}", start_or_continue(), p)?;
+                    write!(f, "{}{}", start_or_comma(), p)?;
                 }
                 write!(f, "]")
+            }
+            PatternKind::Or { ref pats } => {
+                for pat in pats {
+                    write!(f, "{}{}", start_or_continue(" | "), pat)?;
+                }
+                Ok(())
             }
         }
     }
 }
 
-pub struct PatternContext<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
+pub struct PatternContext<'a, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub tables: &'a ty::TypeckTables<'tcx>,
     pub substs: SubstsRef<'tcx>,
     pub errors: Vec<PatternError>,
+    include_lint_checks: bool,
 }
 
 impl<'a, 'tcx> Pattern<'tcx> {
-    pub fn from_hir(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
-                    tables: &'a ty::TypeckTables<'tcx>,
-                    pat: &'tcx hir::Pat) -> Self {
+    pub fn from_hir(
+        tcx: TyCtxt<'tcx>,
+        param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
+        tables: &'a ty::TypeckTables<'tcx>,
+        pat: &'tcx hir::Pat,
+    ) -> Self {
         let mut pcx = PatternContext::new(tcx, param_env_and_substs, tables);
         let result = pcx.lower_pattern(pat);
         if !pcx.errors.is_empty() {
@@ -351,16 +375,24 @@ impl<'a, 'tcx> Pattern<'tcx> {
 }
 
 impl<'a, 'tcx> PatternContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
-               tables: &'a ty::TypeckTables<'tcx>) -> Self {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        param_env_and_substs: ty::ParamEnvAnd<'tcx, SubstsRef<'tcx>>,
+        tables: &'a ty::TypeckTables<'tcx>,
+    ) -> Self {
         PatternContext {
             tcx,
             param_env: param_env_and_substs.param_env,
             tables,
             substs: param_env_and_substs.value,
-            errors: vec![]
+            errors: vec![],
+            include_lint_checks: false,
         }
+    }
+
+    pub fn include_lint_checks(&mut self) -> &mut Self {
+        self.include_lint_checks = true;
+        self
     }
 
     pub fn lower_pattern(&mut self, pat: &'tcx hir::Pat) -> Pattern<'tcx> {
@@ -428,15 +460,18 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
                 let mut kind = match (lo, hi) {
                     (PatternKind::Constant { value: lo }, PatternKind::Constant { value: hi }) => {
+                        assert_eq!(lo.ty, ty);
+                        assert_eq!(hi.ty, ty);
                         let cmp = compare_const_vals(
                             self.tcx,
                             lo,
                             hi,
-                            self.param_env.and(ty),
+                            self.param_env,
+                            ty,
                         );
                         match (end, cmp) {
                             (RangeEnd::Excluded, Some(Ordering::Less)) =>
-                                PatternKind::Range(PatternRange { lo, hi, ty, end }),
+                                PatternKind::Range(PatternRange { lo, hi, end }),
                             (RangeEnd::Excluded, _) => {
                                 span_err!(
                                     self.tcx.sess,
@@ -450,7 +485,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                 PatternKind::Constant { value: lo }
                             }
                             (RangeEnd::Included, Some(Ordering::Less)) => {
-                                PatternKind::Range(PatternRange { lo, hi, ty, end })
+                                PatternKind::Range(PatternRange { lo, hi, end })
                             }
                             (RangeEnd::Included, _) => {
                                 let mut err = struct_span_err!(
@@ -630,14 +665,20 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     fields.iter()
                           .map(|field| {
                               FieldPattern {
-                                  field: Field::new(self.tcx.field_index(field.node.hir_id,
+                                  field: Field::new(self.tcx.field_index(field.hir_id,
                                                                          self.tables)),
-                                  pattern: self.lower_pattern(&field.node.pat),
+                                  pattern: self.lower_pattern(&field.pat),
                               }
                           })
                           .collect();
 
                 self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
+            }
+
+            PatKind::Or(ref pats) => {
+                PatternKind::Or {
+                    pats: pats.iter().map(|p| self.lower_pattern(p)).collect(),
+                }
             }
         };
 
@@ -714,7 +755,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             ty::Array(_, len) => {
                 // fixed-length array
-                let len = len.unwrap_usize(self.tcx);
+                let len = len.eval_usize(self.tcx, self.param_env);
                 assert!(len >= prefix.len() as u64 + suffix.len() as u64);
                 PatternKind::Array { prefix: prefix, slice: slice, suffix: suffix }
             }
@@ -769,7 +810,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             | Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
             | Res::Def(DefKind::Union, _)
             | Res::Def(DefKind::TyAlias, _)
-            | Res::Def(DefKind::AssociatedTy, _)
+            | Res::Def(DefKind::AssocTy, _)
             | Res::SelfTy(..)
             | Res::SelfCtor(..) => {
                 PatternKind::Leaf { subpatterns }
@@ -811,11 +852,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let ty = self.tables.node_type(id);
         let res = self.tables.qpath_res(qpath, id);
         let is_associated_const = match res {
-            Res::Def(DefKind::AssociatedConst, _) => true,
+            Res::Def(DefKind::AssocConst, _) => true,
             _ => false,
         };
         let kind = match res {
-            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssociatedConst, def_id) => {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
                 let substs = self.tables.node_substs(id);
                 match ty::Instance::resolve(
                     self.tcx,
@@ -869,7 +910,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     },
                     None => {
                         self.errors.push(if is_associated_const {
-                            PatternError::AssociatedConstInPattern(span)
+                            PatternError::AssocConstInPattern(span)
                         } else {
                             PatternError::StaticInPattern(span)
                         });
@@ -938,21 +979,94 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
-    /// to a pattern that matches the value (as if you'd compared via equality).
+    /// to a pattern that matches the value (as if you'd compared via structural equality).
     fn const_to_pat(
         &self,
         instance: ty::Instance<'tcx>,
-        cv: ty::Const<'tcx>,
+        cv: &'tcx ty::Const<'tcx>,
         id: hir::HirId,
         span: Span,
     ) -> Pattern<'tcx> {
+        // This method is just a warpper handling a validity check; the heavy lifting is
+        // performed by the recursive const_to_pat_inner method, which is not meant to be
+        // invoked except by this method.
+        //
+        // once indirect_structural_match is a full fledged error, this
+        // level of indirection can be eliminated
+
         debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
-        let adt_subpattern = |i, variant_opt| {
+        debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
+
+        let mut saw_error = false;
+        let inlined_const_as_pat = self.const_to_pat_inner(instance, cv, id, span, &mut saw_error);
+
+        if self.include_lint_checks && !saw_error {
+            // If we were able to successfully convert the const to some pat, double-check
+            // that the type of the const obeys `#[structural_match]` constraint.
+            if let Some(adt_def) = search_for_adt_without_structural_match(self.tcx, cv.ty) {
+
+                let path = self.tcx.def_path_str(adt_def.did);
+                let msg = format!(
+                    "to use a constant of type `{}` in a pattern, \
+                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                    path,
+                    path,
+                );
+
+                // before issuing lint, double-check there even *is* a
+                // semantic PartialEq for us to dispatch to.
+                //
+                // (If there isn't, then we can safely issue a hard
+                // error, because that's never worked, due to compiler
+                // using PartialEq::eq in this scenario in the past.)
+
+                let ty_is_partial_eq: bool = {
+                    let partial_eq_trait_id = self.tcx.lang_items().eq_trait().unwrap();
+                    let obligation: PredicateObligation<'_> =
+                        self.tcx.predicate_for_trait_def(self.param_env,
+                                                         ObligationCause::misc(span, id),
+                                                         partial_eq_trait_id,
+                                                         0,
+                                                         cv.ty,
+                                                         &[]);
+                    self.tcx
+                        .infer_ctxt()
+                        .enter(|infcx| infcx.predicate_may_hold(&obligation))
+                };
+
+                if !ty_is_partial_eq {
+                    // span_fatal avoids ICE from resolution of non-existent method (rare case).
+                    self.tcx.sess.span_fatal(span, &msg);
+                } else {
+                    self.tcx.lint_hir(lint::builtin::INDIRECT_STRUCTURAL_MATCH, id, span, &msg);
+                }
+            }
+        }
+
+        inlined_const_as_pat
+    }
+
+    /// Recursive helper for `const_to_pat`; invoke that (instead of calling this directly).
+    fn const_to_pat_inner(
+        &self,
+        instance: ty::Instance<'tcx>,
+        cv: &'tcx ty::Const<'tcx>,
+        id: hir::HirId,
+        span: Span,
+        // This tracks if we signal some hard error for a given const
+        // value, so that we will not subsequently issue an irrelevant
+        // lint for the same const value.
+        saw_const_match_error: &mut bool,
+    ) -> Pattern<'tcx> {
+
+        let mut adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
-            let val = const_field(self.tcx, self.param_env, variant_opt, field, cv);
-            self.const_to_pat(instance, val, id, span)
+            let val = crate::const_eval::const_field(
+                self.tcx, self.param_env, variant_opt, field, cv
+            );
+            self.const_to_pat_inner(instance, val, id, span, saw_const_match_error)
         };
-        let adt_subpatterns = |n, variant_opt| {
+        let mut adt_subpatterns = |n, variant_opt| {
             (0..n).map(|i| {
                 let field = Field::new(i);
                 FieldPattern {
@@ -961,7 +1075,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }).collect::<Vec<_>>()
         };
-        debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
+
+
         let kind = match cv.ty.sty {
             ty::Float(_) => {
                 self.tcx.lint_hir(
@@ -976,9 +1091,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
             ty::Adt(adt_def, _) if adt_def.is_union() => {
                 // Matching on union fields is unsafe, we can't hide it in constants
+                *saw_const_match_error = true;
                 self.tcx.sess.span_err(span, "cannot use unions in constant patterns");
                 PatternKind::Wild
             }
+            // keep old code until future-compat upgraded to errors.
             ty::Adt(adt_def, _) if !self.tcx.has_attr(adt_def.did, sym::structural_match) => {
                 let path = self.tcx.def_path_str(adt_def.did);
                 let msg = format!(
@@ -987,9 +1104,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     path,
                     path,
                 );
+                *saw_const_match_error = true;
                 self.tcx.sess.span_err(span, &msg);
                 PatternKind::Wild
             }
+            // keep old code until future-compat upgraded to errors.
             ty::Ref(_, ty::TyS { sty: ty::Adt(adt_def, _), .. }, _)
             if !self.tcx.has_attr(adt_def.did, sym::structural_match) => {
                 // HACK(estebank): Side-step ICE #53708, but anything other than erroring here
@@ -1001,6 +1120,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     path,
                     path,
                 );
+                *saw_const_match_error = true;
                 self.tcx.sess.span_err(span, &msg);
                 PatternKind::Wild
             }
@@ -1030,7 +1150,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
             ty::Array(_, n) => {
                 PatternKind::Array {
-                    prefix: (0..n.unwrap_usize(self.tcx))
+                    prefix: (0..n.eval_usize(self.tcx, self.param_env))
                         .map(|i| adt_subpattern(i as usize, None))
                         .collect(),
                     slice: None,
@@ -1052,8 +1172,123 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     }
 }
 
-impl UserAnnotatedTyHelpers<'tcx, 'tcx> for PatternContext<'_, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'_, 'tcx, 'tcx> {
+/// This method traverses the structure of `ty`, trying to find an
+/// instance of an ADT (i.e. struct or enum) that was declared without
+/// the `#[structural_match]` attribute.
+///
+/// The "structure of a type" includes all components that would be
+/// considered when doing a pattern match on a constant of that
+/// type.
+///
+///  * This means this method descends into fields of structs/enums,
+///    and also descends into the inner type `T` of `&T` and `&mut T`
+///
+///  * The traversal doesn't dereference unsafe pointers (`*const T`,
+///    `*mut T`), and it does not visit the type arguments of an
+///    instantiated generic like `PhantomData<T>`.
+///
+/// The reason we do this search is Rust currently require all ADT's
+/// reachable from a constant's type to be annotated with
+/// `#[structural_match]`, an attribute which essentially says that
+/// the implementation of `PartialEq::eq` behaves *equivalently* to a
+/// comparison against the unfolded structure.
+///
+/// For more background on why Rust has this requirement, and issues
+/// that arose when the requirement was not enforced completely, see
+/// Rust RFC 1445, rust-lang/rust#61188, and rust-lang/rust#62307.
+fn search_for_adt_without_structural_match<'tcx>(tcx: TyCtxt<'tcx>,
+                                                 ty: Ty<'tcx>)
+                                                 -> Option<&'tcx AdtDef>
+{
+    // Import here (not mod level), because `TypeFoldable::fold_with`
+    // conflicts with `PatternFoldable::fold_with`
+    use crate::rustc::ty::fold::TypeVisitor;
+    use crate::rustc::ty::TypeFoldable;
+
+    let mut search = Search { tcx, found: None, seen: FxHashSet::default() };
+    ty.visit_with(&mut search);
+    return search.found;
+
+    struct Search<'tcx> {
+        tcx: TyCtxt<'tcx>,
+
+        // records the first ADT we find without `#[structural_match`
+        found: Option<&'tcx AdtDef>,
+
+        // tracks ADT's previously encountered during search, so that
+        // we will not recur on them again.
+        seen: FxHashSet<&'tcx AdtDef>,
+    }
+
+    impl<'tcx> TypeVisitor<'tcx> for Search<'tcx> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+            debug!("Search visiting ty: {:?}", ty);
+
+            let (adt_def, substs) = match ty.sty {
+                ty::Adt(adt_def, substs) => (adt_def, substs),
+                ty::RawPtr(..) => {
+                    // `#[structural_match]` ignores substructure of
+                    // `*const _`/`*mut _`, so skip super_visit_with
+
+                    // (But still tell caller to continue search.)
+                    return false;
+                }
+                ty::Array(_, n) if n.try_eval_usize(self.tcx, ty::ParamEnv::reveal_all()) == Some(0)
+                => {
+                    // rust-lang/rust#62336: ignore type of contents
+                    // for empty array.
+                    return false;
+                }
+                _ => {
+                    ty.super_visit_with(self);
+                    return false;
+                }
+            };
+
+            if !self.tcx.has_attr(adt_def.did, sym::structural_match) {
+                self.found = Some(&adt_def);
+                debug!("Search found adt_def: {:?}", adt_def);
+                return true // Halt visiting!
+            }
+
+            if self.seen.contains(adt_def) {
+                debug!("Search already seen adt_def: {:?}", adt_def);
+                // let caller continue its search
+                return false;
+            }
+
+            self.seen.insert(adt_def);
+
+            // `#[structural_match]` does not care about the
+            // instantiation of the generics in an ADT (it
+            // instead looks directly at its fields outside
+            // this match), so we skip super_visit_with.
+            //
+            // (Must not recur on substs for `PhantomData<T>` cf
+            // rust-lang/rust#55028 and rust-lang/rust#55837; but also
+            // want to skip substs when only uses of generic are
+            // behind unsafe pointers `*const T`/`*mut T`.)
+
+            // even though we skip super_visit_with, we must recur on
+            // fields of ADT.
+            let tcx = self.tcx;
+            for field_ty in adt_def.all_fields().map(|field| field.ty(tcx, substs)) {
+                if field_ty.visit_with(self) {
+                    // found an ADT without `#[structural_match]`; halt visiting!
+                    assert!(self.found.is_some());
+                    return true;
+                }
+            }
+
+            // Even though we do not want to recur on substs, we do
+            // want our caller to continue its own search.
+            false
+        }
+    }
+}
+
+impl UserAnnotatedTyHelpers<'tcx> for PatternContext<'_, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
@@ -1205,19 +1440,9 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             PatternKind::Constant {
                 value
             } => PatternKind::Constant {
-                value: value.fold_with(folder)
+                value,
             },
-            PatternKind::Range(PatternRange {
-                lo,
-                hi,
-                ty,
-                end,
-            }) => PatternKind::Range(PatternRange {
-                lo: lo.fold_with(folder),
-                hi: hi.fold_with(folder),
-                ty: ty.fold_with(folder),
-                end,
-            }),
+            PatternKind::Range(range) => PatternKind::Range(range),
             PatternKind::Slice {
                 ref prefix,
                 ref slice,
@@ -1236,15 +1461,17 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
                 slice: slice.fold_with(folder),
                 suffix: suffix.fold_with(folder)
             },
+            PatternKind::Or { ref pats } => PatternKind::Or { pats: pats.fold_with(folder) },
         }
     }
 }
 
-pub fn compare_const_vals<'a, 'gcx, 'tcx>(
-    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    a: ty::Const<'tcx>,
-    b: ty::Const<'tcx>,
-    ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+pub fn compare_const_vals<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    a: &'tcx ty::Const<'tcx>,
+    b: &'tcx ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);
 
@@ -1259,15 +1486,16 @@ pub fn compare_const_vals<'a, 'gcx, 'tcx>(
     let fallback = || from_bool(a == b);
 
     // Use the fallback if any type differs
-    if a.ty != b.ty || a.ty != ty.value {
+    if a.ty != b.ty || a.ty != ty {
         return fallback();
     }
 
-    // FIXME: This should use assert_bits(ty) instead of use_bits
-    // but triggers possibly bugs due to mismatching of arrays and slices
-    if let (Some(a), Some(b)) = (a.to_bits(tcx, ty), b.to_bits(tcx, ty)) {
+    let a_bits = a.try_eval_bits(tcx, param_env, ty);
+    let b_bits = b.try_eval_bits(tcx, param_env, ty);
+
+    if let (Some(a), Some(b)) = (a_bits, b_bits) {
         use ::rustc_apfloat::Float;
-        return match ty.value.sty {
+        return match ty.sty {
             ty::Float(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
@@ -1290,25 +1518,28 @@ pub fn compare_const_vals<'a, 'gcx, 'tcx>(
         }
     }
 
-    if let ty::Str = ty.value.sty {
+    if let ty::Str = ty.sty {
         match (a.val, b.val) {
             (
-                ConstValue::Slice(
-                    Scalar::Ptr(ptr_a),
-                    len_a,
-                ),
-                ConstValue::Slice(
-                    Scalar::Ptr(ptr_b),
-                    len_b,
-                ),
-            ) if ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 => {
-                if len_a == len_b {
-                    let map = tcx.alloc_map.lock();
-                    let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
-                    let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
-                    if alloc_a.bytes.len() as u64 == len_a {
-                        return from_bool(alloc_a == alloc_b);
-                    }
+                ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },
+                ConstValue::Slice { data: alloc_b, start: offset_b, end: end_b },
+            ) => {
+                let len_a = end_a - offset_a;
+                let len_b = end_b - offset_b;
+                let a = alloc_a.get_bytes(
+                    &tcx,
+                    // invent a pointer, only the offset is relevant anyway
+                    Pointer::new(AllocId(0), Size::from_bytes(offset_a as u64)),
+                    Size::from_bytes(len_a as u64),
+                );
+                let b = alloc_b.get_bytes(
+                    &tcx,
+                    // invent a pointer, only the offset is relevant anyway
+                    Pointer::new(AllocId(0), Size::from_bytes(offset_b as u64)),
+                    Size::from_bytes(len_b as u64),
+                );
+                if let (Ok(a), Ok(b)) = (a, b) {
+                    return from_bool(a == b);
                 }
             }
             _ => (),

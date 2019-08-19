@@ -1,16 +1,16 @@
-error[E0004]: non-exhaustive patterns: `$ISIZE_MIN..=-6isize` and `21isize..=$ISIZE_MAX` not covered
+error[E0004]: non-exhaustive patterns: `std::isize::MIN..=-6isize` and `21isize..=std::isize::MAX` not covered
   --> $DIR/precise_pointer_size_matching.rs:24:11
    |
 LL |     match 0isize {
-   |           ^^^^^^ patterns `$ISIZE_MIN..=-6isize` and `21isize..=$ISIZE_MAX` not covered
+   |           ^^^^^^ patterns `std::isize::MIN..=-6isize` and `21isize..=std::isize::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `0usize` and `21usize..=$USIZE_MAX` not covered
+error[E0004]: non-exhaustive patterns: `0usize` and `21usize..=std::usize::MAX` not covered
   --> $DIR/precise_pointer_size_matching.rs:29:11
    |
 LL |     match 0usize {
-   |           ^^^^^^ patterns `0usize` and `21usize..=$USIZE_MAX` not covered
+   |           ^^^^^^ patterns `0usize` and `21usize..=std::usize::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 

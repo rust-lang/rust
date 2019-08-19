@@ -1,4 +1,4 @@
-// compile-pass
+// build-pass (FIXME(62277): could be check-pass?)
 // aux-build:underscore-imports.rs
 
 extern crate underscore_imports;

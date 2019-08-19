@@ -1,0 +1,27 @@
+error: defining opaque type use does not fully define opaque type
+  --> $DIR/not_a_defining_use.rs:9:1
+   |
+LL | / fn two<T: Debug>(t: T) -> Two<T, u32> {
+LL | |
+LL | |     (t, 4i8)
+LL | | }
+   | |_^
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/not_a_defining_use.rs:30:1
+   |
+LL | / fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
+LL | |     (t, <U as Bar>::FOO)
+LL | | }
+   | |_^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
+   |
+note: previous use here
+  --> $DIR/not_a_defining_use.rs:14:1
+   |
+LL | / fn three<T: Debug, U>(t: T) -> Two<T, U> {
+LL | |     (t, 5i8)
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+

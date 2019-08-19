@@ -20,6 +20,7 @@ LL | static C: &u32 = &A;
    |
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: for more information, try `rustc --explain E0729`
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
   --> $DIR/thread-local-in-ctfe.rs:15:16
@@ -43,6 +44,7 @@ LL | const E: &u32 = &A;
    |
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: for more information, try `rustc --explain E0729`
 
 error[E0625]: thread-local statics cannot be accessed at compile-time
   --> $DIR/thread-local-in-ctfe.rs:25:5

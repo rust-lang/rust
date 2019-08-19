@@ -9,7 +9,6 @@
 
 pub use self::Failure::*;
 pub use self::UpgradeResult::*;
-pub use self::SelectionResult::*;
 use self::Message::*;
 
 use core::cmp;
@@ -58,12 +57,6 @@ pub enum UpgradeResult {
     UpSuccess,
     UpDisconnected,
     UpWoke(SignalToken),
-}
-
-pub enum SelectionResult<T> {
-    SelSuccess,
-    SelCanceled,
-    SelUpgraded(SignalToken, Receiver<T>),
 }
 
 // Any message could contain an "upgrade request" to a new shared port, so the
@@ -338,27 +331,6 @@ impl<T> Packet<T> {
     // select implementation
     ////////////////////////////////////////////////////////////////////////////
 
-    // Tests to see whether this port can receive without blocking. If Ok is
-    // returned, then that's the answer. If Err is returned, then the returned
-    // port needs to be queried instead (an upgrade happened)
-    pub fn can_recv(&self) -> Result<bool, Receiver<T>> {
-        // We peek at the queue to see if there's anything on it, and we use
-        // this return value to determine if we should pop from the queue and
-        // upgrade this channel immediately. If it looks like we've got an
-        // upgrade pending, then go through the whole recv rigamarole to update
-        // the internal state.
-        match self.queue.peek() {
-            Some(&mut GoUp(..)) => {
-                match self.recv(None) {
-                    Err(Upgraded(port)) => Err(port),
-                    _ => unreachable!(),
-                }
-            }
-            Some(..) => Ok(true),
-            None => Ok(false)
-        }
-    }
-
     // increment the count on the channel (used for selection)
     fn bump(&self, amt: isize) -> isize {
         match self.queue.producer_addition().cnt.fetch_add(amt, Ordering::SeqCst) {
@@ -367,31 +339,6 @@ impl<T> Packet<T> {
                 DISCONNECTED
             }
             n => n
-        }
-    }
-
-    // Attempts to start selecting on this port. Like a oneshot, this can fail
-    // immediately because of an upgrade.
-    pub fn start_selection(&self, token: SignalToken) -> SelectionResult<T> {
-        match self.decrement(token) {
-            Ok(()) => SelSuccess,
-            Err(token) => {
-                let ret = match self.queue.peek() {
-                    Some(&mut GoUp(..)) => {
-                        match self.queue.pop() {
-                            Some(GoUp(port)) => SelUpgraded(token, port),
-                            _ => unreachable!(),
-                        }
-                    }
-                    Some(..) => SelCanceled,
-                    None => SelCanceled,
-                };
-                // Undo our decrement above, and we should be guaranteed that the
-                // previous value is positive because we're not going to sleep
-                let prev = self.bump(1);
-                assert!(prev == DISCONNECTED || prev >= 0);
-                ret
-            }
         }
     }
 

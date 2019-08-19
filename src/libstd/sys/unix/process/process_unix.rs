@@ -47,7 +47,7 @@ impl Command {
             match result {
                 0 => {
                     drop(input);
-                    let err = self.do_exec(theirs, envp.as_ref());
+                    let Err(err) = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
                     let bytes = [
                         (errno >> 24) as u8,
@@ -123,7 +123,8 @@ impl Command {
                     // environment lock before we try to exec.
                     let _lock = sys::os::env_lock();
 
-                    self.do_exec(theirs, envp.as_ref())
+                    let Err(e) = self.do_exec(theirs, envp.as_ref());
+                    e
                 }
             }
             Err(e) => e,
@@ -164,51 +165,47 @@ impl Command {
         &mut self,
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>
-    ) -> io::Error {
+    ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
-        macro_rules! t {
-            ($e:expr) => (match $e {
-                Ok(e) => e,
-                Err(e) => return e,
-            })
-        }
-
         if let Some(fd) = stdio.stdin.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO))?;
         }
         if let Some(fd) = stdio.stdout.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO))?;
         }
         if let Some(fd) = stdio.stderr.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
         if cfg!(not(any(target_os = "l4re"))) {
             if let Some(u) = self.get_gid() {
-                t!(cvt(libc::setgid(u as gid_t)));
+                cvt(libc::setgid(u as gid_t))?;
             }
             if let Some(u) = self.get_uid() {
-                // When dropping privileges from root, the `setgroups` call
-                // will remove any extraneous groups. If we don't call this,
-                // then even though our uid has dropped, we may still have
-                // groups that enable us to do super-user things. This will
-                // fail if we aren't root, so don't bother checking the
-                // return value, this is just done as an optimistic
-                // privilege dropping function.
-                let _ = libc::setgroups(0, ptr::null());
+                //FIXME: Redox kernel does not support setgroups yet
+                if cfg!(not(target_os = "redox")) {
+                    // When dropping privileges from root, the `setgroups` call
+                    // will remove any extraneous groups. If we don't call this,
+                    // then even though our uid has dropped, we may still have
+                    // groups that enable us to do super-user things. This will
+                    // fail if we aren't root, so don't bother checking the
+                    // return value, this is just done as an optimistic
+                    // privilege dropping function.
+                    let _ = libc::setgroups(0, ptr::null());
+                }
 
-                t!(cvt(libc::setuid(u as uid_t)));
+                cvt(libc::setuid(u as uid_t))?;
             }
         }
         if let Some(ref cwd) = *self.get_cwd() {
-            t!(cvt(libc::chdir(cwd.as_ptr())));
+            cvt(libc::chdir(cwd.as_ptr()))?;
         }
 
         // emscripten has no signal support.
         #[cfg(not(any(target_os = "emscripten")))]
         {
-            use crate::mem;
+            use crate::mem::MaybeUninit;
             // Reset signal handling so the child process starts in a
             // standardized state. libstd ignores SIGPIPE, and signal-handling
             // libraries often set a mask. Child processes inherit ignored
@@ -216,27 +213,25 @@ impl Command {
             // UNIX programs do not reset these things on their own, so we
             // need to clean things up now to avoid confusing the program
             // we're about to run.
-            let mut set: libc::sigset_t = mem::uninitialized();
+            let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             if cfg!(target_os = "android") {
                 // Implementing sigemptyset allow us to support older Android
                 // versions. See the comment about Android and sig* functions in
                 // process_common.rs
-                libc::memset(&mut set as *mut _ as *mut _,
-                             0,
-                             mem::size_of::<libc::sigset_t>());
+                set.as_mut_ptr().write_bytes(0u8, 1);
             } else {
-                t!(cvt(libc::sigemptyset(&mut set)));
+                cvt(libc::sigemptyset(set.as_mut_ptr()))?;
             }
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
-                                         ptr::null_mut())));
+            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(),
+                                         ptr::null_mut()))?;
             let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
             if ret == libc::SIG_ERR {
-                return io::Error::last_os_error()
+                return Err(io::Error::last_os_error())
             }
         }
 
         for callback in self.get_closures().iter_mut() {
-            t!(callback());
+            callback()?;
         }
 
         // Although we're performing an exec here we may also return with an
@@ -261,7 +256,7 @@ impl Command {
         }
 
         libc::execvp(self.get_argv()[0], self.get_argv().as_ptr());
-        io::Error::last_os_error()
+        Err(io::Error::last_os_error())
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "freebsd",
@@ -279,13 +274,13 @@ impl Command {
     fn posix_spawn(&mut self, stdio: &ChildPipes, envp: Option<&CStringArray>)
         -> io::Result<Option<Process>>
     {
-        use crate::mem;
+        use crate::mem::MaybeUninit;
         use crate::sys;
 
         if self.get_gid().is_some() ||
             self.get_uid().is_some() ||
             self.env_saw_path() ||
-            self.get_closures().len() != 0 {
+            !self.get_closures().is_empty() {
             return Ok(None)
         }
 
@@ -321,63 +316,63 @@ impl Command {
 
         let mut p = Process { pid: 0, status: None };
 
-        struct PosixSpawnFileActions(libc::posix_spawn_file_actions_t);
+        struct PosixSpawnFileActions(MaybeUninit<libc::posix_spawn_file_actions_t>);
 
         impl Drop for PosixSpawnFileActions {
             fn drop(&mut self) {
                 unsafe {
-                    libc::posix_spawn_file_actions_destroy(&mut self.0);
+                    libc::posix_spawn_file_actions_destroy(self.0.as_mut_ptr());
                 }
             }
         }
 
-        struct PosixSpawnattr(libc::posix_spawnattr_t);
+        struct PosixSpawnattr(MaybeUninit<libc::posix_spawnattr_t>);
 
         impl Drop for PosixSpawnattr {
             fn drop(&mut self) {
                 unsafe {
-                    libc::posix_spawnattr_destroy(&mut self.0);
+                    libc::posix_spawnattr_destroy(self.0.as_mut_ptr());
                 }
             }
         }
 
         unsafe {
-            let mut file_actions = PosixSpawnFileActions(mem::uninitialized());
-            let mut attrs = PosixSpawnattr(mem::uninitialized());
+            let mut file_actions = PosixSpawnFileActions(MaybeUninit::uninit());
+            let mut attrs = PosixSpawnattr(MaybeUninit::uninit());
 
-            libc::posix_spawnattr_init(&mut attrs.0);
-            libc::posix_spawn_file_actions_init(&mut file_actions.0);
+            libc::posix_spawnattr_init(attrs.0.as_mut_ptr());
+            libc::posix_spawn_file_actions_init(file_actions.0.as_mut_ptr());
 
             if let Some(fd) = stdio.stdin.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(&mut file_actions.0,
+                cvt(libc::posix_spawn_file_actions_adddup2(file_actions.0.as_mut_ptr(),
                                                            fd,
                                                            libc::STDIN_FILENO))?;
             }
             if let Some(fd) = stdio.stdout.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(&mut file_actions.0,
+                cvt(libc::posix_spawn_file_actions_adddup2(file_actions.0.as_mut_ptr(),
                                                            fd,
                                                            libc::STDOUT_FILENO))?;
             }
             if let Some(fd) = stdio.stderr.fd() {
-                cvt(libc::posix_spawn_file_actions_adddup2(&mut file_actions.0,
+                cvt(libc::posix_spawn_file_actions_adddup2(file_actions.0.as_mut_ptr(),
                                                            fd,
                                                            libc::STDERR_FILENO))?;
             }
             if let Some((f, cwd)) = addchdir {
-                cvt(f(&mut file_actions.0, cwd.as_ptr()))?;
+                cvt(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
             }
 
-            let mut set: libc::sigset_t = mem::uninitialized();
-            cvt(libc::sigemptyset(&mut set))?;
-            cvt(libc::posix_spawnattr_setsigmask(&mut attrs.0,
-                                                 &set))?;
-            cvt(libc::sigaddset(&mut set, libc::SIGPIPE))?;
-            cvt(libc::posix_spawnattr_setsigdefault(&mut attrs.0,
-                                                    &set))?;
+            let mut set = MaybeUninit::<libc::sigset_t>::uninit();
+            cvt(libc::sigemptyset(set.as_mut_ptr()))?;
+            cvt(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(),
+                                                 set.as_ptr()))?;
+            cvt(libc::sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
+            cvt(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(),
+                                                    set.as_ptr()))?;
 
             let flags = libc::POSIX_SPAWN_SETSIGDEF |
                 libc::POSIX_SPAWN_SETSIGMASK;
-            cvt(libc::posix_spawnattr_setflags(&mut attrs.0, flags as _))?;
+            cvt(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
             let _env_lock = sys::os::env_lock();
@@ -386,8 +381,8 @@ impl Command {
             let ret = libc::posix_spawnp(
                 &mut p.pid,
                 self.get_argv()[0],
-                &file_actions.0,
-                &attrs.0,
+                file_actions.0.as_ptr(),
+                attrs.0.as_ptr(),
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
             );

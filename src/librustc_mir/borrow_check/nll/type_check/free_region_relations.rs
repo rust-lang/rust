@@ -2,7 +2,7 @@ use crate::borrow_check::nll::type_check::constraint_conversion;
 use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
 use crate::borrow_check::nll::universal_regions::UniversalRegions;
 use crate::borrow_check::nll::ToRegionVid;
-use rustc::infer::canonical::QueryRegionConstraint;
+use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
 use rustc::infer::InferCtxt;
@@ -55,7 +55,7 @@ crate struct CreateResult<'tcx> {
 }
 
 crate fn create(
-    infcx: &InferCtxt<'_, '_, 'tcx>,
+    infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
@@ -219,8 +219,8 @@ impl UniversalRegionRelations<'tcx> {
     }
 }
 
-struct UniversalRegionRelationsBuilder<'this, 'gcx: 'tcx, 'tcx: 'this> {
-    infcx: &'this InferCtxt<'this, 'gcx, 'tcx>,
+struct UniversalRegionRelationsBuilder<'this, 'tcx> {
+    infcx: &'this InferCtxt<'this, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     universal_regions: Rc<UniversalRegions<'tcx>>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
@@ -231,7 +231,7 @@ struct UniversalRegionRelationsBuilder<'this, 'gcx: 'tcx, 'tcx: 'this> {
     region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
-impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
+impl UniversalRegionRelationsBuilder<'cx, 'tcx> {
     crate fn create(mut self) -> CreateResult<'tcx> {
         let unnormalized_input_output_tys = self
             .universal_regions
@@ -287,7 +287,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
             self.relations.relate_universal_regions(fr, fr_fn_body);
         }
 
-        for data in constraint_sets {
+        for data in &constraint_sets {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 &self.universal_regions,
@@ -297,7 +297,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
                 Locations::All(DUMMY_SP),
                 ConstraintCategory::Internal,
                 &mut self.constraints,
-            ).convert_all(&data);
+            ).convert_all(data);
         }
 
         CreateResult {
@@ -311,7 +311,7 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
     /// either the return type of the MIR or one of its arguments. At
     /// the same time, compute and add any implied bounds that come
     /// from this local.
-    fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<Rc<Vec<QueryRegionConstraint<'tcx>>>> {
+    fn add_implied_bounds(&mut self, ty: Ty<'tcx>) -> Option<Rc<QueryRegionConstraints<'tcx>>> {
         debug!("add_implied_bounds(ty={:?})", ty);
         let (bounds, constraints) =
             self.param_env
@@ -334,6 +334,13 @@ impl UniversalRegionRelationsBuilder<'cx, 'gcx, 'tcx> {
 
             match outlives_bound {
                 OutlivesBound::RegionSubRegion(r1, r2) => {
+                    // `where Type:` is lowered to `where Type: 'empty` so that
+                    // we check `Type` is well formed, but there's no use for
+                    // this bound here.
+                    if let ty::ReEmpty = r1 {
+                        return;
+                    }
+
                     // The bound says that `r1 <= r2`; we store `r2: r1`.
                     let r1 = self.universal_regions.to_region_vid(r1);
                     let r2 = self.universal_regions.to_region_vid(r2);

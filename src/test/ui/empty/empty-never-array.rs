@@ -10,9 +10,7 @@ fn transmute<T, U>(t: T) -> U {
     let Helper::U(u) = Helper::T(t, []);
     //~^ ERROR refutable pattern in local binding: `T(_, _)` not covered
     u
-    //~^ WARN use of possibly uninitialized variable: `u`
-    //~| WARN this error has been downgraded to a warning for backwards compatibility
-    //~| WARN this represents potential undefined behavior in your code and this warning will
+    //~^ ERROR use of possibly uninitialized variable: `u`
 }
 
 fn main() {

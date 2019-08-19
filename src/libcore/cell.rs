@@ -11,7 +11,7 @@
 //! mutate it.
 //!
 //! Shareable mutable containers exist to permit mutability in a controlled manner, even in the
-//! presence of aliasing. Both `Cell<T>` and `RefCell<T>` allows to do this in a single threaded
+//! presence of aliasing. Both `Cell<T>` and `RefCell<T>` allow doing this in a single-threaded
 //! way. However, neither `Cell<T>` nor `RefCell<T>` are thread safe (they do not implement
 //! `Sync`). If you need to do aliasing and mutation between multiple threads it is possible to
 //! use [`Mutex`](../../std/sync/struct.Mutex.html),
@@ -67,16 +67,26 @@
 //! mutability:
 //!
 //! ```
+//! use std::cell::{RefCell, RefMut};
 //! use std::collections::HashMap;
-//! use std::cell::RefCell;
 //! use std::rc::Rc;
 //!
 //! fn main() {
 //!     let shared_map: Rc<RefCell<_>> = Rc::new(RefCell::new(HashMap::new()));
-//!     shared_map.borrow_mut().insert("africa", 92388);
-//!     shared_map.borrow_mut().insert("kyoto", 11837);
-//!     shared_map.borrow_mut().insert("piccadilly", 11826);
-//!     shared_map.borrow_mut().insert("marbles", 38);
+//!     // Create a new block to limit the scope of the dynamic borrow
+//!     {
+//!         let mut map: RefMut<_> = shared_map.borrow_mut();
+//!         map.insert("africa", 92388);
+//!         map.insert("kyoto", 11837);
+//!         map.insert("piccadilly", 11826);
+//!         map.insert("marbles", 38);
+//!     }
+//!
+//!     // Note that if we had not let the previous borrow of the cache fall out
+//!     // of scope then the subsequent borrow would cause a dynamic thread panic.
+//!     // This is the major hazard of using `RefCell`.
+//!     let total: i32 = shared_map.borrow().values().sum();
+//!     println!("{}", total);
 //! }
 //! ```
 //!
@@ -102,27 +112,15 @@
 //!
 //! impl Graph {
 //!     fn minimum_spanning_tree(&self) -> Vec<(i32, i32)> {
-//!         // Create a new scope to contain the lifetime of the
-//!         // dynamic borrow
-//!         {
-//!             // Take a reference to the inside of cache cell
-//!             let mut cache = self.span_tree_cache.borrow_mut();
-//!             if cache.is_some() {
-//!                 return cache.as_ref().unwrap().clone();
-//!             }
-//!
-//!             let span_tree = self.calc_span_tree();
-//!             *cache = Some(span_tree);
-//!         }
-//!
-//!         // Recursive call to return the just-cached value.
-//!         // Note that if we had not let the previous borrow
-//!         // of the cache fall out of scope then the subsequent
-//!         // recursive borrow would cause a dynamic thread panic.
-//!         // This is the major hazard of using `RefCell`.
-//!         self.minimum_spanning_tree()
+//!         self.span_tree_cache.borrow_mut()
+//!             .get_or_insert_with(|| self.calc_span_tree())
+//!             .clone()
 //!     }
-//! #   fn calc_span_tree(&self) -> Vec<(i32, i32)> { vec![] }
+//!
+//!     fn calc_span_tree(&self) -> Vec<(i32, i32)> {
+//!         // Expensive computation goes here
+//!         vec![]
+//!     }
 //! }
 //! ```
 //!
@@ -292,7 +290,7 @@ impl<T:Copy> Clone for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Default> Default for Cell<T> {
+impl<T: Default> Default for Cell<T> {
     /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Cell<T> {
@@ -301,7 +299,7 @@ impl<T:Default> Default for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:PartialEq + Copy> PartialEq for Cell<T> {
+impl<T: PartialEq + Copy> PartialEq for Cell<T> {
     #[inline]
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
@@ -309,10 +307,10 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 }
 
 #[stable(feature = "cell_eq", since = "1.2.0")]
-impl<T:Eq + Copy> Eq for Cell<T> {}
+impl<T: Eq + Copy> Eq for Cell<T> {}
 
 #[stable(feature = "cell_ord", since = "1.10.0")]
-impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
+impl<T: PartialOrd + Copy> PartialOrd for Cell<T> {
     #[inline]
     fn partial_cmp(&self, other: &Cell<T>) -> Option<Ordering> {
         self.get().partial_cmp(&other.get())
@@ -340,7 +338,7 @@ impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
 }
 
 #[stable(feature = "cell_ord", since = "1.10.0")]
-impl<T:Ord + Copy> Ord for Cell<T> {
+impl<T: Ord + Copy> Ord for Cell<T> {
     #[inline]
     fn cmp(&self, other: &Cell<T>) -> Ordering {
         self.get().cmp(&other.get())
@@ -496,7 +494,6 @@ impl<T: ?Sized> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(as_cell)]
     /// use std::cell::Cell;
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
@@ -506,7 +503,7 @@ impl<T: ?Sized> Cell<T> {
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
     #[inline]
-    #[unstable(feature = "as_cell", issue="43038")]
+    #[stable(feature = "as_cell", since = "1.37.0")]
     pub fn from_mut(t: &mut T) -> &Cell<T> {
         unsafe {
             &*(t as *mut T as *const Cell<T>)
@@ -543,7 +540,6 @@ impl<T> Cell<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(as_cell)]
     /// use std::cell::Cell;
     ///
     /// let slice: &mut [i32] = &mut [1, 2, 3];
@@ -552,7 +548,7 @@ impl<T> Cell<[T]> {
     ///
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
-    #[unstable(feature = "as_cell", issue="43038")]
+    #[stable(feature = "as_cell", since = "1.37.0")]
     pub fn as_slice_of_cells(&self) -> &[Cell<T>] {
         unsafe {
             &*(self as *const Cell<[T]> as *const [Cell<T>])
@@ -969,7 +965,6 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(borrow_state)]
     /// use std::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
@@ -984,7 +979,7 @@ impl<T: ?Sized> RefCell<T> {
     ///     assert!(unsafe { c.try_borrow_unguarded() }.is_ok());
     /// }
     /// ```
-    #[unstable(feature = "borrow_state", issue = "27733")]
+    #[stable(feature = "borrow_state", since = "1.37.0")]
     #[inline]
     pub unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
         if !is_writing(self.borrow.get()) {
@@ -1013,7 +1008,7 @@ impl<T: Clone> Clone for RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Default> Default for RefCell<T> {
+impl<T: Default> Default for RefCell<T> {
     /// Creates a `RefCell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> RefCell<T> {
@@ -1106,13 +1101,23 @@ struct BorrowRef<'b> {
 impl<'b> BorrowRef<'b> {
     #[inline]
     fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRef<'b>> {
-        let b = borrow.get();
-        if is_writing(b) || b == isize::max_value() {
-            // If there's currently a writing borrow, or if incrementing the
-            // refcount would overflow into a writing borrow.
+        let b = borrow.get().wrapping_add(1);
+        if !is_reading(b) {
+            // Incrementing borrow can result in a non-reading value (<= 0) in these cases:
+            // 1. It was < 0, i.e. there are writing borrows, so we can't allow a read borrow
+            //    due to Rust's reference aliasing rules
+            // 2. It was isize::max_value() (the max amount of reading borrows) and it overflowed
+            //    into isize::min_value() (the max amount of writing borrows) so we can't allow
+            //    an additional read borrow because isize can't represent so many read borrows
+            //    (this can only happen if you mem::forget more than a small constant amount of
+            //    `Ref`s, which is not good practice)
             None
         } else {
-            borrow.set(b + 1);
+            // Incrementing borrow can result in a reading value (> 0) in these cases:
+            // 1. It was = 0, i.e. it wasn't borrowed, and we are taking the first read borrow
+            // 2. It was > 0 and < isize::max_value(), i.e. there were read borrows, and isize
+            //    is large enough to represent having one more read borrow
+            borrow.set(b);
             Some(BorrowRef { borrow })
         }
     }
@@ -1354,7 +1359,7 @@ impl<'b> BorrowRefMut<'b> {
         }
     }
 
-    // Clone a `BorrowRefMut`.
+    // Clones a `BorrowRefMut`.
     //
     // This is only valid if each `BorrowRefMut` is used to track a mutable
     // reference to a distinct, nonoverlapping range of the original object.
@@ -1417,8 +1422,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// If you have a reference `&SomeStruct`, then normally in Rust all fields of `SomeStruct` are
 /// immutable. The compiler makes optimizations based on the knowledge that `&T` is not mutably
 /// aliased or mutated, and that `&mut T` is unique. `UnsafeCell<T>` is the only core language
-/// feature to work around this restriction. All other types that allow internal mutability, such as
-/// `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their internal data.
+/// feature to work around the restriction that `&T` may not be mutated. All other types that
+/// allow internal mutability, such as `Cell<T>` and `RefCell<T>`, use `UnsafeCell` to wrap their
+/// internal data. There is *no* legal way to obtain aliasing `&mut`, not even with `UnsafeCell<T>`.
 ///
 /// The `UnsafeCell` API itself is technically very simple: it gives you a raw pointer `*mut T` to
 /// its contents. It is up to _you_ as the abstraction designer to use that raw pointer correctly.

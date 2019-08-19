@@ -1,9 +1,9 @@
 error[E0621]: explicit lifetime required in the type of `value`
   --> $DIR/issue-16922.rs:4:5
    |
-LL | fn foo<T: Any>(value: &T) -> Box<Any> {
+LL | fn foo<T: Any>(value: &T) -> Box<dyn Any> {
    |                       -- help: add explicit lifetime `'static` to the type of `value`: `&'static T`
-LL |     Box::new(value) as Box<Any>
+LL |     Box::new(value) as Box<dyn Any>
    |     ^^^^^^^^^^^^^^^ lifetime `'static` required
 
 error: aborting due to previous error
