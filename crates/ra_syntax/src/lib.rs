@@ -186,8 +186,8 @@ fn api_walkthrough() {
     // Let's fetch the `foo` function.
     let mut func = None;
     for item in file.items() {
-        match item.kind() {
-            ast::ModuleItemKind::FnDef(f) => func = Some(f),
+        match item {
+            ast::ModuleItem::FnDef(f) => func = Some(f),
             _ => unreachable!(),
         }
     }
@@ -206,12 +206,12 @@ fn api_walkthrough() {
     let block: ast::Block = func.body().unwrap();
     let expr: ast::Expr = block.expr().unwrap();
 
-    // "Enum"-like nodes are represented using the "kind" pattern. It allows us
-    // to match exhaustively against all flavors of nodes, while maintaining
-    // internal representation flexibility. The drawback is that one can't write
-    // nested matches as one pattern.
-    let bin_expr: ast::BinExpr = match expr.kind() {
-        ast::ExprKind::BinExpr(e) => e,
+    // Enums are used to group related ast nodes together, and can be used for
+    // matching. However, because there are no public fields, it's possible to
+    // match only the top level enum: that is the price we pay for increased API
+    // flexibility
+    let bin_expr: &ast::BinExpr = match &expr {
+        ast::Expr::BinExpr(e) => e,
         _ => unreachable!(),
     };
 

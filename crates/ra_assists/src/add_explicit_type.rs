@@ -1,6 +1,6 @@
 use hir::{db::HirDatabase, HirDisplay, Ty};
 use ra_syntax::{
-    ast::{AstNode, LetStmt, NameOwner, PatKind},
+    ast::{self, AstNode, LetStmt, NameOwner},
     T,
 };
 
@@ -12,8 +12,8 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
     let expr = stmt.initializer()?;
     let pat = stmt.pat()?;
     // Must be a binding
-    let pat = match pat.kind() {
-        PatKind::BindPat(bind_pat) => bind_pat,
+    let pat = match pat {
+        ast::Pat::BindPat(bind_pat) => bind_pat,
         _ => return None,
     };
     let pat_range = pat.syntax().text_range();

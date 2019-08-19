@@ -7,12 +7,12 @@ use ra_syntax::ast::{self, AstNode};
 use crate::{Assist, AssistCtx, AssistId};
 
 fn is_trivial_arm(arm: &ast::MatchArm) -> bool {
-    fn single_pattern(arm: &ast::MatchArm) -> Option<ast::PatKind> {
+    fn single_pattern(arm: &ast::MatchArm) -> Option<ast::Pat> {
         let (pat,) = arm.pats().collect_tuple()?;
-        Some(pat.kind())
+        Some(pat)
     }
     match single_pattern(arm) {
-        Some(ast::PatKind::PlaceholderPat(..)) => true,
+        Some(ast::Pat::PlaceholderPat(..)) => true,
         _ => false,
     }
 }

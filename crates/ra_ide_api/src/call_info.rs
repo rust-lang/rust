@@ -91,8 +91,8 @@ impl FnCallNode {
 
     fn name_ref(&self) -> Option<ast::NameRef> {
         match self {
-            FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()?.kind() {
-                ast::ExprKind::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
+            FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()? {
+                ast::Expr::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
                 _ => return None,
             }),
 

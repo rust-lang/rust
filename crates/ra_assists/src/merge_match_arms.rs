@@ -30,8 +30,8 @@ pub(crate) fn merge_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<A
 
     ctx.add_action(AssistId("merge_match_arms"), "merge match arms", |edit| {
         fn contains_placeholder(a: &MatchArm) -> bool {
-            a.pats().any(|x| match x.kind() {
-                ra_syntax::ast::PatKind::PlaceholderPat(..) => true,
+            a.pats().any(|x| match x {
+                ra_syntax::ast::Pat::PlaceholderPat(..) => true,
                 _ => false,
             })
         }

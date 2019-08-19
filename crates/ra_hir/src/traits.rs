@@ -30,10 +30,10 @@ impl TraitData {
         let items = if let Some(item_list) = src.ast.item_list() {
             item_list
                 .impl_items()
-                .map(|item_node| match item_node.kind() {
-                    ast::ImplItemKind::FnDef(it) => Function { id: ctx.to_def(&it) }.into(),
-                    ast::ImplItemKind::ConstDef(it) => Const { id: ctx.to_def(&it) }.into(),
-                    ast::ImplItemKind::TypeAliasDef(it) => TypeAlias { id: ctx.to_def(&it) }.into(),
+                .map(|item_node| match item_node {
+                    ast::ImplItem::FnDef(it) => Function { id: ctx.to_def(&it) }.into(),
+                    ast::ImplItem::ConstDef(it) => Const { id: ctx.to_def(&it) }.into(),
+                    ast::ImplItem::TypeAliasDef(it) => TypeAlias { id: ctx.to_def(&it) }.into(),
                 })
                 .collect()
         } else {

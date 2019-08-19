@@ -591,34 +591,7 @@ impl EnumVariantList {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Expr {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for Expr {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            TUPLE_EXPR | ARRAY_EXPR | PAREN_EXPR | PATH_EXPR | LAMBDA_EXPR | IF_EXPR
-            | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL
-            | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | STRUCT_LIT | CALL_EXPR | INDEX_EXPR
-            | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | TRY_BLOCK_EXPR
-            | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL => {
-                true
-            }
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-pub enum ExprKind {
+pub enum Expr {
     TupleExpr(TupleExpr),
     ArrayExpr(ArrayExpr),
     ParenExpr(ParenExpr),
@@ -652,189 +625,235 @@ pub enum ExprKind {
 }
 impl From<TupleExpr> for Expr {
     fn from(node: TupleExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::TupleExpr(node)
     }
 }
 impl From<ArrayExpr> for Expr {
     fn from(node: ArrayExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::ArrayExpr(node)
     }
 }
 impl From<ParenExpr> for Expr {
     fn from(node: ParenExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::ParenExpr(node)
     }
 }
 impl From<PathExpr> for Expr {
     fn from(node: PathExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::PathExpr(node)
     }
 }
 impl From<LambdaExpr> for Expr {
     fn from(node: LambdaExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::LambdaExpr(node)
     }
 }
 impl From<IfExpr> for Expr {
     fn from(node: IfExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::IfExpr(node)
     }
 }
 impl From<LoopExpr> for Expr {
     fn from(node: LoopExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::LoopExpr(node)
     }
 }
 impl From<ForExpr> for Expr {
     fn from(node: ForExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::ForExpr(node)
     }
 }
 impl From<WhileExpr> for Expr {
     fn from(node: WhileExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::WhileExpr(node)
     }
 }
 impl From<ContinueExpr> for Expr {
     fn from(node: ContinueExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::ContinueExpr(node)
     }
 }
 impl From<BreakExpr> for Expr {
     fn from(node: BreakExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::BreakExpr(node)
     }
 }
 impl From<Label> for Expr {
     fn from(node: Label) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::Label(node)
     }
 }
 impl From<BlockExpr> for Expr {
     fn from(node: BlockExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::BlockExpr(node)
     }
 }
 impl From<ReturnExpr> for Expr {
     fn from(node: ReturnExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::ReturnExpr(node)
     }
 }
 impl From<MatchExpr> for Expr {
     fn from(node: MatchExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::MatchExpr(node)
     }
 }
 impl From<StructLit> for Expr {
     fn from(node: StructLit) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::StructLit(node)
     }
 }
 impl From<CallExpr> for Expr {
     fn from(node: CallExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::CallExpr(node)
     }
 }
 impl From<IndexExpr> for Expr {
     fn from(node: IndexExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::IndexExpr(node)
     }
 }
 impl From<MethodCallExpr> for Expr {
     fn from(node: MethodCallExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::MethodCallExpr(node)
     }
 }
 impl From<FieldExpr> for Expr {
     fn from(node: FieldExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::FieldExpr(node)
     }
 }
 impl From<AwaitExpr> for Expr {
     fn from(node: AwaitExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::AwaitExpr(node)
     }
 }
 impl From<TryExpr> for Expr {
     fn from(node: TryExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::TryExpr(node)
     }
 }
 impl From<TryBlockExpr> for Expr {
     fn from(node: TryBlockExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::TryBlockExpr(node)
     }
 }
 impl From<CastExpr> for Expr {
     fn from(node: CastExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::CastExpr(node)
     }
 }
 impl From<RefExpr> for Expr {
     fn from(node: RefExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::RefExpr(node)
     }
 }
 impl From<PrefixExpr> for Expr {
     fn from(node: PrefixExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::PrefixExpr(node)
     }
 }
 impl From<RangeExpr> for Expr {
     fn from(node: RangeExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::RangeExpr(node)
     }
 }
 impl From<BinExpr> for Expr {
     fn from(node: BinExpr) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::BinExpr(node)
     }
 }
 impl From<Literal> for Expr {
     fn from(node: Literal) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::Literal(node)
     }
 }
 impl From<MacroCall> for Expr {
     fn from(node: MacroCall) -> Expr {
-        Expr { syntax: node.syntax }
+        Expr::MacroCall(node)
     }
 }
-impl Expr {
-    pub fn kind(&self) -> ExprKind {
-        let syntax = self.syntax.clone();
-        match syntax.kind() {
-            TUPLE_EXPR => ExprKind::TupleExpr(TupleExpr { syntax }),
-            ARRAY_EXPR => ExprKind::ArrayExpr(ArrayExpr { syntax }),
-            PAREN_EXPR => ExprKind::ParenExpr(ParenExpr { syntax }),
-            PATH_EXPR => ExprKind::PathExpr(PathExpr { syntax }),
-            LAMBDA_EXPR => ExprKind::LambdaExpr(LambdaExpr { syntax }),
-            IF_EXPR => ExprKind::IfExpr(IfExpr { syntax }),
-            LOOP_EXPR => ExprKind::LoopExpr(LoopExpr { syntax }),
-            FOR_EXPR => ExprKind::ForExpr(ForExpr { syntax }),
-            WHILE_EXPR => ExprKind::WhileExpr(WhileExpr { syntax }),
-            CONTINUE_EXPR => ExprKind::ContinueExpr(ContinueExpr { syntax }),
-            BREAK_EXPR => ExprKind::BreakExpr(BreakExpr { syntax }),
-            LABEL => ExprKind::Label(Label { syntax }),
-            BLOCK_EXPR => ExprKind::BlockExpr(BlockExpr { syntax }),
-            RETURN_EXPR => ExprKind::ReturnExpr(ReturnExpr { syntax }),
-            MATCH_EXPR => ExprKind::MatchExpr(MatchExpr { syntax }),
-            STRUCT_LIT => ExprKind::StructLit(StructLit { syntax }),
-            CALL_EXPR => ExprKind::CallExpr(CallExpr { syntax }),
-            INDEX_EXPR => ExprKind::IndexExpr(IndexExpr { syntax }),
-            METHOD_CALL_EXPR => ExprKind::MethodCallExpr(MethodCallExpr { syntax }),
-            FIELD_EXPR => ExprKind::FieldExpr(FieldExpr { syntax }),
-            AWAIT_EXPR => ExprKind::AwaitExpr(AwaitExpr { syntax }),
-            TRY_EXPR => ExprKind::TryExpr(TryExpr { syntax }),
-            TRY_BLOCK_EXPR => ExprKind::TryBlockExpr(TryBlockExpr { syntax }),
-            CAST_EXPR => ExprKind::CastExpr(CastExpr { syntax }),
-            REF_EXPR => ExprKind::RefExpr(RefExpr { syntax }),
-            PREFIX_EXPR => ExprKind::PrefixExpr(PrefixExpr { syntax }),
-            RANGE_EXPR => ExprKind::RangeExpr(RangeExpr { syntax }),
-            BIN_EXPR => ExprKind::BinExpr(BinExpr { syntax }),
-            LITERAL => ExprKind::Literal(Literal { syntax }),
-            MACRO_CALL => ExprKind::MacroCall(MacroCall { syntax }),
-            _ => unreachable!(),
+impl AstNode for Expr {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            TUPLE_EXPR | ARRAY_EXPR | PAREN_EXPR | PATH_EXPR | LAMBDA_EXPR | IF_EXPR
+            | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL
+            | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | STRUCT_LIT | CALL_EXPR | INDEX_EXPR
+            | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | TRY_BLOCK_EXPR
+            | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL => {
+                true
+            }
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            TUPLE_EXPR => Expr::TupleExpr(TupleExpr { syntax }),
+            ARRAY_EXPR => Expr::ArrayExpr(ArrayExpr { syntax }),
+            PAREN_EXPR => Expr::ParenExpr(ParenExpr { syntax }),
+            PATH_EXPR => Expr::PathExpr(PathExpr { syntax }),
+            LAMBDA_EXPR => Expr::LambdaExpr(LambdaExpr { syntax }),
+            IF_EXPR => Expr::IfExpr(IfExpr { syntax }),
+            LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
+            FOR_EXPR => Expr::ForExpr(ForExpr { syntax }),
+            WHILE_EXPR => Expr::WhileExpr(WhileExpr { syntax }),
+            CONTINUE_EXPR => Expr::ContinueExpr(ContinueExpr { syntax }),
+            BREAK_EXPR => Expr::BreakExpr(BreakExpr { syntax }),
+            LABEL => Expr::Label(Label { syntax }),
+            BLOCK_EXPR => Expr::BlockExpr(BlockExpr { syntax }),
+            RETURN_EXPR => Expr::ReturnExpr(ReturnExpr { syntax }),
+            MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
+            STRUCT_LIT => Expr::StructLit(StructLit { syntax }),
+            CALL_EXPR => Expr::CallExpr(CallExpr { syntax }),
+            INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
+            METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
+            FIELD_EXPR => Expr::FieldExpr(FieldExpr { syntax }),
+            AWAIT_EXPR => Expr::AwaitExpr(AwaitExpr { syntax }),
+            TRY_EXPR => Expr::TryExpr(TryExpr { syntax }),
+            TRY_BLOCK_EXPR => Expr::TryBlockExpr(TryBlockExpr { syntax }),
+            CAST_EXPR => Expr::CastExpr(CastExpr { syntax }),
+            REF_EXPR => Expr::RefExpr(RefExpr { syntax }),
+            PREFIX_EXPR => Expr::PrefixExpr(PrefixExpr { syntax }),
+            RANGE_EXPR => Expr::RangeExpr(RangeExpr { syntax }),
+            BIN_EXPR => Expr::BinExpr(BinExpr { syntax }),
+            LITERAL => Expr::Literal(Literal { syntax }),
+            MACRO_CALL => Expr::MacroCall(MacroCall { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Expr::TupleExpr(it) => &it.syntax,
+            Expr::ArrayExpr(it) => &it.syntax,
+            Expr::ParenExpr(it) => &it.syntax,
+            Expr::PathExpr(it) => &it.syntax,
+            Expr::LambdaExpr(it) => &it.syntax,
+            Expr::IfExpr(it) => &it.syntax,
+            Expr::LoopExpr(it) => &it.syntax,
+            Expr::ForExpr(it) => &it.syntax,
+            Expr::WhileExpr(it) => &it.syntax,
+            Expr::ContinueExpr(it) => &it.syntax,
+            Expr::BreakExpr(it) => &it.syntax,
+            Expr::Label(it) => &it.syntax,
+            Expr::BlockExpr(it) => &it.syntax,
+            Expr::ReturnExpr(it) => &it.syntax,
+            Expr::MatchExpr(it) => &it.syntax,
+            Expr::StructLit(it) => &it.syntax,
+            Expr::CallExpr(it) => &it.syntax,
+            Expr::IndexExpr(it) => &it.syntax,
+            Expr::MethodCallExpr(it) => &it.syntax,
+            Expr::FieldExpr(it) => &it.syntax,
+            Expr::AwaitExpr(it) => &it.syntax,
+            Expr::TryExpr(it) => &it.syntax,
+            Expr::TryBlockExpr(it) => &it.syntax,
+            Expr::CastExpr(it) => &it.syntax,
+            Expr::RefExpr(it) => &it.syntax,
+            Expr::PrefixExpr(it) => &it.syntax,
+            Expr::RangeExpr(it) => &it.syntax,
+            Expr::BinExpr(it) => &it.syntax,
+            Expr::Literal(it) => &it.syntax,
+            Expr::MacroCall(it) => &it.syntax,
         }
     }
 }
@@ -1167,8 +1186,25 @@ impl ImplBlock {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ImplItem {
-    pub(crate) syntax: SyntaxNode,
+pub enum ImplItem {
+    FnDef(FnDef),
+    TypeAliasDef(TypeAliasDef),
+    ConstDef(ConstDef),
+}
+impl From<FnDef> for ImplItem {
+    fn from(node: FnDef) -> ImplItem {
+        ImplItem::FnDef(node)
+    }
+}
+impl From<TypeAliasDef> for ImplItem {
+    fn from(node: TypeAliasDef) -> ImplItem {
+        ImplItem::TypeAliasDef(node)
+    }
+}
+impl From<ConstDef> for ImplItem {
+    fn from(node: ConstDef) -> ImplItem {
+        ImplItem::ConstDef(node)
+    }
 }
 impl AstNode for ImplItem {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -1178,44 +1214,19 @@ impl AstNode for ImplItem {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        let res = match syntax.kind() {
+            FN_DEF => ImplItem::FnDef(FnDef { syntax }),
+            TYPE_ALIAS_DEF => ImplItem::TypeAliasDef(TypeAliasDef { syntax }),
+            CONST_DEF => ImplItem::ConstDef(ConstDef { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-pub enum ImplItemKind {
-    FnDef(FnDef),
-    TypeAliasDef(TypeAliasDef),
-    ConstDef(ConstDef),
-}
-impl From<FnDef> for ImplItem {
-    fn from(node: FnDef) -> ImplItem {
-        ImplItem { syntax: node.syntax }
-    }
-}
-impl From<TypeAliasDef> for ImplItem {
-    fn from(node: TypeAliasDef) -> ImplItem {
-        ImplItem { syntax: node.syntax }
-    }
-}
-impl From<ConstDef> for ImplItem {
-    fn from(node: ConstDef) -> ImplItem {
-        ImplItem { syntax: node.syntax }
-    }
-}
-impl ImplItem {
-    pub fn kind(&self) -> ImplItemKind {
-        let syntax = self.syntax.clone();
-        match syntax.kind() {
-            FN_DEF => ImplItemKind::FnDef(FnDef { syntax }),
-            TYPE_ALIAS_DEF => ImplItemKind::TypeAliasDef(TypeAliasDef { syntax }),
-            CONST_DEF => ImplItemKind::ConstDef(ConstDef { syntax }),
-            _ => unreachable!(),
+        match self {
+            ImplItem::FnDef(it) => &it.syntax,
+            ImplItem::TypeAliasDef(it) => &it.syntax,
+            ImplItem::ConstDef(it) => &it.syntax,
         }
     }
 }
@@ -1774,29 +1785,7 @@ impl Module {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ModuleItem {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for ModuleItem {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STRUCT_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | IMPL_BLOCK | USE_ITEM
-            | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-pub enum ModuleItemKind {
+pub enum ModuleItem {
     StructDef(StructDef),
     EnumDef(EnumDef),
     FnDef(FnDef),
@@ -1811,75 +1800,97 @@ pub enum ModuleItemKind {
 }
 impl From<StructDef> for ModuleItem {
     fn from(node: StructDef) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::StructDef(node)
     }
 }
 impl From<EnumDef> for ModuleItem {
     fn from(node: EnumDef) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::EnumDef(node)
     }
 }
 impl From<FnDef> for ModuleItem {
     fn from(node: FnDef) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::FnDef(node)
     }
 }
 impl From<TraitDef> for ModuleItem {
     fn from(node: TraitDef) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::TraitDef(node)
     }
 }
 impl From<TypeAliasDef> for ModuleItem {
     fn from(node: TypeAliasDef) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::TypeAliasDef(node)
     }
 }
 impl From<ImplBlock> for ModuleItem {
     fn from(node: ImplBlock) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::ImplBlock(node)
     }
 }
 impl From<UseItem> for ModuleItem {
     fn from(node: UseItem) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::UseItem(node)
     }
 }
 impl From<ExternCrateItem> for ModuleItem {
     fn from(node: ExternCrateItem) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::ExternCrateItem(node)
     }
 }
 impl From<ConstDef> for ModuleItem {
     fn from(node: ConstDef) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::ConstDef(node)
     }
 }
 impl From<StaticDef> for ModuleItem {
     fn from(node: StaticDef) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::StaticDef(node)
     }
 }
 impl From<Module> for ModuleItem {
     fn from(node: Module) -> ModuleItem {
-        ModuleItem { syntax: node.syntax }
+        ModuleItem::Module(node)
     }
 }
-impl ModuleItem {
-    pub fn kind(&self) -> ModuleItemKind {
-        let syntax = self.syntax.clone();
-        match syntax.kind() {
-            STRUCT_DEF => ModuleItemKind::StructDef(StructDef { syntax }),
-            ENUM_DEF => ModuleItemKind::EnumDef(EnumDef { syntax }),
-            FN_DEF => ModuleItemKind::FnDef(FnDef { syntax }),
-            TRAIT_DEF => ModuleItemKind::TraitDef(TraitDef { syntax }),
-            TYPE_ALIAS_DEF => ModuleItemKind::TypeAliasDef(TypeAliasDef { syntax }),
-            IMPL_BLOCK => ModuleItemKind::ImplBlock(ImplBlock { syntax }),
-            USE_ITEM => ModuleItemKind::UseItem(UseItem { syntax }),
-            EXTERN_CRATE_ITEM => ModuleItemKind::ExternCrateItem(ExternCrateItem { syntax }),
-            CONST_DEF => ModuleItemKind::ConstDef(ConstDef { syntax }),
-            STATIC_DEF => ModuleItemKind::StaticDef(StaticDef { syntax }),
-            MODULE => ModuleItemKind::Module(Module { syntax }),
-            _ => unreachable!(),
+impl AstNode for ModuleItem {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            STRUCT_DEF | ENUM_DEF | FN_DEF | TRAIT_DEF | TYPE_ALIAS_DEF | IMPL_BLOCK | USE_ITEM
+            | EXTERN_CRATE_ITEM | CONST_DEF | STATIC_DEF | MODULE => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            STRUCT_DEF => ModuleItem::StructDef(StructDef { syntax }),
+            ENUM_DEF => ModuleItem::EnumDef(EnumDef { syntax }),
+            FN_DEF => ModuleItem::FnDef(FnDef { syntax }),
+            TRAIT_DEF => ModuleItem::TraitDef(TraitDef { syntax }),
+            TYPE_ALIAS_DEF => ModuleItem::TypeAliasDef(TypeAliasDef { syntax }),
+            IMPL_BLOCK => ModuleItem::ImplBlock(ImplBlock { syntax }),
+            USE_ITEM => ModuleItem::UseItem(UseItem { syntax }),
+            EXTERN_CRATE_ITEM => ModuleItem::ExternCrateItem(ExternCrateItem { syntax }),
+            CONST_DEF => ModuleItem::ConstDef(ConstDef { syntax }),
+            STATIC_DEF => ModuleItem::StaticDef(StaticDef { syntax }),
+            MODULE => ModuleItem::Module(Module { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            ModuleItem::StructDef(it) => &it.syntax,
+            ModuleItem::EnumDef(it) => &it.syntax,
+            ModuleItem::FnDef(it) => &it.syntax,
+            ModuleItem::TraitDef(it) => &it.syntax,
+            ModuleItem::TypeAliasDef(it) => &it.syntax,
+            ModuleItem::ImplBlock(it) => &it.syntax,
+            ModuleItem::UseItem(it) => &it.syntax,
+            ModuleItem::ExternCrateItem(it) => &it.syntax,
+            ModuleItem::ConstDef(it) => &it.syntax,
+            ModuleItem::StaticDef(it) => &it.syntax,
+            ModuleItem::Module(it) => &it.syntax,
         }
     }
 }
@@ -2069,8 +2080,19 @@ impl AstNode for NeverType {
 }
 impl NeverType {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NominalDef {
-    pub(crate) syntax: SyntaxNode,
+pub enum NominalDef {
+    StructDef(StructDef),
+    EnumDef(EnumDef),
+}
+impl From<StructDef> for NominalDef {
+    fn from(node: StructDef) -> NominalDef {
+        NominalDef::StructDef(node)
+    }
+}
+impl From<EnumDef> for NominalDef {
+    fn from(node: EnumDef) -> NominalDef {
+        NominalDef::EnumDef(node)
+    }
 }
 impl AstNode for NominalDef {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -2080,37 +2102,17 @@ impl AstNode for NominalDef {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        let res = match syntax.kind() {
+            STRUCT_DEF => NominalDef::StructDef(StructDef { syntax }),
+            ENUM_DEF => NominalDef::EnumDef(EnumDef { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-pub enum NominalDefKind {
-    StructDef(StructDef),
-    EnumDef(EnumDef),
-}
-impl From<StructDef> for NominalDef {
-    fn from(node: StructDef) -> NominalDef {
-        NominalDef { syntax: node.syntax }
-    }
-}
-impl From<EnumDef> for NominalDef {
-    fn from(node: EnumDef) -> NominalDef {
-        NominalDef { syntax: node.syntax }
-    }
-}
-impl NominalDef {
-    pub fn kind(&self) -> NominalDefKind {
-        let syntax = self.syntax.clone();
-        match syntax.kind() {
-            STRUCT_DEF => NominalDefKind::StructDef(StructDef { syntax }),
-            ENUM_DEF => NominalDefKind::EnumDef(EnumDef { syntax }),
-            _ => unreachable!(),
+        match self {
+            NominalDef::StructDef(it) => &it.syntax,
+            NominalDef::EnumDef(it) => &it.syntax,
         }
     }
 }
@@ -2232,29 +2234,7 @@ impl ParenType {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Pat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for Pat {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            REF_PAT | BIND_PAT | PLACEHOLDER_PAT | PATH_PAT | STRUCT_PAT | TUPLE_STRUCT_PAT
-            | TUPLE_PAT | SLICE_PAT | RANGE_PAT | LITERAL_PAT => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-pub enum PatKind {
+pub enum Pat {
     RefPat(RefPat),
     BindPat(BindPat),
     PlaceholderPat(PlaceholderPat),
@@ -2268,69 +2248,90 @@ pub enum PatKind {
 }
 impl From<RefPat> for Pat {
     fn from(node: RefPat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::RefPat(node)
     }
 }
 impl From<BindPat> for Pat {
     fn from(node: BindPat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::BindPat(node)
     }
 }
 impl From<PlaceholderPat> for Pat {
     fn from(node: PlaceholderPat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::PlaceholderPat(node)
     }
 }
 impl From<PathPat> for Pat {
     fn from(node: PathPat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::PathPat(node)
     }
 }
 impl From<StructPat> for Pat {
     fn from(node: StructPat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::StructPat(node)
     }
 }
 impl From<TupleStructPat> for Pat {
     fn from(node: TupleStructPat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::TupleStructPat(node)
     }
 }
 impl From<TuplePat> for Pat {
     fn from(node: TuplePat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::TuplePat(node)
     }
 }
 impl From<SlicePat> for Pat {
     fn from(node: SlicePat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::SlicePat(node)
     }
 }
 impl From<RangePat> for Pat {
     fn from(node: RangePat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::RangePat(node)
     }
 }
 impl From<LiteralPat> for Pat {
     fn from(node: LiteralPat) -> Pat {
-        Pat { syntax: node.syntax }
+        Pat::LiteralPat(node)
     }
 }
-impl Pat {
-    pub fn kind(&self) -> PatKind {
-        let syntax = self.syntax.clone();
-        match syntax.kind() {
-            REF_PAT => PatKind::RefPat(RefPat { syntax }),
-            BIND_PAT => PatKind::BindPat(BindPat { syntax }),
-            PLACEHOLDER_PAT => PatKind::PlaceholderPat(PlaceholderPat { syntax }),
-            PATH_PAT => PatKind::PathPat(PathPat { syntax }),
-            STRUCT_PAT => PatKind::StructPat(StructPat { syntax }),
-            TUPLE_STRUCT_PAT => PatKind::TupleStructPat(TupleStructPat { syntax }),
-            TUPLE_PAT => PatKind::TuplePat(TuplePat { syntax }),
-            SLICE_PAT => PatKind::SlicePat(SlicePat { syntax }),
-            RANGE_PAT => PatKind::RangePat(RangePat { syntax }),
-            LITERAL_PAT => PatKind::LiteralPat(LiteralPat { syntax }),
-            _ => unreachable!(),
+impl AstNode for Pat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            REF_PAT | BIND_PAT | PLACEHOLDER_PAT | PATH_PAT | STRUCT_PAT | TUPLE_STRUCT_PAT
+            | TUPLE_PAT | SLICE_PAT | RANGE_PAT | LITERAL_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            REF_PAT => Pat::RefPat(RefPat { syntax }),
+            BIND_PAT => Pat::BindPat(BindPat { syntax }),
+            PLACEHOLDER_PAT => Pat::PlaceholderPat(PlaceholderPat { syntax }),
+            PATH_PAT => Pat::PathPat(PathPat { syntax }),
+            STRUCT_PAT => Pat::StructPat(StructPat { syntax }),
+            TUPLE_STRUCT_PAT => Pat::TupleStructPat(TupleStructPat { syntax }),
+            TUPLE_PAT => Pat::TuplePat(TuplePat { syntax }),
+            SLICE_PAT => Pat::SlicePat(SlicePat { syntax }),
+            RANGE_PAT => Pat::RangePat(RangePat { syntax }),
+            LITERAL_PAT => Pat::LiteralPat(LiteralPat { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Pat::RefPat(it) => &it.syntax,
+            Pat::BindPat(it) => &it.syntax,
+            Pat::PlaceholderPat(it) => &it.syntax,
+            Pat::PathPat(it) => &it.syntax,
+            Pat::StructPat(it) => &it.syntax,
+            Pat::TupleStructPat(it) => &it.syntax,
+            Pat::TuplePat(it) => &it.syntax,
+            Pat::SlicePat(it) => &it.syntax,
+            Pat::RangePat(it) => &it.syntax,
+            Pat::LiteralPat(it) => &it.syntax,
         }
     }
 }
@@ -2951,8 +2952,19 @@ impl StaticDef {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Stmt {
-    pub(crate) syntax: SyntaxNode,
+pub enum Stmt {
+    ExprStmt(ExprStmt),
+    LetStmt(LetStmt),
+}
+impl From<ExprStmt> for Stmt {
+    fn from(node: ExprStmt) -> Stmt {
+        Stmt::ExprStmt(node)
+    }
+}
+impl From<LetStmt> for Stmt {
+    fn from(node: LetStmt) -> Stmt {
+        Stmt::LetStmt(node)
+    }
 }
 impl AstNode for Stmt {
     fn can_cast(kind: SyntaxKind) -> bool {
@@ -2962,37 +2974,17 @@ impl AstNode for Stmt {
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
+        let res = match syntax.kind() {
+            EXPR_STMT => Stmt::ExprStmt(ExprStmt { syntax }),
+            LET_STMT => Stmt::LetStmt(LetStmt { syntax }),
+            _ => return None,
+        };
+        Some(res)
     }
     fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-pub enum StmtKind {
-    ExprStmt(ExprStmt),
-    LetStmt(LetStmt),
-}
-impl From<ExprStmt> for Stmt {
-    fn from(node: ExprStmt) -> Stmt {
-        Stmt { syntax: node.syntax }
-    }
-}
-impl From<LetStmt> for Stmt {
-    fn from(node: LetStmt) -> Stmt {
-        Stmt { syntax: node.syntax }
-    }
-}
-impl Stmt {
-    pub fn kind(&self) -> StmtKind {
-        let syntax = self.syntax.clone();
-        match syntax.kind() {
-            EXPR_STMT => StmtKind::ExprStmt(ExprStmt { syntax }),
-            LET_STMT => StmtKind::LetStmt(LetStmt { syntax }),
-            _ => unreachable!(),
+        match self {
+            Stmt::ExprStmt(it) => &it.syntax,
+            Stmt::LetStmt(it) => &it.syntax,
         }
     }
 }
@@ -3508,30 +3500,7 @@ impl TypeParamList {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeRef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for TypeRef {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            PAREN_TYPE | TUPLE_TYPE | NEVER_TYPE | PATH_TYPE | POINTER_TYPE | ARRAY_TYPE
-            | SLICE_TYPE | REFERENCE_TYPE | PLACEHOLDER_TYPE | FN_POINTER_TYPE | FOR_TYPE
-            | IMPL_TRAIT_TYPE | DYN_TRAIT_TYPE => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-pub enum TypeRefKind {
+pub enum TypeRef {
     ParenType(ParenType),
     TupleType(TupleType),
     NeverType(NeverType),
@@ -3548,87 +3517,112 @@ pub enum TypeRefKind {
 }
 impl From<ParenType> for TypeRef {
     fn from(node: ParenType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::ParenType(node)
     }
 }
 impl From<TupleType> for TypeRef {
     fn from(node: TupleType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::TupleType(node)
     }
 }
 impl From<NeverType> for TypeRef {
     fn from(node: NeverType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::NeverType(node)
     }
 }
 impl From<PathType> for TypeRef {
     fn from(node: PathType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::PathType(node)
     }
 }
 impl From<PointerType> for TypeRef {
     fn from(node: PointerType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::PointerType(node)
     }
 }
 impl From<ArrayType> for TypeRef {
     fn from(node: ArrayType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::ArrayType(node)
     }
 }
 impl From<SliceType> for TypeRef {
     fn from(node: SliceType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::SliceType(node)
     }
 }
 impl From<ReferenceType> for TypeRef {
     fn from(node: ReferenceType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::ReferenceType(node)
     }
 }
 impl From<PlaceholderType> for TypeRef {
     fn from(node: PlaceholderType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::PlaceholderType(node)
     }
 }
 impl From<FnPointerType> for TypeRef {
     fn from(node: FnPointerType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::FnPointerType(node)
     }
 }
 impl From<ForType> for TypeRef {
     fn from(node: ForType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::ForType(node)
     }
 }
 impl From<ImplTraitType> for TypeRef {
     fn from(node: ImplTraitType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::ImplTraitType(node)
     }
 }
 impl From<DynTraitType> for TypeRef {
     fn from(node: DynTraitType) -> TypeRef {
-        TypeRef { syntax: node.syntax }
+        TypeRef::DynTraitType(node)
     }
 }
-impl TypeRef {
-    pub fn kind(&self) -> TypeRefKind {
-        let syntax = self.syntax.clone();
-        match syntax.kind() {
-            PAREN_TYPE => TypeRefKind::ParenType(ParenType { syntax }),
-            TUPLE_TYPE => TypeRefKind::TupleType(TupleType { syntax }),
-            NEVER_TYPE => TypeRefKind::NeverType(NeverType { syntax }),
-            PATH_TYPE => TypeRefKind::PathType(PathType { syntax }),
-            POINTER_TYPE => TypeRefKind::PointerType(PointerType { syntax }),
-            ARRAY_TYPE => TypeRefKind::ArrayType(ArrayType { syntax }),
-            SLICE_TYPE => TypeRefKind::SliceType(SliceType { syntax }),
-            REFERENCE_TYPE => TypeRefKind::ReferenceType(ReferenceType { syntax }),
-            PLACEHOLDER_TYPE => TypeRefKind::PlaceholderType(PlaceholderType { syntax }),
-            FN_POINTER_TYPE => TypeRefKind::FnPointerType(FnPointerType { syntax }),
-            FOR_TYPE => TypeRefKind::ForType(ForType { syntax }),
-            IMPL_TRAIT_TYPE => TypeRefKind::ImplTraitType(ImplTraitType { syntax }),
-            DYN_TRAIT_TYPE => TypeRefKind::DynTraitType(DynTraitType { syntax }),
-            _ => unreachable!(),
+impl AstNode for TypeRef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            PAREN_TYPE | TUPLE_TYPE | NEVER_TYPE | PATH_TYPE | POINTER_TYPE | ARRAY_TYPE
+            | SLICE_TYPE | REFERENCE_TYPE | PLACEHOLDER_TYPE | FN_POINTER_TYPE | FOR_TYPE
+            | IMPL_TRAIT_TYPE | DYN_TRAIT_TYPE => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            PAREN_TYPE => TypeRef::ParenType(ParenType { syntax }),
+            TUPLE_TYPE => TypeRef::TupleType(TupleType { syntax }),
+            NEVER_TYPE => TypeRef::NeverType(NeverType { syntax }),
+            PATH_TYPE => TypeRef::PathType(PathType { syntax }),
+            POINTER_TYPE => TypeRef::PointerType(PointerType { syntax }),
+            ARRAY_TYPE => TypeRef::ArrayType(ArrayType { syntax }),
+            SLICE_TYPE => TypeRef::SliceType(SliceType { syntax }),
+            REFERENCE_TYPE => TypeRef::ReferenceType(ReferenceType { syntax }),
+            PLACEHOLDER_TYPE => TypeRef::PlaceholderType(PlaceholderType { syntax }),
+            FN_POINTER_TYPE => TypeRef::FnPointerType(FnPointerType { syntax }),
+            FOR_TYPE => TypeRef::ForType(ForType { syntax }),
+            IMPL_TRAIT_TYPE => TypeRef::ImplTraitType(ImplTraitType { syntax }),
+            DYN_TRAIT_TYPE => TypeRef::DynTraitType(DynTraitType { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            TypeRef::ParenType(it) => &it.syntax,
+            TypeRef::TupleType(it) => &it.syntax,
+            TypeRef::NeverType(it) => &it.syntax,
+            TypeRef::PathType(it) => &it.syntax,
+            TypeRef::PointerType(it) => &it.syntax,
+            TypeRef::ArrayType(it) => &it.syntax,
+            TypeRef::SliceType(it) => &it.syntax,
+            TypeRef::ReferenceType(it) => &it.syntax,
+            TypeRef::PlaceholderType(it) => &it.syntax,
+            TypeRef::FnPointerType(it) => &it.syntax,
+            TypeRef::ForType(it) => &it.syntax,
+            TypeRef::ImplTraitType(it) => &it.syntax,
+            TypeRef::DynTraitType(it) => &it.syntax,
         }
     }
 }

@@ -5,7 +5,7 @@ use crate::{
 
 use hir::{db::HirDatabase, HasSource};
 use ra_db::FilePosition;
-use ra_syntax::ast::{self, AstNode, ImplItemKind, NameOwner};
+use ra_syntax::ast::{self, AstNode, NameOwner};
 use ra_syntax::SmolStr;
 
 #[derive(PartialEq)]
@@ -49,11 +49,11 @@ fn add_missing_impl_members_inner(
         resolve_target_trait_def(ctx.db, &analyzer, &impl_node)?
     };
 
-    let def_name = |kind| -> Option<SmolStr> {
-        match kind {
-            ast::ImplItemKind::FnDef(def) => def.name(),
-            ast::ImplItemKind::TypeAliasDef(def) => def.name(),
-            ast::ImplItemKind::ConstDef(def) => def.name(),
+    let def_name = |item: &ast::ImplItem| -> Option<SmolStr> {
+        match item {
+            ast::ImplItem::FnDef(def) => def.name(),
+            ast::ImplItem::TypeAliasDef(def) => def.name(),
+            ast::ImplItem::ConstDef(def) => def.name(),
         }
         .map(|it| it.text().clone())
     };
@@ -62,15 +62,15 @@ fn add_missing_impl_members_inner(
     let impl_items = impl_item_list.impl_items().collect::<Vec<_>>();
 
     let missing_items: Vec<_> = trait_items
-        .filter(|t| def_name(t.kind()).is_some())
-        .filter(|t| match t.kind() {
-            ImplItemKind::FnDef(def) => match mode {
+        .filter(|t| def_name(t).is_some())
+        .filter(|t| match t {
+            ast::ImplItem::FnDef(def) => match mode {
                 AddMissingImplMembersMode::DefaultMethodsOnly => def.body().is_some(),
                 AddMissingImplMembersMode::NoDefaultMethods => def.body().is_none(),
             },
             _ => mode == AddMissingImplMembersMode::NoDefaultMethods,
         })
-        .filter(|t| impl_items.iter().all(|i| def_name(i.kind()) != def_name(t.kind())))
+        .filter(|t| impl_items.iter().all(|i| def_name(i) != def_name(t)))
         .collect();
     if missing_items.is_empty() {
         return None;
@@ -78,8 +78,8 @@ fn add_missing_impl_members_inner(
 
     ctx.add_action(AssistId(assist_id), label, |edit| {
         let n_existing_items = impl_item_list.impl_items().count();
-        let items = missing_items.into_iter().map(|it| match it.kind() {
-            ImplItemKind::FnDef(def) => strip_docstring(add_body(def).into()),
+        let items = missing_items.into_iter().map(|it| match it {
+            ast::ImplItem::FnDef(def) => strip_docstring(add_body(def).into()),
             _ => strip_docstring(it),
         });
         let mut ast_editor = AstEditor::new(impl_item_list);

@@ -1,6 +1,6 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
-    ast::{self, AstNode, AstToken, ExprKind, PatKind},
+    ast::{self, AstNode, AstToken},
     TextRange,
 };
 
@@ -9,8 +9,8 @@ use crate::{Assist, AssistCtx, AssistId};
 
 pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let let_stmt = ctx.node_at_offset::<ast::LetStmt>()?;
-    let bind_pat = match let_stmt.pat()?.kind() {
-        PatKind::BindPat(pat) => pat,
+    let bind_pat = match let_stmt.pat()? {
+        ast::Pat::BindPat(pat) => pat,
         _ => return None,
     };
     if bind_pat.is_mutable() {
@@ -48,28 +48,28 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
             }
         };
 
-        wrap_in_parens[i] = match (initializer_expr.kind(), usage_parent.kind()) {
-            (ExprKind::CallExpr(_), _)
-            | (ExprKind::IndexExpr(_), _)
-            | (ExprKind::MethodCallExpr(_), _)
-            | (ExprKind::FieldExpr(_), _)
-            | (ExprKind::TryExpr(_), _)
-            | (ExprKind::RefExpr(_), _)
-            | (ExprKind::Literal(_), _)
-            | (ExprKind::TupleExpr(_), _)
-            | (ExprKind::ArrayExpr(_), _)
-            | (ExprKind::ParenExpr(_), _)
-            | (ExprKind::PathExpr(_), _)
-            | (ExprKind::BlockExpr(_), _)
-            | (_, ExprKind::CallExpr(_))
-            | (_, ExprKind::TupleExpr(_))
-            | (_, ExprKind::ArrayExpr(_))
-            | (_, ExprKind::ParenExpr(_))
-            | (_, ExprKind::ForExpr(_))
-            | (_, ExprKind::WhileExpr(_))
-            | (_, ExprKind::BreakExpr(_))
-            | (_, ExprKind::ReturnExpr(_))
-            | (_, ExprKind::MatchExpr(_)) => false,
+        wrap_in_parens[i] = match (&initializer_expr, usage_parent) {
+            (ast::Expr::CallExpr(_), _)
+            | (ast::Expr::IndexExpr(_), _)
+            | (ast::Expr::MethodCallExpr(_), _)
+            | (ast::Expr::FieldExpr(_), _)
+            | (ast::Expr::TryExpr(_), _)
+            | (ast::Expr::RefExpr(_), _)
+            | (ast::Expr::Literal(_), _)
+            | (ast::Expr::TupleExpr(_), _)
+            | (ast::Expr::ArrayExpr(_), _)
+            | (ast::Expr::ParenExpr(_), _)
+            | (ast::Expr::PathExpr(_), _)
+            | (ast::Expr::BlockExpr(_), _)
+            | (_, ast::Expr::CallExpr(_))
+            | (_, ast::Expr::TupleExpr(_))
+            | (_, ast::Expr::ArrayExpr(_))
+            | (_, ast::Expr::ParenExpr(_))
+            | (_, ast::Expr::ForExpr(_))
+            | (_, ast::Expr::WhileExpr(_))
+            | (_, ast::Expr::BreakExpr(_))
+            | (_, ast::Expr::ReturnExpr(_))
+            | (_, ast::Expr::MatchExpr(_)) => false,
             _ => true,
         };
     }
