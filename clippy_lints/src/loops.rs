@@ -11,7 +11,7 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
-use crate::utils::{in_macro_or_desugar, sext, sugg};
+use crate::utils::{sext, sugg};
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;
@@ -470,7 +470,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // we don't want to check expanded macros
-        if in_macro_or_desugar(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
 
@@ -1034,7 +1034,7 @@ fn check_for_loop_range<'a, 'tcx>(
     body: &'tcx Expr,
     expr: &'tcx Expr,
 ) {
-    if in_macro_or_desugar(expr.span) {
+    if expr.span.from_expansion() {
         return;
     }
 

@@ -92,11 +92,6 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
     }
 }
 
-/// Returns `true` if this `span` was expanded by any macro or desugaring
-pub fn in_macro_or_desugar(span: Span) -> bool {
-    span.from_expansion()
-}
-
 /// Returns `true` if this `span` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
     if span.from_expansion() {
@@ -349,7 +344,7 @@ pub fn method_calls(expr: &Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&[Expr]>
     let mut current = expr;
     for _ in 0..max_depth {
         if let ExprKind::MethodCall(path, _, args) = &current.node {
-            if args.iter().any(|e| in_macro_or_desugar(e.span)) {
+            if args.iter().any(|e| e.span.from_expansion()) {
                 break;
             }
             method_names.push(path.ident.name);
@@ -376,7 +371,7 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
         // method chains are stored last -> first
         if let ExprKind::MethodCall(ref path, _, ref args) = current.node {
             if path.ident.name.as_str() == *method_name {
-                if args.iter().any(|e| in_macro_or_desugar(e.span)) {
+                if args.iter().any(|e| e.span.from_expansion()) {
                     return None;
                 }
                 matched.push(&**args); // build up `matched` backwards
@@ -471,7 +466,7 @@ pub fn snippet_with_applicability<'a, T: LintContext>(
     default: &'a str,
     applicability: &mut Applicability,
 ) -> Cow<'a, str> {
-    if *applicability != Applicability::Unspecified && in_macro_or_desugar(span) {
+    if *applicability != Applicability::Unspecified && span.from_expansion() {
         *applicability = Applicability::MaybeIncorrect;
     }
     snippet_opt(cx, span).map_or_else(
@@ -536,7 +531,7 @@ pub fn last_line_of_span<T: LintContext>(cx: &T, span: Span) -> Span {
 pub fn expr_block<'a, T: LintContext>(cx: &T, expr: &Expr, option: Option<String>, default: &'a str) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     let string = option.unwrap_or_default();
-    if in_macro_or_desugar(expr.span) {
+    if expr.span.from_expansion() {
         Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
     } else if let ExprKind::Block(_, _) = expr.node {
         Cow::Owned(format!("{}{}", code, string))

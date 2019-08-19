@@ -2,8 +2,8 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro_or_desugar, is_present_in_source, last_line_of_span, match_def_path, paths, snippet_opt, span_lint,
-    span_lint_and_sugg, span_lint_and_then, without_block_comments,
+    is_present_in_source, last_line_of_span, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg,
+    span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -412,7 +412,7 @@ fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, exp
 }
 
 fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attribute]) {
-    if in_macro_or_desugar(span) {
+    if span.from_expansion() {
         return;
     }
 

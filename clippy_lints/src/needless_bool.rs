@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use crate::utils::sugg::Sugg;
-use crate::utils::{higher, in_macro_or_desugar, span_lint, span_lint_and_sugg};
+use crate::utils::{higher, span_lint, span_lint_and_sugg};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -129,7 +129,7 @@ declare_lint_pass!(BoolComparison => [BOOL_COMPARISON]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if in_macro_or_desugar(e.span) {
+        if e.span.from_expansion() {
             return;
         }
 

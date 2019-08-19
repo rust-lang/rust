@@ -1,6 +1,6 @@
 use crate::utils::{
-    has_drop, in_macro_or_desugar, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_hir,
-    span_lint_hir_and_then, walk_ptrs_ty_depth,
+    has_drop, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
+    walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {
             let terminator = bbdata.terminator();
 
-            if in_macro_or_desugar(terminator.source_info.span) {
+            if terminator.source_info.span.from_expansion() {
                 continue;
             }
 

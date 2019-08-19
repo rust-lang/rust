@@ -23,8 +23,8 @@ use syntax::symbol::sym;
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
-    clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro_or_desugar, int_bits, last_path_segment,
-    match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
+    clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, last_path_segment, match_def_path,
+    match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
     snippet_with_macro_callsite, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
@@ -234,7 +234,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
 /// local bindings should only be checked for the `BORROWED_BOX` lint.
 #[allow(clippy::too_many_lines)]
 fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
-    if in_macro_or_desugar(hir_ty.span) {
+    if hir_ty.span.from_expansion() {
         return;
     }
     match hir_ty.node {
@@ -462,7 +462,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetUnitValue {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtKind::Local(ref local) = stmt.node {
             if is_unit(cx.tables.pat_ty(&local.pat)) {
-                if in_external_macro(cx.sess(), stmt.span) || in_macro_or_desugar(local.pat.span) {
+                if in_external_macro(cx.sess(), stmt.span) || local.pat.span.from_expansion() {
                     return;
                 }
                 if higher::is_from_for_desugar(local) {
@@ -526,7 +526,7 @@ declare_lint_pass!(UnitCmp => [UNIT_CMP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if in_macro_or_desugar(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
         if let ExprKind::Binary(ref cmp, ref left, _) = expr.node {
@@ -575,7 +575,7 @@ declare_lint_pass!(UnitArg => [UNIT_ARG]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if in_macro_or_desugar(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
 
@@ -1115,7 +1115,7 @@ fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if in_macro_or_desugar(expr.span) {
+        if expr.span.from_expansion() {
             return;
         }
         if let ExprKind::Cast(ref ex, _) = expr.node {
@@ -1381,7 +1381,7 @@ impl<'a, 'tcx> TypeComplexity {
     }
 
     fn check_type(&self, cx: &LateContext<'_, '_>, ty: &hir::Ty) {
-        if in_macro_or_desugar(ty.span) {
+        if ty.span.from_expansion() {
             return;
         }
         let score = {
@@ -1485,7 +1485,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
         if let ExprKind::Cast(ref e, _) = expr.node {
             if let ExprKind::Lit(ref l) = e.node {
                 if let LitKind::Char(_) = l.node {
-                    if ty::Uint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !in_macro_or_desugar(expr.span) {
+                    if ty::Uint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !expr.span.from_expansion() {
                         let msg = "casting character literal to u8. `char`s \
                                    are 4 bytes wide in rust, so casting to u8 \
                                    truncates them";
@@ -1646,7 +1646,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
 
         if let ExprKind::Binary(ref cmp, ref lhs, ref rhs) = expr.node {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
-                if !in_macro_or_desugar(expr.span) {
+                if !expr.span.from_expansion() {
                     let msg = "this comparison involving the minimum or maximum element for this \
                                type contains a case that is always true or always false";
 

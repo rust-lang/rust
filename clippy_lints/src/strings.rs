@@ -145,7 +145,7 @@ declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        use crate::utils::{in_macro_or_desugar, snippet, snippet_with_applicability};
+        use crate::utils::{snippet, snippet_with_applicability};
         use syntax::ast::{LitKind, StrStyle};
 
         if let ExprKind::MethodCall(ref path, _, ref args) = e.node {
@@ -177,7 +177,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                         } else if callsite == expanded
                             && lit_content.as_str().chars().all(|c| c.is_ascii())
                             && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
-                            && !in_macro_or_desugar(args[0].span)
+                            && !args[0].span.from_expansion()
                         {
                             span_lint_and_sugg(
                                 cx,
