@@ -97,9 +97,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Align::from_bytes(1).unwrap()
         )?.expect("we already checked for size 0");
 
-        let rng = this.memory_mut().extra.rng.get_mut();
         let mut data = vec![0; len];
-        rng.fill_bytes(&mut data);
+
+        if this.machine.communicate {
+            // Fill the buffer using the host's rng.
+            getrandom::getrandom(&mut data).map_err(|err| {
+                InterpError::Unsupported(UnsupportedOpInfo::Unsupported(err.to_string()))
+            })?;
+        }
+        else {
+            let rng = this.memory_mut().extra.rng.get_mut();
+            rng.fill_bytes(&mut data);
+        }
 
         let tcx = &{this.tcx.tcx};
         this.memory_mut().get_mut(ptr.alloc_id)?.write_bytes(tcx, ptr, &data)
