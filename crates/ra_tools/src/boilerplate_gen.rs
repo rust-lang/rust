@@ -195,10 +195,8 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
 
     let ast = quote! {
         #![allow(bad_style, missing_docs, unreachable_pub)]
-        use super::SyntaxInfo;
-
         /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         #[repr(u16)]
         pub enum SyntaxKind {
             // Technical SyntaxKinds: they appear temporally during parsing,
@@ -219,19 +217,6 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
         }
         use self::SyntaxKind::*;
 
-        impl From<u16> for SyntaxKind {
-            fn from(d: u16) -> SyntaxKind {
-                assert!(d <= (__LAST as u16));
-                unsafe { std::mem::transmute::<u16, SyntaxKind>(d) }
-            }
-        }
-
-        impl From<SyntaxKind> for u16 {
-            fn from(k: SyntaxKind) -> u16 {
-                k as u16
-            }
-        }
-
         impl SyntaxKind {
             pub fn is_keyword(self) -> bool {
                 match self {
@@ -251,19 +236,6 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
                 match self {
                     #(#literals)|* => true,
                     _ => false,
-                }
-            }
-
-            pub(crate) fn info(self) -> &'static SyntaxInfo {
-                match self {
-                    #(#punctuation => &SyntaxInfo { name: stringify!(#punctuation) },)*
-                    #(#all_keywords => &SyntaxInfo { name: stringify!(#all_keywords) },)*
-                    #(#literals => &SyntaxInfo { name: stringify!(#literals) },)*
-                    #(#tokens => &SyntaxInfo { name: stringify!(#tokens) },)*
-                    #(#nodes => &SyntaxInfo { name: stringify!(#nodes) },)*
-                    TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
-                    EOF => &SyntaxInfo { name: "EOF" },
-                    __LAST => &SyntaxInfo { name: "__LAST" },
                 }
             }
 
