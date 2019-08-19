@@ -75,45 +75,33 @@ pub fn current_exe() -> io::Result<PathBuf> {
 }
 
 pub struct Env {
-    iter: vec::IntoIter<(OsString, OsString)>,
+    iter: Vec<Vec<u8>>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> { self.iter.next() }
+    fn next(&mut self) -> Option<(OsString, OsString)> {
+        self.iter.next().and_then(|input| {
+            // See src/libstd/sys/unix/os.rs, same as that
+            if input.is_empty() {
+                return None;
+            }
+            let pos = memchr::memchr(b'=', &input[1..]).map(|p| p + 1);
+            pos.map(|p| (
+                OsStringExt::from_vec(input[..p].to_vec()),
+                OsStringExt::from_vec(input[p+1..].to_vec()),
+            ))
+        })
+    }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
 
 pub fn env() -> Env {
-    unsafe {
-        let _guard = env_lock();
-        // FIXME: replace with wasi::environ_get
-        let mut environ = libc::environ;
-        let mut result = Vec::new();
-        while environ != ptr::null_mut() && *environ != ptr::null_mut() {
-            if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
-                result.push(key_value);
-            }
-            environ = environ.offset(1);
-        }
-        return Env {
-            iter: result.into_iter(),
-            _dont_send_or_sync_me: PhantomData,
-        }
-    }
-
-    // See src/libstd/sys/unix/os.rs, same as that
-    fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
-        if input.is_empty() {
-            return None;
-        }
-        let pos = memchr::memchr(b'=', &input[1..]).map(|p| p + 1);
-        pos.map(|p| (
-            OsStringExt::from_vec(input[..p].to_vec()),
-            OsStringExt::from_vec(input[p+1..].to_vec()),
-        ))
+    Env {
+        iter: wasi::get_environ().unwrap_or(Vec::new()),
+        _dont_send_or_sync_me: PhantomData,
     }
 }
 

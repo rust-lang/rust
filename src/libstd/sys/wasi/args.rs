@@ -1,6 +1,5 @@
 use crate::ffi::CStr;
 use crate::io;
-use crate::sys::cvt_wasi;
 use crate::ffi::OsString;
 use crate::marker::PhantomData;
 use crate::os::wasi::ffi::OsStringExt;
