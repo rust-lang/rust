@@ -2,14 +2,14 @@
 name = "testcrate"
 version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
+edition = "2018"
 
 [lib]
 test = false
 doctest = false
 
 [build-dependencies]
-cast = { version = "0.2.2", features = ["x128"] }
-rand = { version = "0.4", features = ["i128_support"] }
+rand = "0.7"
 
 [dependencies.compiler_builtins]
 path = ".."
