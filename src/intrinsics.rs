@@ -513,8 +513,8 @@ pub fn codegen_intrinsic_call<'tcx>(
             let max = fx.bcx.ins().iconst(clif_ty, max);
 
             let val = match (intrinsic, signed) {
-                ("saturating_add", false) => fx.bcx.ins().select(has_overflow, max, val),
-                ("saturating_sub", false) => fx.bcx.ins().select(has_overflow, min, val),
+                ("saturating_add", false) => codegen_select(&mut fx.bcx, has_overflow, max, val),
+                ("saturating_sub", false) => codegen_select(&mut fx.bcx, has_overflow, min, val),
                 ("saturating_add", true) => unimplemented!(),
                 ("saturating_sub", true) => unimplemented!(),
                 _ => unreachable!(),
