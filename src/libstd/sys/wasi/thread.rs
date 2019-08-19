@@ -4,7 +4,6 @@ use crate::io;
 use crate::mem;
 use crate::sys::{unsupported, Void};
 use crate::time::Duration;
-use libc;
 
 pub struct Thread(Void);
 
