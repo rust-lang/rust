@@ -75,7 +75,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 }
 
 pub struct Env {
-    iter: Vec<Vec<u8>>,
+    iter: vec::IntoIter<Vec<u8>>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
@@ -100,7 +100,7 @@ impl Iterator for Env {
 
 pub fn env() -> Env {
     Env {
-        iter: wasi::get_environ().unwrap_or(Vec::new()),
+        iter: wasi::get_environ().unwrap_or(Vec::new()).into_iter(),
         _dont_send_or_sync_me: PhantomData,
     }
 }
