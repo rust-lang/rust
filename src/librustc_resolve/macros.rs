@@ -182,6 +182,10 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate> {
+        if !self.invocations.contains_key(&invoc.expansion_data.id) {
+            self.invocations.insert(invoc.expansion_data.id, self.invocations[&invoc_id]);
+        }
+        let invoc_id = invoc.expansion_data.id;
         let (path, kind, derives_in_scope, after_derive) = match invoc.kind {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
                 (&attr.path, MacroKind::Attr, derives.clone(), after_derive),
@@ -201,7 +205,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                         match self.resolve_macro_path(path, Some(MacroKind::Derive),
                                                       parent_scope, true, force) {
                             Ok((Some(ref ext), _)) if ext.is_derive_copy => {
-                                self.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
+                                self.add_derives(invoc_id, SpecialDerives::COPY);
                                 return Ok(None);
                             }
                             Err(Determinacy::Undetermined) => result = Err(Indeterminate),
@@ -217,17 +221,15 @@ impl<'a> base::Resolver for Resolver<'a> {
         let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, force)?;
 
         let span = invoc.span();
-        invoc.expansion_data.id.set_expn_info(ext.expn_info(span, fast_print_path(path)));
+        invoc_id.set_expn_info(ext.expn_info(span, fast_print_path(path)));
 
         if let Res::Def(_, def_id) = res {
             if after_derive {
                 self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
             }
-            self.macro_defs.insert(invoc.expansion_data.id, def_id);
-            let normal_module_def_id =
-                self.macro_def_scope(invoc.expansion_data.id).normal_ancestor_id;
-            self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.id,
-                                                            normal_module_def_id);
+            self.macro_defs.insert(invoc_id, def_id);
+            let normal_module_def_id = self.macro_def_scope(invoc_id).normal_ancestor_id;
+            self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
         }
 
         Ok(Some(ext))
