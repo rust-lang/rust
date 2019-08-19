@@ -23,9 +23,6 @@ pub enum TokenKind {
     Lifetime { starts_with_number: bool },
     Semi,
     Comma,
-    DotDotDot,
-    DotDotEq,
-    DotDot,
     Dot,
     OpenParen,
     CloseParen,
@@ -37,41 +34,19 @@ pub enum TokenKind {
     Pound,
     Tilde,
     Question,
-    ColonColon,
     Colon,
     Dollar,
-    EqEq,
     Eq,
-    FatArrow,
-    Ne,
     Not,
-    Le,
-    LArrow,
     Lt,
-    ShlEq,
-    Shl,
-    Ge,
     Gt,
-    ShrEq,
-    Shr,
-    RArrow,
     Minus,
-    MinusEq,
     And,
-    AndAnd,
-    AndEq,
     Or,
-    OrOr,
-    OrEq,
-    PlusEq,
     Plus,
-    StarEq,
     Star,
-    SlashEq,
     Slash,
-    CaretEq,
     Caret,
-    PercentEq,
     Percent,
     Unknown,
 }
@@ -135,13 +110,7 @@ impl Cursor<'_> {
             '/' => match self.nth_char(0) {
                 '/' => self.line_comment(),
                 '*' => self.block_comment(),
-                _ => {
-                    if self.eat_assign() {
-                        SlashEq
-                    } else {
-                        Slash
-                    }
-                }
+                _ => Slash,
             },
             c if character_properties::is_whitespace(c) => self.whitespace(),
             'r' => match (self.nth_char(0), self.nth_char(1)) {
@@ -199,22 +168,7 @@ impl Cursor<'_> {
             }
             ';' => Semi,
             ',' => Comma,
-            '.' => {
-                if self.nth_char(0) == '.' {
-                    self.bump();
-                    if self.nth_char(0) == '.' {
-                        self.bump();
-                        DotDotDot
-                    } else if self.nth_char(0) == '=' {
-                        self.bump();
-                        DotDotEq
-                    } else {
-                        DotDot
-                    }
-                } else {
-                    Dot
-                }
-            }
+            '.' => Dot,
             '(' => OpenParen,
             ')' => CloseParen,
             '{' => OpenBrace,
@@ -225,112 +179,19 @@ impl Cursor<'_> {
             '#' => Pound,
             '~' => Tilde,
             '?' => Question,
-            ':' => {
-                if self.nth_char(0) == ':' {
-                    self.bump();
-                    ColonColon
-                } else {
-                    Colon
-                }
-            }
+            ':' => Colon,
             '$' => Dollar,
-            '=' => {
-                if self.nth_char(0) == '=' {
-                    self.bump();
-                    EqEq
-                } else if self.nth_char(0) == '>' {
-                    self.bump();
-                    FatArrow
-                } else {
-                    Eq
-                }
-            }
-            '!' => {
-                if self.nth_char(0) == '=' {
-                    self.bump();
-                    Ne
-                } else {
-                    Not
-                }
-            }
-            '<' => match self.nth_char(0) {
-                '=' => {
-                    self.bump();
-                    Le
-                }
-                '<' => {
-                    self.bump();
-                    if self.eat_assign() { ShlEq } else { Shl }
-                }
-                '-' => {
-                    self.bump();
-                    LArrow
-                }
-                _ => Lt,
-            },
-            '>' => match self.nth_char(0) {
-                '=' => {
-                    self.bump();
-                    Ge
-                }
-                '>' => {
-                    self.bump();
-                    if self.eat_assign() { ShrEq } else { Shr }
-                }
-                _ => Gt,
-            },
-            '-' => {
-                if self.nth_char(0) == '>' {
-                    self.bump();
-                    RArrow
-                } else {
-                    if self.eat_assign() { MinusEq } else { Minus }
-                }
-            }
-            '&' => {
-                if self.nth_char(0) == '&' {
-                    self.bump();
-                    AndAnd
-                } else {
-                    if self.eat_assign() { AndEq } else { And }
-                }
-            }
-            '|' => {
-                if self.nth_char(0) == '|' {
-                    self.bump();
-                    OrOr
-                } else {
-                    if self.eat_assign() { OrEq } else { Or }
-                }
-            }
-            '+' => {
-                if self.eat_assign() {
-                    PlusEq
-                } else {
-                    Plus
-                }
-            }
-            '*' => {
-                if self.eat_assign() {
-                    StarEq
-                } else {
-                    Star
-                }
-            }
-            '^' => {
-                if self.eat_assign() {
-                    CaretEq
-                } else {
-                    Caret
-                }
-            }
-            '%' => {
-                if self.eat_assign() {
-                    PercentEq
-                } else {
-                    Percent
-                }
-            }
+            '=' => Eq,
+            '!' => Not,
+            '<' => Lt,
+            '>' => Gt,
+            '-' => Minus,
+            '&' => And,
+            '|' => Or,
+            '+' => Plus,
+            '*' => Star,
+            '^' => Caret,
+            '%' => Percent,
             '\'' => self.lifetime_or_char(),
             '"' => {
                 let terminated = self.double_quoted_string();
@@ -641,15 +502,6 @@ impl Cursor<'_> {
 
         while character_properties::is_id_continue(self.nth_char(0)) {
             self.bump();
-        }
-    }
-
-    fn eat_assign(&mut self) -> bool {
-        if self.nth_char(0) == '=' {
-            self.bump();
-            true
-        } else {
-            false
         }
     }
 }
