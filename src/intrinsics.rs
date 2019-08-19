@@ -326,8 +326,11 @@ pub fn codegen_intrinsic_call<'tcx>(
         fabsf64(flt) -> f64 => fabs,
         fmaf32(x, y, z) -> f32 => fmaf,
         fmaf64(x, y, z) -> f64 => fma,
+        copysignf32(x, y) -> f32 => copysignf,
+        copysignf64(x, y) -> f64 => copysign,
 
         // rounding variants
+        // FIXME use clif insts
         floorf32(flt) -> f32 => floorf,
         floorf64(flt) -> f64 => floor,
         ceilf32(flt) -> f32 => ceilf,
