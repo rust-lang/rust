@@ -1108,6 +1108,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         // Use the same type variable if the exact same opaque type appears more
         // than once in the return type (e.g., if it's passed to a type alias).
         if let Some(opaque_defn) = self.opaque_types.get(&def_id) {
+            debug!("instantiate_opaque_types: returning concrete ty {:?}", opaque_defn.concrete_ty);
             return opaque_defn.concrete_ty;
         }
         let span = tcx.def_span(def_id);

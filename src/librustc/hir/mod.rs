@@ -221,6 +221,19 @@ pub enum LifetimeName {
     /// User wrote nothing (e.g., the lifetime in `&u32`).
     Implicit,
 
+    /// Implicit lifetime in a context like `dyn Foo`. This is
+    /// distinguished from implicit lifetimes elsewhere because the
+    /// lifetime that they default to must appear elsewhere within the
+    /// enclosing type.  This means that, in an `impl Trait` context, we
+    /// don't have to create a parameter for them. That is, `impl
+    /// Trait<Item = &u32>` expands to an opaque type like `type
+    /// Foo<'a> = impl Trait<Item = &'a u32>`, but `impl Trait<item =
+    /// dyn Bar>` expands to `type Foo = impl Trait<Item = dyn Bar +
+    /// 'static>`. The latter uses `ImplicitObjectLifetimeDefault` so
+    /// that surrounding code knows not to create a lifetime
+    /// parameter.
+    ImplicitObjectLifetimeDefault,
+
     /// Indicates an error during lowering (usually `'_` in wrong place)
     /// that was already reported.
     Error,
@@ -235,7 +248,9 @@ pub enum LifetimeName {
 impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
-            LifetimeName::Implicit | LifetimeName::Error => Ident::invalid(),
+            LifetimeName::ImplicitObjectLifetimeDefault
+                | LifetimeName::Implicit
+                | LifetimeName::Error => Ident::invalid(),
             LifetimeName::Underscore => Ident::with_dummy_span(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_dummy_span(kw::StaticLifetime),
             LifetimeName::Param(param_name) => param_name.ident(),
@@ -244,7 +259,9 @@ impl LifetimeName {
 
     pub fn is_elided(&self) -> bool {
         match self {
-            LifetimeName::Implicit | LifetimeName::Underscore => true,
+            LifetimeName::ImplicitObjectLifetimeDefault
+            | LifetimeName::Implicit
+            | LifetimeName::Underscore => true,
 
             // It might seem surprising that `Fresh(_)` counts as
             // *not* elided -- but this is because, as far as the code

@@ -322,7 +322,7 @@ enum ParenthesizedGenericArgs {
 /// `resolve_lifetime` module. Often we "fallthrough" to that code by generating
 /// an "elided" or "underscore" lifetime name. In the future, we probably want to move
 /// everything into HIR lowering.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum AnonymousLifetimeMode {
     /// For **Modern** cases, create a new anonymous region parameter
     /// and reference that.
@@ -715,10 +715,16 @@ impl<'a> LoweringContext<'a> {
         anonymous_lifetime_mode: AnonymousLifetimeMode,
         op: impl FnOnce(&mut Self) -> R,
     ) -> R {
+        debug!(
+            "with_anonymous_lifetime_mode(anonymous_lifetime_mode={:?})",
+            anonymous_lifetime_mode,
+        );
         let old_anonymous_lifetime_mode = self.anonymous_lifetime_mode;
         self.anonymous_lifetime_mode = anonymous_lifetime_mode;
         let result = op(self);
         self.anonymous_lifetime_mode = old_anonymous_lifetime_mode;
+        debug!("with_anonymous_lifetime_mode: restoring anonymous_lifetime_mode={:?}",
+               old_anonymous_lifetime_mode);
         result
     }
 
@@ -1355,6 +1361,13 @@ impl<'a> LoweringContext<'a> {
         opaque_ty_node_id: NodeId,
         lower_bounds: impl FnOnce(&mut LoweringContext<'_>) -> hir::GenericBounds,
     ) -> hir::TyKind {
+        debug!(
+            "lower_opaque_impl_trait(fn_def_id={:?}, opaque_ty_node_id={:?}, span={:?})",
+            fn_def_id,
+            opaque_ty_node_id,
+            span,
+        );
+
         // Make sure we know that some funky desugaring has been going on here.
         // This is a first: there is code in other places like for loop
         // desugaring that explicitly states that we don't want to track that.
@@ -1382,6 +1395,14 @@ impl<'a> LoweringContext<'a> {
             &hir_bounds,
         );
 
+        debug!(
+            "lower_opaque_impl_trait: lifetimes={:#?}", lifetimes,
+        );
+
+        debug!(
+            "lower_opaque_impl_trait: lifetime_defs={:#?}", lifetime_defs,
+        );
+
         self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
             let opaque_ty_item = hir::OpaqueTy {
                 generics: hir::Generics {
@@ -1397,7 +1418,7 @@ impl<'a> LoweringContext<'a> {
                 origin: hir::OpaqueTyOrigin::FnReturn,
             };
 
-            trace!("exist ty from impl trait def-index: {:#?}", opaque_ty_def_index);
+            trace!("lower_opaque_impl_trait: {:#?}", opaque_ty_def_index);
             let opaque_ty_id = lctx.generate_opaque_type(
                 opaque_ty_node_id,
                 opaque_ty_item,
@@ -1445,6 +1466,13 @@ impl<'a> LoweringContext<'a> {
         parent_index: DefIndex,
         bounds: &hir::GenericBounds,
     ) -> (HirVec<hir::GenericArg>, HirVec<hir::GenericParam>) {
+        debug!(
+            "lifetimes_from_impl_trait_bounds(opaque_ty_id={:?}, \
+             parent_index={:?}, \
+             bounds={:#?})",
+            opaque_ty_id, parent_index, bounds,
+        );
+
         // This visitor walks over `impl Trait` bounds and creates defs for all lifetimes that
         // appear in the bounds, excluding lifetimes that are created within the bounds.
         // E.g., `'a`, `'b`, but not `'c` in `impl for<'c> SomeTrait<'a, 'b, 'c>`.
@@ -1532,6 +1560,11 @@ impl<'a> LoweringContext<'a> {
                         }
                     }
                     hir::LifetimeName::Param(_) => lifetime.name,
+
+                    // Refers to some other lifetime that is "in
+                    // scope" within the type.
+                    hir::LifetimeName::ImplicitObjectLifetimeDefault => return,
+
                     hir::LifetimeName::Error | hir::LifetimeName::Static => return,
                 };
 
@@ -2182,6 +2215,14 @@ impl<'a> LoweringContext<'a> {
         fn_def_id: DefId,
         opaque_ty_node_id: NodeId,
     ) -> hir::FunctionRetTy {
+        debug!(
+            "lower_async_fn_ret_ty(\
+             output={:?}, \
+             fn_def_id={:?}, \
+             opaque_ty_node_id={:?})",
+            output, fn_def_id, opaque_ty_node_id,
+        );
+
         let span = output.span();
 
         let opaque_ty_span = self.mark_span_with_reason(
@@ -2263,6 +2304,8 @@ impl<'a> LoweringContext<'a> {
                     span,
                 ),
             );
+
+            debug!("lower_async_fn_ret_ty: future_bound={:#?}", future_bound);
 
             // Calculate all the lifetimes that should be captured
             // by the opaque type. This should include all in-scope
@@ -2512,6 +2555,12 @@ impl<'a> LoweringContext<'a> {
                     hir::LifetimeName::Implicit
                         | hir::LifetimeName::Underscore
                         | hir::LifetimeName::Static => hir::ParamName::Plain(lt.name.ident()),
+                    hir::LifetimeName::ImplicitObjectLifetimeDefault => {
+                        span_bug!(
+                            param.ident.span,
+                            "object-lifetime-default should not occur here",
+                        );
+                    }
                     hir::LifetimeName::Error => ParamName::Error,
                 };
 
@@ -3255,7 +3304,13 @@ impl<'a> LoweringContext<'a> {
             AnonymousLifetimeMode::PassThrough => {}
         }
 
-        self.new_implicit_lifetime(span)
+        let r = hir::Lifetime {
+            hir_id: self.next_id(),
+            span,
+            name: hir::LifetimeName::ImplicitObjectLifetimeDefault,
+        };
+        debug!("elided_dyn_bound: r={:?}", r);
+        r
     }
 
     fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
