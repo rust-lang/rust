@@ -423,6 +423,10 @@ mod c {
             panic!("RUST_COMPILER_RT_ROOT={} does not exist", root.display());
         }
 
+        // Support deterministic builds by remapping the __FILE__ prefix if the
+        // compiler supports it.
+        cfg.flag_if_supported(&format!("-ffile-prefix-map={}=.", root.display()));
+
         let src_dir = root.join("lib/builtins");
         for (sym, src) in sources.map.iter() {
             let src = src_dir.join(src);
