@@ -32,27 +32,39 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             dox[code_block.code].to_owned(),
         );
 
-        let has_errors = {
-            let mut has_errors = false;
+        let validation_status = {
+            let mut has_syntax_errors = false;
+            let mut only_whitespace = true;
+            // even if there is a syntax error, we need to run the lexer over the whole file
             let mut lexer = Lexer::new(&sess, source_file, None);
             loop  {
                 match lexer.next_token().kind {
                     token::Eof => break,
-                    token::Unknown(..) => has_errors = true,
-                    _ => (),
+                    token::Whitespace => (),
+                    token::Unknown(..) => has_syntax_errors = true,
+                    _ => only_whitespace = false,
                 }
             }
-            has_errors
+
+            if has_syntax_errors {
+                Some(CodeBlockInvalid::SyntaxError)
+            } else if only_whitespace {
+                Some(CodeBlockInvalid::Empty)
+            } else {
+                None
+            }
         };
 
-        if has_errors {
+        if let Some(code_block_invalid) = validation_status {
             let mut diag = if let Some(sp) =
                 super::source_span_for_markdown_range(self.cx, &dox, &code_block.range, &item.attrs)
             {
-                let mut diag = self
-                    .cx
-                    .sess()
-                    .struct_span_warn(sp, "could not parse code block as Rust code");
+                let warning_message = match code_block_invalid {
+                    CodeBlockInvalid::SyntaxError => "could not parse code block as Rust code",
+                    CodeBlockInvalid::Empty => "Rust code block is empty",
+                };
+
+                let mut diag = self.cx.sess().struct_span_warn(sp, warning_message);
 
                 if code_block.syntax.is_none() && code_block.is_fenced {
                     let sp = sp.from_inner(InnerSpan::new(0, 3));
@@ -95,4 +107,9 @@ impl<'a, 'tcx> DocFolder for SyntaxChecker<'a, 'tcx> {
 
         self.fold_item_recur(item)
     }
+}
+
+enum CodeBlockInvalid {
+    SyntaxError,
+    Empty,
 }
