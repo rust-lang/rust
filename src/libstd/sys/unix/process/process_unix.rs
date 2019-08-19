@@ -178,7 +178,8 @@ impl Command {
             cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
-        if cfg!(not(any(target_os = "l4re"))) {
+        #[cfg(not(any(target_os = "l4re")))]
+        {
             if let Some(u) = self.get_gid() {
                 cvt(libc::setgid(u as gid_t))?;
             }
