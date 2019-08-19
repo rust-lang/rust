@@ -13,47 +13,15 @@ pub unsafe fn cleanup() {
 }
 
 pub struct Args {
-    iter: vec::IntoIter<OsString>,
+    iter: vec::IntoIter<Vec<u8>>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
 /// Returns the command line arguments
 pub fn args() -> Args {
-    maybe_args().unwrap_or_else(|_| {
-        Args {
-            iter: Vec::new().into_iter(),
-            _dont_send_or_sync_me: PhantomData
-        }
-    })
-}
-
-fn cvt_wasi(r: u16) -> crate::io::Result<()> {
-    if r != 0 {
-        Err(Error::from_raw_os_error(r as i32))
-    } else {
-        Ok(())
-    }
-}
-
-fn maybe_args() -> io::Result<Args> {
-    // FIXME: replace with safe functions
-    use wasi::wasi_unstable::raw::{__wasi_args_sizes_get, __wasi_args_get};
-    unsafe {
-        let (mut argc, mut argv_buf_size) = (0, 0);
-        cvt_wasi(__wasi_args_sizes_get(&mut argc, &mut argv_buf_size))?;
-
-        let mut argc = vec![core::ptr::null_mut::<u8>(); argc];
-        let mut argv_buf = vec![0; argv_buf_size];
-        cvt_wasi(__wasi_args_get(argc.as_mut_ptr(), argv_buf.as_mut_ptr()))?;
-
-        let args = argc.into_iter()
-            .map(|ptr| CStr::from_ptr(ptr).to_bytes().to_vec())
-            .map(|bytes| OsString::from_vec(bytes))
-            .collect::<Vec<_>>();
-        Ok(Args {
-            iter: args.into_iter(),
-            _dont_send_or_sync_me: PhantomData,
-        })
+    Args {
+        iter: wasi::get_args().unwrap_or(Vec::new()),
+        _dont_send_or_sync_me: PhantomData
     }
 }
 
@@ -66,7 +34,7 @@ impl Args {
 impl Iterator for Args {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> {
-        self.iter.next()
+        self.iter.next().map(OsString::from_vec)
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
