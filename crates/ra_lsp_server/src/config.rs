@@ -21,6 +21,10 @@ pub struct ServerConfig {
     pub exclude_globs: Vec<String>,
 
     pub lru_capacity: Option<usize>,
+
+    /// For internal usage to make integrated tests faster.
+    #[serde(deserialize_with = "nullable_bool_true")]
+    pub with_sysroot: bool,
 }
 
 impl Default for ServerConfig {
@@ -30,6 +34,7 @@ impl Default for ServerConfig {
             show_workspace_loaded: true,
             exclude_globs: Vec::new(),
             lru_capacity: None,
+            with_sysroot: true,
         }
     }
 }
