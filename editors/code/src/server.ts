@@ -1,8 +1,16 @@
+import { homedir } from 'os';
 import * as lc from 'vscode-languageclient';
 
 import { window, workspace } from 'vscode';
 import { Config } from './config';
 import { Highlighter } from './highlighting';
+
+function expandPathResolving(path: string) {
+    if (path.startsWith('~/')) {
+        return path.replace('~', homedir());
+    }
+    return path;
+}
 
 export class Server {
     public static highlighter = new Highlighter();
@@ -20,7 +28,7 @@ export class Server {
         }
 
         const run: lc.Executable = {
-            command: this.config.raLspServerPath,
+            command: expandPathResolving(this.config.raLspServerPath),
             options: { cwd: folder }
         };
         const serverOptions: lc.ServerOptions = {
