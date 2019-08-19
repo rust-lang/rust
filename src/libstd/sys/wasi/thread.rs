@@ -48,7 +48,7 @@ impl Thread {
         let wasi::Event { userdata, error, type_, .. } = out[0];
         match (n, userdata, error) {
             (1, 0x0123_45678, 0) if type_ == wasi::EVENTTYPE_CLOCK => {}
-            _ => panic!("thread::sleep(): unexpected result of poll_oneof"),
+            _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
         }
     }
 
