@@ -123,13 +123,13 @@ pub fn gen_deprecated(lints: &[Lint]) -> Vec<String> {
     lints
         .iter()
         .filter_map(|l| {
-            l.clone().deprecation.and_then(|depr_text| {
-                Some(vec![
+            l.clone().deprecation.map(|depr_text| {
+                vec![
                     "    store.register_removed(".to_string(),
                     format!("        \"clippy::{}\",", l.name),
                     format!("        \"{}\",", depr_text),
                     "    );".to_string(),
-                ])
+                ]
             })
         })
         .flatten()

@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 310] = [
+pub const ALL_LINTS: [Lint; 311] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1315,6 +1315,13 @@ pub const ALL_LINTS: [Lint; 310] = [
         desc: "taking a reference to satisfy the type constraints on `==`",
         deprecation: None,
         module: "eq_op",
+    },
+    Lint {
+        name: "option_and_then_some",
+        group: "complexity",
+        desc: "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "option_map_or_none",
