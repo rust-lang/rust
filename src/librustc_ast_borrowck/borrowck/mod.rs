@@ -206,7 +206,6 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     (bccx, dataflow_data.unwrap())
 }
 
-// ----------------------------------------------------------------------
 // Type definitions
 
 pub struct BorrowckCtxt<'a, 'tcx> {

@@ -149,6 +149,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 }
 
+//////////////////////////////////////////////////////
 // Utility types and common code for the above passes.
 
 fn bad_placeholder_type(tcx: TyCtxt<'tcx>, span: Span) -> errors::DiagnosticBuilder<'tcx> {

@@ -600,7 +600,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx
     }
 
-    // Selection
+    // SELECTION
     //
     // The selection phase tries to identify *how* an obligation will
     // be resolved. For example, it will identify which impl or

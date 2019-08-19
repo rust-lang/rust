@@ -395,7 +395,9 @@ impl<T> Packet<T> {
         unsafe { SignalToken::cast_from_usize(ptr) }
     }
 
+    ////////////////////////////////////////////////////////////////////////////
     // select implementation
+    ////////////////////////////////////////////////////////////////////////////
 
     // increment the count on the channel (used for selection)
     fn bump(&self, amt: isize) -> isize {

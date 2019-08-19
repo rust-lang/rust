@@ -778,6 +778,7 @@ pub struct Test<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct ArmHasGuard(pub bool);
 
+///////////////////////////////////////////////////////////////////////////
 // Main matching algorithm
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -1335,6 +1336,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
 // Pattern binding - used for `let` and function parameters as well.
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

@@ -1,4 +1,3 @@
-// ----------------------------------------------------------------------
 // Gathering loans
 //
 // The borrow check proceeds in two phases. In phase one, we gather the full

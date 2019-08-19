@@ -183,6 +183,8 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
     llfn: Bx::Value,
