@@ -1,0 +1,8 @@
+error: cannot find macro `foo!` in this scope
+  --> $DIR/eager-from-opaque.rs:12:9
+   |
+LL |         foo!()
+   |         ^^^
+
+error: aborting due to previous error
+
