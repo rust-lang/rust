@@ -47,15 +47,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let size = layout.pref_pos.size.bytes();
         let align = layout.pref_pos.align.abi.bytes();
 
-        let ptr_size = self.pointer_size();
-        let ptr_align = self.tcx.data_layout.pointer_pos.align.abi;
+        let ptr_pref_pos = self.pointer_pos();
+
         // /////////////////////////////////////////////////////////////////////////////////////////
         // If you touch this code, be sure to also make the corresponding changes to
         // `get_vtable` in rust_codegen_llvm/meth.rs
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable = self.memory.allocate(
-            ptr_size * (3 + methods.len() as u64),
-            ptr_align,
+            (ptr_pref_pos * (3 + methods.len() as u64)).size,
+            ptr_pref_pos.align.abi,
             MemoryKind::Vtable,
         );
         let tcx = &*self.tcx;
@@ -69,10 +69,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable_alloc = self.memory.get_raw_mut(vtable.alloc_id)?;
         vtable_alloc.write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
 
-        let size_ptr = vtable.offset(ptr_size, tcx)?;
-        vtable_alloc.write_ptr_sized(tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
-        let align_ptr = vtable.offset(ptr_size * 2, tcx)?;
-        vtable_alloc.write_ptr_sized(tcx, align_ptr, Scalar::from_uint(align, ptr_size).into())?;
+        let size_ptr = vtable.offset(ptr_pref_pos.size, tcx)?;
+        vtable_alloc.write_ptr_sized(tcx, size_ptr,
+            Scalar::from_uint(size, ptr_pref_pos.size).into())?;
+        let align_ptr = vtable.offset((ptr_pref_pos * 2).size, tcx)?;
+        vtable_alloc.write_ptr_sized(tcx, align_ptr,
+            Scalar::from_uint(align, ptr_pref_pos.size).into())?;
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
@@ -85,7 +87,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ).ok_or_else(|| err_inval!(TooGeneric))?;
                 let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                 // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
-                let method_ptr = vtable.offset(ptr_size * (3 + i as u64), tcx)?;
+                let method_ptr = vtable.offset((ptr_pref_pos * (3 + i as u64)).size, tcx)?;
                 self.memory.get_raw_mut(vtable.alloc_id)?
                     .write_ptr_sized(tcx, method_ptr, Scalar::Ptr(fn_ptr).into())?;
             }
@@ -127,25 +129,25 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         vtable: Scalar<M::PointerTag>,
     ) -> InterpResult<'tcx, (Size, Align)> {
-        let pointer_size = self.pointer_size();
+        let ptr_pos = self.pointer_pos();
         // We check for size = 3*ptr_size, that covers the drop fn (unused here),
         // the size, and the align (which we read below).
         let vtable = self.memory.check_ptr_access(
             vtable,
-            3*pointer_size,
+            (3 * ptr_pos).size,
             self.tcx.data_layout.pointer_pos.align.abi,
         )?.expect("cannot be a ZST");
         let alloc = self.memory.get_raw(vtable.alloc_id)?;
         let size = alloc.read_ptr_sized(
             self,
-            vtable.offset(pointer_size, self)?
+            vtable.offset(ptr_pos.size, self)?
         )?.not_undef()?;
-        let size = self.force_bits(size, pointer_size)? as u64;
+        let size = self.force_bits(size, ptr_pos.size)? as u64;
         let align = alloc.read_ptr_sized(
             self,
-            vtable.offset(pointer_size * 2, self)?,
+            vtable.offset((ptr_pos * 2).size, self)?,
         )?.not_undef()?;
-        let align = self.force_bits(align, pointer_size)? as u64;
+        let align = self.force_bits(align, ptr_pos.size)? as u64;
 
         if size >= self.tcx.data_layout().obj_size_bound() {
             throw_ub_format!("invalid vtable: \

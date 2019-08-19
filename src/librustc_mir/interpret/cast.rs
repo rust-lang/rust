@@ -140,7 +140,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if src.layout.ty.is_unsafe_ptr() && dest_layout.ty.is_unsafe_ptr() &&
             dest_layout.pref_pos.size != src.layout.pref_pos.size
         {
-            assert_eq!(src.layout.pref_pos.size, 2*self.memory.pointer_size());
+            assert_eq!(src.layout.pref_pos.size, (2*self.memory.pointer_pos()).size);
             assert_eq!(dest_layout.pref_pos.size, self.memory.pointer_size());
             assert!(dest_layout.ty.is_unsafe_ptr());
             match *src {

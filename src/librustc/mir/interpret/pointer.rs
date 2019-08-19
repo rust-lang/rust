@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 
 use crate::mir;
-use crate::ty::layout::{self, HasDataLayout, Size};
+use crate::ty::layout::{self, HasDataLayout, LayoutPositionPref, Size};
 use rustc_macros::HashStable;
 
 use super::{AllocId, InterpResult};
@@ -36,8 +36,13 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     // These are not supposed to be overridden.
 
     #[inline(always)]
+    fn pointer_pos(&self) -> LayoutPositionPref {
+        self.data_layout().pointer_pos
+    }
+
+    #[inline(always)]
     fn pointer_size(&self) -> Size {
-        self.data_layout().pointer_pos.size
+        self.pointer_pos().size
     }
 
     /// Helper function: truncate given value-"overflowed flag" pair to pointer size and

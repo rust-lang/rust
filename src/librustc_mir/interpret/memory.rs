@@ -693,7 +693,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 let target = format!("({})", target_id);
                 // this `as usize` is fine, since we can't print more chars than `usize::MAX`
                 write!(msg, "└{0:─^1$}┘ ", target, relocation_width as usize).unwrap();
-                pos = i + self.pointer_size();
+                pos = i + self.pointer_pos().stride();
             }
             trace!("{}", msg);
         }
