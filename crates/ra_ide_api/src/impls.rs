@@ -33,13 +33,11 @@ fn impls_for_def(
     node: &ast::NominalDef,
     module: hir::Module,
 ) -> Option<Vec<NavigationTarget>> {
-    let ty = match node.kind() {
-        ast::NominalDefKind::StructDef(def) => {
+    let ty = match node {
+        ast::NominalDef::StructDef(def) => {
             source_binder::struct_from_module(db, module, &def).ty(db)
         }
-        ast::NominalDefKind::EnumDef(def) => {
-            source_binder::enum_from_module(db, module, &def).ty(db)
-        }
+        ast::NominalDef::EnumDef(def) => source_binder::enum_from_module(db, module, &def).ty(db),
     };
 
     let krate = module.krate(db)?;

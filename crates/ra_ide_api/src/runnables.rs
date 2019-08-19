@@ -54,8 +54,8 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Opti
     let has_test_function = module
         .item_list()?
         .items()
-        .filter_map(|it| match it.kind() {
-            ast::ModuleItemKind::FnDef(it) => Some(it),
+        .filter_map(|it| match it {
+            ast::ModuleItem::FnDef(it) => Some(it),
             _ => None,
         })
         .any(|f| f.has_atom_attr("test"));

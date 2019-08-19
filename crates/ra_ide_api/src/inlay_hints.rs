@@ -3,7 +3,7 @@ use hir::{HirDisplay, SourceAnalyzer, Ty};
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
     ast::{
-        AstNode, ForExpr, IfExpr, LambdaExpr, LetStmt, MatchArmList, Pat, PatKind, SourceFile,
+        self, AstNode, ForExpr, IfExpr, LambdaExpr, LetStmt, MatchArmList, SourceFile,
         TypeAscriptionOwner, WhileExpr,
     },
     SmolStr, SyntaxKind, SyntaxNode, TextRange,
@@ -88,7 +88,7 @@ fn get_inlay_hints(
 fn get_pat_type_hints(
     db: &RootDatabase,
     analyzer: &SourceAnalyzer,
-    root_pat: Pat,
+    root_pat: ast::Pat,
     skip_root_pat_hint: bool,
 ) -> Vec<InlayHint> {
     let original_pat = &root_pat.clone();
@@ -108,27 +108,27 @@ fn get_pat_type_hints(
         .collect()
 }
 
-fn get_leaf_pats(root_pat: Pat) -> Vec<Pat> {
-    let mut pats_to_process = std::collections::VecDeque::<Pat>::new();
+fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
+    let mut pats_to_process = std::collections::VecDeque::<ast::Pat>::new();
     pats_to_process.push_back(root_pat);
 
     let mut leaf_pats = Vec::new();
 
     while let Some(maybe_leaf_pat) = pats_to_process.pop_front() {
-        match maybe_leaf_pat.kind() {
-            PatKind::BindPat(bind_pat) => {
+        match &maybe_leaf_pat {
+            ast::Pat::BindPat(bind_pat) => {
                 if let Some(pat) = bind_pat.pat() {
                     pats_to_process.push_back(pat);
                 } else {
                     leaf_pats.push(maybe_leaf_pat);
                 }
             }
-            PatKind::TuplePat(tuple_pat) => {
+            ast::Pat::TuplePat(tuple_pat) => {
                 for arg_pat in tuple_pat.args() {
                     pats_to_process.push_back(arg_pat);
                 }
             }
-            PatKind::StructPat(struct_pat) => {
+            ast::Pat::StructPat(struct_pat) => {
                 if let Some(pat_list) = struct_pat.field_pat_list() {
                     pats_to_process.extend(
                         pat_list
@@ -139,12 +139,12 @@ fn get_leaf_pats(root_pat: Pat) -> Vec<Pat> {
                                     .filter(|pat| pat.syntax().kind() != SyntaxKind::BIND_PAT)
                             })
                             .chain(pat_list.bind_pats().map(|bind_pat| {
-                                bind_pat.pat().unwrap_or_else(|| Pat::from(bind_pat))
+                                bind_pat.pat().unwrap_or_else(|| ast::Pat::from(bind_pat))
                             })),
                     );
                 }
             }
-            PatKind::TupleStructPat(tuple_struct_pat) => {
+            ast::Pat::TupleStructPat(tuple_struct_pat) => {
                 for arg_pat in tuple_struct_pat.args() {
                     pats_to_process.push_back(arg_pat);
                 }
@@ -158,7 +158,7 @@ fn get_leaf_pats(root_pat: Pat) -> Vec<Pat> {
 fn get_node_displayable_type(
     db: &RootDatabase,
     analyzer: &SourceAnalyzer,
-    node_pat: &Pat,
+    node_pat: &ast::Pat,
 ) -> Option<Ty> {
     analyzer.type_of_pat(db, node_pat).and_then(|resolved_type| {
         if let Ty::Apply(_) = resolved_type {
