@@ -1,7 +1,7 @@
 use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
-use crate::sys::cvt;
+use crate::mem;
 use crate::sys::{unsupported, Void};
 use crate::time::Duration;
 use libc;
@@ -28,19 +28,28 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        let mut secs = dur.as_secs();
-        let mut nsecs = dur.subsec_nanos() as i32;
+        let nanos = dur.as_nanos();
+        assert!(nanos <= u64::max_value() as u128);
 
-        unsafe {
-            while secs > 0 || nsecs > 0 {
-                let mut ts = libc::timespec {
-                    tv_sec: cmp::min(libc::time_t::max_value() as u64, secs) as libc::time_t,
-                    tv_nsec: nsecs,
-                };
-                secs -= ts.tv_sec as u64;
-                cvt(libc::nanosleep(&ts, &mut ts)).unwrap();
-                nsecs = 0;
-            }
+        let clock = wasi::raw::__wasi_subscription_u_clock_t {
+            identifier: 0,
+            clock_id: wasi::CLOCK_MONOTONIC,
+            timeout: nanos as u64,
+            precision: 0,
+            flags: 0,
+        };
+
+        let in_ = [wasi::Subscription {
+            userdata: 0,
+            type_: wasi::EVENTTYPE_CLOCK,
+            u: wasi::raw::__wasi_subscription_u { clock: clock },
+        }];
+        let mut out: [wasi::Event; 1] = [unsafe { mem::zeroed() }];
+        let n = wasi::poll_oneoff(&in_, &mut out).unwrap();
+        let wasi::Event { userdata, error, type_, .. } = out[0];
+        match (n, userdata, error) {
+            (1, 0, 0) if type_ == wasi::EVENTTYPE_CLOCK => {}
+            _ => panic!("thread::sleep(): unexpected result of poll_oneof"),
         }
     }
 
