@@ -1,8 +1,8 @@
 use clap::{App, Arg, SubCommand};
 use core::str;
 use ra_tools::{
-    gen_tests, generate, install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt, Cmd,
-    Overwrite, Result,
+    gen_tests, generate_boilerplate, install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt,
+    Cmd, Overwrite, Result,
 };
 use std::{env, path::PathBuf};
 
@@ -49,7 +49,7 @@ fn main() -> Result<()> {
             install(opts)?
         }
         ("gen-tests", _) => gen_tests(Overwrite)?,
-        ("gen-syntax", _) => generate(Overwrite)?,
+        ("gen-syntax", _) => generate_boilerplate(Overwrite)?,
         ("format", _) => run_rustfmt(Overwrite)?,
         ("format-hook", _) => install_format_hook()?,
         ("lint", _) => run_clippy()?,

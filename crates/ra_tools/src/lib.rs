@@ -1,3 +1,5 @@
+mod boilerplate_gen;
+
 use std::{
     collections::HashMap,
     error::Error,
@@ -9,7 +11,7 @@ use std::{
 
 use itertools::Itertools;
 
-pub use teraron::{Mode, Overwrite, Verify};
+pub use self::boilerplate_gen::generate_boilerplate;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
@@ -18,9 +20,16 @@ const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
 const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
 
-pub const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs.tera";
-pub const AST: &str = "crates/ra_syntax/src/ast/generated.rs.tera";
+pub const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs";
+pub const AST: &str = "crates/ra_syntax/src/ast/generated.rs";
 const TOOLCHAIN: &str = "stable";
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Mode {
+    Overwrite,
+    Verify,
+}
+pub use Mode::*;
 
 #[derive(Debug)]
 pub struct Test {
@@ -64,15 +73,6 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
         res.push((start_line, Test { name, text, ok }))
     }
     res
-}
-
-pub fn generate(mode: Mode) -> Result<()> {
-    let grammar = project_root().join(GRAMMAR);
-    let syntax_kinds = project_root().join(SYNTAX_KINDS);
-    let ast = project_root().join(AST);
-    teraron::generate(&syntax_kinds, &grammar, mode)?;
-    teraron::generate(&ast, &grammar, mode)?;
-    Ok(())
 }
 
 pub fn project_root() -> PathBuf {
@@ -227,7 +227,7 @@ pub fn gen_tests(mode: Mode) -> Result<()> {
                     tests_dir.join(file_name)
                 }
             };
-            teraron::update(&path, &test.text, mode)?;
+            update(&path, &test.text, mode)?;
         }
         Ok(())
     }
@@ -310,4 +310,21 @@ fn existing_tests(dir: &Path, ok: bool) -> Result<HashMap<String, (PathBuf, Test
         }
     }
     Ok(res)
+}
+
+/// A helper to update file on disk if it has changed.
+/// With verify = false,
+pub fn update(path: &Path, contents: &str, mode: Mode) -> Result<()> {
+    match fs::read_to_string(path) {
+        Ok(ref old_contents) if old_contents == contents => {
+            return Ok(());
+        }
+        _ => (),
+    }
+    if mode == Verify {
+        Err(format!("`{}` is not up-to-date", path.display()))?;
+    }
+    eprintln!("updating {}", path.display());
+    fs::write(path, contents)?;
+    Ok(())
 }

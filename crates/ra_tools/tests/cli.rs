@@ -1,10 +1,10 @@
 use walkdir::WalkDir;
 
-use ra_tools::{gen_tests, generate, project_root, run_rustfmt, Verify};
+use ra_tools::{gen_tests, generate_boilerplate, project_root, run_rustfmt, Verify};
 
 #[test]
 fn generated_grammar_is_fresh() {
-    if let Err(error) = generate(Verify) {
+    if let Err(error) = generate_boilerplate(Verify) {
         panic!("{}. Please update it by running `cargo gen-syntax`", error);
     }
 }
