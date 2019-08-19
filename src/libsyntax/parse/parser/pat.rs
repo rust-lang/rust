@@ -155,6 +155,25 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    /// Recursive possibly-or-pattern parser with recovery for an erroneous leading `|`.
+    /// See `parse_pat_with_or` for details on parsing or-patterns.
+    fn parse_pat_with_or_inner(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
+        // Recover if `|` or `||` is here.
+        // The user is thinking that a leading `|` is allowed in this position.
+        if let token::BinOp(token::Or) | token::OrOr = self.token.kind {
+            let span = self.token.span;
+            let rm_msg = format!("remove the `{}`", pprust::token_to_string(&self.token));
+
+            self.struct_span_err(span, "a leading `|` is only allowed in a top-level pattern")
+                .span_suggestion(span, &rm_msg, String::new(), Applicability::MachineApplicable)
+                .emit();
+
+            self.bump();
+        }
+
+        self.parse_pat_with_or(expected, true, false)
+    }
+
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
     /// allowed).
     fn parse_pat_with_range_pat(
@@ -173,7 +192,7 @@ impl<'a> Parser<'a> {
                 // Parse `[pat, pat,...]` as a slice pattern.
                 let (pats, _) = self.parse_delim_comma_seq(
                     token::Bracket,
-                    |p| p.parse_pat_with_or(None, true, false),
+                    |p| p.parse_pat_with_or_inner(None),
                 )?;
                 PatKind::Slice(pats)
             }
@@ -303,7 +322,7 @@ impl<'a> Parser<'a> {
     /// Parse a tuple or parenthesis pattern.
     fn parse_pat_tuple_or_parens(&mut self) -> PResult<'a, PatKind> {
         let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| {
-            p.parse_pat_with_or(None, true, false)
+            p.parse_pat_with_or_inner(None)
         })?;
 
         // Here, `(pat,)` is a tuple pattern.
@@ -547,7 +566,7 @@ impl<'a> Parser<'a> {
             err.span_label(self.token.span, msg);
             return Err(err);
         }
-        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or(None, true, false))?;
+        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner(None))?;
         Ok(PatKind::TupleStruct(path, fields))
     }
 
@@ -691,7 +710,7 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form "fieldname: pat"
             let fieldname = self.parse_field_name()?;
             self.bump();
-            let pat = self.parse_pat_with_or(None, true, false)?;
+            let pat = self.parse_pat_with_or_inner(None)?;
             hi = pat.span;
             (pat, fieldname, false)
         } else {

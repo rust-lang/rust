@@ -30,27 +30,20 @@ fn no_top_level_or_patterns() {
 
 // We also do not allow a leading `|` when not in a top level position:
 
-#[cfg(FALSE)]
-fn no_leading_parens() {
-    let ( | A | B); //~ ERROR expected pattern, found `|`
-}
+fn no_leading_inner() {
+    struct TS(E);
+    struct NS { f: E }
 
-#[cfg(FALSE)]
-fn no_leading_tuple() {
-    let ( | A | B,); //~ ERROR expected pattern, found `|`
-}
+    let ( | A | B) = E::A; //~ ERROR a leading `|` is only allowed in a top-level pattern
+    let ( | A | B,) = (E::B,); //~ ERROR a leading `|` is only allowed in a top-level pattern
+    let [ | A | B ] = [E::A]; //~ ERROR a leading `|` is only allowed in a top-level pattern
+    let TS( | A | B ); //~ ERROR a leading `|` is only allowed in a top-level pattern
+    let NS { f: | A | B }; //~ ERROR a leading `|` is only allowed in a top-level pattern
 
-#[cfg(FALSE)]
-fn no_leading_slice() {
-    let [ | A | B ]; //~ ERROR expected pattern, found `|`
-}
+    let ( || A | B) = E::A; //~ ERROR a leading `|` is only allowed in a top-level pattern
+    let [ || A | B ] = [E::A]; //~ ERROR a leading `|` is only allowed in a top-level pattern
+    let TS( || A | B ); //~ ERROR a leading `|` is only allowed in a top-level pattern
+    let NS { f: || A | B }; //~ ERROR a leading `|` is only allowed in a top-level pattern
 
-#[cfg(FALSE)]
-fn no_leading_tuple_struct() {
-    let TS( | A | B ); //~ ERROR expected pattern, found `|`
-}
-
-#[cfg(FALSE)]
-fn no_leading_struct() {
-    let NS { f: | A | B }; //~ ERROR expected pattern, found `|`
+    let recovery_witness: String = 0; //~ ERROR mismatched types
 }
