@@ -908,12 +908,9 @@ impl<'a> ExtCtxt<'a> {
 /// compilation on error, merely emits a non-fatal error and returns `None`.
 pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
-    mut expr: P<ast::Expr>,
+    expr: P<ast::Expr>,
     err_msg: &str,
 ) -> Result<(Symbol, ast::StrStyle, Span), Option<DiagnosticBuilder<'a>>> {
-    // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
-    expr.span = expr.span.apply_mark(cx.current_expansion.id);
-
     // Perform eager expansion on the expression.
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
