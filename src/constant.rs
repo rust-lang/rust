@@ -268,8 +268,11 @@ fn define_all_allocs(
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
-                // FIXME set correct linkage
-                let data_id = data_id_for_static(tcx, module, def_id, Linkage::Export);
+                let data_id = data_id_for_static(tcx, module, def_id, if tcx.is_reachable_non_generic(def_id) {
+                    Linkage::Export
+                } else {
+                    Linkage::Local
+                });
                 (data_id, alloc)
             }
         };
