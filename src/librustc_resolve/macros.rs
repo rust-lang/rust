@@ -142,7 +142,9 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
                                 -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate> {
-        let parent_scope = self.invocation_parent_scopes[&invoc_id];
+        let inherited_parent_scope = self.invocation_parent_scopes[&invoc_id];
+        let parent_scope = *self.invocation_parent_scopes.entry(invoc.expansion_data.id)
+                                                         .or_insert(inherited_parent_scope);
         let (path, kind, derives, after_derive) = match invoc.kind {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
                 (&attr.path, MacroKind::Attr, self.arenas.alloc_ast_paths(derives), after_derive),

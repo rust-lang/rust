@@ -3,6 +3,9 @@ error: cannot find macro `foo!` in this scope
    |
 LL |         foo!()
    |         ^^^
+...
+LL |     format_args!(bar!());
+   |                  ------ in this macro invocation
 
 error: aborting due to previous error
 

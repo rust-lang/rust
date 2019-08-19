@@ -318,7 +318,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             progress = true;
             let ExpansionData { depth, id: expn_id, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
-            self.cx.current_expansion.id = scope;
 
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
