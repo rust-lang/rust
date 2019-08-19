@@ -19,7 +19,7 @@ LL |     rc.borrow().clone();
    |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:34:5
+  --> $DIR/unnecessary_clone.rs:39:5
    |
 LL |     rc.clone();
    |     ^^^^^^^^^^ help: try this: `Rc::<bool>::clone(&rc)`
@@ -27,43 +27,43 @@ LL |     rc.clone();
    = note: `-D clippy::clone-on-ref-ptr` implied by `-D warnings`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:37:5
+  --> $DIR/unnecessary_clone.rs:42:5
    |
 LL |     arc.clone();
    |     ^^^^^^^^^^^ help: try this: `Arc::<bool>::clone(&arc)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:40:5
+  --> $DIR/unnecessary_clone.rs:45:5
    |
 LL |     rcweak.clone();
    |     ^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&rcweak)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:43:5
+  --> $DIR/unnecessary_clone.rs:48:5
    |
 LL |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try this: `Weak::<bool>::clone(&arc_weak)`
 
 error: using '.clone()' on a ref-counted pointer
-  --> $DIR/unnecessary_clone.rs:47:33
+  --> $DIR/unnecessary_clone.rs:52:33
    |
 LL |     let _: Arc<dyn SomeTrait> = x.clone();
    |                                 ^^^^^^^^^ help: try this: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:51:5
+  --> $DIR/unnecessary_clone.rs:56:5
    |
 LL |     t.clone();
    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:53:5
+  --> $DIR/unnecessary_clone.rs:58:5
    |
 LL |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
-  --> $DIR/unnecessary_clone.rs:59:22
+  --> $DIR/unnecessary_clone.rs:64:22
    |
 LL |     let z: &Vec<_> = y.clone();
    |                      ^^^^^^^^^
@@ -79,7 +79,7 @@ LL |     let z: &Vec<_> = &std::vec::Vec<i32>::clone(y);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:66:27
+  --> $DIR/unnecessary_clone.rs:71:27
    |
 LL |     let v2: Vec<isize> = v.iter().cloned().collect();
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
@@ -87,13 +87,13 @@ LL |     let v2: Vec<isize> = v.iter().cloned().collect();
    = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:71:38
+  --> $DIR/unnecessary_clone.rs:76:38
    |
 LL |     let _: Vec<isize> = vec![1, 2, 3].iter().cloned().collect();
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.to_vec()`
 
 error: called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable
-  --> $DIR/unnecessary_clone.rs:76:24
+  --> $DIR/unnecessary_clone.rs:81:24
    |
 LL |               .to_bytes()
    |  ________________________^
@@ -103,7 +103,7 @@ LL | |             .collect();
    | |______________________^ help: try: `.to_vec()`
 
 error: using `clone` on a `Copy` type
-  --> $DIR/unnecessary_clone.rs:114:20
+  --> $DIR/unnecessary_clone.rs:119:20
    |
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
