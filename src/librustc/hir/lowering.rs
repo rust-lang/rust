@@ -1033,13 +1033,14 @@ impl<'a> LoweringContext<'a> {
     /// ```
     ///
     /// returns a `hir::TypeBinding` representing `Item`.
-    fn lower_assoc_ty_constraint(&mut self,
-                                 c: &AssocTyConstraint,
-                                 itctx: ImplTraitContext<'_>)
-                                 -> hir::TypeBinding {
-        debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", c, itctx);
+    fn lower_assoc_ty_constraint(
+        &mut self,
+        constraint: &AssocTyConstraint,
+        itctx: ImplTraitContext<'_>,
+    ) -> hir::TypeBinding {
+        debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", constraint, itctx);
 
-        let kind = match c.kind {
+        let kind = match constraint.kind {
             AssocTyConstraintKind::Equality { ref ty } => hir::TypeBindingKind::Equality {
                 ty: self.lower_ty(ty, itctx)
             },
@@ -1094,7 +1095,7 @@ impl<'a> LoweringContext<'a> {
                         impl_trait_node_id,
                         DefPathData::ImplTrait,
                         ExpnId::root(),
-                        c.span,
+                        constraint.span,
                     );
 
                     self.with_dyn_type_scope(false, |this| {
@@ -1102,7 +1103,7 @@ impl<'a> LoweringContext<'a> {
                             &Ty {
                                 id: this.sess.next_node_id(),
                                 node: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
-                                span: c.span,
+                                span: constraint.span,
                             },
                             itctx,
                         );
@@ -1124,10 +1125,10 @@ impl<'a> LoweringContext<'a> {
         };
 
         hir::TypeBinding {
-            hir_id: self.lower_node_id(c.id),
-            ident: c.ident,
+            hir_id: self.lower_node_id(constraint.id),
+            ident: constraint.ident,
             kind,
-            span: c.span,
+            span: constraint.span,
         }
     }
 

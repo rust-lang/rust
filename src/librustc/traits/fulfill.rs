@@ -427,8 +427,8 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             ty::Predicate::WellFormed(ty) => {
                 match ty::wf::obligations(
                     self.selcx.infcx(),
-                                          obligation.param_env,
-                                          obligation.cause.body_id,
+                    obligation.param_env,
+                    obligation.cause.body_id,
                     ty,
                     obligation.cause.span,
                 ) {
