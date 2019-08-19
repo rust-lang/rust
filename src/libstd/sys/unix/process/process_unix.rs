@@ -178,22 +178,22 @@ impl Command {
             cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
-        if cfg!(not(any(target_os = "l4re"))) {
+        #[cfg(not(target_os = "l4re"))]
+        {
             if let Some(u) = self.get_gid() {
                 cvt(libc::setgid(u as gid_t))?;
             }
             if let Some(u) = self.get_uid() {
-                //FIXME: Redox kernel does not support setgroups yet
-                if cfg!(not(target_os = "redox")) {
-                    // When dropping privileges from root, the `setgroups` call
-                    // will remove any extraneous groups. If we don't call this,
-                    // then even though our uid has dropped, we may still have
-                    // groups that enable us to do super-user things. This will
-                    // fail if we aren't root, so don't bother checking the
-                    // return value, this is just done as an optimistic
-                    // privilege dropping function.
-                    let _ = libc::setgroups(0, ptr::null());
-                }
+                // When dropping privileges from root, the `setgroups` call
+                // will remove any extraneous groups. If we don't call this,
+                // then even though our uid has dropped, we may still have
+                // groups that enable us to do super-user things. This will
+                // fail if we aren't root, so don't bother checking the
+                // return value, this is just done as an optimistic
+                // privilege dropping function.
+                // FIXME: Redox kernel does not support setgroups yet
+                #[cfg(not(target_os = "redox"))]
+                let _ = libc::setgroups(0, ptr::null());
 
                 cvt(libc::setuid(u as uid_t))?;
             }
