@@ -1,6 +1,4 @@
-use crate::utils::{
-    implements_trait, in_macro_or_desugar, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq,
-};
+use crate::utils::{implements_trait, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -52,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprKind::Binary(op, ref left, ref right) = e.node {
-            if in_macro_or_desugar(e.span) {
+            if e.span.from_expansion() {
                 return;
             }
             if is_valid_operator(op) && SpanlessEq::new(cx).ignore_fn().eq_expr(left, right) {

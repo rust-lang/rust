@@ -4,8 +4,8 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{
-    get_trait_def_id, implements_trait, in_macro_or_desugar, match_type, paths, return_ty, span_help_and_lint,
-    trait_ref_of_method, walk_ptrs_ty,
+    get_trait_def_id, implements_trait, match_type, paths, return_ty, span_help_and_lint, trait_ref_of_method,
+    walk_ptrs_ty,
 };
 
 declare_clippy_lint! {
@@ -94,7 +94,7 @@ declare_lint_pass!(InherentToString => [INHERENT_TO_STRING, INHERENT_TO_STRING_S
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx ImplItem) {
-        if in_macro_or_desugar(impl_item.span) {
+        if impl_item.span.from_expansion() {
             return;
         }
 

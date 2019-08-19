@@ -1,5 +1,5 @@
 use crate::utils::paths;
-use crate::utils::{in_macro_or_desugar, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
+use crate::utils::{iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -257,7 +257,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &hir::Stmt) {
-        if in_macro_or_desugar(stmt.span) {
+        if stmt.span.from_expansion() {
             return;
         }
 

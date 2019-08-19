@@ -3,7 +3,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 
 use crate::consts::{constant, Constant};
-use crate::utils::{in_macro_or_desugar, is_direct_expn_of, is_expn_of, span_help_and_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, span_help_and_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `assert!(true)` and `assert!(false)` calls.
@@ -55,12 +55,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
             }
         };
         if let Some(debug_assert_span) = is_expn_of(e.span, "debug_assert") {
-            if in_macro_or_desugar(debug_assert_span) {
+            if debug_assert_span.from_expansion() {
                 return;
             }
             lint_assert_cb(true);
         } else if let Some(assert_span) = is_direct_expn_of(e.span, "assert") {
-            if in_macro_or_desugar(assert_span) {
+            if assert_span.from_expansion() {
                 return;
             }
             lint_assert_cb(false);

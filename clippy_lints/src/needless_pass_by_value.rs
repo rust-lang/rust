@@ -1,7 +1,7 @@
 use crate::utils::ptr::get_spans;
 use crate::utils::{
-    get_trait_def_id, implements_trait, in_macro_or_desugar, is_copy, is_self, match_type, multispan_sugg, paths,
-    snippet, snippet_opt, span_lint_and_then,
+    get_trait_def_id, implements_trait, is_copy, is_self, match_type, multispan_sugg, paths, snippet, snippet_opt,
+    span_lint_and_then,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         span: Span,
         hir_id: HirId,
     ) {
-        if in_macro_or_desugar(span) {
+        if span.from_expansion() {
             return;
         }
 

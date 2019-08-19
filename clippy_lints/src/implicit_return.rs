@@ -1,5 +1,5 @@
 use crate::utils::{
-    in_macro_or_desugar, match_def_path,
+    match_def_path,
     paths::{BEGIN_PANIC, BEGIN_PANIC_FMT},
     resolve_node, snippet_opt, span_lint_and_then,
 };
@@ -138,7 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types
         // make sure it's not a macro
-        if !mir.return_ty().is_unit() && !in_macro_or_desugar(span) {
+        if !mir.return_ty().is_unit() && !span.from_expansion() {
             expr_match(cx, &body.value);
         }
     }

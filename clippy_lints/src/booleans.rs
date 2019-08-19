@@ -1,6 +1,5 @@
 use crate::utils::{
-    get_trait_def_id, implements_trait, in_macro, in_macro_or_desugar, match_type, paths, snippet_opt,
-    span_lint_and_then, SpanlessEq,
+    get_trait_def_id, implements_trait, in_macro, match_type, paths, snippet_opt, span_lint_and_then, SpanlessEq,
 };
 use if_chain::if_chain;
 use rustc::hir::intravisit::*;
@@ -106,7 +105,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
         }
 
         // prevent folding of `cfg!` macros and the like
-        if !in_macro_or_desugar(e.span) {
+        if !e.span.from_expansion() {
             match &e.node {
                 ExprKind::Unary(UnNot, inner) => return Ok(Bool::Not(box self.run(inner)?)),
                 ExprKind::Binary(binop, lhs, rhs) => match &binop.node {

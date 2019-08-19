@@ -39,7 +39,7 @@ use std::borrow::Cow;
 use syntax::ast;
 use syntax::source_map::{original_sp, DUMMY_SP};
 
-use crate::utils::{in_macro_or_desugar, snippet, snippet_block, span_help_and_lint, trim_multiline};
+use crate::utils::{snippet, snippet_block, span_help_and_lint, trim_multiline};
 
 declare_clippy_lint! {
     /// **What it does:** The lint checks for `if`-statements appearing in loops
@@ -120,7 +120,7 @@ declare_lint_pass!(NeedlessContinue => [NEEDLESS_CONTINUE]);
 
 impl EarlyLintPass for NeedlessContinue {
     fn check_expr(&mut self, ctx: &EarlyContext<'_>, expr: &ast::Expr) {
-        if !in_macro_or_desugar(expr.span) {
+        if !expr.span.from_expansion() {
             check_and_warn(ctx, expr);
         }
     }

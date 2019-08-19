@@ -21,11 +21,11 @@ use syntax::symbol::LocalInternedString;
 use crate::utils::sugg;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, in_macro_or_desugar,
-    is_copy, is_ctor_function, is_expn_of, iter_input_pats, last_path_segment, match_def_path, match_qpath,
-    match_trait_method, match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys,
-    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
+    is_ctor_function, is_expn_of, iter_input_pats, last_path_segment, match_def_path, match_qpath, match_trait_method,
+    match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path,
+    snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg,
+    span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 use crate::utils::{paths, span_help_and_lint};
 
@@ -2150,7 +2150,7 @@ fn lint_option_and_then_some(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &
                         return;
                     }
 
-                    let some_inner_snip = if in_macro_or_desugar(inner_expr.span) {
+                    let some_inner_snip = if inner_expr.span.from_expansion() {
                         snippet_with_macro_callsite(cx, inner_expr.span, "_")
                     } else {
                         snippet(cx, inner_expr.span, "_")

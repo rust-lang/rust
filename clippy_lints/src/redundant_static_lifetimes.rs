@@ -1,4 +1,4 @@
-use crate::utils::{in_macro_or_desugar, snippet, span_lint_and_then};
+use crate::utils::{snippet, span_lint_and_then};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
@@ -78,7 +78,7 @@ impl RedundantStaticLifetimes {
 
 impl EarlyLintPass for RedundantStaticLifetimes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !in_macro_or_desugar(item.span) {
+        if !item.span.from_expansion() {
             if let ItemKind::Const(ref var_type, _) = item.node {
                 self.visit_type(var_type, cx, "Constants have by default a `'static` lifetime");
                 // Don't check associated consts because `'static` cannot be elided on those (issue

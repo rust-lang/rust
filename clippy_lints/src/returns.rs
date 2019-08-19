@@ -7,7 +7,7 @@ use syntax::source_map::Span;
 use syntax::visit::FnKind;
 use syntax_pos::BytePos;
 
-use crate::utils::{in_macro_or_desugar, match_path_ast, snippet_opt, span_lint_and_then};
+use crate::utils::{match_path_ast, snippet_opt, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -155,7 +155,7 @@ impl Return {
     ) {
         match inner_span {
             Some(inner_span) => {
-                if in_external_macro(cx.sess(), inner_span) || in_macro_or_desugar(inner_span) {
+                if in_external_macro(cx.sess(), inner_span) || inner_span.from_expansion() {
                     return;
                 }
 
@@ -245,7 +245,7 @@ impl EarlyLintPass for Return {
         if_chain! {
             if let ast::FunctionRetTy::Ty(ref ty) = decl.output;
             if let ast::TyKind::Tup(ref vals) = ty.node;
-            if vals.is_empty() && !in_macro_or_desugar(ty.span) && get_def(span) == get_def(ty.span);
+            if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
             then {
                 let (rspan, appl) = if let Ok(fn_source) =
                         cx.sess().source_map()
@@ -277,7 +277,7 @@ impl EarlyLintPass for Return {
         if_chain! {
             if let Some(ref stmt) = block.stmts.last();
             if let ast::StmtKind::Expr(ref expr) = stmt.node;
-            if is_unit_expr(expr) && !in_macro_or_desugar(expr.span);
+            if is_unit_expr(expr) && !expr.span.from_expansion();
             then {
                 let sp = expr.span;
                 span_lint_and_then(cx, UNUSED_UNIT, sp, "unneeded unit expression", |db| {
@@ -295,7 +295,7 @@ impl EarlyLintPass for Return {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         match e.node {
             ast::ExprKind::Ret(Some(ref expr)) | ast::ExprKind::Break(_, Some(ref expr)) => {
-                if is_unit_expr(expr) && !in_macro_or_desugar(expr.span) {
+                if is_unit_expr(expr) && !expr.span.from_expansion() {
                     span_lint_and_then(cx, UNUSED_UNIT, expr.span, "unneeded `()`", |db| {
                         db.span_suggestion(
                             expr.span,
