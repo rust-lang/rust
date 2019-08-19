@@ -407,7 +407,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                                 lhs - rhs,
                                 if op == BinOpKind::Eq { '<' } else { '>' }
                             ),
-                            Applicability::MachineApplicable, // snippet
+                            Applicability::HasPlaceholders, // snippet
                         );
                         db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
                     });
