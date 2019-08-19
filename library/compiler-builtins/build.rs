@@ -424,7 +424,8 @@ mod c {
         }
 
         // Support deterministic builds by remapping the __FILE__ prefix if the
-        // compiler supports it.
+        // compiler supports it.  This fixes the nondeterminism caused by the
+        // use of that macro in lib/builtins/int_util.h in compiler-rt.
         cfg.flag_if_supported(&format!("-ffile-prefix-map={}=.", root.display()));
 
         let src_dir = root.join("lib/builtins");
