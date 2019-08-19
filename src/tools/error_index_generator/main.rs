@@ -13,9 +13,15 @@ use std::path::PathBuf;
 use std::cell::RefCell;
 
 use syntax::edition::DEFAULT_EDITION;
-use syntax::diagnostics::metadata::{ErrorMetadataMap, ErrorMetadata};
 
 use rustdoc::html::markdown::{Markdown, IdMap, ErrorCodes, Playground};
+
+pub struct ErrorMetadata {
+    pub description: Option<String>,
+}
+
+/// Mapping from error codes to metadata that can be (de)serialized.
+pub type ErrorMetadataMap = BTreeMap<String, ErrorMetadata>;
 
 enum OutputFormat {
     HTML(HTMLFormatter),
@@ -214,9 +220,6 @@ fn main_with_result(format: OutputFormat, dst: &Path) -> Result<(), Box<dyn Erro
     for (code, desc) in long_codes {
         err_map.insert(code.to_string(), ErrorMetadata {
             description: desc.map(String::from),
-            // FIXME: this indicates that the error code is not used, which may not be true.
-            // We currently do not use this information.
-            use_site: None,
         });
     }
     match format {

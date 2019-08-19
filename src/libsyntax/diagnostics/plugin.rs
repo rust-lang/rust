@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::env;
 
 use crate::ast::{self, Ident, Name};
 use crate::source_map;
@@ -11,8 +10,6 @@ use crate::tokenstream::{TokenTree};
 
 use smallvec::smallvec;
 use syntax_pos::Span;
-
-use crate::diagnostics::metadata::output_metadata;
 
 pub use errors::*;
 
@@ -127,35 +124,12 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt<'_>,
                                           token_tree: &[TokenTree])
                                           -> Box<dyn MacResult+'cx> {
     assert_eq!(token_tree.len(), 3);
-    let (crate_name, ident) = match (&token_tree[0], &token_tree[2]) {
-        (
-            // Crate name.
-            &TokenTree::Token(Token { kind: token::Ident(crate_name, _), .. }),
-            // DIAGNOSTICS ident.
-            &TokenTree::Token(Token { kind: token::Ident(name, _), span })
-        ) => (crate_name, Ident::new(name, span)),
+    let ident = match &token_tree[2] {
+        // DIAGNOSTICS ident.
+        &TokenTree::Token(Token { kind: token::Ident(name, _), span })
+        => Ident::new(name, span),
         _ => unreachable!()
     };
-
-    // Output error metadata to `tmp/extended-errors/<target arch>/<crate name>.json`
-    if let Ok(target_triple) = env::var("CFG_COMPILER_HOST_TRIPLE") {
-        ecx.parse_sess.registered_diagnostics.with_lock(|diagnostics| {
-            if let Err(e) = output_metadata(ecx,
-                                            &target_triple,
-                                            &crate_name.as_str(),
-                                            diagnostics) {
-                ecx.span_bug(span, &format!(
-                    "error writing metadata for triple `{}` and crate `{}`, error: {}, \
-                     cause: {:?}",
-                    target_triple, crate_name, e.description(), e.source()
-                ));
-            }
-        });
-    } else {
-        ecx.span_err(span, &format!(
-            "failed to write metadata for crate `{}` because $CFG_COMPILER_HOST_TRIPLE is not set",
-            crate_name));
-    }
 
     // Construct the output expression.
     let (count, expr) =
