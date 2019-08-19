@@ -20,7 +20,7 @@ const GRAMMAR_DIR: &str = "crates/ra_parser/src/grammar";
 const OK_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/ok";
 const ERR_INLINE_TESTS_DIR: &str = "crates/ra_syntax/test_data/parser/inline/err";
 
-pub const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs.tera";
+pub const SYNTAX_KINDS: &str = "crates/ra_parser/src/syntax_kind/generated.rs";
 pub const AST: &str = "crates/ra_syntax/src/ast/generated.rs";
 const TOOLCHAIN: &str = "stable";
 

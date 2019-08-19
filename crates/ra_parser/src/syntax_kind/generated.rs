@@ -557,10 +557,6 @@ impl SyntaxKind {
             "try" => TRY_KW,
             "box" => BOX_KW,
             "await" => AWAIT_KW,
-            "auto" => AUTO_KW,
-            "default" => DEFAULT_KW,
-            "existential" => EXISTENTIAL_KW,
-            "union" => UNION_KW,
             _ => return None,
         };
         Some(kw)

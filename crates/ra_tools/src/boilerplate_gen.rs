@@ -2,7 +2,6 @@ use std::{
     collections::BTreeMap,
     fs,
     io::Write,
-    path::Path,
     process::{Command, Stdio},
 };
 
@@ -12,7 +11,7 @@ use quote::{format_ident, quote};
 use ron;
 use serde::Deserialize;
 
-use crate::{project_root, Mode, Result, AST, GRAMMAR, SYNTAX_KINDS};
+use crate::{project_root, update, Mode, Result, AST, GRAMMAR, SYNTAX_KINDS};
 
 pub fn generate_boilerplate(mode: Mode) -> Result<()> {
     let grammar = project_root().join(GRAMMAR);
@@ -21,11 +20,14 @@ pub fn generate_boilerplate(mode: Mode) -> Result<()> {
         ron::de::from_str(&text)?
     };
 
-    let _syntax_kinds = project_root().join(SYNTAX_KINDS);
-    let _ast = project_root().join(AST);
+    let syntax_kinds_file = project_root().join(SYNTAX_KINDS);
+    let syntax_kinds = generate_syntax_kinds(&grammar)?;
+    update(syntax_kinds_file.as_path(), &syntax_kinds, mode)?;
 
-    let ast = generate_syntax_kinds(&grammar)?;
-    println!("{}", ast);
+    let ast_file = project_root().join(AST);
+    let ast = generate_ast(&grammar)?;
+    update(ast_file.as_path(), &ast, mode)?;
+
     Ok(())
 }
 
@@ -172,10 +174,14 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
         .chain(grammar.multi_byte_tokens.iter().map(|(_token, name)| format_ident!("{}", name)))
         .collect::<Vec<_>>();
 
-    let keywords_values =
+    let full_keywords_values = &grammar.keywords;
+    let full_keywords =
+        full_keywords_values.iter().map(|kw| format_ident!("{}_KW", kw.to_shouty_snake_case()));
+
+    let all_keywords_values =
         grammar.keywords.iter().chain(grammar.contextual_keywords.iter()).collect::<Vec<_>>();
-    let keywords_idents = keywords_values.iter().map(|kw| format_ident!("{}", kw));
-    let keywords = keywords_values
+    let all_keywords_idents = all_keywords_values.iter().map(|kw| format_ident!("{}", kw));
+    let all_keywords = all_keywords_values
         .iter()
         .map(|name| format_ident!("{}_KW", name.to_shouty_snake_case()))
         .collect::<Vec<_>>();
@@ -202,7 +208,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
             #[doc(hidden)]
             EOF,
             #(#punctuation,)*
-            #(#keywords,)*
+            #(#all_keywords,)*
             #(#literals,)*
             #(#tokens,)*
             #(#nodes,)*
@@ -229,7 +235,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
         impl SyntaxKind {
             pub fn is_keyword(self) -> bool {
                 match self {
-                    #(#keywords)|* => true,
+                    #(#all_keywords)|* => true,
                     _ => false,
                 }
             }
@@ -251,7 +257,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
             pub(crate) fn info(self) -> &'static SyntaxInfo {
                 match self {
                     #(#punctuation => &SyntaxInfo { name: stringify!(#punctuation) },)*
-                    #(#keywords => &SyntaxInfo { name: stringify!(#keywords) },)*
+                    #(#all_keywords => &SyntaxInfo { name: stringify!(#all_keywords) },)*
                     #(#literals => &SyntaxInfo { name: stringify!(#literals) },)*
                     #(#tokens => &SyntaxInfo { name: stringify!(#tokens) },)*
                     #(#nodes => &SyntaxInfo { name: stringify!(#nodes) },)*
@@ -263,7 +269,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
 
             pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
                 let kw = match ident {
-                    #(#keywords_values => #keywords,)*
+                    #(#full_keywords_values => #full_keywords,)*
                     _ => return None,
                 };
                 Some(kw)
@@ -281,7 +287,7 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
         #[macro_export]
         macro_rules! T {
             #((#punctuation_values) => { $crate::SyntaxKind::#punctuation };)*
-            #((#keywords_idents) => { $crate::SyntaxKind::#keywords };)*
+            #((#all_keywords_idents) => { $crate::SyntaxKind::#all_keywords };)*
         }
     };
 
