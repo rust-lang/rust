@@ -178,7 +178,7 @@ impl Command {
             cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
-        #[cfg(not(any(target_os = "l4re")))]
+        #[cfg(not(target_os = "l4re"))]
         {
             if let Some(u) = self.get_gid() {
                 cvt(libc::setgid(u as gid_t))?;
@@ -202,7 +202,7 @@ impl Command {
         }
 
         // emscripten has no signal support.
-        #[cfg(not(any(target_os = "emscripten")))]
+        #[cfg(not(target_os = "emscripten"))]
         {
             use crate::mem::MaybeUninit;
             // Reset signal handling so the child process starts in a
