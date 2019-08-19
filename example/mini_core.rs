@@ -529,3 +529,5 @@ pub macro line() { /* compiler built-in */ }
 #[rustc_builtin_macro]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro cfg() { /* compiler built-in */ }
+
+pub static A_STATIC: u8 = 42;

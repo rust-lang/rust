@@ -261,4 +261,7 @@ fn main() {
     let f2 = -1000.0;
     assert_eq!(f2 as i8, -128);
     assert_eq!(f2 as u8, 0);
+
+    static ANOTHER_STATIC: &u8 = &A_STATIC;
+    assert_eq!(*ANOTHER_STATIC, 42);
 }

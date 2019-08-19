@@ -297,6 +297,10 @@ fn define_all_allocs(
                 read_target_uint(endianness, bytes).unwrap()
             };
 
+            // Don't inline `reloc_target_alloc` into the match. That would cause `tcx.alloc_map`
+            // to be locked for the duration of the match. `data_id_for_static` however may try
+            // to lock `tcx.alloc_map` itself while calculating the layout of the target static.
+            // This would cause a panic in single threaded rustc and a deadlock for parallel rustc.
             let reloc_target_alloc = tcx.alloc_map.lock().get(reloc).unwrap();
             let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function(instance) => {
@@ -311,7 +315,9 @@ fn define_all_allocs(
                     data_id_for_alloc_id(module, reloc, alloc.align)
                 }
                 GlobalAlloc::Static(def_id) => {
-                    cx.todo.insert(TodoItem::Static(def_id));
+                    // Don't push a `TodoItem::Static` here, as it will cause statics used by
+                    // multiple crates to be duplicated between them. It isn't necessary anyway,
+                    // as it will get pushed by `codegen_static` when necessary.
                     let linkage = crate::linkage::get_static_ref_linkage(tcx, def_id);
                     data_id_for_static(tcx, module, def_id, linkage)
                 }
