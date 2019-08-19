@@ -682,8 +682,9 @@ pub trait Resolver {
 
     fn resolve_imports(&mut self);
 
-    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
-                                -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate>;
+    fn resolve_macro_invocation(
+        &mut self, invoc: &Invocation, eager_expansion_root: ExpnId, force: bool
+    ) -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate>;
 
     fn check_unused_macros(&self);
 
