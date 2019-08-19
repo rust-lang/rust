@@ -25,7 +25,7 @@ pub fn errno() -> i32 {
 }
 
 pub fn error_string(errno: i32) -> String {
-    wasi::error_string(errno).to_string()
+    wasi::error_string(errno)
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
