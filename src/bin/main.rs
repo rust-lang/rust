@@ -126,6 +126,12 @@ fn make_opts() -> Options {
          `current` writes to stdout current config as if formatting the file at PATH.",
         "[default|minimal|current] PATH",
     );
+    opts.optflag(
+        "l",
+        "files-with-diff",
+        "Prints the names of mismatched files that were formatted. Prints the names of \
+         files that would be formated when used with `--check` mode. ",
+    );
 
     if is_nightly {
         opts.optflag(
@@ -480,6 +486,7 @@ struct GetOptsOptions {
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
     error_on_unformatted: Option<bool>,
+    print_misformatted_file_names: bool,
 }
 
 impl GetOptsOptions {
@@ -547,6 +554,10 @@ impl GetOptsOptions {
             options.backup = true;
         }
 
+        if matches.opt_present("files-with-diff") {
+            options.print_misformatted_file_names = true;
+        }
+
         if !rust_nightly {
             if !STABLE_EMIT_MODES.contains(&options.emit_mode) {
                 return Err(format_err!(
@@ -609,6 +620,9 @@ impl CliOptions for GetOptsOptions {
         }
         if let Some(color) = self.color {
             config.set().color(color);
+        }
+        if self.print_misformatted_file_names {
+            config.set().print_misformatted_file_names(true);
         }
     }
 

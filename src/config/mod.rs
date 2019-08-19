@@ -152,6 +152,9 @@ create_config! {
     emit_mode: EmitMode, EmitMode::Files, false,
         "What emit Mode to use when none is supplied";
     make_backup: bool, false, false, "Backup changed files";
+    print_misformatted_file_names: bool, false, true,
+        "Prints the names of mismatched files that were formatted. Prints the names of \
+         files that would be formated when used with `--check` mode. ";
 }
 
 impl PartialConfig {
@@ -161,6 +164,7 @@ impl PartialConfig {
         cloned.file_lines = None;
         cloned.verbose = None;
         cloned.width_heuristics = None;
+        cloned.print_misformatted_file_names = None;
 
         ::toml::to_string(&cloned).map_err(|e| format!("Could not output config: {}", e))
     }

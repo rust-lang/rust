@@ -15,7 +15,7 @@ impl DiffEmitter {
 impl Emitter for DiffEmitter {
     fn emit_formatted_file(
         &mut self,
-        _output: &mut dyn Write,
+        output: &mut dyn Write,
         FormattedFile {
             filename,
             original_text,
@@ -25,11 +25,86 @@ impl Emitter for DiffEmitter {
         const CONTEXT_SIZE: usize = 3;
         let mismatch = make_diff(&original_text, formatted_text, CONTEXT_SIZE);
         let has_diff = !mismatch.is_empty();
-        print_diff(
-            mismatch,
-            |line_num| format!("Diff in {} at line {}:", filename, line_num),
-            &self.config,
-        );
+
+        if has_diff {
+            if self.config.print_misformatted_file_names() {
+                writeln!(output, "{}", ensure_real_path(filename).display())?;
+            } else {
+                print_diff(
+                    mismatch,
+                    |line_num| format!("Diff in {} at line {}:", filename, line_num),
+                    &self.config,
+                );
+            }
+        }
+
         return Ok(EmitterResult { has_diff });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Config;
+    use crate::FileName;
+    use std::path::PathBuf;
+
+    #[test]
+    fn does_not_print_when_no_files_reformatted() {
+        let mut writer = Vec::new();
+        let config = Config::default();
+        let mut emitter = DiffEmitter::new(config);
+        let result = emitter
+            .emit_formatted_file(
+                &mut writer,
+                FormattedFile {
+                    filename: &FileName::Real(PathBuf::from("src/lib.rs")),
+                    original_text: "fn empty() {}\n",
+                    formatted_text: "fn empty() {}\n",
+                },
+            )
+            .unwrap();
+        assert_eq!(result.has_diff, false);
+        assert_eq!(writer.len(), 0);
+    }
+
+    #[test]
+    fn prints_file_names_when_config_is_enabled() {
+        let bin_file = "src/bin.rs";
+        let bin_original = "fn main() {\nprintln!(\"Hello, world!\");\n}";
+        let bin_formatted = "fn main() {\n    println!(\"Hello, world!\");\n}";
+        let lib_file = "src/lib.rs";
+        let lib_original = "fn greet() {\nprintln!(\"Greetings!\");\n}";
+        let lib_formatted = "fn greet() {\n    println!(\"Greetings!\");\n}";
+
+        let mut writer = Vec::new();
+        let mut config = Config::default();
+        config.set().print_misformatted_file_names(true);
+        let mut emitter = DiffEmitter::new(config);
+        let _ = emitter
+            .emit_formatted_file(
+                &mut writer,
+                FormattedFile {
+                    filename: &FileName::Real(PathBuf::from(bin_file)),
+                    original_text: bin_original,
+                    formatted_text: bin_formatted,
+                },
+            )
+            .unwrap();
+        let _ = emitter
+            .emit_formatted_file(
+                &mut writer,
+                FormattedFile {
+                    filename: &FileName::Real(PathBuf::from(lib_file)),
+                    original_text: lib_original,
+                    formatted_text: lib_formatted,
+                },
+            )
+            .unwrap();
+
+        assert_eq!(
+            String::from_utf8(writer).unwrap(),
+            format!("{}\n{}\n", bin_file, lib_file),
+        )
     }
 }

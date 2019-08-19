@@ -480,7 +480,9 @@ pub(crate) fn create_emitter<'a>(config: &Config) -> Box<dyn Emitter + 'a> {
         EmitMode::Files if config.make_backup() => {
             Box::new(emitter::FilesWithBackupEmitter::default())
         }
-        EmitMode::Files => Box::new(emitter::FilesEmitter::default()),
+        EmitMode::Files => Box::new(emitter::FilesEmitter::new(
+            config.print_misformatted_file_names(),
+        )),
         EmitMode::Stdout | EmitMode::Coverage => {
             Box::new(emitter::StdoutEmitter::new(config.verbose()))
         }
