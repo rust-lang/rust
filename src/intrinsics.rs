@@ -318,6 +318,8 @@ pub fn codegen_intrinsic_call<'tcx>(
         sqrtf64(flt) -> f64 => sqrt,
         powif32(a, x) -> f32 => __powisf2, // compiler-builtins
         powif64(a, x) -> f64 => __powidf2, // compiler-builtins
+        powf32(a, x) -> f32 => powf,
+        powf64(a, x) -> f64 => pow,
         logf32(flt) -> f32 => logf,
         logf64(flt) -> f64 => log,
         log2f32(flt) -> f32 => log2f,
