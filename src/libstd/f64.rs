@@ -1441,6 +1441,7 @@ mod tests {
         assert_eq!(inf.asinh(), inf);
         assert_eq!(neg_inf.asinh(), neg_inf);
         assert!(nan.asinh().is_nan());
+        assert!((-0.0f64).asinh().is_sign_negative()); // issue 63271
         assert_approx_eq!(2.0f64.asinh(), 1.443635475178810342493276740273105f64);
         assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
     }
