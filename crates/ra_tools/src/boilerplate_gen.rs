@@ -37,41 +37,72 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
             ast_node.variants.iter().map(|var| format_ident!("{}", var)).collect::<Vec<_>>();
         let name = format_ident!("{}", name);
 
-        let kinds = if variants.is_empty() { vec![name.clone()] } else { variants.clone() }
-            .into_iter()
-            .map(|name| format_ident!("{}", name.to_string().to_shouty_snake_case()))
-            .collect::<Vec<_>>();
+        let adt = if variants.is_empty() {
+            let kind = format_ident!("{}", name.to_string().to_shouty_snake_case());
+            quote! {
+                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                pub struct #name {
+                    pub(crate) syntax: SyntaxNode,
+                }
 
-        let variants = if variants.is_empty() {
-            None
+                impl AstNode for #name {
+                    fn can_cast(kind: SyntaxKind) -> bool {
+                        match kind {
+                            #kind => true,
+                            _ => false,
+                        }
+                    }
+                    fn cast(syntax: SyntaxNode) -> Option<Self> {
+                        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+                    }
+                    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+                }
+            }
         } else {
-            let kind_enum = format_ident!("{}Kind", name);
-            Some(quote!(
-                pub enum #kind_enum {
+            let kinds = variants
+                .iter()
+                .map(|name| format_ident!("{}", name.to_string().to_shouty_snake_case()))
+                .collect::<Vec<_>>();
+
+            quote! {
+                #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+                pub enum #name {
                     #(#variants(#variants),)*
                 }
 
                 #(
                 impl From<#variants> for #name {
                     fn from(node: #variants) -> #name {
-                        #name { syntax: node.syntax }
+                        #name::#variants(node)
                     }
                 }
                 )*
 
-                impl #name {
-                    pub fn kind(&self) -> #kind_enum {
-                        let syntax = self.syntax.clone();
-                        match syntax.kind() {
+                impl AstNode for #name {
+                    fn can_cast(kind: SyntaxKind) -> bool {
+                        match kind {
+                            #(#kinds)|* => true,
+                            _ => false,
+                        }
+                    }
+                    fn cast(syntax: SyntaxNode) -> Option<Self> {
+                        let res = match syntax.kind() {
                             #(
-                            #kinds =>
-                                #kind_enum::#variants(#variants { syntax }),
+                            #kinds => #name::#variants(#variants { syntax }),
                             )*
-                            _ => unreachable!(),
+                            _ => return None,
+                        };
+                        Some(res)
+                    }
+                    fn syntax(&self) -> &SyntaxNode {
+                        match self {
+                            #(
+                            #name::#variants(it) => &it.syntax,
+                            )*
                         }
                     }
                 }
-            ))
+            }
         };
 
         let traits = ast_node.traits.iter().map(|trait_name| {
@@ -105,25 +136,7 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
         });
 
         quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-            pub struct #name {
-                pub(crate) syntax: SyntaxNode,
-            }
-
-            impl AstNode for #name {
-                fn can_cast(kind: SyntaxKind) -> bool {
-                    match kind {
-                        #(#kinds)|* => true,
-                        _ => false,
-                    }
-                }
-                fn cast(syntax: SyntaxNode) -> Option<Self> {
-                    if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-                }
-                fn syntax(&self) -> &SyntaxNode { &self.syntax }
-            }
-
-            #variants
+            #adt
 
             #(#traits)*
 
