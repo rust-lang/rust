@@ -1,6 +1,5 @@
-extern crate cast;
-extern crate rand;
-
+use rand::seq::SliceRandom;
+use rand::Rng;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Write as FmtWrite;
@@ -9,9 +8,6 @@ use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::path::PathBuf;
 use std::{env, mem};
-
-use self::cast::{f32, f64, i128, i32, i64, u128, u32, u64};
-use self::rand::Rng;
 
 const NTESTS: usize = 1_000;
 
@@ -397,7 +393,7 @@ fn main() {
             if a.0.is_nan() {
                 return None;
             }
-            Some(f64(a.0))
+            Some(f64::from(a.0))
         },
         "builtins::float::extend::__extendsfdf2(a)",
     );
@@ -407,7 +403,7 @@ fn main() {
                 if a.0.is_nan() {
                     return None;
                 }
-                Some(f64(a.0))
+                Some(f64::from(a.0))
             },
             "builtins::float::extend::__extendsfdf2vfp(a)",
         );
@@ -415,92 +411,92 @@ fn main() {
 
     // float/conv.rs
     gen(
-        |a: MyF64| i64(a.0).ok(),
+        |a: MyF64| i64::cast(a.0),
         "builtins::float::conv::__fixdfdi(a)",
     );
     gen(
-        |a: MyF64| i32(a.0).ok(),
+        |a: MyF64| i32::cast(a.0),
         "builtins::float::conv::__fixdfsi(a)",
     );
     gen(
-        |a: MyF32| i64(a.0).ok(),
+        |a: MyF32| i64::cast(a.0),
         "builtins::float::conv::__fixsfdi(a)",
     );
     gen(
-        |a: MyF32| i32(a.0).ok(),
+        |a: MyF32| i32::cast(a.0),
         "builtins::float::conv::__fixsfsi(a)",
     );
     gen(
-        |a: MyF32| i128(a.0).ok(),
+        |a: MyF32| i128::cast(a.0),
         "builtins::float::conv::__fixsfti(a)",
     );
     gen(
-        |a: MyF64| i128(a.0).ok(),
+        |a: MyF64| i128::cast(a.0),
         "builtins::float::conv::__fixdfti(a)",
     );
     gen(
-        |a: MyF64| u64(a.0).ok(),
+        |a: MyF64| u64::cast(a.0),
         "builtins::float::conv::__fixunsdfdi(a)",
     );
     gen(
-        |a: MyF64| u32(a.0).ok(),
+        |a: MyF64| u32::cast(a.0),
         "builtins::float::conv::__fixunsdfsi(a)",
     );
     gen(
-        |a: MyF32| u64(a.0).ok(),
+        |a: MyF32| u64::cast(a.0),
         "builtins::float::conv::__fixunssfdi(a)",
     );
     gen(
-        |a: MyF32| u32(a.0).ok(),
+        |a: MyF32| u32::cast(a.0),
         "builtins::float::conv::__fixunssfsi(a)",
     );
     gen(
-        |a: MyF32| u128(a.0).ok(),
+        |a: MyF32| u128::cast(a.0),
         "builtins::float::conv::__fixunssfti(a)",
     );
     gen(
-        |a: MyF64| u128(a.0).ok(),
+        |a: MyF64| u128::cast(a.0),
         "builtins::float::conv::__fixunsdfti(a)",
     );
     gen(
-        |a: MyI64| Some(f64(a.0)),
+        |a: MyI64| Some(a.0 as f64),
         "builtins::float::conv::__floatdidf(a)",
     );
     gen(
-        |a: MyI32| Some(f64(a.0)),
+        |a: MyI32| Some(a.0 as f64),
         "builtins::float::conv::__floatsidf(a)",
     );
     gen(
-        |a: MyI32| Some(f32(a.0)),
+        |a: MyI32| Some(a.0 as f32),
         "builtins::float::conv::__floatsisf(a)",
     );
     gen(
-        |a: MyU64| Some(f64(a.0)),
+        |a: MyU64| Some(a.0 as f64),
         "builtins::float::conv::__floatundidf(a)",
     );
     gen(
-        |a: MyU32| Some(f64(a.0)),
+        |a: MyU32| Some(a.0 as f64),
         "builtins::float::conv::__floatunsidf(a)",
     );
     gen(
-        |a: MyU32| Some(f32(a.0)),
+        |a: MyU32| Some(a.0 as f32),
         "builtins::float::conv::__floatunsisf(a)",
     );
     gen(
-        |a: MyU128| f32(a.0).ok(),
+        |a: MyU128| Some(a.0 as f32),
         "builtins::float::conv::__floatuntisf(a)",
     );
     if !target_arch_mips {
         gen(
-            |a: MyI128| Some(f32(a.0)),
+            |a: MyI128| Some(a.0 as f32),
             "builtins::float::conv::__floattisf(a)",
         );
         gen(
-            |a: MyI128| Some(f64(a.0)),
+            |a: MyI128| Some(a.0 as f64),
             "builtins::float::conv::__floattidf(a)",
         );
         gen(
-            |a: MyU128| Some(f64(a.0)),
+            |a: MyU128| Some(a.0 as f64),
             "builtins::float::conv::__floatuntidf(a)",
         );
     }
@@ -996,7 +992,7 @@ macro_rules! gen_float {
      $significand_bits:expr) => {
         pub fn $name<R>(rng: &mut R) -> $fty
         where
-            R: Rng,
+            R: Rng + ?Sized,
         {
             const BITS: u8 = $bits;
             const SIGNIFICAND_BITS: u8 = $significand_bits;
@@ -1015,9 +1011,9 @@ macro_rules! gen_float {
                 }
             }
 
-            if rng.gen_weighted_bool(10) {
+            if rng.gen_range(0, 10) == 1 {
                 // Special values
-                *rng.choose(&[
+                *[
                     -0.0,
                     0.0,
                     ::std::$fty::MIN,
@@ -1026,9 +1022,10 @@ macro_rules! gen_float {
                     ::std::$fty::NAN,
                     ::std::$fty::INFINITY,
                     -::std::$fty::INFINITY,
-                ])
+                ]
+                .choose(rng)
                 .unwrap()
-            } else if rng.gen_weighted_bool(10) {
+            } else if rng.gen_range(0, 10) == 1 {
                 // NaN patterns
                 mk_f32(rng.gen(), rng.gen(), 0)
             } else if rng.gen() {
@@ -1053,7 +1050,7 @@ macro_rules! gen_large_float {
      $significand_bits:expr) => {
         pub fn $name<R>(rng: &mut R) -> $fty
         where
-            R: Rng,
+            R: Rng + ?Sized,
         {
             const BITS: u8 = $bits;
             const SIGNIFICAND_BITS: u8 = $significand_bits;
@@ -1072,9 +1069,9 @@ macro_rules! gen_large_float {
                 }
             }
 
-            if rng.gen_weighted_bool(10) {
+            if rng.gen_range(0, 10) == 1 {
                 // Special values
-                *rng.choose(&[
+                *[
                     -0.0,
                     0.0,
                     ::std::$fty::MIN,
@@ -1083,9 +1080,10 @@ macro_rules! gen_large_float {
                     ::std::$fty::NAN,
                     ::std::$fty::INFINITY,
                     -::std::$fty::INFINITY,
-                ])
+                ]
+                .choose(rng)
                 .unwrap()
-            } else if rng.gen_weighted_bool(10) {
+            } else if rng.gen_range(0, 10) == 1 {
                 // NaN patterns
                 mk_f32(rng.gen(), rng.gen(), 0)
             } else if rng.gen() {
@@ -1102,7 +1100,7 @@ macro_rules! gen_large_float {
 gen_large_float!(gen_large_f32, f32, u32, 32, 23);
 gen_large_float!(gen_large_f64, f64, u64, 64, 52);
 
-trait TestInput: rand::Rand + Hash + Eq + fmt::Debug {
+trait TestInput: Hash + Eq + fmt::Debug {
     fn ty_name() -> String;
     fn generate_lets(container: &str, cnt: &mut u8) -> String;
     fn generate_static(&self, dst: &mut String);
@@ -1119,6 +1117,7 @@ where
     F: FnMut(A) -> Option<R>,
     A: TestInput + Copy,
     R: TestOutput,
+    rand::distributions::Standard: rand::distributions::Distribution<A>,
 {
     let rng = &mut rand::thread_rng();
     let testname = test.split("::").last().unwrap().split("(").next().unwrap();
@@ -1207,8 +1206,8 @@ macro_rules! my_float {
             }
         }
 
-        impl rand::Rand for $name {
-            fn rand<R: rand::Rng>(r: &mut R) -> $name {
+        impl rand::distributions::Distribution<$name> for rand::distributions::Standard {
+            fn sample<R: rand::Rng + ?Sized >(&self, r: &mut R) -> $name {
                 $name($gen(r))
             }
         }
@@ -1260,18 +1259,18 @@ macro_rules! my_integer {
             }
         }
 
-        impl rand::Rand for $name {
-            fn rand<R: rand::Rng>(rng: &mut R) -> $name {
+        impl rand::distributions::Distribution<$name> for rand::distributions::Standard {
+            fn sample<R: rand::Rng + ?Sized >(&self, r: &mut R) -> $name {
                 let bits = (0 as $inner).count_zeros();
                 let mut mk = || {
-                    if rng.gen_weighted_bool(10) {
-                        *rng.choose(&[
+                    if r.gen_range(0, 10) == 1 {
+                        *[
                             ::std::$inner::MAX >> (bits / 2),
                             0,
                             ::std::$inner::MIN >> (bits / 2),
-                        ]).unwrap()
+                        ].choose(r).unwrap()
                     } else {
-                        rng.gen::<$inner>()
+                        r.gen::<$inner>()
                     }
                 };
                 let a = mk();
@@ -1385,4 +1384,37 @@ where
     fn generate_expr(container: &str) -> String {
         container.to_string()
     }
+}
+
+trait FromFloat<T>: Sized {
+    fn cast(src: T) -> Option<Self>;
+}
+
+macro_rules! from_float {
+    ($($src:ident => $($dst:ident),+);+;) => {
+        $(
+            $(
+                impl FromFloat<$src> for $dst {
+                    fn cast(src: $src) -> Option<$dst> {
+                        use std::{$dst, $src};
+
+                        if src.is_nan() ||
+                            src.is_infinite() ||
+                            src < std::$dst::MIN as $src ||
+                            src > std::$dst::MAX as $src
+                        {
+                            None
+                        } else {
+                            Some(src as $dst)
+                        }
+                    }
+                }
+            )+
+        )+
+    }
+}
+
+from_float! {
+    f32 => i32, i64, i128, u32, u64, u128;
+    f64 => i32, i64, i128, u32, u64, u128;
 }
