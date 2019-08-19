@@ -64,6 +64,10 @@ pub fn clif_int_or_float_cast(
             from_signed, // FIXME is this correct?
         )
     } else if from_ty.is_int() && to_ty.is_float() {
+        if from_ty == types::I128 {
+            unimpl!("u/i128 -> float");
+        }
+
         // int-like -> float
         if from_signed {
             fx.bcx.ins().fcvt_from_sint(to_ty, from)
@@ -71,6 +75,10 @@ pub fn clif_int_or_float_cast(
             fx.bcx.ins().fcvt_from_uint(to_ty, from)
         }
     } else if from_ty.is_float() && to_ty.is_int() {
+        if to_ty == types::I128 {
+            unimpl!("float -> u/i128");
+        }
+
         // float -> int-like
         if to_ty == types::I8 || to_ty == types::I16 {
             // FIXME implement fcvt_to_*int_sat.i8/i16
