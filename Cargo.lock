@@ -2844,7 +2844,6 @@ dependencies = [
  "fmt_macros",
  "graphviz",
  "jobserver",
- "lazy_static 1.3.0",
  "log",
  "measureme",
  "num_cpus",
