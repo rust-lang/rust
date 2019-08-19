@@ -127,8 +127,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> InferOk<'tcx, (T, OpaqueTypeMap<'tcx>)> {
         debug!(
             "instantiate_opaque_types(value={:?}, parent_def_id={:?}, body_id={:?}, \
-             param_env={:?})",
-            value, parent_def_id, body_id, param_env,
+             param_env={:?}, value_span={:?})",
+            value, parent_def_id, body_id, param_env, value_span,
         );
         let mut instantiator = Instantiator {
             infcx: self,
@@ -1112,6 +1112,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             return opaque_defn.concrete_ty;
         }
         let span = tcx.def_span(def_id);
+        debug!("fold_opaque_ty {:?} {:?}", self.value_span, span);
         let ty_var = infcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span });
 
