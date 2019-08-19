@@ -3,14 +3,16 @@
 // explicit lifetime bound.
 //
 // edition:2018
+// check-pass
 
 #![feature(async_await)]
 
 trait Object {}
 
-trait Alpha<Param> {}
+trait Alpha<Param: ?Sized> {}
 
 async fn foo<'a>(_: &'a ()) -> impl Alpha<dyn Object> {}
-//~^ ERROR not satisfied
+
+impl<T> Alpha<dyn Object> for T { }
 
 fn main() { }
