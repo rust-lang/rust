@@ -155,7 +155,7 @@ impl Command {
         _f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>,
     ) {
         // Fork() is not supported in vxWorks so no way to run the closure in the new procecss.
-        unimplemented!();;
+        unimplemented!();
     }
 
     pub fn stdin(&mut self, stdin: Stdio) {
