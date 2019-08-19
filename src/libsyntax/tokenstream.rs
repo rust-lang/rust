@@ -414,7 +414,7 @@ impl TokenStreamBuilder {
         let last_tree_if_joint = self.0.last().and_then(TokenStream::last_tree_if_joint);
         if let Some(TokenTree::Token(last_token)) = last_tree_if_joint {
             if let Some((TokenTree::Token(token), is_joint)) = stream.first_tree_and_joint() {
-                if let Some(glued_tok) = last_token.glue(token) {
+                if let Some(glued_tok) = last_token.glue(&token) {
                     let last_stream = self.0.pop().unwrap();
                     self.push_all_but_last_tree(&last_stream);
                     let glued_tt = TokenTree::Token(glued_tok);
