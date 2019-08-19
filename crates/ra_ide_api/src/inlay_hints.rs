@@ -2,11 +2,8 @@ use crate::{db::RootDatabase, FileId};
 use hir::{HirDisplay, SourceAnalyzer, Ty};
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
-    ast::{
-        self, AstNode, ForExpr, IfExpr, LambdaExpr, LetStmt, MatchArmList, SourceFile,
-        TypeAscriptionOwner, WhileExpr,
-    },
-    SmolStr, SyntaxKind, SyntaxNode, TextRange,
+    ast::{self, AstNode, TypeAscriptionOwner},
+    SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -35,7 +32,7 @@ fn get_inlay_hints(
     node: &SyntaxNode,
 ) -> Option<Vec<InlayHint>> {
     visitor()
-        .visit(|let_statement: LetStmt| {
+        .visit(|let_statement: ast::LetStmt| {
             if let_statement.ascribed_type().is_some() {
                 return None;
             }
@@ -43,7 +40,7 @@ fn get_inlay_hints(
             let analyzer = SourceAnalyzer::new(db, file_id, let_statement.syntax(), None);
             Some(get_pat_type_hints(db, &analyzer, pat, false))
         })
-        .visit(|closure_parameter: LambdaExpr| {
+        .visit(|closure_parameter: ast::LambdaExpr| {
             let analyzer = SourceAnalyzer::new(db, file_id, closure_parameter.syntax(), None);
             closure_parameter.param_list().map(|param_list| {
                 param_list
@@ -55,22 +52,22 @@ fn get_inlay_hints(
                     .collect()
             })
         })
-        .visit(|for_expression: ForExpr| {
+        .visit(|for_expression: ast::ForExpr| {
             let pat = for_expression.pat()?;
             let analyzer = SourceAnalyzer::new(db, file_id, for_expression.syntax(), None);
             Some(get_pat_type_hints(db, &analyzer, pat, false))
         })
-        .visit(|if_expr: IfExpr| {
+        .visit(|if_expr: ast::IfExpr| {
             let pat = if_expr.condition()?.pat()?;
             let analyzer = SourceAnalyzer::new(db, file_id, if_expr.syntax(), None);
             Some(get_pat_type_hints(db, &analyzer, pat, true))
         })
-        .visit(|while_expr: WhileExpr| {
+        .visit(|while_expr: ast::WhileExpr| {
             let pat = while_expr.condition()?.pat()?;
             let analyzer = SourceAnalyzer::new(db, file_id, while_expr.syntax(), None);
             Some(get_pat_type_hints(db, &analyzer, pat, true))
         })
-        .visit(|match_arm_list: MatchArmList| {
+        .visit(|match_arm_list: ast::MatchArmList| {
             let analyzer = SourceAnalyzer::new(db, file_id, match_arm_list.syntax(), None);
             Some(
                 match_arm_list
