@@ -716,7 +716,7 @@ fn super_predicates_of(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo: Bar + Zed`.
-    let self_param_ty = tcx.mk_self_type();
+    let self_param_ty = tcx.types.self_param;
     let superbounds1 = AstConv::compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No,
         item.span);
 
@@ -1014,13 +1014,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                         synthetic,
                         ..
                     } => {
-                        if param.name.ident().name == kw::SelfUpper {
-                            span_bug!(
-                                param.span,
-                                "`Self` should not be the name of a regular parameter"
-                            );
-                        }
-
                         if !allow_defaults && default.is_some() {
                             if !tcx.features().default_type_parameter_fallback {
                                 tcx.lint_hir(
@@ -1044,13 +1037,6 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                         }
                     }
                     GenericParamKind::Const { .. } => {
-                        if param.name.ident().name == kw::SelfUpper {
-                            span_bug!(
-                                param.span,
-                                "`Self` should not be the name of a regular parameter",
-                            );
-                        }
-
                         ty::GenericParamDefKind::Const
                     }
                     _ => return None,
@@ -1567,7 +1553,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     &format!(
                                         "defining opaque type use restricts opaque \
                                          type by using the generic parameter `{}` twice",
-                                        p.name
+                                        p,
                                     ),
                                 );
                                 return;

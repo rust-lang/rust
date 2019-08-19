@@ -2524,15 +2524,6 @@ impl<'a> LoweringContext<'a> {
                 (param_name, kind)
             }
             GenericParamKind::Type { ref default, .. } => {
-                // Don't expose `Self` (recovered "keyword used as ident" parse error).
-                // `rustc::ty` expects `Self` to be only used for a trait's `Self`.
-                // Instead, use `gensym("Self")` to create a distinct name that looks the same.
-                let ident = if param.ident.name == kw::SelfUpper {
-                    param.ident.gensym()
-                } else {
-                    param.ident
-                };
-
                 let add_bounds = add_bounds.get(&param.id).map_or(&[][..], |x| &x);
                 if !add_bounds.is_empty() {
                     let params = self.lower_param_bounds(add_bounds, itctx.reborrow()).into_iter();
@@ -2551,7 +2542,7 @@ impl<'a> LoweringContext<'a> {
                                           .next(),
                 };
 
-                (hir::ParamName::Plain(ident), kind)
+                (hir::ParamName::Plain(param.ident), kind)
             }
             GenericParamKind::Const { ref ty } => {
                 (hir::ParamName::Plain(param.ident), hir::GenericParamKind::Const {

@@ -1141,13 +1141,6 @@ impl<'tcx> ParamTy {
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_param(self.index, self.name)
     }
-
-    pub fn is_self(&self) -> bool {
-        // FIXME(#50125): Ignoring `Self` with `index != 0` might lead to weird behavior elsewhere,
-        // but this should only be possible when using `-Z continue-parse-after-error` like
-        // `compile-fail/issue-36638.rs`.
-        self.name.as_symbol() == kw::SelfUpper && self.index == 0
-    }
 }
 
 #[derive(Copy, Clone, Hash, RustcEncodable, RustcDecodable,
@@ -1785,14 +1778,6 @@ impl<'tcx> TyS<'tcx> {
     pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
             ty::Param(ref data) => data.index == index,
-            _ => false,
-        }
-    }
-
-    #[inline]
-    pub fn is_self(&self) -> bool {
-        match self.sty {
-            Param(ref p) => p.is_self(),
             _ => false,
         }
     }

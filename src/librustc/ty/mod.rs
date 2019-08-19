@@ -414,61 +414,53 @@ pub struct CReaderCacheKey {
 bitflags! {
     pub struct TypeFlags: u32 {
         const HAS_PARAMS         = 1 << 0;
-        const HAS_SELF           = 1 << 1;
-        const HAS_TY_INFER       = 1 << 2;
-        const HAS_RE_INFER       = 1 << 3;
-        const HAS_RE_PLACEHOLDER = 1 << 4;
+        const HAS_TY_INFER       = 1 << 1;
+        const HAS_RE_INFER       = 1 << 2;
+        const HAS_RE_PLACEHOLDER = 1 << 3;
 
         /// Does this have any `ReEarlyBound` regions? Used to
         /// determine whether substitition is required, since those
         /// represent regions that are bound in a `ty::Generics` and
         /// hence may be substituted.
-        const HAS_RE_EARLY_BOUND = 1 << 5;
+        const HAS_RE_EARLY_BOUND = 1 << 4;
 
         /// Does this have any region that "appears free" in the type?
         /// Basically anything but `ReLateBound` and `ReErased`.
-        const HAS_FREE_REGIONS   = 1 << 6;
+        const HAS_FREE_REGIONS   = 1 << 5;
 
         /// Is an error type reachable?
-        const HAS_TY_ERR         = 1 << 7;
-        const HAS_PROJECTION     = 1 << 8;
+        const HAS_TY_ERR         = 1 << 6;
+        const HAS_PROJECTION     = 1 << 7;
 
         // FIXME: Rename this to the actual property since it's used for generators too
-        const HAS_TY_CLOSURE     = 1 << 9;
+        const HAS_TY_CLOSURE     = 1 << 8;
 
         /// `true` if there are "names" of types and regions and so forth
         /// that are local to a particular fn
-        const HAS_FREE_LOCAL_NAMES    = 1 << 10;
+        const HAS_FREE_LOCAL_NAMES    = 1 << 9;
 
         /// Present if the type belongs in a local type context.
         /// Only set for Infer other than Fresh.
-        const KEEP_IN_LOCAL_TCX  = 1 << 11;
-
-        // Is there a projection that does not involve a bound region?
-        // Currently we can't normalize projections w/ bound regions.
-        const HAS_NORMALIZABLE_PROJECTION = 1 << 12;
+        const KEEP_IN_LOCAL_TCX  = 1 << 10;
 
         /// Does this have any `ReLateBound` regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND = 1 << 13;
+        const HAS_RE_LATE_BOUND = 1 << 11;
 
-        const HAS_TY_PLACEHOLDER = 1 << 14;
+        const HAS_TY_PLACEHOLDER = 1 << 12;
 
-        const HAS_CT_INFER = 1 << 15;
-        const HAS_CT_PLACEHOLDER = 1 << 16;
+        const HAS_CT_INFER = 1 << 13;
+        const HAS_CT_PLACEHOLDER = 1 << 14;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
-                                   TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
 
         /// Flags representing the nominal content of a type,
         /// computed by FlagsComputation. If you add a new nominal
         /// flag, it should be added here too.
         const NOMINAL_FLAGS     = TypeFlags::HAS_PARAMS.bits |
-                                  TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_TY_INFER.bits |
                                   TypeFlags::HAS_RE_INFER.bits |
-                                  TypeFlags::HAS_CT_INFER.bits |
                                   TypeFlags::HAS_RE_PLACEHOLDER.bits |
                                   TypeFlags::HAS_RE_EARLY_BOUND.bits |
                                   TypeFlags::HAS_FREE_REGIONS.bits |
@@ -479,6 +471,7 @@ bitflags! {
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
                                   TypeFlags::HAS_RE_LATE_BOUND.bits |
                                   TypeFlags::HAS_TY_PLACEHOLDER.bits |
+                                  TypeFlags::HAS_CT_INFER.bits |
                                   TypeFlags::HAS_CT_PLACEHOLDER.bits;
     }
 }
@@ -1734,7 +1727,6 @@ impl<'tcx> ParamEnv<'tcx> {
                 if value.has_placeholders()
                     || value.needs_infer()
                     || value.has_param_types()
-                    || value.has_self_ty()
                 {
                     ParamEnvAnd {
                         param_env: self,
