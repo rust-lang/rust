@@ -30,8 +30,10 @@ impl Thread {
         let nanos = dur.as_nanos();
         assert!(nanos <= u64::max_value() as u128);
 
+        const CLOCK_ID: wasi::Userdata = 0x0123_45678;
+
         let clock = wasi::raw::__wasi_subscription_u_clock_t {
-            identifier: 0x0123_45678,
+            identifier: CLOCK_ID,
             clock_id: wasi::CLOCK_MONOTONIC,
             timeout: nanos as u64,
             precision: 0,
@@ -47,7 +49,7 @@ impl Thread {
         let n = wasi::poll_oneoff(&in_, &mut out).unwrap();
         let wasi::Event { userdata, error, type_, .. } = out[0];
         match (n, userdata, error) {
-            (1, 0x0123_45678, 0) if type_ == wasi::EVENTTYPE_CLOCK => {}
+            (1, CLOCK_ID, 0) if type_ == wasi::EVENTTYPE_CLOCK => {}
             _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
         }
     }
