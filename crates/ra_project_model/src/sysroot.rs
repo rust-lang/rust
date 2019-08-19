@@ -7,7 +7,7 @@ use ra_arena::{impl_arena_id, Arena, RawId};
 
 use crate::Result;
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Sysroot {
     crates: Arena<SysrootCrate, SysrootCrateData>,
 }

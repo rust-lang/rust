@@ -22,7 +22,7 @@ const PROFILE: &'static str = "";
 #[test]
 fn completes_items_from_standard_library() {
     let project_start = Instant::now();
-    let server = project(
+    let server = Project::with_fixture(
         r#"
 //- Cargo.toml
 [package]
@@ -32,7 +32,9 @@ version = "0.0.0"
 //- src/lib.rs
 use std::collections::Spam;
 "#,
-    );
+    )
+    .with_sysroot(true)
+    .server();
     server.wait_until_workspace_is_loaded();
     eprintln!("loading took    {:?}", project_start.elapsed());
     let completion_start = Instant::now();
@@ -349,7 +351,7 @@ fn main() {{}}
 fn diagnostics_dont_block_typing() {
     let librs: String = (0..10).map(|i| format!("mod m{};", i)).collect();
     let libs: String = (0..10).map(|i| format!("//- src/m{}.rs\nfn foo() {{}}\n\n", i)).collect();
-    let server = project(&format!(
+    let server = Project::with_fixture(&format!(
         r#"
 //- Cargo.toml
 [package]
@@ -364,7 +366,10 @@ version = "0.0.0"
 fn main() {{}}
 "#,
         librs, libs
-    ));
+    ))
+    .with_sysroot(true)
+    .server();
+
     server.wait_until_workspace_is_loaded();
     for i in 0..10 {
         server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {

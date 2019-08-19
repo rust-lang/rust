@@ -59,7 +59,7 @@ pub fn main_loop(
     log::debug!("server_config: {:?}", config);
     // FIXME: support dynamic workspace loading.
     let workspaces = {
-        let ws_worker = workspace_loader();
+        let ws_worker = workspace_loader(config.with_sysroot);
         let mut loaded_workspaces = Vec::new();
         for ws_root in &ws_roots {
             ws_worker.sender().send(ws_root.clone()).unwrap();

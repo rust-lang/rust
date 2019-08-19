@@ -8,14 +8,14 @@ pub use ra_project_model::{
     CargoWorkspace, Package, ProjectWorkspace, Sysroot, Target, TargetKind,
 };
 
-pub fn workspace_loader() -> Worker<PathBuf, Result<ProjectWorkspace>> {
+pub fn workspace_loader(with_sysroot: bool) -> Worker<PathBuf, Result<ProjectWorkspace>> {
     Worker::<PathBuf, Result<ProjectWorkspace>>::spawn(
         "workspace loader",
         1,
-        |input_receiver, output_sender| {
+        move |input_receiver, output_sender| {
             input_receiver
                 .into_iter()
-                .map(|path| ProjectWorkspace::discover(path.as_path()))
+                .map(|path| ProjectWorkspace::discover_with_sysroot(path.as_path(), with_sysroot))
                 .try_for_each(|it| output_sender.send(it))
                 .unwrap()
         },

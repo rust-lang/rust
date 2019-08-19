@@ -57,6 +57,10 @@ impl PackageRoot {
 
 impl ProjectWorkspace {
     pub fn discover(path: &Path) -> Result<ProjectWorkspace> {
+        ProjectWorkspace::discover_with_sysroot(path, true)
+    }
+
+    pub fn discover_with_sysroot(path: &Path, with_sysroot: bool) -> Result<ProjectWorkspace> {
         match find_rust_project_json(path) {
             Some(json_path) => {
                 let file = File::open(json_path)?;
@@ -65,10 +69,10 @@ impl ProjectWorkspace {
             }
             None => {
                 let cargo_toml = find_cargo_toml(path)?;
-                Ok(ProjectWorkspace::Cargo {
-                    cargo: CargoWorkspace::from_cargo_metadata(&cargo_toml)?,
-                    sysroot: Sysroot::discover(&cargo_toml)?,
-                })
+                let cargo = CargoWorkspace::from_cargo_metadata(&cargo_toml)?;
+                let sysroot =
+                    if with_sysroot { Sysroot::discover(&cargo_toml)? } else { Sysroot::default() };
+                Ok(ProjectWorkspace::Cargo { cargo, sysroot })
             }
         }
     }
