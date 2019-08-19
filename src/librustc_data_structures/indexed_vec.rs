@@ -59,7 +59,7 @@ impl Idx for u32 {
 #[macro_export]
 #[allow_internal_unstable(step_trait, rustc_attrs)]
 macro_rules! newtype_index {
-    // ---- public rules ----
+    // public rules
 
     // Use default constants
     ($(#[$attrs:meta])* $v:vis struct $name:ident { .. }) => (
@@ -86,7 +86,7 @@ macro_rules! newtype_index {
                           $($tokens)+);
     );
 
-    // ---- private rules ----
+    // private rules
 
     // Base case, user-defined constants (if any) have already been defined
     (@derives      [$($derives:ident,)*]

@@ -312,7 +312,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        // --- From now on we either have a glob resolution or no resolution. ---
+        // From now on we either have a glob resolution or no resolution.
 
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
@@ -357,7 +357,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        // --- From now on we have no resolution. ---
+        // From now on we have no resolution.
 
         // Now we are in situation when new item/import can appear only from a glob or a macro
         // expansion. With restricted shadowing names from globs and macro expansions cannot

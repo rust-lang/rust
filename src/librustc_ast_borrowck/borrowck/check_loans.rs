@@ -1,4 +1,3 @@
-// ----------------------------------------------------------------------
 // Checking loans
 //
 // Phase 2 of check: we walk down the tree and check that:
