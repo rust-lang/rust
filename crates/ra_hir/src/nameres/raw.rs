@@ -207,24 +207,24 @@ impl RawItemsCollector {
     }
 
     fn add_item(&mut self, current_module: Option<Module>, item: ast::ModuleItem) {
-        let (kind, name) = match item.kind() {
-            ast::ModuleItemKind::Module(module) => {
+        let (kind, name) = match item {
+            ast::ModuleItem::Module(module) => {
                 self.add_module(current_module, module);
                 return;
             }
-            ast::ModuleItemKind::UseItem(use_item) => {
+            ast::ModuleItem::UseItem(use_item) => {
                 self.add_use_item(current_module, use_item);
                 return;
             }
-            ast::ModuleItemKind::ExternCrateItem(extern_crate) => {
+            ast::ModuleItem::ExternCrateItem(extern_crate) => {
                 self.add_extern_crate_item(current_module, extern_crate);
                 return;
             }
-            ast::ModuleItemKind::ImplBlock(_) => {
+            ast::ModuleItem::ImplBlock(_) => {
                 // impls don't participate in name resolution
                 return;
             }
-            ast::ModuleItemKind::StructDef(it) => {
+            ast::ModuleItem::StructDef(it) => {
                 let id = self.source_ast_id_map.ast_id(&it);
                 let name = it.name();
                 if it.is_union() {
@@ -233,22 +233,22 @@ impl RawItemsCollector {
                     (DefKind::Struct(id), name)
                 }
             }
-            ast::ModuleItemKind::EnumDef(it) => {
+            ast::ModuleItem::EnumDef(it) => {
                 (DefKind::Enum(self.source_ast_id_map.ast_id(&it)), it.name())
             }
-            ast::ModuleItemKind::FnDef(it) => {
+            ast::ModuleItem::FnDef(it) => {
                 (DefKind::Function(self.source_ast_id_map.ast_id(&it)), it.name())
             }
-            ast::ModuleItemKind::TraitDef(it) => {
+            ast::ModuleItem::TraitDef(it) => {
                 (DefKind::Trait(self.source_ast_id_map.ast_id(&it)), it.name())
             }
-            ast::ModuleItemKind::TypeAliasDef(it) => {
+            ast::ModuleItem::TypeAliasDef(it) => {
                 (DefKind::TypeAlias(self.source_ast_id_map.ast_id(&it)), it.name())
             }
-            ast::ModuleItemKind::ConstDef(it) => {
+            ast::ModuleItem::ConstDef(it) => {
                 (DefKind::Const(self.source_ast_id_map.ast_id(&it)), it.name())
             }
-            ast::ModuleItemKind::StaticDef(it) => {
+            ast::ModuleItem::StaticDef(it) => {
                 (DefKind::Static(self.source_ast_id_map.ast_id(&it)), it.name())
             }
         };

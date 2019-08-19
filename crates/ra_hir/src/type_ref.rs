@@ -57,28 +57,33 @@ pub enum TypeRef {
 impl TypeRef {
     /// Converts an `ast::TypeRef` to a `hir::TypeRef`.
     pub(crate) fn from_ast(node: ast::TypeRef) -> Self {
-        use ra_syntax::ast::TypeRefKind::*;
-        match node.kind() {
-            ParenType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
-            TupleType(inner) => TypeRef::Tuple(inner.fields().map(TypeRef::from_ast).collect()),
-            NeverType(..) => TypeRef::Never,
-            PathType(inner) => {
+        match node {
+            ast::TypeRef::ParenType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
+            ast::TypeRef::TupleType(inner) => {
+                TypeRef::Tuple(inner.fields().map(TypeRef::from_ast).collect())
+            }
+            ast::TypeRef::NeverType(..) => TypeRef::Never,
+            ast::TypeRef::PathType(inner) => {
                 inner.path().and_then(Path::from_ast).map(TypeRef::Path).unwrap_or(TypeRef::Error)
             }
-            PointerType(inner) => {
+            ast::TypeRef::PointerType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(inner.type_ref());
                 let mutability = Mutability::from_mutable(inner.is_mut());
                 TypeRef::RawPtr(Box::new(inner_ty), mutability)
             }
-            ArrayType(inner) => TypeRef::Array(Box::new(TypeRef::from_ast_opt(inner.type_ref()))),
-            SliceType(inner) => TypeRef::Slice(Box::new(TypeRef::from_ast_opt(inner.type_ref()))),
-            ReferenceType(inner) => {
+            ast::TypeRef::ArrayType(inner) => {
+                TypeRef::Array(Box::new(TypeRef::from_ast_opt(inner.type_ref())))
+            }
+            ast::TypeRef::SliceType(inner) => {
+                TypeRef::Slice(Box::new(TypeRef::from_ast_opt(inner.type_ref())))
+            }
+            ast::TypeRef::ReferenceType(inner) => {
                 let inner_ty = TypeRef::from_ast_opt(inner.type_ref());
                 let mutability = Mutability::from_mutable(inner.is_mut());
                 TypeRef::Reference(Box::new(inner_ty), mutability)
             }
-            PlaceholderType(_inner) => TypeRef::Placeholder,
-            FnPointerType(inner) => {
+            ast::TypeRef::PlaceholderType(_inner) => TypeRef::Placeholder,
+            ast::TypeRef::FnPointerType(inner) => {
                 let ret_ty = TypeRef::from_ast_opt(inner.ret_type().and_then(|rt| rt.type_ref()));
                 let mut params = if let Some(pl) = inner.param_list() {
                     pl.params().map(|p| p.ascribed_type()).map(TypeRef::from_ast_opt).collect()
@@ -89,9 +94,9 @@ impl TypeRef {
                 TypeRef::Fn(params)
             }
             // for types are close enough for our purposes to the inner type for now...
-            ForType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
-            ImplTraitType(_inner) => TypeRef::Error,
-            DynTraitType(_inner) => TypeRef::Error,
+            ast::TypeRef::ForType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
+            ast::TypeRef::ImplTraitType(_inner) => TypeRef::Error,
+            ast::TypeRef::DynTraitType(_inner) => TypeRef::Error,
         }
     }
 

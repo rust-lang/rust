@@ -137,8 +137,8 @@ impl GenericParams {
     fn add_where_predicate_from_bound(&mut self, bound: ast::TypeBound, type_ref: TypeRef) {
         let path = bound
             .type_ref()
-            .and_then(|tr| match tr.kind() {
-                ast::TypeRefKind::PathType(path) => path.path(),
+            .and_then(|tr| match tr {
+                ast::TypeRef::PathType(path) => path.path(),
                 _ => None,
             })
             .and_then(Path::from_ast);
