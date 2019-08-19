@@ -7,6 +7,7 @@ use std::{
 };
 
 use heck::{ShoutySnakeCase, SnakeCase};
+use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
 use ron;
 use serde::Deserialize;
@@ -23,7 +24,7 @@ pub fn generate(mode: Mode) -> Result<()> {
     let _syntax_kinds = project_root().join(SYNTAX_KINDS);
     let _ast = project_root().join(AST);
 
-    let ast = generate_ast(&grammar)?;
+    let ast = generate_syntax_kinds(&grammar)?;
     println!("{}", ast);
     Ok(())
 }
@@ -144,6 +145,149 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
     Ok(pretty)
 }
 
+fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
+    let single_byte_tokens_values =
+        grammar.single_byte_tokens.iter().map(|(token, _name)| token.chars().next().unwrap());
+    let single_byte_tokens = grammar
+        .single_byte_tokens
+        .iter()
+        .map(|(_token, name)| format_ident!("{}", name))
+        .collect::<Vec<_>>();
+
+    let punctuation_values =
+        grammar.single_byte_tokens.iter().chain(grammar.multi_byte_tokens.iter()).map(
+            |(token, _name)| {
+                if "{}[]()".contains(token) {
+                    let c = token.chars().next().unwrap();
+                    quote! { #c }
+                } else {
+                    let cs = token.chars().map(|c| Punct::new(c, Spacing::Joint));
+                    quote! { #(#cs)* }
+                }
+            },
+        );
+    let punctuation = single_byte_tokens
+        .clone()
+        .into_iter()
+        .chain(grammar.multi_byte_tokens.iter().map(|(_token, name)| format_ident!("{}", name)))
+        .collect::<Vec<_>>();
+
+    let keywords_values =
+        grammar.keywords.iter().chain(grammar.contextual_keywords.iter()).collect::<Vec<_>>();
+    let keywords_idents = keywords_values.iter().map(|kw| format_ident!("{}", kw));
+    let keywords = keywords_values
+        .iter()
+        .map(|name| format_ident!("{}_KW", name.to_shouty_snake_case()))
+        .collect::<Vec<_>>();
+
+    let literals =
+        grammar.literals.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
+
+    let tokens = grammar.tokens.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
+
+    let nodes = grammar.nodes.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
+
+    let ast = quote! {
+        #![allow(bad_style, missing_docs, unreachable_pub)]
+        use super::SyntaxInfo;
+
+        /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[repr(u16)]
+        pub enum SyntaxKind {
+            // Technical SyntaxKinds: they appear temporally during parsing,
+            // but never end up in the final tree
+            #[doc(hidden)]
+            TOMBSTONE,
+            #[doc(hidden)]
+            EOF,
+            #(#punctuation,)*
+            #(#keywords,)*
+            #(#literals,)*
+            #(#tokens,)*
+            #(#nodes,)*
+
+            // Technical kind so that we can cast from u16 safely
+            #[doc(hidden)]
+            __LAST,
+        }
+        use self::SyntaxKind::*;
+
+        impl From<u16> for SyntaxKind {
+            fn from(d: u16) -> SyntaxKind {
+                assert!(d <= (__LAST as u16));
+                unsafe { std::mem::transmute::<u16, SyntaxKind>(d) }
+            }
+        }
+
+        impl From<SyntaxKind> for u16 {
+            fn from(k: SyntaxKind) -> u16 {
+                k as u16
+            }
+        }
+
+        impl SyntaxKind {
+            pub fn is_keyword(self) -> bool {
+                match self {
+                    #(#keywords)|* => true,
+                    _ => false,
+                }
+            }
+
+            pub fn is_punct(self) -> bool {
+                match self {
+                    #(#punctuation)|* => true,
+                    _ => false,
+                }
+            }
+
+            pub fn is_literal(self) -> bool {
+                match self {
+                    #(#literals)|* => true,
+                    _ => false,
+                }
+            }
+
+            pub(crate) fn info(self) -> &'static SyntaxInfo {
+                match self {
+                    #(#punctuation => &SyntaxInfo { name: stringify!(#punctuation) },)*
+                    #(#keywords => &SyntaxInfo { name: stringify!(#keywords) },)*
+                    #(#literals => &SyntaxInfo { name: stringify!(#literals) },)*
+                    #(#tokens => &SyntaxInfo { name: stringify!(#tokens) },)*
+                    #(#nodes => &SyntaxInfo { name: stringify!(#nodes) },)*
+                    TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
+                    EOF => &SyntaxInfo { name: "EOF" },
+                    __LAST => &SyntaxInfo { name: "__LAST" },
+                }
+            }
+
+            pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {
+                let kw = match ident {
+                    #(#keywords_values => #keywords,)*
+                    _ => return None,
+                };
+                Some(kw)
+            }
+
+            pub fn from_char(c: char) -> Option<SyntaxKind> {
+                let tok = match c {
+                    #(#single_byte_tokens_values => #single_byte_tokens,)*
+                    _ => return None,
+                };
+                Some(tok)
+            }
+        }
+
+        #[macro_export]
+        macro_rules! T {
+            #((#punctuation_values) => { $crate::SyntaxKind::#punctuation };)*
+            #((#keywords_idents) => { $crate::SyntaxKind::#keywords };)*
+        }
+    };
+
+    reformat(ast)
+}
+
 fn reformat(text: impl std::fmt::Display) -> Result<String> {
     let mut rustfmt = Command::new("rustfmt")
         .arg("--config-path")
@@ -166,6 +310,7 @@ struct Grammar {
     contextual_keywords: Vec<String>,
     literals: Vec<String>,
     tokens: Vec<String>,
+    nodes: Vec<String>,
     ast: BTreeMap<String, AstNode>,
 }
 
