@@ -14,7 +14,7 @@ use serde::Deserialize;
 
 use crate::{project_root, Mode, Result, AST, GRAMMAR, SYNTAX_KINDS};
 
-pub fn generate(mode: Mode) -> Result<()> {
+pub fn generate_boilerplate(mode: Mode) -> Result<()> {
     let grammar = project_root().join(GRAMMAR);
     let grammar: Grammar = {
         let text = fs::read_to_string(grammar)?;

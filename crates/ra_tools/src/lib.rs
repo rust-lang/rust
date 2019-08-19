@@ -1,4 +1,4 @@
-mod codegen;
+mod boilerplate_gen;
 
 use std::{
     collections::HashMap,
@@ -11,7 +11,7 @@ use std::{
 
 use itertools::Itertools;
 
-pub use self::codegen::generate;
+pub use self::boilerplate_gen::generate_boilerplate;
 
 pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
