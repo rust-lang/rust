@@ -28,7 +28,8 @@ serde = { version = "1.0", features = ["derive"] }
 toml = "0.5.3"
 unicode-normalization = "0.1"
 pulldown-cmark = "0.5.3"
-url = "2.1.0"
+url = { version =  "2.1.0", features = ["serde"] } # cargo requires serde feat in its url dep
+# see https://github.com/rust-lang/rust/pull/63587#issuecomment-522343864
 if_chain = "1.0.0"
 smallvec = { version = "0.6.5", features = ["union"] }
 
