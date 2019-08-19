@@ -54,18 +54,23 @@ pub struct Comments<'a> {
 }
 
 impl<'a> Comments<'a> {
-    pub fn new(
+    pub fn new(cm: &'a SourceMap, comments: Vec<comments::Comment>) -> Comments<'a> {
+        Comments {
+            cm,
+            comments,
+            current: 0,
+        }
+    }
+
+    /// Parse comments from `input` into a new `Comments` struct.
+    pub fn gather(
         cm: &'a SourceMap,
         sess: &ParseSess,
         filename: FileName,
         input: String,
     ) -> Comments<'a> {
         let comments = comments::gather_comments(sess, filename, input);
-        Comments {
-            cm,
-            comments,
-            current: 0,
-        }
+        Self::new(cm, comments)
     }
 
     pub fn next(&self) -> Option<comments::Comment> {
@@ -111,7 +116,7 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
                        is_expanded: bool) -> String {
     let mut s = State {
         s: pp::mk_printer(),
-        comments: Some(Comments::new(cm, sess, filename, input)),
+        comments: Some(Comments::gather(cm, sess, filename, input)),
         ann,
         is_expanded,
     };

@@ -130,7 +130,7 @@ impl<'a> State<'a> {
                           -> State<'a> {
         State {
             s: pp::mk_printer(),
-            comments: Some(Comments::new(cm, sess, filename, input)),
+            comments: Some(Comments::gather(cm, sess, filename, input)),
             ann,
         }
     }
