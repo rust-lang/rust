@@ -5,7 +5,6 @@ use std::{
     process::{Command, Stdio},
 };
 
-use heck::{ShoutySnakeCase, SnakeCase};
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
 use ron;
@@ -38,7 +37,7 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
         let name = format_ident!("{}", name);
 
         let adt = if variants.is_empty() {
-            let kind = format_ident!("{}", name.to_string().to_shouty_snake_case());
+            let kind = format_ident!("{}", to_upper_snake_case(&name.to_string()));
             quote! {
                 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
                 pub struct #name {
@@ -61,7 +60,7 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
         } else {
             let kinds = variants
                 .iter()
-                .map(|name| format_ident!("{}", name.to_string().to_shouty_snake_case()))
+                .map(|name| format_ident!("{}", to_upper_snake_case(&name.to_string())))
                 .collect::<Vec<_>>();
 
             quote! {
@@ -122,7 +121,7 @@ fn generate_ast(grammar: &Grammar) -> Result<String> {
 
         let options = ast_node.options.iter().map(|attr| {
             let method_name = match attr {
-                Attr::Type(t) => format_ident!("{}", t.to_snake_case()),
+                Attr::Type(t) => format_ident!("{}", to_lower_snake_case(&t)),
                 Attr::NameType(n, _) => format_ident!("{}", n),
             };
             let ty = match attr {
@@ -189,14 +188,14 @@ fn generate_syntax_kinds(grammar: &Grammar) -> Result<String> {
 
     let full_keywords_values = &grammar.keywords;
     let full_keywords =
-        full_keywords_values.iter().map(|kw| format_ident!("{}_KW", kw.to_shouty_snake_case()));
+        full_keywords_values.iter().map(|kw| format_ident!("{}_KW", to_upper_snake_case(&kw)));
 
     let all_keywords_values =
         grammar.keywords.iter().chain(grammar.contextual_keywords.iter()).collect::<Vec<_>>();
     let all_keywords_idents = all_keywords_values.iter().map(|kw| format_ident!("{}", kw));
     let all_keywords = all_keywords_values
         .iter()
-        .map(|name| format_ident!("{}_KW", name.to_shouty_snake_case()))
+        .map(|name| format_ident!("{}_KW", to_upper_snake_case(&name)))
         .collect::<Vec<_>>();
 
     let literals =
@@ -324,4 +323,32 @@ struct AstNode {
 enum Attr {
     Type(String),
     NameType(String, String),
+}
+
+fn to_upper_snake_case(s: &str) -> String {
+    let mut buf = String::with_capacity(s.len());
+    let mut prev_is_upper = None;
+    for c in s.chars() {
+        if c.is_ascii_uppercase() && prev_is_upper == Some(false) {
+            buf.push('_')
+        }
+        prev_is_upper = Some(c.is_ascii_uppercase());
+
+        buf.push(c.to_ascii_uppercase());
+    }
+    buf
+}
+
+fn to_lower_snake_case(s: &str) -> String {
+    let mut buf = String::with_capacity(s.len());
+    let mut prev_is_upper = None;
+    for c in s.chars() {
+        if c.is_ascii_uppercase() && prev_is_upper == Some(false) {
+            buf.push('_')
+        }
+        prev_is_upper = Some(c.is_ascii_uppercase());
+
+        buf.push(c.to_ascii_lowercase());
+    }
+    buf
 }
