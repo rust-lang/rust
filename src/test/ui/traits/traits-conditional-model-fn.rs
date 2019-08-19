@@ -6,7 +6,6 @@
 
 // aux-build:go_trait.rs
 
-
 extern crate go_trait;
 
 use go_trait::{Go, GoMut, GoOnce, go, go_mut, go_once};
