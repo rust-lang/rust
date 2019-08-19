@@ -48,8 +48,8 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// **What it does:** Checks for comparisons to NaN.
     ///
-    /// **Why is this bad?** NaN does not compare meaningfully to anything   not
-    /// even itself   so those comparisons are simply wrong.
+    /// **Why is this bad?** NaN does not compare meaningfully to anything – not
+    /// even itself – so those comparisons are simply wrong.
     ///
     /// **Known problems:** None.
     ///
