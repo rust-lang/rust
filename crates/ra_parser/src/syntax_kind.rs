@@ -1,19 +1,19 @@
 #[macro_use]
 mod generated;
 
-use std::fmt;
-
 pub use self::generated::SyntaxKind;
 
-impl fmt::Debug for SyntaxKind {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let name = self.info().name;
-        f.write_str(name)
+impl From<u16> for SyntaxKind {
+    fn from(d: u16) -> SyntaxKind {
+        assert!(d <= (SyntaxKind::__LAST as u16));
+        unsafe { std::mem::transmute::<u16, SyntaxKind>(d) }
     }
 }
 
-pub(crate) struct SyntaxInfo {
-    pub name: &'static str,
+impl From<SyntaxKind> for u16 {
+    fn from(k: SyntaxKind) -> u16 {
+        k as u16
+    }
 }
 
 impl SyntaxKind {
