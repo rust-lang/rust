@@ -7,9 +7,7 @@
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
-#[allow(unused_extern_crates)]
-extern crate rustc_plugin;
-use self::rustc_plugin::Registry;
+use self::rustc_driver::plugin::Registry;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry<'_>) {

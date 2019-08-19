@@ -7,8 +7,6 @@
 extern crate rustc_driver;
 #[allow(unused_extern_crates)]
 extern crate rustc_interface;
-#[allow(unused_extern_crates)]
-extern crate rustc_plugin;
 
 use rustc_interface::interface;
 use rustc_tools_util::*;
@@ -65,7 +63,7 @@ struct ClippyCallbacks;
 impl rustc_driver::Callbacks for ClippyCallbacks {
     fn after_parsing(&mut self, compiler: &interface::Compiler) -> rustc_driver::Compilation {
         let sess = compiler.session();
-        let mut registry = rustc_plugin::registry::Registry::new(
+        let mut registry = rustc_driver::plugin::registry::Registry::new(
             sess,
             compiler
                 .parse()
@@ -81,7 +79,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         let conf = clippy_lints::read_conf(&registry);
         clippy_lints::register_plugins(&mut registry, &conf);
 
-        let rustc_plugin::registry::Registry {
+        let rustc_driver::plugin::registry::Registry {
             early_lint_passes,
             late_lint_passes,
             lint_groups,
