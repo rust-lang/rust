@@ -18,14 +18,6 @@ error: inconsistent casing in hexadecimal literal
 LL |     let fail2 = 0xabCD_isize;
    |                 ^^^^^^^^^^^^
 
-error: integer type suffix should be separated by an underscore
-  --> $DIR/literals.rs:16:27
-   |
-LL |     let fail_multi_zero = 000_123usize;
-   |                           ^^^^^^^^^^^^ help: add an underscore: `000_123_usize`
-   |
-   = note: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
-
 error: this is a decimal constant
   --> $DIR/literals.rs:16:27
    |
@@ -42,38 +34,8 @@ help: if you mean to use an octal constant, use `0o`
 LL |     let fail_multi_zero = 0o123usize;
    |                           ^^^^^^^^^^
 
-error: integer type suffix should be separated by an underscore
-  --> $DIR/literals.rs:21:17
-   |
-LL |     let fail3 = 1234i32;
-   |                 ^^^^^^^ help: add an underscore: `1234_i32`
-
-error: integer type suffix should be separated by an underscore
-  --> $DIR/literals.rs:22:17
-   |
-LL |     let fail4 = 1234u32;
-   |                 ^^^^^^^ help: add an underscore: `1234_u32`
-
-error: integer type suffix should be separated by an underscore
-  --> $DIR/literals.rs:23:17
-   |
-LL |     let fail5 = 1234isize;
-   |                 ^^^^^^^^^ help: add an underscore: `1234_isize`
-
-error: integer type suffix should be separated by an underscore
-  --> $DIR/literals.rs:24:17
-   |
-LL |     let fail6 = 1234usize;
-   |                 ^^^^^^^^^ help: add an underscore: `1234_usize`
-
-error: float type suffix should be separated by an underscore
-  --> $DIR/literals.rs:25:17
-   |
-LL |     let fail7 = 1.5f32;
-   |                 ^^^^^^ help: add an underscore: `1.5_f32`
-
 error: this is a decimal constant
-  --> $DIR/literals.rs:29:17
+  --> $DIR/literals.rs:20:17
    |
 LL |     let fail8 = 0123;
    |                 ^^^^
@@ -87,7 +49,7 @@ LL |     let fail8 = 0o123;
    |                 ^^^^^
 
 error: digit groups should be smaller
-  --> $DIR/literals.rs:40:18
+  --> $DIR/literals.rs:31:18
    |
 LL |     let fail13 = 0x1_23456_78901_usize;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider: `0x0123_4567_8901_usize`
@@ -95,7 +57,7 @@ LL |     let fail13 = 0x1_23456_78901_usize;
    = note: `-D clippy::large-digit-groups` implied by `-D warnings`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:42:18
+  --> $DIR/literals.rs:33:18
    |
 LL |     let fail19 = 12_3456_21;
    |                  ^^^^^^^^^^ help: consider: `12_345_621`
@@ -103,16 +65,16 @@ LL |     let fail19 = 12_3456_21;
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:43:18
+  --> $DIR/literals.rs:34:18
    |
 LL |     let fail22 = 3__4___23;
    |                  ^^^^^^^^^ help: consider: `3_423`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:44:18
+  --> $DIR/literals.rs:35:18
    |
 LL |     let fail23 = 3__16___23;
    |                  ^^^^^^^^^^ help: consider: `31_623`
 
-error: aborting due to 15 previous errors
+error: aborting due to 9 previous errors
 
