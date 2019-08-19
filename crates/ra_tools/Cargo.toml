@@ -6,7 +6,6 @@ authors = ["rust-analyzer developers"]
 publish = false
 
 [dependencies]
-teraron = "0.1.0"
 walkdir = "2.1.3"
 itertools = "0.8.0"
 clap = "2.32.0"
