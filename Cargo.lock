@@ -946,6 +946,7 @@ name = "error_index_generator"
 version = "0.0.0"
 dependencies = [
  "rustdoc",
+ "walkdir",
 ]
 
 [[package]]
