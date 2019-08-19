@@ -394,12 +394,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
     ) {
         debug!("add_use_live_facts_for(value={:?})", value);
 
-        Self::make_all_regions_live(
-            self.elements,
-            &mut self.typeck,
-            value,
-            live_at,
-        )
+        Self::make_all_regions_live(self.elements, &mut self.typeck, value, live_at)
     }
 
     /// Some variable with type `live_ty` is "drop live" at `location`
@@ -450,12 +445,7 @@ impl LivenessContext<'_, '_, '_, 'tcx> {
         // All things in the `outlives` array may be touched by
         // the destructor and must be live at this point.
         for &kind in &drop_data.dropck_result.kinds {
-            Self::make_all_regions_live(
-                self.elements,
-                &mut self.typeck,
-                kind,
-                live_at,
-            );
+            Self::make_all_regions_live(self.elements, &mut self.typeck, kind, live_at);
 
             polonius::add_var_drops_regions(&mut self.typeck, dropped_local, &kind);
         }

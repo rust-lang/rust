@@ -1,10 +1,10 @@
-use rustc::ty::{Ty, TyCtxt};
-use rustc::mir::*;
-use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{Idx, IndexVec, Enumerated};
-use smallvec::SmallVec;
-use syntax_pos::{Span};
 use core::slice::Iter;
+use rustc::mir::*;
+use rustc::ty::{Ty, TyCtxt};
+use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::indexed_vec::{Enumerated, Idx, IndexVec};
+use smallvec::SmallVec;
+use syntax_pos::Span;
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
@@ -138,12 +138,17 @@ impl<T> IndexMut<Location> for LocationMap<T> {
     }
 }
 
-impl<T> LocationMap<T> where T: Default + Clone {
+impl<T> LocationMap<T>
+where
+    T: Default + Clone,
+{
     fn new(body: &Body<'_>) -> Self {
         LocationMap {
-            map: body.basic_blocks().iter().map(|block| {
-                vec![T::default(); block.statements.len()+1]
-            }).collect()
+            map: body
+                .basic_blocks()
+                .iter()
+                .map(|block| vec![T::default(); block.statements.len() + 1])
+                .collect(),
         }
     }
 }
@@ -178,7 +183,6 @@ pub struct Init {
     /// Extra information about this initialization
     pub kind: InitKind,
 }
-
 
 /// Initializations can be from an argument or from a statement. Arguments
 /// do not have locations, in those cases the `Local` is kept..
@@ -225,7 +229,7 @@ pub struct MovePathLookup {
     /// subsequent search so that it is solely relative to that
     /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
-    projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>
+    projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>,
 }
 
 mod builder;
@@ -233,7 +237,7 @@ mod builder;
 #[derive(Copy, Clone, Debug)]
 pub enum LookupResult {
     Exact(MovePathIndex),
-    Parent(Option<MovePathIndex>)
+    Parent(Option<MovePathIndex>),
 }
 
 impl MovePathLookup {
@@ -296,7 +300,7 @@ pub(crate) enum IllegalMoveOriginKind<'tcx> {
     InteriorOfTypeWithDestructor { container_ty: Ty<'tcx> },
 
     /// Illegal move due to attempt to move out of a slice or array.
-    InteriorOfSliceOrArray { ty: Ty<'tcx>, is_index: bool, },
+    InteriorOfSliceOrArray { ty: Ty<'tcx>, is_index: bool },
 }
 
 #[derive(Debug)]
@@ -325,11 +329,15 @@ impl<'tcx> MoveData<'tcx> {
     pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
         loop {
             let path = &self.move_paths[mpi];
-            if let Place {
-                base: PlaceBase::Local(l),
-                projection: None,
-            } = path.place { return Some(l); }
-            if let Some(parent) = path.parent { mpi = parent; continue } else { return None }
+            if let Place { base: PlaceBase::Local(l), projection: None } = path.place {
+                return Some(l);
+            }
+            if let Some(parent) = path.parent {
+                mpi = parent;
+                continue;
+            } else {
+                return None;
+            }
         }
     }
 }

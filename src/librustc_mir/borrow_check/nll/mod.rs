@@ -11,7 +11,8 @@ use crate::transform::MirSource;
 use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location, Body, LocalKind, BasicBlock, Promoted};
+use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
+                 Local, Location, Body, LocalKind, BasicBlock, Promoted};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::Diagnostic;
@@ -72,11 +73,27 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
 
 // This function populates an AllFacts instance with base facts related to
 // MovePaths and needed for the move analysis.
-fn populate_polonius_move_facts(all_facts: &mut AllFacts, move_data: &MoveData<'_>, location_table: &LocationTable, body: &Body<'_>) {
-    all_facts.path_belongs_to_var.extend(move_data.rev_lookup.iter_locals_enumerated().map(|(v, &m)| (m, v)));
+fn populate_polonius_move_facts(
+    all_facts: &mut AllFacts,
+    move_data: &MoveData<'_>,
+    location_table: &LocationTable,
+    body: &Body<'_>) {
+    all_facts
+        .path_belongs_to_var
+        .extend(
+            move_data
+                .rev_lookup
+                .iter_locals_enumerated()
+                .map(|(v, &m)| (m, v)));
 
     for (child, move_path) in move_data.move_paths.iter_enumerated() {
-        all_facts.child.extend(move_path.parents(&move_data.move_paths).iter().map(|&parent| (child, parent)));
+        all_facts
+            .child
+            .extend(
+                move_path
+                    .parents(&move_data.move_paths)
+                    .iter()
+                    .map(|&parent| (child, parent)));
     }
 
     // initialized_at
@@ -99,7 +116,9 @@ fn populate_polonius_move_facts(all_facts: &mut AllFacts, move_data: &MoveData<'
                         // The initialization happened in (or rather, when arriving at)
                         // the successors, but not in the unwind block.
                         let first_statement = Location { block: successor, statement_index: 0};
-                        all_facts.initialized_at.push((init.path, location_table.start_index(first_statement)));
+                        all_facts
+                            .initialized_at
+                            .push((init.path, location_table.start_index(first_statement)));
                     }
 
                 } else {
@@ -121,7 +140,13 @@ fn populate_polonius_move_facts(all_facts: &mut AllFacts, move_data: &MoveData<'
 
     // moved_out_at
     // deinitialisation is assumed to always happen!
-    all_facts.moved_out_at.extend(move_data.moves.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))));
+    all_facts
+        .moved_out_at
+        .extend(
+            move_data
+                .moves
+                .iter()
+                .map(|mo| (mo.path, location_table.mid_index(mo.source))));
 }
 
 /// Computes the (non-lexical) regions from the input MIR.
