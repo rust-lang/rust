@@ -41,9 +41,6 @@ pub use crate::rustfmt_diff::{ModifiedChunk, ModifiedLines};
 #[macro_use]
 mod utils;
 
-#[macro_use]
-mod release_channel;
-
 mod attr;
 mod chains;
 mod closures;
@@ -66,6 +63,7 @@ pub(crate) mod modules;
 mod overflow;
 mod pairs;
 mod patterns;
+mod release_channel;
 mod reorder;
 mod rewrite;
 pub(crate) mod rustfmt_diff;

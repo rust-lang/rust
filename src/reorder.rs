@@ -10,7 +10,6 @@ use std::cmp::{Ord, Ordering};
 
 use syntax::{ast, attr, source_map::Span, symbol::sym};
 
-use crate::attr::filter_inline_attrs;
 use crate::config::Config;
 use crate::imports::{merge_use_trees, UseTree};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
@@ -149,10 +148,7 @@ fn rewrite_reorderable_items(
 }
 
 fn contains_macro_use_attr(item: &ast::Item) -> bool {
-    attr::contains_name(
-        &filter_inline_attrs(&item.attrs, item.span()),
-        sym::macro_use,
-    )
+    attr::contains_name(&item.attrs, sym::macro_use)
 }
 
 /// A simplified version of `ast::ItemKind`.
