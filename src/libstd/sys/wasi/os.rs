@@ -21,7 +21,7 @@ pub unsafe fn env_lock() -> impl Any {
 }
 
 pub fn errno() -> i32 {
-    panic!("unsupported")
+    0
 }
 
 pub fn error_string(errno: i32) -> String {
