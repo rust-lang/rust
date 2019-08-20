@@ -800,7 +800,7 @@ impl<'a> Resolver<'a> {
 
     /// Compile the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
     /// extension partially or entirely for built-in macros and legacy plugin macros.
-    crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> Lrc<SyntaxExtension> {
+    crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
         let mut result = macro_rules::compile(
             &self.session.parse_sess, self.session.features_untracked(), item, edition
         );
@@ -822,6 +822,6 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        Lrc::new(result)
+        result
     }
 }

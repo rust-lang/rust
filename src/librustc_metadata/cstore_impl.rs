@@ -434,7 +434,7 @@ impl cstore::CStore {
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
         let data = self.get_crate_data(id.krate);
         if data.is_proc_macro_crate() {
-            return LoadedMacro::ProcMacro(data.get_proc_macro(id.index, sess).ext);
+            return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
         }
 
         let def = data.get_macro(id.index);

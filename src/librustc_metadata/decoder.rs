@@ -1,6 +1,6 @@
 // Decoding metadata from a single crate's metadata
 
-use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule, FullProcMacro};
+use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use crate::schema::*;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -512,26 +512,8 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(index).span.decode((self, sess))
     }
 
-
-    pub fn get_proc_macro(&self, id: DefIndex, sess: &Session) -> FullProcMacro {
-        if sess.opts.debugging_opts.dual_proc_macros {
-            let host_lib = self.host_lib.as_ref().unwrap();
-            self.load_proc_macro(
-                &host_lib.metadata.get_root(),
-                id,
-                sess
-            )
-        } else {
-            self.load_proc_macro(&self.root, id, sess)
-        }
-    }
-
-    fn load_proc_macro(&self, root: &CrateRoot<'_>,
-                        id: DefIndex,
-                        sess: &Session)
-                        -> FullProcMacro {
-        let raw_macro = self.raw_proc_macro(id);
-        let (name, kind, helper_attrs) = match *raw_macro {
+    crate fn load_proc_macro(&self, id: DefIndex, sess: &Session) -> SyntaxExtension {
+        let (name, kind, helper_attrs) = match *self.raw_proc_macro(id) {
             ProcMacro::CustomDerive { trait_name, attributes, client } => {
                 let helper_attrs =
                     attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
@@ -550,20 +532,21 @@ impl<'a, 'tcx> CrateMetadata {
                 name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new()
             )
         };
-        let name = Symbol::intern(name);
+        let edition = if sess.opts.debugging_opts.dual_proc_macros {
+            self.host_lib.as_ref().unwrap().metadata.get_root().edition
+        } else {
+            self.root.edition
+        };
 
-        FullProcMacro {
-            name,
-            ext: Lrc::new(SyntaxExtension::new(
-                &sess.parse_sess,
-                kind,
-                self.get_span(id, sess),
-                helper_attrs,
-                root.edition,
-                name,
-                &self.get_attributes(&self.entry(id), sess),
-            )),
-        }
+        SyntaxExtension::new(
+            &sess.parse_sess,
+            kind,
+            self.get_span(id, sess),
+            helper_attrs,
+            edition,
+            Symbol::intern(name),
+            &self.get_attributes(&self.entry(id), sess),
+        )
     }
 
     pub fn get_trait_def(&self, item_id: DefIndex, sess: &Session) -> ty::TraitDef {
