@@ -23,11 +23,11 @@ extern crate rustc;
 #[allow(unused_extern_crates)]
 extern crate rustc_data_structures;
 #[allow(unused_extern_crates)]
+extern crate rustc_driver;
+#[allow(unused_extern_crates)]
 extern crate rustc_errors;
 #[allow(unused_extern_crates)]
 extern crate rustc_mir;
-#[allow(unused_extern_crates)]
-extern crate rustc_plugin;
 #[allow(unused_extern_crates)]
 extern crate rustc_target;
 #[allow(unused_extern_crates)]
@@ -320,7 +320,7 @@ pub fn register_pre_expansion_lints(
 }
 
 #[doc(hidden)]
-pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
+pub fn read_conf(reg: &rustc_driver::plugin::Registry<'_>) -> Conf {
     match utils::conf::file_from_args(reg.args()) {
         Ok(file_name) => {
             // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
@@ -382,7 +382,7 @@ pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
 /// Used in `./src/driver.rs`.
 #[allow(clippy::too_many_lines)]
 #[rustfmt::skip]
-pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
+pub fn register_plugins(reg: &mut rustc_driver::plugin::Registry<'_>, conf: &Conf) {
     let mut store = reg.sess.lint_store.borrow_mut();
     register_removed_non_tool_lints(&mut store);
 
