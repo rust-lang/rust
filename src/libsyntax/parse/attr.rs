@@ -21,9 +21,8 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
 impl<'a> Parser<'a> {
     crate fn parse_arg_attributes(&mut self) -> PResult<'a, Vec<ast::Attribute>> {
         let attrs = self.parse_outer_attributes()?;
-        attrs.iter().for_each(|a|
-            self.sess.param_attr_spans.borrow_mut().push(a.span)
-        );
+        self.sess.gated_spans.param_attrs.borrow_mut()
+            .extend(attrs.iter().map(|a| a.span));
         Ok(attrs)
     }
 

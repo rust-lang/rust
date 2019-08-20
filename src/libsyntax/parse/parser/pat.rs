@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
 
         let or_pattern_span = lo.to(self.prev_span);
 
-        self.sess.or_pattern_spans.borrow_mut().push(or_pattern_span);
+        self.sess.gated_spans.or_patterns.borrow_mut().push(or_pattern_span);
 
         Ok(self.mk_pat(or_pattern_span, PatKind::Or(pats)))
     }
