@@ -2303,7 +2303,7 @@ impl Clean<Item> for ty::AssocItem {
                         ty::ImplContainer(def_id) => {
                             cx.tcx.type_of(def_id)
                         }
-                        ty::TraitContainer(_) => cx.tcx.mk_self_type()
+                        ty::TraitContainer(_) => cx.tcx.types.self_param,
                     };
                     let self_arg_ty = *sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
@@ -4106,6 +4106,9 @@ fn name_from_pat(p: &hir::Pat) -> String {
                              .collect::<Vec<String>>().join(", "),
                 if etc { ", .." } else { "" }
             )
+        }
+        PatKind::Or(ref pats) => {
+            pats.iter().map(|p| name_from_pat(&**p)).collect::<Vec<String>>().join(" | ")
         }
         PatKind::Tuple(ref elts, _) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
                                             .collect::<Vec<String>>().join(", ")),

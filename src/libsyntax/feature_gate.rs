@@ -559,6 +559,9 @@ declare_features! (
     // Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
+    // Allows the use of or-patterns, e.g. `0 | 1`.
+    (active, or_patterns, "1.38.0", Some(54883), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -571,6 +574,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::impl_trait_in_bindings,
     sym::generic_associated_types,
     sym::const_generics,
+    sym::or_patterns,
     sym::let_chains,
 ];
 
@@ -2443,6 +2447,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(let_chains_spans, let_chains, "`let` expressions in this position are experimental");
     gate_all!(async_closure_spans, async_closure, "async closures are unstable");
     gate_all!(yield_spans, generators, "yield syntax is experimental");
+    gate_all!(or_pattern_spans, or_patterns, "or-patterns syntax is experimental");
 
     let visitor = &mut PostExpansionVisitor {
         context: &ctx,

@@ -1687,6 +1687,9 @@ impl<'a> State<'a> {
                 self.s.space();
                 self.s.word("}");
             }
+            PatKind::Or(ref pats) => {
+                self.strsep("|", true, Inconsistent, &pats[..], |s, p| s.print_pat(&p));
+            }
             PatKind::Tuple(ref elts, ddpos) => {
                 self.popen();
                 if let Some(ddpos) = ddpos {

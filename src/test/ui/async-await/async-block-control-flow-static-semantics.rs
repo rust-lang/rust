@@ -32,15 +32,14 @@ async fn return_targets_async_block_not_async_fn() -> u8 {
 
 fn no_break_in_async_block() {
     async {
-        break 0u8; //~ ERROR `break` inside of a closure
-        // FIXME: This diagnostic is pretty bad.
+        break 0u8; //~ ERROR `break` inside of an async block
     };
 }
 
 fn no_break_in_async_block_even_with_outer_loop() {
     loop {
         async {
-            break 0u8; //~ ERROR `break` inside of a closure
+            break 0u8; //~ ERROR `break` inside of an async block
         };
     }
 }

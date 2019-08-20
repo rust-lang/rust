@@ -297,7 +297,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// and `align`. On success, returns `None` for zero-sized accesses (where
     /// nothing else is left to do) and a `Pointer` to use for the actual access otherwise.
     /// Crucially, if the input is a `Pointer`, we will test it for liveness
-    /// *even of* the size is 0.
+    /// *even if* the size is 0.
     ///
     /// Everyone accessing memory based on a `Scalar` should use this method to get the
     /// `Pointer` they need. And even if you already have a `Pointer`, call this method

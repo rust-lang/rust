@@ -708,7 +708,7 @@ fn build_call_shim<'tcx>(
         Adjustment::DerefMove => {
             // fn(Self, ...) -> fn(*mut Self, ...)
             let arg_ty = local_decls[rcvr_arg].ty;
-            assert!(arg_ty.is_self());
+            debug_assert!(tcx.generics_of(def_id).has_self && arg_ty == tcx.types.self_param);
             local_decls[rcvr_arg].ty = tcx.mk_mut_ptr(arg_ty);
 
             Operand::Move(rcvr_l.deref())

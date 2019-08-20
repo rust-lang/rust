@@ -1876,16 +1876,70 @@ declare_lint_pass!(InvalidValue => [INVALID_VALUE]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &hir::Expr) {
 
-        const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
-        const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
+        #[derive(Debug, Copy, Clone, PartialEq)]
+        enum InitKind { Zeroed, Uninit };
 
         /// Information about why a type cannot be initialized this way.
         /// Contains an error message and optionally a span to point at.
         type InitError = (String, Option<Span>);
 
+        /// Test if this constant is all-0.
+        fn is_zero(expr: &hir::Expr) -> bool {
+            use hir::ExprKind::*;
+            use syntax::ast::LitKind::*;
+            match &expr.node {
+                Lit(lit) =>
+                    if let Int(i, _) = lit.node {
+                        i == 0
+                    } else {
+                        false
+                    },
+                Tup(tup) =>
+                    tup.iter().all(is_zero),
+                _ =>
+                    false
+            }
+        }
+
+        /// Determine if this expression is a "dangerous initialization".
+        fn is_dangerous_init(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> Option<InitKind> {
+            const ZEROED_PATH: &[Symbol] = &[sym::core, sym::mem, sym::zeroed];
+            const UININIT_PATH: &[Symbol] = &[sym::core, sym::mem, sym::uninitialized];
+            // `transmute` is inside an anonymous module (the `extern` block?);
+            // `Invalid` represents the empty string and matches that.
+            const TRANSMUTE_PATH: &[Symbol] =
+                &[sym::core, sym::intrinsics, kw::Invalid, sym::transmute];
+
+            if let hir::ExprKind::Call(ref path_expr, ref args) = expr.node {
+                if let hir::ExprKind::Path(ref qpath) = path_expr.node {
+                    let def_id = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id()?;
+
+                    if cx.match_def_path(def_id, ZEROED_PATH) {
+                        return Some(InitKind::Zeroed);
+                    }
+                    if cx.match_def_path(def_id, UININIT_PATH) {
+                        return Some(InitKind::Uninit);
+                    }
+                    if cx.match_def_path(def_id, TRANSMUTE_PATH) {
+                        if is_zero(&args[0]) {
+                            return Some(InitKind::Zeroed);
+                        }
+                    }
+                    // FIXME: Also detect `MaybeUninit::zeroed().assume_init()` and
+                    // `MaybeUninit::uninit().assume_init()`.
+                }
+            }
+
+            None
+        }
+
         /// Return `Some` only if we are sure this type does *not*
         /// allow zero initialization.
-        fn ty_find_init_error<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<InitError> {
+        fn ty_find_init_error<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            ty: Ty<'tcx>,
+            init: InitKind,
+        ) -> Option<InitError> {
             use rustc::ty::TyKind::*;
             match ty.sty {
                 // Primitive types that don't like 0 as a value.
@@ -1893,8 +1947,30 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                 Adt(..) if ty.is_box() => Some((format!("`Box` must be non-null"), None)),
                 FnPtr(..) => Some((format!("Function pointers must be non-null"), None)),
                 Never => Some((format!("The never type (`!`) has no valid value"), None)),
-                // Recurse for some compound types.
+                // Primitive types with other constraints.
+                Bool if init == InitKind::Uninit =>
+                    Some((format!("Booleans must be `true` or `false`"), None)),
+                Char if init == InitKind::Uninit =>
+                    Some((format!("Characters must be a valid unicode codepoint"), None)),
+                // Recurse and checks for some compound types.
                 Adt(adt_def, substs) if !adt_def.is_union() => {
+                    // First check f this ADT has a layout attribute (like `NonNull` and friends).
+                    use std::ops::Bound;
+                    match tcx.layout_scalar_valid_range(adt_def.did) {
+                        // We exploit here that `layout_scalar_valid_range` will never
+                        // return `Bound::Excluded`.  (And we have tests checking that we
+                        // handle the attribute correctly.)
+                        (Bound::Included(lo), _) if lo > 0 =>
+                            return Some((format!("{} must be non-null", ty), None)),
+                        (Bound::Included(_), _) | (_, Bound::Included(_))
+                        if init == InitKind::Uninit =>
+                            return Some((
+                                format!("{} must be initialized inside its custom valid range", ty),
+                                None,
+                            )),
+                        _ => {}
+                    }
+                    // Now, recurse.
                     match adt_def.variants.len() {
                         0 => Some((format!("0-variant enums have no valid value"), None)),
                         1 => {
@@ -1905,6 +1981,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                                 ty_find_init_error(
                                     tcx,
                                     field.ty(tcx, substs),
+                                    init,
                                 ).map(|(mut msg, span)| if span.is_none() {
                                     // Point to this field, should be helpful for figuring
                                     // out where the source of the error is.
@@ -1918,57 +1995,48 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidValue {
                                 })
                             })
                         }
+                        // Multi-variant enums are tricky: if all but one variant are
+                        // uninhabited, we might actually do layout like for a single-variant
+                        // enum, and then even leaving them uninitialized could be okay.
                         _ => None, // Conservative fallback for multi-variant enum.
                     }
                 }
                 Tuple(..) => {
                     // Proceed recursively, check all fields.
-                    ty.tuple_fields().find_map(|field| ty_find_init_error(tcx, field))
+                    ty.tuple_fields().find_map(|field| ty_find_init_error(tcx, field, init))
                 }
-                // FIXME: Would be nice to also warn for `NonNull`/`NonZero*`.
-                // FIXME: *Only for `mem::uninitialized`*, we could also warn for `bool`,
-                //        `char`, and any multivariant enum.
                 // Conservative fallback.
                 _ => None,
             }
         }
 
-        if let hir::ExprKind::Call(ref path_expr, ref _args) = expr.node {
-            if let hir::ExprKind::Path(ref qpath) = path_expr.node {
-                if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
-                    if cx.match_def_path(def_id, &ZEROED_PATH) ||
-                        cx.match_def_path(def_id, &UININIT_PATH)
-                    {
-                        // This conjures an instance of a type out of nothing,
-                        // using zeroed or uninitialized memory.
-                        // We are extremely conservative with what we warn about.
-                        let conjured_ty = cx.tables.expr_ty(expr);
-                        if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty) {
-                            let mut err = cx.struct_span_lint(
-                                INVALID_VALUE,
-                                expr.span,
-                                &format!(
-                                    "the type `{}` does not permit {}",
-                                    conjured_ty,
-                                    if cx.match_def_path(def_id, &ZEROED_PATH) {
-                                        "zero-initialization"
-                                    } else {
-                                        "being left uninitialized"
-                                    }
-                                ),
-                            );
-                            err.span_label(expr.span,
-                                "this code causes undefined behavior when executed");
-                            err.span_label(expr.span, "help: use `MaybeUninit<T>` instead");
-                            if let Some(span) = span {
-                                err.span_note(span, &msg);
-                            } else {
-                                err.note(&msg);
-                            }
-                            err.emit();
-                        }
-                    }
+        if let Some(init) = is_dangerous_init(cx, expr) {
+            // This conjures an instance of a type out of nothing,
+            // using zeroed or uninitialized memory.
+            // We are extremely conservative with what we warn about.
+            let conjured_ty = cx.tables.expr_ty(expr);
+            if let Some((msg, span)) = ty_find_init_error(cx.tcx, conjured_ty, init) {
+                let mut err = cx.struct_span_lint(
+                    INVALID_VALUE,
+                    expr.span,
+                    &format!(
+                        "the type `{}` does not permit {}",
+                        conjured_ty,
+                        match init {
+                            InitKind::Zeroed => "zero-initialization",
+                            InitKind::Uninit => "being left uninitialized",
+                        },
+                    ),
+                );
+                err.span_label(expr.span,
+                    "this code causes undefined behavior when executed");
+                err.span_label(expr.span, "help: use `MaybeUninit<T>` instead");
+                if let Some(span) = span {
+                    err.span_note(span, &msg);
+                } else {
+                    err.note(&msg);
                 }
+                err.emit();
             }
         }
     }

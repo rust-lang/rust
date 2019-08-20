@@ -1190,7 +1190,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         );
 
         let suggestion = match tcx.sess.source_map().span_to_snippet(args_span) {
-            Ok(string) => format!("move {}", string),
+            Ok(mut string) => {
+                if string.starts_with("async ") {
+                    string.insert_str(6, "move ");
+                } else if string.starts_with("async|") {
+                    string.insert_str(5, " move");
+                } else {
+                    string.insert_str(0, "move ");
+                };
+                string
+            },
             Err(_) => "move |<args>| <body>".to_string()
         };
 

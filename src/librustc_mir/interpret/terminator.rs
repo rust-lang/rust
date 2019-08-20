@@ -7,7 +7,7 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    InterpResult, PointerArithmetic, Scalar,
+    InterpResult, PointerArithmetic,
     InterpCx, Machine, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
@@ -50,11 +50,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 for (index, &const_int) in values.iter().enumerate() {
                     // Compare using binary_op, to also support pointer values
-                    let const_int = Scalar::from_uint(const_int, discr.layout.size);
-                    let (res, _) = self.binary_op(mir::BinOp::Eq,
+                    let res = self.overflowing_binary_op(mir::BinOp::Eq,
                         discr,
-                        ImmTy::from_scalar(const_int, discr.layout),
-                    )?;
+                        ImmTy::from_uint(const_int, discr.layout),
+                    )?.0;
                     if res.to_bool()? {
                         target_block = targets[index];
                         break;

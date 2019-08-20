@@ -578,7 +578,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 })
             }
 
-            hir::LifetimeName::Implicit => {
+            hir::LifetimeName::ImplicitObjectLifetimeDefault
+            | hir::LifetimeName::Implicit => {
                 // In this case, the user left off the lifetime; so
                 // they wrote something like:
                 //

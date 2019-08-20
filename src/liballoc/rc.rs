@@ -327,6 +327,37 @@ impl<T> Rc<T> {
         }))
     }
 
+    /// Constructs a new `Rc` with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut five = Rc::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit() -> Rc<mem::MaybeUninit<T>> {
+        unsafe {
+            Rc::from_ptr(Rc::allocate_for_layout(
+                Layout::new::<T>(),
+                |mem| mem as *mut RcBox<mem::MaybeUninit<T>>,
+            ))
+        }
+    }
+
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -374,6 +405,118 @@ impl<T> Rc<T> {
         } else {
             Err(this)
         }
+    }
+}
+
+impl<T> Rc<[T]> {
+    /// Constructs a new reference-counted slice with uninitialized contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut values = Rc::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
+    ///     Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
+    ///     Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    pub fn new_uninit_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
+        unsafe {
+            Rc::from_ptr(Rc::allocate_for_slice(len))
+        }
+    }
+}
+
+impl<T> Rc<mem::MaybeUninit<T>> {
+    /// Converts to `Rc<T>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut five = Rc::<u32>::new_uninit();
+    ///
+    /// let five = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    ///
+    ///     five.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*five, 5)
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Rc<T> {
+        Rc::from_inner(mem::ManuallyDrop::new(self).ptr.cast())
+    }
+}
+
+impl<T> Rc<[mem::MaybeUninit<T>]> {
+    /// Converts to `Rc<[T]>`.
+    ///
+    /// # Safety
+    ///
+    /// As with [`MaybeUninit::assume_init`],
+    /// it is up to the caller to guarantee that the value
+    /// really is in an initialized state.
+    /// Calling this when the content is not yet fully initialized
+    /// causes immediate undefined behavior.
+    ///
+    /// [`MaybeUninit::assume_init`]: ../../std/mem/union.MaybeUninit.html#method.assume_init
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut values = Rc::<[u32]>::new_uninit_slice(3);
+    ///
+    /// let values = unsafe {
+    ///     // Deferred initialization:
+    ///     Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
+    ///     Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
+    ///     Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    ///
+    ///     values.assume_init()
+    /// };
+    ///
+    /// assert_eq!(*values, [1, 2, 3])
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[inline]
+    pub unsafe fn assume_init(self) -> Rc<[T]> {
+        Rc::from_ptr(mem::ManuallyDrop::new(self).ptr.as_ptr() as _)
     }
 }
 
@@ -560,11 +703,44 @@ impl<T: ?Sized> Rc<T> {
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if Rc::is_unique(this) {
             unsafe {
-                Some(&mut this.ptr.as_mut().value)
+                Some(Rc::get_mut_unchecked(this))
             }
         } else {
             None
         }
+    }
+
+    /// Returns a mutable reference to the inner value,
+    /// without any check.
+    ///
+    /// See also [`get_mut`], which is safe and does appropriate checks.
+    ///
+    /// [`get_mut`]: struct.Rc.html#method.get_mut
+    ///
+    /// # Safety
+    ///
+    /// Any other `Rc` or [`Weak`] pointers to the same value must not be dereferenced
+    /// for the duration of the returned borrow.
+    /// This is trivially the case if no such pointers exist,
+    /// for example immediately after `Rc::new`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::rc::Rc;
+    ///
+    /// let mut x = Rc::new(String::new());
+    /// unsafe {
+    ///     Rc::get_mut_unchecked(&mut x).push_str("foo")
+    /// }
+    /// assert_eq!(*x, "foo");
+    /// ```
+    #[inline]
+    #[unstable(feature = "get_mut_unchecked", issue = "63292")]
+    pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
+        &mut this.ptr.as_mut().value
     }
 
     #[inline]
@@ -704,11 +880,11 @@ impl Rc<dyn Any> {
 
 impl<T: ?Sized> Rc<T> {
     /// Allocates an `RcBox<T>` with sufficient space for
-    /// an unsized value where the value has the layout provided.
+    /// a possibly-unsized value where the value has the layout provided.
     ///
     /// The function `mem_to_rcbox` is called with the data pointer
     /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
-    unsafe fn allocate_for_unsized(
+    unsafe fn allocate_for_layout(
         value_layout: Layout,
         mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>
     ) -> *mut RcBox<T> {
@@ -737,7 +913,7 @@ impl<T: ?Sized> Rc<T> {
     /// Allocates an `RcBox<T>` with sufficient space for an unsized value
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut RcBox<T> {
         // Allocate for the `RcBox<T>` using the given value.
-        Self::allocate_for_unsized(
+        Self::allocate_for_layout(
             Layout::for_value(&*ptr),
             |mem| set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>,
         )
@@ -768,7 +944,7 @@ impl<T: ?Sized> Rc<T> {
 impl<T> Rc<[T]> {
     /// Allocates an `RcBox<[T]>` with the given length.
     unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
-        Self::allocate_for_unsized(
+        Self::allocate_for_layout(
             Layout::array::<T>(len).unwrap(),
             |mem| ptr::slice_from_raw_parts_mut(mem as *mut T, len) as *mut RcBox<[T]>,
         )

@@ -306,7 +306,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     ///
     /// zsts can't be read out of two reasons:
     /// * byteorder cannot work with zero element buffers
-    /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
+    /// * in order to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
     ///   being valid for ZSTs
     ///
     /// It is the caller's responsibility to check bounds and alignment beforehand.

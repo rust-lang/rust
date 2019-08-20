@@ -140,6 +140,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(pat.hir_id.local_id, &[pats_exit])
             }
 
+            PatKind::Or(ref pats) => {
+                let branches: Vec<_> = pats.iter().map(|p| self.pat(p, pred)).collect();
+                self.add_ast_node(pat.hir_id.local_id, &branches)
+            }
+
             PatKind::Slice(ref pre, ref vec, ref post) => {
                 let pre_exit = self.pats_all(pre.iter(), pred);
                 let vec_exit = self.pats_all(vec.iter(), pre_exit);

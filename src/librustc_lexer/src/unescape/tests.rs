@@ -11,7 +11,6 @@ fn test_unescape_char_bad() {
     check(r"\", EscapeError::LoneSlash);
 
     check("\n", EscapeError::EscapeOnlyChar);
-    check("\r\n", EscapeError::EscapeOnlyChar);
     check("\t", EscapeError::EscapeOnlyChar);
     check("'", EscapeError::EscapeOnlyChar);
     check("\r", EscapeError::BareCarriageReturn);
@@ -31,6 +30,7 @@ fn test_unescape_char_bad() {
     check(r"\v", EscapeError::InvalidEscape);
     check(r"\💩", EscapeError::InvalidEscape);
     check(r"\●", EscapeError::InvalidEscape);
+    check("\\\r", EscapeError::InvalidEscape);
 
     check(r"\x", EscapeError::TooShortHexEscape);
     check(r"\x0", EscapeError::TooShortHexEscape);
@@ -116,10 +116,9 @@ fn test_unescape_str_good() {
 
     check("foo", "foo");
     check("", "");
-    check(" \t\n\r\n", " \t\n\n");
+    check(" \t\n", " \t\n");
 
     check("hello \\\n     world", "hello world");
-    check("hello \\\r\n     world", "hello world");
     check("thread's", "thread's")
 }
 
@@ -134,7 +133,6 @@ fn test_unescape_byte_bad() {
     check(r"\", EscapeError::LoneSlash);
 
     check("\n", EscapeError::EscapeOnlyChar);
-    check("\r\n", EscapeError::EscapeOnlyChar);
     check("\t", EscapeError::EscapeOnlyChar);
     check("'", EscapeError::EscapeOnlyChar);
     check("\r", EscapeError::BareCarriageReturn);
@@ -238,10 +236,9 @@ fn test_unescape_byte_str_good() {
 
     check("foo", b"foo");
     check("", b"");
-    check(" \t\n\r\n", b" \t\n\n");
+    check(" \t\n", b" \t\n");
 
     check("hello \\\n     world", b"hello world");
-    check("hello \\\r\n     world", b"hello world");
     check("thread's", b"thread's")
 }
 
@@ -253,7 +250,6 @@ fn test_unescape_raw_str() {
         assert_eq!(unescaped, expected);
     }
 
-    check("\r\n", &[(0..2, Ok('\n'))]);
     check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
     check("\rx", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString)), (1..2, Ok('x'))]);
 }
@@ -266,7 +262,6 @@ fn test_unescape_raw_byte_str() {
         assert_eq!(unescaped, expected);
     }
 
-    check("\r\n", &[(0..2, Ok(byte_from_char('\n')))]);
     check("\r", &[(0..1, Err(EscapeError::BareCarriageReturnInRawString))]);
     check("🦀", &[(0..4, Err(EscapeError::NonAsciiCharInByteString))]);
     check(

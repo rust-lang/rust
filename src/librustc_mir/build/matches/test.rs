@@ -87,6 +87,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatternKind::AscribeUserType { .. } |
             PatternKind::Array { .. } |
             PatternKind::Wild |
+            PatternKind::Or { .. } |
             PatternKind::Binding { .. } |
             PatternKind::Leaf { .. } |
             PatternKind::Deref { .. } => {
@@ -130,6 +131,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatternKind::Slice { .. } |
             PatternKind::Array { .. } |
             PatternKind::Wild |
+            PatternKind::Or { .. } |
             PatternKind::Binding { .. } |
             PatternKind::AscribeUserType { .. } |
             PatternKind::Leaf { .. } |
