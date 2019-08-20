@@ -217,7 +217,6 @@ impl ConvWith<(&LineIndex, LineEndings)> for &AtomTextEdit {
         self,
         (line_index, line_endings): (&LineIndex, LineEndings),
     ) -> lsp_types::TextEdit {
-        eprintln!("line_endings = {:?}", line_endings);
         let mut new_text = self.insert.clone();
         if line_endings == LineEndings::Dos {
             new_text = new_text.replace('\n', "\r\n");
