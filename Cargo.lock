@@ -4038,10 +4038,6 @@ dependencies = [
 
 [[package]]
 name = "term"
-version = "0.0.0"
-
-[[package]]
-name = "term"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa63644f74ce96fbeb9b794f66aff2a52d601cbd5e80f4b97123e3899f4570f1"
@@ -4063,9 +4059,9 @@ dependencies = [
 
 [[package]]
 name = "termcolor"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4096add70612622289f2fdcdbd5086dc81c1e2675e6ae58d6c4f62a16c6d7f2f"
+checksum = "96d6098003bde162e4277c70665bd87c326f5a0c3f3fbfb285787fa482d54e6e"
 dependencies = [
  "wincolor",
 ]
@@ -4087,7 +4083,7 @@ version = "0.0.0"
 dependencies = [
  "getopts",
  "proc_macro",
- "term 0.0.0",
+ "termcolor",
 ]
 
 [[package]]

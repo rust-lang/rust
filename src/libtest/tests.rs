@@ -7,6 +7,8 @@ use crate::test::{
 };
 use std::sync::mpsc::channel;
 
+use termcolor::Buffer;
+
 impl TestOpts {
     fn new() -> TestOpts {
         TestOpts {
@@ -488,7 +490,7 @@ fn should_sort_failures_before_printing_them() {
         allow_fail: false,
     };
 
-    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false);
+    let mut out = PrettyFormatter::new(Buffer::no_color(), 10, false);
 
     let st = ConsoleTestState {
         log_out: None,
@@ -506,10 +508,8 @@ fn should_sort_failures_before_printing_them() {
     };
 
     out.write_failures(&st).unwrap();
-    let s = match out.output_location() {
-        &Raw(ref m) => String::from_utf8_lossy(&m[..]),
-        &Pretty(_) => unreachable!(),
-    };
+
+    let s = String::from_utf8_lossy(out.output_location().as_slice());
 
     let apos = s.find("a").unwrap();
     let bpos = s.find("b").unwrap();

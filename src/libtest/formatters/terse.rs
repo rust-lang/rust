@@ -1,8 +1,9 @@
+use termcolor::{Color, ColorSpec, WriteColor};
+
 use super::*;
 
 pub(crate) struct TerseFormatter<T> {
-    out: OutputLocation<T>,
-    use_color: bool,
+    out: T,
     is_multithreaded: bool,
     /// Number of columns to fill when aligning names
     max_name_len: usize,
@@ -11,16 +12,14 @@ pub(crate) struct TerseFormatter<T> {
     total_test_count: usize,
 }
 
-impl<T: Write> TerseFormatter<T> {
+impl<T: Write + WriteColor> TerseFormatter<T> {
     pub fn new(
-        out: OutputLocation<T>,
-        use_color: bool,
+        out: T,
         max_name_len: usize,
         is_multithreaded: bool,
     ) -> Self {
         TerseFormatter {
             out,
-            use_color,
             max_name_len,
             is_multithreaded,
             test_count: 0,
@@ -29,29 +28,29 @@ impl<T: Write> TerseFormatter<T> {
     }
 
     pub fn write_ok(&mut self) -> io::Result<()> {
-        self.write_short_result(".", term::color::GREEN)
+        self.write_short_result(".", Color::Green)
     }
 
     pub fn write_failed(&mut self) -> io::Result<()> {
-        self.write_short_result("F", term::color::RED)
+        self.write_short_result("F", Color::Red)
     }
 
     pub fn write_ignored(&mut self) -> io::Result<()> {
-        self.write_short_result("i", term::color::YELLOW)
+        self.write_short_result("i", Color::Yellow)
     }
 
     pub fn write_allowed_fail(&mut self) -> io::Result<()> {
-        self.write_short_result("a", term::color::YELLOW)
+        self.write_short_result("a", Color::Yellow)
     }
 
     pub fn write_bench(&mut self) -> io::Result<()> {
-        self.write_pretty("bench", term::color::CYAN)
+        self.write_pretty("bench", Color::Cyan)
     }
 
     pub fn write_short_result(
         &mut self,
         result: &str,
-        color: term::color::Color,
+        color: Color,
     ) -> io::Result<()> {
         self.write_pretty(result, color)?;
         if self.test_count % QUIET_MODE_MAX_COLUMN == QUIET_MODE_MAX_COLUMN - 1 {
@@ -66,23 +65,11 @@ impl<T: Write> TerseFormatter<T> {
         Ok(())
     }
 
-    pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
-        match self.out {
-            Pretty(ref mut term) => {
-                if self.use_color {
-                    term.fg(color)?;
-                }
-                term.write_all(word.as_bytes())?;
-                if self.use_color {
-                    term.reset()?;
-                }
-                term.flush()
-            }
-            Raw(ref mut stdout) => {
-                stdout.write_all(word.as_bytes())?;
-                stdout.flush()
-            }
-        }
+    pub fn write_pretty(&mut self, word: &str, color: Color) -> io::Result<()> {
+        self.out.set_color(ColorSpec::new().set_fg(Some(color)))?;
+        self.out.write_all(word.as_bytes())?;
+        self.out.reset()?;
+        self.out.flush()
     }
 
     pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
@@ -151,7 +138,7 @@ impl<T: Write> TerseFormatter<T> {
     }
 }
 
-impl<T: Write> OutputFormatter for TerseFormatter<T> {
+impl<T: Write + WriteColor> OutputFormatter for TerseFormatter<T> {
     fn write_run_start(&mut self, test_count: usize) -> io::Result<()> {
         self.total_test_count = test_count;
         let noun = if test_count != 1 { "tests" } else { "test" };
@@ -206,9 +193,9 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
 
         if success {
             // There's no parallelism at this point so it's safe to use color
-            self.write_pretty("ok", term::color::GREEN)?;
+            self.write_pretty("ok", Color::Green)?;
         } else {
-            self.write_pretty("FAILED", term::color::RED)?;
+            self.write_pretty("FAILED", Color::Red)?;
         }
 
         let s = if state.allowed_fail > 0 {

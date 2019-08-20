@@ -11,7 +11,7 @@ crate-type = ["dylib", "rlib"]
 
 [dependencies]
 getopts = "0.2.19"
-term = { path = "../libterm" }
+termcolor = "1.0.5"
 
 # not actually used but needed to always have proc_macro in the sysroot
 proc_macro = { path = "../libproc_macro" }

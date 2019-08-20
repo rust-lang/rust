@@ -32,7 +32,6 @@
 use getopts;
 #[cfg(any(unix, target_os = "cloudabi"))]
 extern crate libc;
-use term;
 
 // FIXME(#54291): rustc and/or LLVM don't yet support building with panic-unwind
 //                on aarch64-pc-windows-msvc, or thumbv7a-pc-windows-msvc
@@ -46,7 +45,6 @@ extern crate panic_unwind;
 
 pub use self::ColorConfig::*;
 use self::NamePadding::*;
-use self::OutputLocation::*;
 use self::TestEvent::*;
 pub use self::TestFn::*;
 pub use self::TestName::*;
@@ -69,6 +67,8 @@ use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+
+use termcolor::{ColorChoice, StandardStream};
 
 #[cfg(test)]
 mod tests;
@@ -671,27 +671,6 @@ pub enum TestResult {
 
 unsafe impl Send for TestResult {}
 
-enum OutputLocation<T> {
-    Pretty(Box<term::StdoutTerminal>),
-    Raw(T),
-}
-
-impl<T: Write> Write for OutputLocation<T> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        match *self {
-            Pretty(ref mut term) => term.write(buf),
-            Raw(ref mut stdout) => stdout.write(buf),
-        }
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        match *self {
-            Pretty(ref mut term) => term.flush(),
-            Raw(ref mut stdout) => stdout.flush(),
-        }
-    }
-}
-
 struct ConsoleTestState {
     log_out: Option<File>,
     total: usize,
@@ -806,10 +785,7 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
 
 // List the tests to console, and optionally to logfile. Filters are honored.
 pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<()> {
-    let mut output = match term::stdout() {
-        None => Raw(io::stdout()),
-        Some(t) => Pretty(t),
-    };
+    let mut output = StandardStream::stdout(ColorChoice::Auto);
 
     let quiet = opts.format == OutputFormat::Terse;
     let mut st = ConsoleTestState::new(opts)?;
@@ -912,10 +888,19 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         }
     }
 
-    let output = match term::stdout() {
-        None => Raw(io::stdout()),
-        Some(t) => Pretty(t),
+    let color_choice = match opts.color {
+        AutoColor => {
+            if !opts.nocapture && stdout_isatty() {
+                ColorChoice::Auto
+            } else {
+                ColorChoice::Never
+            }
+        },
+        AlwaysColor => ColorChoice::Always,
+        NeverColor => ColorChoice::Never,
     };
+
+    let output = StandardStream::stdout(color_choice);
 
     let max_name_len = tests
         .iter()
@@ -928,13 +913,11 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     let mut out: Box<dyn OutputFormatter> = match opts.format {
         OutputFormat::Pretty => Box::new(PrettyFormatter::new(
             output,
-            use_color(opts),
             max_name_len,
             is_multithreaded,
         )),
         OutputFormat::Terse => Box::new(TerseFormatter::new(
             output,
-            use_color(opts),
             max_name_len,
             is_multithreaded,
         )),
@@ -953,14 +936,6 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     assert!(st.current_test_count() == st.total);
 
     return out.write_run_finish(&st);
-}
-
-fn use_color(opts: &TestOpts) -> bool {
-    match opts.color {
-        AutoColor => !opts.nocapture && stdout_isatty(),
-        AlwaysColor => true,
-        NeverColor => false,
-    }
 }
 
 #[cfg(any(
