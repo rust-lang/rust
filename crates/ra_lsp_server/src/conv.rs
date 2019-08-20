@@ -88,7 +88,7 @@ impl Conv for Severity {
     }
 }
 
-impl ConvWith<(&'_ LineIndex, LineEndings)> for CompletionItem {
+impl ConvWith<(&LineIndex, LineEndings)> for CompletionItem {
     type Output = ::lsp_types::CompletionItem;
 
     fn conv_with(self, ctx: (&LineIndex, LineEndings)) -> ::lsp_types::CompletionItem {
@@ -136,7 +136,7 @@ impl ConvWith<(&'_ LineIndex, LineEndings)> for CompletionItem {
     }
 }
 
-impl ConvWith<&'_ LineIndex> for Position {
+impl ConvWith<&LineIndex> for Position {
     type Output = TextUnit;
 
     fn conv_with(self, line_index: &LineIndex) -> TextUnit {
@@ -145,7 +145,7 @@ impl ConvWith<&'_ LineIndex> for Position {
     }
 }
 
-impl ConvWith<&'_ LineIndex> for TextUnit {
+impl ConvWith<&LineIndex> for TextUnit {
     type Output = Position;
 
     fn conv_with(self, line_index: &LineIndex) -> Position {
@@ -154,7 +154,7 @@ impl ConvWith<&'_ LineIndex> for TextUnit {
     }
 }
 
-impl ConvWith<&'_ LineIndex> for TextRange {
+impl ConvWith<&LineIndex> for TextRange {
     type Output = Range;
 
     fn conv_with(self, line_index: &LineIndex) -> Range {
@@ -162,7 +162,7 @@ impl ConvWith<&'_ LineIndex> for TextRange {
     }
 }
 
-impl ConvWith<&'_ LineIndex> for Range {
+impl ConvWith<&LineIndex> for Range {
     type Output = TextRange;
 
     fn conv_with(self, line_index: &LineIndex) -> TextRange {
@@ -202,7 +202,7 @@ impl Conv for ra_ide_api::FunctionSignature {
     }
 }
 
-impl ConvWith<(&'_ LineIndex, LineEndings)> for TextEdit {
+impl ConvWith<(&LineIndex, LineEndings)> for TextEdit {
     type Output = Vec<lsp_types::TextEdit>;
 
     fn conv_with(self, ctx: (&LineIndex, LineEndings)) -> Vec<lsp_types::TextEdit> {
@@ -210,7 +210,7 @@ impl ConvWith<(&'_ LineIndex, LineEndings)> for TextEdit {
     }
 }
 
-impl ConvWith<(&'_ LineIndex, LineEndings)> for &'_ AtomTextEdit {
+impl ConvWith<(&LineIndex, LineEndings)> for &AtomTextEdit {
     type Output = lsp_types::TextEdit;
 
     fn conv_with(
@@ -234,42 +234,42 @@ impl<T: ConvWith<CTX>, CTX> ConvWith<CTX> for Option<T> {
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for &'_ Url {
+impl TryConvWith<&WorldSnapshot> for &Url {
     type Output = FileId;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         world.uri_to_file_id(self)
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for FileId {
+impl TryConvWith<&WorldSnapshot> for FileId {
     type Output = Url;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<Url> {
         world.file_id_to_uri(self)
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for &'_ TextDocumentItem {
+impl TryConvWith<&WorldSnapshot> for &TextDocumentItem {
     type Output = FileId;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         self.uri.try_conv_with(world)
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for &'_ VersionedTextDocumentIdentifier {
+impl TryConvWith<&WorldSnapshot> for &VersionedTextDocumentIdentifier {
     type Output = FileId;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         self.uri.try_conv_with(world)
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for &'_ TextDocumentIdentifier {
+impl TryConvWith<&WorldSnapshot> for &TextDocumentIdentifier {
     type Output = FileId;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         world.uri_to_file_id(&self.uri)
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for &'_ TextDocumentPositionParams {
+impl TryConvWith<&WorldSnapshot> for &TextDocumentPositionParams {
     type Output = FilePosition;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FilePosition> {
         let file_id = self.text_document.try_conv_with(world)?;
@@ -279,7 +279,7 @@ impl TryConvWith<&'_ WorldSnapshot> for &'_ TextDocumentPositionParams {
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for (&'_ TextDocumentIdentifier, Range) {
+impl TryConvWith<&WorldSnapshot> for (&TextDocumentIdentifier, Range) {
     type Output = FileRange;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileRange> {
         let file_id = self.0.try_conv_with(world)?;
@@ -300,7 +300,7 @@ impl<T: TryConvWith<CTX>, CTX: Copy> TryConvWith<CTX> for Vec<T> {
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for SourceChange {
+impl TryConvWith<&WorldSnapshot> for SourceChange {
     type Output = req::SourceChange;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<req::SourceChange> {
         let cursor_position = match self.cursor_position {
@@ -339,7 +339,7 @@ impl TryConvWith<&'_ WorldSnapshot> for SourceChange {
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for SourceFileEdit {
+impl TryConvWith<&WorldSnapshot> for SourceFileEdit {
     type Output = TextDocumentEdit;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<TextDocumentEdit> {
         let text_document = VersionedTextDocumentIdentifier {
@@ -354,7 +354,7 @@ impl TryConvWith<&'_ WorldSnapshot> for SourceFileEdit {
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for FileSystemEdit {
+impl TryConvWith<&WorldSnapshot> for FileSystemEdit {
     type Output = ResourceOp;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<ResourceOp> {
         let res = match self {
@@ -372,7 +372,7 @@ impl TryConvWith<&'_ WorldSnapshot> for FileSystemEdit {
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for &NavigationTarget {
+impl TryConvWith<&WorldSnapshot> for &NavigationTarget {
     type Output = Location;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<Location> {
         let line_index = world.analysis().file_line_index(self.file_id())?;
@@ -381,7 +381,7 @@ impl TryConvWith<&'_ WorldSnapshot> for &NavigationTarget {
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for (FileId, RangeInfo<NavigationTarget>) {
+impl TryConvWith<&WorldSnapshot> for (FileId, RangeInfo<NavigationTarget>) {
     type Output = LocationLink;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<LocationLink> {
         let (src_file_id, target) = self;
@@ -408,7 +408,7 @@ impl TryConvWith<&'_ WorldSnapshot> for (FileId, RangeInfo<NavigationTarget>) {
     }
 }
 
-impl TryConvWith<&'_ WorldSnapshot> for (FileId, RangeInfo<Vec<NavigationTarget>>) {
+impl TryConvWith<&WorldSnapshot> for (FileId, RangeInfo<Vec<NavigationTarget>>) {
     type Output = req::GotoDefinitionResponse;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<req::GotoTypeDefinitionResponse> {
         let (file_id, RangeInfo { range, info: navs }) = self;
