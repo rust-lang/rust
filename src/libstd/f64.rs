@@ -833,15 +833,7 @@ impl f64 {
     pub fn asinh(self) -> f64 {
         match self {
             x if x == NEG_INFINITY => NEG_INFINITY,
-            x if x.is_sign_negative() => {
-                let v = (x + ((x * x) + 1.0).sqrt()).ln();
-                if v.is_sign_negative() {
-                    v
-                } else {
-                    -v
-                }
-            }
-            x => (x + ((x * x) + 1.0).sqrt()).ln()
+            x => (x + ((x * x) + 1.0).sqrt()).ln().copysign(self)
         }
     }
 
