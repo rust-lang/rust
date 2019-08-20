@@ -405,17 +405,16 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
                 // Make sure this is dereferencable and all.
-                let (size, align) = self.ecx.size_and_align_of(place.meta, place.layout)?
+                let mem_pos = self.ecx.mem_pos_of(place.meta, place.layout)?
                     // for the purpose of validity, consider foreign types to have
                     // alignment and size determined by the layout (size will be 0,
                     // alignment should take attributes into account).
-                    .unwrap_or_else(|| (place.layout.pref_pos.size,
-                        place.layout.pref_pos.align.abi));
+                    .unwrap_or_else(|| place.layout.pref_pos.mem_pos());
                 let ptr: Option<_> = match
                     self.ecx.memory.check_ptr_access_align(
                         place.ptr,
-                        size,
-                        Some(align),
+                        mem_pos.size,
+                        Some(mem_pos.align),
                         CheckInAllocMsg::InboundsTest,
                     )
                 {
@@ -423,7 +422,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     Err(err) => {
                         info!(
                             "{:?} did not pass access check for size {:?}, align {:?}",
-                            place.ptr, size, align
+                            place.ptr, mem_pos.size, mem_pos.align
                         );
                         match err.kind {
                             err_unsup!(InvalidNullPointerUsage) =>
@@ -464,7 +463,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     // `!` is a ZST and we want to validate it.
                     // Normalize before handing `place` to tracking because that will
                     // check for duplicates.
-                    let place = if size.bytes() > 0 {
+                    let place = if mem_pos.size.bytes() > 0 {
                         self.ecx.force_mplace_ptr(place)
                             .expect("we already bounds-checked")
                     } else {

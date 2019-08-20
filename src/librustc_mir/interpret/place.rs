@@ -346,8 +346,9 @@ where
         &self,
         mut place: MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let (size, align) = self.size_and_align_of_mplace(place)?
-            .unwrap_or((place.layout.pref_pos.size, place.layout.pref_pos.align.abi));
+        let mem_pos = self.mem_pos_of_mplace(place)?
+            .unwrap_or(place.layout.pref_pos.mem_pos());
+        let (size, align) = (mem_pos.size, mem_pos.align);
         assert!(place.mplace.align <= align, "dynamic alignment less strict than static one?");
         place.mplace.align = align; // maximally strict checking
         // When dereferencing a pointer, it must be non-NULL, aligned, and live.
@@ -407,8 +408,8 @@ where
             // Re-use parent metadata to determine dynamic field layout.
             // With custom DSTS, this *will* execute user-defined code, but the same
             // happens at run-time so that's okay.
-            let align = match self.size_and_align_of(base.meta, field_layout)? {
-                Some((_, align)) => align,
+            let align = match self.mem_pos_of(base.meta, field_layout)? {
+                Some(mem_pos) => mem_pos.align,
                 None if offset == Size::ZERO =>
                     // An extern type at offset 0, we fall back to its static alignment.
                     // FIXME: Once we have made decisions for how to handle size and alignment
@@ -989,8 +990,9 @@ where
                         // that has different alignment than the outer field.
                         // We also need to support unsized types, and hence cannot use `allocate`.
                         let local_layout = self.layout_of_local(&self.stack[frame], local, None)?;
-                        let (size, align) = self.size_and_align_of(meta, local_layout)?
+                        let mem_pos = self.mem_pos_of(meta, local_layout)?
                             .expect("Cannot allocate for non-dyn-sized type");
+                        let (size, align) = (mem_pos.size, mem_pos.align);
                         let ptr = self.memory.allocate(size, align, MemoryKind::Stack);
                         let mplace = MemPlace { ptr: ptr.into(), align, meta };
                         if let Some(value) = old_val {

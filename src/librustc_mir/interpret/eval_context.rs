@@ -7,7 +7,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::def::DefKind;
 use rustc::mir;
 use rustc::ty::layout::{
-    self, Size, Align, HasDataLayout, LayoutOf, TyLayout
+    self, Size, MemoryPosition, HasDataLayout, LayoutOf, TyLayout
 };
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -369,13 +369,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns the actual dynamic size and alignment of the place at the given type.
     /// Only the "meta" (metadata) part of the place matters.
     /// This can fail to provide an answer for extern types.
-    pub(super) fn size_and_align_of(
+    pub(super) fn mem_pos_of(
         &self,
         metadata: Option<Scalar<M::PointerTag>>,
         layout: TyLayout<'tcx>,
-    ) -> InterpResult<'tcx, Option<(Size, Align)>> {
+    ) -> InterpResult<'tcx, Option<MemoryPosition>> {
         if !layout.is_unsized() {
-            return Ok(Some((layout.pref_pos.size, layout.pref_pos.align.abi)));
+            return Ok(Some(layout.pref_pos.mem_pos()));
         }
         match layout.ty.kind {
             ty::Adt(..) | ty::Tuple(..) => {
@@ -399,7 +399,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
-                let (unsized_size, unsized_align) = match self.size_and_align_of(metadata, field)? {
+                let unsized_mem_pos = match self.mem_pos_of(metadata, field)? {
                     Some(size_and_align) => size_and_align,
                     None => {
                         // A field with extern type.  If this field is at offset 0, we behave
@@ -414,6 +414,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
                     }
                 };
+
+                let unsized_size = unsized_mem_pos.size;
+                let unsized_align = unsized_mem_pos.align;
 
                 // FIXME (#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`
@@ -438,12 +441,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_ub_format!("wide pointer metadata contains invalid information: \
                         total size is bigger than largest supported object");
                 }
-                Ok(Some((size, align)))
-            }
+                let mem_pos = MemoryPosition::new(size, align).strided();
+
+                Ok(Some(mem_pos))
+            },
             ty::Dynamic(..) => {
                 let vtable = metadata.expect("dyn trait fat ptr must have vtable");
                 // Read size and align from vtable (already checks size).
-                Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
+                let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
+                let mem_pos = MemoryPosition::new(size, align);
+                Ok(Some(mem_pos))
             }
 
             ty::Slice(_) | ty::Str => {
@@ -454,22 +461,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let pref_pos = elem.pref_pos.checked_mul(len, &*self.tcx)
                     .ok_or_else(|| err_ub_format!("invalid slice: \
                         total size is bigger than largest supported object"))?;
-                Ok(Some((pref_pos.size, pref_pos.align.abi)))
+                Ok(Some(pref_pos.mem_pos()))
             }
 
             ty::Foreign(_) => {
                 Ok(None)
             }
 
-            _ => bug!("size_and_align_of::<{:?}> not supported", layout.ty),
+            _ => bug!("mem_pos_of::<{:?}> not supported", layout.ty),
         }
     }
     #[inline]
-    pub fn size_and_align_of_mplace(
+    pub fn mem_pos_of_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>
-    ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(mplace.meta, mplace.layout)
+    ) -> InterpResult<'tcx, Option<MemoryPosition>> {
+        self.mem_pos_of(mplace.meta, mplace.layout)
     }
 
     pub fn push_stack_frame(
