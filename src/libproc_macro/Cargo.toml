@@ -6,3 +6,6 @@ edition = "2018"
 
 [lib]
 path = "lib.rs"
+
+[dependencies]
+std = { path = "../libstd" }
