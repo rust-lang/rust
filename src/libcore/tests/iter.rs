@@ -153,6 +153,54 @@ fn test_iterator_chain_find() {
 }
 
 #[test]
+fn test_iterator_chain_size_hint() {
+    struct Iter {
+        is_empty: bool,
+    }
+
+    impl Iterator for Iter {
+        type Item = ();
+
+        // alternates between `None` and `Some(())`
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.is_empty {
+                self.is_empty = false;
+                None
+            } else {
+                self.is_empty = true;
+                Some(())
+            }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            if self.is_empty {
+                (0, Some(0))
+            } else {
+                (1, Some(1))
+            }
+        }
+    }
+
+    impl DoubleEndedIterator for Iter {
+        fn next_back(&mut self) -> Option<Self::Item> {
+            self.next()
+        }
+    }
+
+    // this chains an iterator of length 0 with an iterator of length 1,
+    // so after calling `.next()` once, the iterator is empty and the
+    // state is `ChainState::Back`. `.size_hint()` should now disregard
+    // the size hint of the left iterator
+    let mut iter = Iter { is_empty: true }.chain(once(()));
+    assert_eq!(iter.next(), Some(()));
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+
+    let mut iter = once(()).chain(Iter { is_empty: true });
+    assert_eq!(iter.next_back(), Some(()));
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+}
+
+#[test]
 fn test_zip_nth() {
     let xs = [0, 1, 2, 4, 5];
     let ys = [10, 11, 12];

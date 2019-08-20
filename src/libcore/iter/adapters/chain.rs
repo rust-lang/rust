@@ -173,17 +173,23 @@ impl<A, B> Iterator for Chain<A, B> where
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (a_lower, a_upper) = self.a.size_hint();
-        let (b_lower, b_upper) = self.b.size_hint();
+        match self.state {
+            ChainState::Both => {
+                let (a_lower, a_upper) = self.a.size_hint();
+                let (b_lower, b_upper) = self.b.size_hint();
 
-        let lower = a_lower.saturating_add(b_lower);
+                let lower = a_lower.saturating_add(b_lower);
 
-        let upper = match (a_upper, b_upper) {
-            (Some(x), Some(y)) => x.checked_add(y),
-            _ => None
-        };
+                let upper = match (a_upper, b_upper) {
+                    (Some(x), Some(y)) => x.checked_add(y),
+                    _ => None
+                };
 
-        (lower, upper)
+                (lower, upper)
+            }
+            ChainState::Front => self.a.size_hint(),
+            ChainState::Back => self.b.size_hint(),
+        }
     }
 }
 
