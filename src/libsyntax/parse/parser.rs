@@ -375,10 +375,11 @@ impl<'a> Parser<'a> {
         if let Some(directory) = directory {
             parser.directory = directory;
         } else if !parser.token.span.is_dummy() {
-            if let FileName::Real(mut path) =
-                    sess.source_map().span_to_unmapped_path(parser.token.span) {
-                path.pop();
-                parser.directory.path = Cow::from(path);
+            if let Some(FileName::Real(path)) =
+                    &sess.source_map().lookup_char_pos(parser.token.span.lo()).file.unmapped_path {
+                if let Some(directory_path) = path.parent() {
+                    parser.directory.path = Cow::from(directory_path.to_path_buf());
+                }
             }
         }
 

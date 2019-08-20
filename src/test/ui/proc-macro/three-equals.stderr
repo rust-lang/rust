@@ -1,8 +1,19 @@
 error: found 2 equal signs, need exactly 3
-  --> $DIR/three-equals.rs:15:5
+  --> $DIR/auxiliary/three-equals.rs:42:1
    |
-LL |     three_equals!(==);
-   |     ^^^^^^^^^^^^^^^^^^ in this macro invocation
+LL | / pub fn three_equals(input: TokenStream) -> TokenStream {
+LL | |     if let Err(diag) = parse(input) {
+LL | |         diag.emit();
+LL | |         return TokenStream::new();
+...  |
+LL | |     "3".parse().unwrap()
+LL | | }
+   | |_^
+   | 
+  ::: $DIR/three-equals.rs:15:5
+   |
+LL |       three_equals!(==);
+   |       ------------------ in this macro invocation
    |
    = help: input must be: `===`
 

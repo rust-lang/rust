@@ -360,12 +360,11 @@ pub(crate) struct Rustc<'a> {
 
 impl<'a> Rustc<'a> {
     pub fn new(cx: &'a ExtCtxt<'_>) -> Self {
-        // No way to determine def location for a proc macro right now, so use call location.
-        let location = cx.current_expansion.id.expn_data().call_site;
+        let expn_data = cx.current_expansion.id.expn_data();
         Rustc {
             sess: cx.parse_sess,
-            def_site: cx.with_def_site_ctxt(location),
-            call_site: cx.with_call_site_ctxt(location),
+            def_site: cx.with_def_site_ctxt(expn_data.def_site),
+            call_site: cx.with_call_site_ctxt(expn_data.call_site),
         }
     }
 
