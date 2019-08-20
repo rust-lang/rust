@@ -19,10 +19,9 @@ pub trait Conv {
     fn conv(self) -> Self::Output;
 }
 
-pub trait ConvWith {
-    type Ctx;
+pub trait ConvWith<CTX> {
     type Output;
-    fn conv_with(self, ctx: &Self::Ctx) -> Self::Output;
+    fn conv_with(self, ctx: CTX) -> Self::Output;
 }
 
 pub trait TryConvWith {
@@ -89,8 +88,7 @@ impl Conv for Severity {
     }
 }
 
-impl ConvWith for CompletionItem {
-    type Ctx = LineIndex;
+impl ConvWith<&'_ LineIndex> for CompletionItem {
     type Output = ::lsp_types::CompletionItem;
 
     fn conv_with(self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
@@ -138,8 +136,7 @@ impl ConvWith for CompletionItem {
     }
 }
 
-impl ConvWith for Position {
-    type Ctx = LineIndex;
+impl ConvWith<&'_ LineIndex> for Position {
     type Output = TextUnit;
 
     fn conv_with(self, line_index: &LineIndex) -> TextUnit {
@@ -148,8 +145,7 @@ impl ConvWith for Position {
     }
 }
 
-impl ConvWith for TextUnit {
-    type Ctx = LineIndex;
+impl ConvWith<&'_ LineIndex> for TextUnit {
     type Output = Position;
 
     fn conv_with(self, line_index: &LineIndex) -> Position {
@@ -158,8 +154,7 @@ impl ConvWith for TextUnit {
     }
 }
 
-impl ConvWith for TextRange {
-    type Ctx = LineIndex;
+impl ConvWith<&'_ LineIndex> for TextRange {
     type Output = Range;
 
     fn conv_with(self, line_index: &LineIndex) -> Range {
@@ -167,8 +162,7 @@ impl ConvWith for TextRange {
     }
 }
 
-impl ConvWith for Range {
-    type Ctx = LineIndex;
+impl ConvWith<&'_ LineIndex> for Range {
     type Output = TextRange;
 
     fn conv_with(self, line_index: &LineIndex) -> TextRange {
@@ -208,8 +202,7 @@ impl Conv for ra_ide_api::FunctionSignature {
     }
 }
 
-impl ConvWith for TextEdit {
-    type Ctx = LineIndex;
+impl ConvWith<&'_ LineIndex> for TextEdit {
     type Output = Vec<lsp_types::TextEdit>;
 
     fn conv_with(self, line_index: &LineIndex) -> Vec<lsp_types::TextEdit> {
@@ -217,8 +210,7 @@ impl ConvWith for TextEdit {
     }
 }
 
-impl ConvWith for &'_ AtomTextEdit {
-    type Ctx = LineIndex;
+impl ConvWith<&'_ LineIndex> for &'_ AtomTextEdit {
     type Output = lsp_types::TextEdit;
 
     fn conv_with(self, line_index: &LineIndex) -> lsp_types::TextEdit {
@@ -229,10 +221,10 @@ impl ConvWith for &'_ AtomTextEdit {
     }
 }
 
-impl<T: ConvWith> ConvWith for Option<T> {
-    type Ctx = <T as ConvWith>::Ctx;
-    type Output = Option<<T as ConvWith>::Output>;
-    fn conv_with(self, ctx: &Self::Ctx) -> Self::Output {
+impl<T: ConvWith<CTX>, CTX> ConvWith<CTX> for Option<T> {
+    type Output = Option<T::Output>;
+
+    fn conv_with(self, ctx: CTX) -> Self::Output {
         self.map(|x| ConvWith::conv_with(x, ctx))
     }
 }
@@ -454,35 +446,34 @@ pub fn to_location(
     Ok(loc)
 }
 
-pub trait MapConvWith<'a>: Sized + 'a {
-    type Ctx;
+pub trait MapConvWith<CTX>: Sized {
     type Output;
 
-    fn map_conv_with(self, ctx: &'a Self::Ctx) -> ConvWithIter<'a, Self, Self::Ctx> {
+    fn map_conv_with(self, ctx: CTX) -> ConvWithIter<Self, CTX> {
         ConvWithIter { iter: self, ctx }
     }
 }
 
-impl<'a, I> MapConvWith<'a> for I
-where
-    I: Iterator + 'a,
-    I::Item: ConvWith,
-{
-    type Ctx = <I::Item as ConvWith>::Ctx;
-    type Output = <I::Item as ConvWith>::Output;
-}
-
-pub struct ConvWithIter<'a, I, Ctx: 'a> {
-    iter: I,
-    ctx: &'a Ctx,
-}
-
-impl<'a, I, Ctx> Iterator for ConvWithIter<'a, I, Ctx>
+impl<CTX, I> MapConvWith<CTX> for I
 where
     I: Iterator,
-    I::Item: ConvWith<Ctx = Ctx>,
+    I::Item: ConvWith<CTX>,
 {
-    type Item = <I::Item as ConvWith>::Output;
+    type Output = <I::Item as ConvWith<CTX>>::Output;
+}
+
+pub struct ConvWithIter<I, CTX> {
+    iter: I,
+    ctx: CTX,
+}
+
+impl<I, CTX> Iterator for ConvWithIter<I, CTX>
+where
+    I: Iterator,
+    I::Item: ConvWith<CTX>,
+    CTX: Copy,
+{
+    type Item = <I::Item as ConvWith<CTX>>::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|item| item.conv_with(self.ctx))
