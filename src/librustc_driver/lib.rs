@@ -140,14 +140,22 @@ impl Callbacks for TimePassesCallbacks {
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler(
-    args: &[String],
+    at_args: &[String],
     callbacks: &mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     emitter: Option<Box<dyn Write + Send>>
 ) -> interface::Result<()> {
+    let mut args = Vec::new();
+    for arg in at_args {
+        match args::arg_expand(arg.clone()) {
+            Ok(arg) => args.extend(arg),
+            Err(err) => early_error(ErrorOutputType::default(),
+                &format!("Failed to load argument file: {}", err)),
+        }
+    }
     let diagnostic_output = emitter.map(|emitter| DiagnosticOutput::Raw(emitter))
                                    .unwrap_or(DiagnosticOutput::Default);
-    let matches = match handle_options(args) {
+    let matches = match handle_options(&args) {
         Some(matches) => matches,
         None => return Ok(()),
     };
@@ -1199,10 +1207,10 @@ pub fn main() {
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
     let result = report_ices_to_stderr_if_any(|| {
-        let args = args::ArgsIter::new().enumerate()
-            .map(|(i, arg)| arg.unwrap_or_else(|err| {
-                early_error(ErrorOutputType::default(),
-                            &format!("Argument {} is not valid: {}", i, err))
+        let args = env::args_os().enumerate()
+            .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
+                    early_error(ErrorOutputType::default(),
+                            &format!("Argument {} is not valid Unicode: {:?}", i, arg))
             }))
             .collect::<Vec<_>>();
         run_compiler(&args, &mut callbacks, None, None)
