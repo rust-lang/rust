@@ -598,6 +598,148 @@ impl AddAssign for LayoutPositionPref {
     }
 }
 
+/// An aligned size.
+/// Better name appreciated.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct MemoryPosition {
+    /// A size not rounded up to alignment
+    pub size: Size,
+    /// the alignment of the start of the size
+    pub align: Align,
+}
+
+impl LayoutPositionPref {
+    pub fn mem_pos(self) -> MemoryPosition {
+        MemoryPosition::new(self.size, self.align.abi)
+    }
+}
+
+impl MemoryPosition {
+    pub fn new(size: Size, align: Align) -> MemoryPosition {
+        MemoryPosition {
+           size,
+           align
+        }
+    }
+
+    pub fn pref_pos(self) -> LayoutPositionPref {
+        LayoutPositionPref::new_simple(self.size, self.align)
+    }
+
+    #[inline]
+    pub fn from_bits(bits: u64) -> MemoryPosition {
+        // Avoid potential overflow from `bits + 7`.
+        MemoryPosition::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
+    }
+
+    #[inline]
+    pub fn from_bytes(bytes: u64) -> MemoryPosition {
+        MemoryPosition::new(Size::from_bytes(bytes), Align::from_bytes(bytes).unwrap())
+    }
+
+    #[inline]
+    pub fn stride_to(self, align: Align) -> MemoryPosition {
+        MemoryPosition::new(self.size.align_to(align), self.align)
+    }
+
+    #[inline]
+    pub fn pack_to(self, align: Align) -> MemoryPosition {
+        MemoryPosition::new(self.size, self.align.min(align))
+    }
+
+    #[inline]
+    pub fn max(self, other: MemoryPosition) -> MemoryPosition {
+        MemoryPosition::new(self.size.max(other.size), self.align.max(other.align))
+    }
+
+    pub fn padding_needed_for(self, align: Align) -> Size {
+        self.stride_to(align).size - self.size
+    }
+
+    pub fn repeat(self, count: u64) -> Self {
+        return self * count
+    }
+
+    pub fn extend(self, other: MemoryPosition) ->  (Self, Size) {
+        let p2 = self.stride_to(other.align).size;
+        (MemoryPosition::new(p2 + other.size, self.align), p2)
+    }
+
+    #[inline]
+    pub fn align_to(self, align: Align) -> MemoryPosition {
+        MemoryPosition::new(self.size, self.align.max(align))
+    }
+
+    #[inline]
+    pub fn align_and_stride_to(self, align: Align) -> MemoryPosition {
+        self.align_to(align).stride_to(align)
+    }
+
+    pub fn strided(self) -> MemoryPosition {
+        self.stride_to(self.align)
+    }
+
+    pub fn stride(self) -> Size {
+        self.strided().size
+    }
+
+    #[inline]
+    pub fn is_aligned(self, align: Align) -> bool {
+        self.size.is_aligned(align)
+    }
+
+    #[inline]
+    pub fn checked_add<C: HasDataLayout>(self, other: Self, cx: &C) -> Option<Self> {
+        let size = self.stride_to(other.align).size.checked_add(other.size, cx)?;
+        Some(MemoryPosition::new(size, self.align))
+    }
+
+    #[inline]
+    pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: &C) -> Option<MemoryPosition> {
+        if count == 0 {
+            Some(MemoryPosition::new(Size::ZERO, self.align))
+        } else {
+            Some(MemoryPosition::new(self.stride().checked_mul(count - 1, cx)?, self.align) + self)
+        }
+    }
+
+}
+
+impl Add for MemoryPosition {
+    type Output = MemoryPosition;
+    #[inline]
+    fn add(self, other: MemoryPosition) -> MemoryPosition {
+        self.extend(other).0
+    }
+}
+
+impl Mul<MemoryPosition> for u64 {
+    type Output = MemoryPosition;
+    #[inline]
+    fn mul(self, size: MemoryPosition) -> MemoryPosition {
+        size * self
+    }
+}
+
+impl Mul<u64> for MemoryPosition {
+    type Output = MemoryPosition;
+    #[inline]
+    fn mul(self, count: u64) -> MemoryPosition {
+        if count == 0 {
+            MemoryPosition::new(Size::ZERO, self.align)
+        } else {
+            MemoryPosition::new(self.stride() * (count - 1), self.align) + self
+        }
+    }
+}
+
+impl AddAssign for MemoryPosition {
+    #[inline]
+    fn add_assign(&mut self, other: MemoryPosition) {
+        *self = *self + other;
+    }
+}
+
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Integer {
