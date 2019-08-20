@@ -522,7 +522,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => self.eval_const_to_op(constant.literal, layout)?,
+            Constant(ref constant) => {
+                let val = self.subst_from_frame_and_normalize_erasing_regions(constant.literal);
+                self.eval_const_to_op(val, layout)?
+            }
         };
         trace!("{:?}: {:?}", mir_op, *op);
         Ok(op)
@@ -540,6 +543,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     // Used when the miri-engine runs into a constant and for extracting information from constants
     // in patterns via the `const_eval` module
+    /// The `val` and `layout` are assumed to already be in our interpreter
+    /// "universe" (param_env).
     crate fn eval_const_to_op(
         &self,
         val: &'tcx ty::Const<'tcx>,
@@ -552,7 +557,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Early-return cases.
         match val.val {
             ConstValue::Param(_) =>
-                // FIXME(oli-obk): try to monomorphize
                 throw_inval!(TooGeneric),
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
@@ -565,7 +569,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // Other cases need layout.
         let layout = from_known_layout(layout, || {
-            self.layout_of(self.monomorphize(val.ty)?)
+            self.layout_of(val.ty)
         })?;
         let op = match val.val {
             ConstValue::ByRef { alloc, offset } => {
