@@ -101,9 +101,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         if this.machine.communicate {
             // Fill the buffer using the host's rng.
-            getrandom::getrandom(&mut data).map_err(|err| {
-                InterpError::Unsupported(UnsupportedOpInfo::Unsupported(err.to_string()))
-            })?;
+            getrandom::getrandom(&mut data)
+                .map_err(|err| err_unsup_format!("getrandom failed: {}", err))?;
         }
         else {
             let rng = this.memory_mut().extra.rng.get_mut();
