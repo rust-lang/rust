@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.39.0"
+version = "0.40.0"
 dependencies = [
  "atty",
  "bytesize",
@@ -287,7 +287,7 @@ dependencies = [
  "git2-curl",
  "glob",
  "hex",
- "home",
+ "home 0.4.2",
  "ignore",
  "im-rc",
  "jobserver",
@@ -309,16 +309,16 @@ dependencies = [
  "same-file",
  "semver",
  "serde",
- "serde_ignored",
+ "serde_ignored 0.1.0",
  "serde_json",
  "shell-escape",
  "strip-ansi-escapes",
  "tar",
  "tempfile",
  "termcolor",
- "toml 0.5.1",
+ "toml 0.5.3",
  "unicode-width",
- "url 2.0.0",
+ "url 2.1.0",
  "walkdir",
  "winapi 0.3.6",
 ]
@@ -442,9 +442,9 @@ dependencies = [
  "semver",
  "serde",
  "smallvec",
- "toml 0.5.1",
+ "toml 0.5.3",
  "unicode-normalization",
- "url 1.7.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -574,7 +574,7 @@ checksum = "e7ca8a5221364ef15ce201e8ed2f609fc312682a8f4e0e3d4aa5879764e0fa3b"
 
 [[package]]
 name = "crates-io"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "curl",
  "failure",
@@ -583,7 +583,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "url 2.0.0",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1167,7 +1167,7 @@ dependencies = [
  "log",
  "openssl-probe",
  "openssl-sys",
- "url 2.0.0",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1179,7 +1179,7 @@ dependencies = [
  "curl",
  "git2",
  "log",
- "url 2.0.0",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1274,6 +1274,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80dff82fb58cfbbc617fb9a9184b010be0529201553cda50ad04372bc2333aff"
 dependencies = [
  "scopeguard 0.3.3",
+ "winapi 0.3.6",
+]
+
+[[package]]
+name = "home"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "013e4e6e9134211bb4d6bf53dd8cfb75d9e2715cc33614b9c0827718c6fbe0b8"
+dependencies = [
+ "scopeguard 1.0.0",
  "winapi 0.3.6",
 ]
 
@@ -1775,7 +1785,7 @@ dependencies = [
  "serde_json",
  "shlex",
  "tempfile",
- "toml 0.5.1",
+ "toml 0.5.3",
  "toml-query",
 ]
 
@@ -2720,7 +2730,7 @@ dependencies = [
  "failure",
  "futures",
  "heck",
- "home",
+ "home 0.3.3",
  "itertools 0.8.0",
  "jsonrpc-core",
  "lazy_static 1.3.0",
@@ -2744,13 +2754,13 @@ dependencies = [
  "rustfmt-nightly",
  "serde",
  "serde_derive",
- "serde_ignored",
+ "serde_ignored 0.0.4",
  "serde_json",
  "tempfile",
  "tokio",
  "tokio-process",
  "tokio-timer",
- "toml 0.5.1",
+ "toml 0.5.3",
  "url 1.7.2",
  "walkdir",
 ]
@@ -3572,7 +3582,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "term 0.6.0",
- "toml 0.5.1",
+ "toml 0.5.3",
  "unicode-segmentation",
  "unicode-width",
  "unicode_categories",
@@ -3666,9 +3676,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.92"
+version = "1.0.99"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32746bf0f26eab52f06af0d0aa1984f641341d06d8d673c693871da2d188c9be"
+checksum = "fec2851eb56d010dc9a21b89ca53ee75e6528bab60c11e89d38390904982da9f"
 dependencies = [
  "serde_derive",
 ]
@@ -3689,6 +3699,15 @@ name = "serde_ignored"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "190e9765dcedb56be63b6e0993a006c7e3b071a016a304736e4a315dc01fb142"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_ignored"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c24bbb8f4b81834f618cd3e28698235c2fba06ddf7f4fbe30519dd081364e59"
 dependencies = [
  "serde",
 ]
@@ -4366,9 +4385,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.5.1"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8c96d7873fa7ef8bdeb3a9cda3ac48389b4154f32b9803b4bc26220b677b039"
+checksum = "c7aabe75941d914b72bf3e5d3932ed92ce0664d49d8432305a8b547c37227724"
 dependencies = [
  "serde",
 ]
@@ -4384,7 +4403,7 @@ dependencies = [
  "is-match",
  "lazy_static 1.3.0",
  "regex",
- "toml 0.5.1",
+ "toml 0.5.3",
  "toml-query_derive",
 ]
 
@@ -4512,9 +4531,9 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77ddaf52e65c6b81c56b7e957c0b1970f7937f21c5c6774c4e56fcb4e20b48c6"
+checksum = "75b414f6c464c879d7f9babf951f23bc3743fb7313c081b2e6ca719067ea9d61"
 dependencies = [
  "idna 0.2.0",
  "matches",
