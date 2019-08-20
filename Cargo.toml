@@ -6,4 +6,3 @@ incremental = true
 debug = 1 # only line info
 
 [patch.'crates-io']
-ra_vfs = { path = "../ra_vfs" }
