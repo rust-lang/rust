@@ -4,7 +4,8 @@
 
 %-unopt.ll: %.c
 	#../build/bin/clang -fno-unroll-loops $^ -O1 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math | ../build/bin/opt -early-cse-memssa - -S -o $@ -simplifycfg -simplifycfg
-	../build/bin/clang -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math | ../build/bin/opt -early-cse-memssa - -S -o $@ -simplifycfg -simplifycfg
+	#../build/bin/clang -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math | ../build/bin/opt -early-cse-memssa - -S -o $@ -simplifycfg -simplifycfg
+	../build/bin/clang -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ #| ../build/bin/opt -early-cse-memssa - -S -o $@ -simplifycfg -simplifycfg
 
 %-unopt.ll: %.cpp
 	#../build/bin/clang++ -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I ../../adept-2.0.5/include -I../../tapenade/ADFirstAidKit
