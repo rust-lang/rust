@@ -2,13 +2,13 @@
 #![unstable(feature = "linux_syscall", issue = "0")]
 #![cfg(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64"))]
 
-#[cfg(target_arch = "x86")] {
+#[cfg(target_arch = "x86")]
 #[path="x86.rs"] mod platform;
 
-#[cfg(target_arch = "x86_64")] {
+#[cfg(target_arch = "x86_64")]
 #[path="x86_64.rs"] mod platform;
 
-#[cfg(target_arch = "aarch64")] {
+#[cfg(target_arch = "aarch64")]
 #[path="aarch64"] mod platform;
 
 /// Execute syscall with 0 arguments.
