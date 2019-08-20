@@ -21,11 +21,24 @@ pub unsafe fn env_lock() -> impl Any {
 }
 
 pub fn errno() -> i32 {
-    0
+    extern {
+        #[thread_local]
+        static errno: libc::c_int;
+    }
+
+    unsafe { errno as i32 }
 }
 
 pub fn error_string(errno: i32) -> String {
-    wasi::error_string(errno)
+    let mut buf = [0 as libc::c_char; 1024];
+
+    let p = buf.as_mut_ptr();
+    unsafe {
+        if libc::strerror_r(errno as libc::c_int, p, buf.len()) < 0 {
+            panic!("strerror_r failure");
+        }
+        str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_owned()
+    }
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
@@ -73,35 +86,45 @@ impl StdError for JoinPathsError {
 pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
-
 pub struct Env {
-    iter: vec::IntoIter<Vec<u8>>,
+    iter: vec::IntoIter<(OsString, OsString)>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> {
-        self.iter.next().and_then(|input| {
-            // See src/libstd/sys/unix/os.rs, same as that
-            if input.is_empty() {
-                return None;
-            }
-            let pos = memchr::memchr(b'=', &input[1..]).map(|p| p + 1);
-            pos.map(|p| (
-                OsStringExt::from_vec(input[..p].to_vec()),
-                OsStringExt::from_vec(input[p+1..].to_vec()),
-            ))
-        })
-    }
+    fn next(&mut self) -> Option<(OsString, OsString)> { self.iter.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
 
 pub fn env() -> Env {
-    Env {
-        iter: wasi::get_environ().unwrap_or(Vec::new()).into_iter(),
-        _dont_send_or_sync_me: PhantomData,
+    unsafe {
+        let _guard = env_lock();
+        let mut environ = libc::environ;
+        let mut result = Vec::new();
+        while environ != ptr::null_mut() && *environ != ptr::null_mut() {
+            if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
+                result.push(key_value);
+            }
+            environ = environ.offset(1);
+        }
+        return Env {
+            iter: result.into_iter(),
+            _dont_send_or_sync_me: PhantomData,
+        }
+    }
+
+    // See src/libstd/sys/unix/os.rs, same as that
+    fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
+        if input.is_empty() {
+            return None;
+        }
+        let pos = memchr::memchr(b'=', &input[1..]).map(|p| p + 1);
+        pos.map(|p| (
+            OsStringExt::from_vec(input[..p].to_vec()),
+            OsStringExt::from_vec(input[p+1..].to_vec()),
+        ))
     }
 }
 
@@ -147,7 +170,9 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe { wasi::proc_exit(code as u32) }
+    unsafe {
+        libc::exit(code)
+    }
 }
 
 pub fn getpid() -> u32 {

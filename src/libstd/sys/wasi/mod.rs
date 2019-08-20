@@ -83,7 +83,7 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
 }
 
 pub unsafe fn abort_internal() -> ! {
-    wasi::proc_exit(127)
+    libc::abort()
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {
