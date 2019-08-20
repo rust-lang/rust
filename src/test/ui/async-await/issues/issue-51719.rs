@@ -2,8 +2,6 @@
 //
 // Tests that the .await syntax can't be used to make a generator
 
-#![feature(async_await)]
-
 async fn foo() {}
 
 fn make_generator() {

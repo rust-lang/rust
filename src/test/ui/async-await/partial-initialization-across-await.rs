@@ -3,8 +3,6 @@
 
 // edition:2018
 
-#![feature(async_await)]
-
 struct S { x: i32, y: i32 }
 struct T(i32, i32);
 

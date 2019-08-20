@@ -3,7 +3,6 @@
 
 #![allow(unused_variables)]
 #![deny(unused_mut)]
-#![feature(async_await)]
 
 type A = Vec<u32>;
 

@@ -1,5 +1,5 @@
 error[E0733]: recursion in an `async fn` requires boxing
-  --> $DIR/recursive-async-impl-trait-type.rs:7:40
+  --> $DIR/recursive-async-impl-trait-type.rs:5:40
    |
 LL | async fn recursive_async_function() -> () {
    |                                        ^^ an `async fn` cannot invoke itself directly

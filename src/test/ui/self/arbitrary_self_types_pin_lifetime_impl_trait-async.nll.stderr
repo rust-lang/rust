@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:10:48
+  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:48
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
    |                          -                     ^^^^^^^^ returning this value requires that `'_` must outlive `'static`

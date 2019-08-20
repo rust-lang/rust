@@ -5,8 +5,6 @@
 // edition:2018
 // check-pass
 
-#![feature(async_await)]
-
 trait Object {}
 
 trait Alpha<Param: ?Sized> {}

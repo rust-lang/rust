@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/issue-63388-1.rs:14:10
+  --> $DIR/issue-63388-1.rs:12:10
    |
 LL |     ) -> &dyn Foo
    |          ^^^^^^^^
@@ -7,7 +7,7 @@ LL |     ) -> &dyn Foo
    = note: hidden type `impl std::future::Future` captures lifetime '_#22r
 
 error: lifetime may not live long enough
-  --> $DIR/issue-63388-1.rs:15:5
+  --> $DIR/issue-63388-1.rs:13:5
    |
 LL |       async fn do_sth<'a>(
    |                       -- lifetime `'a` defined here

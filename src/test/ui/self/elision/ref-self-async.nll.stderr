@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-self-async.rs:24:42
+  --> $DIR/ref-self-async.rs:22:42
    |
 LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    |                                          ^^^^
@@ -7,7 +7,7 @@ LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self-async.rs:24:47
+  --> $DIR/ref-self-async.rs:22:47
    |
 LL |       async fn ref_self(&self, f: &u32) -> &u32 {
    |  _______________________-_______________________^
@@ -19,7 +19,7 @@ LL | |     }
    | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-self-async.rs:30:48
+  --> $DIR/ref-self-async.rs:28:48
    |
 LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                                                ^^^^
@@ -27,7 +27,7 @@ LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self-async.rs:30:53
+  --> $DIR/ref-self-async.rs:28:53
    |
 LL |       async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |  _____________________________-_______________________^
@@ -39,7 +39,7 @@ LL | |     }
    | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-self-async.rs:34:57
+  --> $DIR/ref-self-async.rs:32:57
    |
 LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                                                         ^^^^
@@ -47,7 +47,7 @@ LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self-async.rs:34:62
+  --> $DIR/ref-self-async.rs:32:62
    |
 LL |       async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |  _____________________________________-________________________^
@@ -59,7 +59,7 @@ LL | |     }
    | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-self-async.rs:38:57
+  --> $DIR/ref-self-async.rs:36:57
    |
 LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                                                         ^^^^
@@ -67,7 +67,7 @@ LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self-async.rs:38:62
+  --> $DIR/ref-self-async.rs:36:62
    |
 LL |       async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |  _____________________________________-________________________^
@@ -79,7 +79,7 @@ LL | |     }
    | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-self-async.rs:42:66
+  --> $DIR/ref-self-async.rs:40:66
    |
 LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                                                  ^^^^
@@ -87,7 +87,7 @@ LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self-async.rs:42:71
+  --> $DIR/ref-self-async.rs:40:71
    |
 LL |       async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |  _____________________________________________-_________________________^
@@ -99,7 +99,7 @@ LL | |     }
    | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-self-async.rs:46:66
+  --> $DIR/ref-self-async.rs:44:66
    |
 LL |     async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                                                  ^^^^
@@ -107,7 +107,7 @@ LL |     async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self-async.rs:46:71
+  --> $DIR/ref-self-async.rs:44:71
    |
 LL |       async fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |  _____________________________________________-_________________________^
@@ -119,7 +119,7 @@ LL | |     }
    | |_____^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-self-async.rs:50:69
+  --> $DIR/ref-self-async.rs:48:69
    |
 LL |     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
    |                                                                     ^^^
@@ -127,7 +127,7 @@ LL |     async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self-async.rs:50:73
+  --> $DIR/ref-self-async.rs:48:73
    |
 LL |       async fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
    |  ____________________________________________-____________________________^

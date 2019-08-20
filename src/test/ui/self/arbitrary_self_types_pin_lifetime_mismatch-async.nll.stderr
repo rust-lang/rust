@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:45
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:45
    |
 LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                                             ^^^^
@@ -7,7 +7,7 @@ LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:50
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:50
    |
 LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                          -                       ^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
@@ -16,7 +16,7 @@ LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                          lifetime `'_` defined here
 
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:13:73
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:11:73
    |
 LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
    |                          -                                              ^^^^^^^^^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
@@ -25,7 +25,7 @@ LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (
    |                          lifetime `'_` defined here
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:19:58
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:58
    |
 LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |                                                          ^^^
@@ -33,7 +33,7 @@ LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:19:62
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:62
    |
 LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |                  --              -                           ^^^^^^^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'a`

@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/lt-ref-self-async.rs:15:42
+  --> $DIR/lt-ref-self-async.rs:13:42
    |
 LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    |                       -----              ^^^^
@@ -8,7 +8,7 @@ LL |     async fn ref_self(&self, f: &u32) -> &u32 {
    |                       this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/lt-ref-self-async.rs:21:48
+  --> $DIR/lt-ref-self-async.rs:19:48
    |
 LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                             -----              ^^^^
@@ -17,7 +17,7 @@ LL |     async fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                             this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/lt-ref-self-async.rs:25:57
+  --> $DIR/lt-ref-self-async.rs:23:57
    |
 LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                                     -----               ^^^^
@@ -26,7 +26,7 @@ LL |     async fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                                     this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/lt-ref-self-async.rs:29:57
+  --> $DIR/lt-ref-self-async.rs:27:57
    |
 LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                                     -----               ^^^^
@@ -35,7 +35,7 @@ LL |     async fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                                     this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/lt-ref-self-async.rs:33:66
+  --> $DIR/lt-ref-self-async.rs:31:66
    |
 LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                             -----                ^^^^
@@ -44,7 +44,7 @@ LL |     async fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                             this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/lt-ref-self-async.rs:37:62
+  --> $DIR/lt-ref-self-async.rs:35:62
    |
 LL |     async fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                         -----                ^^^^

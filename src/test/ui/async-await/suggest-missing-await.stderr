@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/suggest-missing-await.rs:15:14
+  --> $DIR/suggest-missing-await.rs:13:14
    |
 LL |     take_u32(x)
    |              ^
