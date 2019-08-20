@@ -75,42 +75,50 @@ fn mk_lit(kind: token::LitKind, symbol: &str, suffix: Option<&str>) -> TokenKind
 }
 
 #[test]
-fn doublecolonparsing() {
+fn doublecolon_parsing() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        check_tokenization(setup(&sm, &sh, "a b".to_string()),
-                        vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
+        check_tokenization(
+            setup(&sm, &sh, "a b".to_string()),
+            vec![mk_ident("a"), token::Whitespace, mk_ident("b")],
+        );
     })
 }
 
 #[test]
-fn dcparsing_2() {
+fn doublecolon_parsing_2() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        check_tokenization(setup(&sm, &sh, "a::b".to_string()),
-                        vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
+        check_tokenization(
+            setup(&sm, &sh, "a::b".to_string()),
+            vec![mk_ident("a"), token::Colon, token::Colon, mk_ident("b")],
+        );
     })
 }
 
 #[test]
-fn dcparsing_3() {
+fn doublecolon_parsing_3() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        check_tokenization(setup(&sm, &sh, "a ::b".to_string()),
-                        vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
+        check_tokenization(
+            setup(&sm, &sh, "a ::b".to_string()),
+            vec![mk_ident("a"), token::Whitespace, token::Colon, token::Colon, mk_ident("b")],
+        );
     })
 }
 
 #[test]
-fn dcparsing_4() {
+fn doublecolon_parsing_4() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        check_tokenization(setup(&sm, &sh, "a:: b".to_string()),
-                        vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
+        check_tokenization(
+            setup(&sm, &sh, "a:: b".to_string()),
+            vec![mk_ident("a"), token::Colon, token::Colon, token::Whitespace, mk_ident("b")],
+        );
     })
 }
 
