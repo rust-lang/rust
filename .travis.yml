@@ -56,8 +56,8 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/chalk
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    - env: INTEGRATION=rust-lang/rls
-      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
+    # - env: INTEGRATION=rust-lang/rls
+    #   if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=Geal/nom
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/rustfmt
