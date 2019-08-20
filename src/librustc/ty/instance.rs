@@ -298,8 +298,9 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
         let fn_sig = tcx.fn_sig(def_id);
-        let is_vtable_shim =
-            fn_sig.inputs().skip_binder().len() > 0 && fn_sig.input(0).skip_binder().is_self();
+        let is_vtable_shim = fn_sig.inputs().skip_binder().len() > 0
+            && fn_sig.input(0).skip_binder().is_param(0)
+            && tcx.generics_of(def_id).has_self;
         if is_vtable_shim {
             debug!(" => associated item with unsizeable self: Self");
             Some(Instance {

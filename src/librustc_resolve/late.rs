@@ -1,3 +1,10 @@
+//! "Late resolution" is the pass that resolves most of names in a crate beside imports and macros.
+//! It runs when the crate is fully expanded and its module structure is fully built.
+//! So it just walks through the crate and resolves all the expressions, types, etc.
+//!
+//! If you wonder why there's no `early.rs`, that's because it's split into three files -
+//! `build_reduced_graph.rs`, `macros.rs` and `resolve_imports.rs`.
+
 use GenericParameters::*;
 use RibKind::*;
 
@@ -102,6 +109,24 @@ crate enum RibKind<'a> {
 
     /// We forbid the use of type parameters as the types of const parameters.
     TyParamAsConstParamTy,
+}
+
+impl RibKind<'_> {
+    // Whether this rib kind contains generic parameters, as opposed to local
+    // variables.
+    crate fn contains_params(&self) -> bool {
+        match self {
+            NormalRibKind
+            | FnItemRibKind
+            | ConstantItemRibKind
+            | ModuleRibKind(_)
+            | MacroDefinition(_) => false,
+            AssocItemRibKind
+            | ItemRibKind
+            | ForwardTyParamBanRibKind
+            | TyParamAsConstParamTy => true,
+        }
+    }
 }
 
 /// A single local scope.
@@ -352,7 +377,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }
             TyKind::ImplicitSelf => {
-                let self_ty = Ident::with_empty_ctxt(kw::SelfUpper);
+                let self_ty = Ident::with_dummy_span(kw::SelfUpper);
                 let res = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.id), ty.span)
                               .map_or(Res::Err, |d| d.res());
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
@@ -442,7 +467,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 GenericParamKind::Type { ref default, .. } => {
                     found_default |= default.is_some();
                     if found_default {
-                        Some((Ident::with_empty_ctxt(param.ident.name), Res::Err))
+                        Some((Ident::with_dummy_span(param.ident.name), Res::Err))
                     } else {
                         None
                     }
@@ -459,7 +484,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                     false
                 }
             })
-            .map(|param| (Ident::with_empty_ctxt(param.ident.name), Res::Err)));
+            .map(|param| (Ident::with_dummy_span(param.ident.name), Res::Err)));
 
         for param in &generics.params {
             match param.kind {
@@ -476,7 +501,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                     }
 
                     // Allow all following defaults to refer to this type parameter.
-                    default_ban_rib.bindings.remove(&Ident::with_empty_ctxt(param.ident.name));
+                    default_ban_rib.bindings.remove(&Ident::with_dummy_span(param.ident.name));
                 }
                 GenericParamKind::Const { ref ty } => {
                     self.ribs[TypeNS].push(const_ty_param_ban_rib);
@@ -501,8 +526,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     fn new(resolver: &'b mut Resolver<'a>) -> LateResolutionVisitor<'a, 'b> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
-        let parent_scope = resolver.dummy_parent_scope();
         let graph_root = resolver.graph_root;
+        let parent_scope = ParentScope::module(graph_root);
         LateResolutionVisitor {
             r: resolver,
             parent_scope,
@@ -574,7 +599,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
 
-            self.r.finalize_current_module_macro_resolutions(module);
             let ret = f(self);
 
             self.parent_scope.module = orig_module;
@@ -792,6 +816,19 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut function_value_rib = Rib::new(rib_kind);
                 let mut seen_bindings = FxHashMap::default();
+                // We also can't shadow bindings from the parent item
+                if let AssocItemRibKind = rib_kind {
+                    let mut add_bindings_for_ns = |ns| {
+                        let parent_rib = self.ribs[ns].iter()
+                            .rfind(|rib| if let ItemRibKind = rib.kind { true } else { false })
+                            .expect("associated item outside of an item");
+                        seen_bindings.extend(
+                            parent_rib.bindings.iter().map(|(ident, _)| (*ident, ident.span)),
+                        );
+                    };
+                    add_bindings_for_ns(ValueNS);
+                    add_bindings_for_ns(TypeNS);
+                }
                 for param in &generics.params {
                     match param.kind {
                         GenericParamKind::Lifetime { .. } => {}
@@ -965,7 +1002,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // Plain insert (no renaming, since types are not currently hygienic)
-        self_type_rib.bindings.insert(Ident::with_empty_ctxt(kw::SelfUpper), self_res);
+        self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
         self.ribs[TypeNS].push(self_type_rib);
         f(self);
         self.ribs[TypeNS].pop();
@@ -976,7 +1013,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     {
         let self_res = Res::SelfCtor(impl_id);
         let mut self_type_rib = Rib::new(NormalRibKind);
-        self_type_rib.bindings.insert(Ident::with_empty_ctxt(kw::SelfUpper), self_res);
+        self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
         self.ribs[ValueNS].push(self_type_rib);
         f(self);
         self.ribs[ValueNS].pop();
@@ -1227,7 +1264,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
             self.parent_scope.module = anonymous_module;
-            self.r.finalize_current_module_macro_resolutions(anonymous_module);
         } else {
             self.ribs[ValueNS].push(Rib::new(NormalRibKind));
         }
@@ -1476,7 +1512,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                     self.r.trait_map.insert(id, traits);
                 }
 
-                let mut std_path = vec![Segment::from_ident(Ident::with_empty_ctxt(sym::std))];
+                let mut std_path = vec![Segment::from_ident(Ident::with_dummy_span(sym::std))];
                 std_path.extend(path);
                 if self.r.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
                     let cl = CrateLint::No;
@@ -1507,7 +1543,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn self_type_is_available(&mut self, span: Span) -> bool {
         let binding = self.resolve_ident_in_lexical_scope(
-            Ident::with_empty_ctxt(kw::SelfUpper),
+            Ident::with_dummy_span(kw::SelfUpper),
             TypeNS,
             None,
             span,
@@ -1924,7 +1960,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut traits = module.traits.borrow_mut();
         if traits.is_none() {
             let mut collected_traits = Vec::new();
-            module.for_each_child(|name, ns, binding| {
+            module.for_each_child(self.r, |_, name, ns, binding| {
                 if ns != TypeNS { return }
                 match binding.res() {
                     Res::Def(DefKind::Trait, _) |
@@ -1984,7 +2020,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
 impl<'a> Resolver<'a> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
-        self.finalize_current_module_macro_resolutions(self.graph_root);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.unused_labels.iter() {

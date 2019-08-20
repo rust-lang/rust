@@ -10,7 +10,7 @@ use crate::ast::{Visibility, VisibilityKind, Mutability, FnDecl, FnHeader};
 use crate::ast::{ForeignItem, ForeignItemKind};
 use crate::ast::{Ty, TyKind, GenericBounds, TraitRef};
 use crate::ast::{EnumDef, VariantData, StructField, AnonConst};
-use crate::ast::{Mac, Mac_, MacDelimiter};
+use crate::ast::{Mac, MacDelimiter};
 use crate::ext::base::DummyResult;
 use crate::parse::token;
 use crate::parse::parser::maybe_append;
@@ -530,12 +530,13 @@ impl<'a> Parser<'a> {
             }
 
             let hi = self.prev_span;
-            let mac = respan(mac_lo.to(hi), Mac_ {
+            let mac = Mac {
                 path,
                 tts,
                 delim,
+                span: mac_lo.to(hi),
                 prior_type_ascription: self.last_type_ascription,
-            });
+            };
             let item =
                 self.mk_item(lo.to(hi), Ident::invalid(), ItemKind::Mac(mac), visibility, attrs);
             return Ok(Some(item));
@@ -604,12 +605,13 @@ impl<'a> Parser<'a> {
                 self.expect(&token::Semi)?;
             }
 
-            Ok(Some(respan(lo.to(self.prev_span), Mac_ {
+            Ok(Some(Mac {
                 path,
                 tts,
                 delim,
+                span: lo.to(self.prev_span),
                 prior_type_ascription: self.last_type_ascription,
-            })))
+            }))
         } else {
             Ok(None)
         }
@@ -1564,14 +1566,15 @@ impl<'a> Parser<'a> {
                 None
             };
 
-            let vr = ast::Variant_ {
+            let vr = ast::Variant {
                 ident,
                 id: ast::DUMMY_NODE_ID,
                 attrs: variant_attrs,
                 data: struct_def,
                 disr_expr,
+                span: vlo.to(self.prev_span),
             };
-            variants.push(respan(vlo.to(self.prev_span), vr));
+            variants.push(vr);
 
             if !self.eat(&token::Comma) {
                 if self.token.is_ident() && !self.token.is_reserved_ident() {

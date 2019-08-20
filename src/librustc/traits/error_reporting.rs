@@ -36,7 +36,7 @@ use errors::{Applicability, DiagnosticBuilder};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::sym;
-use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnKind};
+use syntax_pos::{DUMMY_SP, Span, ExpnKind};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(&self,
@@ -61,9 +61,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // We want to ignore desugarings here: spans are equivalent even
             // if one is the result of a desugaring and the other is not.
             let mut span = error.obligation.cause.span;
-            if let Some(ExpnInfo { kind: ExpnKind::Desugaring(_), def_site, .. })
-                    = span.ctxt().outer_expn_info() {
-                span = def_site;
+            let expn_data = span.ctxt().outer_expn_data();
+            if let ExpnKind::Desugaring(_) = expn_data.kind {
+                span = expn_data.call_site;
             }
 
             error_map.entry(span).or_default().push(

@@ -9,7 +9,7 @@ use crate::with_default_globals;
 use errors::emitter::EmitterWriter;
 use errors::Handler;
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::{BytePos, NO_EXPANSION, Span, MultiSpan};
+use syntax_pos::{BytePos, Span, MultiSpan};
 
 use std::io;
 use std::io::prelude::*;
@@ -169,7 +169,7 @@ fn make_span(file_text: &str, start: &Position, end: &Position) -> Span {
     let start = make_pos(file_text, start);
     let end = make_pos(file_text, end) + end.string.len(); // just after matching thing ends
     assert!(start <= end);
-    Span::new(BytePos(start as u32), BytePos(end as u32), NO_EXPANSION)
+    Span::with_root_ctxt(BytePos(start as u32), BytePos(end as u32))
 }
 
 fn make_pos(file_text: &str, pos: &Position) -> usize {

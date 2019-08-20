@@ -11,9 +11,8 @@ use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
 use rustc::ty::layout::{self, LayoutOf, VariantIdx};
-use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
 
@@ -415,7 +414,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (Scalar, bool)> {
+    ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
         )
@@ -540,6 +539,12 @@ pub fn error_to_const_error<'mir, 'tcx>(
     ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
 }
 
+pub fn note_on_undefined_behavior_error() -> &'static str {
+    "The rules on what exactly is undefined behavior aren't clear, \
+    so this check might be overzealous. Please open an issue on the rust compiler \
+    repository if you believe it should not be considered undefined behavior"
+}
+
 fn validate_and_turn_into_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: RawConst<'tcx>,
@@ -579,10 +584,7 @@ fn validate_and_turn_into_const<'tcx>(
         let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
             Ok(mut diag) => {
-                diag.note("The rules on what exactly is undefined behavior aren't clear, \
-                    so this check might be overzealous. Please open an issue on the rust compiler \
-                    repository if you believe it should not be considered undefined behavior",
-                );
+                diag.note(note_on_undefined_behavior_error());
                 diag.emit();
                 ErrorHandled::Reported
             }

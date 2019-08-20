@@ -1,8 +1,8 @@
-error: expected one of `)`, `,`, or `@`, found `[`
+error: expected one of `)`, `,`, `@`, or `|`, found `[`
   --> $DIR/pat-lt-bracket-6.rs:5:19
    |
 LL |     let Test(&desc[..]) = x;
-   |                   ^ expected one of `)`, `,`, or `@` here
+   |                   ^ expected one of `)`, `,`, `@`, or `|` here
 
 error[E0658]: subslice patterns are unstable
   --> $DIR/pat-lt-bracket-6.rs:5:20
@@ -14,7 +14,7 @@ LL |     let Test(&desc[..]) = x;
    = help: add `#![feature(slice_patterns)]` to the crate attributes to enable
 
 error[E0308]: mismatched types
-  --> $DIR/pat-lt-bracket-6.rs:9:30
+  --> $DIR/pat-lt-bracket-6.rs:10:30
    |
 LL | const RECOVERY_WITNESS: () = 0;
    |                              ^ expected (), found integer

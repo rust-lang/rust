@@ -5,14 +5,13 @@ use smallvec::{smallvec, SmallVec};
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
-use syntax::ext::base::{ExtCtxt, Resolver};
-use syntax::ext::expand::ExpansionConfig;
-use syntax::ext::hygiene::{ExpnId, MacroKind};
+use syntax::ext::base::{ExtCtxt, MacroKind, Resolver};
+use syntax::ext::expand::{AstFragment, ExpansionConfig};
 use syntax::feature_gate::Features;
 use syntax::mut_visit::{*, ExpectOne};
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
-use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned};
+use syntax::source_map::{ExpnData, ExpnKind, dummy_spanned};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -74,12 +73,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
         noop_visit_crate(c, self);
 
         // Create a main function to run our tests
-        let test_main = {
-            let unresolved = mk_main(&mut self.cx);
-            self.cx.ext_cx.monotonic_expander().flat_map_item(unresolved).pop().unwrap()
-        };
-
-        c.module.items.push(test_main);
+        c.module.items.push(mk_main(&mut self.cx));
     }
 
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
@@ -155,7 +149,7 @@ impl MutVisitor for EntryPointCleaner {
             EntryPointType::MainAttr |
             EntryPointType::Start =>
                 item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
-                    let allow_ident = Ident::with_empty_ctxt(sym::allow);
+                    let allow_ident = Ident::with_dummy_span(sym::allow);
                     let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
@@ -196,7 +190,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
                    tests: Vec<Ident>,
                    tested_submods: Vec<(Ident, Ident)>)
                    -> (P<ast::Item>, Ident) {
-    let super_ = Ident::with_empty_ctxt(kw::Super);
+    let super_ = Ident::with_dummy_span(kw::Super);
 
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),
@@ -216,7 +210,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
     let name = Ident::from_str("__test_reexports").gensym();
     let parent = if parent == ast::DUMMY_NODE_ID { ast::CRATE_NODE_ID } else { parent };
     cx.ext_cx.current_expansion.id = cx.ext_cx.resolver.get_module_scope(parent);
-    let it = cx.ext_cx.monotonic_expander().flat_map_item(P(ast::Item {
+    let module = P(ast::Item {
         ident: name,
         attrs: Vec::new(),
         id: ast::DUMMY_NODE_ID,
@@ -224,9 +218,14 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
         vis: dummy_spanned(ast::VisibilityKind::Public),
         span: DUMMY_SP,
         tokens: None,
-    })).pop().unwrap();
+    });
 
-    (it, name)
+    // Integrate the new module into existing module structures.
+    let module = AstFragment::Items(smallvec![module]);
+    let module =
+        cx.ext_cx.monotonic_expander().fully_expand_fragment(module).make_items().pop().unwrap();
+
+    (module, name)
 }
 
 /// Crawl over the crate, inserting test reexports and the test main function
@@ -269,12 +268,12 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     //            #![main]
     //            test::test_main_static(&[..tests]);
     //        }
-    let sp = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+    let sp = DUMMY_SP.fresh_expansion(ExpnData::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, cx.ext_cx.parse_sess.edition,
         [sym::main, sym::test, sym::rustc_attrs][..].into(),
     ));
     let ecx = &cx.ext_cx;
-    let test_id = Ident::with_empty_ctxt(sym::test);
+    let test_id = Ident::with_dummy_span(sym::test);
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or(
@@ -321,7 +320,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         None => Ident::from_str_and_span("main", sp).gensym(),
     };
 
-    P(ast::Item {
+    let main = P(ast::Item {
         ident: main_id,
         attrs: vec![main_attr],
         id: ast::DUMMY_NODE_ID,
@@ -329,8 +328,11 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
         vis: dummy_spanned(ast::VisibilityKind::Public),
         span: sp,
         tokens: None,
-    })
+    });
 
+    // Integrate the new item into existing module structures.
+    let main = AstFragment::Items(smallvec![main]);
+    cx.ext_cx.monotonic_expander().fully_expand_fragment(main).make_items().pop().unwrap()
 }
 
 fn path_name_i(idents: &[Ident]) -> String {

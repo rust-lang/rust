@@ -1,0 +1,12 @@
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:5:14
+   |
+LL |         Some(0 | 1 | 2) => {}
+   |              ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

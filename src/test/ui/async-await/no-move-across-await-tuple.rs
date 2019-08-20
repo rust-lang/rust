@@ -2,8 +2,6 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
-#![feature(async_await)]
-
 async fn no_move_across_await_tuple() -> Vec<usize> {
     let x = (vec![3], vec![4, 4]);
     drop(x.1);

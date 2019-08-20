@@ -1,5 +1,5 @@
 error: expected identifier, found reserved keyword `await`
-  --> $DIR/2018-edition-error-in-non-macro-position.rs:7:13
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:6:13
    |
 LL |     pub mod await {
    |             ^^^^^ expected identifier, found reserved keyword
@@ -9,7 +9,7 @@ LL |     pub mod r#await {
    |             ^^^^^^^
 
 error: expected identifier, found reserved keyword `await`
-  --> $DIR/2018-edition-error-in-non-macro-position.rs:8:20
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:7:20
    |
 LL |         pub struct await;
    |                    ^^^^^ expected identifier, found reserved keyword
@@ -19,7 +19,7 @@ LL |         pub struct r#await;
    |                    ^^^^^^^
 
 error: expected identifier, found reserved keyword `await`
-  --> $DIR/2018-edition-error-in-non-macro-position.rs:11:22
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:10:22
    |
 LL | use self::outer_mod::await::await;
    |                      ^^^^^ expected identifier, found reserved keyword
@@ -29,7 +29,7 @@ LL | use self::outer_mod::r#await::await;
    |                      ^^^^^^^
 
 error: expected identifier, found reserved keyword `await`
-  --> $DIR/2018-edition-error-in-non-macro-position.rs:11:29
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:10:29
    |
 LL | use self::outer_mod::await::await;
    |                             ^^^^^ expected identifier, found reserved keyword
@@ -39,7 +39,7 @@ LL | use self::outer_mod::await::r#await;
    |                             ^^^^^^^
 
 error: expected identifier, found reserved keyword `await`
-  --> $DIR/2018-edition-error-in-non-macro-position.rs:14:14
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:13:14
    |
 LL | struct Foo { await: () }
    |              ^^^^^ expected identifier, found reserved keyword
@@ -49,7 +49,7 @@ LL | struct Foo { r#await: () }
    |              ^^^^^^^
 
 error: expected identifier, found reserved keyword `await`
-  --> $DIR/2018-edition-error-in-non-macro-position.rs:17:15
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:16:15
    |
 LL | impl Foo { fn await() {} }
    |               ^^^^^ expected identifier, found reserved keyword
@@ -59,7 +59,7 @@ LL | impl Foo { fn r#await() {} }
    |               ^^^^^^^
 
 error: expected identifier, found reserved keyword `await`
-  --> $DIR/2018-edition-error-in-non-macro-position.rs:20:14
+  --> $DIR/2018-edition-error-in-non-macro-position.rs:19:14
    |
 LL | macro_rules! await {
    |              ^^^^^ expected identifier, found reserved keyword

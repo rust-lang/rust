@@ -8,8 +8,6 @@
 
 #![allow(dead_code)]
 
-///////////////////////////////////////////////////////////////////////////
-
 pub trait TheTrait {
     type TheAssocType;
 }
@@ -27,8 +25,6 @@ impl<'b> TheTrait for TheType<'b> {
 
 impl<'b> TheSubTrait for TheType<'b> {
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 pub struct WithAssoc<T:TheSubTrait> {
     m: [T; 0]

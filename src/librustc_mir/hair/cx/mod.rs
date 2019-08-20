@@ -170,13 +170,13 @@ impl<'a, 'tcx> Cx<'a, 'tcx> {
                         method_name: Symbol,
                         self_ty: Ty<'tcx>,
                         params: &[Kind<'tcx>])
-                        -> (Ty<'tcx>, &'tcx ty::Const<'tcx>) {
+                        -> &'tcx ty::Const<'tcx> {
         let substs = self.tcx.mk_substs_trait(self_ty, params);
         for item in self.tcx.associated_items(trait_def_id) {
             if item.kind == ty::AssocKind::Method && item.ident.name == method_name {
                 let method_ty = self.tcx.type_of(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
-                return (method_ty, ty::Const::zero_sized(self.tcx, method_ty));
+                return ty::Const::zero_sized(self.tcx, method_ty);
             }
         }
 

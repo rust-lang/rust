@@ -2,7 +2,7 @@
 // Error message should pinpoint the type parameter T as needing to be bound
 // (rather than give a general error message)
 // edition:2018
-#![feature(async_await)]
+
 async fn bar<T>() -> () {}
 
 async fn foo() {

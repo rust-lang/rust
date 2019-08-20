@@ -1,0 +1,47 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-mut-struct-async.rs:13:56
+   |
+LL |     async fn ref_Struct(self: &mut Struct, f: &u32) -> &u32 {
+   |                               -----------              ^^^^
+   |                               |                        |
+   |                               |                        ...but data from `f` is returned here
+   |                               this parameter and the return type are declared with different lifetimes...
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-mut-struct-async.rs:17:65
+   |
+LL |     async fn box_ref_Struct(self: Box<&mut Struct>, f: &u32) -> &u32 {
+   |                                       -----------               ^^^^
+   |                                       |                         |
+   |                                       |                         ...but data from `f` is returned here
+   |                                       this parameter and the return type are declared with different lifetimes...
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-mut-struct-async.rs:21:65
+   |
+LL |     async fn pin_ref_Struct(self: Pin<&mut Struct>, f: &u32) -> &u32 {
+   |                                       -----------               ^^^^
+   |                                       |                         |
+   |                                       |                         ...but data from `f` is returned here
+   |                                       this parameter and the return type are declared with different lifetimes...
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-mut-struct-async.rs:25:74
+   |
+LL |     async fn box_box_ref_Struct(self: Box<Box<&mut Struct>>, f: &u32) -> &u32 {
+   |                                               -----------                ^^^^
+   |                                               |                          |
+   |                                               |                          ...but data from `f` is returned here
+   |                                               this parameter and the return type are declared with different lifetimes...
+
+error[E0623]: lifetime mismatch
+  --> $DIR/ref-mut-struct-async.rs:29:74
+   |
+LL |     async fn box_pin_ref_Struct(self: Box<Pin<&mut Struct>>, f: &u32) -> &u32 {
+   |                                               -----------                ^^^^
+   |                                               |                          |
+   |                                               |                          ...but data from `f` is returned here
+   |                                               this parameter and the return type are declared with different lifetimes...
+
+error: aborting due to 5 previous errors
+

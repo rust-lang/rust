@@ -3,7 +3,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::subst::{Kind, Subst, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::fold::TypeFoldable;
 use rustc::util::nodemap::FxHashMap;
 
 use super::explicit::ExplicitPredicatesMap;
@@ -178,11 +177,11 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // let _: () = substs.region_at(0);
                 check_explicit_predicates(
                     tcx,
-                    &def.did,
+                    def.did,
                     substs,
                     required_predicates,
                     explicit_map,
-                    IgnoreSelfTy(false),
+                    None,
                 );
             }
 
@@ -208,11 +207,11 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                         .substs;
                     check_explicit_predicates(
                         tcx,
-                        &ex_trait_ref.skip_binder().def_id,
+                        ex_trait_ref.skip_binder().def_id,
                         substs,
                         required_predicates,
                         explicit_map,
-                        IgnoreSelfTy(true),
+                        Some(tcx.types.self_param),
                     );
                 }
             }
@@ -223,11 +222,11 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 debug!("Projection");
                 check_explicit_predicates(
                     tcx,
-                    &tcx.associated_item(obj.item_def_id).container.id(),
+                    tcx.associated_item(obj.item_def_id).container.id(),
                     obj.substs,
                     required_predicates,
                     explicit_map,
-                    IgnoreSelfTy(false),
+                    None,
                 );
             }
 
@@ -235,9 +234,6 @@ fn insert_required_predicates_to_be_wf<'tcx>(
         }
     }
 }
-
-#[derive(Debug)]
-pub struct IgnoreSelfTy(bool);
 
 /// We also have to check the explicit predicates
 /// declared on the type.
@@ -256,25 +252,25 @@ pub struct IgnoreSelfTy(bool);
 /// applying the substitution as above.
 pub fn check_explicit_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: &DefId,
+    def_id: DefId,
     substs: &[Kind<'tcx>],
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
-    ignore_self_ty: IgnoreSelfTy,
+    ignored_self_ty: Option<Ty<'tcx>>,
 ) {
     debug!(
         "check_explicit_predicates(def_id={:?}, \
          substs={:?}, \
          explicit_map={:?}, \
          required_predicates={:?}, \
-         ignore_self_ty={:?})",
+         ignored_self_ty={:?})",
         def_id,
         substs,
         explicit_map,
         required_predicates,
-        ignore_self_ty,
+        ignored_self_ty,
     );
-    let explicit_predicates = explicit_map.explicit_predicates_of(tcx, *def_id);
+    let explicit_predicates = explicit_map.explicit_predicates_of(tcx, def_id);
 
     for outlives_predicate in explicit_predicates.iter() {
         debug!("outlives_predicate = {:?}", &outlives_predicate);
@@ -313,9 +309,9 @@ pub fn check_explicit_predicates<'tcx>(
         // = X` binding from the object type (there must be such a
         // binding) and thus infer an outlives requirement that `X:
         // 'b`.
-        if ignore_self_ty.0 {
+        if let Some(self_ty) = ignored_self_ty {
             if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
-                if ty.has_self_ty() {
+                if ty.walk().any(|ty| ty == self_ty) {
                     debug!("skipping self ty = {:?}", &ty);
                     continue;
                 }

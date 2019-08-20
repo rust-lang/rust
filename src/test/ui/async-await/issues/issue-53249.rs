@@ -1,7 +1,7 @@
 // build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
 
-#![feature(arbitrary_self_types, async_await)]
+#![feature(arbitrary_self_types)]
 
 use std::task::{self, Poll};
 use std::future::Future;

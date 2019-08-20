@@ -17,8 +17,7 @@ use crate::util::nodemap::FxHashSet;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use syntax::{ast, source_map};
-use syntax::attr;
+use syntax::{ast, attr};
 use syntax::symbol::sym;
 use syntax_pos;
 
@@ -119,17 +118,16 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, res: Res,
-                                  pats: &[source_map::Spanned<hir::FieldPat>]) {
+    fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, res: Res, pats: &[hir::FieldPat]) {
         let variant = match self.tables.node_type(lhs.hir_id).sty {
             ty::Adt(adt, _) => adt.variant_of_res(res),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
         for pat in pats {
-            if let PatKind::Wild = pat.node.pat.node {
+            if let PatKind::Wild = pat.pat.node {
                 continue;
             }
-            let index = self.tcx.field_index(pat.node.hir_id, self.tables);
+            let index = self.tcx.field_index(pat.hir_id, self.tables);
             self.insert_def_id(variant.fields[index].did);
         }
     }
@@ -366,12 +364,12 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
         match item.node {
             hir::ItemKind::Enum(ref enum_def, _) => {
                 if allow_dead_code {
-                    self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
+                    self.worklist.extend(enum_def.variants.iter().map(|variant| variant.id));
                 }
 
                 for variant in &enum_def.variants {
-                    if let Some(ctor_hir_id) = variant.node.data.ctor_hir_id() {
-                        self.struct_constructors.insert(ctor_hir_id, variant.node.id);
+                    if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
+                        self.struct_constructors.insert(ctor_hir_id, variant.id);
                     }
                 }
             }
@@ -497,7 +495,7 @@ impl DeadVisitor<'tcx> {
             && !has_allow_dead_code_or_lang_attr(self.tcx, field.hir_id, &field.attrs)
     }
 
-    fn should_warn_about_variant(&mut self, variant: &hir::VariantKind) -> bool {
+    fn should_warn_about_variant(&mut self, variant: &hir::Variant) -> bool {
         !self.symbol_is_live(variant.id)
             && !has_allow_dead_code_or_lang_attr(self.tcx,
                                                  variant.id,
@@ -596,8 +594,8 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                      variant: &'tcx hir::Variant,
                      g: &'tcx hir::Generics,
                      id: hir::HirId) {
-        if self.should_warn_about_variant(&variant.node) {
-            self.warn_dead_code(variant.node.id, variant.span, variant.node.ident.name,
+        if self.should_warn_about_variant(&variant) {
+            self.warn_dead_code(variant.id, variant.span, variant.ident.name,
                                 "variant", "constructed");
         } else {
             intravisit::walk_variant(self, variant, g, id);

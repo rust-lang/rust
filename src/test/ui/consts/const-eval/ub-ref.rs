@@ -1,6 +1,6 @@
 // ignore-tidy-linelength
 #![feature(const_transmute)]
-#![allow(const_err)] // make sure we cannot allow away the errors tested here
+#![allow(const_err, invalid_value)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
 

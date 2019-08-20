@@ -108,7 +108,7 @@ impl<'tcx, Tag> Immediate<Tag> {
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
 pub struct ImmTy<'tcx, Tag=()> {
-    pub imm: Immediate<Tag>,
+    pub(crate) imm: Immediate<Tag>,
     pub layout: TyLayout<'tcx>,
 }
 
@@ -155,7 +155,7 @@ impl<Tag> Operand<Tag> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct OpTy<'tcx, Tag=()> {
-    op: Operand<Tag>,
+    op: Operand<Tag>, // Keep this private, it helps enforce invariants
     pub layout: TyLayout<'tcx>,
 }
 
@@ -187,11 +187,20 @@ impl<'tcx, Tag> From<ImmTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag>
-{
+impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     #[inline]
     pub fn from_scalar(val: Scalar<Tag>, layout: TyLayout<'tcx>) -> Self {
         ImmTy { imm: val.into(), layout }
+    }
+
+    #[inline]
+    pub fn from_uint(i: impl Into<u128>, layout: TyLayout<'tcx>) -> Self {
+        Self::from_scalar(Scalar::from_uint(i, layout.size), layout)
+    }
+
+    #[inline]
+    pub fn from_int(i: impl Into<i128>, layout: TyLayout<'tcx>) -> Self {
+        Self::from_scalar(Scalar::from_int(i, layout.size), layout)
     }
 
     #[inline]
@@ -246,7 +255,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(None);
         }
 
-        let ptr = match self.check_mplace_access(mplace, None)? {
+        let ptr = match self.check_mplace_access(mplace, None)
+            .expect("places should be checked on creation")
+        {
             Some(ptr) => ptr,
             None => return Ok(Some(ImmTy { // zero-sized type
                 imm: Scalar::zst().into(),
@@ -511,7 +522,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => self.eval_const_to_op(constant.literal, layout)?,
+            Constant(ref constant) => {
+                let val = self.subst_from_frame_and_normalize_erasing_regions(constant.literal);
+                self.eval_const_to_op(val, layout)?
+            }
         };
         trace!("{:?}: {:?}", mir_op, *op);
         Ok(op)
@@ -529,6 +543,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     // Used when the miri-engine runs into a constant and for extracting information from constants
     // in patterns via the `const_eval` module
+    /// The `val` and `layout` are assumed to already be in our interpreter
+    /// "universe" (param_env).
     crate fn eval_const_to_op(
         &self,
         val: &'tcx ty::Const<'tcx>,
@@ -541,7 +557,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Early-return cases.
         match val.val {
             ConstValue::Param(_) =>
-                // FIXME(oli-obk): try to monomorphize
                 throw_inval!(TooGeneric),
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
@@ -554,7 +569,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // Other cases need layout.
         let layout = from_known_layout(layout, || {
-            self.layout_of(self.monomorphize(val.ty)?)
+            self.layout_of(val.ty)
         })?;
         let op = match val.val {
             ConstValue::ByRef { alloc, offset } => {

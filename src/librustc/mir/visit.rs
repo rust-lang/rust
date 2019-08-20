@@ -782,13 +782,11 @@ macro_rules! make_mir_visitor {
                               location: Location) {
                 let Constant {
                     span,
-                    ty,
                     user_ty,
                     literal,
                 } = constant;
 
                 self.visit_span(span);
-                self.visit_ty(ty, TyContext::Location(location));
                 drop(user_ty); // no visit method for this
                 self.visit_const(literal, location);
             }

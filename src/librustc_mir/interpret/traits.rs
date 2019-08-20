@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty, Instance};
+use rustc::ty::{self, Ty, Instance, TypeFoldable};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic,};
 
@@ -19,6 +19,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
         let (ty, poly_trait_ref) = self.tcx.erase_regions(&(ty, poly_trait_ref));
+
+        // All vtables must be monomorphic, bail out otherwise.
+        if ty.needs_subst() || poly_trait_ref.needs_subst() {
+            throw_inval!(TooGeneric);
+        }
 
         if let Some(&vtable) = self.vtables.get(&(ty, poly_trait_ref)) {
             // This means we guarantee that there are no duplicate vtables, we will
@@ -77,7 +82,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
                 // resolve for vtable: insert shims where needed
-                let substs = self.subst_and_normalize_erasing_regions(substs)?;
                 let instance = ty::Instance::resolve_for_vtable(
                     *self.tcx,
                     self.param_env,

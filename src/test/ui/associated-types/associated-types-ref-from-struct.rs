@@ -9,8 +9,6 @@ trait Test {
     fn test(&self, value: &Self::V) -> bool;
 }
 
-///////////////////////////////////////////////////////////////////////////
-
 struct TesterPair<T:Test> {
     tester: T,
     value: T::V,
@@ -25,8 +23,6 @@ impl<T:Test> TesterPair<T> {
         self.tester.test(&self.value)
     }
 }
-
-///////////////////////////////////////////////////////////////////////////
 
 struct EqU32(u32);
 impl Test for EqU32 {

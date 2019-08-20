@@ -8,7 +8,7 @@ use crate::base;
 use crate::debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use crate::traits::*;
 
-use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
+use syntax_pos::{DUMMY_SP, BytePos, Span};
 use syntax::symbol::kw;
 
 use std::iter;
@@ -120,7 +120,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if source_info.span.ctxt() == NO_EXPANSION ||
+        if !source_info.span.from_expansion() ||
            self.cx.sess().opts.debugging_opts.debug_macros {
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
             (scope, source_info.span)

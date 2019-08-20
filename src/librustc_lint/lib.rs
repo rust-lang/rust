@@ -3,7 +3,7 @@
 //! This currently only contains the definitions and implementations
 //! of most of the lints that `rustc` supports directly, it does not
 //! contain the infrastructure for defining/registering lints. That is
-//! available in `rustc::lint` and `rustc_plugin` respectively.
+//! available in `rustc::lint` and `rustc_driver::plugin` respectively.
 //!
 //! ## Note
 //!
@@ -24,6 +24,7 @@ extern crate rustc;
 
 mod error_codes;
 mod nonstandard_style;
+mod redundant_semicolon;
 pub mod builtin;
 mod types;
 mod unused;
@@ -55,6 +56,7 @@ use session::Session;
 use lint::LintId;
 use lint::FutureIncompatibleInfo;
 
+use redundant_semicolon::*;
 use nonstandard_style::*;
 use builtin::*;
 use types::*;
@@ -98,6 +100,7 @@ macro_rules! early_lint_passes {
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             IncompleteFeatures: IncompleteFeatures,
+            RedundantSemicolon: RedundantSemicolon,
         ]);
     )
 }

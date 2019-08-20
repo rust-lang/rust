@@ -4,13 +4,11 @@ use crate::symbol::{sym, Symbol};
 use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
 use errors::{FatalError, DiagnosticBuilder};
-use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Pos, Span};
 use rustc_lexer::Base;
 use rustc_lexer::unescape;
 
-use std::borrow::Cow;
 use std::char;
-use std::iter;
 use std::convert::TryInto;
 use rustc_data_structures::sync::Lrc;
 use log::debug;
@@ -84,7 +82,7 @@ impl<'a> StringReader<'a> {
 
 
     fn mk_sp(&self, lo: BytePos, hi: BytePos) -> Span {
-        self.override_span.unwrap_or_else(|| Span::new(lo, hi, NO_EXPANSION))
+        self.override_span.unwrap_or_else(|| Span::with_root_ctxt(lo, hi))
     }
 
     /// Returns the next token, including trivia like whitespace or comments.
@@ -181,18 +179,7 @@ impl<'a> StringReader<'a> {
                 let string = self.str_from(start);
                 // comments with only more "/"s are not doc comments
                 let tok = if is_doc_comment(string) {
-                    let mut idx = 0;
-                    loop {
-                        idx = match string[idx..].find('\r') {
-                            None => break,
-                            Some(it) => idx + it + 1
-                        };
-                        if string[idx..].chars().next() != Some('\n') {
-                            self.err_span_(start + BytePos(idx as u32 - 1),
-                                            start + BytePos(idx as u32),
-                                            "bare CR not allowed in doc-comment");
-                        }
-                    }
+                    self.forbid_bare_cr(start, string, "bare CR not allowed in doc-comment");
                     token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
@@ -217,15 +204,10 @@ impl<'a> StringReader<'a> {
                 }
 
                 let tok = if is_doc_comment {
-                    let has_cr = string.contains('\r');
-                    let string = if has_cr {
-                        self.translate_crlf(start,
-                                            string,
-                                            "bare CR not allowed in block doc-comment")
-                    } else {
-                        string.into()
-                    };
-                    token::DocComment(Symbol::intern(&string[..]))
+                    self.forbid_bare_cr(start,
+                                        string,
+                                        "bare CR not allowed in block doc-comment");
+                    token::DocComment(Symbol::intern(string))
                 } else {
                     token::Comment
                 };
@@ -291,9 +273,6 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::TokenKind::Semi => token::Semi,
             rustc_lexer::TokenKind::Comma => token::Comma,
-            rustc_lexer::TokenKind::DotDotDot => token::DotDotDot,
-            rustc_lexer::TokenKind::DotDotEq => token::DotDotEq,
-            rustc_lexer::TokenKind::DotDot => token::DotDot,
             rustc_lexer::TokenKind::Dot => token::Dot,
             rustc_lexer::TokenKind::OpenParen => token::OpenDelim(token::Paren),
             rustc_lexer::TokenKind::CloseParen => token::CloseDelim(token::Paren),
@@ -305,42 +284,20 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::Pound => token::Pound,
             rustc_lexer::TokenKind::Tilde => token::Tilde,
             rustc_lexer::TokenKind::Question => token::Question,
-            rustc_lexer::TokenKind::ColonColon => token::ModSep,
             rustc_lexer::TokenKind::Colon => token::Colon,
             rustc_lexer::TokenKind::Dollar => token::Dollar,
-            rustc_lexer::TokenKind::EqEq => token::EqEq,
             rustc_lexer::TokenKind::Eq => token::Eq,
-            rustc_lexer::TokenKind::FatArrow => token::FatArrow,
-            rustc_lexer::TokenKind::Ne => token::Ne,
             rustc_lexer::TokenKind::Not => token::Not,
-            rustc_lexer::TokenKind::Le => token::Le,
-            rustc_lexer::TokenKind::LArrow => token::LArrow,
             rustc_lexer::TokenKind::Lt => token::Lt,
-            rustc_lexer::TokenKind::ShlEq => token::BinOpEq(token::Shl),
-            rustc_lexer::TokenKind::Shl => token::BinOp(token::Shl),
-            rustc_lexer::TokenKind::Ge => token::Ge,
             rustc_lexer::TokenKind::Gt => token::Gt,
-            rustc_lexer::TokenKind::ShrEq => token::BinOpEq(token::Shr),
-            rustc_lexer::TokenKind::Shr => token::BinOp(token::Shr),
-            rustc_lexer::TokenKind::RArrow => token::RArrow,
             rustc_lexer::TokenKind::Minus => token::BinOp(token::Minus),
-            rustc_lexer::TokenKind::MinusEq => token::BinOpEq(token::Minus),
             rustc_lexer::TokenKind::And => token::BinOp(token::And),
-            rustc_lexer::TokenKind::AndEq => token::BinOpEq(token::And),
-            rustc_lexer::TokenKind::AndAnd => token::AndAnd,
             rustc_lexer::TokenKind::Or => token::BinOp(token::Or),
-            rustc_lexer::TokenKind::OrEq => token::BinOpEq(token::Or),
-            rustc_lexer::TokenKind::OrOr => token::OrOr,
             rustc_lexer::TokenKind::Plus => token::BinOp(token::Plus),
-            rustc_lexer::TokenKind::PlusEq => token::BinOpEq(token::Plus),
             rustc_lexer::TokenKind::Star => token::BinOp(token::Star),
-            rustc_lexer::TokenKind::StarEq => token::BinOpEq(token::Star),
             rustc_lexer::TokenKind::Slash => token::BinOp(token::Slash),
-            rustc_lexer::TokenKind::SlashEq => token::BinOpEq(token::Slash),
             rustc_lexer::TokenKind::Caret => token::BinOp(token::Caret),
-            rustc_lexer::TokenKind::CaretEq => token::BinOpEq(token::Caret),
             rustc_lexer::TokenKind::Percent => token::BinOp(token::Percent),
-            rustc_lexer::TokenKind::PercentEq => token::BinOpEq(token::Percent),
 
             rustc_lexer::TokenKind::Unknown => {
                 let c = self.str_from(start).chars().next().unwrap();
@@ -516,49 +473,16 @@ impl<'a> StringReader<'a> {
         &self.src[self.src_index(start)..self.src_index(end)]
     }
 
-    /// Converts CRLF to LF in the given string, raising an error on bare CR.
-    fn translate_crlf<'b>(&self, start: BytePos, s: &'b str, errmsg: &'b str) -> Cow<'b, str> {
-        let mut chars = s.char_indices().peekable();
-        while let Some((i, ch)) = chars.next() {
-            if ch == '\r' {
-                if let Some((lf_idx, '\n')) = chars.peek() {
-                    return translate_crlf_(self, start, s, *lf_idx, chars, errmsg).into();
-                }
-                let pos = start + BytePos(i as u32);
-                let end_pos = start + BytePos((i + ch.len_utf8()) as u32);
-                self.err_span_(pos, end_pos, errmsg);
-            }
-        }
-        return s.into();
-
-        fn translate_crlf_(rdr: &StringReader<'_>,
-                           start: BytePos,
-                           s: &str,
-                           mut j: usize,
-                           mut chars: iter::Peekable<impl Iterator<Item = (usize, char)>>,
-                           errmsg: &str)
-                           -> String {
-            let mut buf = String::with_capacity(s.len());
-            // Skip first CR
-            buf.push_str(&s[.. j - 1]);
-            while let Some((i, ch)) = chars.next() {
-                if ch == '\r' {
-                    if j < i {
-                        buf.push_str(&s[j..i]);
-                    }
-                    let next = i + ch.len_utf8();
-                    j = next;
-                    if chars.peek().map(|(_, ch)| *ch) != Some('\n') {
-                        let pos = start + BytePos(i as u32);
-                        let end_pos = start + BytePos(next as u32);
-                        rdr.err_span_(pos, end_pos, errmsg);
-                    }
-                }
-            }
-            if j < s.len() {
-                buf.push_str(&s[j..]);
-            }
-            buf
+    fn forbid_bare_cr(&self, start: BytePos, s: &str, errmsg: &str) {
+        let mut idx = 0;
+        loop {
+            idx = match s[idx..].find('\r') {
+                None => break,
+                Some(it) => idx + it + 1
+            };
+            self.err_span_(start + BytePos(idx as u32 - 1),
+                           start + BytePos(idx as u32),
+                           errmsg);
         }
     }
 

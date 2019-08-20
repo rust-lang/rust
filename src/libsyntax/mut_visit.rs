@@ -383,10 +383,11 @@ pub fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
 }
 
 pub fn noop_visit_arm<T: MutVisitor>(
-    Arm { attrs, pats, guard, body, span }: &mut Arm,
+    Arm { attrs, pats, guard, body, span, id }: &mut Arm,
     vis: &mut T,
 ) {
     visit_attrs(attrs, vis);
+    vis.visit_id(id);
     visit_vec(pats, |pat| vis.visit_pat(pat));
     visit_opt(guard, |guard| vis.visit_expr(guard));
     vis.visit_expr(body);
@@ -455,7 +456,7 @@ pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: 
 }
 
 pub fn noop_visit_variant<T: MutVisitor>(variant: &mut Variant, vis: &mut T) {
-    let Spanned { node: Variant_ { ident, attrs, id, data, disr_expr }, span } = variant;
+    let Variant { ident, attrs, id, data, disr_expr, span } = variant;
     vis.visit_ident(ident);
     visit_attrs(attrs, vis);
     vis.visit_id(id);
@@ -532,8 +533,8 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_visit_mac<T: MutVisitor>(Spanned { node, span }: &mut Mac, vis: &mut T) {
-    let Mac_ { path, delim: _, tts, .. } = node;
+pub fn noop_visit_mac<T: MutVisitor>(mac: &mut Mac, vis: &mut T) {
+    let Mac { path, delim: _, tts, span, prior_type_ascription: _ } = mac;
     vis.visit_path(path);
     vis.visit_tts(tts);
     vis.visit_span(span);
@@ -808,9 +809,10 @@ pub fn noop_visit_struct_field<T: MutVisitor>(f: &mut StructField, visitor: &mut
 }
 
 pub fn noop_visit_field<T: MutVisitor>(f: &mut Field, vis: &mut T) {
-    let Field { ident, expr, span, is_shorthand: _, attrs } = f;
+    let Field { ident, expr, span, is_shorthand: _, attrs, id } = f;
     vis.visit_ident(ident);
     vis.visit_expr(expr);
+    vis.visit_id(id);
     vis.visit_span(span);
     visit_thin_attrs(attrs, vis);
 }
@@ -1040,14 +1042,14 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         }
         PatKind::Struct(path, fields, _etc) => {
             vis.visit_path(path);
-            for Spanned { node: FieldPat { ident, pat, is_shorthand: _, attrs }, span } in fields {
+            for FieldPat { ident, pat, is_shorthand: _, attrs, id, span } in fields {
                 vis.visit_ident(ident);
+                vis.visit_id(id);
                 vis.visit_pat(pat);
                 visit_thin_attrs(attrs, vis);
                 vis.visit_span(span);
             };
         }
-        PatKind::Tuple(elems) => visit_vec(elems, |elem| vis.visit_pat(elem)),
         PatKind::Box(inner) => vis.visit_pat(inner),
         PatKind::Ref(inner, _mutbl) => vis.visit_pat(inner),
         PatKind::Range(e1, e2, Spanned { span: _, node: _ }) => {
@@ -1055,7 +1057,9 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
             vis.visit_expr(e2);
             vis.visit_span(span);
         }
-        PatKind::Slice(elems) => visit_vec(elems, |elem| vis.visit_pat(elem)),
+        PatKind::Tuple(elems)
+        | PatKind::Slice(elems)
+        | PatKind::Or(elems) => visit_vec(elems, |elem| vis.visit_pat(elem)),
         PatKind::Paren(inner) => vis.visit_pat(inner),
         PatKind::Mac(mac) => vis.visit_mac(mac),
     }
@@ -1179,7 +1183,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
         }
         ExprKind::InlineAsm(asm) => {
             let InlineAsm { asm: _, asm_str_style: _, outputs, inputs, clobbers: _, volatile: _,
-                            alignstack: _, dialect: _, ctxt: _ } = asm.deref_mut();
+                            alignstack: _, dialect: _ } = asm.deref_mut();
             for out in outputs {
                 let InlineAsmOutput { constraint: _, expr, is_rw: _, is_indirect: _ } = out;
                 vis.visit_expr(expr);

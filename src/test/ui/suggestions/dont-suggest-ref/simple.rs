@@ -33,7 +33,7 @@ pub fn main() {
     let vs = &vx;
     let vsm = &mut vec![X(Y)];
 
-    // -------- move from Either/X place --------
+    // move from Either/X place
 
     let X(_t) = *s;
     //~^ ERROR cannot move
@@ -163,7 +163,7 @@ pub fn main() {
         // FIXME: should suggest removing `ref` too
     }
 
-    // -------- move from &Either/&X place --------
+    // move from &Either/&X place
 
     let &X(_t) = s;
     //~^ ERROR cannot move
@@ -251,7 +251,7 @@ pub fn main() {
     //~| HELP consider removing the `&mut`
     //~| SUGGESTION X(_t)
 
-    // -------- move from tuple of &Either/&X --------
+    // move from tuple of &Either/&X
 
     // FIXME: These should have suggestions.
 
@@ -283,7 +283,7 @@ pub fn main() {
     fn f4((&mut X(_t),): (&mut X,)) { }
     //~^ ERROR cannot move
 
-    // -------- move from &Either/&X value --------
+    // move from &Either/&X value
 
     let &X(_t) = &x;
     //~^ ERROR cannot move

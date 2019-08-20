@@ -17,7 +17,7 @@
 #![crate_type="rlib"]
 
 
-// Indexing expression ---------------------------------------------------------
+// Indexing expression
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn indexing(slice: &[u8]) -> u8 {
@@ -32,7 +32,7 @@ pub fn indexing(slice: &[u8]) -> u8 {
 }
 
 
-// Arithmetic overflow plus ----------------------------------------------------
+// Arithmetic overflow plus
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn arithmetic_overflow_plus(val: i32) -> i32 {
@@ -47,7 +47,7 @@ pub fn arithmetic_overflow_plus(val: i32) -> i32 {
 }
 
 
-// Arithmetic overflow minus ----------------------------------------------------
+// Arithmetic overflow minus
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn arithmetic_overflow_minus(val: i32) -> i32 {
@@ -62,7 +62,7 @@ pub fn arithmetic_overflow_minus(val: i32) -> i32 {
 }
 
 
-// Arithmetic overflow mult ----------------------------------------------------
+// Arithmetic overflow mult
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn arithmetic_overflow_mult(val: i32) -> i32 {
@@ -77,7 +77,7 @@ pub fn arithmetic_overflow_mult(val: i32) -> i32 {
 }
 
 
-// Arithmetic overflow negation ------------------------------------------------
+// Arithmetic overflow negation
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn arithmetic_overflow_negation(val: i32) -> i32 {
@@ -92,7 +92,7 @@ pub fn arithmetic_overflow_negation(val: i32) -> i32 {
 }
 
 
-// Division by zero ------------------------------------------------------------
+// Division by zero
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn division_by_zero(val: i32) -> i32 {
@@ -106,7 +106,7 @@ pub fn division_by_zero(val: i32) -> i32 {
     }
 }
 
-// Division by zero ------------------------------------------------------------
+// Division by zero
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn mod_by_zero(val: i32) -> i32 {
@@ -121,7 +121,7 @@ pub fn mod_by_zero(val: i32) -> i32 {
 }
 
 
-// shift left ------------------------------------------------------------------
+// shift left
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn shift_left(val: i32, shift: usize) -> i32 {
@@ -136,7 +136,7 @@ pub fn shift_left(val: i32, shift: usize) -> i32 {
 }
 
 
-// shift right ------------------------------------------------------------------
+// shift right
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir")]
 #[rustc_clean(cfg="cfail3")]
 pub fn shift_right(val: i32, shift: usize) -> i32 {

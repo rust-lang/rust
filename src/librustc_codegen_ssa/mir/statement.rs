@@ -89,7 +89,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 });
 
                 if input_vals.len() == asm.inputs.len() {
-                    let res = bx.codegen_inline_asm(&asm.asm, outputs, input_vals);
+                    let res = bx.codegen_inline_asm(
+                        &asm.asm,
+                        outputs,
+                        input_vals,
+                        statement.source_info.span,
+                    );
                     if !res {
                         span_err!(bx.sess(), statement.source_info.span, E0668,
                                   "malformed inline assembly");

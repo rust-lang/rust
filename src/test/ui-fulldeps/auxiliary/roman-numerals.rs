@@ -12,14 +12,13 @@
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc;
-extern crate rustc_plugin;
 extern crate rustc_driver;
 
 use syntax::parse::token::{self, Token};
 use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax_pos::Span;
-use rustc_plugin::Registry;
+use rustc_driver::plugin::Registry;
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<dyn MacResult + 'static> {

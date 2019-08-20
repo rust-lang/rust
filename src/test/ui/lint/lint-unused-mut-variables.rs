@@ -3,7 +3,7 @@
 // Exercise the unused_mut attribute in some positive and negative cases
 
 #![deny(unused_mut)]
-#![feature(async_await, async_closure, param_attrs)]
+#![feature(async_closure, param_attrs)]
 
 async fn baz_async(
     mut a: i32,

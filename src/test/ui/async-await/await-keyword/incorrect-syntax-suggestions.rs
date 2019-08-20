@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(async_await)]
-
 async fn bar() -> Result<(), ()> {
     Ok(())
 }

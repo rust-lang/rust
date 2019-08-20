@@ -35,7 +35,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt<'_>,
             match annitem.node {
                 ItemKind::Struct(_, Generics { ref params, .. }) |
                 ItemKind::Enum(_, Generics { ref params, .. }) => {
-                    let container_id = cx.current_expansion.id.parent();
+                    let container_id = cx.current_expansion.id.expn_data().parent;
                     if cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
                         !params.iter().any(|param| match param.kind {
                             ast::GenericParamKind::Type { .. } => true,
@@ -129,7 +129,7 @@ fn cs_clone_shallow(name: &str,
     if is_union {
         // let _: AssertParamIsCopy<Self>;
         let self_ty =
-            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_empty_ctxt(kw::SelfUpper)));
+            cx.ty_path(cx.path_ident(trait_span, ast::Ident::with_dummy_span(kw::SelfUpper)));
         assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, "AssertParamIsCopy");
     } else {
         match *substr.fields {
@@ -138,7 +138,7 @@ fn cs_clone_shallow(name: &str,
             }
             StaticEnum(enum_def, ..) => {
                 for variant in &enum_def.variants {
-                    process_variant(cx, &mut stmts, &variant.node.data);
+                    process_variant(cx, &mut stmts, &variant.data);
                 }
             }
             _ => cx.span_bug(trait_span, &format!("unexpected substructure in \
@@ -170,9 +170,9 @@ fn cs_clone(name: &str,
             vdata = vdata_;
         }
         EnumMatching(.., variant, ref af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.node.ident]);
+            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
             all_fields = af;
-            vdata = &variant.node.data;
+            vdata = &variant.data;
         }
         EnumNonMatchingCollapsed(..) => {
             cx.span_bug(trait_span,

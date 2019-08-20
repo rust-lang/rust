@@ -13,7 +13,8 @@ pub enum Arch {
     Armv7s,
     Arm64,
     I386,
-    X86_64
+    X86_64,
+    X86_64_macabi,
 }
 
 impl Arch {
@@ -23,7 +24,8 @@ impl Arch {
             Armv7s => "armv7s",
             Arm64 => "arm64",
             I386 => "i386",
-            X86_64 => "x86_64"
+            X86_64 => "x86_64",
+            X86_64_macabi => "x86_64"
         }
     }
 }
@@ -67,7 +69,8 @@ pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
 fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
     let sdk_name = match arch {
         Armv7 | Armv7s | Arm64 => "iphoneos",
-        I386 | X86_64 => "iphonesimulator"
+        I386 | X86_64 => "iphonesimulator",
+        X86_64_macabi => "macosx10.15",
     };
 
     let arch_name = arch.to_string();
@@ -93,6 +96,7 @@ fn target_cpu(arch: Arch) -> String {
         Arm64 => "cyclone",
         I386 => "yonah",
         X86_64 => "core2",
+        X86_64_macabi => "core2",
     }.to_string()
 }
 

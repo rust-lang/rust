@@ -2197,7 +2197,6 @@ impl<'tcx> Operand<'tcx> {
         let ty = tcx.type_of(def_id).subst(tcx, substs);
         Operand::Constant(box Constant {
             span,
-            ty,
             user_ty: None,
             literal: ty::Const::zero_sized(tcx, ty),
         })
@@ -2476,7 +2475,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Constant<'tcx> {
     pub span: Span,
-    pub ty: Ty<'tcx>,
 
     /// Optional user-given type: for something like
     /// `collect::<Vec<_>>`, this would be present and would
@@ -3385,12 +3383,11 @@ impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         Constant {
             span: self.span.clone(),
-            ty: self.ty.fold_with(folder),
             user_ty: self.user_ty.fold_with(folder),
             literal: self.literal.fold_with(folder),
         }
     }
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor) || self.literal.visit_with(visitor)
+        self.literal.visit_with(visitor)
     }
 }

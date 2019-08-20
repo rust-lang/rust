@@ -1,4 +1,4 @@
-error[E0071]: expected struct, variant or union type, found Self
+error[E0071]: expected struct, variant or union type, found type parameter
   --> $DIR/struct-path-self.rs:5:17
    |
 LL |         let s = Self {};
@@ -10,13 +10,13 @@ error[E0109]: type arguments are not allowed for this type
 LL |         let z = Self::<u8> {};
    |                        ^^ type argument not allowed
 
-error[E0071]: expected struct, variant or union type, found Self
+error[E0071]: expected struct, variant or union type, found type parameter
   --> $DIR/struct-path-self.rs:7:17
    |
 LL |         let z = Self::<u8> {};
    |                 ^^^^^^^^^^ not a struct
 
-error[E0071]: expected struct, variant or union type, found Self
+error[E0071]: expected struct, variant or union type, found type parameter
   --> $DIR/struct-path-self.rs:11:13
    |
 LL |             Self { .. } => {}

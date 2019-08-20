@@ -178,8 +178,7 @@ pub trait MetadataLoader {
                           -> Result<MetadataRef, String>;
 }
 
-/// A store of Rust crates, through with their metadata
-/// can be accessed.
+/// A store of Rust crates, through which their metadata can be accessed.
 ///
 /// Note that this trait should probably not be expanding today. All new
 /// functionality should be driven through queries instead!

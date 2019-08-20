@@ -411,10 +411,6 @@ impl Definitions {
     }
 
     /// Adds a root definition (no parent) and a few other reserved definitions.
-    ///
-    /// After the initial definitions are created the first `FIRST_FREE_DEF_INDEX` indexes
-    /// are taken, so the "user" indexes will be allocated starting with `FIRST_FREE_DEF_INDEX`
-    /// in ascending order.
     pub fn create_root_def(&mut self,
                            crate_name: &str,
                            crate_disambiguator: CrateDisambiguator)
@@ -589,19 +585,6 @@ impl DefPathData {
     }
 }
 
-/// Evaluates to the number of tokens passed to it.
-///
-/// Logarithmic counting: every one or two recursive expansions, the number of
-/// tokens to count is divided by two, instead of being reduced by one.
-/// Therefore, the recursion depth is the binary logarithm of the number of
-/// tokens to count, and the expanded tree is likewise very small.
-macro_rules! count {
-    ()                     => (0usize);
-    ($one:tt)              => (1usize);
-    ($($pairs:tt $_p:tt)*) => (count!($($pairs)*) << 1usize);
-    ($odd:tt $($rest:tt)*) => (count!($($rest)*) | 1usize);
-}
-
 // We define the GlobalMetaDataKind enum with this macro because we want to
 // make sure that we exhaustively iterate over all variants when registering
 // the corresponding DefIndices in the DefTable.
@@ -613,8 +596,6 @@ macro_rules! define_global_metadata_kind {
         pub enum GlobalMetaDataKind {
             $($variant),*
         }
-
-        pub const FIRST_FREE_DEF_INDEX: usize = 1 + count!($($variant)*);
 
         impl GlobalMetaDataKind {
             fn allocate_def_indices(definitions: &mut Definitions) {
