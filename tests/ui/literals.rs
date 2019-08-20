@@ -1,7 +1,7 @@
 #![warn(clippy::large_digit_groups)]
 #![warn(clippy::mixed_case_hex_literals)]
-#![warn(clippy::unseparated_literal_suffix)]
 #![warn(clippy::zero_prefixed_literal)]
+#![allow(clippy::unseparated_literal_suffix)]
 #![allow(dead_code)]
 
 fn main() {
@@ -14,15 +14,6 @@ fn main() {
     let fail2 = 0xabCD_u32;
     let fail2 = 0xabCD_isize;
     let fail_multi_zero = 000_123usize;
-
-    let ok6 = 1234_i32;
-    let ok7 = 1234_f32;
-    let ok8 = 1234_isize;
-    let fail3 = 1234i32;
-    let fail4 = 1234u32;
-    let fail5 = 1234isize;
-    let fail6 = 1234usize;
-    let fail7 = 1.5f32;
 
     let ok9 = 0;
     let ok10 = 0_i64;
