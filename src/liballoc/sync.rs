@@ -107,10 +107,6 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// // a, b, and foo are all Arcs that point to the same memory location
 /// ```
 ///
-/// The [`Arc::clone(&from)`] syntax is the most idiomatic because it conveys more explicitly
-/// the meaning of the code. In the example above, this syntax makes it easier to see that
-/// this code is creating a new reference rather than copying the whole content of foo.
-///
 /// ## `Deref` behavior
 ///
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),

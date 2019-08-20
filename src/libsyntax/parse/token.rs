@@ -551,7 +551,7 @@ impl Token {
         }
     }
 
-    crate fn glue(self, joint: Token) -> Option<Token> {
+    crate fn glue(&self, joint: &Token) -> Option<Token> {
         let kind = match self.kind {
             Eq => match joint.kind {
                 Eq => EqEq,

@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
 };
-use rustc::ty::subst::{Subst, SubstsRef};
+use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -291,41 +291,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ty.is_freeze(*self.tcx, self.param_env, DUMMY_SP)
     }
 
-    pub(super) fn subst_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
-        &self,
-        substs: T,
-    ) -> InterpResult<'tcx, T> {
-        match self.stack.last() {
-            Some(frame) => Ok(self.tcx.subst_and_normalize_erasing_regions(
-                frame.instance.substs,
-                self.param_env,
-                &substs,
-            )),
-            None => if substs.needs_subst() {
-                throw_inval!(TooGeneric)
-            } else {
-                Ok(substs)
-            },
-        }
-    }
-
-    pub(super) fn resolve(
-        &self,
-        def_id: DefId,
-        substs: SubstsRef<'tcx>
-    ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        trace!("resolve: {:?}, {:#?}", def_id, substs);
-        trace!("param_env: {:#?}", self.param_env);
-        let substs = self.subst_and_normalize_erasing_regions(substs)?;
-        trace!("substs: {:#?}", substs);
-        ty::Instance::resolve(
-            *self.tcx,
-            self.param_env,
-            def_id,
-            substs,
-        ).ok_or_else(|| err_inval!(TooGeneric).into())
-    }
-
     pub fn load_mir(
         &self,
         instance: ty::InstanceDef<'tcx>,
@@ -349,34 +314,34 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub(super) fn monomorphize<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+    /// Call this on things you got out of the MIR (so it is as generic as the current
+    /// stack frame), to bring it into the proper environment for this interpreter.
+    pub(super) fn subst_from_frame_and_normalize_erasing_regions<T: TypeFoldable<'tcx>>(
         &self,
-        t: T,
-    ) -> InterpResult<'tcx, T> {
-        match self.stack.last() {
-            Some(frame) => Ok(self.monomorphize_with_substs(t, frame.instance.substs)?),
-            None => if t.needs_subst() {
-                throw_inval!(TooGeneric)
-            } else {
-                Ok(t)
-            },
-        }
+        value: T,
+    ) -> T {
+        self.tcx.subst_and_normalize_erasing_regions(
+            self.frame().instance.substs,
+            self.param_env,
+            &value,
+        )
     }
 
-    fn monomorphize_with_substs<T: TypeFoldable<'tcx> + Subst<'tcx>>(
+    /// The `substs` are assumed to already be in our interpreter "universe" (param_env).
+    pub(super) fn resolve(
         &self,
-        t: T,
+        def_id: DefId,
         substs: SubstsRef<'tcx>
-    ) -> InterpResult<'tcx, T> {
-        // miri doesn't care about lifetimes, and will choke on some crazy ones
-        // let's simply get rid of them
-        let substituted = t.subst(*self.tcx, substs);
-
-        if substituted.needs_subst() {
-            throw_inval!(TooGeneric)
-        }
-
-        Ok(self.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substituted))
+    ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
+        trace!("resolve: {:?}, {:#?}", def_id, substs);
+        trace!("param_env: {:#?}", self.param_env);
+        trace!("substs: {:#?}", substs);
+        ty::Instance::resolve(
+            *self.tcx,
+            self.param_env,
+            def_id,
+            substs,
+        ).ok_or_else(|| err_inval!(TooGeneric).into())
     }
 
     pub fn layout_of_local(
@@ -391,7 +356,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             None => {
                 let layout = crate::interpret::operand::from_known_layout(layout, || {
                     let local_ty = frame.body.local_decls[local].ty;
-                    let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs)?;
+                    let local_ty = self.tcx.subst_and_normalize_erasing_regions(
+                        frame.instance.substs,
+                        self.param_env,
+                        &local_ty,
+                    );
                     self.layout_of(local_ty)
                 })?;
                 if let Some(state) = frame.locals.get(local) {

@@ -173,6 +173,7 @@ pub struct CommonTypes<'tcx> {
     pub f32: Ty<'tcx>,
     pub f64: Ty<'tcx>,
     pub never: Ty<'tcx>,
+    pub self_param: Ty<'tcx>,
     pub err: Ty<'tcx>,
 
     /// Dummy type used for the `Self` of a `TraitRef` created for converting
@@ -915,6 +916,10 @@ impl<'tcx> CommonTypes<'tcx> {
             u128: mk(Uint(ast::UintTy::U128)),
             f32: mk(Float(ast::FloatTy::F32)),
             f64: mk(Float(ast::FloatTy::F64)),
+            self_param: mk(ty::Param(ty::ParamTy {
+                index: 0,
+                name: kw::SelfUpper.as_interned_str(),
+            })),
 
             trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
         }
@@ -2566,10 +2571,6 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    #[inline]
-    pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_ty_param(0, kw::SelfUpper.as_interned_str())
-    }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> Kind<'tcx> {
         match param.kind {

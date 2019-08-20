@@ -447,9 +447,6 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
                 visitor.visit_pat(&field.pat)
             }
         }
-        PatKind::Tuple(ref elems) => {
-            walk_list!(visitor, visit_pat, elems);
-        }
         PatKind::Box(ref subpattern) |
         PatKind::Ref(ref subpattern, _) |
         PatKind::Paren(ref subpattern) => {
@@ -465,7 +462,9 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             visitor.visit_expr(upper_bound);
         }
         PatKind::Wild | PatKind::Rest => {},
-        PatKind::Slice(ref elems) => {
+        PatKind::Tuple(ref elems)
+        | PatKind::Slice(ref elems)
+        | PatKind::Or(ref elems) => {
             walk_list!(visitor, visit_pat, elems);
         }
         PatKind::Mac(ref mac) => visitor.visit_mac(mac),

@@ -640,8 +640,11 @@ where
                         // their layout on return.
                         PlaceTy {
                             place: *return_place,
-                            layout: self
-                                .layout_of(self.monomorphize(self.frame().body.return_ty())?)?,
+                            layout: self.layout_of(
+                                self.subst_from_frame_and_normalize_erasing_regions(
+                                    self.frame().body.return_ty()
+                                )
+                            )?,
                         }
                     }
                     None => throw_unsup!(InvalidNullPointerUsage),

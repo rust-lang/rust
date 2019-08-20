@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty, TypeAndMut};
+use rustc::ty::{self, Ty, TypeAndMut, TypeFoldable};
 use rustc::ty::layout::{self, TyLayout, Size};
 use rustc::ty::adjustment::{PointerCast};
 use syntax::ast::FloatTy;
@@ -36,15 +36,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
+                        // All reifications must be monomorphic, bail out otherwise.
+                        if src.layout.ty.needs_subst() {
+                            throw_inval!(TooGeneric);
+                        }
+
                         if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
                             bug!("reifying a fn ptr that requires const arguments");
                         }
-                        let instance = ty::Instance::resolve(
-                            *self.tcx,
-                            self.param_env,
-                            def_id,
-                            substs,
-                        ).ok_or_else(|| err_inval!(TooGeneric))?;
+                        let instance = self.resolve(def_id, substs)?;
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
@@ -67,7 +67,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::Closure(def_id, substs) => {
-                        let substs = self.subst_and_normalize_erasing_regions(substs)?;
+                        // All reifications must be monomorphic, bail out otherwise.
+                        if src.layout.ty.needs_subst() {
+                            throw_inval!(TooGeneric);
+                        }
+
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     fn test<X>(u: X) -> Self {
    |                         ---- expected `Self` because of return type
 LL |         u
-   |         ^ expected Self, found type parameter
+   |         ^ expected type parameter, found a different type parameter
    |
    = note: expected type `Self`
               found type `X`
