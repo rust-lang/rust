@@ -908,9 +908,10 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        match self {
-            x if x == NEG_INFINITY => NEG_INFINITY,
-            x => (x + ((x * x) + 1.0).sqrt()).ln().copysign(self)
+        if self == NEG_INFINITY {
+            NEG_INFINITY
+        } else {
+            (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
         }
     }
 
@@ -931,9 +932,10 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
-        match self {
-            x if x < 1.0 => crate::f32::NAN,
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
+        if self < 1.0 {
+            crate::f32::NAN
+        } else {
+            (self + ((self * self) - 1.0).sqrt()).ln()
         }
     }
 
