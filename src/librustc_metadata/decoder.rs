@@ -530,7 +530,6 @@ impl<'a, 'tcx> CrateMetadata {
                         id: DefIndex,
                         sess: &Session)
                         -> FullProcMacro {
-
         let raw_macro = self.raw_proc_macro(id);
         let (name, kind, helper_attrs) = match *raw_macro {
             ProcMacro::CustomDerive { trait_name, attributes, client } => {
@@ -551,16 +550,19 @@ impl<'a, 'tcx> CrateMetadata {
                 name, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })), Vec::new()
             )
         };
-
-        let span = self.get_span(id, sess);
+        let name = Symbol::intern(name);
 
         FullProcMacro {
-            name: Symbol::intern(name),
-            ext: Lrc::new(SyntaxExtension {
-                span,
+            name,
+            ext: Lrc::new(SyntaxExtension::new(
+                &sess.parse_sess,
+                kind,
+                self.get_span(id, sess),
                 helper_attrs,
-                ..SyntaxExtension::default(kind, root.edition)
-            })
+                root.edition,
+                name,
+                &self.get_attributes(&self.entry(id), sess),
+            )),
         }
     }
 
