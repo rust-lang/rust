@@ -487,8 +487,8 @@ pub fn codegen_intrinsic_call<'tcx>(
             );
             ret.write_cvalue(fx, res);
         };
-        _ if intrinsic.starts_with("saturating_"), <T> (c x, c y) {
-            assert_eq!(x.layout().ty, y.layout().ty);
+        _ if intrinsic.starts_with("saturating_"), <T> (c lhs, c rhs) {
+            assert_eq!(lhs.layout().ty, rhs.layout().ty);
             let bin_op = match intrinsic {
                 "saturating_add" => BinOp::Add,
                 "saturating_sub" => BinOp::Sub,
@@ -500,8 +500,8 @@ pub fn codegen_intrinsic_call<'tcx>(
             let checked_res = crate::num::trans_checked_int_binop(
                 fx,
                 bin_op,
-                x,
-                y,
+                lhs,
+                rhs,
             );
 
             let (val, has_overflow) = checked_res.load_scalar_pair(fx);
@@ -517,8 +517,18 @@ pub fn codegen_intrinsic_call<'tcx>(
             let val = match (intrinsic, signed) {
                 ("saturating_add", false) => codegen_select(&mut fx.bcx, has_overflow, max, val),
                 ("saturating_sub", false) => codegen_select(&mut fx.bcx, has_overflow, min, val),
-                ("saturating_add", true) => unimplemented!(),
-                ("saturating_sub", true) => unimplemented!(),
+                ("saturating_add", true) => {
+                    let rhs = rhs.load_scalar(fx);
+                    let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
+                    let sat_val = codegen_select(&mut fx.bcx, rhs_ge_zero, max, min);
+                    codegen_select(&mut fx.bcx, has_overflow, sat_val, val)
+                }
+                ("saturating_sub", true) => {
+                    let rhs = rhs.load_scalar(fx);
+                    let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
+                    let sat_val = codegen_select(&mut fx.bcx, rhs_ge_zero, min, max);
+                    codegen_select(&mut fx.bcx, has_overflow, sat_val, val)
+                }
                 _ => unreachable!(),
             };
 
