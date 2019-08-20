@@ -1535,8 +1535,7 @@ impl Step for ErrorIndex {
         );
         tool.arg("markdown")
             .arg(&output)
-            .env("CFG_BUILD", &builder.config.build)
-            .env("RUSTC_ERROR_METADATA_DST", builder.extended_error_dir());
+            .env("CFG_BUILD", &builder.config.build);
 
         builder.info(&format!("Testing error-index stage{}", compiler.stage));
         let _time = util::timeit(&builder);

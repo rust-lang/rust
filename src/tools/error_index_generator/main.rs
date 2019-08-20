@@ -2,22 +2,26 @@
 
 extern crate env_logger;
 extern crate syntax;
-extern crate serialize as rustc_serialize;
 
 use std::collections::BTreeMap;
 use std::env;
 use std::error::Error;
-use std::fs::{self, read_dir, File};
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::cell::RefCell;
 
 use syntax::edition::DEFAULT_EDITION;
-use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
 use rustdoc::html::markdown::{Markdown, IdMap, ErrorCodes, Playground};
-use rustc_serialize::json;
+
+pub struct ErrorMetadata {
+    pub description: Option<String>,
+}
+
+/// Mapping from error codes to metadata that can be (de)serialized.
+pub type ErrorMetadataMap = BTreeMap<String, ErrorMetadata>;
 
 enum OutputFormat {
     HTML(HTMLFormatter),
@@ -80,11 +84,7 @@ impl Formatter for HTMLFormatter {
             Some(_) => "error-described",
             None => "error-undescribed",
         };
-        let use_desc = match info.use_site {
-            Some(_) => "error-used",
-            None => "error-unused",
-        };
-        write!(output, "<div class=\"{} {}\">", desc_desc, use_desc)?;
+        write!(output, "<div class=\"{}\">", desc_desc)?;
 
         // Error title (with self-link).
         write!(output,
@@ -199,25 +199,6 @@ impl Formatter for MarkdownFormatter {
     }
 }
 
-/// Loads all the metadata files from `metadata_dir` into an in-memory map.
-fn load_all_errors(metadata_dir: &Path) -> Result<ErrorMetadataMap, Box<dyn Error>> {
-    let mut all_errors = BTreeMap::new();
-
-    for entry in read_dir(metadata_dir)? {
-        let path = entry?.path();
-
-        let metadata_str = fs::read_to_string(&path)?;
-
-        let some_errors: ErrorMetadataMap = json::decode(&metadata_str)?;
-
-        for (err_code, info) in some_errors {
-            all_errors.insert(err_code, info);
-        }
-    }
-
-    Ok(all_errors)
-}
-
 /// Output an HTML page for the errors in `err_map` to `output_path`.
 fn render_error_page<T: Formatter>(err_map: &ErrorMetadataMap, output_path: &Path,
                                    formatter: T) -> Result<(), Box<dyn Error>> {
@@ -234,9 +215,13 @@ fn render_error_page<T: Formatter>(err_map: &ErrorMetadataMap, output_path: &Pat
 }
 
 fn main_with_result(format: OutputFormat, dst: &Path) -> Result<(), Box<dyn Error>> {
-    let build_arch = env::var("CFG_BUILD")?;
-    let metadata_dir = get_metadata_dir(&build_arch);
-    let err_map = load_all_errors(&metadata_dir)?;
+    let long_codes = register_all();
+    let mut err_map = BTreeMap::new();
+    for (code, desc) in long_codes {
+        err_map.insert(code.to_string(), ErrorMetadata {
+            description: desc.map(String::from),
+        });
+    }
     match format {
         OutputFormat::Unknown(s)  => panic!("Unknown output format: {}", s),
         OutputFormat::HTML(h)     => render_error_page(&err_map, dst, h)?,
@@ -272,3 +257,5 @@ fn main() {
         panic!("{}", e.description());
     }
 }
+
+include!(concat!(env!("OUT_DIR"), "/error_codes.rs"));
