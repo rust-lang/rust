@@ -208,7 +208,7 @@ pub use std::collections::HashMap;
                 "range": {
                     "end": {
                         "character": 0,
-                        "line": 6
+                        "line": 7
                     },
                     "start": {
                         "character": 0,
@@ -413,4 +413,50 @@ fn main() {{}}
     );
     let elapsed = start.elapsed();
     assert!(elapsed.as_millis() < 2000, "typing enter took {:?}", elapsed);
+}
+
+#[test]
+fn preserves_dos_line_endings() {
+    let server = Project::with_fixture(
+        &"
+//- Cargo.toml
+[package]
+name = \"foo\"
+version = \"0.0.0\"
+
+//- src/main.rs
+/// Some Docs\r\nfn main() {}
+",
+    )
+    .server();
+
+    server.request::<OnEnter>(
+        TextDocumentPositionParams {
+            text_document: server.doc_id("src/main.rs"),
+            position: Position { line: 0, character: 8 },
+        },
+        json!({
+          "cursorPosition": {
+            "position": { "line": 1, "character": 4 },
+            "textDocument": { "uri": "file:///[..]src/main.rs" }
+          },
+          "label": "on enter",
+          "workspaceEdit": {
+            "documentChanges": [
+              {
+                "edits": [
+                  {
+                    "newText": "\r\n/// ",
+                    "range": {
+                      "end": { "line": 0, "character": 8 },
+                      "start": { "line": 0, "character": 8 }
+                    }
+                  }
+                ],
+                "textDocument": { "uri": "file:///[..]src/main.rs", "version": null }
+              }
+            ]
+          }
+        }),
+    );
 }

@@ -9,7 +9,7 @@ use parking_lot::RwLock;
 use ra_ide_api::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
 };
-use ra_vfs::{RootEntry, Vfs, VfsChange, VfsFile, VfsRoot};
+use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot};
 use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
 
@@ -208,6 +208,10 @@ impl WorldSnapshot {
         let url = Url::from_file_path(&path)
             .map_err(|_| format!("can't convert path to url: {}", path.display()))?;
         Ok(url)
+    }
+
+    pub fn file_line_endings(&self, id: FileId) -> LineEndings {
+        self.vfs.read().file_line_endings(VfsFile(id.0))
     }
 
     pub fn path_to_uri(&self, root: SourceRootId, path: &RelativePathBuf) -> Result<Url> {

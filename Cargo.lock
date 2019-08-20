@@ -534,7 +534,7 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.1.9"
+version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1092,7 +1092,7 @@ dependencies = [
  "ra_hir 0.1.0",
  "ra_ide_api 0.1.0",
  "ra_project_model 0.1.0",
- "ra_vfs 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_vfs_glob 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1198,7 +1198,7 @@ dependencies = [
  "ra_project_model 0.1.0",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
- "ra_vfs 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_vfs_glob 0.1.0",
  "relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1256,7 +1256,7 @@ dependencies = [
 
 [[package]]
 name = "ra_rustc_lexer"
-version = "0.1.0-pre.2"
+version = "0.1.0-pre.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1268,7 +1268,7 @@ version = "0.1.0"
 dependencies = [
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_parser 0.1.0",
- "ra_rustc_lexer 0.1.0-pre.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_rustc_lexer 0.1.0-pre.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_text_edit 0.1.0",
  "rowan 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1307,7 +1307,7 @@ dependencies = [
 
 [[package]]
 name = "ra_vfs"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "crossbeam-channel 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1324,7 +1324,7 @@ name = "ra_vfs_glob"
 version = "0.1.0"
 dependencies = [
  "globset 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "ra_vfs 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1350,7 +1350,7 @@ name = "rand"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "getrandom 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getrandom 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_chacha 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1394,7 +1394,7 @@ name = "rand_core"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "getrandom 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getrandom 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2073,7 +2073,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum fuchsia-zircon 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "2e9763c69ebaae630ba35f74888db465e49e259ba1bc0eda7d06f4a067615d82"
 "checksum fuchsia-zircon-sys 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
 "checksum generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c68f0274ae0e023facc3c97b2e00f076be70e254bc851d972503b328db79b2ec"
-"checksum getrandom 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "2512b3191f22e2763a5db387f1c9409379772e2050841722eb4a8c4f497bf096"
+"checksum getrandom 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "6171a6cc63fbabbe27c2b5ee268e8b7fe5dc1eb0dd2dfad537c1dfed6f69117e"
 "checksum glob 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 "checksum globset 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "925aa2cac82d8834e2b2a4415b6f6879757fb5c0928fc445ae76461a12eed8f2"
 "checksum heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "20564e78d53d2bb135c343b3f47714a56af2061f1c928fdb541dc7b9fdd94205"
@@ -2134,8 +2134,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9274b940887ce9addde99c4eee6b5c44cc494b182b97e73dc8ffdcb3397fd3f0"
 "checksum quote 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce23b6b870e8f94f81fb0a363d65d86675884b34a09043c81e5562f11c1f8e1"
 "checksum quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "053a8c8bcc71fcce321828dc897a98ab9760bef03a4fc36693c231e5b3216cfe"
-"checksum ra_rustc_lexer 0.1.0-pre.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6baccda91574dfadd7f8a0bc8f9f110f874b6b484289b2536d3dbf4f0d5d97bb"
-"checksum ra_vfs 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "865bb9e0f71916f7c7527af4843a2a67d1b0789f7c91c512a6b4ded69af98249"
+"checksum ra_rustc_lexer 0.1.0-pre.3 (registry+https://github.com/rust-lang/crates.io-index)" = "04371af481820ff8d35c7d12b503eb09cf9e1bd246269bf4a33e3d8c54fa3a4a"
+"checksum ra_vfs 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "6918c38f6ab45101f1ddd6110eda831a735b5e9ca6c96d1ceedb7d13ecaeb0f4"
 "checksum rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "6d71dacdc3c88c1fde3885a3be3fbab9f35724e6ce99467f7d9c5026132184ca"
 "checksum rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d47eab0e83d9693d40f825f86948aa16eff6750ead4bdffc4ab95b8b3a7f052c"
 "checksum rand_chacha 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "556d3a1ca6600bfcbab7c7c91ccb085ac7fbbcd70e008a98742e7847f4f7bcef"

@@ -12,16 +12,16 @@ pub struct Token {
     pub len: TextUnit,
 }
 
-fn match_literal_kind(kind: ra_rustc_lexer::LiteralKind) -> SyntaxKind {
+fn match_literal_kind(kind: rustc_lexer::LiteralKind) -> SyntaxKind {
     match kind {
-        ra_rustc_lexer::LiteralKind::Int { .. } => INT_NUMBER,
-        ra_rustc_lexer::LiteralKind::Float { .. } => FLOAT_NUMBER,
-        ra_rustc_lexer::LiteralKind::Char { .. } => CHAR,
-        ra_rustc_lexer::LiteralKind::Byte { .. } => BYTE,
-        ra_rustc_lexer::LiteralKind::Str { .. } => STRING,
-        ra_rustc_lexer::LiteralKind::ByteStr { .. } => BYTE_STRING,
-        ra_rustc_lexer::LiteralKind::RawStr { .. } => RAW_STRING,
-        ra_rustc_lexer::LiteralKind::RawByteStr { .. } => RAW_BYTE_STRING,
+        rustc_lexer::LiteralKind::Int { .. } => INT_NUMBER,
+        rustc_lexer::LiteralKind::Float { .. } => FLOAT_NUMBER,
+        rustc_lexer::LiteralKind::Char { .. } => CHAR,
+        rustc_lexer::LiteralKind::Byte { .. } => BYTE,
+        rustc_lexer::LiteralKind::Str { .. } => STRING,
+        rustc_lexer::LiteralKind::ByteStr { .. } => BYTE_STRING,
+        rustc_lexer::LiteralKind::RawStr { .. } => RAW_STRING,
+        rustc_lexer::LiteralKind::RawByteStr { .. } => RAW_BYTE_STRING,
     }
 }
 
@@ -32,32 +32,17 @@ pub fn tokenize(text: &str) -> Vec<Token> {
     }
     let mut text = text;
     let mut acc = Vec::new();
-    if let Some(len) = ra_rustc_lexer::strip_shebang(text) {
+    if let Some(len) = rustc_lexer::strip_shebang(text) {
         acc.push(Token { kind: SHEBANG, len: TextUnit::from_usize(len) });
         text = &text[len..];
     }
     while !text.is_empty() {
-        let rustc_token = ra_rustc_lexer::first_token(text);
-        macro_rules! decompose {
-            ($t1:expr, $t2:expr) => {{
-                acc.push(Token { kind: $t1, len: 1.into() });
-                acc.push(Token { kind: $t2, len: 1.into() });
-                text = &text[2..];
-                continue;
-            }};
-            ($t1:expr, $t2:expr, $t3:expr) => {{
-                acc.push(Token { kind: $t1, len: 1.into() });
-                acc.push(Token { kind: $t2, len: 1.into() });
-                acc.push(Token { kind: $t3, len: 1.into() });
-                text = &text[3..];
-                continue;
-            }};
-        }
+        let rustc_token = rustc_lexer::first_token(text);
         let kind = match rustc_token.kind {
-            ra_rustc_lexer::TokenKind::LineComment => COMMENT,
-            ra_rustc_lexer::TokenKind::BlockComment { .. } => COMMENT,
-            ra_rustc_lexer::TokenKind::Whitespace => WHITESPACE,
-            ra_rustc_lexer::TokenKind::Ident => {
+            rustc_lexer::TokenKind::LineComment => COMMENT,
+            rustc_lexer::TokenKind::BlockComment { .. } => COMMENT,
+            rustc_lexer::TokenKind::Whitespace => WHITESPACE,
+            rustc_lexer::TokenKind::Ident => {
                 let token_text = &text[..rustc_token.len];
                 if token_text == "_" {
                     UNDERSCORE
@@ -65,62 +50,37 @@ pub fn tokenize(text: &str) -> Vec<Token> {
                     SyntaxKind::from_keyword(&text[..rustc_token.len]).unwrap_or(IDENT)
                 }
             }
-            ra_rustc_lexer::TokenKind::RawIdent => IDENT,
-            ra_rustc_lexer::TokenKind::Literal { kind, .. } => match_literal_kind(kind),
-            ra_rustc_lexer::TokenKind::Lifetime { .. } => LIFETIME,
-            ra_rustc_lexer::TokenKind::Semi => SEMI,
-            ra_rustc_lexer::TokenKind::Comma => COMMA,
-            ra_rustc_lexer::TokenKind::DotDotDot => decompose!(DOT, DOT, DOT),
-            ra_rustc_lexer::TokenKind::DotDotEq => decompose!(DOT, DOT, EQ),
-            ra_rustc_lexer::TokenKind::DotDot => decompose!(DOT, DOT),
-            ra_rustc_lexer::TokenKind::Dot => DOT,
-            ra_rustc_lexer::TokenKind::OpenParen => L_PAREN,
-            ra_rustc_lexer::TokenKind::CloseParen => R_PAREN,
-            ra_rustc_lexer::TokenKind::OpenBrace => L_CURLY,
-            ra_rustc_lexer::TokenKind::CloseBrace => R_CURLY,
-            ra_rustc_lexer::TokenKind::OpenBracket => L_BRACK,
-            ra_rustc_lexer::TokenKind::CloseBracket => R_BRACK,
-            ra_rustc_lexer::TokenKind::At => AT,
-            ra_rustc_lexer::TokenKind::Pound => POUND,
-            ra_rustc_lexer::TokenKind::Tilde => TILDE,
-            ra_rustc_lexer::TokenKind::Question => QUESTION,
-            ra_rustc_lexer::TokenKind::ColonColon => decompose!(COLON, COLON),
-            ra_rustc_lexer::TokenKind::Colon => COLON,
-            ra_rustc_lexer::TokenKind::Dollar => DOLLAR,
-            ra_rustc_lexer::TokenKind::EqEq => decompose!(EQ, EQ),
-            ra_rustc_lexer::TokenKind::Eq => EQ,
-            ra_rustc_lexer::TokenKind::FatArrow => decompose!(EQ, R_ANGLE),
-            ra_rustc_lexer::TokenKind::Ne => decompose!(EXCL, EQ),
-            ra_rustc_lexer::TokenKind::Not => EXCL,
-            ra_rustc_lexer::TokenKind::Le => decompose!(L_ANGLE, EQ),
-            ra_rustc_lexer::TokenKind::LArrow => decompose!(COLON, MINUS),
-            ra_rustc_lexer::TokenKind::Lt => L_ANGLE,
-            ra_rustc_lexer::TokenKind::ShlEq => decompose!(L_ANGLE, L_ANGLE, EQ),
-            ra_rustc_lexer::TokenKind::Shl => decompose!(L_ANGLE, L_ANGLE),
-            ra_rustc_lexer::TokenKind::Ge => decompose!(R_ANGLE, EQ),
-            ra_rustc_lexer::TokenKind::Gt => R_ANGLE,
-            ra_rustc_lexer::TokenKind::ShrEq => decompose!(R_ANGLE, R_ANGLE, EQ),
-            ra_rustc_lexer::TokenKind::Shr => decompose!(R_ANGLE, R_ANGLE),
-            ra_rustc_lexer::TokenKind::RArrow => decompose!(MINUS, R_ANGLE),
-            ra_rustc_lexer::TokenKind::Minus => MINUS,
-            ra_rustc_lexer::TokenKind::MinusEq => decompose!(MINUS, EQ),
-            ra_rustc_lexer::TokenKind::And => AMP,
-            ra_rustc_lexer::TokenKind::AndAnd => decompose!(AMP, AMP),
-            ra_rustc_lexer::TokenKind::AndEq => decompose!(AMP, EQ),
-            ra_rustc_lexer::TokenKind::Or => PIPE,
-            ra_rustc_lexer::TokenKind::OrOr => decompose!(PIPE, PIPE),
-            ra_rustc_lexer::TokenKind::OrEq => decompose!(PIPE, EQ),
-            ra_rustc_lexer::TokenKind::PlusEq => decompose!(PLUS, EQ),
-            ra_rustc_lexer::TokenKind::Plus => PLUS,
-            ra_rustc_lexer::TokenKind::StarEq => decompose!(STAR, EQ),
-            ra_rustc_lexer::TokenKind::Star => STAR,
-            ra_rustc_lexer::TokenKind::SlashEq => decompose!(SLASH, EQ),
-            ra_rustc_lexer::TokenKind::Slash => SLASH,
-            ra_rustc_lexer::TokenKind::CaretEq => decompose!(CARET, EQ),
-            ra_rustc_lexer::TokenKind::Caret => CARET,
-            ra_rustc_lexer::TokenKind::PercentEq => decompose!(PERCENT, EQ),
-            ra_rustc_lexer::TokenKind::Percent => PERCENT,
-            ra_rustc_lexer::TokenKind::Unknown => ERROR,
+            rustc_lexer::TokenKind::RawIdent => IDENT,
+            rustc_lexer::TokenKind::Literal { kind, .. } => match_literal_kind(kind),
+            rustc_lexer::TokenKind::Lifetime { .. } => LIFETIME,
+            rustc_lexer::TokenKind::Semi => SEMI,
+            rustc_lexer::TokenKind::Comma => COMMA,
+            rustc_lexer::TokenKind::Dot => DOT,
+            rustc_lexer::TokenKind::OpenParen => L_PAREN,
+            rustc_lexer::TokenKind::CloseParen => R_PAREN,
+            rustc_lexer::TokenKind::OpenBrace => L_CURLY,
+            rustc_lexer::TokenKind::CloseBrace => R_CURLY,
+            rustc_lexer::TokenKind::OpenBracket => L_BRACK,
+            rustc_lexer::TokenKind::CloseBracket => R_BRACK,
+            rustc_lexer::TokenKind::At => AT,
+            rustc_lexer::TokenKind::Pound => POUND,
+            rustc_lexer::TokenKind::Tilde => TILDE,
+            rustc_lexer::TokenKind::Question => QUESTION,
+            rustc_lexer::TokenKind::Colon => COLON,
+            rustc_lexer::TokenKind::Dollar => DOLLAR,
+            rustc_lexer::TokenKind::Eq => EQ,
+            rustc_lexer::TokenKind::Not => EXCL,
+            rustc_lexer::TokenKind::Lt => L_ANGLE,
+            rustc_lexer::TokenKind::Gt => R_ANGLE,
+            rustc_lexer::TokenKind::Minus => MINUS,
+            rustc_lexer::TokenKind::And => AMP,
+            rustc_lexer::TokenKind::Or => PIPE,
+            rustc_lexer::TokenKind::Plus => PLUS,
+            rustc_lexer::TokenKind::Star => STAR,
+            rustc_lexer::TokenKind::Slash => SLASH,
+            rustc_lexer::TokenKind::Caret => CARET,
+            rustc_lexer::TokenKind::Percent => PERCENT,
+            rustc_lexer::TokenKind::Unknown => ERROR,
         };
         let token = Token { kind, len: TextUnit::from_usize(rustc_token.len) };
         acc.push(token);
@@ -130,12 +90,12 @@ pub fn tokenize(text: &str) -> Vec<Token> {
 }
 
 pub fn classify_literal(text: &str) -> Option<Token> {
-    let t = ra_rustc_lexer::first_token(text);
+    let t = rustc_lexer::first_token(text);
     if t.len != text.len() {
         return None;
     }
     let kind = match t.kind {
-        ra_rustc_lexer::TokenKind::Literal { kind, .. } => match_literal_kind(kind),
+        rustc_lexer::TokenKind::Literal { kind, .. } => match_literal_kind(kind),
         _ => return None,
     };
     Some(Token { kind, len: TextUnit::from_usize(t.len) })

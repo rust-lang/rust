@@ -134,21 +134,25 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
             }
         };
     };
+
     let margin = fixture
         .lines()
         .filter(|it| it.trim_start().starts_with("//-"))
         .map(|it| it.len() - it.trim_start().len())
         .next()
         .expect("empty fixture");
-    let lines = fixture.lines().filter_map(|line| {
-        if line.len() >= margin {
-            assert!(line[..margin].trim().is_empty());
-            Some(&line[margin..])
-        } else {
-            assert!(line.trim().is_empty());
-            None
-        }
-    });
+
+    let lines = fixture
+        .split('\n') // don't use `.lines` to not drop `\r\n`
+        .filter_map(|line| {
+            if line.len() >= margin {
+                assert!(line[..margin].trim().is_empty());
+                Some(&line[margin..])
+            } else {
+                assert!(line.trim().is_empty());
+                None
+            }
+        });
 
     for line in lines {
         if line.starts_with("//-") {
