@@ -1980,18 +1980,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
+            ast::ItemKind::Impl(_, polarity, ..) => {
                 if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(&self, optin_builtin_traits,
                                        i.span,
                                        "negative trait bounds are not yet fully implemented; \
                                         use marker types for now");
-                }
-
-                if let ast::Defaultness::Default = defaultness {
-                    gate_feature_post!(&self, specialization,
-                                       i.span,
-                                       "specialization is unstable");
                 }
             }
 
@@ -2231,12 +2225,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_impl_item(&mut self, ii: &'a ast::ImplItem) {
-        if ii.defaultness == ast::Defaultness::Default {
-            gate_feature_post!(&self, specialization,
-                              ii.span,
-                              "specialization is unstable");
-        }
-
         match ii.node {
             ast::ImplItemKind::Method(..) => {}
             ast::ImplItemKind::OpaqueTy(..) => {
@@ -2451,6 +2439,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(async_closure, "async closures are unstable");
     gate_all!(yields, generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
+    gate_all!(specialization, "specialization is unstable");
 
     let visitor = &mut PostExpansionVisitor {
         context: &ctx,

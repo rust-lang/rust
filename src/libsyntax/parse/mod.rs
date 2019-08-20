@@ -53,6 +53,8 @@ pub struct GatedSpans {
     pub yields: Lock<Vec<Span>>,
     /// Spans collected for gating `or_patterns`, e.g. `Some(Foo | Bar)`.
     pub or_patterns: Lock<Vec<Span>>,
+    /// Spans collected for gating the `default` qualifier for `specialization`.
+    pub specialization: Lock<Vec<Span>>,
 }
 
 /// Info about a parsing session.

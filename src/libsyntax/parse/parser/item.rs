@@ -833,6 +833,7 @@ impl<'a> Parser<'a> {
             ])
         {
             self.bump(); // `default`
+            self.sess.gated_spans.specialization.borrow_mut().push(self.prev_span);
             Defaultness::Default
         } else {
             Defaultness::Final
