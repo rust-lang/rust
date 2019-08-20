@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 fn empty_array() -> [u16; 0] {
     []
 }
@@ -33,6 +35,16 @@ fn slice_index() -> u8 {
     arr[5]
 }
 
+fn try_from() {
+    const N: usize = 16;
+    type Array = [u8; N];
+    let array: Array = [0; N];
+    let slice: &[u8] = &array[..];
+
+    let result = <&Array>::try_from(slice);
+    assert_eq!(&array, result.unwrap());
+}
+
 fn eq() {
     const N: usize = 16;
     type Array = [u8; N];
@@ -57,6 +69,7 @@ fn main() {
     assert_eq!(array_array(), [[5, 4], [3, 2], [1, 0]]);
     assert_eq!(array_repeat(), [42; 8]);
     assert_eq!(mini_array(), [42]);
+    try_from();
     eq();
     debug();
 }
