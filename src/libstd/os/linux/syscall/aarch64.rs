@@ -1,4 +1,3 @@
-
 #[inline(always)]
 pub unsafe fn syscall0(n: usize) -> usize {
     let ret : usize;

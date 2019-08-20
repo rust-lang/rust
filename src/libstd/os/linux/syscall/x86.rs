@@ -1,4 +1,3 @@
-
 #[inline(always)]
 pub unsafe fn syscall0(n: usize) -> usize {
     let ret : usize;
@@ -69,7 +68,7 @@ pub unsafe fn syscall6(n: usize, a1: usize, a2: usize, a3: usize,
     let ret : usize;
 
     //
-    // XXX: this fails when building without optimizations:
+    // this fails when building without optimizations:
     //
     //    asm!("int $$0x80" : "={eax}"(ret)
     //                      : "{eax}"(n), "{ebx}"(a1), "{ecx}"(a2), "{edx}"(a3),
@@ -79,7 +78,7 @@ pub unsafe fn syscall6(n: usize, a1: usize, a2: usize, a3: usize,
     //
     // error: ran out of registers during register allocation
     //
-    // XXX: this fails when building with optimizations as the "m"(a6) gets translated to
+    // this fails when building with optimizations as the "m"(a6) gets translated to
     // [esp+offset] but the push ebp moved esp.
     //
     //      asm!("push %ebp
@@ -92,7 +91,7 @@ pub unsafe fn syscall6(n: usize, a1: usize, a2: usize, a3: usize,
     //              : "memory" "cc"
     //              : "volatile");
     //
-    // XXX: in general putting "ebp" in clobber list seems to not have any effect.
+    // in general putting "ebp" in clobber list seems to not have any effect.
     //
     // As workaround only use a single input operand with known memory layout and manually save
     // restore ebp.
