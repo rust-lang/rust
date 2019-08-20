@@ -11,6 +11,7 @@ use ra_ide_api::{
 };
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 use ra_text_edit::{AtomTextEdit, TextEdit};
+use ra_vfs::LineEndings;
 
 use crate::{req, world::WorldSnapshot, Result};
 
@@ -88,10 +89,10 @@ impl Conv for Severity {
     }
 }
 
-impl ConvWith<&'_ LineIndex> for CompletionItem {
+impl ConvWith<(&'_ LineIndex, LineEndings)> for CompletionItem {
     type Output = ::lsp_types::CompletionItem;
 
-    fn conv_with(self, ctx: &LineIndex) -> ::lsp_types::CompletionItem {
+    fn conv_with(self, ctx: (&LineIndex, LineEndings)) -> ::lsp_types::CompletionItem {
         let mut additional_text_edits = Vec::new();
         let mut text_edit = None;
         // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -202,22 +203,27 @@ impl Conv for ra_ide_api::FunctionSignature {
     }
 }
 
-impl ConvWith<&'_ LineIndex> for TextEdit {
+impl ConvWith<(&'_ LineIndex, LineEndings)> for TextEdit {
     type Output = Vec<lsp_types::TextEdit>;
 
-    fn conv_with(self, line_index: &LineIndex) -> Vec<lsp_types::TextEdit> {
-        self.as_atoms().iter().map_conv_with(line_index).collect()
+    fn conv_with(self, ctx: (&LineIndex, LineEndings)) -> Vec<lsp_types::TextEdit> {
+        self.as_atoms().iter().map_conv_with(ctx).collect()
     }
 }
 
-impl ConvWith<&'_ LineIndex> for &'_ AtomTextEdit {
+impl ConvWith<(&'_ LineIndex, LineEndings)> for &'_ AtomTextEdit {
     type Output = lsp_types::TextEdit;
 
-    fn conv_with(self, line_index: &LineIndex) -> lsp_types::TextEdit {
-        lsp_types::TextEdit {
-            range: self.delete.conv_with(line_index),
-            new_text: self.insert.clone(),
+    fn conv_with(
+        self,
+        (line_index, line_endings): (&LineIndex, LineEndings),
+    ) -> lsp_types::TextEdit {
+        eprintln!("line_endings = {:?}", line_endings);
+        let mut new_text = self.insert.clone();
+        if line_endings == LineEndings::Dos {
+            new_text = new_text.replace('\n', "\r\n");
         }
+        lsp_types::TextEdit { range: self.delete.conv_with(line_index), new_text }
     }
 }
 
@@ -352,7 +358,9 @@ impl TryConvWith for SourceFileEdit {
             version: None,
         };
         let line_index = world.analysis().file_line_index(self.file_id)?;
-        let edits = self.edit.as_atoms().iter().map_conv_with(&line_index).collect();
+        let line_endings = world.file_line_endings(self.file_id);
+        let edits =
+            self.edit.as_atoms().iter().map_conv_with((&line_index, line_endings)).collect();
         Ok(TextDocumentEdit { text_document, edits })
     }
 }

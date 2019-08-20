@@ -138,6 +138,7 @@ pub fn handle_on_type_formatting(
     let _p = profile("handle_on_type_formatting");
     let mut position = params.text_document_position.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(position.file_id)?;
+    let line_endings = world.file_line_endings(position.file_id);
 
     // in `ra_ide_api`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
@@ -156,7 +157,7 @@ pub fn handle_on_type_formatting(
     // This should be a single-file edit
     let edit = edit.source_file_edits.pop().unwrap();
 
-    let change: Vec<TextEdit> = edit.edit.conv_with(&line_index);
+    let change: Vec<TextEdit> = edit.edit.conv_with((&line_index, line_endings));
     Ok(Some(change))
 }
 
@@ -370,8 +371,9 @@ pub fn handle_completion(
         Some(items) => items,
     };
     let line_index = world.analysis().file_line_index(position.file_id)?;
+    let line_endings = world.file_line_endings(position.file_id);
     let items: Vec<CompletionItem> =
-        items.into_iter().map(|item| item.conv_with(&line_index)).collect();
+        items.into_iter().map(|item| item.conv_with((&line_index, line_endings))).collect();
 
     Ok(Some(items.into()))
 }

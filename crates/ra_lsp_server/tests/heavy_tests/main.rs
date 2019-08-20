@@ -208,7 +208,7 @@ pub use std::collections::HashMap;
                 "range": {
                     "end": {
                         "character": 0,
-                        "line": 6
+                        "line": 7
                     },
                     "start": {
                         "character": 0,
@@ -418,15 +418,15 @@ fn main() {{}}
 #[test]
 fn preserves_dos_line_endings() {
     let server = Project::with_fixture(
-        &r#"
+        &"
 //- Cargo.toml
 [package]
-name = "foo"
-version = "0.0.0"
+name = \"foo\"
+version = \"0.0.0\"
 
 //- src/main.rs
 /// Some Docs\r\nfn main() {}
-"#,
+",
     )
     .server();
 
