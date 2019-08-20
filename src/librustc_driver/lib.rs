@@ -22,6 +22,8 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 
+pub extern crate rustc_plugin_impl as plugin;
+
 use pretty::{PpMode, UserIdentifiedItem};
 
 //use rustc_resolve as resolve;
