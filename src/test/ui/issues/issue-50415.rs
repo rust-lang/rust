@@ -1,11 +1,9 @@
 // run-pass
 fn main() {
-    // -------- Simplified test case --------
-
+    // Simplified test case
     let _ = || 0..=1;
 
-    // -------- Original test case --------
-
+    // Original test case
     let full_length = 1024;
     let range = {
         // do some stuff, omit here
