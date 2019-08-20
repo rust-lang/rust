@@ -900,6 +900,20 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             let parent_id = tcx.hir().get_parent_item(hir_id);
             Some(tcx.hir().local_def_id(parent_id))
         }
+        // FIXME(#43408) enable this in all cases when we get lazy normalization.
+        Node::AnonConst(&anon_const) => {
+            // HACK(eddyb) this provides the correct generics when the workaround
+            // for a const parameter `AnonConst` is being used elsewhere, as then
+            // there won't be the kind of cyclic dependency blocking #43408.
+            let expr = &tcx.hir().body(anon_const.body).value;
+            let icx = ItemCtxt::new(tcx, def_id);
+            if AstConv::const_param_def_id(&icx, expr).is_some() {
+                let parent_id = tcx.hir().get_parent_item(hir_id);
+                Some(tcx.hir().local_def_id(parent_id))
+            } else {
+                None
+            }
+        }
         Node::Expr(&hir::Expr {
             node: hir::ExprKind::Closure(..),
             ..
