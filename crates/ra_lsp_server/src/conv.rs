@@ -25,10 +25,9 @@ pub trait ConvWith<CTX> {
     fn conv_with(self, ctx: CTX) -> Self::Output;
 }
 
-pub trait TryConvWith {
-    type Ctx;
+pub trait TryConvWith<CTX> {
     type Output;
-    fn try_conv_with(self, ctx: &Self::Ctx) -> Result<Self::Output>;
+    fn try_conv_with(self, ctx: CTX) -> Result<Self::Output>;
 }
 
 impl Conv for SyntaxKind {
@@ -235,48 +234,42 @@ impl<T: ConvWith<CTX>, CTX> ConvWith<CTX> for Option<T> {
     }
 }
 
-impl<'a> TryConvWith for &'a Url {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for &'_ Url {
     type Output = FileId;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         world.uri_to_file_id(self)
     }
 }
 
-impl TryConvWith for FileId {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for FileId {
     type Output = Url;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<Url> {
         world.file_id_to_uri(self)
     }
 }
 
-impl<'a> TryConvWith for &'a TextDocumentItem {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for &'_ TextDocumentItem {
     type Output = FileId;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         self.uri.try_conv_with(world)
     }
 }
 
-impl<'a> TryConvWith for &'a VersionedTextDocumentIdentifier {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for &'_ VersionedTextDocumentIdentifier {
     type Output = FileId;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         self.uri.try_conv_with(world)
     }
 }
 
-impl<'a> TryConvWith for &'a TextDocumentIdentifier {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for &'_ TextDocumentIdentifier {
     type Output = FileId;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileId> {
         world.uri_to_file_id(&self.uri)
     }
 }
 
-impl<'a> TryConvWith for &'a TextDocumentPositionParams {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for &'_ TextDocumentPositionParams {
     type Output = FilePosition;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FilePosition> {
         let file_id = self.text_document.try_conv_with(world)?;
@@ -286,8 +279,7 @@ impl<'a> TryConvWith for &'a TextDocumentPositionParams {
     }
 }
 
-impl<'a> TryConvWith for (&'a TextDocumentIdentifier, Range) {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for (&'_ TextDocumentIdentifier, Range) {
     type Output = FileRange;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<FileRange> {
         let file_id = self.0.try_conv_with(world)?;
@@ -297,10 +289,9 @@ impl<'a> TryConvWith for (&'a TextDocumentIdentifier, Range) {
     }
 }
 
-impl<T: TryConvWith> TryConvWith for Vec<T> {
-    type Ctx = <T as TryConvWith>::Ctx;
-    type Output = Vec<<T as TryConvWith>::Output>;
-    fn try_conv_with(self, ctx: &Self::Ctx) -> Result<Self::Output> {
+impl<T: TryConvWith<CTX>, CTX: Copy> TryConvWith<CTX> for Vec<T> {
+    type Output = Vec<<T as TryConvWith<CTX>>::Output>;
+    fn try_conv_with(self, ctx: CTX) -> Result<Self::Output> {
         let mut res = Vec::with_capacity(self.len());
         for item in self {
             res.push(item.try_conv_with(ctx)?);
@@ -309,8 +300,7 @@ impl<T: TryConvWith> TryConvWith for Vec<T> {
     }
 }
 
-impl TryConvWith for SourceChange {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for SourceChange {
     type Output = req::SourceChange;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<req::SourceChange> {
         let cursor_position = match self.cursor_position {
@@ -349,8 +339,7 @@ impl TryConvWith for SourceChange {
     }
 }
 
-impl TryConvWith for SourceFileEdit {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for SourceFileEdit {
     type Output = TextDocumentEdit;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<TextDocumentEdit> {
         let text_document = VersionedTextDocumentIdentifier {
@@ -365,8 +354,7 @@ impl TryConvWith for SourceFileEdit {
     }
 }
 
-impl TryConvWith for FileSystemEdit {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for FileSystemEdit {
     type Output = ResourceOp;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<ResourceOp> {
         let res = match self {
@@ -384,8 +372,7 @@ impl TryConvWith for FileSystemEdit {
     }
 }
 
-impl TryConvWith for &NavigationTarget {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for &NavigationTarget {
     type Output = Location;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<Location> {
         let line_index = world.analysis().file_line_index(self.file_id())?;
@@ -394,8 +381,7 @@ impl TryConvWith for &NavigationTarget {
     }
 }
 
-impl TryConvWith for (FileId, RangeInfo<NavigationTarget>) {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for (FileId, RangeInfo<NavigationTarget>) {
     type Output = LocationLink;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<LocationLink> {
         let (src_file_id, target) = self;
@@ -422,8 +408,7 @@ impl TryConvWith for (FileId, RangeInfo<NavigationTarget>) {
     }
 }
 
-impl TryConvWith for (FileId, RangeInfo<Vec<NavigationTarget>>) {
-    type Ctx = WorldSnapshot;
+impl TryConvWith<&'_ WorldSnapshot> for (FileId, RangeInfo<Vec<NavigationTarget>>) {
     type Output = req::GotoDefinitionResponse;
     fn try_conv_with(self, world: &WorldSnapshot) -> Result<req::GotoTypeDefinitionResponse> {
         let (file_id, RangeInfo { range, info: navs }) = self;
@@ -488,22 +473,21 @@ where
     }
 }
 
-pub trait TryConvWithToVec<'a>: Sized + 'a {
-    type Ctx;
+pub trait TryConvWithToVec<CTX>: Sized {
     type Output;
 
-    fn try_conv_with_to_vec(self, ctx: &'a Self::Ctx) -> Result<Vec<Self::Output>>;
+    fn try_conv_with_to_vec(self, ctx: CTX) -> Result<Vec<Self::Output>>;
 }
 
-impl<'a, I> TryConvWithToVec<'a> for I
+impl<I, CTX> TryConvWithToVec<CTX> for I
 where
-    I: Iterator + 'a,
-    I::Item: TryConvWith,
+    I: Iterator,
+    I::Item: TryConvWith<CTX>,
+    CTX: Copy,
 {
-    type Ctx = <I::Item as TryConvWith>::Ctx;
-    type Output = <I::Item as TryConvWith>::Output;
+    type Output = <I::Item as TryConvWith<CTX>>::Output;
 
-    fn try_conv_with_to_vec(self, ctx: &'a Self::Ctx) -> Result<Vec<Self::Output>> {
+    fn try_conv_with_to_vec(self, ctx: CTX) -> Result<Vec<Self::Output>> {
         self.map(|it| it.try_conv_with(ctx)).collect()
     }
 }
