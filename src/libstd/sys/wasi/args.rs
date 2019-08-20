@@ -12,14 +12,16 @@ pub unsafe fn cleanup() {
 }
 
 pub struct Args {
-    iter: vec::IntoIter<Vec<u8>>,
+    iter: vec::IntoIter<OsString>,
     _dont_send_or_sync_me: PhantomData<*mut ()>,
 }
 
 /// Returns the command line arguments
 pub fn args() -> Args {
+    let mut buf = Vec::new();
+    let _ = wasi::get_args(|arg| buf.push(OsString::from_vec(arg.to_vec())));
     Args {
-        iter: wasi::get_args().unwrap_or(Vec::new()).into_iter(),
+        iter: buf.into_iter(),
         _dont_send_or_sync_me: PhantomData
     }
 }
@@ -33,7 +35,7 @@ impl Args {
 impl Iterator for Args {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> {
-        self.iter.next().map(OsString::from_vec)
+        self.iter.next()
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
