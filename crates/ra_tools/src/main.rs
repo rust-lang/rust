@@ -149,8 +149,8 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 
 fn install_server(opts: ServerOpt) -> Result<()> {
     if opts.jemalloc {
-        run("cargo install --path crates/ra_lsp_server --force --features jemalloc", ".")
+        run("cargo install --path crates/ra_lsp_server --locked --force --features jemalloc", ".")
     } else {
-        run("cargo install --path crates/ra_lsp_server --force", ".")
+        run("cargo install --path crates/ra_lsp_server --locked --force", ".")
     }
 }
