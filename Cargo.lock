@@ -1256,7 +1256,7 @@ dependencies = [
 
 [[package]]
 name = "ra_rustc_lexer"
-version = "0.1.0-pre.2"
+version = "0.1.0-pre.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1268,7 +1268,7 @@ version = "0.1.0"
 dependencies = [
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_parser 0.1.0",
- "ra_rustc_lexer 0.1.0-pre.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_rustc_lexer 0.1.0-pre.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_text_edit 0.1.0",
  "rowan 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2134,7 +2134,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9274b940887ce9addde99c4eee6b5c44cc494b182b97e73dc8ffdcb3397fd3f0"
 "checksum quote 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce23b6b870e8f94f81fb0a363d65d86675884b34a09043c81e5562f11c1f8e1"
 "checksum quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "053a8c8bcc71fcce321828dc897a98ab9760bef03a4fc36693c231e5b3216cfe"
-"checksum ra_rustc_lexer 0.1.0-pre.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6baccda91574dfadd7f8a0bc8f9f110f874b6b484289b2536d3dbf4f0d5d97bb"
+"checksum ra_rustc_lexer 0.1.0-pre.3 (registry+https://github.com/rust-lang/crates.io-index)" = "04371af481820ff8d35c7d12b503eb09cf9e1bd246269bf4a33e3d8c54fa3a4a"
 "checksum ra_vfs 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "6918c38f6ab45101f1ddd6110eda831a735b5e9ca6c96d1ceedb7d13ecaeb0f4"
 "checksum rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "6d71dacdc3c88c1fde3885a3be3fbab9f35724e6ce99467f7d9c5026132184ca"
 "checksum rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d47eab0e83d9693d40f825f86948aa16eff6750ead4bdffc4ab95b8b3a7f052c"

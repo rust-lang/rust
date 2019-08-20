@@ -1,6 +1,6 @@
 mod block;
 
-use ra_rustc_lexer::unescape;
+use rustc_lexer::unescape;
 
 use crate::{
     algo::visit::{visitor_ctx, VisitorCtx},
@@ -32,64 +32,62 @@ pub enum EscapeError {
     NonAsciiCharInByte,
 }
 
-impl From<ra_rustc_lexer::unescape::EscapeError> for EscapeError {
-    fn from(err: ra_rustc_lexer::unescape::EscapeError) -> Self {
+impl From<rustc_lexer::unescape::EscapeError> for EscapeError {
+    fn from(err: rustc_lexer::unescape::EscapeError) -> Self {
         match err {
-            ra_rustc_lexer::unescape::EscapeError::ZeroChars => EscapeError::ZeroChars,
-            ra_rustc_lexer::unescape::EscapeError::MoreThanOneChar => EscapeError::MoreThanOneChar,
-            ra_rustc_lexer::unescape::EscapeError::LoneSlash => EscapeError::LoneSlash,
-            ra_rustc_lexer::unescape::EscapeError::InvalidEscape => EscapeError::InvalidEscape,
-            ra_rustc_lexer::unescape::EscapeError::BareCarriageReturn
-            | ra_rustc_lexer::unescape::EscapeError::BareCarriageReturnInRawString => {
+            rustc_lexer::unescape::EscapeError::ZeroChars => EscapeError::ZeroChars,
+            rustc_lexer::unescape::EscapeError::MoreThanOneChar => EscapeError::MoreThanOneChar,
+            rustc_lexer::unescape::EscapeError::LoneSlash => EscapeError::LoneSlash,
+            rustc_lexer::unescape::EscapeError::InvalidEscape => EscapeError::InvalidEscape,
+            rustc_lexer::unescape::EscapeError::BareCarriageReturn
+            | rustc_lexer::unescape::EscapeError::BareCarriageReturnInRawString => {
                 EscapeError::BareCarriageReturn
             }
-            ra_rustc_lexer::unescape::EscapeError::EscapeOnlyChar => EscapeError::EscapeOnlyChar,
-            ra_rustc_lexer::unescape::EscapeError::TooShortHexEscape => {
-                EscapeError::TooShortHexEscape
-            }
-            ra_rustc_lexer::unescape::EscapeError::InvalidCharInHexEscape => {
+            rustc_lexer::unescape::EscapeError::EscapeOnlyChar => EscapeError::EscapeOnlyChar,
+            rustc_lexer::unescape::EscapeError::TooShortHexEscape => EscapeError::TooShortHexEscape,
+            rustc_lexer::unescape::EscapeError::InvalidCharInHexEscape => {
                 EscapeError::InvalidCharInHexEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::OutOfRangeHexEscape => {
+            rustc_lexer::unescape::EscapeError::OutOfRangeHexEscape => {
                 EscapeError::OutOfRangeHexEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::NoBraceInUnicodeEscape => {
+            rustc_lexer::unescape::EscapeError::NoBraceInUnicodeEscape => {
                 EscapeError::NoBraceInUnicodeEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::InvalidCharInUnicodeEscape => {
+            rustc_lexer::unescape::EscapeError::InvalidCharInUnicodeEscape => {
                 EscapeError::InvalidCharInUnicodeEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::EmptyUnicodeEscape => {
+            rustc_lexer::unescape::EscapeError::EmptyUnicodeEscape => {
                 EscapeError::EmptyUnicodeEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::UnclosedUnicodeEscape => {
+            rustc_lexer::unescape::EscapeError::UnclosedUnicodeEscape => {
                 EscapeError::UnclosedUnicodeEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::LeadingUnderscoreUnicodeEscape => {
+            rustc_lexer::unescape::EscapeError::LeadingUnderscoreUnicodeEscape => {
                 EscapeError::LeadingUnderscoreUnicodeEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::OverlongUnicodeEscape => {
+            rustc_lexer::unescape::EscapeError::OverlongUnicodeEscape => {
                 EscapeError::OverlongUnicodeEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::LoneSurrogateUnicodeEscape => {
+            rustc_lexer::unescape::EscapeError::LoneSurrogateUnicodeEscape => {
                 EscapeError::LoneSurrogateUnicodeEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::OutOfRangeUnicodeEscape => {
+            rustc_lexer::unescape::EscapeError::OutOfRangeUnicodeEscape => {
                 EscapeError::OutOfRangeUnicodeEscape
             }
-            ra_rustc_lexer::unescape::EscapeError::UnicodeEscapeInByte => {
+            rustc_lexer::unescape::EscapeError::UnicodeEscapeInByte => {
                 EscapeError::UnicodeEscapeInByte
             }
-            ra_rustc_lexer::unescape::EscapeError::NonAsciiCharInByte
-            | ra_rustc_lexer::unescape::EscapeError::NonAsciiCharInByteString => {
+            rustc_lexer::unescape::EscapeError::NonAsciiCharInByte
+            | rustc_lexer::unescape::EscapeError::NonAsciiCharInByteString => {
                 EscapeError::NonAsciiCharInByte
             }
         }
     }
 }
 
-impl From<ra_rustc_lexer::unescape::EscapeError> for SyntaxErrorKind {
-    fn from(err: ra_rustc_lexer::unescape::EscapeError) -> Self {
+impl From<rustc_lexer::unescape::EscapeError> for SyntaxErrorKind {
+    fn from(err: rustc_lexer::unescape::EscapeError) -> Self {
         SyntaxErrorKind::EscapeError(err.into())
     }
 }
