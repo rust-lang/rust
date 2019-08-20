@@ -429,7 +429,7 @@ don't hesitate to ask on Discord, IRC or in the issue/PR.
 [ident]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/symbol/struct.Ident.html
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_pos/struct.Span.html
 [applicability]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
-[if_chain]: https://docs.rs/if_chain/0.1.2/if_chain/
+[if_chain]: https://docs.rs/if_chain/*/if_chain/
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/sty/index.html
 [ast]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/index.html
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax_pos/struct.Span.html#method.from_expansion
