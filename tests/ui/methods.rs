@@ -1,7 +1,6 @@
 // aux-build:option_helpers.rs
 // compile-flags: --edition 2018
 
-#![feature(async_await)]
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
     clippy::blacklisted_name,

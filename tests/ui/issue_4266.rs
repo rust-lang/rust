@@ -1,5 +1,4 @@
 // compile-flags: --edition 2018
-#![feature(async_await)]
 #![allow(dead_code)]
 
 async fn sink1<'a>(_: &'a str) {} // lint
