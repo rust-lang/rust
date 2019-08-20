@@ -353,12 +353,17 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 // Because we're extending the buffer with uninitialized data for trusted
 // readers, we need to make sure to truncate that if any of this panics.
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
-    read_to_end_with_reservation(r, buf, 32)
+    read_to_end_with_reservation(r, buf, |_| 32)
 }
 
-fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
-                                                  buf: &mut Vec<u8>,
-                                                  reservation_size: usize) -> Result<usize>
+fn read_to_end_with_reservation<R, F>(
+    r: &mut R,
+    buf: &mut Vec<u8>,
+    mut reservation_size: F,
+) -> Result<usize>
+where
+    R: Read + ?Sized,
+    F: FnMut(&R) -> usize,
 {
     let start_len = buf.len();
     let mut g = Guard { len: buf.len(), buf: buf };
@@ -366,7 +371,7 @@ fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
     loop {
         if g.len == g.buf.len() {
             unsafe {
-                g.buf.reserve(reservation_size);
+                g.buf.reserve(reservation_size(r));
                 let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
                 r.initializer().initialize(&mut g.buf[g.len..]);
@@ -2253,9 +2258,10 @@ impl<T: Read> Read for Take<T> {
     }
 
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
-        let reservation_size = cmp::min(self.limit, 32) as usize;
-
-        read_to_end_with_reservation(self, buf, reservation_size)
+        // Pass in a reservation_size closure that respects the current value
+        // of limit for each read. If we hit the read limit, this prevents the
+        // final zero-byte read from allocating again.
+        read_to_end_with_reservation(self, buf, |self_| cmp::min(self_.limit, 32) as usize)
     }
 }
 
@@ -2378,6 +2384,7 @@ impl<B: BufRead> Iterator for Lines<B> {
 
 #[cfg(test)]
 mod tests {
+    use crate::cmp;
     use crate::io::prelude::*;
     use super::{Cursor, SeekFrom, repeat};
     use crate::io::{self, IoSlice, IoSliceMut};
@@ -2647,6 +2654,49 @@ mod tests {
         c.seek(SeekFrom::Current(-5))?;
         assert_eq!(c.stream_position()?, 8);
         assert_eq!(c.stream_position()?, 8);
+
+        Ok(())
+    }
+
+    // A simple example reader which uses the default implementation of
+    // read_to_end.
+    struct ExampleSliceReader<'a> {
+        slice: &'a [u8],
+    }
+
+    impl<'a> Read for ExampleSliceReader<'a> {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            let len = cmp::min(self.slice.len(), buf.len());
+            buf[..len].copy_from_slice(&self.slice[..len]);
+            self.slice = &self.slice[len..];
+            Ok(len)
+        }
+    }
+
+    #[test]
+    fn test_read_to_end_capacity() -> io::Result<()> {
+        let input = &b"foo"[..];
+
+        // read_to_end() generally needs to over-allocate, both for efficiency
+        // and so that it can distinguish EOF. Assert that this is the case
+        // with this simple ExampleSliceReader struct, which uses the default
+        // implementation of read_to_end. Even though vec1 is allocated with
+        // exactly enough capacity for the read, read_to_end will allocate more
+        // space here.
+        let mut vec1 = Vec::with_capacity(input.len());
+        ExampleSliceReader { slice: input }.read_to_end(&mut vec1)?;
+        assert_eq!(vec1.len(), input.len());
+        assert!(vec1.capacity() > input.len(), "allocated more");
+
+        // However, std::io::Take includes an implementation of read_to_end
+        // that will not allocate when the limit has already been reached. In
+        // this case, vec2 never grows.
+        let mut vec2 = Vec::with_capacity(input.len());
+        ExampleSliceReader { slice: input }
+            .take(input.len() as u64)
+            .read_to_end(&mut vec2)?;
+        assert_eq!(vec2.len(), input.len());
+        assert_eq!(vec2.capacity(), input.len(), "did not allocate more");
 
         Ok(())
     }
