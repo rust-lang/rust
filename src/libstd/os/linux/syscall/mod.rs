@@ -63,5 +63,5 @@ pub unsafe fn syscall5(
 pub unsafe fn syscall6(
     n: usize, a1: usize, a2: usize, a3: usize, a4: usize, a5: usize, a6: usize,
 ) -> usize {
-    platform::syscall5(n, a1, a2, a3, a4, a5, a6)
+    platform::syscall6(n, a1, a2, a3, a4, a5, a6)
 }
