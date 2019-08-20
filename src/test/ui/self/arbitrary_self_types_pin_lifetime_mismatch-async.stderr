@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:10:45
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:45
    |
 LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                          ----               ^^^^
@@ -8,7 +8,7 @@ LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
    |                          this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:13:55
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:11:55
    |
 LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
    |                          -----                        ^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (
    |                          this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
-  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:19:58
+  --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:58
    |
 LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
    |                                  -----                   ^^^

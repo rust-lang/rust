@@ -68,9 +68,9 @@ pub struct CrateMetadata {
     pub alloc_decoding_state: AllocDecodingState,
 
     // NOTE(eddyb) we pass `'static` to a `'tcx` parameter because this
-    // lifetime is only used behind `Lazy` / `LazySeq`, and therefore
-    // acts like an universal (`for<'tcx>`), that is paired up with
-    // whichever `TyCtxt` is being used to decode those values.
+    // lifetime is only used behind `Lazy`, and therefore acts like an
+    // universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
+    // is being used to decode those values.
     pub root: schema::CrateRoot<'static>,
 
     /// For each definition in this crate, we encode a key. When the
@@ -80,7 +80,7 @@ pub struct CrateMetadata {
     /// compilation support.
     pub def_path_table: Lrc<DefPathTable>,
 
-    pub trait_impls: FxHashMap<(u32, DefIndex), schema::LazySeq<DefIndex>>,
+    pub trait_impls: FxHashMap<(u32, DefIndex), schema::Lazy<[DefIndex]>>,
 
     pub dep_kind: Lock<DepKind>,
     pub source: CrateSource,

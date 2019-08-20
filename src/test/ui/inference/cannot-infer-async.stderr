@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/cannot-infer-async.rs:12:9
+  --> $DIR/cannot-infer-async.rs:11:9
    |
 LL |     let fut = async {
    |         --- consider giving `fut` a type

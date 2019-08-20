@@ -4,8 +4,6 @@
 // build-pass
 // edition:2018
 
-#![feature(async_await)]
-
 async fn noop() {}
 
 async fn foo() {

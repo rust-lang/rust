@@ -6,8 +6,6 @@
 // edition:2018
 // ignore-tidy-linelength
 
-#![feature(async_await)]
-
 fn main() {}
 
 use core::future::Future;

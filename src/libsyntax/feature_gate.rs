@@ -461,9 +461,6 @@ declare_features! (
     // Allows using `#[doc(keyword = "...")]`.
     (active, doc_keyword, "1.28.0", Some(51315), None),
 
-    // Allows async and await syntax.
-    (active, async_await, "1.28.0", Some(50547), None),
-
     // Allows reinterpretation of the bits of a value of one type as another type during const eval.
     (active, const_transmute, "1.29.0", Some(53605), None),
 
@@ -857,6 +854,8 @@ declare_features! (
     (accepted, repr_align_enum, "1.37.0", Some(57996), None),
     // Allows `const _: TYPE = VALUE`.
     (accepted, underscore_const_names, "1.37.0", Some(54912), None),
+    // Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
+    (accepted, async_await, "1.38.0", Some(50547), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
@@ -2100,12 +2099,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                     "labels on blocks are unstable");
                 }
             }
-            ast::ExprKind::Async(..) => {
-                gate_feature_post!(&self, async_await, e.span, "async blocks are unstable");
-            }
-            ast::ExprKind::Await(_) => {
-                gate_feature_post!(&self, async_await, e.span, "async/await is unstable");
-            }
             _ => {}
         }
         visit::walk_expr(self, e)
@@ -2154,11 +2147,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 span: Span,
                 _node_id: NodeId) {
         if let Some(header) = fn_kind.header() {
-            // Check for const fn and async fn declarations.
-            if header.asyncness.node.is_async() {
-                gate_feature_post!(&self, async_await, span, "async fn is unstable");
-            }
-
             // Stability of const fn methods are covered in
             // `visit_trait_item` and `visit_impl_item` below; this is
             // because default methods don't pass through this point.
@@ -2197,9 +2185,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
-                }
-                if sig.header.asyncness.node.is_async() {
-                    gate_feature_post!(&self, async_await, ti.span, "async fn is unstable");
                 }
                 if sig.decl.c_variadic {
                     gate_feature_post!(&self, c_variadic, ti.span,

@@ -1,8 +1,6 @@
 // edition:2018
 // check-pass
 
-#![feature(async_await)]
-
 struct Xyz {
     a: u64,
 }

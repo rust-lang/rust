@@ -618,13 +618,7 @@ impl<'a> Builder<'a> {
             }
 
             fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
-                let compiler = self.compiler;
-                let config = &builder.build.config;
-                let lib = if compiler.stage >= 1 && config.libdir_relative().is_some() {
-                    builder.build.config.libdir_relative().unwrap()
-                } else {
-                    Path::new("lib")
-                };
+                let lib = builder.sysroot_libdir_relative(self.compiler);
                 let sysroot = builder
                     .sysroot(self.compiler)
                     .join(lib)
@@ -675,6 +669,18 @@ impl<'a> Builder<'a> {
                     => relative_libdir,
                 _ => libdir(&compiler.host).as_ref()
             }
+        }
+    }
+
+    /// Returns the compiler's relative libdir where the standard library and other artifacts are
+    /// found for a compiler's sysroot.
+    ///
+    /// For example this returns `lib` on Unix and Windows.
+    pub fn sysroot_libdir_relative(&self, compiler: Compiler) -> &Path {
+        match self.config.libdir_relative() {
+            Some(relative_libdir) if compiler.stage >= 1
+                => relative_libdir,
+            _ => Path::new("lib")
         }
     }
 
