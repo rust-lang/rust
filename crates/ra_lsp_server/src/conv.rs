@@ -217,7 +217,7 @@ impl ConvWith for TextEdit {
     }
 }
 
-impl<'a> ConvWith for &'a AtomTextEdit {
+impl ConvWith for &'_ AtomTextEdit {
     type Ctx = LineIndex;
     type Output = lsp_types::TextEdit;
 
