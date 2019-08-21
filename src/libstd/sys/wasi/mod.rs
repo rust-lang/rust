@@ -102,29 +102,6 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     return ret
 }
 
-#[doc(hidden)]
-pub trait IsMinusOne {
-    fn is_minus_one(&self) -> bool;
-}
-
-macro_rules! impl_is_minus_one {
-    ($($t:ident)*) => ($(impl IsMinusOne for $t {
-        fn is_minus_one(&self) -> bool {
-            *self == -1
-        }
-    })*)
-}
-
-impl_is_minus_one! { i8 i16 i32 i64 isize }
-
-pub fn cvt<T: IsMinusOne>(t: T) -> std_io::Result<T> {
-    if t.is_minus_one() {
-        Err(std_io::Error::last_os_error())
-    } else {
-        Ok(t)
-    }
-}
-
 fn err2io(err: wasi::Error) -> std_io::Error {
     std_io::Error::from_raw_os_error(err.get() as i32)
 }

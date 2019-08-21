@@ -9,7 +9,7 @@ use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::str;
 use crate::sys::memchr;
-use crate::sys::{cvt, unsupported, Void};
+use crate::sys::{unsupported, Void};
 use crate::vec;
 
 #[cfg(not(target_feature = "atomics"))]
@@ -175,4 +175,27 @@ pub fn exit(code: i32) -> ! {
 
 pub fn getpid() -> u32 {
     panic!("unsupported");
+}
+
+#[doc(hidden)]
+pub trait IsMinusOne {
+    fn is_minus_one(&self) -> bool;
+}
+
+macro_rules! impl_is_minus_one {
+    ($($t:ident)*) => ($(impl IsMinusOne for $t {
+        fn is_minus_one(&self) -> bool {
+            *self == -1
+        }
+    })*)
+}
+
+impl_is_minus_one! { i8 i16 i32 i64 isize }
+
+fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
+    if t.is_minus_one() {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(t)
+    }
 }

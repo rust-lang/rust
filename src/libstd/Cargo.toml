@@ -24,6 +24,7 @@ compiler_builtins = { version = "0.1.16" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.5.0", features = ['rustc-dep-of-std'] }
+wasi = { git = "https://github.com/newpavlov/rust-wasi", branch = "safe_rework", features = ['rustc-dep-of-std', 'alloc'] }
 
 [dependencies.backtrace]
 version = "0.3.35"
