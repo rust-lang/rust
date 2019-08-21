@@ -90,8 +90,8 @@ fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
                 db.span_suggestion(
                     span,
                     "try this",
-                    format!("if {}.{}", snippet(cx, op.span, "_"), good_method),
-                    Applicability::MachineApplicable, // snippet
+                    format!("{}.{}", snippet(cx, op.span, "_"), good_method),
+                    Applicability::MaybeIncorrect, // snippet
                 );
             },
         );
@@ -154,7 +154,7 @@ fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, o
                         span,
                         "try this",
                         format!("{}.{}", snippet(cx, op.span, "_"), good_method),
-                        Applicability::MachineApplicable, // snippet
+                        Applicability::MaybeIncorrect, // snippet
                     );
                 },
             );
