@@ -855,7 +855,7 @@ declare_features! (
     // Allows `const _: TYPE = VALUE`.
     (accepted, underscore_const_names, "1.37.0", Some(54912), None),
     // Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
-    (accepted, async_await, "1.38.0", Some(50547), None),
+    (accepted, async_await, "1.39.0", Some(50547), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
