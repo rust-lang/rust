@@ -16,7 +16,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-MIRROR="https://rust-lang-ci2.s3.amazonaws.com/rust-ci-mirror/2019-07-27-awscli.tar"
+MIRROR="https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/2019-07-27-awscli.tar"
 DEPS_DIR="/tmp/awscli-deps"
 
 pip="pip"
