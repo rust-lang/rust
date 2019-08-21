@@ -168,7 +168,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         mem_pos: MemoryPosition,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
-        let alloc = Allocation::undef(mem_pos.size, mem_pos.align);
+        let alloc = Allocation::undef(mem_pos);
         self.allocate_with(alloc, kind)
     }
 

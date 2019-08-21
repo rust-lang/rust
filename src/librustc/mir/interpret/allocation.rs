@@ -5,7 +5,7 @@ use super::{
 };
 
 use crate::mir;
-use crate::ty::layout::{Size, Align};
+use crate::ty::layout::{Size, MemoryPosition, Align};
 
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;
@@ -116,14 +116,14 @@ impl<Tag> Allocation<Tag> {
         Allocation::from_bytes(slice, Align::from_bytes(1).unwrap())
     }
 
-    pub fn undef(size: Size, align: Align) -> Self {
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
+    pub fn undef(mem_pos: MemoryPosition) -> Self {
+        assert_eq!(mem_pos.size.bytes() as usize as u64, mem_pos.size.bytes());
         Allocation {
-            bytes: vec![0; size.bytes() as usize],
+            bytes: vec![0; mem_pos.size.bytes() as usize],
             relocations: Relocations::new(),
-            undef_mask: UndefMask::new(size, false),
-            size,
-            align,
+            undef_mask: UndefMask::new(mem_pos.size, false),
+            size: mem_pos.size,
+            align: mem_pos.align,
             mutability: Mutability::Mutable,
             extra: (),
         }
