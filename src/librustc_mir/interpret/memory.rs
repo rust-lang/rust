@@ -95,7 +95,7 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
     // FIXME: this should not be public, but interning currently needs access to it
-    pub(super) dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
+    pub(super) dead_alloc_map: FxHashMap<AllocId, MemoryPosition>,
 
     /// Extra data added by the machine.
     pub extra: M::MemoryExtra,
@@ -278,13 +278,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
 
         // Let the machine take some extra action
-        let size = alloc.mem_pos.size;
-        AllocationExtra::memory_deallocated(&mut alloc, ptr, size)?;
+        AllocationExtra::memory_deallocated(&mut alloc, ptr, bytes_mem_pos.size)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
             ptr.alloc_id,
-            (alloc.mem_pos.size, alloc.mem_pos.align)
+            bytes_mem_pos
         );
         if old.is_some() {
             bug!("Nothing can be deallocated twice");
@@ -364,8 +363,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 None
             }
             Err(ptr) => {
-                let (allocation_size, alloc_align) =
+                let alloc_mem_pos =
                     self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferencable)?;
+                let (allocation_size, alloc_align) = (alloc_mem_pos.size, alloc_mem_pos.align);
                 // Test bounds. This also ensures non-NULL.
                 // It is sufficient to check this for the end pointer. The addition
                 // checks for overflow.
@@ -400,9 +400,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         &self,
         ptr: Pointer<M::PointerTag>,
     ) -> bool {
-        let (size, _align) = self.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
+        let mem_pos = self.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
             .expect("alloc info with MaybeDead cannot fail");
-        ptr.check_inbounds_alloc(size, CheckInAllocMsg::NullPointerTest).is_err()
+        ptr.check_inbounds_alloc(mem_pos.size, CheckInAllocMsg::NullPointerTest).is_err()
     }
 }
 
@@ -557,13 +557,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         &self,
         id: AllocId,
         liveness: AllocCheck,
-    ) -> InterpResult<'static, (Size, Align)> {
+    ) -> InterpResult<'static, MemoryPosition> {
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a static's allocation in miri
         if let Some((_, alloc)) = self.alloc_map.get(id) {
-            return Ok((alloc.mem_pos.size, alloc.mem_pos.align));
+            return Ok(alloc.mem_pos);
         }
 
         // # Function pointers
@@ -573,7 +573,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // The caller requested no function pointers.
                 throw_unsup!(DerefFunctionPointer)
             } else {
-                Ok((Size::ZERO, Align::from_bytes(1).unwrap()))
+                Ok(MemoryPosition::new(Size::ZERO, Align::from_bytes(1).unwrap()))
             };
         }
 
@@ -586,12 +586,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 // Use size and align of the type.
                 let ty = self.tcx.type_of(did);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                Ok((layout.pref_pos.size, layout.pref_pos.align.abi))
+                Ok(layout.pref_pos.mem_pos())
             },
             Some(GlobalAlloc::Memory(alloc)) =>
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
-                Ok((alloc.mem_pos.size, alloc.mem_pos.align)),
+                Ok(alloc.mem_pos),
             Some(GlobalAlloc::Function(_)) =>
                 bug!("We already checked function pointers above"),
             // The rest must be dead.
