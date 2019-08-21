@@ -15,7 +15,7 @@ use rustc::mir::interpret::{
 };
 
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::layout::{Align, Size};
+use rustc::ty::layout::MemoryPosition;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -275,8 +275,7 @@ struct AllocationSnapshot<'a> {
     bytes: &'a [u8],
     relocations: Relocations<(), AllocIdSnapshot<'a>>,
     undef_mask: &'a UndefMask,
-    align: &'a Align,
-    size: &'a Size,
+    mem_pos: &'a MemoryPosition,
     mutability: &'a Mutability,
 }
 
@@ -287,8 +286,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         let Allocation {
-            size,
-            align,
+            mem_pos,
             mutability,
             extra: (),
             ..
@@ -306,8 +304,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
         AllocationSnapshot {
             bytes,
             undef_mask,
-            align,
-            size,
+            mem_pos,
             mutability,
             relocations: relocations.snapshot(ctx),
         }

@@ -208,7 +208,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let new_ptr = self.allocate(new_mem_pos, kind);
         let old_size = match old_mem_pos {
             Some(old_mem_pos) => old_mem_pos.size,
-            None => self.get_raw(ptr.alloc_id)?.size,
+            None => self.get_raw(ptr.alloc_id)?.mem_pos.size,
         };
         self.copy(
             ptr,
@@ -268,21 +268,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 format!("{:?}", kind),
             ))
         }
+
+        let bytes_mem_pos = alloc.mem_pos;
+
         if let Some(mem_pos) = old_mem_pos {
-            if mem_pos != MemoryPosition::new(alloc.size, alloc.align) {
-                let got_mem_pos = MemoryPosition::new(alloc.size, alloc.align);
-                throw_unsup!(IncorrectAllocationInformation(mem_pos, got_mem_pos))
+            if mem_pos != bytes_mem_pos {
+                throw_unsup!(IncorrectAllocationInformation(mem_pos, bytes_mem_pos))
             }
         }
 
         // Let the machine take some extra action
-        let size = alloc.size;
+        let size = alloc.mem_pos.size;
         AllocationExtra::memory_deallocated(&mut alloc, ptr, size)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
             ptr.alloc_id,
-            (alloc.size, alloc.align)
+            (alloc.mem_pos.size, alloc.mem_pos.align)
         );
         if old.is_some() {
             bug!("Nothing can be deallocated twice");
@@ -561,7 +563,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a static's allocation in miri
         if let Some((_, alloc)) = self.alloc_map.get(id) {
-            return Ok((alloc.size, alloc.align));
+            return Ok((alloc.mem_pos.size, alloc.mem_pos.align));
         }
 
         // # Function pointers
@@ -589,7 +591,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Memory(alloc)) =>
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
-                Ok((alloc.size, alloc.align)),
+                Ok((alloc.mem_pos.size, alloc.mem_pos.align)),
             Some(GlobalAlloc::Function(_)) =>
                 bug!("We already checked function pointers above"),
             // The rest must be dead.
@@ -651,7 +653,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let prefix_len = msg.len();
         let mut relocations = vec![];
 
-        for i in 0..alloc.size.bytes() {
+        for i in 0..alloc.mem_pos.size.bytes() {
             let i = Size::from_bytes(i);
             if let Some(&(_, target_id)) = alloc.relocations().get(&i) {
                 if allocs_seen.insert(target_id) {
@@ -675,8 +677,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         trace!(
             "{}({} bytes, alignment {}){}",
             msg,
-            alloc.size.bytes(),
-            alloc.align.bytes(),
+            alloc.mem_pos.size.bytes(),
+            alloc.mem_pos.align.bytes(),
             extra
         );
 

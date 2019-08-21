@@ -280,9 +280,9 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     Some(GlobalAlloc::Memory(alloc)) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         if alloc.mutability == Mutability::Mutable {
-                            self.static_addr_of_mut(init, alloc.align, None)
+                            self.static_addr_of_mut(init, alloc.mem_pos.align, None)
                         } else {
-                            self.static_addr_of(init, alloc.align, None)
+                            self.static_addr_of(init, alloc.mem_pos.align, None)
                         }
                     }
                     Some(GlobalAlloc::Function(fn_instance)) => {
@@ -314,14 +314,14 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         alloc: &Allocation,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
-        assert_eq!(alloc.align, layout.pref_pos.align.abi);
+        assert_eq!(alloc.mem_pos.align, layout.pref_pos.align.abi);
         let llty = self.type_ptr_to(layout.llvm_type(self));
         let llval = if layout.pref_pos.size == Size::ZERO {
-            let llval = self.const_usize(alloc.align.bytes());
+            let llval = self.const_usize(alloc.mem_pos.align.bytes());
             unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
         } else {
             let init = const_alloc_to_llvm(self, alloc);
-            let base_addr = self.static_addr_of(init, alloc.align, None);
+            let base_addr = self.static_addr_of(init, alloc.mem_pos.align, None);
 
             let llval = unsafe { llvm::LLVMConstInBoundsGEP(
                 self.const_bitcast(base_addr, self.type_i8p()),

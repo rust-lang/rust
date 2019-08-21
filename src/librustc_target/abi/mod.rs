@@ -601,6 +601,8 @@ impl AddAssign for LayoutPositionPref {
 /// An aligned size.
 /// Better name appreciated.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+// I am opposed to adding these, therefore they are in a separate section, and this note.
+#[derive(PartialOrd, Ord)]
 pub struct MemoryPosition {
     /// A size not rounded up to alignment
     pub size: Size,

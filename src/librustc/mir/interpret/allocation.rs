@@ -39,10 +39,9 @@ pub struct Allocation<Tag = (),Extra = ()> {
     relocations: Relocations<Tag>,
     /// Denotes which part of this allocation is initialized.
     undef_mask: UndefMask,
-    /// The size of the allocation. Currently, must always equal `bytes.len()`.
-    pub size: Size,
-    /// The alignment of the allocation to detect unaligned reads.
-    pub align: Align,
+    /// The position of the allocation.
+    /// Currently, the size must always equal `bytes.len()`.
+    pub mem_pos: MemoryPosition,
     /// `true` if the allocation is mutable.
     /// Also used by codegen to determine if a static should be put into mutable memory,
     /// which happens for `static mut` and `static` with interior mutability.
@@ -101,12 +100,12 @@ impl<Tag> Allocation<Tag> {
     pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
         let bytes = slice.into().into_owned();
         let size = Size::from_bytes(bytes.len() as u64);
+        let mem_pos = MemoryPosition::new(size, align);
         Self {
             bytes,
             relocations: Relocations::new(),
             undef_mask: UndefMask::new(size, true),
-            size,
-            align,
+            mem_pos,
             mutability: Mutability::Immutable,
             extra: (),
         }
@@ -122,8 +121,7 @@ impl<Tag> Allocation<Tag> {
             bytes: vec![0; mem_pos.size.bytes() as usize],
             relocations: Relocations::new(),
             undef_mask: UndefMask::new(mem_pos.size, false),
-            size: mem_pos.size,
-            align: mem_pos.align,
+            mem_pos: mem_pos,
             mutability: Mutability::Mutable,
             extra: (),
         }
@@ -139,7 +137,6 @@ impl Allocation<(), ()> {
     ) -> Allocation<T, E> {
         Allocation {
             bytes: self.bytes,
-            size: self.size,
             relocations: Relocations::from_presorted(
                 self.relocations.iter()
                     // The allocations in the relocations (pointers stored *inside* this allocation)
@@ -151,7 +148,7 @@ impl Allocation<(), ()> {
                     .collect()
             ),
             undef_mask: self.undef_mask,
-            align: self.align,
+            mem_pos: self.mem_pos,
             mutability: self.mutability,
             extra,
         }
@@ -161,7 +158,7 @@ impl Allocation<(), ()> {
 /// Raw accessors. Provide access to otherwise private bytes.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     pub fn len(&self) -> usize {
-        self.size.bytes() as usize
+        self.mem_pos.size.bytes() as usize
     }
 
     /// Looks at a slice which may describe undefined bytes or describe a relocation. This differs
