@@ -1012,9 +1012,9 @@ mod impls {
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
-                    if *self == *other { Equal }
-                    else if *self < *other { Less }
-                    else { Greater }
+                    if *self < *other { Less }
+                    else if *self > *other { Greater }
+                    else { Equal }
                 }
             }
         )*)
