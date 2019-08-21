@@ -48,9 +48,12 @@ fn main_inner() -> Result<()> {
 
         let opts = params
             .initialization_options
-            .and_then(|v| ServerConfig::deserialize(v).ok())
+            .and_then(|v| {
+                ServerConfig::deserialize(v)
+                    .map_err(|e| log::error!("failed to deserialize config: {}", e))
+                    .ok()
+            })
             .unwrap_or_default();
-
         ra_lsp_server::main_loop(workspace_roots, params.capabilities, opts, r, s)
     })?;
     log::info!("shutting down IO...");
