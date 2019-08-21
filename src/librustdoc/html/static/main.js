@@ -344,7 +344,7 @@ if (!DOMTokenList.prototype.remove) {
             var set_fragment = function(name) {
                 if (browserSupportsHistoryApi()) {
                     history.replaceState(null, null, "#" + name);
-                    window.hashchange();
+                    highlightSourceLines(null);
                 } else {
                     location.replace("#" + name);
                 }
