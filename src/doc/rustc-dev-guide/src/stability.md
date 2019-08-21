@@ -22,7 +22,7 @@ Note that stable functions may use unstable things in their body.
 # allow_internal_unstable
 
 Macros, compiler desugarings and `const fn`s expose their bodies to the call site. In order to
-work around not being able to use unstable things in the standard libraries macros, there's the
+work around not being able to use unstable things in the standard library's macros, there's the
 `#[allow_internal_unstable(feature1, feature2)]` attribute that whitelists the given features for
 usage in stable macros or `const fn`s.
 
