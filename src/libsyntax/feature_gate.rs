@@ -855,7 +855,7 @@ declare_features! (
     // Allows `const _: TYPE = VALUE`.
     (accepted, underscore_const_names, "1.37.0", Some(54912), None),
     // Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
-    (accepted, async_await, "1.38.0", Some(50547), None),
+    (accepted, async_await, "1.39.0", Some(50547), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
@@ -2423,16 +2423,19 @@ pub fn check_crate(krate: &ast::Crate,
     };
 
     macro_rules! gate_all {
+        ($gate:ident, $msg:literal) => { gate_all!($gate, $gate, $msg); };
         ($spans:ident, $gate:ident, $msg:literal) => {
-            for span in &*sess.$spans.borrow() { gate_feature!(&ctx, $gate, *span, $msg); }
+            for span in &*sess.gated_spans.$spans.borrow() {
+                gate_feature!(&ctx, $gate, *span, $msg);
+            }
         }
     }
 
-    gate_all!(param_attr_spans, param_attrs, "attributes on function parameters are unstable");
-    gate_all!(let_chains_spans, let_chains, "`let` expressions in this position are experimental");
-    gate_all!(async_closure_spans, async_closure, "async closures are unstable");
-    gate_all!(yield_spans, generators, "yield syntax is experimental");
-    gate_all!(or_pattern_spans, or_patterns, "or-patterns syntax is experimental");
+    gate_all!(param_attrs, "attributes on function parameters are unstable");
+    gate_all!(let_chains, "`let` expressions in this position are experimental");
+    gate_all!(async_closure, "async closures are unstable");
+    gate_all!(yields, generators, "yield syntax is experimental");
+    gate_all!(or_patterns, "or-patterns syntax is experimental");
 
     let visitor = &mut PostExpansionVisitor {
         context: &ctx,

@@ -999,7 +999,7 @@ impl<'a> Parser<'a> {
                     }
 
                     let span = lo.to(hi);
-                    self.sess.yield_spans.borrow_mut().push(span);
+                    self.sess.gated_spans.yields.borrow_mut().push(span);
                 } else if self.eat_keyword(kw::Let) {
                     return self.parse_let_expr(attrs);
                 } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
@@ -1111,7 +1111,7 @@ impl<'a> Parser<'a> {
         };
         if asyncness.is_async() {
             // Feature gate `async ||` closures.
-            self.sess.async_closure_spans.borrow_mut().push(self.prev_span);
+            self.sess.gated_spans.async_closure.borrow_mut().push(self.prev_span);
         }
 
         let capture_clause = self.parse_capture_clause();
@@ -1234,7 +1234,7 @@ impl<'a> Parser<'a> {
 
         if let ExprKind::Let(..) = cond.node {
             // Remove the last feature gating of a `let` expression since it's stable.
-            let last = self.sess.let_chains_spans.borrow_mut().pop();
+            let last = self.sess.gated_spans.let_chains.borrow_mut().pop();
             debug_assert_eq!(cond.span, last.unwrap());
         }
 
@@ -1252,7 +1252,7 @@ impl<'a> Parser<'a> {
             |this| this.parse_assoc_expr_with(1 + prec_let_scrutinee_needs_par(), None.into())
         )?;
         let span = lo.to(expr.span);
-        self.sess.let_chains_spans.borrow_mut().push(span);
+        self.sess.gated_spans.let_chains.borrow_mut().push(span);
         Ok(self.mk_expr(span, ExprKind::Let(pats, expr), attrs))
     }
 

@@ -124,7 +124,6 @@ pub mod diagnostics {
     #[macro_use]
     pub mod macros;
     pub mod plugin;
-    pub mod metadata;
 }
 
 // N.B., this module needs to be declared first so diagnostics are

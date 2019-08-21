@@ -185,7 +185,7 @@ dependencies = [
  "serde",
  "serde_json",
  "time",
- "toml 0.4.10",
+ "toml",
 ]
 
 [[package]]
@@ -202,7 +202,7 @@ name = "build-manifest"
 version = "0.1.0"
 dependencies = [
  "serde",
- "toml 0.4.10",
+ "toml",
 ]
 
 [[package]]
@@ -316,7 +316,7 @@ dependencies = [
  "tar",
  "tempfile",
  "termcolor",
- "toml 0.5.3",
+ "toml",
  "unicode-width",
  "url 2.1.0",
  "walkdir",
@@ -442,7 +442,7 @@ dependencies = [
  "semver",
  "serde",
  "smallvec",
- "toml 0.5.3",
+ "toml",
  "unicode-normalization",
  "url 2.1.0",
 ]
@@ -946,6 +946,7 @@ name = "error_index_generator"
 version = "0.0.0"
 dependencies = [
  "rustdoc",
+ "walkdir",
 ]
 
 [[package]]
@@ -1785,7 +1786,7 @@ dependencies = [
  "serde_json",
  "shlex",
  "tempfile",
- "toml 0.5.3",
+ "toml",
  "toml-query",
 ]
 
@@ -2760,7 +2761,7 @@ dependencies = [
  "tokio",
  "tokio-process",
  "tokio-timer",
- "toml 0.5.3",
+ "toml",
  "url 1.7.2",
  "walkdir",
 ]
@@ -3590,7 +3591,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "term 0.6.0",
- "toml 0.5.3",
+ "toml",
  "unicode-segmentation",
  "unicode-width",
  "unicode_categories",
@@ -4384,15 +4385,6 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.4.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "toml"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7aabe75941d914b72bf3e5d3932ed92ce0664d49d8432305a8b547c37227724"
@@ -4411,7 +4403,7 @@ dependencies = [
  "is-match",
  "lazy_static 1.3.0",
  "regex",
- "toml 0.5.3",
+ "toml",
  "toml-query_derive",
 ]
 
