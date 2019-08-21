@@ -199,7 +199,7 @@
                 },
                 "rust-analyzer.excludeGlobs": {
                     "type": "array",
-                    "default": "[]",
+                    "default": [],
                     "description": "Paths to exclude from analysis"
                 },
                 "rust-analyzer.cargo-watch.arguments": {

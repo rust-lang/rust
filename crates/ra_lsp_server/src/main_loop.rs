@@ -586,6 +586,7 @@ fn update_file_notifications_on_threadpool(
     sender: Sender<Task>,
     subscriptions: Vec<FileId>,
 ) {
+    log::trace!("updating notifications for {:?}", subscriptions);
     pool.execute(move || {
         for file_id in subscriptions {
             match handlers::publish_diagnostics(&world, file_id) {
