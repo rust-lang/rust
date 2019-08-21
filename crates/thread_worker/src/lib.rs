@@ -1,38 +1,6 @@
 //! Small utility to correctly spawn crossbeam-channel based worker threads.
 
-use std::thread;
-
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
-
-/// Like `std::thread::JoinHandle<()>`, but joins thread in drop automatically.
-pub struct ScopedThread {
-    // Option for drop
-    inner: Option<thread::JoinHandle<()>>,
-}
-
-impl Drop for ScopedThread {
-    fn drop(&mut self) {
-        let inner = self.inner.take().unwrap();
-        let name = inner.thread().name().unwrap().to_string();
-        log::info!("waiting for {} to finish...", name);
-        let res = inner.join();
-        log::info!(".. {} terminated with {}", name, if res.is_ok() { "ok" } else { "err" });
-
-        // escalate panic, but avoid aborting the process
-        if let Err(e) = res {
-            if !thread::panicking() {
-                panic!(e)
-            }
-        }
-    }
-}
-
-impl ScopedThread {
-    pub fn spawn(name: &'static str, f: impl FnOnce() + Send + 'static) -> ScopedThread {
-        let inner = thread::Builder::new().name(name.into()).spawn(f).unwrap();
-        ScopedThread { inner: Some(inner) }
-    }
-}
 
 /// A wrapper around event-processing thread with automatic shutdown semantics.
 pub struct Worker<I, O> {
@@ -48,7 +16,7 @@ pub struct Worker<I, O> {
     // single client, so, if we are shutting down, nobody is interested in the
     // unfinished work anyway!
     sender: Sender<I>,
-    _thread: ScopedThread,
+    _thread: jod_thread::JoinHandle<()>,
     receiver: Receiver<O>,
 }
 
@@ -63,7 +31,10 @@ impl<I, O> Worker<I, O> {
         // and output buffers to a fixed size, a worker might get stuck.
         let (sender, input_receiver) = bounded::<I>(buf);
         let (output_sender, receiver) = unbounded::<O>();
-        let _thread = ScopedThread::spawn(name, move || f(input_receiver, output_sender));
+        let _thread = jod_thread::Builder::new()
+            .name(name.to_string())
+            .spawn(move || f(input_receiver, output_sender))
+            .expect("failed to spawn a thread");
         Worker { sender, _thread, receiver }
     }
 }
