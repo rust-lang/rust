@@ -1198,6 +1198,12 @@ fn get_concurrency() -> usize {
         1
     }
 
+    #[cfg(target_os = "redox")]
+    fn num_cpus() -> usize {
+        // FIXME: Implement num_cpus on Redox
+        1
+    }
+
     #[cfg(any(
         all(target_arch = "wasm32", not(target_os = "emscripten")),
         all(target_vendor = "fortanix", target_env = "sgx")
@@ -1215,7 +1221,6 @@ fn get_concurrency() -> usize {
         target_os = "linux",
         target_os = "macos",
         target_os = "solaris",
-        target_os = "redox",
     ))]
     fn num_cpus() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }
