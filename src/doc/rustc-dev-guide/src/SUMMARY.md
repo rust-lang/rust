@@ -15,6 +15,7 @@
         - [Using `compiletest` + commands to control test execution](./compiletest.md)
     - [Walkthrough: a typical contribution](./walkthrough.md)
     - [Implementing new features](./implementing_new_features.md)
+    - [Stability attributes](./stability.md)
     - [Stabilizing Features](./stabilization_guide.md)
     - [Debugging the Compiler](./compiler-debugging.md)
     - [Profiling the compiler](./profiling.md)

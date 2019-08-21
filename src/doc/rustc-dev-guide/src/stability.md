@@ -1,0 +1,35 @@
+# Stability
+
+This section is about the stability attributes and schemes that allow stable APIs to use unstable
+APIs internally in the rustc standard library.
+
+For instructions on stabilizing a feature see [Stabilizing Features](./stabilization_guide.md).
+
+# unstable
+
+The `#[unstable(feature = "foo", issue = "1234", reason = "lorem ipsum")]` attribute explicitly
+marks an item as unstable. This infects all sub-items, where the attribute doesn't have to be
+reapplied. So if you apply this to a module, all items in the module will be unstable.
+
+# stable
+
+The `#[stable(feature = "foo", "since = "1.420.69")]` attribute explicitly marks an item as
+stabilized. In order to do this follow the instructions in
+[Stabilizing Features](./stabilization_guide.md).
+
+Note that stable functions may use unstable things in their body.
+
+# allow_internal_unstable
+
+Macros, compiler desugarings and `const fn`s expose their bodies to the call site. In order to
+work around not being able to use unstable things in the standard libraries macros, there's the
+`#[allow_internal_unstable(feature1, feature2)]` attribute that whitelists the given features for
+usage in stable macros or `const fn`s.
+
+Note that `const fn`s are even more special in this regard. You can't just whitelist any feature,
+the features need an implementation in `qualify_min_const_fn.rs`. For example the `const_fn_union`
+feature gate allows accessing fields of unions inside stable `const fn`s. The rules for when it's
+ok to use such a feature gate are that behavior matches the runtime behavior of the same code
+(see also https://www.ralfj.de/blog/2018/07/19/const.html). This means that you may not create a
+`const fn` that e.g. transmutes a memory address to an integer, because the addresses of things
+are nondeterministic and often unknown at compile-time.
