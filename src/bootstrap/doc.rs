@@ -825,8 +825,7 @@ impl Step for ErrorIndex {
         index.arg(crate::channel::CFG_RELEASE_NUM);
 
         // FIXME: shouldn't have to pass this env var
-        index.env("CFG_BUILD", &builder.config.build)
-             .env("RUSTC_ERROR_METADATA_DST", builder.extended_error_dir());
+        index.env("CFG_BUILD", &builder.config.build);
 
         builder.run(&mut index);
     }
