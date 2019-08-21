@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -369,9 +370,14 @@ impl Options {
                         .emit();
                     return Err(1);
                 }
+                if theme_file.extension() != Some(OsStr::new("css")) {
+                    diag.struct_err(&format!("invalid file: \"{}\": expected CSS file", theme_s))
+                        .emit();
+                    return Err(1);
+                }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
                 if !success {
-                    diag.struct_warn(&format!("error loading theme file: \"{}\"", theme_s)).emit();
+                    diag.struct_err(&format!("error loading theme file: \"{}\"", theme_s)).emit();
                     return Err(1);
                 } else if !ret.is_empty() {
                     diag.struct_warn(&format!("theme file \"{}\" is missing CSS rules from the \

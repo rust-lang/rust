@@ -645,7 +645,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
 }});"#,
                  themes.iter()
-                       .map(|s| format!("\"{}\"", s))
+                       .map(|s| format!("\"{}\"", s.replace("\\", "\\\\").replace("\"", "\\\"")))
                        .collect::<Vec<String>>()
                        .join(","));
     write(cx.dst.join(&format!("theme{}.js", cx.shared.resource_suffix)),
