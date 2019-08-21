@@ -875,8 +875,7 @@ impl<'a> Builder<'a> {
         }
 
         if cmd == "clippy" {
-            extra_args.push_str("-Zforce-unstable-if-unmarked -Zunstable-options \
-                --json-rendered=termcolor");
+            extra_args.push_str("-Zforce-unstable-if-unmarked");
         }
 
         if !extra_args.is_empty() {
