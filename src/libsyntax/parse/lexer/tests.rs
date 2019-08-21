@@ -35,10 +35,11 @@ fn t1() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        let mut string_reader = setup(&sm,
-                                    &sh,
-                                    "/* my source file */ fn main() { println!(\"zebra\"); }\n"
-                                        .to_string());
+        let mut string_reader = setup(
+            &sm,
+            &sh,
+            "/* my source file */ fn main() { println!(\"zebra\"); }\n".to_string(),
+        );
         assert_eq!(string_reader.next_token(), token::Comment);
         assert_eq!(string_reader.next_token(), token::Whitespace);
         let tok1 = string_reader.next_token();
@@ -134,8 +135,10 @@ fn character_a() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token(),
-                    mk_lit(token::Char, "a", None));
+        assert_eq!(
+            setup(&sm, &sh, "'a'".to_string()).next_token(),
+            mk_lit(token::Char, "a", None),
+        );
     })
 }
 
@@ -144,8 +147,10 @@ fn character_space() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token(),
-                    mk_lit(token::Char, " ", None));
+        assert_eq!(
+            setup(&sm, &sh, "' '".to_string()).next_token(),
+            mk_lit(token::Char, " ", None),
+        );
     })
 }
 
@@ -154,8 +159,10 @@ fn character_escaped() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token(),
-                    mk_lit(token::Char, "\\n", None));
+        assert_eq!(
+            setup(&sm, &sh, "'\\n'".to_string()).next_token(),
+            mk_lit(token::Char, "\\n", None),
+        );
     })
 }
 
@@ -164,8 +171,10 @@ fn lifetime_name() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token(),
-                    token::Lifetime(Symbol::intern("'abc")));
+        assert_eq!(
+            setup(&sm, &sh, "'abc".to_string()).next_token(),
+            token::Lifetime(Symbol::intern("'abc")),
+        );
     })
 }
 
@@ -174,8 +183,10 @@ fn raw_string() {
     with_default_globals(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let sh = mk_sess(sm.clone());
-        assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
-                    mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None));
+        assert_eq!(
+            setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string()).next_token(),
+            mk_lit(token::StrRaw(3), "\"#a\\b\x00c\"", None),
+        );
     })
 }
 
@@ -186,11 +197,15 @@ fn literal_suffixes() {
         let sh = mk_sess(sm.clone());
         macro_rules! test {
             ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
-                            mk_lit(token::$tok_type, $tok_contents, Some("suffix")));
+                assert_eq!(
+                    setup(&sm, &sh, format!("{}suffix", $input)).next_token(),
+                    mk_lit(token::$tok_type, $tok_contents, Some("suffix")),
+                );
                 // with a whitespace separator:
-                assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
-                            mk_lit(token::$tok_type, $tok_contents, None));
+                assert_eq!(
+                    setup(&sm, &sh, format!("{} suffix", $input)).next_token(),
+                    mk_lit(token::$tok_type, $tok_contents, None),
+                );
             }}
         }
 
@@ -204,12 +219,18 @@ fn literal_suffixes() {
         test!("1.0", Float, "1.0");
         test!("1.0e10", Float, "1.0e10");
 
-        assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token(),
-                    mk_lit(token::Integer, "2", Some("us")));
-        assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
-                    mk_lit(token::StrRaw(3), "raw", Some("suffix")));
-        assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
-                    mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")));
+        assert_eq!(
+            setup(&sm, &sh, "2us".to_string()).next_token(),
+            mk_lit(token::Integer, "2", Some("us")),
+        );
+        assert_eq!(
+            setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token(),
+            mk_lit(token::StrRaw(3), "raw", Some("suffix")),
+        );
+        assert_eq!(
+            setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token(),
+            mk_lit(token::ByteStrRaw(3), "raw", Some("suffix")),
+        );
     })
 }
 
