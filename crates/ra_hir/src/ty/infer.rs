@@ -296,9 +296,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             | (Ty::Infer(InferTy::IntVar(tv)), other)
             | (other, Ty::Infer(InferTy::IntVar(tv)))
             | (Ty::Infer(InferTy::FloatVar(tv)), other)
-            | (other, Ty::Infer(InferTy::FloatVar(tv)))
-                if !is_never(other) =>
-            {
+            | (other, Ty::Infer(InferTy::FloatVar(tv))) => {
                 // the type var is unknown since we tried to resolve it
                 self.var_unification_table.union_value(*tv, TypeVarValue::Known(other.clone()));
                 true
@@ -977,27 +975,56 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ret_ty
     }
 
+    fn coerce(&mut self, tgt_expr: ExprId, ty1: Ty, ty2: Ty) -> Ty {
+        if is_never(&ty1) {
+            ty2
+        } else {
+            self.unify(&ty1, &ty2);
+            // TODO Fugly and looks like we need more, `infer_adt_pattern` and other fails
+            let ty = self.resolve_ty_as_possible(&mut vec![], ty1);
+            self.write_expr_ty(tgt_expr, ty.clone());
+            ty
+        }
+    }
+
     fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
+        let ty = self.infer_expr_inner(tgt_expr, expected);
+        // use a new type variable if we got Ty::Unknown here
+        let ty = self.insert_type_vars_shallow(ty);
+        let could_unify = self.unify(&ty, &expected.ty);
+        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        self.write_expr_ty(tgt_expr, ty.clone());
+        if !could_unify {
+            self.result.type_mismatches.insert(
+                tgt_expr,
+                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
+            );
+        }
+        ty
+    }
+
+    fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        let ty = match &body[tgt_expr] {
+        match &body[tgt_expr] {
             Expr::Missing => Ty::Unknown,
             Expr::If { condition, then_branch, else_branch } => {
                 // if let is desugared to match, so this is always simple if
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
 
-                let mut branch_tys = Vec::with_capacity(2);
-                let then_ty = self.infer_expr(*then_branch, &expected);
+                let then_ty = self.infer_expr_inner(*then_branch, &expected);
+                self.coerce(*then_branch, then_ty.clone(), expected.ty.clone());
                 match else_branch {
                     Some(else_branch) => {
-                        branch_tys.push(self.infer_expr(*else_branch, &expected));
+                        let else_ty = self.infer_expr_inner(*else_branch, &expected);
+                        self.coerce(*else_branch, else_ty, expected.ty.clone());
                     }
                     None => {
                         // no else branch -> unit
                         self.unify(&then_ty, &Ty::unit()); // actually coerce
                     }
                 };
-                branch_tys.push(then_ty);
-                calculate_least_upper_bound(expected.ty.clone(), branch_tys)
+
+                expected.ty.clone()
             }
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
             Expr::TryBlock { body } => {
@@ -1084,8 +1111,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     expected.clone()
                 };
 
-                let mut arm_tys = Vec::with_capacity(arms.len());
-
                 for arm in arms {
                     for &pat in &arm.pats {
                         let _pat_ty = self.infer_pat(pat, &input_ty, BindingMode::default());
@@ -1096,9 +1121,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             &Expectation::has_type(Ty::simple(TypeCtor::Bool)),
                         );
                     }
-                    arm_tys.push(self.infer_expr(arm.expr, &expected));
+                    let match_arm_ty = self.infer_expr_inner(arm.expr, &expected);
+                    self.coerce(arm.expr, match_arm_ty, expected.ty.clone());
                 }
-                calculate_least_upper_bound(expected.ty.clone(), arm_tys)
+
+                expected.ty
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
@@ -1358,19 +1385,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Literal::Int(_v, ty) => Ty::simple(TypeCtor::Int(*ty)),
                 Literal::Float(_v, ty) => Ty::simple(TypeCtor::Float(*ty)),
             },
-        };
-        // use a new type variable if we got Ty::Unknown here
-        let ty = self.insert_type_vars_shallow(ty);
-        let could_unify = self.unify(&ty, &expected.ty);
-        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
-        self.write_expr_ty(tgt_expr, ty.clone());
-        if !could_unify {
-            self.result.type_mismatches.insert(
-                tgt_expr,
-                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
-            );
         }
-        ty
     }
 
     fn infer_block(
@@ -1627,31 +1642,5 @@ fn is_never(ty: &Ty) -> bool {
         true
     } else {
         false
-    }
-}
-
-fn calculate_least_upper_bound(expected_ty: Ty, actual_tys: Vec<Ty>) -> Ty {
-    let mut all_never = true;
-    let mut last_never_ty = None;
-    let mut least_upper_bound = expected_ty;
-
-    for actual_ty in actual_tys {
-        if is_never(&actual_ty) {
-            last_never_ty = Some(actual_ty);
-        } else {
-            all_never = false;
-            least_upper_bound = match (&actual_ty, &least_upper_bound) {
-                (_, Ty::Unknown)
-                | (Ty::Infer(_), Ty::Infer(InferTy::TypeVar(_)))
-                | (Ty::Apply(_), _) => actual_ty,
-                _ => least_upper_bound,
-            }
-        }
-    }
-
-    if all_never && last_never_ty.is_some() {
-        last_never_ty.unwrap()
-    } else {
-        least_upper_bound
     }
 }

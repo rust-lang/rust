@@ -3619,6 +3619,26 @@ fn test(a: i32) {
     }
 
     #[test]
+    fn match_second_block_arm_never() {
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test(a: i32) {
+    let i = match a {
+        1 => { 3.0 },
+        2 => { loop {} },
+        3 => { 3.0 },
+        _ => { return },
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "f64");
+    }
+
+    #[test]
     fn if_never() {
         let t = type_at(
             r#"
@@ -3657,6 +3677,26 @@ fn test(input: bool) {
     }
 
     #[test]
+    fn match_first_block_arm_never() {
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test(a: i32) {
+    let i = match a {
+        1 => { return },
+        2 => { 2.0 },
+        3 => { loop {} },
+        _ => { 3.0 },
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "f64");
+    }
+
+    #[test]
     fn match_second_arm_never() {
         let t = type_at(
             r#"
@@ -3685,6 +3725,24 @@ fn test(a: i32) {
     let i = match a {
         2 => return,
         _ => loop {},
+    };
+    i<|>
+    ()
+}
+"#,
+        );
+        assert_eq!(t, "!");
+    }
+
+    #[test]
+    fn match_all_block_arms_never() {
+        let t = type_at(
+            r#"
+//- /main.rs
+fn test(a: i32) {
+    let i = match a {
+        2 => { return },
+        _ => { loop {} },
     };
     i<|>
     ()
