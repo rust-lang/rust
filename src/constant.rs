@@ -321,8 +321,7 @@ fn define_all_allocs(
                     // Don't push a `TodoItem::Static` here, as it will cause statics used by
                     // multiple crates to be duplicated between them. It isn't necessary anyway,
                     // as it will get pushed by `codegen_static` when necessary.
-                    let linkage = crate::linkage::get_static_ref_linkage(tcx, def_id);
-                    data_id_for_static(tcx, module, def_id, linkage)
+                    data_id_for_static(tcx, module, def_id, Linkage::Import)
                 }
             };
 
