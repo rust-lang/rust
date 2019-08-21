@@ -268,10 +268,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 format!("{:?}", kind),
             ))
         }
-        if let Some(MemoryPosition {size, align}) = old_mem_pos {
-            if size != alloc.size || align != alloc.align {
-                let bytes = alloc.size;
-                throw_unsup!(IncorrectAllocationInformation(size, bytes, align, alloc.align))
+        if let Some(mem_pos) = old_mem_pos {
+            if mem_pos != MemoryPosition::new(alloc.size, alloc.align) {
+                let got_mem_pos = MemoryPosition::new(alloc.size, alloc.align);
+                throw_unsup!(IncorrectAllocationInformation(mem_pos, got_mem_pos))
             }
         }
 

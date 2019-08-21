@@ -4,7 +4,7 @@ use crate::hir;
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
 use crate::ty::{self, Ty, layout};
-use crate::ty::layout::{Size, Align, LayoutError};
+use crate::ty::layout::{Size, MemoryPosition, Align, LayoutError};
 use crate::ty::query::TyCtxtAt;
 
 use backtrace::Backtrace;
@@ -438,7 +438,7 @@ pub enum UnsupportedOpInfo<'tcx> {
     DeallocatedWrongMemoryKind(String, String),
     ReallocateNonBasePtr,
     DeallocateNonBasePtr,
-    IncorrectAllocationInformation(Size, Size, Align, Align),
+    IncorrectAllocationInformation(MemoryPosition, MemoryPosition),
     HeapAllocZeroBytes,
     HeapAllocNonPowerOfTwoAlignment(u64),
     ReadFromReturnPointer,
@@ -484,10 +484,10 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                 write!(f, "expected primitive type, got {}", ty),
             PathNotFound(ref path) =>
                 write!(f, "cannot find path {:?}", path),
-            IncorrectAllocationInformation(size, size2, align, align2) =>
+            IncorrectAllocationInformation(expect, got) =>
                 write!(f, "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
-                    size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
+                    expect.size.bytes(), expect.align.bytes(), got.size.bytes(), got.align.bytes()),
             InvalidMemoryAccess =>
                 write!(f, "tried to access memory through an invalid pointer"),
             DanglingPointerDeref =>

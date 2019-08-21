@@ -2466,6 +2466,11 @@ impl_stable_hash_for!(struct crate::ty::layout::LayoutPositionPref {
     align
 });
 
+impl_stable_hash_for!(struct crate::ty::layout::MemoryPosition {
+    size,
+    align
+});
+
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for Align {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         self.bytes().hash_stable(hcx, hasher);
