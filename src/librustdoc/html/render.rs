@@ -914,7 +914,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     var but = document.createElement('button');
     but.innerHTML = item;
     but.onclick = function(el) {{
-        switchTheme(currentTheme, mainTheme, item);
+        switchTheme(currentTheme, mainTheme, item, true);
     }};
     but.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);

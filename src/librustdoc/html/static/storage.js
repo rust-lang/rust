@@ -86,7 +86,7 @@ function getCurrentValue(name) {
     return null;
 }
 
-function switchTheme(styleElem, mainStyleElem, newTheme, skipStorage) {
+function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
     var fullBasicCss = "rustdoc" + resourcesSuffix + ".css";
     var fullNewTheme = newTheme + resourcesSuffix + ".css";
     var newHref = mainStyleElem.href.replace(fullBasicCss, fullNewTheme);
@@ -111,7 +111,7 @@ function switchTheme(styleElem, mainStyleElem, newTheme, skipStorage) {
         styleElem.href = newHref;
         // If this new value comes from a system setting or from the previously saved theme, no
         // need to save it.
-        if (skipStorage !== true) {
+        if (saveTheme === true) {
             updateLocalStorage("rustdoc-theme", newTheme);
         }
     }
@@ -123,4 +123,4 @@ function getSystemValue() {
 
 switchTheme(currentTheme, mainTheme,
             getCurrentValue("rustdoc-theme") || getSystemValue() || "light",
-            true);
+            false);
