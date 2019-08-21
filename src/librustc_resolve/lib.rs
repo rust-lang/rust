@@ -1647,10 +1647,14 @@ impl<'a> Resolver<'a> {
             if module.expansion != parent.expansion &&
             module.expansion.is_descendant_of(parent.expansion) {
                 // The macro is a proc macro derive
-                if module.expansion.looks_like_proc_macro_derive() {
-                    if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
-                        *poisoned = Some(node_id);
-                        return module.parent;
+                if let Some(&def_id) = self.macro_defs.get(&module.expansion) {
+                    if let Some(ext) = self.get_macro_by_def_id(def_id) {
+                        if !ext.is_builtin && ext.macro_kind() == MacroKind::Derive {
+                            if parent.expansion.outer_expn_is_descendant_of(span.ctxt()) {
+                                *poisoned = Some(node_id);
+                                return module.parent;
+                            }
+                        }
                     }
                 }
             }

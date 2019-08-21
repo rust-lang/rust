@@ -119,18 +119,6 @@ impl ExpnId {
     pub fn outer_expn_is_descendant_of(self, ctxt: SyntaxContext) -> bool {
         HygieneData::with(|data| data.is_descendant_of(self, data.outer_expn(ctxt)))
     }
-
-    // Used for enabling some compatibility fallback in resolve.
-    #[inline]
-    pub fn looks_like_proc_macro_derive(self) -> bool {
-        HygieneData::with(|data| {
-            let expn_data = data.expn_data(self);
-            if let ExpnKind::Macro(MacroKind::Derive, _) = expn_data.kind {
-                return expn_data.default_transparency == Transparency::Opaque;
-            }
-            false
-        })
-    }
 }
 
 #[derive(Debug)]
