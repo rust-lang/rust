@@ -825,6 +825,7 @@ impl<'a> Parser<'a> {
             self.is_keyword_ahead(1, &[
                 kw::Impl,
                 kw::Const,
+                kw::Async,
                 kw::Fn,
                 kw::Unsafe,
                 kw::Extern,
