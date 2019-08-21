@@ -28,10 +28,12 @@ fn run_tests(mode: &str, path: &str, target: &str, mut flags: Vec<String>) {
     let in_rustc_test_suite = rustc_test_suite().is_some();
     // Add some flags we always want.
     flags.push("--edition 2018".to_owned());
-    if !in_rustc_test_suite {
-      // Only `-Dwarnings` on the Miri side to make the rustc toolstate management less painful.
-      // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-      flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+    if in_rustc_test_suite {
+        // Less aggressive warnings to make the rustc toolstate management less painful.
+        // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
+        flags.push("-Astable-features".to_owned());
+    } else {
+        flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     }
     if let Ok(sysroot) = std::env::var("MIRI_SYSROOT") {
         flags.push(format!("--sysroot {}", sysroot));
