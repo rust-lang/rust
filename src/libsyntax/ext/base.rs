@@ -3,7 +3,7 @@ use crate::attr::{HasAttrs, Stability, Deprecation};
 use crate::source_map::SourceMap;
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
-use crate::ext::hygiene::{ExpnId, SyntaxContext, Transparency};
+use crate::ext::hygiene::{ExpnId, Transparency};
 use crate::mut_visit::{self, MutVisitor};
 use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
@@ -760,23 +760,39 @@ impl<'a> ExtCtxt<'a> {
     pub fn call_site(&self) -> Span {
         self.current_expansion.id.expn_data().call_site
     }
-    pub fn backtrace(&self) -> SyntaxContext {
-        SyntaxContext::root().apply_mark(self.current_expansion.id)
+
+    /// Equivalent of `Span::def_site` from the proc macro API,
+    /// except that the location is taken from the span passed as an argument.
+    pub fn with_def_site_ctxt(&self, span: Span) -> Span {
+        span.with_ctxt_from_mark(self.current_expansion.id, Transparency::Opaque)
+    }
+
+    /// Equivalent of `Span::call_site` from the proc macro API,
+    /// except that the location is taken from the span passed as an argument.
+    pub fn with_call_site_ctxt(&self, span: Span) -> Span {
+        span.with_ctxt_from_mark(self.current_expansion.id, Transparency::Transparent)
+    }
+
+    /// Span with a context reproducing `macro_rules` hygiene (hygienic locals, unhygienic items).
+    /// FIXME: This should be eventually replaced either with `with_def_site_ctxt` (preferably),
+    /// or with `with_call_site_ctxt` (where necessary).
+    pub fn with_legacy_ctxt(&self, span: Span) -> Span {
+        span.with_ctxt_from_mark(self.current_expansion.id, Transparency::SemiTransparent)
     }
 
     /// Returns span for the macro which originally caused the current expansion to happen.
     ///
     /// Stops backtracing at include! boundary.
     pub fn expansion_cause(&self) -> Option<Span> {
-        let mut ctxt = self.backtrace();
+        let mut expn_id = self.current_expansion.id;
         let mut last_macro = None;
         loop {
-            let expn_data = ctxt.outer_expn_data();
+            let expn_data = expn_id.expn_data();
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root() || expn_data.kind.descr() == sym::include {
                 break;
             }
-            ctxt = expn_data.call_site.ctxt();
+            expn_id = expn_data.call_site.ctxt().outer_expn();
             last_macro = Some(expn_data.call_site);
         }
         last_macro
@@ -865,7 +881,7 @@ impl<'a> ExtCtxt<'a> {
         ast::Ident::from_str(st)
     }
     pub fn std_path(&self, components: &[Symbol]) -> Vec<ast::Ident> {
-        let def_site = DUMMY_SP.apply_mark(self.current_expansion.id);
+        let def_site = self.with_def_site_ctxt(DUMMY_SP);
         iter::once(Ident::new(kw::DollarCrate, def_site))
             .chain(components.iter().map(|&s| Ident::with_dummy_span(s)))
             .collect()

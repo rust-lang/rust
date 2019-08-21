@@ -565,7 +565,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         return fragment_kind.dummy(span);
                     }
                     let meta = ast::MetaItem { node: ast::MetaItemKind::Word, span, path };
-                    let span = span.with_ctxt(self.cx.backtrace());
                     let items = expander.expand(self.cx, span, &meta, item);
                     fragment_kind.expect_from_annotatables(items)
                 }

@@ -12,7 +12,7 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, sym};
 use syntax::tokenstream;
-use syntax_pos::{MultiSpan, Span, DUMMY_SP};
+use syntax_pos::{MultiSpan, Span};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::borrow::Cow;
@@ -666,8 +666,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
             let name = names_pos[i];
-            let span =
-                DUMMY_SP.with_ctxt(e.span.ctxt().apply_mark(self.ecx.current_expansion.id));
+            let span = self.ecx.with_def_site_ctxt(e.span);
             pats.push(self.ecx.pat_ident(span, name));
             for ref arg_ty in self.arg_unique_types[i].iter() {
                 locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
@@ -745,7 +744,7 @@ impl<'a, 'b> Context<'a, 'b> {
         ty: &ArgumentType,
         arg: ast::Ident,
     ) -> P<ast::Expr> {
-        sp = sp.apply_mark(ecx.current_expansion.id);
+        sp = ecx.with_def_site_ctxt(sp);
         let arg = ecx.expr_ident(sp, arg);
         let trait_ = match *ty {
             Placeholder(ref tyname) => {
@@ -798,7 +797,7 @@ fn expand_format_args_impl<'cx>(
     tts: &[tokenstream::TokenTree],
     nl: bool,
 ) -> Box<dyn base::MacResult + 'cx> {
-    sp = sp.apply_mark(ecx.current_expansion.id);
+    sp = ecx.with_def_site_ctxt(sp);
     match parse_args(ecx, sp, tts) {
         Ok((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names, nl))
@@ -842,7 +841,7 @@ pub fn expand_preparsed_format_args(
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
 
     let mut macsp = ecx.call_site();
-    macsp = macsp.with_ctxt(ecx.backtrace());
+    macsp = ecx.with_def_site_ctxt(macsp);
 
     let msg = "format argument must be a string literal";
     let fmt_sp = efmt.span;
