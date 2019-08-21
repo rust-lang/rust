@@ -11,6 +11,10 @@ The `#[unstable(feature = "foo", issue = "1234", reason = "lorem ipsum")]` attri
 marks an item as unstable. This infects all sub-items, where the attribute doesn't have to be
 reapplied. So if you apply this to a module, all items in the module will be unstable.
 
+You can make specific sub-items stable by using the `#[stable]` attribute on them.
+The stability scheme works similarly to how `pub` works. You can have public functions of
+nonpublic modules and you can have stable functions in unstable modules or vice versa.
+
 # stable
 
 The `#[stable(feature = "foo", "since = "1.420.69")]` attribute explicitly marks an item as
