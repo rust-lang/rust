@@ -1,5 +1,7 @@
 //! Utilities for formatting and printing strings.
 
+// ignore-tidy-undocumented-unsafe
+
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};

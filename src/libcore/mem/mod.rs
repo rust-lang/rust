@@ -93,6 +93,8 @@ pub fn forget<T>(t: T) {
 #[inline]
 #[unstable(feature = "forget_unsized", issue = "0")]
 pub fn forget_unsized<T: ?Sized>(t: T) {
+    // SAFETY: the forget intrinsic could be safe, but there's no point in making it safe since
+    // we'll be implementing this function soon via `ManuallyDrop`
     unsafe { intrinsics::forget(t) }
 }
 
@@ -266,7 +268,11 @@ pub const fn size_of<T>() -> usize {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
+    #[cfg(boostrap_stdarch_ignore_this)]
+    // SAFETY: going away soon
     unsafe { intrinsics::size_of_val(val) }
+    #[cfg(not(boostrap_stdarch_ignore_this))]
+    intrinsics::size_of_val(val)
 }
 
 /// Returns the [ABI]-required minimum alignment of a type.
@@ -310,7 +316,11 @@ pub fn min_align_of<T>() -> usize {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
+    #[cfg(boostrap_stdarch_ignore_this)]
+    // SAFETY: going away soon
     unsafe { intrinsics::min_align_of_val(val) }
+    #[cfg(not(boostrap_stdarch_ignore_this))]
+    intrinsics::min_align_of_val(val)
 }
 
 /// Returns the [ABI]-required minimum alignment of a type.
@@ -351,7 +361,7 @@ pub const fn align_of<T>() -> usize {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
-    unsafe { intrinsics::min_align_of_val(val) }
+    min_align_of_val(val)
 }
 
 /// Returns `true` if dropping values of type `T` matters.
@@ -508,6 +518,8 @@ pub unsafe fn uninitialized<T>() -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
+    // SAFETY: the raw pointers have been created from safe mutable references satisfying all the
+    // constraints on `ptr::swap_nonoverlapping_one`
     unsafe {
         ptr::swap_nonoverlapping_one(x, y);
     }
@@ -822,7 +834,11 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 pub fn discriminant<T>(v: &T) -> Discriminant<T> {
+    #[cfg(boostrap_stdarch_ignore_this)]
+    // SAFETY: going away soon
     unsafe {
         Discriminant(intrinsics::discriminant_value(v), PhantomData)
     }
+    #[cfg(not(boostrap_stdarch_ignore_this))]
+    Discriminant(intrinsics::discriminant_value(v), PhantomData)
 }

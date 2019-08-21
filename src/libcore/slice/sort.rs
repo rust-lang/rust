@@ -6,6 +6,8 @@
 //! Unstable sorting is compatible with libcore because it doesn't allocate memory, unlike our
 //! stable sorting implementation.
 
+// ignore-tidy-undocumented-unsafe
+
 use crate::cmp;
 use crate::mem::{self, MaybeUninit};
 use crate::ptr;

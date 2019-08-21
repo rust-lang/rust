@@ -7,6 +7,8 @@ use crate::mem;
 use crate::ptr::Unique;
 use crate::cmp::Ordering;
 
+// ignore-tidy-undocumented-unsafe
+
 /// `*mut T` but non-zero and covariant.
 ///
 /// This is often the correct thing to use when building data structures using

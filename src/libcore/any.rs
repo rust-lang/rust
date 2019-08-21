@@ -182,6 +182,7 @@ impl dyn Any {
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
+            // SAFETY: just checked whether we are pointing to the correct type
             unsafe {
                 Some(&*(self as *const dyn Any as *const T))
             }
@@ -217,6 +218,7 @@ impl dyn Any {
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
+            // SAFETY: just checked whether we are pointing to the correct type
             unsafe {
                 Some(&mut *(self as *mut dyn Any as *mut T))
             }
@@ -424,7 +426,11 @@ impl TypeId {
     #[rustc_const_unstable(feature="const_type_id")]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
+            #[cfg(boostrap_stdarch_ignore_this)]
+            // SAFETY: going away soon
             t: unsafe { intrinsics::type_id::<T>() },
+            #[cfg(not(boostrap_stdarch_ignore_this))]
+            t: intrinsics::type_id::<T>(),
         }
     }
 }
