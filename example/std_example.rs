@@ -55,6 +55,17 @@ fn main() {
     assert_eq!(0xFEDCBA987654321123456789ABCDEFu128 as i128 >> 64, 0xFEDCBA98765432i128);
     assert_eq!(353985398u128 * 932490u128, 330087843781020u128);
 
+    // Check that all u/i128 <-> float casts work correctly.
+    assert_eq!(100u128 as f32, 100.0);
+    assert_eq!(100u128 as f64, 100.0);
+    assert_eq!(100.0f32 as u128, 100);
+    assert_eq!(100.0f64 as u128, 100);
+    assert_eq!(100i128 as f32, 100.0);
+    assert_eq!(100i128 as f64, 100.0);
+    assert_eq!(100.0f32 as i128, 100);
+    assert_eq!(100.0f64 as i128, 100);
+
+
     let _a = 1u32 << 2u8;
 
     unsafe {

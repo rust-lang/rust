@@ -55,6 +55,17 @@ pub fn clif_int_or_float_cast(
 ) -> Value {
     let from_ty = fx.bcx.func.dfg.value_type(from);
 
+    macro call_float_cvt_intrinsic($fmt:literal, $sign_name:literal, $from_ty:expr, $to_ty:expr) {
+        let intrinsic_sign_name = if from_signed { "" } else { $sign_name };
+        let intrinsic_float_name = match to_ty {
+            types::F32 => "s",
+            types::F64 => "d",
+            _ => unreachable!("{:?}", to_ty),
+        };
+        let intrinsic_name = format!($fmt, sign=intrinsic_sign_name, flt=intrinsic_float_name);
+        return fx.easy_call(&intrinsic_name, &[CValue::by_val(from, fx.layout_of($from_ty))], $to_ty).load_scalar(fx);
+    }
+
     if from_ty.is_int() && to_ty.is_int() {
         // int-like -> int-like
         clif_intcast(
@@ -65,7 +76,21 @@ pub fn clif_int_or_float_cast(
         )
     } else if from_ty.is_int() && to_ty.is_float() {
         if from_ty == types::I128 {
-            unimpl!("u/i128 -> float");
+            // _______ss__f_
+            // __float  tisf: i128 -> f32
+            // __float  tidf: i128 -> f64
+            // __floatuntisf: u128 -> f32
+            // __floatuntidf: u128 -> f64
+            call_float_cvt_intrinsic!("__float{sign}ti{flt}f", "un", if from_signed {
+                fx.tcx.types.i128
+            } else {
+                fx.tcx.types.u128
+            },
+            match to_ty {
+                types::F32 => fx.tcx.types.f32,
+                types::F64 => fx.tcx.types.f64,
+                _ => unreachable!(),
+            });
         }
 
         // int-like -> float
@@ -76,7 +101,21 @@ pub fn clif_int_or_float_cast(
         }
     } else if from_ty.is_float() && to_ty.is_int() {
         if to_ty == types::I128 {
-            unimpl!("float -> u/i128");
+            // _____sssf___
+            // __fix   sfti: f32 -> i128
+            // __fix   dfti: f64 -> i128
+            // __fixunssfti: f32 -> u128
+            // __fixunsdfti: f64 -> u128
+            call_float_cvt_intrinsic!("__fix{sign}{flt}fti", "uns", match from_ty {
+                types::F32 => fx.tcx.types.f32,
+                types::F64 => fx.tcx.types.f64,
+                _ => unreachable!(),
+            },
+            if to_signed {
+                fx.tcx.types.i128
+            } else {
+                fx.tcx.types.u128
+            });
         }
 
         // float -> int-like
