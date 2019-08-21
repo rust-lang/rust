@@ -268,6 +268,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     let e_str = values.expected.to_string();
                     let f_str = values.found.to_string();
                     if &e_str == &f_str && &e_str == "impl std::future::Future" {
+                        // FIXME: use non-string based check.
                         db.help("if both futures resolve to the same type, consider `await`ing \
                                  on both of them");
                     }
