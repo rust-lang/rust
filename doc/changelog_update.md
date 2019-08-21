@@ -26,6 +26,9 @@ release tag from the dropdown and then check the commit of the Clippy directory:
 
 ![Explanation of how to find the commit hash](https://user-images.githubusercontent.com/2042399/62846160-1f8b0480-bcce-11e9-9da8-7964ca034e7a.png)
 
+When writing the release notes for the upcoming stable release you want to check
+out the commit of the current Rust `beta` tag.
+
 ### 2. Fetching the PRs between those commits
 
 You'll want to run `util/fetch_prs_between.sh commit1 commit2 > changes.txt`
