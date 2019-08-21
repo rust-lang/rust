@@ -368,6 +368,9 @@ you'll need to use this flag as follows:
 $ rustdoc src/lib.rs --themes /path/to/your/theme/file.css
 ```
 
+Note that the theme's name will be the file name without its extension. So if you pass
+`/path/to/your/theme/file.css` as theme, then the theme's name will be `file`.
+
 ### `check-theme`: check if your themes implement all the required rules
 
 This flag allows you to check if your themes implement the necessary CSS rules. To put it more
@@ -377,5 +380,5 @@ CSS theme.
 You can use this flag like this:
 
 ```bash
-$ rustdoc src/lib.rs --check-theme /path/to/your/theme/file.css
+$ rustdoc --check-theme /path/to/your/theme/file.css
 ```
