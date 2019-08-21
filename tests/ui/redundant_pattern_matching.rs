@@ -1,5 +1,6 @@
 #![warn(clippy::all)]
 #![warn(clippy::redundant_pattern_matching)]
+#![allow(clippy::unit_arg, clippy::let_unit_value)]
 
 fn main() {
     if let Ok(_) = Ok::<i32, i32>(42) {}
@@ -61,7 +62,16 @@ fn main() {
 
     let _ = does_something();
     let _ = returns_unit();
+
+    let opt = Some(false);
+    let x = if let Some(_) = opt { true } else { false };
+    takes_bool(x);
+    let y = if let Some(_) = opt {};
+    takes_unit(y);
 }
+
+fn takes_bool(x: bool) {}
+fn takes_unit(x: ()) {}
 
 fn does_something() -> bool {
     if let Ok(_) = Ok::<i32, i32>(4) {

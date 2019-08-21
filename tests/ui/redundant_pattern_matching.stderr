@@ -79,10 +79,10 @@ LL | |     };
    | |_____^ help: try this: `None::<()>.is_none()`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> $DIR/redundant_pattern_matching.rs:56:15
+  --> $DIR/redundant_pattern_matching.rs:56:13
    |
-LL |       let foo = match None::<()> {
-   |  _______________^
+LL |       let _ = match None::<()> {
+   |  _____________^
 LL | |         Some(_) => false,
 LL | |         None => true,
 LL | |     };
@@ -94,16 +94,20 @@ error: redundant pattern matching, consider using `is_ok()`
 LL |     let _ = if let Ok(_) = Ok::<usize, ()>(4) { true } else { false };
    |             -------^^^^^--------------------------------------------- help: try this: `Ok::<usize, ()>(4).is_ok()`
 
-error: this let-binding has unit value
-  --> $DIR/redundant_pattern_matching.rs:64:5
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/redundant_pattern_matching.rs:67:20
    |
-LL |     let _ = returns_unit();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `returns_unit();`
+LL |     let x = if let Some(_) = opt { true } else { false };
+   |             -------^^^^^^^------------------------------ help: try this: `opt.is_some()`
+
+error: redundant pattern matching, consider using `is_some()`
+  --> $DIR/redundant_pattern_matching.rs:69:20
    |
-   = note: `-D clippy::let-unit-value` implied by `-D warnings`
+LL |     let y = if let Some(_) = opt {};
+   |             -------^^^^^^^--------- help: try this: `opt.is_some()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:68:12
+  --> $DIR/redundant_pattern_matching.rs:77:12
    |
 LL |       if let Ok(_) = Ok::<i32, i32>(4) {
    |  _____-      ^^^^^
@@ -114,7 +118,7 @@ LL | |     }
    | |_____- help: try this: `Ok::<i32, i32>(4).is_ok()`
 
 error: redundant pattern matching, consider using `is_ok()`
-  --> $DIR/redundant_pattern_matching.rs:76:12
+  --> $DIR/redundant_pattern_matching.rs:85:12
    |
 LL |       if let Ok(_) = Ok::<i32, i32>(4) {
    |  _____-      ^^^^^
@@ -124,5 +128,5 @@ LL | |         false
 LL | |     };
    | |_____- help: try this: `Ok::<i32, i32>(4).is_ok()`
 
-error: aborting due to 15 previous errors
+error: aborting due to 16 previous errors
 
