@@ -762,33 +762,9 @@ impl SyntaxExtension {
         name: Name,
         attrs: &[ast::Attribute],
     ) -> SyntaxExtension {
-        let allow_internal_unstable =
-            attr::find_by_name(attrs, sym::allow_internal_unstable).map(|attr| {
-                attr.meta_item_list()
-                    .map(|list| {
-                        list.iter()
-                            .filter_map(|it| {
-                                let name = it.ident().map(|ident| ident.name);
-                                if name.is_none() {
-                                    sess.span_diagnostic.span_err(
-                                        it.span(), "allow internal unstable expects feature names"
-                                    )
-                                }
-                                name
-                            })
-                            .collect::<Vec<Symbol>>()
-                            .into()
-                    })
-                    .unwrap_or_else(|| {
-                        sess.span_diagnostic.span_warn(
-                            attr.span,
-                            "allow_internal_unstable expects list of feature names. In the future \
-                             this will become a hard error. Please use `allow_internal_unstable(\
-                             foo, bar)` to only allow the `foo` and `bar` features",
-                        );
-                        vec![sym::allow_internal_unstable_backcompat_hack].into()
-                    })
-            });
+        let allow_internal_unstable = attr::allow_internal_unstable(
+            &attrs, &sess.span_diagnostic,
+        ).map(|features| features.collect::<Vec<Symbol>>().into());
 
         let mut local_inner_macros = false;
         if let Some(macro_export) = attr::find_by_name(attrs, sym::macro_export) {

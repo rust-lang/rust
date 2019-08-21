@@ -433,6 +433,30 @@ pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
     attrs.iter().find(|attr| attr.check_name(name))
 }
 
+pub fn allow_internal_unstable<'a>(
+    attrs: &[Attribute],
+    span_diagnostic: &'a errors::Handler,
+) -> Option<impl Iterator<Item = Symbol> + 'a> {
+    find_by_name(attrs, sym::allow_internal_unstable).and_then(|attr| {
+        attr.meta_item_list().or_else(|| {
+            span_diagnostic.span_err(
+                attr.span,
+                "allow_internal_unstable expects list of feature names"
+            );
+            None
+        }).map(|features| features.into_iter().filter_map(move |it| {
+            let name = it.ident().map(|ident| ident.name);
+            if name.is_none() {
+                span_diagnostic.span_err(
+                    it.span(),
+                    "`allow_internal_unstable` expects feature names",
+                )
+            }
+            name
+        }))
+    })
+}
+
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol)
                       -> impl Iterator<Item=&Attribute> {
     attrs.iter().filter(move |attr| attr.check_name(name))

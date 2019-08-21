@@ -5,6 +5,8 @@ use rustc::ty::{self, Predicate, Ty, TyCtxt, adjustment::{PointerCast}};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use syntax_pos::Span;
+use syntax::symbol::{sym, Symbol};
+use syntax::attr;
 
 type McfResult = Result<(), (Span, Cow<'static, str>)>;
 
@@ -67,9 +69,9 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
     )?;
 
     for bb in body.basic_blocks() {
-        check_terminator(tcx, body, bb.terminator())?;
+        check_terminator(tcx, body, def_id, bb.terminator())?;
         for stmt in &bb.statements {
-            check_statement(tcx, body, stmt)?;
+            check_statement(tcx, body, def_id, stmt)?;
         }
     }
     Ok(())
@@ -121,16 +123,17 @@ fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> Mc
 
 fn check_rvalue(
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &Body<'tcx>,
+    def_id: DefId,
     rvalue: &Rvalue<'tcx>,
     span: Span,
 ) -> McfResult {
     match rvalue {
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => {
-            check_operand(operand, span)
+            check_operand(tcx, operand, span, def_id, body)
         }
         Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) => {
-            check_place(place, span)
+            check_place(tcx, place, span, def_id, body)
         }
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc::ty::cast::CastTy;
@@ -144,11 +147,11 @@ fn check_rvalue(
                 (CastTy::RPtr(_), CastTy::Float) => bug!(),
                 (CastTy::RPtr(_), CastTy::Int(_)) => bug!(),
                 (CastTy::Ptr(_), CastTy::RPtr(_)) => bug!(),
-                _ => check_operand(operand, span),
+                _ => check_operand(tcx, operand, span, def_id, body),
             }
         }
         Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _) => {
-            check_operand(operand, span)
+            check_operand(tcx, operand, span, def_id, body)
         }
         Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _) |
         Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), _, _) |
@@ -162,8 +165,8 @@ fn check_rvalue(
         )),
         // binops are fine on integers
         Rvalue::BinaryOp(_, lhs, rhs) | Rvalue::CheckedBinaryOp(_, lhs, rhs) => {
-            check_operand(lhs, span)?;
-            check_operand(rhs, span)?;
+            check_operand(tcx, lhs, span, def_id, body)?;
+            check_operand(tcx, rhs, span, def_id, body)?;
             let ty = lhs.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() || ty.is_char() {
                 Ok(())
@@ -182,7 +185,7 @@ fn check_rvalue(
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
             if ty.is_integral() || ty.is_bool() {
-                check_operand(operand, span)
+                check_operand(tcx, operand, span, def_id, body)
             } else {
                 Err((
                     span,
@@ -192,7 +195,7 @@ fn check_rvalue(
         }
         Rvalue::Aggregate(_, operands) => {
             for operand in operands {
-                check_operand(operand, span)?;
+                check_operand(tcx, operand, span, def_id, body)?;
             }
             Ok(())
         }
@@ -201,21 +204,22 @@ fn check_rvalue(
 
 fn check_statement(
     tcx: TyCtxt<'tcx>,
-    body: &'a Body<'tcx>,
+    body: &Body<'tcx>,
+    def_id: DefId,
     statement: &Statement<'tcx>,
 ) -> McfResult {
     let span = statement.source_info.span;
     match &statement.kind {
         StatementKind::Assign(box(place, rval)) => {
-            check_place(place, span)?;
-            check_rvalue(tcx, body, rval, span)
+            check_place(tcx, place, span, def_id, body)?;
+            check_rvalue(tcx, body, def_id, rval, span)
         }
 
         StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
             Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
 
-        StatementKind::FakeRead(_, place) => check_place(place, span),
+        StatementKind::FakeRead(_, place) => check_place(tcx, place, span, def_id, body),
 
         // just an assignment
         StatementKind::SetDiscriminant { .. } => Ok(()),
@@ -234,30 +238,48 @@ fn check_statement(
 }
 
 fn check_operand(
+    tcx: TyCtxt<'tcx>,
     operand: &Operand<'tcx>,
     span: Span,
+    def_id: DefId,
+    body: &Body<'tcx>
 ) -> McfResult {
     match operand {
         Operand::Move(place) | Operand::Copy(place) => {
-            check_place(place, span)
+            check_place(tcx, place, span, def_id, body)
         }
         Operand::Constant(_) => Ok(()),
     }
 }
 
 fn check_place(
+    tcx: TyCtxt<'tcx>,
     place: &Place<'tcx>,
     span: Span,
+    def_id: DefId,
+    body: &Body<'tcx>
 ) -> McfResult {
-    for elem in place.projection.iter() {
+    let mut cursor = &*place.projection;
+    while let [proj_base @ .., elem] = cursor {
+        cursor = proj_base;
         match elem {
             ProjectionElem::Downcast(..) => {
                 return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
             }
+            ProjectionElem::Field(..) => {
+                let base_ty = Place::ty_from(&place.base, &proj_base, body, tcx).ty;
+                if let Some(def) = base_ty.ty_adt_def() {
+                    // No union field accesses in `const fn`
+                    if def.is_union() {
+                        if !feature_allowed(tcx, def_id, sym::const_fn_union) {
+                            return Err((span, "accessing union fields is unstable".into()));
+                        }
+                    }
+                }
+            }
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Deref
-            | ProjectionElem::Field(..)
             | ProjectionElem::Index(_) => {}
         }
     }
@@ -271,9 +293,20 @@ fn check_place(
     }
 }
 
+/// Returns whether `allow_internal_unstable(..., <feature_gate>, ...)` is present.
+fn feature_allowed(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    feature_gate: Symbol,
+) -> bool {
+    attr::allow_internal_unstable(&tcx.get_attrs(def_id), &tcx.sess.diagnostic())
+        .map_or(false, |mut features| features.any(|name| name == feature_gate))
+}
+
 fn check_terminator(
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
+    def_id: DefId,
     terminator: &Terminator<'tcx>,
 ) -> McfResult {
     let span = terminator.source_info.span;
@@ -283,11 +316,11 @@ fn check_terminator(
         | TerminatorKind::Resume => Ok(()),
 
         TerminatorKind::Drop { location, .. } => {
-            check_place(location, span)
+            check_place(tcx, location, span, def_id, body)
         }
         TerminatorKind::DropAndReplace { location, value, .. } => {
-            check_place(location, span)?;
-            check_operand(value, span)
+            check_place(tcx, location, span, def_id, body)?;
+            check_operand(tcx, value, span, def_id, body)
         },
 
         TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. } => Err((
@@ -339,10 +372,10 @@ fn check_terminator(
                     )),
                 }
 
-                check_operand(func, span)?;
+                check_operand(tcx, func, span, def_id, body)?;
 
                 for arg in args {
-                    check_operand(arg, span)?;
+                    check_operand(tcx, arg, span, def_id, body)?;
                 }
                 Ok(())
             } else {
@@ -356,7 +389,7 @@ fn check_terminator(
             msg: _,
             target: _,
             cleanup: _,
-        } => check_operand(cond, span),
+        } => check_operand(tcx, cond, span, def_id, body),
 
         TerminatorKind::FalseUnwind { .. } => {
             Err((span, "loops are not allowed in const fn".into()))

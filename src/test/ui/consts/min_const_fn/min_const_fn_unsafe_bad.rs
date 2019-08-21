@@ -12,5 +12,5 @@ fn main() {}
 const unsafe fn no_union() {
     union Foo { x: (), y: () }
     Foo { x: () }.y
-    //~^ unions in const fn
+    //~^ accessing union fields is unstable
 }
