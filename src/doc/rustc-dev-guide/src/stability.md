@@ -1,9 +1,9 @@
-# Stability
+# Stability attributes
 
 This section is about the stability attributes and schemes that allow stable APIs to use unstable
 APIs internally in the rustc standard library.
 
-For instructions on stabilizing a feature see [Stabilizing Features](./stabilization_guide.md).
+For instructions on stabilizing a language feature see [Stabilizing Features](./stabilization_guide.md).
 
 # unstable
 
@@ -14,14 +14,14 @@ reapplied. So if you apply this to a module, all items in the module will be uns
 # stable
 
 The `#[stable(feature = "foo", "since = "1.420.69")]` attribute explicitly marks an item as
-stabilized. In order to do this follow the instructions in
+stabilized. To do this, follow the instructions in
 [Stabilizing Features](./stabilization_guide.md).
 
 Note that stable functions may use unstable things in their body.
 
 # allow_internal_unstable
 
-Macros, compiler desugarings and `const fn`s expose their bodies to the call site. In order to
+Macros, compiler desugarings and `const fn`s expose their bodies to the call site. To
 work around not being able to use unstable things in the standard library's macros, there's the
 `#[allow_internal_unstable(feature1, feature2)]` attribute that whitelists the given features for
 usage in stable macros or `const fn`s.
