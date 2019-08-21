@@ -269,8 +269,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     let f_str = values.found.to_string();
                     if &e_str == &f_str && &e_str == "impl std::future::Future" {
                         // FIXME: use non-string based check.
-                        db.help("if both futures resolve to the same type, consider `await`ing \
-                                 on both of them");
+                        db.help("if both `Future`s have the same `Output` type, consider \
+                                 `.await`ing on both of them");
                     }
                 }
                 if let (ty::Infer(ty::IntVar(_)), ty::Float(_)) =
