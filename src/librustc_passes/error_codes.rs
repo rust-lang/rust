@@ -131,7 +131,7 @@ be taken. Erroneous code example:
 
 ```compile_fail,E0268
 fn some_func() {
-    break; // error: `break` outside of loop
+    break; // error: `break` outside of a loop
 }
 ```
 
