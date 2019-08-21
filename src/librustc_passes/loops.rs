@@ -170,10 +170,10 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
     }
 
     fn require_break_cx(&self, name: &str, span: Span) {
-        let err_inside_of = |article, r#type, closure_span| {
-            struct_span_err!(self.sess, span, E0267, "`{}` inside of {} {}", name, article, r#type)
-                .span_label(span, format!("cannot `{}` inside of {} {}", name, article, r#type))
-                .span_label(closure_span, &format!("enclosing {}", r#type))
+        let err_inside_of = |article, ty, closure_span| {
+            struct_span_err!(self.sess, span, E0267, "`{}` inside of {} {}", name, article, ty)
+                .span_label(span, format!("cannot `{}` inside of {} {}", name, article, ty))
+                .span_label(closure_span, &format!("enclosing {}", ty))
                 .emit();
         };
 
