@@ -8,7 +8,6 @@ use std::iter;
 use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;
-use rustc::hir::def::{DefKind, Res};
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Predicate, Ty};
@@ -1668,13 +1667,12 @@ fn lint_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
     }
 }
 
-fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, new: &hir::Expr, unwrap: &hir::Expr) {
+fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, source: &hir::Expr, unwrap: &hir::Expr) {
     if_chain! {
-        if let hir::ExprKind::Call(ref fun, ref args) = new.node;
-        if args.len() == 1;
-        if let hir::ExprKind::Path(ref path) = fun.node;
-        if let Res::Def(DefKind::Method, did) = cx.tables.qpath_res(path, fun.hir_id);
-        if match_def_path(cx, did, &paths::CSTRING_NEW);
+        let source_type = cx.tables.expr_ty(source);
+        if let ty::Adt(def, substs) = source_type.sty;
+        if match_def_path(cx, def.did, &paths::RESULT);
+        if match_type(cx, substs.type_at(0), &paths::CSTRING);
         then {
             span_lint_and_then(
                 cx,
