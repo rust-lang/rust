@@ -18,8 +18,14 @@ pub struct Args {
 
 /// Returns the command line arguments
 pub fn args() -> Args {
-    let mut buf = Vec::new();
-    let _ = wasi::get_args(|arg| buf.push(OsString::from_vec(arg.to_vec())));
+    let buf = wasi::args_sizes_get().and_then(|args_sizes| {
+        let mut buf = Vec::with_capacity(args_sizes.get_count());
+        wasi::get_args(args_sizes, |arg| {
+            let arg = OsString::from_vec(arg.to_vec());
+            buf.push(arg);
+        })?;
+        Ok(buf)
+    }).unwrap_or(vec![]);
     Args {
         iter: buf.into_iter(),
         _dont_send_or_sync_me: PhantomData
