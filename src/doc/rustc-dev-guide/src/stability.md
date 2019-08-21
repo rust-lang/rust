@@ -37,3 +37,6 @@ ok to use such a feature gate are that behavior matches the runtime behavior of 
 (see also https://www.ralfj.de/blog/2018/07/19/const.html). This means that you may not create a
 `const fn` that e.g. transmutes a memory address to an integer, because the addresses of things
 are nondeterministic and often unknown at compile-time.
+
+Always ping @oli-obk, @RalfJung, and @Centril if you are adding more `allow_internal_unstable`
+attributes to any `const fn`
