@@ -7,7 +7,7 @@ use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
-use crate::sys::fd::{DirCookie, WasiFd};
+use crate::sys::fd::WasiFd;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::FromInner;
@@ -15,7 +15,7 @@ use crate::sys_common::FromInner;
 pub use crate::sys_common::fs::copy;
 pub use crate::sys_common::fs::remove_dir_all;
 
-use wasi::wasi_unstable as wasi;
+use ::wasi::wasi_unstable as wasi;
 
 pub struct File {
     fd: WasiFd,
@@ -28,7 +28,7 @@ pub struct FileAttr {
 
 pub struct ReadDir {
     inner: Arc<ReadDirInner>,
-    cookie: Option<DirCookie>,
+    cookie: Option<wasi::DirCookie>,
     buf: Vec<u8>,
     offset: usize,
     cap: usize,
@@ -70,12 +70,6 @@ pub struct FileType {
 pub struct DirBuilder {}
 
 impl FileAttr {
-    fn zero() -> FileAttr {
-        FileAttr {
-            meta: unsafe { mem::zeroed() },
-        }
-    }
-
     pub fn size(&self) -> u64 {
         self.meta.st_size
     }
@@ -390,7 +384,7 @@ impl File {
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        self.fd.filestat_get().map_ok(|meta| FileAttr { meta })
+        self.fd.filestat_get().map(|meta| FileAttr { meta })
     }
 
     pub fn metadata_at(
@@ -601,7 +595,7 @@ fn metadata_at(
     path: &Path,
 ) -> io::Result<FileAttr> {
     fd.path_filestat_get(flags, path.as_os_str().as_bytes())
-        .map_ok(|meta| FileAttr { meta })
+        .map(|meta| FileAttr { meta })
 }
 
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {

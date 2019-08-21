@@ -8,7 +8,7 @@ use crate::sys;
 use crate::net;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
-use wasi::wasi_unstable as wasi;
+use ::wasi::wasi_unstable as wasi;
 
 /// Raw file descriptors.
 pub type RawFd = u32;

@@ -2,7 +2,7 @@ use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::sys::fd::WasiFd;
 
-use wasi::wasi_unstable as wasi;
+use ::wasi::wasi_unstable as wasi;
 
 pub struct Stdin;
 pub struct Stdout;
@@ -74,7 +74,7 @@ impl io::Write for Stderr {
 pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
 pub fn is_ebadf(err: &io::Error) -> bool {
-    err.raw_os_error() == Some(wasi::EBADF as i32)
+    err.raw_os_error() == Some(wasi::EBADF.get() as i32)
 }
 
 pub fn panic_output() -> Option<impl io::Write> {

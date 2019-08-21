@@ -1,9 +1,9 @@
-use crate::ffi::CStr;
-use crate::io;
 use crate::ffi::OsString;
 use crate::marker::PhantomData;
 use crate::os::wasi::ffi::OsStringExt;
 use crate::vec;
+
+use ::wasi::wasi_unstable as wasi;
 
 pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
 }
@@ -20,7 +20,7 @@ pub struct Args {
 pub fn args() -> Args {
     let buf = wasi::args_sizes_get().and_then(|args_sizes| {
         let mut buf = Vec::with_capacity(args_sizes.get_count());
-        wasi::get_args(args_sizes, |arg| {
+        wasi::args_get(args_sizes, |arg| {
             let arg = OsString::from_vec(arg.to_vec());
             buf.push(arg);
         })?;

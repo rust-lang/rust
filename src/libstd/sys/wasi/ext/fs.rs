@@ -8,6 +8,8 @@ use crate::os::wasi::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 
+use ::wasi::wasi_unstable as wasi;
+
 /// WASI-specific extensions to [`File`].
 ///
 /// [`File`]: ../../../../std/fs/struct.File.html

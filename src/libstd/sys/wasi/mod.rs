@@ -14,10 +14,10 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-use crate::io;
+use crate::io as std_io;
 use crate::mem;
 use crate::os::raw::c_char;
-use wasi::wasi_unstable as wasi;
+use ::wasi::wasi_unstable as wasi;
 
 pub mod alloc;
 pub mod args;
@@ -56,16 +56,19 @@ pub mod ext;
 pub fn init() {
 }
 
-pub fn unsupported<T>() -> crate::io::Result<T> {
+pub fn unsupported<T>() -> std_io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> io::Error {
-    io::Error::new(io::ErrorKind::Other, "operation not supported on wasm yet")
+pub fn unsupported_err() -> std_io::Error {
+    std_io::Error::new(
+        std_io::ErrorKind::Other,
+        "operation not supported on wasm yet",
+    )
 }
 
-pub fn decode_error_kind(_code: i32) -> io::ErrorKind {
-    io::ErrorKind::Other
+pub fn decode_error_kind(_code: i32) -> std_io::ErrorKind {
+    std_io::ErrorKind::Other
 }
 
 // This enum is used as the storage for a bunch of types which can't actually
@@ -114,16 +117,14 @@ macro_rules! impl_is_minus_one {
 
 impl_is_minus_one! { i8 i16 i32 i64 isize }
 
-pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
+pub fn cvt<T: IsMinusOne>(t: T) -> std_io::Result<T> {
     if t.is_minus_one() {
-        Err(io::Error::last_os_error())
+        Err(std_io::Error::last_os_error())
     } else {
         Ok(t)
     }
 }
 
-impl From<wasi::Error> for io::Error {
-    fn from(err: wasi::Error) -> Self {
-        Self::from_raw_os_error(err as i32)
-    }
+fn err2io(err: wasi::Error) -> std_io::Error {
+    std_io::Error::from_raw_os_error(err.get() as i32)
 }

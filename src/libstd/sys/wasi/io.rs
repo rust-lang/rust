@@ -1,7 +1,7 @@
 use crate::marker::PhantomData;
 use crate::slice;
 
-use wasi::wasi_unstable as wasi;
+use ::wasi::wasi_unstable as wasi;
 use core::ffi::c_void;
 
 #[repr(transparent)]

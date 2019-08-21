@@ -12,8 +12,6 @@ use crate::sys::memchr;
 use crate::sys::{cvt, unsupported, Void};
 use crate::vec;
 
-use wasi::wasi_unstable as wasi;
-
 #[cfg(not(target_feature = "atomics"))]
 pub unsafe fn env_lock() -> impl Any {
     // No need for a lock if we're single-threaded, but this function will need

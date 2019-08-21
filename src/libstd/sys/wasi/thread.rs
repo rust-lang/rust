@@ -1,9 +1,10 @@
-use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::sys::{unsupported, Void};
 use crate::time::Duration;
+
+use ::wasi::wasi_unstable as wasi;
 
 pub struct Thread(Void);
 

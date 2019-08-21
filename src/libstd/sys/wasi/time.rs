@@ -1,6 +1,5 @@
 use crate::time::Duration;
-use crate::mem;
-use wasi::wasi_unstable as wasi;
+use ::wasi::wasi_unstable as wasi;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
