@@ -2144,7 +2144,7 @@ mod tests {
     use crate::sys_common::io::test::{TempDir, tmpdir};
     use crate::thread;
 
-    use rand::{rngs::StdRng, FromEntropy, RngCore};
+    use rand::{rngs::StdRng, RngCore, SeedableRng};
 
     #[cfg(windows)]
     use crate::os::windows::fs::{symlink_dir, symlink_file};
