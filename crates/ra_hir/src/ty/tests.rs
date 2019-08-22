@@ -3029,6 +3029,35 @@ fn test(s: S) {
 }
 
 #[test]
+fn deref_trait_with_question_mark_size() {
+    let t = type_at(
+        r#"
+//- /main.rs
+#[lang = "deref"]
+trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct Arc<T>;
+impl<T: ?Sized> Deref for Arc<T> {
+    type Target = T;
+}
+
+struct S;
+impl S {
+    fn foo(&self) -> u128 {}
+}
+
+fn test(s: Arc<S>) {
+    (*s, s.foo())<|>
+}
+"#,
+    );
+    assert_eq!(t, "(S, u128)");
+}
+
+#[test]
 fn obligation_from_function_clause() {
     let t = type_at(
         r#"
