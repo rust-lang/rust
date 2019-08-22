@@ -191,6 +191,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Macros:
     ungated!(derive, Normal, template!(List: "Trait1, Trait2, ...")),
     ungated!(automatically_derived, Normal, template!(Word)),
+    // FIXME(#14407)
     ungated!(macro_use, Normal, template!(Word, List: "name1, name2, ...")),
     ungated!(macro_escape, Normal, template!(Word)), // Deprecated synonym for `macro_use`.
     ungated!(macro_export, Normal, template!(Word, List: "local_inner_macros")),
@@ -207,6 +208,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#)),
     ungated!(deny, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#)),
     ungated!(must_use, Whitelisted, template!(Word, NameValueStr: "reason")),
+    // FIXME(#14407)
     ungated!(
         deprecated, Normal,
         template!(
@@ -310,13 +312,15 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     ungated!(feature, CrateLevel, template!(List: "name1, name1, ...")),
-    // FIXME: #14407 these are only looked at on-demand so we can't
-    // guarantee they'll have already been checked
+    // FIXME(#14407) -- only looked at on-demand so we can't
+    // guarantee they'll have already been checked.
     ungated!(
         rustc_deprecated, Whitelisted,
         template!(List: r#"since = "version", reason = "...""#)
     ),
+    // FIXME(#14407)
     ungated!(stable, Whitelisted, template!(List: r#"feature = "name", since = "version""#)),
+    // FIXME(#14407)
     ungated!(
         unstable, Whitelisted,
         template!(List: r#"feature = "name", reason = "...", issue = "N""#),
