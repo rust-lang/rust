@@ -171,6 +171,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("vcpkg"),
     Crate("version_check"),
     Crate("void"),
+    Crate("wasi"),
     Crate("winapi"),
     Crate("winapi-build"),
     Crate("winapi-i686-pc-windows-gnu"),
