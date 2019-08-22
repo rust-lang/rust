@@ -14,6 +14,7 @@ mod db;
 pub mod mock_analysis;
 mod symbol_index;
 mod change;
+mod feature_flags;
 
 mod status;
 mod completion;
@@ -63,6 +64,7 @@ pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
+    feature_flags::FeatureFlags,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
     inlay_hints::{InlayHint, InlayKind},
@@ -247,18 +249,22 @@ pub struct AnalysisHost {
 
 impl Default for AnalysisHost {
     fn default() -> AnalysisHost {
-        AnalysisHost::new(None)
+        AnalysisHost::new(None, FeatureFlags::default())
     }
 }
 
 impl AnalysisHost {
-    pub fn new(lru_capcity: Option<usize>) -> AnalysisHost {
-        AnalysisHost { db: db::RootDatabase::new(lru_capcity) }
+    pub fn new(lru_capcity: Option<usize>, feature_flags: FeatureFlags) -> AnalysisHost {
+        AnalysisHost { db: db::RootDatabase::new(lru_capcity, feature_flags) }
     }
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
         Analysis { db: self.db.snapshot() }
+    }
+
+    pub fn feature_flags(&self) -> &FeatureFlags {
+        &self.db.feature_flags
     }
 
     /// Applies changes to the current state of the world. If there are
@@ -317,6 +323,10 @@ impl Analysis {
         change.set_crate_graph(crate_graph);
         host.apply_change(change);
         (host.analysis(), file_id)
+    }
+
+    pub fn feature_flags(&self) -> &FeatureFlags {
+        &self.db.feature_flags
     }
 
     /// Debug info about the current state of the analysis

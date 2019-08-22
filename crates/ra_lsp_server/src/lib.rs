@@ -11,5 +11,8 @@ mod world;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub use crate::{
-    caps::server_capabilities, config::ServerConfig, main_loop::main_loop, main_loop::LspError,
+    caps::server_capabilities,
+    config::ServerConfig,
+    main_loop::LspError,
+    main_loop::{main_loop, show_message},
 };

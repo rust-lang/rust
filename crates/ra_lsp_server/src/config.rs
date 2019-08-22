@@ -1,3 +1,5 @@
+use rustc_hash::FxHashMap;
+
 use serde::{Deserialize, Deserializer};
 
 /// Client provided initialization options
@@ -12,12 +14,6 @@ pub struct ServerConfig {
     #[serde(deserialize_with = "nullable_bool_false")]
     pub publish_decorations: bool,
 
-    /// Whether or not the workspace loaded notification should be sent
-    ///
-    /// Defaults to `true`
-    #[serde(deserialize_with = "nullable_bool_true")]
-    pub show_workspace_loaded: bool,
-
     pub exclude_globs: Vec<String>,
 
     pub lru_capacity: Option<usize>,
@@ -25,16 +21,19 @@ pub struct ServerConfig {
     /// For internal usage to make integrated tests faster.
     #[serde(deserialize_with = "nullable_bool_true")]
     pub with_sysroot: bool,
+
+    /// Fine grained feature flags to disable specific features.
+    pub feature_flags: FxHashMap<String, bool>,
 }
 
 impl Default for ServerConfig {
     fn default() -> ServerConfig {
         ServerConfig {
             publish_decorations: false,
-            show_workspace_loaded: true,
             exclude_globs: Vec::new(),
             lru_capacity: None,
             with_sysroot: true,
+            feature_flags: FxHashMap::default(),
         }
     }
 }

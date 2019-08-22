@@ -7,7 +7,7 @@ use ra_db::{
 
 use crate::{
     symbol_index::{self, SymbolsDatabase},
-    LineIndex,
+    FeatureFlags, LineIndex,
 };
 
 #[salsa::database(
@@ -22,6 +22,7 @@ use crate::{
 #[derive(Debug)]
 pub(crate) struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
+    pub(crate) feature_flags: Arc<FeatureFlags>,
     pub(crate) last_gc: time::Instant,
     pub(crate) last_gc_check: time::Instant,
 }
@@ -46,16 +47,17 @@ impl salsa::Database for RootDatabase {
 
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
-        RootDatabase::new(None)
+        RootDatabase::new(None, FeatureFlags::default())
     }
 }
 
 impl RootDatabase {
-    pub fn new(lru_capacity: Option<usize>) -> RootDatabase {
+    pub fn new(lru_capacity: Option<usize>, feature_flags: FeatureFlags) -> RootDatabase {
         let mut db = RootDatabase {
             runtime: salsa::Runtime::default(),
             last_gc: time::Instant::now(),
             last_gc_check: time::Instant::now(),
+            feature_flags: Arc::new(feature_flags),
         };
         db.set_crate_graph_with_durability(Default::default(), Durability::HIGH);
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
@@ -74,6 +76,7 @@ impl salsa::ParallelDatabase for RootDatabase {
             runtime: self.runtime.snapshot(self),
             last_gc: self.last_gc,
             last_gc_check: self.last_gc_check,
+            feature_flags: Arc::clone(&self.feature_flags),
         })
     }
 }

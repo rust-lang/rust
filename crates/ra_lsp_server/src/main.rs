@@ -1,8 +1,7 @@
 use flexi_logger::{Duplicate, Logger};
 use gen_lsp_server::{run_server, stdio_transport};
-use serde::Deserialize;
 
-use ra_lsp_server::{Result, ServerConfig};
+use ra_lsp_server::{show_message, Result, ServerConfig};
 use ra_prof;
 
 fn main() -> Result<()> {
@@ -46,15 +45,23 @@ fn main_inner() -> Result<()> {
             .filter(|workspaces| !workspaces.is_empty())
             .unwrap_or_else(|| vec![root]);
 
-        let opts = params
+        let server_config: ServerConfig = params
             .initialization_options
             .and_then(|v| {
-                ServerConfig::deserialize(v)
-                    .map_err(|e| log::error!("failed to deserialize config: {}", e))
+                serde_json::from_value(v)
+                    .map_err(|e| {
+                        log::error!("failed to deserialize config: {}", e);
+                        show_message(
+                            lsp_types::MessageType::Error,
+                            format!("failed to deserialize config: {}", e),
+                            s,
+                        );
+                    })
                     .ok()
             })
             .unwrap_or_default();
-        ra_lsp_server::main_loop(workspace_roots, params.capabilities, opts, r, s)
+
+        ra_lsp_server::main_loop(workspace_roots, params.capabilities, server_config, r, s)
     })?;
     log::info!("shutting down IO...");
     threads.join()?;

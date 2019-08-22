@@ -118,7 +118,10 @@ impl Completions {
             .set_documentation(func.docs(ctx.db))
             .detail(detail);
         // If not an import, add parenthesis automatically.
-        if ctx.use_item_syntax.is_none() && !ctx.is_call {
+        if ctx.use_item_syntax.is_none()
+            && !ctx.is_call
+            && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
+        {
             tested_by!(inserts_parens_for_function_calls);
             let snippet =
                 if data.params().is_empty() || data.has_self_param() && data.params().len() == 1 {
