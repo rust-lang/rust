@@ -25,13 +25,21 @@ pub use self::{
 /// conversion itself has zero runtime cost: ast and syntax nodes have exactly
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
-pub trait AstNode: Clone {
-    fn can_cast(kind: SyntaxKind) -> bool;
+pub trait AstNode {
+    fn can_cast(kind: SyntaxKind) -> bool
+    where
+        Self: Sized;
 
     fn cast(syntax: SyntaxNode) -> Option<Self>
     where
         Self: Sized;
+
     fn syntax(&self) -> &SyntaxNode;
+}
+
+#[test]
+fn assert_ast_is_object_safe() {
+    fn _f(_: &dyn AstNode, _: &dyn NameOwner) {}
 }
 
 /// Like `AstNode`, but wraps tokens rather than interior nodes.

@@ -19,7 +19,10 @@ pub struct AstEditor<N: AstNode> {
 }
 
 impl<N: AstNode> AstEditor<N> {
-    pub fn new(node: N) -> AstEditor<N> {
+    pub fn new(node: N) -> AstEditor<N>
+    where
+        N: Clone,
+    {
         AstEditor { original_ast: node.clone(), ast: node }
     }
 
@@ -379,7 +382,7 @@ impl AstBuilder<ast::MatchArmList> {
 
 fn ast_node_from_file_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
-    let res = parse.tree().syntax().descendants().find_map(N::cast).unwrap().to_owned();
+    let res = parse.tree().syntax().descendants().find_map(N::cast).unwrap();
     res
 }
 
