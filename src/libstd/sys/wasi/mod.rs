@@ -64,8 +64,24 @@ pub fn unsupported_err() -> Error {
     Error::new(ErrorKind::Other, "operation not supported on wasm yet")
 }
 
-pub fn decode_error_kind(_code: i32) -> ErrorKind {
-    ErrorKind::Other
+pub fn decode_error_kind(errno: i32) -> ErrorKind {
+    match errno as libc::c_int {
+        libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
+        libc::ECONNRESET => ErrorKind::ConnectionReset,
+        libc::EPERM | libc::EACCES => ErrorKind::PermissionDenied,
+        libc::EPIPE => ErrorKind::BrokenPipe,
+        libc::ENOTCONN => ErrorKind::NotConnected,
+        libc::ECONNABORTED => ErrorKind::ConnectionAborted,
+        libc::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
+        libc::EADDRINUSE => ErrorKind::AddrInUse,
+        libc::ENOENT => ErrorKind::NotFound,
+        libc::EINTR => ErrorKind::Interrupted,
+        libc::EINVAL => ErrorKind::InvalidInput,
+        libc::ETIMEDOUT => ErrorKind::TimedOut,
+        libc::EEXIST => ErrorKind::AlreadyExists,
+        libc::EAGAIN => ErrorKind::WouldBlock,
+        _ => ErrorKind::Other,
+    }
 }
 
 // This enum is used as the storage for a bunch of types which can't actually
