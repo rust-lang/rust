@@ -262,7 +262,7 @@ pub fn native_lib_boilerplate(
     if !up_to_date(Path::new("build.rs"), &timestamp) || !up_to_date(src_dir, &timestamp) {
         Ok(NativeLibBoilerplate {
             src_dir: src_dir.to_path_buf(),
-            out_dir: out_dir,
+            out_dir,
         })
     } else {
         Err(())
