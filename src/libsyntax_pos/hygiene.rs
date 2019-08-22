@@ -192,10 +192,10 @@ impl HygieneData {
         self.syntax_context_data[ctxt.0 as usize].parent
     }
 
-    fn remove_mark(&self, ctxt: &mut SyntaxContext) -> ExpnId {
-        let outer_expn = self.outer_expn(*ctxt);
+    fn remove_mark(&self, ctxt: &mut SyntaxContext) -> (ExpnId, Transparency) {
+        let outer_mark = self.outer_mark(*ctxt);
         *ctxt = self.parent_ctxt(*ctxt);
-        outer_expn
+        outer_mark
     }
 
     fn marks(&self, mut ctxt: SyntaxContext) -> Vec<(ExpnId, Transparency)> {
@@ -218,20 +218,14 @@ impl HygieneData {
     fn adjust(&self, ctxt: &mut SyntaxContext, expn_id: ExpnId) -> Option<ExpnId> {
         let mut scope = None;
         while !self.is_descendant_of(expn_id, self.outer_expn(*ctxt)) {
-            scope = Some(self.remove_mark(ctxt));
+            scope = Some(self.remove_mark(ctxt).0);
         }
         scope
     }
 
-    fn apply_mark(&mut self, ctxt: SyntaxContext, expn_id: ExpnId) -> SyntaxContext {
-        assert_ne!(expn_id, ExpnId::root());
-        self.apply_mark_with_transparency(
-            ctxt, expn_id, self.expn_data(expn_id).default_transparency
-        )
-    }
-
-    fn apply_mark_with_transparency(&mut self, ctxt: SyntaxContext, expn_id: ExpnId,
-                                    transparency: Transparency) -> SyntaxContext {
+    fn apply_mark(
+        &mut self, ctxt: SyntaxContext, expn_id: ExpnId, transparency: Transparency
+    ) -> SyntaxContext {
         assert_ne!(expn_id, ExpnId::root());
         if transparency == Transparency::Opaque {
             return self.apply_mark_internal(ctxt, expn_id, transparency);
@@ -365,15 +359,9 @@ impl SyntaxContext {
         SyntaxContext(raw)
     }
 
-    /// Extend a syntax context with a given expansion and default transparency for that expansion.
-    pub fn apply_mark(self, expn_id: ExpnId) -> SyntaxContext {
-        HygieneData::with(|data| data.apply_mark(self, expn_id))
-    }
-
     /// Extend a syntax context with a given expansion and transparency.
-    pub fn apply_mark_with_transparency(self, expn_id: ExpnId, transparency: Transparency)
-                                        -> SyntaxContext {
-        HygieneData::with(|data| data.apply_mark_with_transparency(self, expn_id, transparency))
+    pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
+        HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
     }
 
     /// Pulls a single mark off of the syntax context. This effectively moves the
@@ -393,7 +381,7 @@ impl SyntaxContext {
     /// invocation of f that created g1.
     /// Returns the mark that was removed.
     pub fn remove_mark(&mut self) -> ExpnId {
-        HygieneData::with(|data| data.remove_mark(self))
+        HygieneData::with(|data| data.remove_mark(self).0)
     }
 
     pub fn marks(self) -> Vec<(ExpnId, Transparency)> {
@@ -466,8 +454,8 @@ impl SyntaxContext {
             let mut scope = None;
             let mut glob_ctxt = data.modern(glob_span.ctxt());
             while !data.is_descendant_of(expn_id, data.outer_expn(glob_ctxt)) {
-                scope = Some(data.remove_mark(&mut glob_ctxt));
-                if data.remove_mark(self) != scope.unwrap() {
+                scope = Some(data.remove_mark(&mut glob_ctxt).0);
+                if data.remove_mark(self).0 != scope.unwrap() {
                     return None;
                 }
             }
@@ -498,9 +486,9 @@ impl SyntaxContext {
                 marks.push(data.remove_mark(&mut glob_ctxt));
             }
 
-            let scope = marks.last().cloned();
-            while let Some(mark) = marks.pop() {
-                *self = data.apply_mark(*self, mark);
+            let scope = marks.last().map(|mark| mark.0);
+            while let Some((expn_id, transparency)) = marks.pop() {
+                *self = data.apply_mark(*self, expn_id, transparency);
             }
             Some(scope)
         })
@@ -571,9 +559,7 @@ impl Span {
     ) -> Span {
         HygieneData::with(|data| {
             let expn_id = data.fresh_expn(Some(expn_data));
-            self.with_ctxt(data.apply_mark_with_transparency(
-                SyntaxContext::root(), expn_id, transparency
-            ))
+            self.with_ctxt(data.apply_mark(SyntaxContext::root(), expn_id, transparency))
         })
     }
 }

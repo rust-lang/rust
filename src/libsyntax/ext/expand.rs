@@ -1388,17 +1388,3 @@ impl<'feat> ExpansionConfig<'feat> {
         self.features.map_or(false, |features| features.custom_inner_attributes)
     }
 }
-
-// A Marker adds the given mark to the syntax context.
-#[derive(Debug)]
-pub struct Marker(pub ExpnId);
-
-impl MutVisitor for Marker {
-    fn visit_span(&mut self, span: &mut Span) {
-        *span = span.apply_mark(self.0)
-    }
-
-    fn visit_mac(&mut self, mac: &mut ast::Mac) {
-        noop_visit_mac(mac, self)
-    }
-}
