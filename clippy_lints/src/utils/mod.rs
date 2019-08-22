@@ -261,6 +261,7 @@ pub fn path_to_res(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<(def::Res)
 }
 
 /// Convenience function to get the `DefId` of a trait by path.
+/// It could be a trait or trait alias.
 pub fn get_trait_def_id(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<DefId> {
     let res = match path_to_res(cx, path) {
         Some(res) => res,
@@ -268,7 +269,8 @@ pub fn get_trait_def_id(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<DefId
     };
 
     match res {
-        def::Res::Def(DefKind::Trait, trait_id) => Some(trait_id),
+        Res::Def(DefKind::Trait, trait_id) | Res::Def(DefKind::TraitAlias, trait_id) => Some(trait_id),
+        Res::Err => unreachable!("this trait resolution is impossible: {:?}", &path),
         _ => None,
     }
 }
