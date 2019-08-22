@@ -382,7 +382,36 @@ impl ast::WherePred {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TypeBoundKind {
+    /// Trait
+    PathType(ast::PathType),
+    /// for<'a> ...
+    ForType(ast::ForType),
+    /// 'a
+    Lifetime(ast::SyntaxToken),
+}
+
 impl ast::TypeBound {
+    pub fn kind(&self) -> TypeBoundKind {
+        if let Some(path_type) = children(self).next() {
+            TypeBoundKind::PathType(path_type)
+        } else if let Some(for_type) = children(self).next() {
+            TypeBoundKind::ForType(for_type)
+        } else if let Some(lifetime) = self.lifetime() {
+            TypeBoundKind::Lifetime(lifetime)
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn lifetime(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == LIFETIME)
+    }
+
     pub fn question_mark_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()
@@ -397,31 +426,5 @@ impl ast::TypeBound {
 impl ast::TraitDef {
     pub fn is_auto(&self) -> bool {
         self.syntax().children_with_tokens().any(|t| t.kind() == T![auto])
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum TypeBoundKind {
-    /// Trait
-    PathType(ast::PathType),
-    /// for<'a> ...
-    ForType(ast::ForType),
-    /// 'a
-    Lifetime(ast::SyntaxToken),
-}
-
-impl ast::TypeBound {
-    pub fn kind(&self) -> Option<TypeBoundKind> {
-        let child = self.syntax.first_child_or_token()?;
-        match child.kind() {
-            PATH_TYPE => Some(TypeBoundKind::PathType(
-                ast::PathType::cast(child.into_node().unwrap()).unwrap(),
-            )),
-            FOR_TYPE => Some(TypeBoundKind::ForType(
-                ast::ForType::cast(child.into_node().unwrap()).unwrap(),
-            )),
-            LIFETIME => Some(TypeBoundKind::Lifetime(child.into_token().unwrap())),
-            _ => unreachable!(),
-        }
     }
 }

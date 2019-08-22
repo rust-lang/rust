@@ -3415,6 +3415,39 @@ fn test(x: Trait, y: &Trait) -> u64 {
     );
 }
 
+#[test]
+fn weird_bounds() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait {}
+fn test() {
+    let a: impl Trait + 'lifetime = foo;
+    let b: impl 'lifetime = foo;
+    let b: impl (Trait) = foo;
+    let b: impl ('lifetime) = foo;
+    let d: impl ?Sized = foo;
+    let e: impl Trait + ?Sized = foo;
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[26; 237) '{     ...foo; }': ()
+   ⋮[36; 37) 'a': impl Trait + {error}
+   ⋮[64; 67) 'foo': impl Trait + {error}
+   ⋮[77; 78) 'b': impl {error}
+   ⋮[97; 100) 'foo': impl {error}
+   ⋮[110; 111) 'b': impl Trait
+   ⋮[128; 131) 'foo': impl Trait
+   ⋮[141; 142) 'b': impl {error}
+   ⋮[163; 166) 'foo': impl {error}
+   ⋮[176; 177) 'd': impl {error}
+   ⋮[193; 196) 'foo': impl {error}
+   ⋮[206; 207) 'e': impl Trait + {error}
+   ⋮[231; 234) 'foo': impl Trait + {error}
+    "###
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

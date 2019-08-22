@@ -136,7 +136,7 @@ pub(crate) fn type_bounds_from_ast(type_bounds_opt: Option<ast::TypeBoundList>) 
 impl TypeBound {
     pub(crate) fn from_ast(node: ast::TypeBound) -> Self {
         match node.kind() {
-            Some(ast::TypeBoundKind::PathType(path_type)) => {
+            ast::TypeBoundKind::PathType(path_type) => {
                 let path = match path_type.path() {
                     Some(p) => p,
                     None => return TypeBound::Error,
@@ -147,9 +147,7 @@ impl TypeBound {
                 };
                 TypeBound::Path(path)
             }
-            Some(ast::TypeBoundKind::ForType(_)) | Some(ast::TypeBoundKind::Lifetime(_)) | None => {
-                TypeBound::Error
-            }
+            ast::TypeBoundKind::ForType(_) | ast::TypeBoundKind::Lifetime(_) => TypeBound::Error,
         }
     }
 }
