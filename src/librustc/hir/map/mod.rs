@@ -514,8 +514,7 @@ impl<'hir> Map<'hir> {
         &self.forest.krate.attrs
     }
 
-    pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId)
-    {
+    pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId) {
         let hir_id = self.as_local_hir_id(module).unwrap();
         self.read(hir_id);
         match self.find_entry(hir_id).unwrap().node {
@@ -525,7 +524,7 @@ impl<'hir> Map<'hir> {
                 ..
             }) => (m, span, hir_id),
             Node::Crate => (&self.forest.krate.module, self.forest.krate.span, hir_id),
-            _ => panic!("not a module")
+            node => panic!("not a module: {:?}", node),
         }
     }
 
@@ -678,6 +677,16 @@ impl<'hir> Map<'hir> {
             _ => false,
         }
     }
+
+    /// Wether `hir_id` corresponds to a `mod` or a crate.
+    pub fn is_hir_id_module(&self, hir_id: HirId) -> bool {
+        match self.lookup(hir_id) {
+            Some(Entry { node: Node::Item(Item { node: ItemKind::Mod(_), .. }), .. }) |
+            Some(Entry { node: Node::Crate, .. }) => true,
+            _ => false,
+        }
+    }
+
 
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the

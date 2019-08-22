@@ -105,9 +105,9 @@ if (!DOMTokenList.prototype.remove) {
                 sidebar.appendChild(div);
             }
         }
-        var themePicker = document.getElementsByClassName("theme-picker");
-        if (themePicker && themePicker.length > 0) {
-            themePicker[0].style.display = "none";
+        var themePickers = document.getElementsByClassName("theme-picker");
+        if (themePickers && themePickers.length > 0) {
+            themePickers[0].style.display = "none";
         }
     }
 
@@ -123,9 +123,9 @@ if (!DOMTokenList.prototype.remove) {
             filler.remove();
         }
         document.getElementsByTagName("body")[0].style.marginTop = "";
-        var themePicker = document.getElementsByClassName("theme-picker");
-        if (themePicker && themePicker.length > 0) {
-            themePicker[0].style.display = null;
+        var themePickers = document.getElementsByClassName("theme-picker");
+        if (themePickers && themePickers.length > 0) {
+            themePickers[0].style.display = null;
         }
     }
 
