@@ -191,7 +191,7 @@ impl OsString {
     /// ```
     /// use std::ffi::OsString;
     ///
-    /// let os_string = OsString::with_capacity(10);
+    /// let mut os_string = OsString::with_capacity(10);
     /// let capacity = os_string.capacity();
     ///
     /// // This push is done without reallocating
@@ -233,7 +233,7 @@ impl OsString {
     /// ```
     /// use std::ffi::OsString;
     ///
-    /// let mut os_string = OsString::with_capacity(10);
+    /// let os_string = OsString::with_capacity(10);
     /// assert!(os_string.capacity() >= 10);
     /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
