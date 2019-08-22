@@ -414,6 +414,8 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
 //         X | Y if Z => (),
 //         | X | Y if Z => (),
 //         | X => (),
+//         box X => (),
+//         Some(box X) => (),
 //     };
 // }
 fn match_arm(p: &mut Parser) -> BlockLike {
