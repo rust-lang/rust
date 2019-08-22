@@ -128,6 +128,21 @@ macro_rules! template {
     } };
 }
 
+macro_rules! rustc_attr {
+    (TEST, $gate:ident, $typ:expr, $tpl:expr $(,)?) => {
+        rustc_attr!(
+            $gate, $typ, $tpl,
+            concat!("the `#[", stringify!($gate), "]` attribute is just used for rustc unit tests \
+                and will never be stable",
+            ),
+        )
+    };
+    ($gate:ident, $typ:expr, $tpl:expr, $msg:expr $(,)?) => {
+        (sym::$gate, $typ, $tpl,
+         Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)))
+    };
+}
+
 pub type BuiltinAttribute = (Symbol, AttributeType, AttributeTemplate, AttributeGate);
 
 /// Attributes that have a special meaning to rustc or rustdoc
@@ -272,193 +287,78 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                 attribute is an experimental \
                                                 feature",
                                             cfg_fn!(needs_panic_runtime))),
-    (sym::rustc_outlives, Normal, template!(Word), Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "the `#[rustc_outlives]` attribute \
-                                    is just used for rustc unit tests \
-                                    and will never be stable",
-                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_variance, Normal, template!(Word), Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "the `#[rustc_variance]` attribute \
-                                    is just used for rustc unit tests \
-                                    and will never be stable",
-                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_layout, Normal, template!(List: "field1, field2, ..."),
-    Gated(Stability::Unstable,
-        sym::rustc_attrs,
-        "the `#[rustc_layout]` attribute \
-            is just used for rustc unit tests \
-            and will never be stable",
-        cfg_fn!(rustc_attrs))),
-    (sym::rustc_layout_scalar_valid_range_start, Whitelisted, template!(List: "value"),
-    Gated(Stability::Unstable,
-        sym::rustc_attrs,
-        "the `#[rustc_layout_scalar_valid_range_start]` attribute \
-            is just used to enable niche optimizations in libcore \
-            and will never be stable",
-        cfg_fn!(rustc_attrs))),
-    (sym::rustc_layout_scalar_valid_range_end, Whitelisted, template!(List: "value"),
-    Gated(Stability::Unstable,
-        sym::rustc_attrs,
-        "the `#[rustc_layout_scalar_valid_range_end]` attribute \
-            is just used to enable niche optimizations in libcore \
-            and will never be stable",
-        cfg_fn!(rustc_attrs))),
-    (sym::rustc_nonnull_optimization_guaranteed, Whitelisted, template!(Word),
-    Gated(Stability::Unstable,
-        sym::rustc_attrs,
-        "the `#[rustc_nonnull_optimization_guaranteed]` attribute \
-            is just used to enable niche optimizations in libcore \
-            and will never be stable",
-        cfg_fn!(rustc_attrs))),
-    (sym::rustc_regions, Normal, template!(Word), Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "the `#[rustc_regions]` attribute \
-                                    is just used for rustc unit tests \
-                                    and will never be stable",
-                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_error, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "the `#[rustc_error]` attribute \
-                                        is just used for rustc unit tests \
-                                        and will never be stable",
-                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_dump_user_substs, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "this attribute \
-                                        is just used for rustc unit tests \
-                                        and will never be stable",
-                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_if_this_changed, Whitelisted, template!(Word, List: "DepNode"),
-                                                Gated(Stability::Unstable,
-                                                sym::rustc_attrs,
-                                                "the `#[rustc_if_this_changed]` attribute \
-                                                is just used for rustc unit tests \
-                                                and will never be stable",
-                                                cfg_fn!(rustc_attrs))),
-    (sym::rustc_then_this_would_need, Whitelisted, template!(List: "DepNode"),
-                                                    Gated(Stability::Unstable,
-                                                    sym::rustc_attrs,
-                                                    "the `#[rustc_if_this_changed]` attribute \
-                                                    is just used for rustc unit tests \
-                                                    and will never be stable",
-                                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_dirty, Whitelisted, template!(List: r#"cfg = "...", /*opt*/ label = "...",
-                                                    /*opt*/ except = "...""#),
-                                    Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "the `#[rustc_dirty]` attribute \
-                                        is just used for rustc unit tests \
-                                        and will never be stable",
-                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_clean, Whitelisted, template!(List: r#"cfg = "...", /*opt*/ label = "...",
-                                                    /*opt*/ except = "...""#),
-                                    Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "the `#[rustc_clean]` attribute \
-                                        is just used for rustc unit tests \
-                                        and will never be stable",
-                                    cfg_fn!(rustc_attrs))),
-    (
-        sym::rustc_partition_reused,
-        Whitelisted,
-        template!(List: r#"cfg = "...", module = "...""#),
-        Gated(
-            Stability::Unstable,
-            sym::rustc_attrs,
-            "this attribute \
-            is just used for rustc unit tests \
-            and will never be stable",
-            cfg_fn!(rustc_attrs)
-        )
-    ),
-    (
-        sym::rustc_partition_codegened,
-        Whitelisted,
-        template!(List: r#"cfg = "...", module = "...""#),
-        Gated(
-            Stability::Unstable,
-            sym::rustc_attrs,
-            "this attribute \
-            is just used for rustc unit tests \
-            and will never be stable",
-            cfg_fn!(rustc_attrs),
-        )
-    ),
-    (sym::rustc_expected_cgu_reuse, Whitelisted, template!(List: r#"cfg = "...", module = "...",
-                                                            kind = "...""#),
-                                                    Gated(Stability::Unstable,
-                                                    sym::rustc_attrs,
-                                                    "this attribute \
-                                                    is just used for rustc unit tests \
-                                                    and will never be stable",
-                                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_synthetic, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                    sym::rustc_attrs,
-                                                    "this attribute \
-                                                    is just used for rustc unit tests \
-                                                    and will never be stable",
-                                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_symbol_name, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                            sym::rustc_attrs,
-                                            "internal rustc attributes will never be stable",
-                                            cfg_fn!(rustc_attrs))),
-    (sym::rustc_def_path, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                        sym::rustc_attrs,
-                                        "internal rustc attributes will never be stable",
-                                        cfg_fn!(rustc_attrs))),
-    (sym::rustc_mir, Whitelisted, template!(List: "arg1, arg2, ..."), Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "the `#[rustc_mir]` attribute \
-                                    is just used for rustc unit tests \
-                                    and will never be stable",
-                                    cfg_fn!(rustc_attrs))),
-    (
-        sym::rustc_inherit_overflow_checks,
-        Whitelisted,
-        template!(Word),
-        Gated(
-            Stability::Unstable,
-            sym::rustc_attrs,
-            "the `#[rustc_inherit_overflow_checks]` \
-            attribute is just used to control \
-            overflow checking behavior of several \
-            libcore functions that are inlined \
-            across crates and will never be stable",
-            cfg_fn!(rustc_attrs),
-        )
-    ),
 
-    (sym::rustc_dump_program_clauses, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                    sym::rustc_attrs,
-                                                    "the `#[rustc_dump_program_clauses]` \
-                                                    attribute is just used for rustc unit \
-                                                    tests and will never be stable",
-                                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_dump_env_program_clauses, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                    sym::rustc_attrs,
-                                                    "the `#[rustc_dump_env_program_clauses]` \
-                                                    attribute is just used for rustc unit \
-                                                    tests and will never be stable",
-                                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_object_lifetime_default, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                    sym::rustc_attrs,
-                                                    "the `#[rustc_object_lifetime_default]` \
-                                                    attribute is just used for rustc unit \
-                                                    tests and will never be stable",
-                                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_test_marker, Normal, template!(Word), Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "the `#[rustc_test_marker]` attribute \
-                                    is used internally to track tests",
-                                    cfg_fn!(rustc_attrs))),
-    (sym::rustc_macro_transparency, Whitelisted, template!(NameValueStr:
-                                                           "transparent|semitransparent|opaque"),
-                                                Gated(Stability::Unstable,
-                                                sym::rustc_attrs,
-                                                "used internally for testing macro hygiene",
-                                                    cfg_fn!(rustc_attrs))),
+    rustc_attr!(TEST, rustc_outlives, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_variance, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ...")),
+    rustc_attr!(
+        rustc_layout_scalar_valid_range_start, Whitelisted, template!(List: "value"),
+        "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
+        niche optimizations in libcore and will never be stable",
+    ),
+    rustc_attr!(
+        rustc_layout_scalar_valid_range_end, Whitelisted, template!(List: "value"),
+        "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
+        niche optimizations in libcore and will never be stable",
+    ),
+    rustc_attr!(
+        rustc_nonnull_optimization_guaranteed, Whitelisted, template!(Word),
+        "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
+        niche optimizations in libcore and will never be stable",
+    ),
+    rustc_attr!(TEST, rustc_regions, Normal, template!(Word)),
+    rustc_attr!(TEST, rustc_error, Whitelisted, template!(Word)),
+    rustc_attr!(TEST, rustc_dump_user_substs, Whitelisted, template!(Word)),
+    rustc_attr!(TEST, rustc_if_this_changed, Whitelisted, template!(Word, List: "DepNode")),
+    rustc_attr!(TEST, rustc_then_this_would_need, Whitelisted, template!(List: "DepNode")),
+    rustc_attr!(
+        TEST, rustc_dirty, Whitelisted,
+        template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
+    ),
+    rustc_attr!(
+        TEST, rustc_clean, Whitelisted,
+        template!(List: r#"cfg = "...", /*opt*/ label = "...", /*opt*/ except = "...""#),
+    ),
+    rustc_attr!(
+        TEST, rustc_partition_reused, Whitelisted,
+        template!(List: r#"cfg = "...", module = "...""#),
+    ),
+    rustc_attr!(
+        TEST, rustc_partition_codegened, Whitelisted,
+        template!(List: r#"cfg = "...", module = "...""#),
+    ),
+    rustc_attr!(
+        TEST, rustc_expected_cgu_reuse, Whitelisted,
+        template!(List: r#"cfg = "...", module = "...", kind = "...""#),
+    ),
+    rustc_attr!(TEST, rustc_synthetic, Whitelisted, template!(Word)),
+    rustc_attr!(
+        rustc_symbol_name, Whitelisted, template!(Word),
+        "internal rustc attributes will never be stable",
+    ),
+    rustc_attr!(
+        rustc_def_path, Whitelisted, template!(Word),
+        "internal rustc attributes will never be stable",
+    ),
+    rustc_attr!(TEST, rustc_mir, Whitelisted, template!(List: "arg1, arg2, ...")),
+    rustc_attr!(
+        rustc_inherit_overflow_checks, Whitelisted, template!(Word),
+        "the `#[rustc_inherit_overflow_checks]` attribute is just used to control \
+        overflow checking behavior of several libcore functions that are inlined \
+        across crates and will never be stable",
+    ),
+    rustc_attr!(TEST, rustc_dump_program_clauses, Whitelisted, template!(Word)),
+    rustc_attr!(TEST, rustc_dump_env_program_clauses, Whitelisted, template!(Word)),
+    rustc_attr!(TEST, rustc_object_lifetime_default, Whitelisted, template!(Word)),
+    rustc_attr!(
+        rustc_test_marker, Normal, template!(Word),
+        "the `#[rustc_test_marker]` attribute is used internally to track tests",
+    ),
+    rustc_attr!(
+        rustc_macro_transparency, Whitelisted,
+        template!(NameValueStr: "transparent|semitransparent|opaque"),
+        "used internally for testing macro hygiene",
+    ),
     (sym::compiler_builtins, Whitelisted, template!(Word), Gated(Stability::Unstable,
                                             sym::compiler_builtins,
                                             "the `#[compiler_builtins]` attribute is used to \
@@ -501,35 +401,21 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
                                                 /*opt*/ attributes(name1, name2, ...)"),
                                     Ungated),
 
-    (sym::rustc_allocator, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                sym::rustc_attrs,
-                                                "internal implementation detail",
-                                                cfg_fn!(rustc_attrs))),
-
-    (sym::rustc_allocator_nounwind, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                sym::rustc_attrs,
-                                                "internal implementation detail",
-                                                cfg_fn!(rustc_attrs))),
-
-    (sym::rustc_builtin_macro, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                sym::rustc_attrs,
-                                                "internal implementation detail",
-                                                cfg_fn!(rustc_attrs))),
-
-    (sym::rustc_promotable, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                sym::rustc_attrs,
-                                                "internal implementation detail",
-                                                cfg_fn!(rustc_attrs))),
-
-    (sym::rustc_allow_const_fn_ptr, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                sym::rustc_attrs,
-                                                "internal implementation detail",
-                                                cfg_fn!(rustc_attrs))),
-
-    (sym::rustc_dummy, Normal, template!(Word /* doesn't matter*/), Gated(Stability::Unstable,
-                                         sym::rustc_attrs,
-                                         "used by the test suite",
-                                         cfg_fn!(rustc_attrs))),
+    rustc_attr!(rustc_allocator, Whitelisted, template!(Word), "internal implementation detail"),
+    rustc_attr!(
+        rustc_allocator_nounwind, Whitelisted, template!(Word),
+        "internal implementation detail",
+    ),
+    rustc_attr!(
+        rustc_builtin_macro, Whitelisted, template!(Word),
+        "internal implementation detail"
+    ),
+    rustc_attr!(rustc_promotable, Whitelisted, template!(Word), "internal implementation detail"),
+    rustc_attr!(
+        rustc_allow_const_fn_ptr, Whitelisted, template!(Word),
+        "internal implementation detail",
+    ),
+    rustc_attr!(rustc_dummy, Normal, template!(Word /* doesn't matter*/), "used by the test suite"),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     (
@@ -639,35 +525,25 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     (sym::proc_macro_attribute, Normal, template!(Word), Ungated),
     (sym::proc_macro, Normal, template!(Word), Ungated),
 
-    (sym::rustc_proc_macro_decls, Normal, template!(Word), Gated(Stability::Unstable,
-                                            sym::rustc_attrs,
-                                            "used internally by rustc",
-                                            cfg_fn!(rustc_attrs))),
+    rustc_attr!(rustc_proc_macro_decls, Normal, template!(Word), "used internally by rustc"),
 
     (sym::allow_fail, Normal, template!(Word), Gated(Stability::Unstable,
                                 sym::allow_fail,
                                 "allow_fail attribute is currently unstable",
                                 cfg_fn!(allow_fail))),
 
-    (sym::rustc_std_internal_symbol, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                    sym::rustc_attrs,
-                                    "this is an internal attribute that will \
-                                    never be stable",
-                                    cfg_fn!(rustc_attrs))),
-
+    rustc_attr!(
+        rustc_std_internal_symbol, Whitelisted, template!(Word),
+        "this is an internal attribute that will never be stable",
+    ),
     // whitelists "identity-like" conversion methods to suggest on type mismatch
-    (sym::rustc_conversion_suggestion, Whitelisted, template!(Word), Gated(Stability::Unstable,
-                                                    sym::rustc_attrs,
-                                                    "this is an internal attribute that will \
-                                                        never be stable",
-                                                    cfg_fn!(rustc_attrs))),
-
-    (
-        sym::rustc_args_required_const,
-        Whitelisted,
-        template!(List: "N"),
-        Gated(Stability::Unstable, sym::rustc_attrs, "never will be stable",
-           cfg_fn!(rustc_attrs))
+    rustc_attr!(
+        rustc_conversion_suggestion, Whitelisted, template!(Word),
+        "this is an internal attribute that will never be stable",
+    ),
+    rustc_attr!(
+        rustc_args_required_const, Whitelisted, template!(List: "N"),
+        "this is an internal attribute that will never be stable",
     ),
     // RFC 2070
     (sym::panic_handler, Normal, template!(Word), Ungated),
