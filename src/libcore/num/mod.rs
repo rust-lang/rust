@@ -3749,8 +3749,8 @@ assert!(!10", stringify!($SelfT), ".is_power_of_two());", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[inline]
-            pub fn is_power_of_two(self) -> bool {
-                (self.wrapping_sub(1)) & self == 0 && !(self == 0)
+            pub const fn is_power_of_two(self) -> bool {
+                ((self.wrapping_sub(1)) & self == 0) & !(self == 0)
             }
         }
 
