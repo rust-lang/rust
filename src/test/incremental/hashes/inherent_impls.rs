@@ -42,7 +42,10 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
+    #[rustc_clean(
+        cfg="cfail2",
+        except="HirBody,optimized_mir,promoted_mir,mir_built,typeck_tables_of"
+    )]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_body() {
         println!("Hello, world!");
@@ -63,7 +66,10 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
+    #[rustc_clean(
+        cfg="cfail2",
+        except="HirBody,optimized_mir,promoted_mir,mir_built,typeck_tables_of"
+    )]
     #[rustc_clean(cfg="cfail3")]
     #[inline]
     pub fn method_body_inlined() {
@@ -97,7 +103,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(cfg="cfail2", except="type_of,predicates_of")]
+    #[rustc_dirty(cfg="cfail2", except="type_of,predicates_of,promoted_mir")]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_selfness(&self) { }
 }
