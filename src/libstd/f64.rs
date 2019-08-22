@@ -537,7 +537,7 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let x = f64::consts::PI/2.0;
+    /// let x = f64::consts::FRAC_PI_2;
     ///
     /// let abs_difference = (x.sin() - 1.0).abs();
     ///
@@ -575,7 +575,7 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let x = f64::consts::PI/4.0;
+    /// let x = f64::consts::FRAC_PI_4;
     /// let abs_difference = (x.tan() - 1.0).abs();
     ///
     /// assert!(abs_difference < 1e-14);
@@ -595,10 +595,10 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let f = f64::consts::PI / 2.0;
+    /// let f = f64::consts::FRAC_PI_2;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - f64::consts::PI / 2.0).abs();
+    /// let abs_difference = (f.sin().asin() - f64::consts::FRAC_PI_2).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -617,10 +617,10 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let f = f64::consts::PI / 4.0;
+    /// let f = f64::consts::FRAC_PI_4;
     ///
     /// // acos(cos(pi/4))
-    /// let abs_difference = (f.cos().acos() - f64::consts::PI / 4.0).abs();
+    /// let abs_difference = (f.cos().acos() - f64::consts::FRAC_PI_4).abs();
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
@@ -661,7 +661,6 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let pi = f64::consts::PI;
     /// // Positive angles measured counter-clockwise
     /// // from positive x axis
     /// // -pi/4 radians (45 deg clockwise)
@@ -672,8 +671,8 @@ impl f64 {
     /// let x2 = -3.0_f64;
     /// let y2 = 3.0_f64;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-pi / 4.0)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * pi / 4.0)).abs();
+    /// let abs_difference_1 = (y1.atan2(x1) - (-f64::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * f64::consts::FRAC_PI_4)).abs();
     ///
     /// assert!(abs_difference_1 < 1e-10);
     /// assert!(abs_difference_2 < 1e-10);
@@ -692,7 +691,7 @@ impl f64 {
     /// ```
     /// use std::f64;
     ///
-    /// let x = f64::consts::PI/4.0;
+    /// let x = f64::consts::FRAC_PI_4;
     /// let f = x.sin_cos();
     ///
     /// let abs_difference_0 = (f.0 - x.sin()).abs();

@@ -600,7 +600,7 @@ impl f32 {
     /// ```
     /// use std::f32;
     ///
-    /// let x = f32::consts::PI/2.0;
+    /// let x = f32::consts::FRAC_PI_2;
     ///
     /// let abs_difference = (x.sin() - 1.0).abs();
     ///
@@ -646,7 +646,7 @@ impl f32 {
     /// ```
     /// use std::f32;
     ///
-    /// let x = f32::consts::PI / 4.0;
+    /// let x = f32::consts::FRAC_PI_4;
     /// let abs_difference = (x.tan() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
@@ -666,10 +666,10 @@ impl f32 {
     /// ```
     /// use std::f32;
     ///
-    /// let f = f32::consts::PI / 2.0;
+    /// let f = f32::consts::FRAC_PI_2;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - f32::consts::PI / 2.0).abs();
+    /// let abs_difference = (f.sin().asin() - f32::consts::FRAC_PI_2).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -688,10 +688,10 @@ impl f32 {
     /// ```
     /// use std::f32;
     ///
-    /// let f = f32::consts::PI / 4.0;
+    /// let f = f32::consts::FRAC_PI_4;
     ///
     /// // acos(cos(pi/4))
-    /// let abs_difference = (f.cos().acos() - f32::consts::PI / 4.0).abs();
+    /// let abs_difference = (f.cos().acos() - f32::consts::FRAC_PI_4).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -734,7 +734,6 @@ impl f32 {
     /// ```
     /// use std::f32;
     ///
-    /// let pi = f32::consts::PI;
     /// // Positive angles measured counter-clockwise
     /// // from positive x axis
     /// // -pi/4 radians (45 deg clockwise)
@@ -745,8 +744,8 @@ impl f32 {
     /// let x2 = -3.0f32;
     /// let y2 = 3.0f32;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-pi / 4.0)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * pi / 4.0)).abs();
+    /// let abs_difference_1 = (y1.atan2(x1) - (-f32::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * f32::consts::FRAC_PI_4)).abs();
     ///
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// assert!(abs_difference_2 <= f32::EPSILON);
@@ -765,7 +764,7 @@ impl f32 {
     /// ```
     /// use std::f32;
     ///
-    /// let x = f32::consts::PI/4.0;
+    /// let x = f32::consts::FRAC_PI_4;
     /// let f = x.sin_cos();
     ///
     /// let abs_difference_0 = (f.0 - x.sin()).abs();
