@@ -382,6 +382,18 @@ impl ast::WherePred {
     }
 }
 
+impl ast::TypeBound {
+    pub fn question_mark_token(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == T![?])
+    }
+    pub fn has_question_mark(&self) -> bool {
+        self.question_mark_token().is_some()
+    }
+}
+
 impl ast::TraitDef {
     pub fn is_auto(&self) -> bool {
         self.syntax().children_with_tokens().any(|t| t.kind() == T![auto])

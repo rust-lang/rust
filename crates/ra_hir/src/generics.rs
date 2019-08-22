@@ -75,6 +75,7 @@ impl GenericParams {
         };
         generics.parent_params = parent.map(|p| db.generic_params(p));
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
+        // FIXME: add `: Sized` bound for everything except for `Self` in traits
         match def {
             GenericDef::Function(it) => generics.fill(&it.source(db).ast, start),
             GenericDef::Struct(it) => generics.fill(&it.source(db).ast, start),
@@ -86,6 +87,9 @@ impl GenericParams {
                 generics.fill(&it.source(db).ast, start + 1);
             }
             GenericDef::TypeAlias(it) => generics.fill(&it.source(db).ast, start),
+            // Note that we don't add `Self` here: in `impl`s, `Self` is not a
+            // type-parameter, but rather is a type-alias for impl's target
+            // type, so this is handled by the resovler.
             GenericDef::ImplBlock(it) => generics.fill(&it.source(db).ast, start),
             GenericDef::EnumVariant(_) => {}
         }
@@ -135,6 +139,10 @@ impl GenericParams {
     }
 
     fn add_where_predicate_from_bound(&mut self, bound: ast::TypeBound, type_ref: TypeRef) {
+        if bound.has_question_mark() {
+            // FIXME: remove this bound
+            return;
+        }
         let path = bound
             .type_ref()
             .and_then(|tr| match tr {
