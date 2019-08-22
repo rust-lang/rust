@@ -2934,6 +2934,30 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn load_compare_outputs(&self, proc_res: &ProcRes, explicit_format: bool) -> usize {
+        let expected_stderr = self.load_expected_output(UI_STDERR);
+        let expected_stdout = self.load_expected_output(UI_STDOUT);
+
+        let normalized_stdout =
+            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
+
+        let stderr = if explicit_format {
+            proc_res.stderr.clone()
+        } else {
+            json::extract_rendered(&proc_res.stderr)
+        };
+
+        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        let mut errors = 0;
+        if !self.props.dont_check_compiler_stdout {
+            errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+        }
+        if !self.props.dont_check_compiler_stderr {
+            errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+        }
+        errors
+    }
+
     fn run_ui_test(&self) {
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
@@ -2946,31 +2970,12 @@ impl<'test> TestCx<'test> {
         let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
 
-        let expected_stderr = self.load_expected_output(UI_STDERR);
-        let expected_stdout = self.load_expected_output(UI_STDOUT);
         let expected_fixed = self.load_expected_output(UI_FIXED);
-
-        let normalized_stdout =
-            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
-
-        let stderr = if explicit {
-            proc_res.stderr.clone()
-        } else {
-            json::extract_rendered(&proc_res.stderr)
-        };
-
-        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
-
-        let mut errors = 0;
-        if !self.props.dont_check_compiler_stdout {
-            errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
-        }
-        if !self.props.dont_check_compiler_stderr {
-            errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
-        }
 
         let modes_to_prune = vec![CompareMode::Nll];
         self.prune_duplicate_outputs(&modes_to_prune);
+
+        let mut errors = self.load_compare_outputs(&proc_res, explicit);
 
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
