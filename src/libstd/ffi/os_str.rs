@@ -191,7 +191,7 @@ impl OsString {
     /// ```
     /// use std::ffi::OsString;
     ///
-    /// let mut os_string = OsString::with_capacity(10);
+    /// let os_string = OsString::with_capacity(10);
     /// let capacity = os_string.capacity();
     ///
     /// // This push is done without reallocating
