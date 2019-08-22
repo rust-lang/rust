@@ -1,95 +1,89 @@
-use itertools::Itertools;
-use std::fmt::Write;
+use std::iter;
 
-use hir::{db::HirDatabase, AdtDef, FieldSource, HasSource};
-use ra_syntax::ast::{self, AstNode};
+use hir::{db::HirDatabase, AdtDef, HasSource};
+use ra_syntax::ast::{self, AstNode, NameOwner};
 
-use crate::{Assist, AssistCtx, AssistId};
-
-fn is_trivial_arm(arm: &ast::MatchArm) -> bool {
-    fn single_pattern(arm: &ast::MatchArm) -> Option<ast::Pat> {
-        let (pat,) = arm.pats().collect_tuple()?;
-        Some(pat)
-    }
-    match single_pattern(arm) {
-        Some(ast::Pat::PlaceholderPat(..)) => true,
-        _ => false,
-    }
-}
+use crate::{ast_editor::AstBuilder, Assist, AssistCtx, AssistId};
 
 pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let match_expr = ctx.node_at_offset::<ast::MatchExpr>()?;
+    let match_arm_list = match_expr.match_arm_list()?;
 
     // We already have some match arms, so we don't provide any assists.
     // Unless if there is only one trivial match arm possibly created
     // by match postfix complete. Trivial match arm is the catch all arm.
-    if let Some(arm_list) = match_expr.match_arm_list() {
-        let mut arm_iter = arm_list.arms();
-        let first = arm_iter.next();
-
-        match &first {
-            // If there arm list is empty or there is only one trivial arm, then proceed.
-            Some(arm) if is_trivial_arm(arm) => {
-                if arm_iter.next() != None {
-                    return None;
-                }
-            }
-            None => {}
-
-            _ => {
-                return None;
-            }
+    let mut existing_arms = match_arm_list.arms();
+    if let Some(arm) = existing_arms.next() {
+        if !is_trivial(&arm) || existing_arms.next().is_some() {
+            return None;
         }
     };
 
     let expr = match_expr.expr()?;
-    let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, expr.syntax(), None);
-    let match_expr_ty = analyzer.type_of(ctx.db, &expr)?;
-    let enum_def = analyzer.autoderef(ctx.db, match_expr_ty).find_map(|ty| match ty.as_adt() {
-        Some((AdtDef::Enum(e), _)) => Some(e),
-        _ => None,
-    })?;
-    let enum_name = enum_def.name(ctx.db)?;
-    let db = ctx.db;
+    let enum_def = {
+        let file_id = ctx.frange.file_id;
+        let analyzer = hir::SourceAnalyzer::new(ctx.db, file_id, expr.syntax(), None);
+        resolve_enum_def(ctx.db, &analyzer, &expr)?
+    };
+    let variant_list = enum_def.variant_list()?;
 
     ctx.add_action(AssistId("fill_match_arms"), "fill match arms", |edit| {
-        let mut buf = format!("match {} {{\n", expr.syntax().text().to_string());
-        let variants = enum_def.variants(db);
-        for variant in variants {
-            let name = match variant.name(db) {
-                Some(it) => it,
-                None => continue,
-            };
-            write!(&mut buf, "    {}::{}", enum_name, name.to_string()).unwrap();
+        let variants = variant_list.variants();
+        let arms = variants.into_iter().filter_map(build_pat).map(|pat| {
+            AstBuilder::<ast::MatchArm>::from_pieces(
+                iter::once(pat),
+                &AstBuilder::<ast::Expr>::unit(),
+            )
+        });
+        let new_arm_list = AstBuilder::<ast::MatchArmList>::from_arms(arms);
 
-            let pat = variant
-                .fields(db)
-                .into_iter()
-                .map(|field| {
-                    let name = field.name(db).to_string();
-                    let src = field.source(db);
-                    match src.ast {
-                        FieldSource::Named(_) => name,
-                        FieldSource::Pos(_) => "_".to_string(),
-                    }
-                })
-                .collect::<Vec<_>>();
-
-            match pat.first().map(|s| s.as_str()) {
-                Some("_") => write!(&mut buf, "({})", pat.join(", ")).unwrap(),
-                Some(_) => write!(&mut buf, "{{{}}}", pat.join(", ")).unwrap(),
-                None => (),
-            };
-
-            buf.push_str(" => (),\n");
-        }
-        buf.push_str("}");
         edit.target(match_expr.syntax().text_range());
         edit.set_cursor(expr.syntax().text_range().start());
-        edit.replace_node_and_indent(match_expr.syntax(), buf);
+        edit.replace_node_and_indent(match_arm_list.syntax(), new_arm_list.syntax().text());
     });
 
     ctx.build()
+}
+
+fn is_trivial(arm: &ast::MatchArm) -> bool {
+    arm.pats().any(|pat| match pat {
+        ast::Pat::PlaceholderPat(..) => true,
+        _ => false,
+    })
+}
+
+fn resolve_enum_def(
+    db: &impl HirDatabase,
+    analyzer: &hir::SourceAnalyzer,
+    expr: &ast::Expr,
+) -> Option<ast::EnumDef> {
+    let expr_ty = analyzer.type_of(db, &expr)?;
+
+    analyzer.autoderef(db, expr_ty).find_map(|ty| match ty.as_adt() {
+        Some((AdtDef::Enum(e), _)) => Some(e.source(db).ast),
+        _ => None,
+    })
+}
+
+fn build_pat(var: ast::EnumVariant) -> Option<ast::Pat> {
+    let path = &AstBuilder::<ast::Path>::from_pieces(var.parent_enum().name()?, var.name()?);
+
+    let pat: ast::Pat = match var.kind() {
+        ast::StructKind::Tuple(field_list) => {
+            let pats = iter::repeat(AstBuilder::<ast::PlaceholderPat>::placeholder().into())
+                .take(field_list.fields().count());
+            AstBuilder::<ast::TupleStructPat>::from_pieces(path, pats).into()
+        }
+        ast::StructKind::Named(field_list) => {
+            let pats = field_list
+                .fields()
+                .map(|f| AstBuilder::<ast::BindPat>::from_name(&f.name().unwrap()).into());
+            AstBuilder::<ast::StructPat>::from_pieces(path, pats).into()
+        }
+        ast::StructKind::Unit => AstBuilder::<ast::PathPat>::from_path(path).into(),
+    };
+
+    Some(pat)
 }
 
 #[cfg(test)]
@@ -108,7 +102,7 @@ mod tests {
                 Bs,
                 Cs(String),
                 Ds(String, String),
-                Es{x: usize, y: usize}
+                Es{ x: usize, y: usize }
             }
 
             fn main() {
@@ -122,7 +116,7 @@ mod tests {
                 Bs,
                 Cs(String),
                 Ds(String, String),
-                Es{x: usize, y: usize}
+                Es{ x: usize, y: usize }
             }
 
             fn main() {
@@ -132,7 +126,7 @@ mod tests {
                     A::Bs => (),
                     A::Cs(_) => (),
                     A::Ds(_, _) => (),
-                    A::Es{x, y} => (),
+                    A::Es{ x, y } => (),
                 }
             }
             "#,
@@ -170,7 +164,7 @@ mod tests {
             fill_match_arms,
             r#"
             enum A {
-                Es{x: usize, y: usize}
+                Es{ x: usize, y: usize }
             }
 
             fn foo(a: &mut A) {
@@ -180,57 +174,12 @@ mod tests {
             "#,
             r#"
             enum A {
-                Es{x: usize, y: usize}
+                Es{ x: usize, y: usize }
             }
 
             fn foo(a: &mut A) {
                 match <|>a {
-                    A::Es{x, y} => (),
-                }
-            }
-            "#,
-        );
-
-        check_assist(
-            fill_match_arms,
-            r#"
-            enum E { X, Y}
-
-            fn main() {
-                match &E::X<|>
-            }
-            "#,
-            r#"
-            enum E { X, Y}
-
-            fn main() {
-                match <|>&E::X {
-                    E::X => (),
-                    E::Y => (),
-                }
-            }
-            "#,
-        );
-    }
-
-    #[test]
-    fn fill_match_arms_no_body() {
-        check_assist(
-            fill_match_arms,
-            r#"
-            enum E { X, Y}
-
-            fn main() {
-                match E::X<|>
-            }
-            "#,
-            r#"
-            enum E { X, Y}
-
-            fn main() {
-                match <|>E::X {
-                    E::X => (),
-                    E::Y => (),
+                    A::Es{ x, y } => (),
                 }
             }
             "#,
@@ -242,7 +191,7 @@ mod tests {
         check_assist_target(
             fill_match_arms,
             r#"
-            enum E { X, Y}
+            enum E { X, Y }
 
             fn main() {
                 match E::X<|> {}

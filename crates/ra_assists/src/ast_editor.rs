@@ -1,6 +1,8 @@
 use std::{iter, ops::RangeInclusive};
 
 use arrayvec::ArrayVec;
+use itertools::Itertools;
+
 use hir::Name;
 use ra_fmt::leading_indent;
 use ra_syntax::{
@@ -168,8 +170,7 @@ impl AstEditor<ast::NamedFieldList> {
 
 impl AstEditor<ast::ItemList> {
     pub fn append_items(&mut self, items: impl Iterator<Item = ast::ImplItem>) {
-        let n_existing_items = self.ast().impl_items().count();
-        if n_existing_items == 0 {
+        if !self.ast().syntax().text().contains_char('\n') {
             self.do_make_multiline();
         }
         items.for_each(|it| self.append_item(it));
@@ -285,6 +286,94 @@ impl AstBuilder<ast::Expr> {
 impl AstBuilder<ast::NameRef> {
     pub fn new(text: &str) -> ast::NameRef {
         ast_node_from_file_text(&format!("fn f() {{ {}; }}", text))
+    }
+}
+
+impl AstBuilder<ast::Path> {
+    fn from_text(text: &str) -> ast::Path {
+        ast_node_from_file_text(text)
+    }
+
+    pub fn from_pieces(enum_name: ast::Name, var_name: ast::Name) -> ast::Path {
+        Self::from_text(&format!("{}::{}", enum_name.syntax(), var_name.syntax()))
+    }
+}
+
+impl AstBuilder<ast::BindPat> {
+    fn from_text(text: &str) -> ast::BindPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
+    }
+
+    pub fn from_name(name: &ast::Name) -> ast::BindPat {
+        Self::from_text(name.text())
+    }
+}
+
+impl AstBuilder<ast::PlaceholderPat> {
+    fn from_text(text: &str) -> ast::PlaceholderPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
+    }
+
+    pub fn placeholder() -> ast::PlaceholderPat {
+        Self::from_text("_")
+    }
+}
+
+impl AstBuilder<ast::TupleStructPat> {
+    fn from_text(text: &str) -> ast::TupleStructPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
+    }
+
+    pub fn from_pieces(
+        path: &ast::Path,
+        pats: impl Iterator<Item = ast::Pat>,
+    ) -> ast::TupleStructPat {
+        let pats_str = pats.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
+        Self::from_text(&format!("{}({})", path.syntax(), pats_str))
+    }
+}
+
+impl AstBuilder<ast::StructPat> {
+    fn from_text(text: &str) -> ast::StructPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
+    }
+
+    pub fn from_pieces(path: &ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::StructPat {
+        let pats_str = pats.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
+        Self::from_text(&format!("{}{{ {} }}", path.syntax(), pats_str))
+    }
+}
+
+impl AstBuilder<ast::PathPat> {
+    fn from_text(text: &str) -> ast::PathPat {
+        ast_node_from_file_text(&format!("fn f({}: ())", text))
+    }
+
+    pub fn from_path(path: &ast::Path) -> ast::PathPat {
+        let path_str = path.syntax().text().to_string();
+        Self::from_text(path_str.as_str())
+    }
+}
+
+impl AstBuilder<ast::MatchArm> {
+    fn from_text(text: &str) -> ast::MatchArm {
+        ast_node_from_file_text(&format!("fn f() {{ match () {{{}}} }}", text))
+    }
+
+    pub fn from_pieces(pats: impl Iterator<Item = ast::Pat>, expr: &ast::Expr) -> ast::MatchArm {
+        let pats_str = pats.map(|p| p.syntax().to_string()).join(" | ");
+        Self::from_text(&format!("{} => {}", pats_str, expr.syntax()))
+    }
+}
+
+impl AstBuilder<ast::MatchArmList> {
+    fn from_text(text: &str) -> ast::MatchArmList {
+        ast_node_from_file_text(&format!("fn f() {{ match () {{{}}} }}", text))
+    }
+
+    pub fn from_arms(arms: impl Iterator<Item = ast::MatchArm>) -> ast::MatchArmList {
+        let arms_str = arms.map(|arm| format!("\n    {}", arm.syntax())).join(",");
+        Self::from_text(&format!("{},\n", arms_str))
     }
 }
 
