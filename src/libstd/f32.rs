@@ -236,7 +236,7 @@ impl f32 {
     /// let b = 60.0_f32;
     ///
     /// // 100.0
-    /// let abs_difference = (m.mul_add(x, b) - (m*x + b)).abs();
+    /// let abs_difference = (m.mul_add(x, b) - ((m * x) + b)).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -318,7 +318,7 @@ impl f32 {
     /// use std::f32;
     ///
     /// let x = 2.0_f32;
-    /// let abs_difference = (x.powi(2) - x*x).abs();
+    /// let abs_difference = (x.powi(2) - (x * x)).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -336,7 +336,7 @@ impl f32 {
     /// use std::f32;
     ///
     /// let x = 2.0_f32;
-    /// let abs_difference = (x.powf(2.0) - x*x).abs();
+    /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
@@ -623,7 +623,7 @@ impl f32 {
     /// ```
     /// use std::f32;
     ///
-    /// let x = 2.0*f32::consts::PI;
+    /// let x = 2.0 * f32::consts::PI;
     ///
     /// let abs_difference = (x.cos() - 1.0).abs();
     ///
@@ -745,8 +745,8 @@ impl f32 {
     /// let x2 = -3.0f32;
     /// let y2 = 3.0f32;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-pi/4.0)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - 3.0*pi/4.0).abs();
+    /// let abs_difference_1 = (y1.atan2(x1) - (-pi / 4.0)).abs();
+    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * pi / 4.0)).abs();
     ///
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// assert!(abs_difference_2 <= f32::EPSILON);
@@ -834,7 +834,7 @@ impl f32 {
     ///
     /// let f = x.sinh();
     /// // Solving sinh() at 1 gives `(e^2-1)/(2e)`
-    /// let g = (e*e - 1.0)/(2.0*e);
+    /// let g = ((e * e) - 1.0) / (2.0 * e);
     /// let abs_difference = (f - g).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
@@ -856,7 +856,7 @@ impl f32 {
     /// let x = 1.0f32;
     /// let f = x.cosh();
     /// // Solving cosh() at 1 gives this result
-    /// let g = (e*e + 1.0)/(2.0*e);
+    /// let g = ((e * e) + 1.0) / (2.0 * e);
     /// let abs_difference = (f - g).abs();
     ///
     /// // Same result
@@ -880,7 +880,7 @@ impl f32 {
     ///
     /// let f = x.tanh();
     /// // Solving tanh() at 1 gives `(1 - e^(-2))/(1 + e^(-2))`
-    /// let g = (1.0 - e.powi(-2))/(1.0 + e.powi(-2));
+    /// let g = (1.0 - e.powi(-2)) / (1.0 + e.powi(-2));
     /// let abs_difference = (f - g).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
