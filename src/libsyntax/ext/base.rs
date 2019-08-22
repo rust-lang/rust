@@ -549,8 +549,6 @@ pub struct SyntaxExtension {
     pub kind: SyntaxExtensionKind,
     /// Span of the macro definition.
     pub span: Span,
-    /// Hygienic properties of spans produced by this macro by default.
-    pub default_transparency: Transparency,
     /// Whitelist of unstable features that are treated as stable inside this macro.
     pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
     /// Suppresses the `unsafe_code` lint for code produced by this macro.
@@ -572,22 +570,6 @@ pub struct SyntaxExtension {
     pub is_derive_copy: bool,
 }
 
-impl SyntaxExtensionKind {
-    /// When a syntax extension is constructed,
-    /// its transparency can often be inferred from its kind.
-    fn default_transparency(&self) -> Transparency {
-        match self {
-            SyntaxExtensionKind::Bang(..) |
-            SyntaxExtensionKind::Attr(..) |
-            SyntaxExtensionKind::Derive(..) |
-            SyntaxExtensionKind::NonMacroAttr { .. } => Transparency::Opaque,
-            SyntaxExtensionKind::LegacyBang(..) |
-            SyntaxExtensionKind::LegacyAttr(..) |
-            SyntaxExtensionKind::LegacyDerive(..) => Transparency::SemiTransparent,
-        }
-    }
-}
-
 impl SyntaxExtension {
     /// Returns which kind of macro calls this syntax extension.
     pub fn macro_kind(&self) -> MacroKind {
@@ -606,7 +588,6 @@ impl SyntaxExtension {
     pub fn default(kind: SyntaxExtensionKind, edition: Edition) -> SyntaxExtension {
         SyntaxExtension {
             span: DUMMY_SP,
-            default_transparency: kind.default_transparency(),
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
@@ -646,7 +627,6 @@ impl SyntaxExtension {
             parent,
             call_site,
             def_site: self.span,
-            default_transparency: self.default_transparency,
             allow_internal_unstable: self.allow_internal_unstable.clone(),
             allow_internal_unsafe: self.allow_internal_unsafe,
             local_inner_macros: self.local_inner_macros,

@@ -478,7 +478,6 @@ pub fn compile(
     SyntaxExtension {
         kind: SyntaxExtensionKind::LegacyBang(expander),
         span: def.span,
-        default_transparency: transparency,
         allow_internal_unstable,
         allow_internal_unsafe: attr::contains_name(&def.attrs, sym::allow_internal_unsafe),
         local_inner_macros,

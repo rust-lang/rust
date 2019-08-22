@@ -550,8 +550,7 @@ impl Span {
     /// The returned span belongs to the created expansion and has the new properties,
     /// but its location is inherited from the current span.
     pub fn fresh_expansion(self, expn_data: ExpnData) -> Span {
-        let transparency = expn_data.default_transparency;
-        self.fresh_expansion_with_transparency(expn_data, transparency)
+        self.fresh_expansion_with_transparency(expn_data, Transparency::SemiTransparent)
     }
 
     pub fn fresh_expansion_with_transparency(
@@ -591,8 +590,6 @@ pub struct ExpnData {
     /// The span of the macro definition (possibly dummy).
     /// This span serves only informational purpose and is not used for resolution.
     pub def_site: Span,
-    /// Transparency used by `apply_mark` for the expansion with this expansion data by default.
-    pub default_transparency: Transparency,
     /// List of #[unstable]/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
     /// to them.
@@ -615,7 +612,6 @@ impl ExpnData {
             parent: ExpnId::root(),
             call_site,
             def_site: DUMMY_SP,
-            default_transparency: Transparency::SemiTransparent,
             allow_internal_unstable: None,
             allow_internal_unsafe: false,
             local_inner_macros: false,
