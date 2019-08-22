@@ -2975,7 +2975,14 @@ impl<'test> TestCx<'test> {
         let modes_to_prune = vec![CompareMode::Nll];
         self.prune_duplicate_outputs(&modes_to_prune);
 
-        let mut errors = self.load_compare_outputs(&proc_res, explicit);
+        // if the user specified to check the results of the
+        // run-pass test, delay loading and comparing output
+        // until execution of the binary
+        let mut errors = if !self.props.check_run_results {
+            self.load_compare_outputs(&proc_res, explicit)
+        } else {
+            0
+        };
 
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
@@ -3054,7 +3061,17 @@ impl<'test> TestCx<'test> {
 
         if self.should_run_successfully() {
             let proc_res = self.exec_compiled_test();
-
+            let run_output_errors = if self.props.check_run_results {
+                self.load_compare_outputs(&proc_res, explicit)
+            } else {
+                0
+            };
+            if run_output_errors > 0 {
+                self.fatal_proc_rec(
+                    &format!("{} errors occured comparing run output.", run_output_errors),
+                    &proc_res,
+                );
+            }
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }
