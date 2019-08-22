@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 walkdir = "2.1.3"
 itertools = "0.8.0"
-clap = "2.32.0"
+clap = { version = "2.32.0", default-features = false }
 quote = "1.0.2"
 proc-macro2 = "1.0.1"
 ron = "0.5.1"
