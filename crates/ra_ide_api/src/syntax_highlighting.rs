@@ -158,21 +158,17 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                         } else {
                             "variable"
                         }
-                    } else if name
-                        .syntax()
-                        .parent()
-                        .map(|x| {
-                            x.kind() == TYPE_PARAM
-                                || x.kind() == STRUCT_DEF
-                                || x.kind() == ENUM_DEF
-                                || x.kind() == TRAIT_DEF
-                                || x.kind() == TYPE_ALIAS_DEF
-                        })
-                        .unwrap_or(false)
-                    {
-                        "type"
                     } else {
-                        "function"
+                        name.syntax()
+                            .parent()
+                            .map(|x| match x.kind() {
+                                TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => {
+                                    "type"
+                                }
+                                NAMED_FIELD_DEF => "field",
+                                _ => "function",
+                            })
+                            .unwrap_or("function")
                     }
                 } else {
                     "text"
