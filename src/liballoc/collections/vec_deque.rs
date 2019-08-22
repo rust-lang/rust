@@ -1810,7 +1810,7 @@ impl<T> VecDeque<T> {
         other
     }
 
-    /// Moves all the elements of `other` into `Self`, leaving `other` empty.
+    /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
     /// # Panics
     ///
