@@ -208,7 +208,7 @@ error: missing documentation for a function
 
 To fix the lint, add documentation to all items.
 
-## single-use-lifetime
+## single-use-lifetimes
 
 This lint detects lifetimes that are only used once. Some example code that
 triggers this lint:
