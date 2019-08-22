@@ -78,6 +78,7 @@ See https://github.com/microsoft/vscode/issues/72308[microsoft/vscode#72308] for
   (e.g: `--features="shumway,pdf"` will run as `cargo watch -x "check --features="shumway,pdf""` )
 * `rust-analyzer.trace.server`: enables internal logging
 * `rust-analyzer.trace.cargo-watch`: enables cargo-watch logging
+* `RUST_SRC_PATH`: environment variable that overwrites the sysroot
 
 
 ## Emacs

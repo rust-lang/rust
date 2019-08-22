@@ -1,4 +1,5 @@
 use std::{
+    env,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -33,21 +34,13 @@ impl Sysroot {
     }
 
     pub fn discover(cargo_toml: &Path) -> Result<Sysroot> {
-        let rustc_output = Command::new("rustc")
-            .current_dir(cargo_toml.parent().unwrap())
-            .args(&["--print", "sysroot"])
-            .output()?;
-        if !rustc_output.status.success() {
-            Err("failed to locate sysroot")?
-        }
-        let stdout = String::from_utf8(rustc_output.stdout)?;
-        let sysroot_path = Path::new(stdout.trim());
-        let src = sysroot_path.join("lib/rustlib/src/rust/src");
+        let src = try_find_src_path(cargo_toml)?;
+
         if !src.exists() {
             Err(format!(
                 "can't load standard library from sysroot\n\
                  {:?}\n\
-                 try running `rustup component add rust-src`",
+                 try running `rustup component add rust-src` or set `RUST_SRC_PATH`",
                 src,
             ))?;
         }
@@ -81,6 +74,23 @@ impl Sysroot {
     fn by_name(&self, name: &str) -> Option<SysrootCrate> {
         self.crates.iter().find(|(_id, data)| data.name == name).map(|(id, _data)| id)
     }
+}
+
+fn try_find_src_path(cargo_toml: &Path) -> Result<PathBuf> {
+    if let Ok(path) = env::var("RUST_SRC_PATH") {
+        return Ok(path.into());
+    }
+
+    let rustc_output = Command::new("rustc")
+        .current_dir(cargo_toml.parent().unwrap())
+        .args(&["--print", "sysroot"])
+        .output()?;
+    if !rustc_output.status.success() {
+        Err("failed to locate sysroot")?;
+    }
+    let stdout = String::from_utf8(rustc_output.stdout)?;
+    let sysroot_path = Path::new(stdout.trim());
+    Ok(sysroot_path.join("lib/rustlib/src/rust/src"))
 }
 
 impl SysrootCrate {
