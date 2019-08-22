@@ -9,7 +9,7 @@ use gen_lsp_server::{
     handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
 use lsp_types::{ClientCapabilities, NumberOrString};
-use ra_ide_api::{Canceled, FileId, LibraryData};
+use ra_ide_api::{Canceled, FeatureFlags, FileId, LibraryData};
 use ra_prof::profile;
 use ra_vfs::VfsTask;
 use serde::{de::DeserializeOwned, Serialize};
@@ -56,7 +56,7 @@ pub fn main_loop(
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
-    log::debug!("server_config: {:?}", config);
+    log::info!("server_config: {:#?}", config);
     // FIXME: support dynamic workspace loading.
     let workspaces = {
         let ws_worker = workspace_loader(config.with_sysroot);
@@ -83,6 +83,21 @@ pub fn main_loop(
         .iter()
         .map(|glob| ra_vfs_glob::Glob::new(glob))
         .collect::<std::result::Result<Vec<_>, _>>()?;
+    let feature_flags = {
+        let mut ff = FeatureFlags::default();
+        for (flag, value) in config.feature_flags {
+            if let Err(_) = ff.set(flag.as_str(), value) {
+                log::error!("unknown feature flag: {:?}", flag);
+                show_message(
+                    req::MessageType::Error,
+                    format!("unknown feature flag: {:?}", flag),
+                    msg_sender,
+                );
+            }
+        }
+        ff
+    };
+    log::info!("feature_flags: {:#?}", feature_flags);
     let mut state = WorldState::new(
         ws_roots,
         workspaces,
@@ -90,13 +105,13 @@ pub fn main_loop(
         &globs,
         Options {
             publish_decorations: config.publish_decorations,
-            show_workspace_loaded: config.show_workspace_loaded,
             supports_location_link: client_caps
                 .text_document
                 .and_then(|it| it.definition)
                 .and_then(|it| it.link_support)
                 .unwrap_or(false),
         },
+        feature_flags,
     );
 
     let pool = ThreadPool::new(THREADPOOL_SIZE);
@@ -276,7 +291,7 @@ fn main_loop_inner(
             && in_flight_libraries == 0
         {
             let n_packages: usize = state.workspaces.iter().map(|it| it.n_packages()).sum();
-            if state.options.show_workspace_loaded {
+            if state.feature_flags().get("notifications.workspace-loaded") {
                 let msg = format!("workspace loaded, {} rust packages", n_packages);
                 show_message(req::MessageType::Info, msg, msg_sender);
             }
@@ -587,17 +602,20 @@ fn update_file_notifications_on_threadpool(
     subscriptions: Vec<FileId>,
 ) {
     log::trace!("updating notifications for {:?}", subscriptions);
+    let publish_diagnostics = world.feature_flags().get("lsp.diagnostics");
     pool.execute(move || {
         for file_id in subscriptions {
-            match handlers::publish_diagnostics(&world, file_id) {
-                Err(e) => {
-                    if !is_canceled(&e) {
-                        log::error!("failed to compute diagnostics: {:?}", e);
+            if publish_diagnostics {
+                match handlers::publish_diagnostics(&world, file_id) {
+                    Err(e) => {
+                        if !is_canceled(&e) {
+                            log::error!("failed to compute diagnostics: {:?}", e);
+                        }
                     }
-                }
-                Ok(params) => {
-                    let not = RawNotification::new::<req::PublishDiagnostics>(&params);
-                    sender.send(Task::Notify(not)).unwrap();
+                    Ok(params) => {
+                        let not = RawNotification::new::<req::PublishDiagnostics>(&params);
+                        sender.send(Task::Notify(not)).unwrap();
+                    }
                 }
             }
             if publish_decorations {

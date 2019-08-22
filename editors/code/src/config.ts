@@ -23,6 +23,7 @@ export class Config {
     public lruCapacity: null | number = null;
     public displayInlayHints = true;
     public excludeGlobs = [];
+    public featureFlags = {};
     public cargoWatchOptions: CargoWatchOptions = {
         enableOnStartup: 'ask',
         trace: 'off',
@@ -131,6 +132,9 @@ export class Config {
         }
         if (config.has('excludeGlobs')) {
             this.excludeGlobs = config.get('excludeGlobs') || [];
+        }
+        if (config.has('featureFlags')) {
+            this.featureFlags = config.get('featureFlags') || {};
         }
     }
 }

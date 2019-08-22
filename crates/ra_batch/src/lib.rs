@@ -3,7 +3,7 @@ use std::{collections::HashSet, error::Error, path::Path};
 use rustc_hash::FxHashMap;
 
 use ra_db::{CrateGraph, FileId, SourceRootId};
-use ra_ide_api::{AnalysisChange, AnalysisHost};
+use ra_ide_api::{AnalysisChange, AnalysisHost, FeatureFlags};
 use ra_project_model::{PackageRoot, ProjectWorkspace};
 use ra_vfs::{RootEntry, Vfs, VfsChange};
 use ra_vfs_glob::RustPackageFilterBuilder;
@@ -63,7 +63,7 @@ pub fn load(
     vfs: &mut Vfs,
 ) -> AnalysisHost {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
-    let mut host = AnalysisHost::new(lru_cap);
+    let mut host = AnalysisHost::new(lru_cap, FeatureFlags::default());
     let mut analysis_change = AnalysisChange::new();
     analysis_change.set_crate_graph(crate_graph);
 

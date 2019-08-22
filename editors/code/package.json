@@ -165,10 +165,10 @@
                     "default": false,
                     "description": "When highlighting Rust code, use a unique color per identifier"
                 },
-                "rust-analyzer.showWorkspaceLoadedNotification": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Show notification when workspace was loaded"
+                "rust-analyzer.featureFlags": {
+                    "type": "object",
+                    "default": {},
+                    "description": "Fine grained feature flags to disable annoying features"
                 },
                 "rust-analyzer.enableEnhancedTyping": {
                     "type": "boolean",

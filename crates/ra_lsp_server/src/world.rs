@@ -7,7 +7,8 @@ use gen_lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_ide_api::{
-    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, LibraryData, SourceRootId,
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
+    SourceRootId,
 };
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot};
 use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
@@ -22,7 +23,6 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Options {
     pub publish_decorations: bool,
-    pub show_workspace_loaded: bool,
     pub supports_location_link: bool,
 }
 
@@ -58,6 +58,7 @@ impl WorldState {
         lru_capacity: Option<usize>,
         exclude_globs: &[Glob],
         options: Options,
+        feature_flags: FeatureFlags,
     ) -> WorldState {
         let mut change = AnalysisChange::new();
 
@@ -99,7 +100,7 @@ impl WorldState {
         }
         change.set_crate_graph(crate_graph);
 
-        let mut analysis_host = AnalysisHost::new(lru_capacity);
+        let mut analysis_host = AnalysisHost::new(lru_capacity, feature_flags);
         analysis_host.apply_change(change);
         WorldState {
             options,
@@ -184,6 +185,10 @@ impl WorldState {
     pub fn complete_request(&mut self, request: CompletedRequest) {
         self.latest_requests.write().record(request)
     }
+
+    pub fn feature_flags(&self) -> &FeatureFlags {
+        self.analysis_host.feature_flags()
+    }
 }
 
 impl WorldSnapshot {
@@ -245,5 +250,9 @@ impl WorldSnapshot {
     pub fn workspace_root_for(&self, file_id: FileId) -> Option<&Path> {
         let path = self.vfs.read().file2path(VfsFile(file_id.0));
         self.workspaces.iter().find_map(|ws| ws.workspace_root_for(&path))
+    }
+
+    pub fn feature_flags(&self) -> &FeatureFlags {
+        self.analysis.feature_flags()
     }
 }

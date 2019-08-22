@@ -45,7 +45,8 @@ export class Server {
                 showWorkspaceLoaded:
                     Server.config.showWorkspaceLoadedNotification,
                 lruCapacity: Server.config.lruCapacity,
-                excludeGlobs: Server.config.excludeGlobs
+                excludeGlobs: Server.config.excludeGlobs,
+                featureFlags: Server.config.featureFlags
             },
             traceOutputChannel
         };
