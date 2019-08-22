@@ -211,12 +211,19 @@ fn iterate_trait_method_candidates<T>(
     let krate = resolver.krate()?;
     // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
     let env = lower::trait_env(db, resolver);
-    'traits: for t in resolver.traits_in_scope(db) {
+    // if ty is `impl Trait` or `dyn Trait`, the trait doesn't need to be in scope
+    let traits = ty.value.inherent_trait().into_iter().chain(resolver.traits_in_scope(db));
+    'traits: for t in traits {
         let data = t.trait_data(db);
+
+        // FIXME this is a bit of a hack, since Chalk should say the same thing
+        // anyway, but currently Chalk doesn't implement `dyn/impl Trait` yet
+        let inherently_implemented = ty.value.inherent_trait() == Some(t);
+
         // we'll be lazy about checking whether the type implements the
         // trait, but if we find out it doesn't, we'll skip the rest of the
         // iteration
-        let mut known_implemented = false;
+        let mut known_implemented = inherently_implemented;
         for item in data.items() {
             if let TraitItem::Function(m) = *item {
                 let data = m.data(db);
@@ -271,6 +278,11 @@ pub(crate) fn implements_trait(
     krate: Crate,
     trait_: Trait,
 ) -> bool {
+    if ty.value.inherent_trait() == Some(trait_) {
+        // FIXME this is a bit of a hack, since Chalk should say the same thing
+        // anyway, but currently Chalk doesn't implement `dyn/impl Trait` yet
+        return true;
+    }
     let env = lower::trait_env(db, resolver);
     let goal = generic_implements_goal(db, env.clone(), trait_, ty.clone());
     let solution = db.trait_solve(krate, goal);

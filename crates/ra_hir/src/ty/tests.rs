@@ -3279,6 +3279,7 @@ fn impl_trait() {
         infer(r#"
 trait Trait<T> {
     fn foo(&self) -> T;
+    fn foo2(&self) -> i64;
 }
 fn bar() -> impl Trait<u64> {}
 
@@ -3289,26 +3290,36 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
     x.foo();
     y.foo();
     z.foo();
+    x.foo2();
+    y.foo2();
+    z.foo2();
 }
 "#),
         @r###"
    ⋮
    ⋮[30; 34) 'self': &Self
-   ⋮[72; 74) '{}': ()
-   ⋮[84; 85) 'x': impl Trait<u64>
-   ⋮[104; 105) 'y': &impl Trait<u64>
-   ⋮[125; 200) '{     ...o(); }': ()
-   ⋮[131; 132) 'x': impl Trait<u64>
-   ⋮[138; 139) 'y': &impl Trait<u64>
-   ⋮[149; 150) 'z': impl Trait<u64>
-   ⋮[153; 156) 'bar': fn bar() -> impl Trait<u64>
-   ⋮[153; 158) 'bar()': impl Trait<u64>
-   ⋮[164; 165) 'x': impl Trait<u64>
-   ⋮[164; 171) 'x.foo()': {unknown}
-   ⋮[177; 178) 'y': &impl Trait<u64>
-   ⋮[177; 184) 'y.foo()': {unknown}
-   ⋮[190; 191) 'z': impl Trait<u64>
-   ⋮[190; 197) 'z.foo()': {unknown}
+   ⋮[55; 59) 'self': &Self
+   ⋮[99; 101) '{}': ()
+   ⋮[111; 112) 'x': impl Trait<u64>
+   ⋮[131; 132) 'y': &impl Trait<u64>
+   ⋮[152; 269) '{     ...2(); }': ()
+   ⋮[158; 159) 'x': impl Trait<u64>
+   ⋮[165; 166) 'y': &impl Trait<u64>
+   ⋮[176; 177) 'z': impl Trait<u64>
+   ⋮[180; 183) 'bar': fn bar() -> impl Trait<u64>
+   ⋮[180; 185) 'bar()': impl Trait<u64>
+   ⋮[191; 192) 'x': impl Trait<u64>
+   ⋮[191; 198) 'x.foo()': {unknown}
+   ⋮[204; 205) 'y': &impl Trait<u64>
+   ⋮[204; 211) 'y.foo()': {unknown}
+   ⋮[217; 218) 'z': impl Trait<u64>
+   ⋮[217; 224) 'z.foo()': {unknown}
+   ⋮[230; 231) 'x': impl Trait<u64>
+   ⋮[230; 238) 'x.foo2()': i64
+   ⋮[244; 245) 'y': &impl Trait<u64>
+   ⋮[244; 252) 'y.foo2()': i64
+   ⋮[258; 259) 'z': impl Trait<u64>
+   ⋮[258; 266) 'z.foo2()': i64
     "###
     );
 }
@@ -3319,6 +3330,7 @@ fn dyn_trait() {
         infer(r#"
 trait Trait<T> {
     fn foo(&self) -> T;
+    fn foo2(&self) -> i64;
 }
 fn bar() -> dyn Trait<u64> {}
 
@@ -3329,26 +3341,36 @@ fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
     x.foo();
     y.foo();
     z.foo();
+    x.foo2();
+    y.foo2();
+    z.foo2();
 }
 "#),
         @r###"
    ⋮
    ⋮[30; 34) 'self': &Self
-   ⋮[71; 73) '{}': ()
-   ⋮[83; 84) 'x': dyn Trait<u64>
-   ⋮[102; 103) 'y': &dyn Trait<u64>
-   ⋮[122; 197) '{     ...o(); }': ()
-   ⋮[128; 129) 'x': dyn Trait<u64>
-   ⋮[135; 136) 'y': &dyn Trait<u64>
-   ⋮[146; 147) 'z': dyn Trait<u64>
-   ⋮[150; 153) 'bar': fn bar() -> dyn Trait<u64>
-   ⋮[150; 155) 'bar()': dyn Trait<u64>
-   ⋮[161; 162) 'x': dyn Trait<u64>
-   ⋮[161; 168) 'x.foo()': {unknown}
-   ⋮[174; 175) 'y': &dyn Trait<u64>
-   ⋮[174; 181) 'y.foo()': {unknown}
-   ⋮[187; 188) 'z': dyn Trait<u64>
-   ⋮[187; 194) 'z.foo()': {unknown}
+   ⋮[55; 59) 'self': &Self
+   ⋮[98; 100) '{}': ()
+   ⋮[110; 111) 'x': dyn Trait<u64>
+   ⋮[129; 130) 'y': &dyn Trait<u64>
+   ⋮[149; 266) '{     ...2(); }': ()
+   ⋮[155; 156) 'x': dyn Trait<u64>
+   ⋮[162; 163) 'y': &dyn Trait<u64>
+   ⋮[173; 174) 'z': dyn Trait<u64>
+   ⋮[177; 180) 'bar': fn bar() -> dyn Trait<u64>
+   ⋮[177; 182) 'bar()': dyn Trait<u64>
+   ⋮[188; 189) 'x': dyn Trait<u64>
+   ⋮[188; 195) 'x.foo()': {unknown}
+   ⋮[201; 202) 'y': &dyn Trait<u64>
+   ⋮[201; 208) 'y.foo()': {unknown}
+   ⋮[214; 215) 'z': dyn Trait<u64>
+   ⋮[214; 221) 'z.foo()': {unknown}
+   ⋮[227; 228) 'x': dyn Trait<u64>
+   ⋮[227; 235) 'x.foo2()': i64
+   ⋮[241; 242) 'y': &dyn Trait<u64>
+   ⋮[241; 249) 'y.foo2()': i64
+   ⋮[255; 256) 'z': dyn Trait<u64>
+   ⋮[255; 263) 'z.foo2()': i64
     "###
     );
 }
