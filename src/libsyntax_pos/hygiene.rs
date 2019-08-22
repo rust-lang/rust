@@ -183,8 +183,9 @@ impl HygieneData {
         self.syntax_context_data[ctxt.0 as usize].outer_expn
     }
 
-    fn outer_transparency(&self, ctxt: SyntaxContext) -> Transparency {
-        self.syntax_context_data[ctxt.0 as usize].outer_transparency
+    fn outer_mark(&self, ctxt: SyntaxContext) -> (ExpnId, Transparency) {
+        let data = &self.syntax_context_data[ctxt.0 as usize];
+        (data.outer_expn, data.outer_transparency)
     }
 
     fn parent_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
@@ -200,7 +201,7 @@ impl HygieneData {
     fn marks(&self, mut ctxt: SyntaxContext) -> Vec<(ExpnId, Transparency)> {
         let mut marks = Vec::new();
         while ctxt != SyntaxContext::root() {
-            marks.push((self.outer_expn(ctxt), self.outer_transparency(ctxt)));
+            marks.push(self.outer_mark(ctxt));
             ctxt = self.parent_ctxt(ctxt);
         }
         marks.reverse();
@@ -535,13 +536,11 @@ impl SyntaxContext {
         HygieneData::with(|data| data.expn_data(data.outer_expn(self)).clone())
     }
 
-    /// `ctxt.outer_expn_with_data()` is equivalent to but faster than
-    /// `{ let outer = ctxt.outer_expn(); (outer, outer.expn_data()) }`.
     #[inline]
-    pub fn outer_expn_with_data(self) -> (ExpnId, ExpnData) {
+    pub fn outer_mark_with_data(self) -> (ExpnId, Transparency, ExpnData) {
         HygieneData::with(|data| {
-            let outer = data.outer_expn(self);
-            (outer, data.expn_data(outer).clone())
+            let (expn_id, transparency) = data.outer_mark(self);
+            (expn_id, transparency, data.expn_data(expn_id).clone())
         })
     }
 
@@ -563,9 +562,18 @@ impl Span {
     /// The returned span belongs to the created expansion and has the new properties,
     /// but its location is inherited from the current span.
     pub fn fresh_expansion(self, expn_data: ExpnData) -> Span {
+        let transparency = expn_data.default_transparency;
+        self.fresh_expansion_with_transparency(expn_data, transparency)
+    }
+
+    pub fn fresh_expansion_with_transparency(
+        self, expn_data: ExpnData, transparency: Transparency
+    ) -> Span {
         HygieneData::with(|data| {
             let expn_id = data.fresh_expn(Some(expn_data));
-            self.with_ctxt(data.apply_mark(SyntaxContext::root(), expn_id))
+            self.with_ctxt(data.apply_mark_with_transparency(
+                SyntaxContext::root(), expn_id, transparency
+            ))
         })
     }
 }
