@@ -617,7 +617,11 @@ fn update_file_notifications_on_threadpool(
     });
 }
 
-fn show_message(typ: req::MessageType, message: impl Into<String>, sender: &Sender<RawMessage>) {
+pub fn show_message(
+    typ: req::MessageType,
+    message: impl Into<String>,
+    sender: &Sender<RawMessage>,
+) {
     let message = message.into();
     let params = req::ShowMessageParams { typ, message };
     let not = RawNotification::new::<req::ShowMessage>(&params);
