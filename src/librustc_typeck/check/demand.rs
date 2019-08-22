@@ -587,6 +587,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return false;
             }
         }
+        if let hir::ExprKind::Call(path, args) = &expr.node {
+            if let (
+                hir::ExprKind::Path(hir::QPath::TypeRelative(base_ty, path_segment)),
+                1,
+            ) = (&path.node, args.len()) {
+                // `expr` is a conversion like `u32::from(val)`, do not suggest anything (#63697).
+                if let (
+                    hir::TyKind::Path(hir::QPath::Resolved(None, base_ty_path)),
+                    sym::from,
+                ) = (&base_ty.node, path_segment.ident.name) {
+                    if let Some(ident) = &base_ty_path.segments.iter().map(|s| s.ident).next() {
+                        match ident.name {
+                            sym::i128 | sym::i64 | sym::i32 | sym::i16 | sym::i8 |
+                            sym::u128 | sym::u64 | sym::u32 | sym::u16 | sym::u8 |
+                            sym::isize | sym::usize
+                            if base_ty_path.segments.len() == 1 => {
+                                return false;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
 
         let msg = format!("you can convert an `{}` to `{}`", checked_ty, expected_ty);
         let cast_msg = format!("you can cast an `{} to `{}`", checked_ty, expected_ty);
