@@ -3273,6 +3273,181 @@ fn test<T: ApplyL>(t: T) {
     assert_eq!(t, "{unknown}");
 }
 
+#[test]
+fn impl_trait() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+    fn foo2(&self) -> i64;
+}
+fn bar() -> impl Trait<u64> {}
+
+fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+    x.foo2();
+    y.foo2();
+    z.foo2();
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[30; 34) 'self': &Self
+   ⋮[55; 59) 'self': &Self
+   ⋮[99; 101) '{}': ()
+   ⋮[111; 112) 'x': impl Trait<u64>
+   ⋮[131; 132) 'y': &impl Trait<u64>
+   ⋮[152; 269) '{     ...2(); }': ()
+   ⋮[158; 159) 'x': impl Trait<u64>
+   ⋮[165; 166) 'y': &impl Trait<u64>
+   ⋮[176; 177) 'z': impl Trait<u64>
+   ⋮[180; 183) 'bar': fn bar() -> impl Trait<u64>
+   ⋮[180; 185) 'bar()': impl Trait<u64>
+   ⋮[191; 192) 'x': impl Trait<u64>
+   ⋮[191; 198) 'x.foo()': {unknown}
+   ⋮[204; 205) 'y': &impl Trait<u64>
+   ⋮[204; 211) 'y.foo()': {unknown}
+   ⋮[217; 218) 'z': impl Trait<u64>
+   ⋮[217; 224) 'z.foo()': {unknown}
+   ⋮[230; 231) 'x': impl Trait<u64>
+   ⋮[230; 238) 'x.foo2()': i64
+   ⋮[244; 245) 'y': &impl Trait<u64>
+   ⋮[244; 252) 'y.foo2()': i64
+   ⋮[258; 259) 'z': impl Trait<u64>
+   ⋮[258; 266) 'z.foo2()': i64
+    "###
+    );
+}
+
+#[test]
+fn dyn_trait() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait<T> {
+    fn foo(&self) -> T;
+    fn foo2(&self) -> i64;
+}
+fn bar() -> dyn Trait<u64> {}
+
+fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+    x.foo2();
+    y.foo2();
+    z.foo2();
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[30; 34) 'self': &Self
+   ⋮[55; 59) 'self': &Self
+   ⋮[98; 100) '{}': ()
+   ⋮[110; 111) 'x': dyn Trait<u64>
+   ⋮[129; 130) 'y': &dyn Trait<u64>
+   ⋮[149; 266) '{     ...2(); }': ()
+   ⋮[155; 156) 'x': dyn Trait<u64>
+   ⋮[162; 163) 'y': &dyn Trait<u64>
+   ⋮[173; 174) 'z': dyn Trait<u64>
+   ⋮[177; 180) 'bar': fn bar() -> dyn Trait<u64>
+   ⋮[177; 182) 'bar()': dyn Trait<u64>
+   ⋮[188; 189) 'x': dyn Trait<u64>
+   ⋮[188; 195) 'x.foo()': {unknown}
+   ⋮[201; 202) 'y': &dyn Trait<u64>
+   ⋮[201; 208) 'y.foo()': {unknown}
+   ⋮[214; 215) 'z': dyn Trait<u64>
+   ⋮[214; 221) 'z.foo()': {unknown}
+   ⋮[227; 228) 'x': dyn Trait<u64>
+   ⋮[227; 235) 'x.foo2()': i64
+   ⋮[241; 242) 'y': &dyn Trait<u64>
+   ⋮[241; 249) 'y.foo2()': i64
+   ⋮[255; 256) 'z': dyn Trait<u64>
+   ⋮[255; 263) 'z.foo2()': i64
+    "###
+    );
+}
+
+#[test]
+fn dyn_trait_bare() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait {
+    fn foo(&self) -> u64;
+}
+fn bar() -> Trait {}
+
+fn test(x: Trait, y: &Trait) -> u64 {
+    x;
+    y;
+    let z = bar();
+    x.foo();
+    y.foo();
+    z.foo();
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[27; 31) 'self': &Self
+   ⋮[61; 63) '{}': ()
+   ⋮[73; 74) 'x': {unknown}
+   ⋮[83; 84) 'y': &{unknown}
+   ⋮[101; 176) '{     ...o(); }': ()
+   ⋮[107; 108) 'x': {unknown}
+   ⋮[114; 115) 'y': &{unknown}
+   ⋮[125; 126) 'z': {unknown}
+   ⋮[129; 132) 'bar': fn bar() -> {unknown}
+   ⋮[129; 134) 'bar()': {unknown}
+   ⋮[140; 141) 'x': {unknown}
+   ⋮[140; 147) 'x.foo()': {unknown}
+   ⋮[153; 154) 'y': &{unknown}
+   ⋮[153; 160) 'y.foo()': {unknown}
+   ⋮[166; 167) 'z': {unknown}
+   ⋮[166; 173) 'z.foo()': {unknown}
+    "###
+    );
+}
+
+#[test]
+fn weird_bounds() {
+    assert_snapshot_matches!(
+        infer(r#"
+trait Trait {}
+fn test() {
+    let a: impl Trait + 'lifetime = foo;
+    let b: impl 'lifetime = foo;
+    let b: impl (Trait) = foo;
+    let b: impl ('lifetime) = foo;
+    let d: impl ?Sized = foo;
+    let e: impl Trait + ?Sized = foo;
+}
+"#),
+        @r###"
+   ⋮
+   ⋮[26; 237) '{     ...foo; }': ()
+   ⋮[36; 37) 'a': impl Trait + {error}
+   ⋮[64; 67) 'foo': impl Trait + {error}
+   ⋮[77; 78) 'b': impl {error}
+   ⋮[97; 100) 'foo': impl {error}
+   ⋮[110; 111) 'b': impl Trait
+   ⋮[128; 131) 'foo': impl Trait
+   ⋮[141; 142) 'b': impl {error}
+   ⋮[163; 166) 'foo': impl {error}
+   ⋮[176; 177) 'd': impl {error}
+   ⋮[193; 196) 'foo': impl {error}
+   ⋮[206; 207) 'e': impl Trait + {error}
+   ⋮[231; 234) 'foo': impl Trait + {error}
+    "###
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

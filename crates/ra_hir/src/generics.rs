@@ -11,7 +11,7 @@ use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     name::SELF_TYPE,
     path::Path,
-    type_ref::TypeRef,
+    type_ref::{TypeBound, TypeRef},
     AdtDef, AsName, Container, Enum, EnumVariant, Function, HasSource, ImplBlock, Name, Struct,
     Trait, TypeAlias, Union,
 };
@@ -35,10 +35,12 @@ pub struct GenericParams {
 
 /// A single predicate from a where clause, i.e. `where Type: Trait`. Combined
 /// where clauses like `where T: Foo + Bar` are turned into multiple of these.
+/// It might still result in multiple actual predicates though, because of
+/// associated type bindings like `Iterator<Item = u32>`.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WherePredicate {
     pub(crate) type_ref: TypeRef,
-    pub(crate) trait_ref: Path,
+    pub(crate) bound: TypeBound,
 }
 
 // FIXME: consts can have type parameters from their parents (i.e. associated consts of traits)
@@ -143,18 +145,8 @@ impl GenericParams {
             // FIXME: remove this bound
             return;
         }
-        let path = bound
-            .type_ref()
-            .and_then(|tr| match tr {
-                ast::TypeRef::PathType(path) => path.path(),
-                _ => None,
-            })
-            .and_then(Path::from_ast);
-        let path = match path {
-            Some(p) => p,
-            None => return,
-        };
-        self.where_predicates.push(WherePredicate { type_ref, trait_ref: path });
+        let bound = TypeBound::from_ast(bound);
+        self.where_predicates.push(WherePredicate { type_ref, bound });
     }
 
     pub(crate) fn find_by_name(&self, name: &Name) -> Option<&GenericParam> {

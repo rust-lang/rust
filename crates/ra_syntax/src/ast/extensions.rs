@@ -382,7 +382,36 @@ impl ast::WherePred {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TypeBoundKind {
+    /// Trait
+    PathType(ast::PathType),
+    /// for<'a> ...
+    ForType(ast::ForType),
+    /// 'a
+    Lifetime(ast::SyntaxToken),
+}
+
 impl ast::TypeBound {
+    pub fn kind(&self) -> TypeBoundKind {
+        if let Some(path_type) = children(self).next() {
+            TypeBoundKind::PathType(path_type)
+        } else if let Some(for_type) = children(self).next() {
+            TypeBoundKind::ForType(for_type)
+        } else if let Some(lifetime) = self.lifetime() {
+            TypeBoundKind::Lifetime(lifetime)
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn lifetime(&self) -> Option<SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == LIFETIME)
+    }
+
     pub fn question_mark_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .children_with_tokens()

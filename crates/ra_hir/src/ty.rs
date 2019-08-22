@@ -161,13 +161,27 @@ pub enum Ty {
         name: Name,
     },
 
-    /// A bound type variable. Only used during trait resolution to represent
-    /// Chalk variables.
+    /// A bound type variable. Used during trait resolution to represent Chalk
+    /// variables, and in `Dyn` and `Opaque` bounds to represent the `Self` type.
     Bound(u32),
 
     /// A type variable used during type checking. Not to be confused with a
     /// type parameter.
     Infer(InferTy),
+
+    /// A trait object (`dyn Trait` or bare `Trait` in pre-2018 Rust).
+    ///
+    /// The predicates are quantified over the `Self` type, i.e. `Ty::Bound(0)`
+    /// represents the `Self` type inside the bounds. This is currently
+    /// implicit; Chalk has the `Binders` struct to make it explicit, but it
+    /// didn't seem worth the overhead yet.
+    Dyn(Arc<[GenericPredicate]>),
+
+    /// An opaque type (`impl Trait`).
+    ///
+    /// The predicates are quantified over the `Self` type; see `Ty::Dyn` for
+    /// more.
+    Opaque(Arc<[GenericPredicate]>),
 
     /// A placeholder for a type which could not be computed; this is propagated
     /// to avoid useless error messages. Doubles as a placeholder where type
@@ -192,6 +206,12 @@ impl Substs {
 
     pub fn prefix(&self, n: usize) -> Substs {
         Substs(self.0.iter().cloned().take(n).collect::<Vec<_>>().into())
+    }
+
+    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        for t in self.0.iter() {
+            t.walk(f);
+        }
     }
 
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
@@ -270,6 +290,14 @@ impl TraitRef {
         });
         self
     }
+
+    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.substs.walk(f);
+    }
+
+    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        self.substs.walk_mut(f);
+    }
 }
 
 /// Like `generics::WherePredicate`, but with resolved types: A condition on the
@@ -297,6 +325,20 @@ impl GenericPredicate {
                 GenericPredicate::Implemented(trait_ref.subst(substs))
             }
             GenericPredicate::Error => self,
+        }
+    }
+
+    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        match self {
+            GenericPredicate::Implemented(trait_ref) => trait_ref.walk(f),
+            GenericPredicate::Error => {}
+        }
+    }
+
+    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        match self {
+            GenericPredicate::Implemented(trait_ref) => trait_ref.walk_mut(f),
+            GenericPredicate::Error => {}
         }
     }
 }
@@ -386,6 +428,11 @@ impl Ty {
                     t.walk(f);
                 }
             }
+            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+                for p in predicates.iter() {
+                    p.walk(f);
+                }
+            }
             Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
@@ -401,6 +448,13 @@ impl Ty {
             }
             Ty::UnselectedProjection(p_ty) => {
                 p_ty.parameters.walk_mut(f);
+            }
+            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+                let mut v: Vec<_> = predicates.iter().cloned().collect();
+                for p in &mut v {
+                    p.walk_mut(f);
+                }
+                *predicates = v.into();
             }
             Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
@@ -528,6 +582,19 @@ impl Ty {
             }
             ty => ty,
         })
+    }
+
+    /// If this is an `impl Trait` or `dyn Trait`, returns that trait.
+    pub fn inherent_trait(&self) -> Option<Trait> {
+        match self {
+            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+                predicates.iter().find_map(|pred| match pred {
+                    GenericPredicate::Implemented(tr) => Some(tr.trait_),
+                    _ => None,
+                })
+            }
+            _ => None,
+        }
     }
 }
 
@@ -669,6 +736,28 @@ impl HirDisplay for Ty {
             Ty::UnselectedProjection(p_ty) => p_ty.hir_fmt(f)?,
             Ty::Param { name, .. } => write!(f, "{}", name)?,
             Ty::Bound(idx) => write!(f, "?{}", idx)?,
+            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+                match self {
+                    Ty::Dyn(_) => write!(f, "dyn ")?,
+                    Ty::Opaque(_) => write!(f, "impl ")?,
+                    _ => unreachable!(),
+                };
+                // looping by hand here just to format the bounds in a slightly nicer way
+                let mut first = true;
+                for p in predicates.iter() {
+                    if !first {
+                        write!(f, " + ")?;
+                    }
+                    first = false;
+                    match p {
+                        // don't show the $0 self type
+                        GenericPredicate::Implemented(trait_ref) => {
+                            trait_ref.hir_fmt_ext(f, false)?
+                        }
+                        GenericPredicate::Error => p.hir_fmt(f)?,
+                    }
+                }
+            }
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
         }
@@ -676,18 +765,42 @@ impl HirDisplay for Ty {
     }
 }
 
-impl HirDisplay for TraitRef {
-    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        write!(
-            f,
-            "{}: {}",
-            self.substs[0].display(f.db),
-            self.trait_.name(f.db).unwrap_or_else(Name::missing)
-        )?;
+impl TraitRef {
+    fn hir_fmt_ext(
+        &self,
+        f: &mut HirFormatter<impl HirDatabase>,
+        with_self_ty: bool,
+    ) -> fmt::Result {
+        if with_self_ty {
+            write!(f, "{}: ", self.substs[0].display(f.db),)?;
+        }
+        write!(f, "{}", self.trait_.name(f.db).unwrap_or_else(Name::missing))?;
         if self.substs.len() > 1 {
             write!(f, "<")?;
             f.write_joined(&self.substs[1..], ", ")?;
             write!(f, ">")?;
+        }
+        Ok(())
+    }
+}
+
+impl HirDisplay for TraitRef {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        self.hir_fmt_ext(f, true)
+    }
+}
+
+impl HirDisplay for &GenericPredicate {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        HirDisplay::hir_fmt(*self, f)
+    }
+}
+
+impl HirDisplay for GenericPredicate {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        match self {
+            GenericPredicate::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
+            GenericPredicate::Error => write!(f, "{{error}}")?,
         }
         Ok(())
     }

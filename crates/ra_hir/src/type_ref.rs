@@ -1,7 +1,7 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use ra_syntax::ast::{self, TypeAscriptionOwner};
+use ra_syntax::ast::{self, TypeAscriptionOwner, TypeBoundsOwner};
 
 use crate::Path;
 
@@ -49,8 +49,16 @@ pub enum TypeRef {
     /// A fn pointer. Last element of the vector is the return type.
     Fn(Vec<TypeRef>),
     // For
-    // ImplTrait,
-    // DynTrait,
+    ImplTrait(Vec<TypeBound>),
+    DynTrait(Vec<TypeBound>),
+    Error,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum TypeBound {
+    Path(Path),
+    // also for<> bounds
+    // also Lifetimes
     Error,
 }
 
@@ -95,8 +103,12 @@ impl TypeRef {
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::TypeRef::ForType(inner) => TypeRef::from_ast_opt(inner.type_ref()),
-            ast::TypeRef::ImplTraitType(_inner) => TypeRef::Error,
-            ast::TypeRef::DynTraitType(_inner) => TypeRef::Error,
+            ast::TypeRef::ImplTraitType(inner) => {
+                TypeRef::ImplTrait(type_bounds_from_ast(inner.type_bound_list()))
+            }
+            ast::TypeRef::DynTraitType(inner) => {
+                TypeRef::DynTrait(type_bounds_from_ast(inner.type_bound_list()))
+            }
         }
     }
 
@@ -110,5 +122,32 @@ impl TypeRef {
 
     pub fn unit() -> TypeRef {
         TypeRef::Tuple(Vec::new())
+    }
+}
+
+pub(crate) fn type_bounds_from_ast(type_bounds_opt: Option<ast::TypeBoundList>) -> Vec<TypeBound> {
+    if let Some(type_bounds) = type_bounds_opt {
+        type_bounds.bounds().map(TypeBound::from_ast).collect()
+    } else {
+        vec![]
+    }
+}
+
+impl TypeBound {
+    pub(crate) fn from_ast(node: ast::TypeBound) -> Self {
+        match node.kind() {
+            ast::TypeBoundKind::PathType(path_type) => {
+                let path = match path_type.path() {
+                    Some(p) => p,
+                    None => return TypeBound::Error,
+                };
+                let path = match Path::from_ast(path) {
+                    Some(p) => p,
+                    None => return TypeBound::Error,
+                };
+                TypeBound::Path(path)
+            }
+            ast::TypeBoundKind::ForType(_) | ast::TypeBoundKind::Lifetime(_) => TypeBound::Error,
+        }
     }
 }

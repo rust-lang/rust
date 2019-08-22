@@ -80,7 +80,9 @@ impl ToChalk for Ty {
             // FIXME this is clearly incorrect, but probably not too incorrect
             // and I'm not sure what to actually do with Ty::Unknown
             // maybe an alternative would be `for<T> T`? (meaningless in rust, but expressible in chalk's Ty)
-            Ty::Unknown => {
+            //
+            // FIXME also dyn and impl Trait are currently handled like Unknown because Chalk doesn't have them yet
+            Ty::Unknown | Ty::Dyn(_) | Ty::Opaque(_) => {
                 PlaceholderIndex { ui: UniverseIndex::ROOT, idx: usize::max_value() }.to_ty()
             }
         }
