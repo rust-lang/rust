@@ -16,17 +16,16 @@ use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;
 use lazy_static::lazy_static;
 
+type GateFn = fn(&Features) -> bool;
+
 macro_rules! cfg_fn {
-    ($field: ident) => {{
-        fn f(features: &Features) -> bool {
-            features.$field
-        }
-        f as fn(&Features) -> bool
-    }}
+    ($field: ident) => {
+        (|features| { features.$field }) as GateFn
+    }
 }
 
-// cfg(...)'s that are feature gated
-const GATED_CFGS: &[(Symbol, Symbol, fn(&Features) -> bool)] = &[
+/// `cfg(...)`'s that are feature gated.
+const GATED_CFGS: &[(Symbol, Symbol, GateFn)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
