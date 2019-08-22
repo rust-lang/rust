@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 167)
-  FN_DEF@[0; 166)
+SOURCE_FILE@[0; 215)
+  FN_DEF@[0; 214)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 6)
@@ -8,18 +8,18 @@ SOURCE_FILE@[0; 167)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 166)
+    BLOCK@[9; 214)
       L_CURLY@[9; 10) "{"
       WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 164)
-        MATCH_EXPR@[15; 163)
+      EXPR_STMT@[15; 212)
+        MATCH_EXPR@[15; 211)
           MATCH_KW@[15; 20) "match"
           WHITESPACE@[20; 21) " "
           TUPLE_EXPR@[21; 23)
             L_PAREN@[21; 22) "("
             R_PAREN@[22; 23) ")"
           WHITESPACE@[23; 24) " "
-          MATCH_ARM_LIST@[24; 163)
+          MATCH_ARM_LIST@[24; 211)
             L_CURLY@[24; 25) "{"
             WHITESPACE@[25; 34) "\n        "
             MATCH_ARM@[34; 41)
@@ -141,9 +141,44 @@ SOURCE_FILE@[0; 167)
                 L_PAREN@[154; 155) "("
                 R_PAREN@[155; 156) ")"
             COMMA@[156; 157) ","
-            WHITESPACE@[157; 162) "\n    "
-            R_CURLY@[162; 163) "}"
-        SEMI@[163; 164) ";"
-      WHITESPACE@[164; 165) "\n"
-      R_CURLY@[165; 166) "}"
-  WHITESPACE@[166; 167) "\n"
+            WHITESPACE@[157; 166) "\n        "
+            MATCH_ARM@[166; 177)
+              BIND_PAT@[166; 171)
+                BOX_KW@[166; 169) "box"
+                WHITESPACE@[169; 170) " "
+                NAME@[170; 171)
+                  IDENT@[170; 171) "X"
+              WHITESPACE@[171; 172) " "
+              FAT_ARROW@[172; 174) "=>"
+              WHITESPACE@[174; 175) " "
+              TUPLE_EXPR@[175; 177)
+                L_PAREN@[175; 176) "("
+                R_PAREN@[176; 177) ")"
+            COMMA@[177; 178) ","
+            WHITESPACE@[178; 187) "\n        "
+            MATCH_ARM@[187; 204)
+              TUPLE_STRUCT_PAT@[187; 198)
+                PATH@[187; 191)
+                  PATH_SEGMENT@[187; 191)
+                    NAME_REF@[187; 191)
+                      IDENT@[187; 191) "Some"
+                L_PAREN@[191; 192) "("
+                BIND_PAT@[192; 197)
+                  BOX_KW@[192; 195) "box"
+                  WHITESPACE@[195; 196) " "
+                  NAME@[196; 197)
+                    IDENT@[196; 197) "X"
+                R_PAREN@[197; 198) ")"
+              WHITESPACE@[198; 199) " "
+              FAT_ARROW@[199; 201) "=>"
+              WHITESPACE@[201; 202) " "
+              TUPLE_EXPR@[202; 204)
+                L_PAREN@[202; 203) "("
+                R_PAREN@[203; 204) ")"
+            COMMA@[204; 205) ","
+            WHITESPACE@[205; 210) "\n    "
+            R_CURLY@[210; 211) "}"
+        SEMI@[211; 212) ";"
+      WHITESPACE@[212; 213) "\n"
+      R_CURLY@[213; 214) "}"
+  WHITESPACE@[214; 215) "\n"
