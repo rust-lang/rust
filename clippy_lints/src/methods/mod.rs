@@ -1075,56 +1075,57 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             if let hir::ImplItemKind::Method(ref sig, id) = impl_item.node;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
             if let hir::ItemKind::Impl(_, _, _, _, None, _, _) = item.node;
+
+            let method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
+            let method_sig = cx.tcx.fn_sig(method_def_id);
+            let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
+
+            let first_arg_ty = &method_sig.inputs().iter().next();
+
+            // check conventions w.r.t. conversion method names and predicates
+            if let Some(first_arg_ty) = first_arg_ty;
+
             then {
-                let method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-                let method_sig = cx.tcx.fn_sig(method_def_id);
-                let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
-
-                let first_arg_ty = &method_sig.inputs().iter().next();
-
-                // check conventions w.r.t. conversion method names and predicates
-                if let Some(first_arg_ty) = first_arg_ty {
-
-                    if cx.access_levels.is_exported(impl_item.hir_id) {
-                    // check missing trait implementations
-                        for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                            if name == method_name &&
-                            sig.decl.inputs.len() == n_args &&
-                            out_type.matches(cx, &sig.decl.output) &&
-                            self_kind.matches(cx, ty, first_arg_ty) {
-                                span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
-                                    "defining a method called `{}` on this type; consider implementing \
-                                    the `{}` trait or choosing a less ambiguous name", name, trait_name));
-                            }
+                if cx.access_levels.is_exported(impl_item.hir_id) {
+                // check missing trait implementations
+                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                        if name == method_name &&
+                        sig.decl.inputs.len() == n_args &&
+                        out_type.matches(cx, &sig.decl.output) &&
+                        self_kind.matches(cx, ty, first_arg_ty) {
+                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
+                                "defining a method called `{}` on this type; consider implementing \
+                                the `{}` trait or choosing a less ambiguous name", name, trait_name));
                         }
                     }
+                }
 
-                    for &(ref conv, self_kinds) in &CONVENTIONS {
-                        if conv.check(&name) {
-                            if !self_kinds
+                if let Some((ref conv, self_kinds)) = &CONVENTIONS
+                    .iter()
+                    .find(|(ref conv, _)| conv.check(&name))
+                {
+                    if !self_kinds.iter().any(|k| k.matches(cx, ty, first_arg_ty)) {
+                        let lint = if item.vis.node.is_pub() {
+                            WRONG_PUB_SELF_CONVENTION
+                        } else {
+                            WRONG_SELF_CONVENTION
+                        };
+
+                        span_lint(
+                            cx,
+                            lint,
+                            first_arg.pat.span,
+                            &format!(
+                               "methods called `{}` usually take {}; consider choosing a less \
+                                 ambiguous name",
+                                conv,
+                                &self_kinds
                                     .iter()
-                                    .any(|k| k.matches(cx, ty, first_arg_ty)) {
-                                let lint = if item.vis.node.is_pub() {
-                                    WRONG_PUB_SELF_CONVENTION
-                                } else {
-                                    WRONG_SELF_CONVENTION
-                                };
-                                span_lint(cx,
-                                          lint,
-                                          first_arg.pat.span,
-                                          &format!("methods called `{}` usually take {}; consider choosing a less \
-                                                    ambiguous name",
-                                                   conv,
-                                                   &self_kinds.iter()
-                                                              .map(|k| k.description())
-                                                              .collect::<Vec<_>>()
-                                                              .join(" or ")));
-                            }
-
-                            // Only check the first convention to match (CONVENTIONS should be listed from most to least
-                            // specific)
-                            break;
-                        }
+                                    .map(|k| k.description())
+                                    .collect::<Vec<_>>()
+                                    .join(" or ")
+                            ),
+                        );
                     }
                 }
             }
@@ -1134,10 +1135,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
             // walk the return type and check for Self (this does not check associated types)
-            for inner_type in ret_ty.walk() {
-                if same_tys(cx, ty, inner_type) {
-                    return;
-                }
+            if ret_ty.walk().any(|inner_type| same_tys(cx, ty, inner_type)) {
+                return;
             }
 
             // if return type is impl trait, check the associated types
