@@ -120,10 +120,30 @@ pub struct ProjectionTy {
     pub parameters: Substs,
 }
 
+impl ProjectionTy {
+    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.parameters.walk(f);
+    }
+
+    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        self.parameters.walk_mut(f);
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct UnselectedProjectionTy {
     pub type_name: Name,
     pub parameters: Substs,
+}
+
+impl UnselectedProjectionTy {
+    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.parameters.walk(f);
+    }
+
+    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        self.parameters.walk_mut(f);
+    }
 }
 
 /// A type.
@@ -306,6 +326,8 @@ impl TraitRef {
 pub enum GenericPredicate {
     /// The given trait needs to be implemented for its type parameters.
     Implemented(TraitRef),
+    /// An associated type bindings like in `Iterator<Item = T>`.
+    Projection(ProjectionPredicate),
     /// We couldn't resolve the trait reference. (If some type parameters can't
     /// be resolved, they will just be Unknown).
     Error,
@@ -324,6 +346,9 @@ impl GenericPredicate {
             GenericPredicate::Implemented(trait_ref) => {
                 GenericPredicate::Implemented(trait_ref.subst(substs))
             }
+            GenericPredicate::Projection(projection_predicate) => {
+                GenericPredicate::Projection(projection_predicate.subst(substs))
+            }
             GenericPredicate::Error => self,
         }
     }
@@ -331,6 +356,7 @@ impl GenericPredicate {
     pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.walk(f),
+            GenericPredicate::Projection(projection_pred) => projection_pred.walk(f),
             GenericPredicate::Error => {}
         }
     }
@@ -338,6 +364,7 @@ impl GenericPredicate {
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.walk_mut(f),
+            GenericPredicate::Projection(projection_pred) => projection_pred.walk_mut(f),
             GenericPredicate::Error => {}
         }
     }
@@ -754,6 +781,9 @@ impl HirDisplay for Ty {
                         GenericPredicate::Implemented(trait_ref) => {
                             trait_ref.hir_fmt_ext(f, false)?
                         }
+                        GenericPredicate::Projection(_projection_pred) => {
+                            // TODO show something
+                        }
                         GenericPredicate::Error => p.hir_fmt(f)?,
                     }
                 }
@@ -800,6 +830,9 @@ impl HirDisplay for GenericPredicate {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
+            GenericPredicate::Projection(projection_pred) => {
+                // TODO print something
+            }
             GenericPredicate::Error => write!(f, "{{error}}")?,
         }
         Ok(())

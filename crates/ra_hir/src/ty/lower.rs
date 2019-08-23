@@ -8,7 +8,9 @@
 use std::iter;
 use std::sync::Arc;
 
-use super::{FnSig, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor};
+use super::{
+    FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+};
 use crate::{
     adt::VariantDef,
     generics::HasGenericParams,
@@ -62,7 +64,9 @@ impl Ty {
                 let self_ty = Ty::Bound(0);
                 let predicates = bounds
                     .iter()
-                    .map(|b| GenericPredicate::from_type_bound(db, resolver, b, self_ty.clone()))
+                    .flat_map(|b| {
+                        GenericPredicate::from_type_bound(db, resolver, b, self_ty.clone())
+                    })
                     .collect::<Vec<_>>();
                 Ty::Dyn(predicates.into())
             }
@@ -70,7 +74,9 @@ impl Ty {
                 let self_ty = Ty::Bound(0);
                 let predicates = bounds
                     .iter()
-                    .map(|b| GenericPredicate::from_type_bound(db, resolver, b, self_ty.clone()))
+                    .flat_map(|b| {
+                        GenericPredicate::from_type_bound(db, resolver, b, self_ty.clone())
+                    })
                     .collect::<Vec<_>>();
                 Ty::Opaque(predicates.into())
             }
@@ -326,15 +332,6 @@ impl TraitRef {
         TraitRef { trait_, substs }
     }
 
-    pub(crate) fn from_where_predicate(
-        db: &impl HirDatabase,
-        resolver: &Resolver,
-        pred: &WherePredicate,
-    ) -> Option<TraitRef> {
-        let self_ty = Ty::from_hir(db, resolver, &pred.type_ref);
-        TraitRef::from_type_bound(db, resolver, &pred.bound, self_ty)
-    }
-
     pub(crate) fn from_type_bound(
         db: &impl HirDatabase,
         resolver: &Resolver,
@@ -349,24 +346,56 @@ impl TraitRef {
 }
 
 impl GenericPredicate {
-    pub(crate) fn from_where_predicate(
-        db: &impl HirDatabase,
-        resolver: &Resolver,
-        where_predicate: &WherePredicate,
-    ) -> GenericPredicate {
-        TraitRef::from_where_predicate(db, &resolver, where_predicate)
-            .map_or(GenericPredicate::Error, GenericPredicate::Implemented)
+    pub(crate) fn from_where_predicate<'a>(
+        db: &'a impl HirDatabase,
+        resolver: &'a Resolver,
+        where_predicate: &'a WherePredicate,
+    ) -> impl Iterator<Item = GenericPredicate> + 'a {
+        let self_ty = Ty::from_hir(db, resolver, &where_predicate.type_ref);
+        GenericPredicate::from_type_bound(db, resolver, &where_predicate.bound, self_ty)
     }
 
-    pub(crate) fn from_type_bound(
-        db: &impl HirDatabase,
-        resolver: &Resolver,
-        bound: &TypeBound,
+    pub(crate) fn from_type_bound<'a>(
+        db: &'a impl HirDatabase,
+        resolver: &'a Resolver,
+        bound: &'a TypeBound,
         self_ty: Ty,
-    ) -> GenericPredicate {
-        TraitRef::from_type_bound(db, &resolver, bound, self_ty)
-            .map_or(GenericPredicate::Error, GenericPredicate::Implemented)
+    ) -> impl Iterator<Item = GenericPredicate> + 'a {
+        let trait_ref = TraitRef::from_type_bound(db, &resolver, bound, self_ty);
+        iter::once(trait_ref.clone().map_or(GenericPredicate::Error, GenericPredicate::Implemented))
+            .chain(
+                trait_ref.into_iter().flat_map(move |tr| {
+                    assoc_type_bindings_from_type_bound(db, resolver, bound, tr)
+                }),
+            )
     }
+}
+
+fn assoc_type_bindings_from_type_bound<'a>(
+    db: &'a impl HirDatabase,
+    resolver: &'a Resolver,
+    bound: &'a TypeBound,
+    trait_ref: TraitRef,
+) -> impl Iterator<Item = GenericPredicate> + 'a {
+    let last_segment = match bound {
+        TypeBound::Path(path) => path.segments.last(),
+        TypeBound::Error => None,
+    };
+    last_segment
+        .into_iter()
+        .flat_map(|segment| segment.args_and_bindings.iter())
+        .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
+        .map(move |(name, type_ref)| {
+            let associated_ty = match trait_ref.trait_.associated_type_by_name(db, name.clone()) {
+                None => return GenericPredicate::Error,
+                Some(t) => t,
+            };
+            let projection_ty =
+                ProjectionTy { associated_ty, parameters: trait_ref.substs.clone() };
+            let ty = Ty::from_hir(db, resolver, type_ref);
+            let projection_predicate = ProjectionPredicate { projection_ty, ty };
+            GenericPredicate::Projection(projection_predicate)
+        })
 }
 
 /// Build the declared type of an item. This depends on the namespace; e.g. for
@@ -425,7 +454,7 @@ pub(crate) fn trait_env(
 ) -> Arc<super::TraitEnvironment> {
     let predicates = resolver
         .where_predicates_in_scope()
-        .map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
+        .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
         .collect::<Vec<_>>();
 
     Arc::new(super::TraitEnvironment { predicates })
@@ -439,7 +468,7 @@ pub(crate) fn generic_predicates_query(
     let resolver = def.resolver(db);
     let predicates = resolver
         .where_predicates_in_scope()
-        .map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
+        .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
         .collect::<Vec<_>>();
     predicates.into()
 }

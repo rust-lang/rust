@@ -3586,37 +3586,63 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     [166; 169) '{t}': T
     [167; 168) 't': T
     [257; 258) 'x': T
-    [263; 264) 'y': impl Trait
+    [263; 264) 'y': impl Trait + 
     [290; 398) '{     ...r>); }': ()
     [296; 299) 'get': fn get<T>(T) -> <T as Trait>::Type
     [296; 302) 'get(x)': {unknown}
     [300; 301) 'x': T
-    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> U
+    [308; 312) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
     [308; 315) 'get2(x)': {unknown}
     [313; 314) 'x': T
-    [321; 324) 'get': fn get<impl Trait>(T) -> <T as Trait>::Type
+    [321; 324) 'get': fn get<impl Trait + >(T) -> <T as Trait>::Type
     [321; 327) 'get(y)': {unknown}
-    [325; 326) 'y': impl Trait
-    [333; 337) 'get2': fn get2<{unknown}, impl Trait>(T) -> U
+    [325; 326) 'y': impl Trait + 
+    [333; 337) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
     [333; 340) 'get2(y)': {unknown}
-    [338; 339) 'y': impl Trait
-    [346; 349) 'get': fn get<S<{unknown}>>(T) -> <T as Trait>::Type
-    [346; 357) 'get(set(S))': {unknown}
-    [350; 353) 'set': fn set<S<{unknown}>>(T) -> T
-    [350; 356) 'set(S)': S<{unknown}>
-    [354; 355) 'S': S<{unknown}>
-    [363; 367) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
-    [363; 375) 'get2(set(S))': {unknown}
-    [368; 371) 'set': fn set<S<{unknown}>>(T) -> T
-    [368; 374) 'set(S)': S<{unknown}>
-    [372; 373) 'S': S<{unknown}>
-    [381; 385) 'get2': fn get2<{unknown}, S<str>>(T) -> U
-    [381; 395) 'get2(S::<str>)': {unknown}
+    [338; 339) 'y': impl Trait + 
+    [346; 349) 'get': fn get<S<u64>>(T) -> <T as Trait>::Type
+    [346; 357) 'get(set(S))': u64
+    [350; 353) 'set': fn set<S<u64>>(T) -> T
+    [350; 356) 'set(S)': S<u64>
+    [354; 355) 'S': S<u64>
+    [363; 367) 'get2': fn get2<u64, S<u64>>(T) -> U
+    [363; 375) 'get2(set(S))': u64
+    [368; 371) 'set': fn set<S<u64>>(T) -> T
+    [368; 374) 'set(S)': S<u64>
+    [372; 373) 'S': S<u64>
+    [381; 385) 'get2': fn get2<str, S<str>>(T) -> U
+    [381; 395) 'get2(S::<str>)': str
     [386; 394) 'S::<str>': S<str>
     "###
     );
 }
 
+#[test]
+fn projection_eq_within_chalk() {
+    // std::env::set_var("CHALK_DEBUG", "1");
+    assert_snapshot!(
+        infer(r#"
+trait Trait1 {
+    type Type;
+}
+trait Trait2<T> {
+    fn foo(self) -> T;
+}
+impl<T, U> Trait2<T> for U where U: Trait1<Type = T> {}
+
+fn test<T: Trait1<Type = u32>>(x: T) {
+    x.foo();
+}
+"#),
+        @r###"
+    [62; 66) 'self': Self
+    [164; 165) 'x': T
+    [170; 186) '{     ...o(); }': ()
+    [176; 177) 'x': T
+    [176; 183) 'x.foo()': {unknown}
+    "###
+    );
+}
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

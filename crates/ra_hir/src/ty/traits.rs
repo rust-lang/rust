@@ -124,6 +124,9 @@ impl Obligation {
     pub fn from_predicate(predicate: GenericPredicate) -> Option<Obligation> {
         match predicate {
             GenericPredicate::Implemented(trait_ref) => Some(Obligation::Trait(trait_ref)),
+            GenericPredicate::Projection(projection_pred) => {
+                Some(Obligation::Projection(projection_pred))
+            }
             GenericPredicate::Error => None,
         }
     }
@@ -133,6 +136,30 @@ impl Obligation {
 pub struct ProjectionPredicate {
     pub projection_ty: ProjectionTy,
     pub ty: Ty,
+}
+
+impl ProjectionPredicate {
+    pub fn subst(mut self, substs: &super::Substs) -> ProjectionPredicate {
+        self.walk_mut(&mut |ty| match ty {
+            Ty::Param { idx, .. } => {
+                if let Some(t) = substs.get(*idx as usize).cloned() {
+                    *ty = t;
+                }
+            }
+            _ => {}
+        });
+        self
+    }
+
+    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.projection_ty.walk(f);
+        self.ty.walk(f);
+    }
+
+    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        self.projection_ty.walk_mut(f);
+        self.ty.walk_mut(f);
+    }
 }
 
 /// Solve a trait goal using Chalk.
