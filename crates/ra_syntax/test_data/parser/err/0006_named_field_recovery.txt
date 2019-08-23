@@ -5,10 +5,10 @@ SOURCE_FILE@[0; 74)
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     WHITESPACE@[8; 9) " "
-    NAMED_FIELD_DEF_LIST@[9; 73)
+    RECORD_FIELD_DEF_LIST@[9; 73)
       L_CURLY@[9; 10) "{"
       WHITESPACE@[10; 15) "\n    "
-      NAMED_FIELD_DEF@[15; 21)
+      RECORD_FIELD_DEF@[15; 21)
         NAME@[15; 16)
           IDENT@[15; 16) "f"
         COLON@[16; 17) ":"
@@ -35,7 +35,7 @@ SOURCE_FILE@[0; 74)
       ERROR@[42; 43)
         STAR@[42; 43) "*"
       WHITESPACE@[43; 48) "\n    "
-      NAMED_FIELD_DEF@[48; 58)
+      RECORD_FIELD_DEF@[48; 58)
         VISIBILITY@[48; 51)
           PUB_KW@[48; 51) "pub"
         WHITESPACE@[51; 52) " "
@@ -50,7 +50,7 @@ SOURCE_FILE@[0; 74)
                 IDENT@[55; 58) "u32"
       COMMA@[58; 59) ","
       WHITESPACE@[59; 64) "\n    "
-      NAMED_FIELD_DEF@[64; 70)
+      RECORD_FIELD_DEF@[64; 70)
         NAME@[64; 65)
           IDENT@[64; 65) "z"
         COLON@[65; 66) ":"

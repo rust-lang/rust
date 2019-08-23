@@ -318,8 +318,8 @@ pub struct StructField {
 
 #[derive(Debug)]
 pub enum FieldSource {
-    Named(ast::NamedFieldDef),
-    Pos(ast::PosFieldDef),
+    Named(ast::RecordFieldDef),
+    Pos(ast::TupleFieldDef),
 }
 
 impl StructField {

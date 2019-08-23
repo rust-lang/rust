@@ -79,7 +79,7 @@ impl<'a> DiagnosticSink<'a> {
 #[derive(Debug)]
 pub struct NoSuchField {
     pub file: HirFileId,
-    pub field: AstPtr<ast::NamedField>,
+    pub field: AstPtr<ast::RecordField>,
 }
 
 impl Diagnostic for NoSuchField {
@@ -118,7 +118,7 @@ impl Diagnostic for UnresolvedModule {
 #[derive(Debug)]
 pub struct MissingFields {
     pub file: HirFileId,
-    pub field_list: AstPtr<ast::NamedFieldList>,
+    pub field_list: AstPtr<ast::RecordFieldList>,
     pub missed_fields: Vec<Name>,
 }
 
@@ -135,11 +135,11 @@ impl Diagnostic for MissingFields {
 }
 
 impl AstDiagnostic for MissingFields {
-    type AST = ast::NamedFieldList;
+    type AST = ast::RecordFieldList;
 
     fn ast(&self, db: &impl HirDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
         let node = self.source().ast.to_node(&root);
-        ast::NamedFieldList::cast(node).unwrap()
+        ast::RecordFieldList::cast(node).unwrap()
     }
 }

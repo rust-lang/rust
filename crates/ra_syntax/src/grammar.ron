@@ -161,9 +161,9 @@ Grammar(
         "BIND_PAT",
         "PLACEHOLDER_PAT",
         "PATH_PAT",
-        "STRUCT_PAT",
-        "FIELD_PAT_LIST",
-        "FIELD_PAT",
+        "RECORD_PAT",
+        "RECORD_FIELD_PAT_LIST",
+        "RECORD_FIELD_PAT",
         "TUPLE_STRUCT_PAT",
         "TUPLE_PAT",
         "SLICE_PAT",
@@ -190,9 +190,9 @@ Grammar(
         "MATCH_ARM_LIST",
         "MATCH_ARM",
         "MATCH_GUARD",
-        "STRUCT_LIT",
-        "NAMED_FIELD_LIST",
-        "NAMED_FIELD",
+        "RECORD_LIT",
+        "RECORD_FIELD_LIST",
+        "RECORD_FIELD",
         "TRY_BLOCK_EXPR",
         "BOX_EXPR",
 
@@ -216,10 +216,10 @@ Grammar(
         "EXTERN_BLOCK",
         "EXTERN_ITEM_LIST",
         "ENUM_VARIANT",
-        "NAMED_FIELD_DEF_LIST",
-        "NAMED_FIELD_DEF",
-        "POS_FIELD_DEF_LIST",
-        "POS_FIELD_DEF",
+        "RECORD_FIELD_DEF_LIST",
+        "RECORD_FIELD_DEF",
+        "TUPLE_FIELD_DEF_LIST",
+        "TUPLE_FIELD_DEF",
         "ENUM_VARIANT_LIST",
         "ITEM_LIST",
         "ATTR",
@@ -286,8 +286,8 @@ Grammar(
                 "DocCommentsOwner"
             ]
         ),
-        "NamedFieldDefList": (collections: [("fields", "NamedFieldDef")]),
-        "NamedFieldDef": (
+        "RecordFieldDefList": (collections: [("fields", "RecordFieldDef")]),
+        "RecordFieldDef": (
             traits: [
                 "VisibilityOwner",
                 "NameOwner",
@@ -296,8 +296,8 @@ Grammar(
                 "TypeAscriptionOwner"
             ]
         ),
-        "PosFieldDefList": (collections: [("fields", "PosFieldDef")]),
-        "PosFieldDef": ( traits: ["VisibilityOwner", "AttrsOwner"], options: ["TypeRef"]),
+        "TupleFieldDefList": (collections: [("fields", "TupleFieldDef")]),
+        "TupleFieldDef": ( traits: ["VisibilityOwner", "AttrsOwner"], options: ["TypeRef"]),
         "EnumDef": ( traits: [
             "VisibilityOwner",
             "NameOwner",
@@ -461,12 +461,12 @@ Grammar(
             traits: [ "AttrsOwner" ]
         ),
         "MatchGuard": (options: ["Expr"]),
-        "StructLit": (options: ["Path", "NamedFieldList"]),
-        "NamedFieldList": (
-            collections: [ ("fields", "NamedField") ],
+        "RecordLit": (options: ["Path", "RecordFieldList"]),
+        "RecordFieldList": (
+            collections: [ ("fields", "RecordField") ],
             options: [["spread", "Expr"]]
         ),
-        "NamedField": (options: ["NameRef", "Expr"]),
+        "RecordField": (options: ["NameRef", "Expr"]),
         "CallExpr": (
             traits: ["ArgListOwner"],
             options: [ "Expr" ],
@@ -504,7 +504,7 @@ Grammar(
                 "BlockExpr",
                 "ReturnExpr",
                 "MatchExpr",
-                "StructLit",
+                "RecordLit",
                 "CallExpr",
                 "IndexExpr",
                 "MethodCallExpr",
@@ -529,14 +529,14 @@ Grammar(
         ),
         "PlaceholderPat": (),
         "PathPat": ( options: [ "Path" ] ),
-        "StructPat": ( options: ["FieldPatList", "Path"] ),
-        "FieldPatList": (
+        "RecordPat": ( options: ["RecordFieldPatList", "Path"] ),
+        "RecordFieldPatList": (
             collections: [
-                ("field_pats", "FieldPat"),
+                ("record_field_pats", "RecordFieldPat"),
                 ("bind_pats", "BindPat"),
             ]
         ),
-        "FieldPat": (
+        "RecordFieldPat": (
             traits: ["NameOwner"],
             options: ["Pat"]
         ),
@@ -555,7 +555,7 @@ Grammar(
                 "BindPat",
                 "PlaceholderPat",
                 "PathPat",
-                "StructPat",
+                "RecordPat",
                 "TupleStructPat",
                 "TuplePat",
                 "SlicePat",

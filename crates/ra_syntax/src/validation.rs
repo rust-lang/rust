@@ -99,7 +99,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
             .visit::<ast::Literal, _>(validate_literal)
             .visit::<ast::Block, _>(block::validate_block_node)
             .visit::<ast::FieldExpr, _>(|it, errors| validate_numeric_name(it.name_ref(), errors))
-            .visit::<ast::NamedField, _>(|it, errors| validate_numeric_name(it.name_ref(), errors))
+            .visit::<ast::RecordField, _>(|it, errors| validate_numeric_name(it.name_ref(), errors))
             .accept(&node);
     }
     errors

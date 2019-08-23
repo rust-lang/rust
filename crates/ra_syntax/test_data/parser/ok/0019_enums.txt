@@ -86,10 +86,10 @@ SOURCE_FILE@[0; 182)
         NAME@[101; 102)
           IDENT@[101; 102) "C"
         WHITESPACE@[102; 103) " "
-        NAMED_FIELD_DEF_LIST@[103; 146)
+        RECORD_FIELD_DEF_LIST@[103; 146)
           L_CURLY@[103; 104) "{"
           WHITESPACE@[104; 113) "\n        "
-          NAMED_FIELD_DEF@[113; 119)
+          RECORD_FIELD_DEF@[113; 119)
             NAME@[113; 114)
               IDENT@[113; 114) "a"
             COLON@[114; 115) ":"
@@ -101,7 +101,7 @@ SOURCE_FILE@[0; 182)
                     IDENT@[116; 119) "u32"
           COMMA@[119; 120) ","
           WHITESPACE@[120; 129) "\n        "
-          NAMED_FIELD_DEF@[129; 139)
+          RECORD_FIELD_DEF@[129; 139)
             VISIBILITY@[129; 132)
               PUB_KW@[129; 132) "pub"
             WHITESPACE@[132; 133) " "
@@ -123,7 +123,7 @@ SOURCE_FILE@[0; 182)
         NAME@[152; 153)
           IDENT@[152; 153) "F"
         WHITESPACE@[153; 154) " "
-        NAMED_FIELD_DEF_LIST@[154; 156)
+        RECORD_FIELD_DEF_LIST@[154; 156)
           L_CURLY@[154; 155) "{"
           R_CURLY@[155; 156) "}"
       COMMA@[156; 157) ","
@@ -131,9 +131,9 @@ SOURCE_FILE@[0; 182)
       ENUM_VARIANT@[162; 169)
         NAME@[162; 163)
           IDENT@[162; 163) "D"
-        POS_FIELD_DEF_LIST@[163; 169)
+        TUPLE_FIELD_DEF_LIST@[163; 169)
           L_PAREN@[163; 164) "("
-          POS_FIELD_DEF@[164; 167)
+          TUPLE_FIELD_DEF@[164; 167)
             PATH_TYPE@[164; 167)
               PATH@[164; 167)
                 PATH_SEGMENT@[164; 167)
@@ -146,7 +146,7 @@ SOURCE_FILE@[0; 182)
       ENUM_VARIANT@[175; 178)
         NAME@[175; 176)
           IDENT@[175; 176) "E"
-        POS_FIELD_DEF_LIST@[176; 178)
+        TUPLE_FIELD_DEF_LIST@[176; 178)
           L_PAREN@[176; 177) "("
           R_PAREN@[177; 178) ")"
       COMMA@[178; 179) ","

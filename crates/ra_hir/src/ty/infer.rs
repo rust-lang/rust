@@ -37,8 +37,8 @@ use crate::{
     code_model::{ModuleDef::Trait, TypeAlias},
     diagnostics::DiagnosticSink,
     expr::{
-        self, Array, BinaryOp, BindingAnnotation, Body, Expr, ExprId, FieldPat, Literal, Pat,
-        PatId, Statement, UnaryOp,
+        self, Array, BinaryOp, BindingAnnotation, Body, Expr, ExprId, Literal, Pat, PatId,
+        RecordFieldPat, Statement, UnaryOp,
     },
     generics::{GenericParams, HasGenericParams},
     name,
@@ -705,10 +705,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty
     }
 
-    fn infer_struct_pat(
+    fn infer_record_pat(
         &mut self,
         path: Option<&Path>,
-        subpats: &[FieldPat],
+        subpats: &[RecordFieldPat],
         expected: &Ty,
         default_bm: BindingMode,
         id: PatId,
@@ -800,7 +800,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
             }
             Pat::Struct { path: ref p, args: ref fields } => {
-                self.infer_struct_pat(p.as_ref(), fields, expected, default_bm, pat)
+                self.infer_record_pat(p.as_ref(), fields, expected, default_bm, pat)
             }
             Pat::Path(path) => {
                 // FIXME use correct resolver for the surrounding expression
@@ -1103,7 +1103,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 Ty::simple(TypeCtor::Never)
             }
-            Expr::StructLit { path, fields, spread } => {
+            Expr::RecordLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 if let Some(variant) = def_id {
                     self.write_variant_resolution(tgt_expr.into(), variant);

@@ -1564,10 +1564,10 @@ SOURCE_FILE@[0; 3813)
             LIFETIME@[2863; 2869) "\'union"
           R_ANGLE@[2869; 2870) ">"
         WHITESPACE@[2870; 2871) " "
-        NAMED_FIELD_DEF_LIST@[2871; 2904)
+        RECORD_FIELD_DEF_LIST@[2871; 2904)
           L_CURLY@[2871; 2872) "{"
           WHITESPACE@[2872; 2873) " "
-          NAMED_FIELD_DEF@[2873; 2901)
+          RECORD_FIELD_DEF@[2873; 2901)
             NAME@[2873; 2878)
               IDENT@[2873; 2878) "union"
             COLON@[2878; 2879) ":"

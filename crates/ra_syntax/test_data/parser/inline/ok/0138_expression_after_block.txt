@@ -22,14 +22,14 @@ SOURCE_FILE@[0; 52)
         WHITESPACE@[23; 24) " "
         EQ@[24; 25) "="
         WHITESPACE@[25; 26) " "
-        STRUCT_LIT@[26; 33)
+        RECORD_LIT@[26; 33)
           PATH@[26; 27)
             PATH_SEGMENT@[26; 27)
               NAME_REF@[26; 27)
                 IDENT@[26; 27) "F"
-          NAMED_FIELD_LIST@[27; 33)
+          RECORD_FIELD_LIST@[27; 33)
             L_CURLY@[27; 28) "{"
-            NAMED_FIELD@[28; 32)
+            RECORD_FIELD@[28; 32)
               NAME_REF@[28; 29)
                 IDENT@[28; 29) "x"
               COLON@[29; 30) ":"

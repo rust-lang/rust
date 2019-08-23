@@ -5,10 +5,10 @@ SOURCE_FILE@[0; 40)
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     WHITESPACE@[8; 9) " "
-    NAMED_FIELD_DEF_LIST@[9; 39)
+    RECORD_FIELD_DEF_LIST@[9; 39)
       L_CURLY@[9; 10) "{"
       WHITESPACE@[10; 15) "\n    "
-      NAMED_FIELD_DEF@[15; 21)
+      RECORD_FIELD_DEF@[15; 21)
         NAME@[15; 16)
           IDENT@[15; 16) "a"
         COLON@[16; 17) ":"
@@ -20,7 +20,7 @@ SOURCE_FILE@[0; 40)
                 IDENT@[18; 21) "i32"
       COMMA@[21; 22) ","
       WHITESPACE@[22; 27) "\n    "
-      NAMED_FIELD_DEF@[27; 36)
+      RECORD_FIELD_DEF@[27; 36)
         NAME@[27; 28)
           IDENT@[27; 28) "b"
         COLON@[28; 29) ":"

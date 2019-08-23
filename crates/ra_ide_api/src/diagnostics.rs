@@ -9,7 +9,7 @@ use ra_assists::ast_editor::{AstBuilder, AstEditor};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{
-    ast::{self, AstNode, NamedField},
+    ast::{self, AstNode, RecordField},
     Location, SyntaxNode, TextRange, T,
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
@@ -62,7 +62,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let node = d.ast(db);
         let mut ast_editor = AstEditor::new(node);
         for f in d.missed_fields.iter() {
-            ast_editor.append_field(&AstBuilder::<NamedField>::from_name(f));
+            ast_editor.append_field(&AstBuilder::<RecordField>::from_name(f));
         }
 
         let mut builder = TextEditBuilder::default();
@@ -141,20 +141,20 @@ fn check_struct_shorthand_initialization(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<()> {
-    let struct_lit = ast::StructLit::cast(node.clone())?;
-    let named_field_list = struct_lit.named_field_list()?;
-    for named_field in named_field_list.fields() {
-        if let (Some(name_ref), Some(expr)) = (named_field.name_ref(), named_field.expr()) {
+    let record_lit = ast::RecordLit::cast(node.clone())?;
+    let record_field_list = record_lit.record_field_list()?;
+    for record_field in record_field_list.fields() {
+        if let (Some(name_ref), Some(expr)) = (record_field.name_ref(), record_field.expr()) {
             let field_name = name_ref.syntax().text().to_string();
             let field_expr = expr.syntax().text().to_string();
             if field_name == field_expr {
                 let mut edit_builder = TextEditBuilder::default();
-                edit_builder.delete(named_field.syntax().text_range());
-                edit_builder.insert(named_field.syntax().text_range().start(), field_name);
+                edit_builder.delete(record_field.syntax().text_range());
+                edit_builder.insert(record_field.syntax().text_range().start(), field_name);
                 let edit = edit_builder.finish();
 
                 acc.push(Diagnostic {
-                    range: named_field.syntax().text_range(),
+                    range: record_field.syntax().text_range(),
                     message: "Shorthand struct initialization".to_string(),
                     severity: Severity::WeakWarning,
                     fix: Some(SourceChange::source_file_edit(

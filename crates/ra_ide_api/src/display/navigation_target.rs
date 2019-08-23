@@ -314,7 +314,7 @@ pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option
         .visit(|it: ast::TypeAliasDef| it.doc_comment_text())
         .visit(|it: ast::ConstDef| it.doc_comment_text())
         .visit(|it: ast::StaticDef| it.doc_comment_text())
-        .visit(|it: ast::NamedFieldDef| it.doc_comment_text())
+        .visit(|it: ast::RecordFieldDef| it.doc_comment_text())
         .visit(|it: ast::EnumVariant| it.doc_comment_text())
         .visit(|it: ast::MacroCall| it.doc_comment_text())
         .accept(&node)?
@@ -336,7 +336,7 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
         .visit(|node: ast::TypeAliasDef| node.short_label())
         .visit(|node: ast::ConstDef| node.short_label())
         .visit(|node: ast::StaticDef| node.short_label())
-        .visit(|node: ast::NamedFieldDef| node.short_label())
+        .visit(|node: ast::RecordFieldDef| node.short_label())
         .visit(|node: ast::EnumVariant| node.short_label())
         .accept(&node)?
 }

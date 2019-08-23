@@ -419,9 +419,9 @@ MACRO_ITEMS@[0; 40)
     STRUCT_KW@[0; 6) "struct"
     NAME@[6; 9)
       IDENT@[6; 9) "Foo"
-    NAMED_FIELD_DEF_LIST@[9; 20)
+    RECORD_FIELD_DEF_LIST@[9; 20)
       L_CURLY@[9; 10) "{"
-      NAMED_FIELD_DEF@[10; 19)
+      RECORD_FIELD_DEF@[10; 19)
         NAME@[10; 15)
           IDENT@[10; 15) "field"
         COLON@[15; 16) ":"
@@ -435,9 +435,9 @@ MACRO_ITEMS@[0; 40)
     STRUCT_KW@[20; 26) "struct"
     NAME@[26; 29)
       IDENT@[26; 29) "Bar"
-    NAMED_FIELD_DEF_LIST@[29; 40)
+    RECORD_FIELD_DEF_LIST@[29; 40)
       L_CURLY@[29; 30) "{"
-      NAMED_FIELD_DEF@[30; 39)
+      RECORD_FIELD_DEF@[30; 39)
         NAME@[30; 35)
           IDENT@[30; 35) "field"
         COLON@[35; 36) ":"

@@ -23,9 +23,9 @@ SOURCE_FILE@[0; 290)
         NAME@[24; 25)
           IDENT@[24; 25) "T"
       R_ANGLE@[25; 26) ">"
-    POS_FIELD_DEF_LIST@[26; 31)
+    TUPLE_FIELD_DEF_LIST@[26; 31)
       L_PAREN@[26; 27) "("
-      POS_FIELD_DEF@[27; 30)
+      TUPLE_FIELD_DEF@[27; 30)
         PATH_TYPE@[27; 30)
           PATH@[27; 30)
             PATH_SEGMENT@[27; 30)
@@ -46,10 +46,10 @@ SOURCE_FILE@[0; 290)
           IDENT@[43; 44) "T"
       R_ANGLE@[44; 45) ">"
     WHITESPACE@[45; 46) " "
-    NAMED_FIELD_DEF_LIST@[46; 56)
+    RECORD_FIELD_DEF_LIST@[46; 56)
       L_CURLY@[46; 47) "{"
       WHITESPACE@[47; 48) " "
-      NAMED_FIELD_DEF@[48; 54)
+      RECORD_FIELD_DEF@[48; 54)
         NAME@[48; 49)
           IDENT@[48; 49) "u"
         COLON@[49; 50) ":"

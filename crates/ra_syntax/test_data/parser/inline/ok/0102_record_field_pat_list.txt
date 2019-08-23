@@ -14,13 +14,13 @@ SOURCE_FILE@[0; 119)
       LET_STMT@[15; 29)
         LET_KW@[15; 18) "let"
         WHITESPACE@[18; 19) " "
-        STRUCT_PAT@[19; 23)
+        RECORD_PAT@[19; 23)
           PATH@[19; 20)
             PATH_SEGMENT@[19; 20)
               NAME_REF@[19; 20)
                 IDENT@[19; 20) "S"
           WHITESPACE@[20; 21) " "
-          FIELD_PAT_LIST@[21; 23)
+          RECORD_FIELD_PAT_LIST@[21; 23)
             L_CURLY@[21; 22) "{"
             R_CURLY@[22; 23) "}"
         WHITESPACE@[23; 24) " "
@@ -34,13 +34,13 @@ SOURCE_FILE@[0; 119)
       LET_STMT@[34; 62)
         LET_KW@[34; 37) "let"
         WHITESPACE@[37; 38) " "
-        STRUCT_PAT@[38; 56)
+        RECORD_PAT@[38; 56)
           PATH@[38; 39)
             PATH_SEGMENT@[38; 39)
               NAME_REF@[38; 39)
                 IDENT@[38; 39) "S"
           WHITESPACE@[39; 40) " "
-          FIELD_PAT_LIST@[40; 56)
+          RECORD_FIELD_PAT_LIST@[40; 56)
             L_CURLY@[40; 41) "{"
             WHITESPACE@[41; 42) " "
             BIND_PAT@[42; 43)
@@ -68,16 +68,16 @@ SOURCE_FILE@[0; 119)
       LET_STMT@[67; 90)
         LET_KW@[67; 70) "let"
         WHITESPACE@[70; 71) " "
-        STRUCT_PAT@[71; 84)
+        RECORD_PAT@[71; 84)
           PATH@[71; 72)
             PATH_SEGMENT@[71; 72)
               NAME_REF@[71; 72)
                 IDENT@[71; 72) "S"
           WHITESPACE@[72; 73) " "
-          FIELD_PAT_LIST@[73; 84)
+          RECORD_FIELD_PAT_LIST@[73; 84)
             L_CURLY@[73; 74) "{"
             WHITESPACE@[74; 75) " "
-            FIELD_PAT@[75; 79)
+            RECORD_FIELD_PAT@[75; 79)
               NAME@[75; 76)
                 IDENT@[75; 76) "h"
               COLON@[76; 77) ":"
@@ -99,16 +99,16 @@ SOURCE_FILE@[0; 119)
       LET_STMT@[95; 116)
         LET_KW@[95; 98) "let"
         WHITESPACE@[98; 99) " "
-        STRUCT_PAT@[99; 110)
+        RECORD_PAT@[99; 110)
           PATH@[99; 100)
             PATH_SEGMENT@[99; 100)
               NAME_REF@[99; 100)
                 IDENT@[99; 100) "S"
           WHITESPACE@[100; 101) " "
-          FIELD_PAT_LIST@[101; 110)
+          RECORD_FIELD_PAT_LIST@[101; 110)
             L_CURLY@[101; 102) "{"
             WHITESPACE@[102; 103) " "
-            FIELD_PAT@[103; 107)
+            RECORD_FIELD_PAT@[103; 107)
               NAME@[103; 104)
                 IDENT@[103; 104) "h"
               COLON@[104; 105) ":"

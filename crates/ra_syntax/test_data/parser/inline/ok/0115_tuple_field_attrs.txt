@@ -1,14 +1,14 @@
-SOURCE_FILE@[0; 64)
-  STRUCT_DEF@[0; 63)
+SOURCE_FILE@[0; 60)
+  STRUCT_DEF@[0; 59)
     STRUCT_KW@[0; 6) "struct"
     WHITESPACE@[6; 7) " "
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     WHITESPACE@[8; 9) " "
-    NAMED_FIELD_DEF_LIST@[9; 63)
-      L_CURLY@[9; 10) "{"
+    TUPLE_FIELD_DEF_LIST@[9; 58)
+      L_PAREN@[9; 10) "("
       WHITESPACE@[10; 15) "\n    "
-      NAMED_FIELD_DEF@[15; 60)
+      TUPLE_FIELD_DEF@[15; 55)
         ATTR@[15; 43)
           POUND@[15; 16) "#"
           TOKEN_TREE@[16; 43)
@@ -27,16 +27,13 @@ SOURCE_FILE@[0; 64)
         VISIBILITY@[48; 51)
           PUB_KW@[48; 51) "pub"
         WHITESPACE@[51; 52) " "
-        NAME@[52; 55)
-          IDENT@[52; 55) "uri"
-        COLON@[55; 56) ":"
-        WHITESPACE@[56; 57) " "
-        PATH_TYPE@[57; 60)
-          PATH@[57; 60)
-            PATH_SEGMENT@[57; 60)
-              NAME_REF@[57; 60)
-                IDENT@[57; 60) "Uri"
-      COMMA@[60; 61) ","
-      WHITESPACE@[61; 62) "\n"
-      R_CURLY@[62; 63) "}"
-  WHITESPACE@[63; 64) "\n"
+        PATH_TYPE@[52; 55)
+          PATH@[52; 55)
+            PATH_SEGMENT@[52; 55)
+              NAME_REF@[52; 55)
+                IDENT@[52; 55) "Uri"
+      COMMA@[55; 56) ","
+      WHITESPACE@[56; 57) "\n"
+      R_PAREN@[57; 58) ")"
+    SEMI@[58; 59) ";"
+  WHITESPACE@[59; 60) "\n"

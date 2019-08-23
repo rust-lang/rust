@@ -7,10 +7,10 @@ SOURCE_FILE@[0; 160)
     NAME@[69; 73)
       IDENT@[69; 73) "Repr"
     WHITESPACE@[73; 74) " "
-    NAMED_FIELD_DEF_LIST@[74; 90)
+    RECORD_FIELD_DEF_LIST@[74; 90)
       L_CURLY@[74; 75) "{"
       WHITESPACE@[75; 76) " "
-      NAMED_FIELD_DEF@[76; 88)
+      RECORD_FIELD_DEF@[76; 88)
         NAME@[76; 79)
           IDENT@[76; 79) "raw"
         COLON@[79; 80) ":"
@@ -46,16 +46,16 @@ SOURCE_FILE@[0; 160)
         BIN_EXPR@[107; 135)
           INDEX_EXPR@[107; 131)
             FIELD_EXPR@[107; 128)
-              STRUCT_LIT@[107; 124)
+              RECORD_LIT@[107; 124)
                 PATH@[107; 111)
                   PATH_SEGMENT@[107; 111)
                     NAME_REF@[107; 111)
                       IDENT@[107; 111) "Repr"
                 WHITESPACE@[111; 112) " "
-                NAMED_FIELD_LIST@[112; 124)
+                RECORD_FIELD_LIST@[112; 124)
                   L_CURLY@[112; 113) "{"
                   WHITESPACE@[113; 114) " "
-                  NAMED_FIELD@[114; 122)
+                  RECORD_FIELD@[114; 122)
                     NAME_REF@[114; 117)
                       IDENT@[114; 117) "raw"
                     COLON@[117; 118) ":"
@@ -83,14 +83,14 @@ SOURCE_FILE@[0; 160)
       WHITESPACE@[136; 141) "\n    "
       EXPR_STMT@[141; 157)
         CALL_EXPR@[141; 156)
-          STRUCT_LIT@[141; 154)
+          RECORD_LIT@[141; 154)
             PATH@[141; 145)
               PATH_SEGMENT@[141; 145)
                 NAME_REF@[141; 145)
                   IDENT@[141; 145) "Repr"
-            NAMED_FIELD_LIST@[145; 154)
+            RECORD_FIELD_LIST@[145; 154)
               L_CURLY@[145; 146) "{"
-              NAMED_FIELD@[146; 153)
+              RECORD_FIELD@[146; 153)
                 NAME_REF@[146; 149)
                   IDENT@[146; 149) "raw"
                 COLON@[149; 150) ":"

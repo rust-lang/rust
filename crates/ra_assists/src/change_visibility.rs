@@ -38,7 +38,7 @@ fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         (vis_offset(&parent), keyword.text_range())
     } else {
         let ident = ctx.token_at_offset().find(|leaf| leaf.kind() == IDENT)?;
-        let field = ident.parent().ancestors().find_map(ast::NamedFieldDef::cast)?;
+        let field = ident.parent().ancestors().find_map(ast::RecordFieldDef::cast)?;
         if field.name()?.syntax().text_range() != ident.text_range() && field.visibility().is_some()
         {
             return None;

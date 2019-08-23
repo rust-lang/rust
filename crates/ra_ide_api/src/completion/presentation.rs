@@ -28,7 +28,7 @@ impl Completions {
         .add_to(self);
     }
 
-    pub(crate) fn add_pos_field(&mut self, ctx: &CompletionContext, field: usize, ty: &hir::Ty) {
+    pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &hir::Ty) {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), field.to_string())
             .kind(CompletionItemKind::Field)
             .detail(ty.display(ctx.db).to_string())

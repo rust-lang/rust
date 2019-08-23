@@ -54,12 +54,12 @@ pub(crate) fn classify_name_ref(
     }
 
     // It could also be a named field
-    if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::NamedField::cast) {
-        tested_by!(goto_definition_works_for_named_fields);
+    if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::RecordField::cast) {
+        tested_by!(goto_definition_works_for_record_fields);
 
-        let struct_lit = field_expr.syntax().ancestors().find_map(ast::StructLit::cast);
+        let record_lit = field_expr.syntax().ancestors().find_map(ast::RecordLit::cast);
 
-        if let Some(ty) = struct_lit.and_then(|lit| analyzer.type_of(db, &lit.into())) {
+        if let Some(ty) = record_lit.and_then(|lit| analyzer.type_of(db, &lit.into())) {
             if let Some((hir::AdtDef::Struct(s), _)) = ty.as_adt() {
                 let hir_path = hir::Path::from_name_ref(name_ref);
                 let hir_name = hir_path.as_ident().unwrap();
