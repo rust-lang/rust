@@ -13,6 +13,10 @@ fn main() {
     format!("foo");
     format!("{{}}");
     format!("{{}} abc {{}}");
+    format!(
+        r##"foo {{}}
+" bar"##
+    );
 
     format!("{}", "foo");
     format!("{:?}", "foo"); // Don't warn about `Debug`.
@@ -59,4 +63,8 @@ fn main() {
     format!("{}", 42.to_string());
     let x = std::path::PathBuf::from("/bar/foo/qux");
     format!("{}", x.display().to_string());
+
+    // False positive
+    let a = "foo".to_string();
+    let _ = Some(format!("{}", a + "bar"));
 }
