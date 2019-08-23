@@ -70,6 +70,7 @@ type parameter).
 mod autoderef;
 pub mod dropck;
 pub mod _match;
+mod pat;
 pub mod writeback;
 mod regionck;
 pub mod coercion;
