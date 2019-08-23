@@ -1,12 +1,13 @@
+use hir::{db::HirDatabase, HasSource};
+use ra_syntax::{
+    ast::{self, AstNode, NameOwner},
+    SmolStr,
+};
+
 use crate::{
     ast_editor::{AstBuilder, AstEditor},
     Assist, AssistCtx, AssistId,
 };
-
-use hir::{db::HirDatabase, HasSource};
-use ra_db::FilePosition;
-use ra_syntax::ast::{self, AstNode, NameOwner};
-use ra_syntax::SmolStr;
 
 #[derive(PartialEq)]
 enum AddMissingImplMembersMode {
@@ -43,8 +44,7 @@ fn add_missing_impl_members_inner(
 
     let trait_def = {
         let file_id = ctx.frange.file_id;
-        let position = FilePosition { file_id, offset: impl_node.syntax().text_range().start() };
-        let analyzer = hir::SourceAnalyzer::new(ctx.db, position.file_id, impl_node.syntax(), None);
+        let analyzer = hir::SourceAnalyzer::new(ctx.db, file_id, impl_node.syntax(), None);
 
         resolve_target_trait_def(ctx.db, &analyzer, &impl_node)?
     };
