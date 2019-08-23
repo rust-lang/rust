@@ -60,4 +60,8 @@ fn main() {
     42.to_string();
     let x = std::path::PathBuf::from("/bar/foo/qux");
     x.display().to_string();
+
+    // False positive
+    let a = "foo".to_string();
+    let _ = Some(a + "bar");
 }
