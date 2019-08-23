@@ -1,11 +1,8 @@
 use crate::utils::paths;
-use crate::utils::{
-    is_expn_of, last_path_segment, match_def_path, match_type, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty,
-};
+use crate::utils::{is_expn_of, last_path_segment, match_def_path, resolve_node, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
@@ -38,56 +35,16 @@ declare_lint_pass!(UselessFormat => [USELESS_FORMAT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessFormat {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let Some(span) = is_expn_of(expr.span, "format") {
-            if span.from_expansion() {
-                return;
-            }
-            match expr.node {
-                // `format!("{}", foo)` expansion
-                ExprKind::Call(ref fun, ref args) => {
-                    if_chain! {
-                        if let ExprKind::Path(ref qpath) = fun.node;
-                        if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
-                        let new_v1 = match_def_path(cx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1);
-                        let new_v1_fmt = match_def_path(cx,
-                            fun_def_id,
-                            &paths::FMT_ARGUMENTS_NEWV1FORMATTED
-                        );
-                        if new_v1 || new_v1_fmt;
-                        if check_single_piece(&args[0]);
-                        if let Some(format_arg) = get_single_string_arg(cx, &args[1]);
-                        if new_v1 || check_unformatted(&args[2]);
-                        if let ExprKind::AddrOf(_, ref format_arg) = format_arg.node;
-                        then {
-                            let (message, sugg) = if_chain! {
-                                if let ExprKind::MethodCall(ref path, _, _) = format_arg.node;
-                                if path.ident.as_interned_str().as_symbol() == sym!(to_string);
-                                then {
-                                    ("`to_string()` is enough",
-                                    snippet(cx, format_arg.span, "<arg>").to_string())
-                                } else {
-                                    ("consider using .to_string()",
-                                    format!("{}.to_string()", snippet(cx, format_arg.span, "<arg>")))
-                                }
-                            };
+        let span = match is_expn_of(expr.span, "format") {
+            Some(s) if !s.from_expansion() => s,
+            _ => return,
+        };
 
-                            span_useless_format(cx, span, message, sugg);
-                        }
-                    }
-                },
-                // `format!("foo")` expansion contains `match () { () => [], }`
-                ExprKind::Match(ref matchee, _, _) => {
-                    if let ExprKind::Tup(ref tup) = matchee.node {
-                        if tup.is_empty() {
-                            let actual_snippet = snippet(cx, expr.span, "<expr>").to_string();
-                            let actual_snippet = actual_snippet.replace("{{}}", "{}");
-                            let sugg = format!("{}.to_string()", actual_snippet);
-                            span_useless_format(cx, span, "consider using .to_string()", sugg);
-                        }
-                    }
-                },
-                _ => (),
-            }
+        // Operate on the only argument of `alloc::fmt::format`.
+        if let Some(sugg) = on_new_v1(cx, expr) {
+            span_useless_format(cx, span, "consider using .to_string()", sugg);
+        } else if let Some(sugg) = on_new_v1_fmt(cx, expr) {
+            span_useless_format(cx, span, "consider using .to_string()", sugg);
         }
     }
 }
@@ -111,56 +68,105 @@ fn span_useless_format<T: LintContext>(cx: &T, span: Span, help: &str, mut sugg:
     });
 }
 
-/// Checks if the expressions matches `&[""]`
-fn check_single_piece(expr: &Expr) -> bool {
+fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arms: &'a [Arm]) -> Option<String> {
     if_chain! {
-        if let ExprKind::AddrOf(_, ref expr) = expr.node; // &[""]
-        if let ExprKind::Array(ref exprs) = expr.node; // [""]
-        if exprs.len() == 1;
-        if let ExprKind::Lit(ref lit) = exprs[0].node;
-        if let LitKind::Str(ref lit, _) = lit.node;
-        then {
-            return lit.as_str().is_empty();
-        }
-    }
-
-    false
-}
-
-/// Checks if the expressions matches
-/// ```rust,ignore
-/// &match (&"arg",) {
-/// (__arg0,) => [::std::fmt::ArgumentV1::new(__arg0,
-/// ::std::fmt::Display::fmt)],
-/// }
-/// ```
-/// and that the type of `__arg0` is `&str` or `String`,
-/// then returns the span of first element of the matched tuple.
-fn get_single_string_arg<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<&'a Expr> {
-    if_chain! {
-        if let ExprKind::AddrOf(_, ref expr) = expr.node;
-        if let ExprKind::Match(ref match_expr, ref arms, _) = expr.node;
-        if arms.len() == 1;
-        if arms[0].pats.len() == 1;
-        if let PatKind::Tuple(ref pat, None) = arms[0].pats[0].node;
-        if pat.len() == 1;
-        if let ExprKind::Array(ref exprs) = arms[0].body.node;
-        if exprs.len() == 1;
-        if let ExprKind::Call(_, ref args) = exprs[0].node;
+        if let ExprKind::AddrOf(_, ref format_args) = expr.node;
+        if let ExprKind::Array(ref elems) = arms[0].body.node;
+        if elems.len() == 1;
+        if let ExprKind::Call(ref fun, ref args) = elems[0].node;
+        if let ExprKind::Path(ref qpath) = fun.node;
+        if let Some(did) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
+        if match_def_path(cx, did, &paths::FMT_ARGUMENTV1_NEW);
+        // matches `core::fmt::Display::fmt`
         if args.len() == 2;
         if let ExprKind::Path(ref qpath) = args[1].node;
-        if let Some(fun_def_id) = resolve_node(cx, qpath, args[1].hir_id).opt_def_id();
-        if match_def_path(cx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
+        if let Some(did) = resolve_node(cx, qpath, args[1].hir_id).opt_def_id();
+        if match_def_path(cx, did, &paths::DISPLAY_FMT_METHOD);
+        if arms[0].pats.len() == 1;
+        // check `(arg0,)` in match block
+        if let PatKind::Tuple(ref pats, None) = arms[0].pats[0].node;
+        if pats.len() == 1;
         then {
-            let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
-            if ty.sty == ty::Str || match_type(cx, ty, &paths::STRING) {
-                if let ExprKind::Tup(ref values) = match_expr.node {
-                    return Some(&values[0]);
+            if let ExprKind::Lit(ref lit) = format_args.node {
+                if let LitKind::Str(ref s, _) = lit.node {
+                    let snip = s.as_str().replace("{{}}", "{}");
+                    let sugg = format!("\"{}\".to_string()", snip);
+                    return Some(sugg);
+                }
+                return None;
+            } else {
+                let snip = snippet(cx, format_args.span, "<arg>");
+                if let ExprKind::MethodCall(ref path, _, _) = format_args.node {
+                    if path.ident.name == sym!(to_string) {
+                        return Some(format!("{}", snip));
+                    }
+                }
+                return Some(format!("{}.to_string()", snip));
+            }
+        }
+    }
+    None
+}
+
+fn on_new_v1<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<String> {
+    if_chain! {
+        if let ExprKind::Call(ref fun, ref args) = expr.node;
+        if args.len() == 2;
+        if let ExprKind::Path(ref qpath) = fun.node;
+        if let Some(did) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
+        if match_def_path(cx, did, &paths::FMT_ARGUMENTS_NEW_V1);
+        // Argument 1 in `new_v1()`
+        if let ExprKind::AddrOf(_, ref arr) = args[0].node;
+        if let ExprKind::Array(ref pieces) = arr.node;
+        if pieces.len() == 1;
+        if let ExprKind::Lit(ref lit) = pieces[0].node;
+        if let LitKind::Str(ref s, _) = lit.node;
+        // Argument 2 in `new_v1()`
+        if let ExprKind::AddrOf(_, ref arg1) = args[1].node;
+        if let ExprKind::Match(ref matchee, ref arms, MatchSource::Normal) = arg1.node;
+        if arms.len() == 1;
+        if let ExprKind::Tup(ref tup) = matchee.node;
+        then {
+            // `format!("foo")` expansion contains `match () { () => [], }`
+            if tup.is_empty() {
+                let snip = s.as_str().replace("{{}}", "{}");
+                let sugg = format!("\"{}\".to_string()", snip);
+                return Some(sugg);
+            } else {
+                if s.as_str().is_empty() {
+                    return on_argumentv1_new(cx, &tup[0], arms);
+                } else {
+                    return None;
                 }
             }
         }
     }
+    None
+}
 
+fn on_new_v1_fmt<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<String> {
+    if_chain! {
+        if let ExprKind::Call(ref fun, ref args) = expr.node;
+        if args.len() == 3;
+        if let ExprKind::Path(ref qpath) = fun.node;
+        if let Some(did) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
+        if match_def_path(cx, did, &paths::FMT_ARGUMENTS_NEW_V1_FORMATTED);
+        if check_unformatted(&args[2]);
+        // Argument 1 in `new_v1_formatted()`
+        if let ExprKind::AddrOf(_, ref arr) = args[0].node;
+        if let ExprKind::Array(ref pieces) = arr.node;
+        if pieces.len() == 1;
+        if let ExprKind::Lit(ref lit) = pieces[0].node;
+        if let LitKind::Str(..) = lit.node;
+        // Argument 2 in `new_v1_formatted()`
+        if let ExprKind::AddrOf(_, ref arg1) = args[1].node;
+        if let ExprKind::Match(ref matchee, ref arms, MatchSource::Normal) = arg1.node;
+        if arms.len() == 1;
+        if let ExprKind::Tup(ref tup) = matchee.node;
+        then {
+            return on_argumentv1_new(cx, &tup[0], arms);
+        }
+    }
     None
 }
 
@@ -169,6 +175,7 @@ fn get_single_string_arg<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option
 /// &[_ {
 ///    format: _ {
 ///         width: _::Implied,
+///         precision: _::Implied,
 ///         ...
 ///    },
 ///    ...,
@@ -179,15 +186,17 @@ fn check_unformatted(expr: &Expr) -> bool {
         if let ExprKind::AddrOf(_, ref expr) = expr.node;
         if let ExprKind::Array(ref exprs) = expr.node;
         if exprs.len() == 1;
+        // struct `core::fmt::rt::v1::Argument`
         if let ExprKind::Struct(_, ref fields, _) = exprs[0].node;
         if let Some(format_field) = fields.iter().find(|f| f.ident.name == sym!(format));
+        // struct `core::fmt::rt::v1::FormatSpec`
         if let ExprKind::Struct(_, ref fields, _) = format_field.expr.node;
-        if let Some(width_field) = fields.iter().find(|f| f.ident.name == sym!(width));
-        if let ExprKind::Path(ref width_qpath) = width_field.expr.node;
-        if last_path_segment(width_qpath).ident.name == sym!(Implied);
         if let Some(precision_field) = fields.iter().find(|f| f.ident.name == sym!(precision));
         if let ExprKind::Path(ref precision_path) = precision_field.expr.node;
         if last_path_segment(precision_path).ident.name == sym!(Implied);
+        if let Some(width_field) = fields.iter().find(|f| f.ident.name == sym!(width));
+        if let ExprKind::Path(ref width_qpath) = width_field.expr.node;
+        if last_path_segment(width_qpath).ident.name == sym!(Implied);
         then {
             return true;
         }
