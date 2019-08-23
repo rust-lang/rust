@@ -56,17 +56,17 @@ declare_clippy_lint! {
     ///
     /// **Known problems** None.
     ///
-    /// **Example:** You may not see it, but “à” and “à” aren't the same string. The
+    /// **Example:** You may not see it, but "à"" and "à"" aren't the same string. The
     /// former when escaped is actually `"a\u{300}"` while the latter is `"\u{e0}"`.
     pub UNICODE_NOT_NFC,
     pedantic,
-    "using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
+    "using a Unicode literal not in NFC normal form (see [Unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
 }
 
 declare_lint_pass!(Unicode => [ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_NFC]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unicode {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+impl LateLintPass<'_, '_> for Unicode {
+    fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &'_ Expr) {
         if let ExprKind::Lit(ref lit) = expr.node {
             if let LitKind::Str(_, _) = lit.node {
                 check_str(cx, lit.span, expr.hir_id)
@@ -122,7 +122,7 @@ fn check_str(cx: &LateContext<'_, '_>, span: Span, id: HirId) {
             cx,
             UNICODE_NOT_NFC,
             span,
-            "non-nfc unicode sequence detected",
+            "non-NFC Unicode sequence detected",
             "consider replacing the string with",
             string.nfc().collect::<String>(),
             Applicability::MachineApplicable,
