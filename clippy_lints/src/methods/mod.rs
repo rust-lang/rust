@@ -2513,11 +2513,11 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
                 applicability,
             );
 
-            return true;
+            true
+        } else {
+            false
         }
     }
-
-    false
 }
 
 /// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
@@ -2605,7 +2605,7 @@ fn ty_has_iter_method(
     cx: &LateContext<'_, '_>,
     self_ref_ty: Ty<'_>,
 ) -> Option<(&'static Lint, &'static str, &'static str)> {
-    if let Some(ty_name) = has_iter_method(cx, self_ref_ty) {
+    has_iter_method(cx, self_ref_ty).map(|ty_name| {
         let lint = if ty_name == "array" || ty_name == "PathBuf" {
             INTO_ITER_ON_ARRAY
         } else {
@@ -2619,10 +2619,8 @@ fn ty_has_iter_method(
             hir::MutImmutable => "iter",
             hir::MutMutable => "iter_mut",
         };
-        Some((lint, ty_name, method_name))
-    } else {
-        None
-    }
+        (lint, ty_name, method_name)
+    })
 }
 
 fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_>, method_span: Span) {
@@ -2657,14 +2655,9 @@ fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
-    if let ty::Adt(_, substs) = ty.sty {
-        if match_type(cx, ty, &paths::RESULT) {
-            substs.types().nth(1)
-        } else {
-            None
-        }
-    } else {
-        None
+    match ty.sty {
+        ty::Adt(_, substs) if match_type(cx, ty, &paths::RESULT) => substs.types().nth(1),
+        _ => None,
     }
 }
 
