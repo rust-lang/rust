@@ -48,8 +48,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_pat_walk(
         &self,
         pat: &'tcx hir::Pat,
-        mut expected: Ty<'tcx>,
-        mut def_bm: ty::BindingMode,
+        expected: Ty<'tcx>,
+        def_bm: ty::BindingMode,
         discrim_span: Option<Span>,
     ) {
         let tcx = self.tcx;
@@ -62,53 +62,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let is_non_ref_pat = self.is_non_ref_pat(pat, path_resolution.map(|(res, ..)| res));
-        if is_non_ref_pat {
+        let (expected, def_bm) = if is_non_ref_pat {
             debug!("pattern is non reference pattern");
-            let mut exp_ty = self.resolve_type_vars_with_obligations(&expected);
-
-            // Peel off as many `&` or `&mut` from the discriminant as possible. For example,
-            // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
-            // the `Some(5)` which is not of type Ref.
-            //
-            // For each ampersand peeled off, update the binding mode and push the original
-            // type into the adjustments vector.
-            //
-            // See the examples in `ui/match-defbm*.rs`.
-            let mut pat_adjustments = vec![];
-            while let ty::Ref(_, inner_ty, inner_mutability) = exp_ty.sty {
-                debug!("inspecting {:?}", exp_ty);
-
-                debug!("current discriminant is Ref, inserting implicit deref");
-                // Preserve the reference type. We'll need it later during HAIR lowering.
-                pat_adjustments.push(exp_ty);
-
-                exp_ty = inner_ty;
-                def_bm = match def_bm {
-                    // If default binding mode is by value, make it `ref` or `ref mut`
-                    // (depending on whether we observe `&` or `&mut`).
-                    ty::BindByValue(_) =>
-                        ty::BindByReference(inner_mutability),
-
-                    // Once a `ref`, always a `ref`. This is because a `& &mut` can't mutate
-                    // the underlying value.
-                    ty::BindByReference(hir::Mutability::MutImmutable) =>
-                        ty::BindByReference(hir::Mutability::MutImmutable),
-
-                    // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref`
-                    // (on `&`).
-                    ty::BindByReference(hir::Mutability::MutMutable) =>
-                        ty::BindByReference(inner_mutability),
-                };
-            }
-            expected = exp_ty;
-
-            if pat_adjustments.len() > 0 {
-                debug!("default binding mode is now {:?}", def_bm);
-                self.inh.tables.borrow_mut()
-                    .pat_adjustments_mut()
-                    .insert(pat.hir_id, pat_adjustments);
-            }
-        } else if let PatKind::Ref(..) = pat.node {
+            self.peel_off_references(pat, expected, def_bm)
+        } else {
             // When you encounter a `&pat` pattern, reset to "by
             // value". This is so that `x` and `y` here are by value,
             // as they appear to be:
@@ -120,12 +77,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // ```
             //
             // See issue #46688.
-            def_bm = ty::BindByValue(hir::MutImmutable);
-        }
-
-        // Lose mutability now that we know binding mode and discriminant type.
-        let def_bm = def_bm;
-        let expected = expected;
+            let def_bm = match pat.node {
+                PatKind::Ref(..) => ty::BindByValue(hir::MutImmutable),
+                _ => def_bm,
+            };
+            (expected, def_bm)
+        };
 
         let ty = match pat.node {
             PatKind::Wild => {
@@ -566,6 +523,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Binding(..) |
             PatKind::Ref(..) => false,
         }
+    }
+
+    /// Peel off as many immediately nested `& mut?` from the expected type as possible
+    /// and return the new expected type and binding default binding mode.
+    /// The adjustments vector, if non-empty is stored in a table.
+    fn peel_off_references(
+        &self,
+        pat: &'tcx hir::Pat,
+        expected: Ty<'tcx>,
+        mut def_bm: ty::BindingMode,
+    ) -> (Ty<'tcx>, ty::BindingMode) {
+        let mut expected = self.resolve_type_vars_with_obligations(&expected);
+
+        // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
+        // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
+        // the `Some(5)` which is not of type Ref.
+        //
+        // For each ampersand peeled off, update the binding mode and push the original
+        // type into the adjustments vector.
+        //
+        // See the examples in `ui/match-defbm*.rs`.
+        let mut pat_adjustments = vec![];
+        while let ty::Ref(_, inner_ty, inner_mutability) = expected.sty {
+            debug!("inspecting {:?}", expected);
+
+            debug!("current discriminant is Ref, inserting implicit deref");
+            // Preserve the reference type. We'll need it later during HAIR lowering.
+            pat_adjustments.push(expected);
+
+            expected = inner_ty;
+            def_bm = match def_bm {
+                // If default binding mode is by value, make it `ref` or `ref mut`
+                // (depending on whether we observe `&` or `&mut`).
+                ty::BindByValue(_) =>
+                    ty::BindByReference(inner_mutability),
+
+                // Once a `ref`, always a `ref`. This is because a `& &mut` can't mutate
+                // the underlying value.
+                ty::BindByReference(hir::Mutability::MutImmutable) =>
+                    ty::BindByReference(hir::Mutability::MutImmutable),
+
+                // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref`
+                // (on `&`).
+                ty::BindByReference(hir::Mutability::MutMutable) =>
+                    ty::BindByReference(inner_mutability),
+            };
+        }
+
+        if pat_adjustments.len() > 0 {
+            debug!("default binding mode is now {:?}", def_bm);
+            self.inh.tables.borrow_mut()
+                .pat_adjustments_mut()
+                .insert(pat.hir_id, pat_adjustments);
+        }
+
+        (expected, def_bm)
     }
 
     fn borrow_pat_suggestion(
