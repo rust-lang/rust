@@ -1281,46 +1281,37 @@ fn lint_or_fun_call<'a, 'tcx>(
             (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
         ];
 
-        // early check if the name is one we care about
-        if know_types.iter().all(|k| !k.2.contains(&name)) {
-            return;
+        if_chain! {
+            if know_types.iter().any(|k| k.2.contains(&name));
+
+            let mut finder = FunCallFinder { cx: &cx, found: false };
+            if { finder.visit_expr(&arg); finder.found };
+
+            let self_ty = cx.tables.expr_ty(self_expr);
+
+            if let Some(&(_, fn_has_arguments, poss, suffix)) =
+                   know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
+
+            if poss.contains(&name);
+
+            then {
+                let sugg: Cow<'_, _> = match (fn_has_arguments, !or_has_args) {
+                    (true, _) => format!("|_| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
+                    (false, false) => format!("|| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
+                    (false, true) => snippet_with_macro_callsite(cx, fun_span, ".."),
+                };
+                let span_replace_word = method_span.with_hi(span.hi());
+                span_lint_and_sugg(
+                    cx,
+                    OR_FUN_CALL,
+                    span_replace_word,
+                    &format!("use of `{}` followed by a function call", name),
+                    "try this",
+                    format!("{}_{}({})", name, suffix, sugg),
+                    Applicability::HasPlaceholders,
+                );
+            }
         }
-
-        let mut finder = FunCallFinder { cx: &cx, found: false };
-        finder.visit_expr(&arg);
-        if !finder.found {
-            return;
-        }
-
-        let self_ty = cx.tables.expr_ty(self_expr);
-
-        let (fn_has_arguments, poss, suffix) = if let Some(&(_, fn_has_arguments, poss, suffix)) =
-            know_types.iter().find(|&&i| match_type(cx, self_ty, i.0))
-        {
-            (fn_has_arguments, poss, suffix)
-        } else {
-            return;
-        };
-
-        if !poss.contains(&name) {
-            return;
-        }
-
-        let sugg: Cow<'_, _> = match (fn_has_arguments, !or_has_args) {
-            (true, _) => format!("|_| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
-            (false, false) => format!("|| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
-            (false, true) => snippet_with_macro_callsite(cx, fun_span, ".."),
-        };
-        let span_replace_word = method_span.with_hi(span.hi());
-        span_lint_and_sugg(
-            cx,
-            OR_FUN_CALL,
-            span_replace_word,
-            &format!("use of `{}` followed by a function call", name),
-            "try this",
-            format!("{}_{}({})", name, suffix, sugg),
-            Applicability::HasPlaceholders,
-        );
     }
 
     if args.len() == 2 {
