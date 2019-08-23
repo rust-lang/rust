@@ -93,7 +93,8 @@ pub struct Evaluator<'tcx> {
     /// TLS state.
     pub(crate) tls: TlsData<'tcx>,
 
-    /// If enabled, the `env_vars` field is populated with the host env vars during initialization.
+    /// If enabled, the `env_vars` field is populated with the host env vars during initialization
+    /// and random number generation is delegated to the host.
     pub(crate) communicate: bool,
 }
 
