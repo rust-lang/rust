@@ -161,6 +161,9 @@ fn record_field_pat_list(p: &mut Parser) {
             T![..] => p.bump(),
             IDENT if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
+            T![box] => {
+                box_pat(p);
+            }
             _ => {
                 bind_pat(p, false);
             }
