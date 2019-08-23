@@ -58,13 +58,13 @@ error: useless use of `format!`
   --> $DIR/format.rs:59:5
    |
 LL |     format!("{}", 42.to_string());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `to_string()` is enough: `42.to_string();`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `42.to_string();`
 
 error: useless use of `format!`
   --> $DIR/format.rs:61:5
    |
 LL |     format!("{}", x.display().to_string());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: `to_string()` is enough: `x.display().to_string();`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `x.display().to_string();`
 
 error: aborting due to 11 previous errors
 
