@@ -148,7 +148,7 @@ fn main() {
                 "-Zmiri-disable-validation" => {
                     validate = false;
                 },
-                "-Zmiri-enable-communication" => {
+                "-Zmiri-disable-isolation" => {
                     communicate = true;
                 },
                 "--" => {
