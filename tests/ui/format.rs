@@ -13,6 +13,10 @@ fn main() {
     format!("foo");
     format!("{{}}");
     format!("{{}} abc {{}}");
+    format!(
+        r##"foo {{}}
+" bar"##
+    );
 
     format!("{}", "foo");
     format!("{:?}", "foo"); // Don't warn about `Debug`.

@@ -89,11 +89,8 @@ fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arm
         then {
             if let ExprKind::Lit(ref lit) = format_args.node {
                 if let LitKind::Str(ref s, _) = lit.node {
-                    let snip = s.as_str().replace("{{}}", "{}");
-                    let sugg = format!("\"{}\".to_string()", snip);
-                    return Some(sugg);
+                    return Some(format!("{:?}.to_string()", s.as_str()));
                 }
-                return None;
             } else {
                 let snip = snippet(cx, format_args.span, "<arg>");
                 if let ExprKind::MethodCall(ref path, _, _) = format_args.node {
@@ -129,15 +126,9 @@ fn on_new_v1<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<S
         then {
             // `format!("foo")` expansion contains `match () { () => [], }`
             if tup.is_empty() {
-                let snip = s.as_str().replace("{{}}", "{}");
-                let sugg = format!("\"{}\".to_string()", snip);
-                return Some(sugg);
-            } else {
-                if s.as_str().is_empty() {
-                    return on_argumentv1_new(cx, &tup[0], arms);
-                } else {
-                    return None;
-                }
+                return Some(format!("{:?}.to_string()", s.as_str()));
+            } else if s.as_str().is_empty() {
+                return on_argumentv1_new(cx, &tup[0], arms);
             }
         }
     }
