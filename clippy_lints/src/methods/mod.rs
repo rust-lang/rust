@@ -1396,18 +1396,20 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         a: &hir::Expr,
         applicability: &mut Applicability,
     ) -> Vec<String> {
-        if let hir::ExprKind::AddrOf(_, ref format_arg) = a.node {
-            if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.node {
-                if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.node {
-                    return format_arg_expr_tup
-                        .iter()
-                        .map(|a| snippet_with_applicability(cx, a.span, "..", applicability).into_owned())
-                        .collect();
-                }
-            }
-        };
+        if_chain! {
+            if let hir::ExprKind::AddrOf(_, ref format_arg) = a.node;
+            if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.node;
+            if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.node;
 
-        unreachable!()
+            then {
+                format_arg_expr_tup
+                    .iter()
+                    .map(|a| snippet_with_applicability(cx, a.span, "..", applicability).into_owned())
+                    .collect()
+            } else {
+                unreachable!()
+            }
+        }
     }
 
     fn is_call(node: &hir::ExprKind) -> bool {
@@ -1671,20 +1673,22 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, source: &hir:
 }
 
 fn lint_iter_cloned_collect<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_args: &'tcx [hir::Expr]) {
-    if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC) {
-        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])) {
-            if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite()) {
-                span_lint_and_sugg(
-                    cx,
-                    ITER_CLONED_COLLECT,
-                    to_replace,
-                    "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-                     more readable",
-                    "try",
-                    ".to_vec()".to_string(),
-                    Applicability::MachineApplicable,
-                );
-            }
+    if_chain! {
+        if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC);
+        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0]));
+        if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
+
+        then {
+            span_lint_and_sugg(
+                cx,
+                ITER_CLONED_COLLECT,
+                to_replace,
+                "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
+                 more readable",
+                "try",
+                ".to_vec()".to_string(),
+                Applicability::MachineApplicable,
+            );
         }
     }
 }
@@ -1944,18 +1948,20 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, unwrap_args: &[hir::E
 
 /// lint use of `ok().expect()` for `Result`s
 fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr, ok_args: &[hir::Expr]) {
-    // lint if the caller of `ok()` is a `Result`
-    if match_type(cx, cx.tables.expr_ty(&ok_args[0]), &paths::RESULT) {
+    if_chain! {
+        // lint if the caller of `ok()` is a `Result`
+        if match_type(cx, cx.tables.expr_ty(&ok_args[0]), &paths::RESULT);
         let result_type = cx.tables.expr_ty(&ok_args[0]);
-        if let Some(error_type) = get_error_type(cx, result_type) {
-            if has_debug_impl(error_type, cx) {
-                span_lint(
-                    cx,
-                    OK_EXPECT,
-                    expr.span,
-                    "called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`",
-                );
-            }
+        if let Some(error_type) = get_error_type(cx, result_type);
+        if has_debug_impl(error_type, cx);
+
+        then {
+            span_lint(
+                cx,
+                OK_EXPECT,
+                expr.span,
+                "called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`",
+            );
         }
     }
 }
