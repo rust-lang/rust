@@ -60,7 +60,6 @@ deploy:
     github-token: $DOCS_TOKEN  # Set in the settings page of your repository, as a secure variable
     keep-history: true
     local-dir: target/doc
-    branch: gh-pages
     on:
         branch: master
         condition: $DEPLOY_DOCS = 1
