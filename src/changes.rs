@@ -1144,7 +1144,7 @@ pub mod tests {
 
     impl Span_ {
         pub fn inner(self) -> Span {
-            Span::new(BytePos(self.0), BytePos(self.1), SyntaxContext::empty())
+            Span::new(BytePos(self.0), BytePos(self.1), SyntaxContext::root())
         }
     }
 
