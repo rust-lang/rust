@@ -3552,6 +3552,71 @@ fn test() {
     );
 }
 
+#[test]
+fn assoc_type_bindings() {
+    assert_snapshot!(
+        infer(r#"
+trait Trait {
+    type Type;
+}
+
+fn get<T: Trait>(t: T) -> <T as Trait>::Type {}
+fn get2<U, T: Trait<Type = U>>(t: T) -> U {}
+fn set<T: Trait<Type = u64>>(t: T) -> T {t}
+
+struct S<T>;
+impl<T> Trait for S<T> { type Type = T; }
+
+fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
+    get(x);
+    get2(x);
+    get(y);
+    get2(y);
+    get(set(S));
+    get2(set(S));
+    get2(S::<str>);
+}
+"#),
+        @r###"
+    [50; 51) 't': T
+    [78; 80) '{}': ()
+    [112; 113) 't': T
+    [123; 125) '{}': ()
+    [155; 156) 't': T
+    [166; 169) '{t}': T
+    [167; 168) 't': T
+    [257; 258) 'x': T
+    [263; 264) 'y': impl Trait
+    [290; 398) '{     ...r>); }': ()
+    [296; 299) 'get': fn get<T>(T) -> <T as Trait>::Type
+    [296; 302) 'get(x)': {unknown}
+    [300; 301) 'x': T
+    [308; 312) 'get2': fn get2<{unknown}, T>(T) -> U
+    [308; 315) 'get2(x)': {unknown}
+    [313; 314) 'x': T
+    [321; 324) 'get': fn get<impl Trait>(T) -> <T as Trait>::Type
+    [321; 327) 'get(y)': {unknown}
+    [325; 326) 'y': impl Trait
+    [333; 337) 'get2': fn get2<{unknown}, impl Trait>(T) -> U
+    [333; 340) 'get2(y)': {unknown}
+    [338; 339) 'y': impl Trait
+    [346; 349) 'get': fn get<S<{unknown}>>(T) -> <T as Trait>::Type
+    [346; 357) 'get(set(S))': {unknown}
+    [350; 353) 'set': fn set<S<{unknown}>>(T) -> T
+    [350; 356) 'set(S)': S<{unknown}>
+    [354; 355) 'S': S<{unknown}>
+    [363; 367) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
+    [363; 375) 'get2(set(S))': {unknown}
+    [368; 371) 'set': fn set<S<{unknown}>>(T) -> T
+    [368; 374) 'set(S)': S<{unknown}>
+    [372; 373) 'S': S<{unknown}>
+    [381; 385) 'get2': fn get2<{unknown}, S<str>>(T) -> U
+    [381; 395) 'get2(S::<str>)': {unknown}
+    [386; 394) 'S::<str>': S<str>
+    "###
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
