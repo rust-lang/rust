@@ -60,29 +60,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Path(qpath) => Some(self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span)),
             _ => None,
         };
-
-        let is_non_ref_pat = self.is_non_ref_pat(pat, path_resolution.map(|(res, ..)| res));
-        let (expected, def_bm) = if is_non_ref_pat {
-            debug!("pattern is non reference pattern");
-            self.peel_off_references(pat, expected, def_bm)
-        } else {
-            // When you encounter a `&pat` pattern, reset to "by
-            // value". This is so that `x` and `y` here are by value,
-            // as they appear to be:
-            //
-            // ```
-            // match &(&22, &44) {
-            //   (&x, &y) => ...
-            // }
-            // ```
-            //
-            // See issue #46688.
-            let def_bm = match pat.node {
-                PatKind::Ref(..) => ty::BindByValue(hir::MutImmutable),
-                _ => def_bm,
-            };
-            (expected, def_bm)
-        };
+        let is_nrp = self.is_non_ref_pat(pat, path_resolution.map(|(res, ..)| res));
+        let (expected, def_bm) = self.calc_default_binding_mode(pat, expected, def_bm, is_nrp);
 
         let ty = match pat.node {
             PatKind::Wild => {
@@ -493,6 +472,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // bound in a closure signature, and that detection gets thrown
         // off when we substitute fresh region variables here to enable
         // subtyping.
+    }
+
+    /// Compute the new expected type and default binding mode from the old ones
+    /// as well as the pattern form we are currently checking.
+    fn calc_default_binding_mode(
+        &self,
+        pat: &'tcx hir::Pat,
+        expected: Ty<'tcx>,
+        def_bm: ty::BindingMode,
+        is_non_ref_pat: bool,
+    ) -> (Ty<'tcx>, ty::BindingMode) {
+        if is_non_ref_pat {
+            debug!("pattern is non reference pattern");
+            self.peel_off_references(pat, expected, def_bm)
+        } else {
+            // When you encounter a `&pat` pattern, reset to "by
+            // value". This is so that `x` and `y` here are by value,
+            // as they appear to be:
+            //
+            // ```
+            // match &(&22, &44) {
+            //   (&x, &y) => ...
+            // }
+            // ```
+            //
+            // See issue #46688.
+            let def_bm = match pat.node {
+                PatKind::Ref(..) => ty::BindByValue(hir::MutImmutable),
+                _ => def_bm,
+            };
+            (expected, def_bm)
+        }
     }
 
     /// Is the pattern a "non reference pattern"?
