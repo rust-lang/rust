@@ -269,11 +269,6 @@ fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
     m.complete(p, BIND_PAT)
 }
 
-// test_err ref_box_pat
-// fn main() {
-//     let ref box i = ();
-// }
-
 // test box_pat
 // fn main() {
 //     let box i = ();
