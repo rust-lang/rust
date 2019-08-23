@@ -1,5 +1,7 @@
 use crate::utils::paths;
-use crate::utils::{is_expn_of, last_path_segment, match_def_path, resolve_node, snippet, span_lint_and_then};
+use crate::utils::{
+    is_expn_of, last_path_segment, match_def_path, match_type, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty,
+};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
@@ -87,6 +89,10 @@ fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arm
         if let PatKind::Tuple(ref pats, None) = arms[0].pats[0].node;
         if pats.len() == 1;
         then {
+            let ty = walk_ptrs_ty(cx.tables.pat_ty(&pats[0]));
+            if ty.sty != rustc::ty::Str && !match_type(cx, ty, &paths::STRING) {
+                return None;
+            }
             if let ExprKind::Lit(ref lit) = format_args.node {
                 if let LitKind::Str(ref s, _) = lit.node {
                     return Some(format!("{:?}.to_string()", s.as_str()));
@@ -97,6 +103,8 @@ fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arm
                     if path.ident.name == sym!(to_string) {
                         return Some(format!("{}", snip));
                     }
+                } else if let ExprKind::Binary(..) = format_args.node {
+                    return Some(format!("{}", snip));
                 }
                 return Some(format!("{}.to_string()", snip));
             }

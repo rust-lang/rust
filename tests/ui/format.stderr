@@ -75,5 +75,11 @@ error: useless use of `format!`
 LL |     format!("{}", x.display().to_string());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `x.display().to_string();`
 
-error: aborting due to 12 previous errors
+error: useless use of `format!`
+  --> $DIR/format.rs:69:18
+   |
+LL |     let _ = Some(format!("{}", a + "bar"));
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using .to_string(): `a + "bar"`
+
+error: aborting due to 13 previous errors
 
