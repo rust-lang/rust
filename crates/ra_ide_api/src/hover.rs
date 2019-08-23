@@ -197,7 +197,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 .visit(|node: ast::TraitDef| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
-                .visit(|node: ast::NamedFieldDef| {
+                .visit(|node: ast::RecordFieldDef| {
                     hover_text(node.doc_comment_text(), node.short_label())
                 })
                 .visit(|node: ast::Module| hover_text(node.doc_comment_text(), node.short_label()))

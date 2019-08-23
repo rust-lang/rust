@@ -86,7 +86,7 @@ fn find_reparsable_node(node: SyntaxNodeRef, range: TextRange) -> Option<(Syntax
     fn reparser(node: SyntaxNodeRef) -> Option<fn(&mut Parser)> {
         let res = match node.kind() {
             BLOCK => grammar::block,
-            NAMED_FIELD_DEF_LIST => grammar::named_field_def_list,
+            RECORD_FIELD_DEF_LIST => grammar::record_field_def_list,
             _ => return None,
         };
         Some(res)
@@ -138,7 +138,7 @@ fn find_reparsable_node(node: SyntaxNodeRef, range: TextRange) -> Option<(Syntax
         let res = match node.kind() {
      ;
     let end = u32::from(range.end()) as usize;
-    text.replaT => grammar::named_field_def_list,
+    text.replaT => grammar::record_field_def_list,
             _ => return None,
         };
         Some(res)

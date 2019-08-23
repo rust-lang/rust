@@ -60,7 +60,7 @@ pub struct BodySourceMap {
     expr_map_back: ArenaMap<ExprId, SyntaxNodePtr>,
     pat_map: FxHashMap<PatPtr, PatId>,
     pat_map_back: ArenaMap<PatId, PatPtr>,
-    field_map: FxHashMap<(ExprId, usize), AstPtr<ast::NamedField>>,
+    field_map: FxHashMap<(ExprId, usize), AstPtr<ast::RecordField>>,
 }
 
 type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
@@ -148,7 +148,7 @@ impl BodySourceMap {
         self.pat_map.get(&Either::A(AstPtr::new(node))).cloned()
     }
 
-    pub(crate) fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::NamedField> {
+    pub(crate) fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::RecordField> {
         self.field_map[&(expr, field)]
     }
 }
@@ -210,9 +210,9 @@ pub enum Expr {
     Return {
         expr: Option<ExprId>,
     },
-    StructLit {
+    RecordLit {
         path: Option<Path>,
-        fields: Vec<StructLitField>,
+        fields: Vec<RecordLitField>,
         spread: Option<ExprId>,
     },
     Field {
@@ -316,7 +316,7 @@ pub struct MatchArm {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct StructLitField {
+pub struct RecordLitField {
     pub name: Name,
     pub expr: ExprId,
 }
@@ -388,7 +388,7 @@ impl Expr {
                     f(*expr);
                 }
             }
-            Expr::StructLit { fields, spread, .. } => {
+            Expr::RecordLit { fields, spread, .. } => {
                 for field in fields {
                     f(field.expr);
                 }
@@ -474,7 +474,7 @@ impl BindingAnnotation {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct FieldPat {
+pub struct RecordFieldPat {
     pub(crate) name: Name,
     pub(crate) pat: PatId,
 }
@@ -487,7 +487,7 @@ pub enum Pat {
     Tuple(Vec<PatId>),
     Struct {
         path: Option<Path>,
-        args: Vec<FieldPat>,
+        args: Vec<RecordFieldPat>,
         // FIXME: 'ellipsis' option
     },
     Range {
@@ -746,14 +746,14 @@ where
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
-            ast::Expr::StructLit(e) => {
+            ast::Expr::RecordLit(e) => {
                 let path = e.path().and_then(Path::from_ast);
                 let mut field_ptrs = Vec::new();
-                let struct_lit = if let Some(nfl) = e.named_field_list() {
+                let record_lit = if let Some(nfl) = e.record_field_list() {
                     let fields = nfl
                         .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(field)))
-                        .map(|field| StructLitField {
+                        .map(|field| RecordLitField {
                             name: field
                                 .name_ref()
                                 .map(|nr| nr.as_name())
@@ -776,12 +776,12 @@ where
                         })
                         .collect();
                     let spread = nfl.spread().map(|s| self.collect_expr(s));
-                    Expr::StructLit { path, fields, spread }
+                    Expr::RecordLit { path, fields, spread }
                 } else {
-                    Expr::StructLit { path, fields: Vec::new(), spread: None }
+                    Expr::RecordLit { path, fields: Vec::new(), spread: None }
                 };
 
-                let res = self.alloc_expr(struct_lit, syntax_ptr);
+                let res = self.alloc_expr(record_lit, syntax_ptr);
                 for (i, ptr) in field_ptrs.into_iter().enumerate() {
                     self.source_map.field_map.insert((res, i), ptr);
                 }
@@ -994,25 +994,25 @@ where
                 Pat::Tuple(args)
             }
             ast::Pat::PlaceholderPat(_) => Pat::Wild,
-            ast::Pat::StructPat(p) => {
+            ast::Pat::RecordPat(p) => {
                 let path = p.path().and_then(Path::from_ast);
-                let field_pat_list =
-                    p.field_pat_list().expect("every struct should have a field list");
-                let mut fields: Vec<_> = field_pat_list
+                let record_field_pat_list =
+                    p.record_field_pat_list().expect("every struct should have a field list");
+                let mut fields: Vec<_> = record_field_pat_list
                     .bind_pats()
                     .filter_map(|bind_pat| {
                         let ast_pat =
                             ast::Pat::cast(bind_pat.syntax().clone()).expect("bind pat is a pat");
                         let pat = self.collect_pat(ast_pat);
                         let name = bind_pat.name()?.as_name();
-                        Some(FieldPat { name, pat })
+                        Some(RecordFieldPat { name, pat })
                     })
                     .collect();
-                let iter = field_pat_list.field_pats().filter_map(|f| {
+                let iter = record_field_pat_list.record_field_pats().filter_map(|f| {
                     let ast_pat = f.pat()?;
                     let pat = self.collect_pat(ast_pat);
                     let name = f.name()?.as_name();
-                    Some(FieldPat { name, pat })
+                    Some(RecordFieldPat { name, pat })
                 });
                 fields.extend(iter);
 

@@ -18,11 +18,11 @@ pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRang
 fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange> {
     let string_kinds = [COMMENT, STRING, RAW_STRING, BYTE_STRING, RAW_BYTE_STRING];
     let list_kinds = [
-        FIELD_PAT_LIST,
+        RECORD_FIELD_PAT_LIST,
         MATCH_ARM_LIST,
-        NAMED_FIELD_DEF_LIST,
-        POS_FIELD_DEF_LIST,
-        NAMED_FIELD_LIST,
+        RECORD_FIELD_DEF_LIST,
+        TUPLE_FIELD_DEF_LIST,
+        RECORD_FIELD_LIST,
         ENUM_VARIANT_LIST,
         USE_TREE_LIST,
         TYPE_PARAM_LIST,

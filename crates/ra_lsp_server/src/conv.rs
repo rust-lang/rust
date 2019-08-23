@@ -42,7 +42,7 @@ impl Conv for SyntaxKind {
             SyntaxKind::TRAIT_DEF => SymbolKind::Interface,
             SyntaxKind::MODULE => SymbolKind::Module,
             SyntaxKind::TYPE_ALIAS_DEF => SymbolKind::TypeParameter,
-            SyntaxKind::NAMED_FIELD_DEF => SymbolKind::Field,
+            SyntaxKind::RECORD_FIELD_DEF => SymbolKind::Field,
             SyntaxKind::STATIC_DEF => SymbolKind::Constant,
             SyntaxKind::CONST_DEF => SymbolKind::Constant,
             SyntaxKind::IMPL_BLOCK => SymbolKind::Object,

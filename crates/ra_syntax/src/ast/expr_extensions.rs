@@ -296,8 +296,8 @@ fn test_literal_with_attr() {
     assert_eq!(lit.token().text(), r#""Hello""#);
 }
 
-impl ast::NamedField {
-    pub fn parent_struct_lit(&self) -> ast::StructLit {
-        self.syntax().ancestors().find_map(ast::StructLit::cast).unwrap()
+impl ast::RecordField {
+    pub fn parent_record_lit(&self) -> ast::RecordLit {
+        self.syntax().ancestors().find_map(ast::RecordLit::cast).unwrap()
     }
 }

@@ -7,10 +7,10 @@ SOURCE_FILE@[0; 86)
     WHITESPACE@[10; 11) " "
     NAME@[11; 16)
       IDENT@[11; 16) "Cache"
-    POS_FIELD_DEF_LIST@[16; 72)
+    TUPLE_FIELD_DEF_LIST@[16; 72)
       L_PAREN@[16; 17) "("
       WHITESPACE@[17; 22) "\n    "
-      POS_FIELD_DEF@[22; 68)
+      TUPLE_FIELD_DEF@[22; 68)
         PATH_TYPE@[22; 68)
           PATH@[22; 68)
             PATH_SEGMENT@[22; 68)
@@ -47,7 +47,7 @@ SOURCE_FILE@[0; 86)
                                       ERROR@[67; 68)
                                         AT@[67; 68) "@"
       WHITESPACE@[68; 69) " "
-      POS_FIELD_DEF@[69; 72)
+      TUPLE_FIELD_DEF@[69; 72)
         PATH_TYPE@[69; 72)
           PATH@[69; 72)
             PATH_SEGMENT@[69; 72)

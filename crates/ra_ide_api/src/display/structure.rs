@@ -124,7 +124,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
             let ty = td.type_ref();
             decl_with_type_ref(td, ty)
         })
-        .visit(decl_with_ascription::<ast::NamedFieldDef>)
+        .visit(decl_with_ascription::<ast::RecordFieldDef>)
         .visit(decl_with_ascription::<ast::ConstDef>)
         .visit(decl_with_ascription::<ast::StaticDef>)
         .visit(|im: ast::ImplBlock| {
@@ -222,7 +222,7 @@ fn very_obsolete() {}
         label: "x",
         navigation_range: [18; 19),
         node_range: [18; 24),
-        kind: NAMED_FIELD_DEF,
+        kind: RECORD_FIELD_DEF,
         detail: Some(
             "i32",
         ),

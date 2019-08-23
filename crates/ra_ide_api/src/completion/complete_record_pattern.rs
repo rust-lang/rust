@@ -2,11 +2,11 @@ use hir::Substs;
 
 use crate::completion::{CompletionContext, Completions};
 
-pub(super) fn complete_struct_pattern(acc: &mut Completions, ctx: &CompletionContext) {
-    let (ty, variant) = match ctx.struct_lit_pat.as_ref().and_then(|it| {
+pub(super) fn complete_record_pattern(acc: &mut Completions, ctx: &CompletionContext) {
+    let (ty, variant) = match ctx.record_lit_pat.as_ref().and_then(|it| {
         Some((
             ctx.analyzer.type_of_pat(ctx.db, &it.clone().into())?,
-            ctx.analyzer.resolve_struct_pattern(it)?,
+            ctx.analyzer.resolve_record_pattern(it)?,
         ))
     }) {
         Some(it) => it,
@@ -29,7 +29,7 @@ mod tests {
     }
 
     #[test]
-    fn test_struct_pattern_field() {
+    fn test_record_pattern_field() {
         let completions = complete(
             r"
             struct S { foo: u32 }
@@ -56,7 +56,7 @@ mod tests {
     }
 
     #[test]
-    fn test_struct_pattern_enum_variant() {
+    fn test_record_pattern_enum_variant() {
         let completions = complete(
             r"
             enum E {

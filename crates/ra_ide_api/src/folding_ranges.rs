@@ -81,8 +81,14 @@ fn fold_kind(kind: SyntaxKind) -> Option<FoldKind> {
     match kind {
         COMMENT => Some(FoldKind::Comment),
         USE_ITEM => Some(FoldKind::Imports),
-        NAMED_FIELD_DEF_LIST | FIELD_PAT_LIST | ITEM_LIST | EXTERN_ITEM_LIST | USE_TREE_LIST
-        | BLOCK | ENUM_VARIANT_LIST | TOKEN_TREE => Some(FoldKind::Block),
+        RECORD_FIELD_DEF_LIST
+        | RECORD_FIELD_PAT_LIST
+        | ITEM_LIST
+        | EXTERN_ITEM_LIST
+        | USE_TREE_LIST
+        | BLOCK
+        | ENUM_VARIANT_LIST
+        | TOKEN_TREE => Some(FoldKind::Block),
         _ => None,
     }
 }

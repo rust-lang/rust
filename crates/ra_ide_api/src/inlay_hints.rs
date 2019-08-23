@@ -125,13 +125,13 @@ fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
                     pats_to_process.push_back(arg_pat);
                 }
             }
-            ast::Pat::StructPat(struct_pat) => {
-                if let Some(pat_list) = struct_pat.field_pat_list() {
+            ast::Pat::RecordPat(record_pat) => {
+                if let Some(pat_list) = record_pat.record_field_pat_list() {
                     pats_to_process.extend(
                         pat_list
-                            .field_pats()
-                            .filter_map(|field_pat| {
-                                field_pat
+                            .record_field_pats()
+                            .filter_map(|record_field_pat| {
+                                record_field_pat
                                     .pat()
                                     .filter(|pat| pat.syntax().kind() != SyntaxKind::BIND_PAT)
                             })

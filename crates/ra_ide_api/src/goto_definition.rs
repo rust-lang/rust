@@ -178,7 +178,7 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
                 node.short_label(),
             )
         })
-        .visit(|node: ast::NamedFieldDef| {
+        .visit(|node: ast::RecordFieldDef| {
             NavigationTarget::from_named(
                 file_id,
                 &node,
@@ -344,13 +344,13 @@ mod tests {
                 foo.spam<|>;
             }
             ",
-            "spam NAMED_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+            "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
         );
     }
 
     #[test]
-    fn goto_definition_works_for_named_fields() {
-        covers!(goto_definition_works_for_named_fields);
+    fn goto_definition_works_for_record_fields() {
+        covers!(goto_definition_works_for_record_fields);
         check_goto(
             "
             //- /lib.rs
@@ -364,7 +364,7 @@ mod tests {
                 }
             }
             ",
-            "spam NAMED_FIELD_DEF FileId(1) [17; 26) [17; 21)",
+            "spam RECORD_FIELD_DEF FileId(1) [17; 26) [17; 21)",
         );
     }
     #[test]
@@ -473,7 +473,7 @@ mod tests {
                 field<|>: string,
             }
             "#,
-            "field NAMED_FIELD_DEF FileId(1) [17; 30) [17; 22)",
+            "field RECORD_FIELD_DEF FileId(1) [17; 30) [17; 22)",
         );
 
         check_goto(

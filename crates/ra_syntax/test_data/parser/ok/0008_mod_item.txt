@@ -46,7 +46,7 @@ SOURCE_FILE@[0; 118)
         NAME@[59; 60)
           IDENT@[59; 60) "S"
         WHITESPACE@[60; 61) " "
-        NAMED_FIELD_DEF_LIST@[61; 63)
+        RECORD_FIELD_DEF_LIST@[61; 63)
           L_CURLY@[61; 62) "{"
           R_CURLY@[62; 63) "}"
       WHITESPACE@[63; 64) "\n"

@@ -78,7 +78,7 @@ fn build_pat(var: ast::EnumVariant) -> Option<ast::Pat> {
             let pats = field_list
                 .fields()
                 .map(|f| AstBuilder::<ast::BindPat>::from_name(&f.name().unwrap()).into());
-            AstBuilder::<ast::StructPat>::from_pieces(path, pats).into()
+            AstBuilder::<ast::RecordPat>::from_pieces(path, pats).into()
         }
         ast::StructKind::Unit => AstBuilder::<ast::PathPat>::from_path(path).into(),
     };

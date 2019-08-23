@@ -13,7 +13,7 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
                 T![;] => {
                     p.bump();
                 }
-                T!['{'] => named_field_def_list(p),
+                T!['{'] => record_field_def_list(p),
                 _ => {
                     //FIXME: special case `(` error message
                     p.error("expected `;` or `{`");
@@ -23,9 +23,9 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
         T![;] if kind == T![struct] => {
             p.bump();
         }
-        T!['{'] => named_field_def_list(p),
+        T!['{'] => record_field_def_list(p),
         T!['('] if kind == T![struct] => {
-            pos_field_def_list(p);
+            tuple_field_def_list(p);
             // test tuple_struct_where
             // struct Test<T>(T) where T: Clone;
             // struct Test<T>(T);
@@ -70,8 +70,8 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
         if p.at(IDENT) {
             name(p);
             match p.current() {
-                T!['{'] => named_field_def_list(p),
-                T!['('] => pos_field_def_list(p),
+                T!['{'] => record_field_def_list(p),
+                T!['('] => tuple_field_def_list(p),
                 T![=] => {
                     p.bump();
                     expressions::expr(p);
@@ -91,7 +91,7 @@ pub(crate) fn enum_variant_list(p: &mut Parser) {
     m.complete(p, ENUM_VARIANT_LIST);
 }
 
-pub(crate) fn named_field_def_list(p: &mut Parser) {
+pub(crate) fn record_field_def_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
@@ -100,17 +100,17 @@ pub(crate) fn named_field_def_list(p: &mut Parser) {
             error_block(p, "expected field");
             continue;
         }
-        named_field_def(p);
+        record_field_def(p);
         if !p.at(T!['}']) {
             p.expect(T![,]);
         }
     }
     p.expect(T!['}']);
-    m.complete(p, NAMED_FIELD_DEF_LIST);
+    m.complete(p, RECORD_FIELD_DEF_LIST);
 
-    fn named_field_def(p: &mut Parser) {
+    fn record_field_def(p: &mut Parser) {
         let m = p.start();
-        // test field_attrs
+        // test record_field_attrs
         // struct S {
         //     #[serde(with = "url_serde")]
         //     pub uri: Uri,
@@ -121,7 +121,7 @@ pub(crate) fn named_field_def_list(p: &mut Parser) {
             name(p);
             p.expect(T![:]);
             types::type_(p);
-            m.complete(p, NAMED_FIELD_DEF);
+            m.complete(p, RECORD_FIELD_DEF);
         } else {
             m.abandon(p);
             p.err_and_bump("expected field declaration");
@@ -129,7 +129,7 @@ pub(crate) fn named_field_def_list(p: &mut Parser) {
     }
 }
 
-fn pos_field_def_list(p: &mut Parser) {
+fn tuple_field_def_list(p: &mut Parser) {
     assert!(p.at(T!['(']));
     let m = p.start();
     if !p.expect(T!['(']) {
@@ -137,7 +137,7 @@ fn pos_field_def_list(p: &mut Parser) {
     }
     while !p.at(T![')']) && !p.at(EOF) {
         let m = p.start();
-        // test pos_field_attrs
+        // test tuple_field_attrs
         // struct S (
         //     #[serde(with = "url_serde")]
         //     pub Uri,
@@ -154,12 +154,12 @@ fn pos_field_def_list(p: &mut Parser) {
             break;
         }
         types::type_(p);
-        m.complete(p, POS_FIELD_DEF);
+        m.complete(p, TUPLE_FIELD_DEF);
 
         if !p.at(T![')']) {
             p.expect(T![,]);
         }
     }
     p.expect(T![')']);
-    m.complete(p, POS_FIELD_DEF_LIST);
+    m.complete(p, TUPLE_FIELD_DEF_LIST);
 }

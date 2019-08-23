@@ -11,7 +11,7 @@ SOURCE_FILE@[0; 21)
     NAME@[17; 18)
       IDENT@[17; 18) "S"
     WHITESPACE@[18; 19) " "
-    NAMED_FIELD_DEF_LIST@[19; 21)
+    RECORD_FIELD_DEF_LIST@[19; 21)
       L_CURLY@[19; 20) "{"
       R_CURLY@[20; 21) "}"
 error 0: expected an item

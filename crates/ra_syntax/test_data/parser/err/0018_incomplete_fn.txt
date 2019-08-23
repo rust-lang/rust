@@ -75,16 +75,16 @@ SOURCE_FILE@[0; 183)
               IDENT@[106; 110) "push"
             ARG_LIST@[110; 155)
               L_PAREN@[110; 111) "("
-              STRUCT_LIT@[111; 154)
+              RECORD_LIT@[111; 154)
                 PATH@[111; 120)
                   PATH_SEGMENT@[111; 120)
                     NAME_REF@[111; 120)
                       IDENT@[111; 120) "ScopeData"
                 WHITESPACE@[120; 121) " "
-                NAMED_FIELD_LIST@[121; 154)
+                RECORD_FIELD_LIST@[121; 154)
                   L_CURLY@[121; 122) "{"
                   WHITESPACE@[122; 123) " "
-                  NAMED_FIELD@[123; 135)
+                  RECORD_FIELD@[123; 135)
                     NAME_REF@[123; 129)
                       IDENT@[123; 129) "parent"
                     COLON@[129; 130) ":"
@@ -96,7 +96,7 @@ SOURCE_FILE@[0; 183)
                             IDENT@[131; 135) "None"
                   COMMA@[135; 136) ","
                   WHITESPACE@[136; 137) " "
-                  NAMED_FIELD@[137; 152)
+                  RECORD_FIELD@[137; 152)
                     NAME_REF@[137; 144)
                       IDENT@[137; 144) "entries"
                     COLON@[144; 145) ":"

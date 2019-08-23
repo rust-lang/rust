@@ -12,7 +12,7 @@ SOURCE_FILE@[0; 106)
     NAME@[19; 22)
       IDENT@[19; 22) "Foo"
     WHITESPACE@[22; 23) " "
-    NAMED_FIELD_DEF_LIST@[23; 25)
+    RECORD_FIELD_DEF_LIST@[23; 25)
       L_CURLY@[23; 24) "{"
       R_CURLY@[24; 25) "}"
   WHITESPACE@[25; 26) "\n"
@@ -21,7 +21,7 @@ SOURCE_FILE@[0; 106)
     WHITESPACE@[32; 33) " "
     NAME@[33; 36)
       IDENT@[33; 36) "Foo"
-    POS_FIELD_DEF_LIST@[36; 38)
+    TUPLE_FIELD_DEF_LIST@[36; 38)
       L_PAREN@[36; 37) "("
       R_PAREN@[37; 38) ")"
     SEMI@[38; 39) ";"
@@ -31,9 +31,9 @@ SOURCE_FILE@[0; 106)
     WHITESPACE@[46; 47) " "
     NAME@[47; 50)
       IDENT@[47; 50) "Foo"
-    POS_FIELD_DEF_LIST@[50; 65)
+    TUPLE_FIELD_DEF_LIST@[50; 65)
       L_PAREN@[50; 51) "("
-      POS_FIELD_DEF@[51; 57)
+      TUPLE_FIELD_DEF@[51; 57)
         PATH_TYPE@[51; 57)
           PATH@[51; 57)
             PATH_SEGMENT@[51; 57)
@@ -41,7 +41,7 @@ SOURCE_FILE@[0; 106)
                 IDENT@[51; 57) "String"
       COMMA@[57; 58) ","
       WHITESPACE@[58; 59) " "
-      POS_FIELD_DEF@[59; 64)
+      TUPLE_FIELD_DEF@[59; 64)
         PATH_TYPE@[59; 64)
           PATH@[59; 64)
             PATH_SEGMENT@[59; 64)
@@ -56,10 +56,10 @@ SOURCE_FILE@[0; 106)
     NAME@[74; 77)
       IDENT@[74; 77) "Foo"
     WHITESPACE@[77; 78) " "
-    NAMED_FIELD_DEF_LIST@[78; 105)
+    RECORD_FIELD_DEF_LIST@[78; 105)
       L_CURLY@[78; 79) "{"
       WHITESPACE@[79; 84) "\n    "
-      NAMED_FIELD_DEF@[84; 90)
+      RECORD_FIELD_DEF@[84; 90)
         NAME@[84; 85)
           IDENT@[84; 85) "a"
         COLON@[85; 86) ":"
@@ -71,7 +71,7 @@ SOURCE_FILE@[0; 106)
                 IDENT@[87; 90) "i32"
       COMMA@[90; 91) ","
       WHITESPACE@[91; 96) "\n    "
-      NAMED_FIELD_DEF@[96; 102)
+      RECORD_FIELD_DEF@[96; 102)
         NAME@[96; 97)
           IDENT@[96; 97) "b"
         COLON@[97; 98) ":"

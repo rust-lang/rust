@@ -165,7 +165,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                 TYPE_PARAM | STRUCT_DEF | ENUM_DEF | TRAIT_DEF | TYPE_ALIAS_DEF => {
                                     "type"
                                 }
-                                NAMED_FIELD_DEF => "field",
+                                RECORD_FIELD_DEF => "field",
                                 _ => "function",
                             })
                             .unwrap_or("function")

@@ -3,8 +3,8 @@ mod completion_context;
 mod presentation;
 
 mod complete_dot;
-mod complete_struct_literal;
-mod complete_struct_pattern;
+mod complete_record_literal;
+mod complete_record_pattern;
 mod complete_pattern;
 mod complete_fn_param;
 mod complete_keyword;
@@ -65,8 +65,8 @@ pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Opti
     complete_path::complete_path(&mut acc, &ctx);
     complete_scope::complete_scope(&mut acc, &ctx);
     complete_dot::complete_dot(&mut acc, &ctx);
-    complete_struct_literal::complete_struct_literal(&mut acc, &ctx);
-    complete_struct_pattern::complete_struct_pattern(&mut acc, &ctx);
+    complete_record_literal::complete_record_literal(&mut acc, &ctx);
+    complete_record_pattern::complete_record_pattern(&mut acc, &ctx);
     complete_pattern::complete_pattern(&mut acc, &ctx);
     complete_postfix::complete_postfix(&mut acc, &ctx);
     Some(acc)

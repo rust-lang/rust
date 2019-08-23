@@ -52,13 +52,13 @@ SOURCE_FILE@[0; 103)
       LET_STMT@[58; 78)
         LET_KW@[58; 61) "let"
         WHITESPACE@[61; 62) " "
-        STRUCT_PAT@[62; 72)
+        RECORD_PAT@[62; 72)
           PATH@[62; 65)
             PATH_SEGMENT@[62; 65)
               NAME_REF@[62; 65)
                 IDENT@[62; 65) "Bar"
           WHITESPACE@[65; 66) " "
-          FIELD_PAT_LIST@[66; 72)
+          RECORD_FIELD_PAT_LIST@[66; 72)
             L_CURLY@[66; 67) "{"
             WHITESPACE@[67; 68) " "
             DOTDOT@[68; 70) ".."

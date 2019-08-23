@@ -20,10 +20,10 @@ SOURCE_FILE@[0; 32)
                     IDENT@[12; 16) "Copy"
       R_ANGLE@[16; 17) ">"
     WHITESPACE@[17; 18) " "
-    NAMED_FIELD_DEF_LIST@[18; 31)
+    RECORD_FIELD_DEF_LIST@[18; 31)
       L_CURLY@[18; 19) "{"
       WHITESPACE@[19; 24) "\n    "
-      NAMED_FIELD_DEF@[24; 28)
+      RECORD_FIELD_DEF@[24; 28)
         NAME@[24; 25)
           IDENT@[24; 25) "f"
         COLON@[25; 26) ":"

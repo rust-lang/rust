@@ -559,8 +559,8 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
     paths::expr_path(p);
     match p.current() {
         T!['{'] if !r.forbid_structs => {
-            named_field_list(p);
-            (m.complete(p, STRUCT_LIT), BlockLike::NotBlock)
+            record_field_list(p);
+            (m.complete(p, RECORD_LIT), BlockLike::NotBlock)
         }
         T![!] => {
             let block_like = items::macro_call_after_excl(p);
@@ -570,20 +570,20 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
     }
 }
 
-// test struct_lit
+// test record_lit
 // fn foo() {
 //     S {};
 //     S { x, y: 32, };
 //     S { x, y: 32, ..Default::default() };
 //     TupleStruct { 0: 1 };
 // }
-pub(crate) fn named_field_list(p: &mut Parser) {
+pub(crate) fn record_field_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
-            // test struct_literal_field_with_attr
+            // test record_literal_field_with_attr
             // fn main() {
             //     S { #[cfg(test)] field: 1 }
             // }
@@ -594,7 +594,7 @@ pub(crate) fn named_field_list(p: &mut Parser) {
                 if p.eat(T![:]) {
                     expr(p);
                 }
-                m.complete(p, NAMED_FIELD);
+                m.complete(p, RECORD_FIELD);
             }
             T![..] => {
                 p.bump();
@@ -608,5 +608,5 @@ pub(crate) fn named_field_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, NAMED_FIELD_LIST);
+    m.complete(p, RECORD_FIELD_LIST);
 }

@@ -20,8 +20,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) module: Option<hir::Module>,
     pub(super) function_syntax: Option<ast::FnDef>,
     pub(super) use_item_syntax: Option<ast::UseItem>,
-    pub(super) struct_lit_syntax: Option<ast::StructLit>,
-    pub(super) struct_lit_pat: Option<ast::StructPat>,
+    pub(super) record_lit_syntax: Option<ast::RecordLit>,
+    pub(super) record_lit_pat: Option<ast::RecordPat>,
     pub(super) is_param: bool,
     /// If a name-binding or reference to a const in a pattern.
     /// Irrefutable patterns (like let) are excluded.
@@ -60,8 +60,8 @@ impl<'a> CompletionContext<'a> {
             module,
             function_syntax: None,
             use_item_syntax: None,
-            struct_lit_syntax: None,
-            struct_lit_pat: None,
+            record_lit_syntax: None,
+            record_lit_pat: None,
             is_param: false,
             is_pat_binding: false,
             is_trivial_path: false,
@@ -120,8 +120,8 @@ impl<'a> CompletionContext<'a> {
                 self.is_param = true;
                 return;
             }
-            if name.syntax().ancestors().find_map(ast::FieldPatList::cast).is_some() {
-                self.struct_lit_pat =
+            if name.syntax().ancestors().find_map(ast::RecordFieldPatList::cast).is_some() {
+                self.record_lit_pat =
                     find_node_at_offset(original_parse.tree().syntax(), self.offset);
             }
         }
@@ -129,8 +129,8 @@ impl<'a> CompletionContext<'a> {
 
     fn classify_name_ref(&mut self, original_file: SourceFile, name_ref: ast::NameRef) {
         let name_range = name_ref.syntax().text_range();
-        if name_ref.syntax().parent().and_then(ast::NamedField::cast).is_some() {
-            self.struct_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);
+        if name_ref.syntax().parent().and_then(ast::RecordField::cast).is_some() {
+            self.record_lit_syntax = find_node_at_offset(original_file.syntax(), self.offset);
         }
 
         let top_node = name_ref

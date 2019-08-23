@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 use std::sync::Arc;
 
-use ra_syntax::ast::{AstNode, StructLit};
+use ra_syntax::ast::{AstNode, RecordLit};
 
-use super::{Expr, ExprId, StructLitField};
+use super::{Expr, ExprId, RecordLitField};
 use crate::{
     adt::AdtDef,
     diagnostics::{DiagnosticSink, MissingFields},
@@ -30,17 +30,17 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     pub(crate) fn validate_body(&mut self, db: &impl HirDatabase) {
         let body = self.func.body(db);
         for e in body.exprs() {
-            if let (id, Expr::StructLit { path, fields, spread }) = e {
-                self.validate_struct_literal(id, path, fields, *spread, db);
+            if let (id, Expr::RecordLit { path, fields, spread }) = e {
+                self.validate_record_literal(id, path, fields, *spread, db);
             }
         }
     }
 
-    fn validate_struct_literal(
+    fn validate_record_literal(
         &mut self,
         id: ExprId,
         _path: &Option<Path>,
-        fields: &[StructLitField],
+        fields: &[RecordLitField],
         spread: Option<ExprId>,
         db: &impl HirDatabase,
     ) {
@@ -76,8 +76,8 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         if let Some(field_list_node) = source_map
             .expr_syntax(id)
             .map(|ptr| ptr.to_node(source_file.syntax()))
-            .and_then(StructLit::cast)
-            .and_then(|lit| lit.named_field_list())
+            .and_then(RecordLit::cast)
+            .and_then(|lit| lit.record_field_list())
         {
             let field_list_ptr = AstPtr::new(&field_list_node);
             self.sink.push(MissingFields {

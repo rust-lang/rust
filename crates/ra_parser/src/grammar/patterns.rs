@@ -127,8 +127,8 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
             TUPLE_STRUCT_PAT
         }
         T!['{'] => {
-            field_pat_list(p);
-            STRUCT_PAT
+            record_field_pat_list(p);
+            RECORD_PAT
         }
         _ => PATH_PAT,
     };
@@ -149,21 +149,21 @@ fn tuple_pat_fields(p: &mut Parser) {
     p.expect(T![')']);
 }
 
-// test field_pat_list
+// test record_field_pat_list
 // fn foo() {
 //     let S {} = ();
 //     let S { f, ref mut g } = ();
 //     let S { h: _, ..} = ();
 //     let S { h: _, } = ();
 // }
-fn field_pat_list(p: &mut Parser) {
+fn record_field_pat_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
             T![..] => p.bump(),
-            IDENT if p.nth(1) == T![:] => field_pat(p),
+            IDENT if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
             _ => {
                 bind_pat(p, false);
@@ -174,10 +174,10 @@ fn field_pat_list(p: &mut Parser) {
         }
     }
     p.expect(T!['}']);
-    m.complete(p, FIELD_PAT_LIST);
+    m.complete(p, RECORD_FIELD_PAT_LIST);
 }
 
-fn field_pat(p: &mut Parser) {
+fn record_field_pat(p: &mut Parser) {
     assert!(p.at(IDENT));
     assert!(p.nth(1) == T![:]);
 
@@ -185,7 +185,7 @@ fn field_pat(p: &mut Parser) {
     name(p);
     p.bump();
     pattern(p);
-    m.complete(p, FIELD_PAT);
+    m.complete(p, RECORD_FIELD_PAT);
 }
 
 // test placeholder_pat

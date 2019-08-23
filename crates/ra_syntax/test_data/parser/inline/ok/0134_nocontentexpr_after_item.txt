@@ -53,7 +53,7 @@ SOURCE_FILE@[0; 111)
         NAME@[103; 104)
           IDENT@[103; 104) "S"
         WHITESPACE@[104; 105) " "
-        NAMED_FIELD_DEF_LIST@[105; 107)
+        RECORD_FIELD_DEF_LIST@[105; 107)
           L_CURLY@[105; 106) "{"
           R_CURLY@[106; 107) "}"
       SEMI@[107; 108) ";"

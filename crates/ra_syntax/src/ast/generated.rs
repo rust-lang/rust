@@ -607,7 +607,7 @@ pub enum Expr {
     BlockExpr(BlockExpr),
     ReturnExpr(ReturnExpr),
     MatchExpr(MatchExpr),
-    StructLit(StructLit),
+    RecordLit(RecordLit),
     CallExpr(CallExpr),
     IndexExpr(IndexExpr),
     MethodCallExpr(MethodCallExpr),
@@ -698,9 +698,9 @@ impl From<MatchExpr> for Expr {
         Expr::MatchExpr(node)
     }
 }
-impl From<StructLit> for Expr {
-    fn from(node: StructLit) -> Expr {
-        Expr::StructLit(node)
+impl From<RecordLit> for Expr {
+    fn from(node: RecordLit) -> Expr {
+        Expr::RecordLit(node)
     }
 }
 impl From<CallExpr> for Expr {
@@ -778,7 +778,7 @@ impl AstNode for Expr {
         match kind {
             TUPLE_EXPR | ARRAY_EXPR | PAREN_EXPR | PATH_EXPR | LAMBDA_EXPR | IF_EXPR
             | LOOP_EXPR | FOR_EXPR | WHILE_EXPR | CONTINUE_EXPR | BREAK_EXPR | LABEL
-            | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | STRUCT_LIT | CALL_EXPR | INDEX_EXPR
+            | BLOCK_EXPR | RETURN_EXPR | MATCH_EXPR | RECORD_LIT | CALL_EXPR | INDEX_EXPR
             | METHOD_CALL_EXPR | FIELD_EXPR | AWAIT_EXPR | TRY_EXPR | TRY_BLOCK_EXPR
             | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR | LITERAL | MACRO_CALL => {
                 true
@@ -803,7 +803,7 @@ impl AstNode for Expr {
             BLOCK_EXPR => Expr::BlockExpr(BlockExpr { syntax }),
             RETURN_EXPR => Expr::ReturnExpr(ReturnExpr { syntax }),
             MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
-            STRUCT_LIT => Expr::StructLit(StructLit { syntax }),
+            RECORD_LIT => Expr::RecordLit(RecordLit { syntax }),
             CALL_EXPR => Expr::CallExpr(CallExpr { syntax }),
             INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
             METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
@@ -839,7 +839,7 @@ impl AstNode for Expr {
             Expr::BlockExpr(it) => &it.syntax,
             Expr::ReturnExpr(it) => &it.syntax,
             Expr::MatchExpr(it) => &it.syntax,
-            Expr::StructLit(it) => &it.syntax,
+            Expr::RecordLit(it) => &it.syntax,
             Expr::CallExpr(it) => &it.syntax,
             Expr::IndexExpr(it) => &it.syntax,
             Expr::MethodCallExpr(it) => &it.syntax,
@@ -943,64 +943,6 @@ impl FieldExpr {
     }
     pub fn name_ref(&self) -> Option<NameRef> {
         AstChildren::new(&self.syntax).next()
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FieldPat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for FieldPat {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FIELD_PAT => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl ast::NameOwner for FieldPat {}
-impl FieldPat {
-    pub fn pat(&self) -> Option<Pat> {
-        AstChildren::new(&self.syntax).next()
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FieldPatList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for FieldPatList {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            FIELD_PAT_LIST => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl FieldPatList {
-    pub fn field_pats(&self) -> AstChildren<FieldPat> {
-        AstChildren::new(&self.syntax)
-    }
-    pub fn bind_pats(&self) -> AstChildren<BindPat> {
-        AstChildren::new(&self.syntax)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1942,121 +1884,6 @@ impl AstNode for NameRef {
 }
 impl NameRef {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NamedField {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for NamedField {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            NAMED_FIELD => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl NamedField {
-    pub fn name_ref(&self) -> Option<NameRef> {
-        AstChildren::new(&self.syntax).next()
-    }
-    pub fn expr(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NamedFieldDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for NamedFieldDef {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            NAMED_FIELD_DEF => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl ast::VisibilityOwner for NamedFieldDef {}
-impl ast::NameOwner for NamedFieldDef {}
-impl ast::AttrsOwner for NamedFieldDef {}
-impl ast::DocCommentsOwner for NamedFieldDef {}
-impl ast::TypeAscriptionOwner for NamedFieldDef {}
-impl NamedFieldDef {}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NamedFieldDefList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for NamedFieldDefList {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            NAMED_FIELD_DEF_LIST => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl NamedFieldDefList {
-    pub fn fields(&self) -> AstChildren<NamedFieldDef> {
-        AstChildren::new(&self.syntax)
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NamedFieldList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for NamedFieldList {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            NAMED_FIELD_LIST => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl NamedFieldList {
-    pub fn fields(&self) -> AstChildren<NamedField> {
-        AstChildren::new(&self.syntax)
-    }
-    pub fn spread(&self) -> Option<Expr> {
-        AstChildren::new(&self.syntax).next()
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NeverType {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2239,7 +2066,7 @@ pub enum Pat {
     BindPat(BindPat),
     PlaceholderPat(PlaceholderPat),
     PathPat(PathPat),
-    StructPat(StructPat),
+    RecordPat(RecordPat),
     TupleStructPat(TupleStructPat),
     TuplePat(TuplePat),
     SlicePat(SlicePat),
@@ -2266,9 +2093,9 @@ impl From<PathPat> for Pat {
         Pat::PathPat(node)
     }
 }
-impl From<StructPat> for Pat {
-    fn from(node: StructPat) -> Pat {
-        Pat::StructPat(node)
+impl From<RecordPat> for Pat {
+    fn from(node: RecordPat) -> Pat {
+        Pat::RecordPat(node)
     }
 }
 impl From<TupleStructPat> for Pat {
@@ -2299,7 +2126,7 @@ impl From<LiteralPat> for Pat {
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            REF_PAT | BIND_PAT | PLACEHOLDER_PAT | PATH_PAT | STRUCT_PAT | TUPLE_STRUCT_PAT
+            REF_PAT | BIND_PAT | PLACEHOLDER_PAT | PATH_PAT | RECORD_PAT | TUPLE_STRUCT_PAT
             | TUPLE_PAT | SLICE_PAT | RANGE_PAT | LITERAL_PAT => true,
             _ => false,
         }
@@ -2310,7 +2137,7 @@ impl AstNode for Pat {
             BIND_PAT => Pat::BindPat(BindPat { syntax }),
             PLACEHOLDER_PAT => Pat::PlaceholderPat(PlaceholderPat { syntax }),
             PATH_PAT => Pat::PathPat(PathPat { syntax }),
-            STRUCT_PAT => Pat::StructPat(StructPat { syntax }),
+            RECORD_PAT => Pat::RecordPat(RecordPat { syntax }),
             TUPLE_STRUCT_PAT => Pat::TupleStructPat(TupleStructPat { syntax }),
             TUPLE_PAT => Pat::TuplePat(TuplePat { syntax }),
             SLICE_PAT => Pat::SlicePat(SlicePat { syntax }),
@@ -2326,7 +2153,7 @@ impl AstNode for Pat {
             Pat::BindPat(it) => &it.syntax,
             Pat::PlaceholderPat(it) => &it.syntax,
             Pat::PathPat(it) => &it.syntax,
-            Pat::StructPat(it) => &it.syntax,
+            Pat::RecordPat(it) => &it.syntax,
             Pat::TupleStructPat(it) => &it.syntax,
             Pat::TuplePat(it) => &it.syntax,
             Pat::SlicePat(it) => &it.syntax,
@@ -2551,62 +2378,6 @@ impl PointerType {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PosFieldDef {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for PosFieldDef {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            POS_FIELD_DEF => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl ast::VisibilityOwner for PosFieldDef {}
-impl ast::AttrsOwner for PosFieldDef {}
-impl PosFieldDef {
-    pub fn type_ref(&self) -> Option<TypeRef> {
-        AstChildren::new(&self.syntax).next()
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PosFieldDefList {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for PosFieldDefList {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            POS_FIELD_DEF_LIST => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl PosFieldDefList {
-    pub fn fields(&self) -> AstChildren<PosFieldDef> {
-        AstChildren::new(&self.syntax)
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PrefixExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2679,6 +2450,239 @@ impl AstNode for RangePat {
     }
 }
 impl RangePat {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordField {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for RecordField {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl RecordField {
+    pub fn name_ref(&self) -> Option<NameRef> {
+        AstChildren::new(&self.syntax).next()
+    }
+    pub fn expr(&self) -> Option<Expr> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordFieldDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for RecordFieldDef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD_DEF => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ast::VisibilityOwner for RecordFieldDef {}
+impl ast::NameOwner for RecordFieldDef {}
+impl ast::AttrsOwner for RecordFieldDef {}
+impl ast::DocCommentsOwner for RecordFieldDef {}
+impl ast::TypeAscriptionOwner for RecordFieldDef {}
+impl RecordFieldDef {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordFieldDefList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for RecordFieldDefList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD_DEF_LIST => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl RecordFieldDefList {
+    pub fn fields(&self) -> AstChildren<RecordFieldDef> {
+        AstChildren::new(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordFieldList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for RecordFieldList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD_LIST => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl RecordFieldList {
+    pub fn fields(&self) -> AstChildren<RecordField> {
+        AstChildren::new(&self.syntax)
+    }
+    pub fn spread(&self) -> Option<Expr> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordFieldPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for RecordFieldPat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ast::NameOwner for RecordFieldPat {}
+impl RecordFieldPat {
+    pub fn pat(&self) -> Option<Pat> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordFieldPatList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for RecordFieldPatList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_FIELD_PAT_LIST => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl RecordFieldPatList {
+    pub fn record_field_pats(&self) -> AstChildren<RecordFieldPat> {
+        AstChildren::new(&self.syntax)
+    }
+    pub fn bind_pats(&self) -> AstChildren<BindPat> {
+        AstChildren::new(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordLit {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for RecordLit {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_LIT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl RecordLit {
+    pub fn path(&self) -> Option<Path> {
+        AstChildren::new(&self.syntax).next()
+    }
+    pub fn record_field_list(&self) -> Option<RecordFieldList> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RecordPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for RecordPat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            RECORD_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl RecordPat {
+    pub fn record_field_pat_list(&self) -> Option<RecordFieldPatList> {
+        AstChildren::new(&self.syntax).next()
+    }
+    pub fn path(&self) -> Option<Path> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RefExpr {
     pub(crate) syntax: SyntaxNode,
@@ -3018,66 +3022,6 @@ impl ast::AttrsOwner for StructDef {}
 impl ast::DocCommentsOwner for StructDef {}
 impl StructDef {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StructLit {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for StructLit {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STRUCT_LIT => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl StructLit {
-    pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
-    }
-    pub fn named_field_list(&self) -> Option<NamedFieldList> {
-        AstChildren::new(&self.syntax).next()
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct StructPat {
-    pub(crate) syntax: SyntaxNode,
-}
-impl AstNode for StructPat {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        match kind {
-            STRUCT_PAT => true,
-            _ => false,
-        }
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        &self.syntax
-    }
-}
-impl StructPat {
-    pub fn field_pat_list(&self) -> Option<FieldPatList> {
-        AstChildren::new(&self.syntax).next()
-    }
-    pub fn path(&self) -> Option<Path> {
-        AstChildren::new(&self.syntax).next()
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TokenTree {
     pub(crate) syntax: SyntaxNode,
 }
@@ -3208,6 +3152,62 @@ impl AstNode for TupleExpr {
 }
 impl TupleExpr {
     pub fn exprs(&self) -> AstChildren<Expr> {
+        AstChildren::new(&self.syntax)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TupleFieldDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for TupleFieldDef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            TUPLE_FIELD_DEF => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ast::VisibilityOwner for TupleFieldDef {}
+impl ast::AttrsOwner for TupleFieldDef {}
+impl TupleFieldDef {
+    pub fn type_ref(&self) -> Option<TypeRef> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TupleFieldDefList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for TupleFieldDefList {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            TUPLE_FIELD_DEF_LIST => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl TupleFieldDefList {
+    pub fn fields(&self) -> AstChildren<TupleFieldDef> {
         AstChildren::new(&self.syntax)
     }
 }

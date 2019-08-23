@@ -10,9 +10,9 @@ SOURCE_FILE@[0; 53)
         NAME@[12; 13)
           IDENT@[12; 13) "T"
       R_ANGLE@[13; 14) ">"
-    POS_FIELD_DEF_LIST@[14; 17)
+    TUPLE_FIELD_DEF_LIST@[14; 17)
       L_PAREN@[14; 15) "("
-      POS_FIELD_DEF@[15; 16)
+      TUPLE_FIELD_DEF@[15; 16)
         PATH_TYPE@[15; 16)
           PATH@[15; 16)
             PATH_SEGMENT@[15; 16)
@@ -51,9 +51,9 @@ SOURCE_FILE@[0; 53)
         NAME@[46; 47)
           IDENT@[46; 47) "T"
       R_ANGLE@[47; 48) ">"
-    POS_FIELD_DEF_LIST@[48; 51)
+    TUPLE_FIELD_DEF_LIST@[48; 51)
       L_PAREN@[48; 49) "("
-      POS_FIELD_DEF@[49; 50)
+      TUPLE_FIELD_DEF@[49; 50)
         PATH_TYPE@[49; 50)
           PATH@[49; 50)
             PATH_SEGMENT@[49; 50)

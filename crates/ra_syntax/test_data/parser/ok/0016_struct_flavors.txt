@@ -12,7 +12,7 @@ SOURCE_FILE@[0; 97)
     NAME@[17; 18)
       IDENT@[17; 18) "B"
     WHITESPACE@[18; 19) " "
-    NAMED_FIELD_DEF_LIST@[19; 21)
+    RECORD_FIELD_DEF_LIST@[19; 21)
       L_CURLY@[19; 20) "{"
       R_CURLY@[20; 21) "}"
   WHITESPACE@[21; 22) "\n"
@@ -21,7 +21,7 @@ SOURCE_FILE@[0; 97)
     WHITESPACE@[28; 29) " "
     NAME@[29; 30)
       IDENT@[29; 30) "C"
-    POS_FIELD_DEF_LIST@[30; 32)
+    TUPLE_FIELD_DEF_LIST@[30; 32)
       L_PAREN@[30; 31) "("
       R_PAREN@[31; 32) ")"
     SEMI@[32; 33) ";"
@@ -32,10 +32,10 @@ SOURCE_FILE@[0; 97)
     NAME@[42; 43)
       IDENT@[42; 43) "D"
     WHITESPACE@[43; 44) " "
-    NAMED_FIELD_DEF_LIST@[44; 74)
+    RECORD_FIELD_DEF_LIST@[44; 74)
       L_CURLY@[44; 45) "{"
       WHITESPACE@[45; 50) "\n    "
-      NAMED_FIELD_DEF@[50; 56)
+      RECORD_FIELD_DEF@[50; 56)
         NAME@[50; 51)
           IDENT@[50; 51) "a"
         COLON@[51; 52) ":"
@@ -47,7 +47,7 @@ SOURCE_FILE@[0; 97)
                 IDENT@[53; 56) "u32"
       COMMA@[56; 57) ","
       WHITESPACE@[57; 62) "\n    "
-      NAMED_FIELD_DEF@[62; 72)
+      RECORD_FIELD_DEF@[62; 72)
         VISIBILITY@[62; 65)
           PUB_KW@[62; 65) "pub"
         WHITESPACE@[65; 66) " "
@@ -68,9 +68,9 @@ SOURCE_FILE@[0; 97)
     WHITESPACE@[82; 83) " "
     NAME@[83; 84)
       IDENT@[83; 84) "E"
-    POS_FIELD_DEF_LIST@[84; 95)
+    TUPLE_FIELD_DEF_LIST@[84; 95)
       L_PAREN@[84; 85) "("
-      POS_FIELD_DEF@[85; 90)
+      TUPLE_FIELD_DEF@[85; 90)
         VISIBILITY@[85; 88)
           PUB_KW@[85; 88) "pub"
         WHITESPACE@[88; 89) " "
@@ -81,7 +81,7 @@ SOURCE_FILE@[0; 97)
                 IDENT@[89; 90) "x"
       COMMA@[90; 91) ","
       WHITESPACE@[91; 92) " "
-      POS_FIELD_DEF@[92; 93)
+      TUPLE_FIELD_DEF@[92; 93)
         PATH_TYPE@[92; 93)
           PATH@[92; 93)
             PATH_SEGMENT@[92; 93)

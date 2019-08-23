@@ -11,16 +11,16 @@ SOURCE_FILE@[0; 46)
     BLOCK@[10; 45)
       L_CURLY@[10; 11) "{"
       WHITESPACE@[11; 16) "\n    "
-      STRUCT_LIT@[16; 43)
+      RECORD_LIT@[16; 43)
         PATH@[16; 17)
           PATH_SEGMENT@[16; 17)
             NAME_REF@[16; 17)
               IDENT@[16; 17) "S"
         WHITESPACE@[17; 18) " "
-        NAMED_FIELD_LIST@[18; 43)
+        RECORD_FIELD_LIST@[18; 43)
           L_CURLY@[18; 19) "{"
           WHITESPACE@[19; 20) " "
-          NAMED_FIELD@[20; 41)
+          RECORD_FIELD@[20; 41)
             ATTR@[20; 32)
               POUND@[20; 21) "#"
               TOKEN_TREE@[21; 32)

@@ -22,10 +22,10 @@ SOURCE_FILE@[0; 71)
     NAME@[27; 28)
       IDENT@[27; 28) "S"
     WHITESPACE@[28; 29) " "
-    NAMED_FIELD_DEF_LIST@[29; 49)
+    RECORD_FIELD_DEF_LIST@[29; 49)
       L_CURLY@[29; 30) "{"
       WHITESPACE@[30; 31) " "
-      NAMED_FIELD_DEF@[31; 47)
+      RECORD_FIELD_DEF@[31; 47)
         VISIBILITY@[31; 36)
           CRATE_KW@[31; 36) "crate"
         WHITESPACE@[36; 37) " "
@@ -46,9 +46,9 @@ SOURCE_FILE@[0; 71)
     WHITESPACE@[56; 57) " "
     NAME@[57; 58)
       IDENT@[57; 58) "T"
-    POS_FIELD_DEF_LIST@[58; 69)
+    TUPLE_FIELD_DEF_LIST@[58; 69)
       L_PAREN@[58; 59) "("
-      POS_FIELD_DEF@[59; 68)
+      TUPLE_FIELD_DEF@[59; 68)
         VISIBILITY@[59; 64)
           CRATE_KW@[59; 64) "crate"
         WHITESPACE@[64; 65) " "

@@ -3,11 +3,11 @@ use hir::Substs;
 use crate::completion::{CompletionContext, Completions};
 
 /// Complete fields in fields literals.
-pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionContext) {
-    let (ty, variant) = match ctx.struct_lit_syntax.as_ref().and_then(|it| {
+pub(super) fn complete_record_literal(acc: &mut Completions, ctx: &CompletionContext) {
+    let (ty, variant) = match ctx.record_lit_syntax.as_ref().and_then(|it| {
         Some((
             ctx.analyzer.type_of(ctx.db, &it.clone().into())?,
-            ctx.analyzer.resolve_struct_literal(it)?,
+            ctx.analyzer.resolve_record_literal(it)?,
         ))
     }) {
         Some(it) => it,
@@ -30,7 +30,7 @@ mod tests {
     }
 
     #[test]
-    fn test_struct_literal_field() {
+    fn test_record_literal_field() {
         let completions = complete(
             r"
             struct A { the_field: u32 }
@@ -54,7 +54,7 @@ mod tests {
     }
 
     #[test]
-    fn test_struct_literal_enum_variant() {
+    fn test_record_literal_enum_variant() {
         let completions = complete(
             r"
             enum E {
@@ -80,7 +80,7 @@ mod tests {
     }
 
     #[test]
-    fn test_struct_literal_two_structs() {
+    fn test_record_literal_two_structs() {
         let completions = complete(
             r"
             struct A { a: u32 }
@@ -106,7 +106,7 @@ mod tests {
     }
 
     #[test]
-    fn test_struct_literal_generic_struct() {
+    fn test_record_literal_generic_struct() {
         let completions = complete(
             r"
             struct A<T> { a: T }

@@ -93,15 +93,15 @@ impl<N: AstNode> AstEditor<N> {
     }
 }
 
-impl AstEditor<ast::NamedFieldList> {
-    pub fn append_field(&mut self, field: &ast::NamedField) {
+impl AstEditor<ast::RecordFieldList> {
+    pub fn append_field(&mut self, field: &ast::RecordField) {
         self.insert_field(InsertPosition::Last, field)
     }
 
     pub fn insert_field(
         &mut self,
-        position: InsertPosition<&'_ ast::NamedField>,
-        field: &ast::NamedField,
+        position: InsertPosition<&'_ ast::RecordField>,
+        field: &ast::RecordField,
     ) {
         let is_multiline = self.ast().syntax().text().contains_char('\n');
         let ws;
@@ -245,16 +245,16 @@ pub struct AstBuilder<N: AstNode> {
     _phantom: std::marker::PhantomData<N>,
 }
 
-impl AstBuilder<ast::NamedField> {
-    pub fn from_name(name: &Name) -> ast::NamedField {
+impl AstBuilder<ast::RecordField> {
+    pub fn from_name(name: &Name) -> ast::RecordField {
         ast_node_from_file_text(&format!("fn f() {{ S {{ {}: (), }} }}", name))
     }
 
-    fn from_text(text: &str) -> ast::NamedField {
+    fn from_text(text: &str) -> ast::RecordField {
         ast_node_from_file_text(&format!("fn f() {{ S {{ {}, }} }}", text))
     }
 
-    pub fn from_pieces(name: &ast::NameRef, expr: Option<&ast::Expr>) -> ast::NamedField {
+    pub fn from_pieces(name: &ast::NameRef, expr: Option<&ast::Expr>) -> ast::RecordField {
         match expr {
             Some(expr) => Self::from_text(&format!("{}: {}", name.syntax(), expr.syntax())),
             None => Self::from_text(&name.syntax().to_string()),
@@ -336,12 +336,12 @@ impl AstBuilder<ast::TupleStructPat> {
     }
 }
 
-impl AstBuilder<ast::StructPat> {
-    fn from_text(text: &str) -> ast::StructPat {
+impl AstBuilder<ast::RecordPat> {
+    fn from_text(text: &str) -> ast::RecordPat {
         ast_node_from_file_text(&format!("fn f({}: ())", text))
     }
 
-    pub fn from_pieces(path: &ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::StructPat {
+    pub fn from_pieces(path: &ast::Path, pats: impl Iterator<Item = ast::Pat>) -> ast::RecordPat {
         let pats_str = pats.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
         Self::from_text(&format!("{}{{ {} }}", path.syntax(), pats_str))
     }

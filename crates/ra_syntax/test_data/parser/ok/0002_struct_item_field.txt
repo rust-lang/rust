@@ -5,10 +5,10 @@ SOURCE_FILE@[0; 25)
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     WHITESPACE@[8; 9) " "
-    NAMED_FIELD_DEF_LIST@[9; 25)
+    RECORD_FIELD_DEF_LIST@[9; 25)
       L_CURLY@[9; 10) "{"
       WHITESPACE@[10; 15) "\n    "
-      NAMED_FIELD_DEF@[15; 23)
+      RECORD_FIELD_DEF@[15; 23)
         NAME@[15; 18)
           IDENT@[15; 18) "foo"
         COLON@[18; 19) ":"

@@ -268,9 +268,9 @@ SOURCE_FILE@[0; 395)
       ENUM_VARIANT@[356; 365)
         NAME@[356; 357)
           IDENT@[356; 357) "B"
-        POS_FIELD_DEF_LIST@[357; 365)
+        TUPLE_FIELD_DEF_LIST@[357; 365)
           L_PAREN@[357; 358) "("
-          POS_FIELD_DEF@[358; 360)
+          TUPLE_FIELD_DEF@[358; 360)
             PATH_TYPE@[358; 360)
               PATH@[358; 360)
                 PATH_SEGMENT@[358; 360)
@@ -278,7 +278,7 @@ SOURCE_FILE@[0; 395)
                     IDENT@[358; 360) "i8"
           COMMA@[360; 361) ","
           WHITESPACE@[361; 362) " "
-          POS_FIELD_DEF@[362; 364)
+          TUPLE_FIELD_DEF@[362; 364)
             PATH_TYPE@[362; 364)
               PATH@[362; 364)
                 PATH_SEGMENT@[362; 364)
