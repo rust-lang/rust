@@ -1858,7 +1858,7 @@ pub const ALL_LINTS: [Lint; 309] = [
     Lint {
         name: "unicode_not_nfc",
         group: "pedantic",
-        desc: "using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)",
+        desc: "using a Unicode literal not in NFC normal form (see [Unicode tr15](http://www.unicode.org/reports/tr15/) for further information)",
         deprecation: None,
         module: "unicode",
     },
