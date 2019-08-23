@@ -747,7 +747,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Node::GenericParam(ref param) = hir.get(id) {
                             match param.kind {
                                 hir::GenericParamKind::Type { synthetic: Some(_), .. } => {
-                                    impl_trait = true;  // #63706
+                                    // We've found `fn foo(x: impl Trait)` instead of
+                                    // `fn foo<T>(x: T)`. We want to suggest the correct
+                                    // `fn foo(x: impl Trait + TraitBound)` instead of
+                                    // `fn foo<T: TraitBound>(x: T)`. (#63706)
+                                    impl_trait = true;
                                     has_bounds = param.bounds.len() > 1;
                                 }
                                 _ => {
