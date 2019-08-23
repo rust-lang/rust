@@ -158,6 +158,7 @@ Grammar(
         "DYN_TRAIT_TYPE",
 
         "REF_PAT",
+        "BOX_PAT",
         "BIND_PAT",
         "PLACEHOLDER_PAT",
         "PATH_PAT",
@@ -523,6 +524,7 @@ Grammar(
         ),
 
         "RefPat": ( options: [ "Pat" ]),
+        "BoxPat": ( options: [ "Pat" ]),
         "BindPat": (
             options: [ "Pat" ],
             traits: ["NameOwner"]
@@ -552,6 +554,7 @@ Grammar(
         "Pat": (
             enum: [
                 "RefPat",
+                "BoxPat",
                 "BindPat",
                 "PlaceholderPat",
                 "PathPat",

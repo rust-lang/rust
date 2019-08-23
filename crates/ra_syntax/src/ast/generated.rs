@@ -307,6 +307,33 @@ impl BlockExpr {
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BoxPat {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for BoxPat {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            BOX_PAT => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl BoxPat {
+    pub fn pat(&self) -> Option<Pat> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BreakExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -2063,6 +2090,7 @@ impl ParenType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
     RefPat(RefPat),
+    BoxPat(BoxPat),
     BindPat(BindPat),
     PlaceholderPat(PlaceholderPat),
     PathPat(PathPat),
@@ -2076,6 +2104,11 @@ pub enum Pat {
 impl From<RefPat> for Pat {
     fn from(node: RefPat) -> Pat {
         Pat::RefPat(node)
+    }
+}
+impl From<BoxPat> for Pat {
+    fn from(node: BoxPat) -> Pat {
+        Pat::BoxPat(node)
     }
 }
 impl From<BindPat> for Pat {
@@ -2126,14 +2159,15 @@ impl From<LiteralPat> for Pat {
 impl AstNode for Pat {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
-            REF_PAT | BIND_PAT | PLACEHOLDER_PAT | PATH_PAT | RECORD_PAT | TUPLE_STRUCT_PAT
-            | TUPLE_PAT | SLICE_PAT | RANGE_PAT | LITERAL_PAT => true,
+            REF_PAT | BOX_PAT | BIND_PAT | PLACEHOLDER_PAT | PATH_PAT | RECORD_PAT
+            | TUPLE_STRUCT_PAT | TUPLE_PAT | SLICE_PAT | RANGE_PAT | LITERAL_PAT => true,
             _ => false,
         }
     }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         let res = match syntax.kind() {
             REF_PAT => Pat::RefPat(RefPat { syntax }),
+            BOX_PAT => Pat::BoxPat(BoxPat { syntax }),
             BIND_PAT => Pat::BindPat(BindPat { syntax }),
             PLACEHOLDER_PAT => Pat::PlaceholderPat(PlaceholderPat { syntax }),
             PATH_PAT => Pat::PathPat(PathPat { syntax }),
@@ -2150,6 +2184,7 @@ impl AstNode for Pat {
     fn syntax(&self) -> &SyntaxNode {
         match self {
             Pat::RefPat(it) => &it.syntax,
+            Pat::BoxPat(it) => &it.syntax,
             Pat::BindPat(it) => &it.syntax,
             Pat::PlaceholderPat(it) => &it.syntax,
             Pat::PathPat(it) => &it.syntax,
