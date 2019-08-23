@@ -5,7 +5,7 @@ type c_int = i16;
 #[cfg(not(target_pointer_width = "16"))]
 type c_int = i32;
 
-use core::intrinsics::{atomic_load_unordered, atomic_store_unordered, unchecked_div};
+use core::intrinsics::{atomic_load_unordered, atomic_store_unordered, exact_div};
 use core::mem;
 use core::ops::{BitOr, Shl};
 
@@ -63,9 +63,10 @@ pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
     0
 }
 
+// `bytes` must be a multiple of `mem::size_of::<T>()`
 fn memcpy_element_unordered_atomic<T: Copy>(dest: *mut T, src: *const T, bytes: usize) {
     unsafe {
-        let n = unchecked_div(bytes, mem::size_of::<T>());
+        let n = exact_div(bytes, mem::size_of::<T>());
         let mut i = 0;
         while i < n {
             atomic_store_unordered(dest.add(i), atomic_load_unordered(src.add(i)));
@@ -74,9 +75,10 @@ fn memcpy_element_unordered_atomic<T: Copy>(dest: *mut T, src: *const T, bytes: 
     }
 }
 
+// `bytes` must be a multiple of `mem::size_of::<T>()`
 fn memmove_element_unordered_atomic<T: Copy>(dest: *mut T, src: *const T, bytes: usize) {
     unsafe {
-        let n = unchecked_div(bytes, mem::size_of::<T>());
+        let n = exact_div(bytes, mem::size_of::<T>());
         if src < dest as *const T {
             // copy from end
             let mut i = n;
@@ -95,18 +97,24 @@ fn memmove_element_unordered_atomic<T: Copy>(dest: *mut T, src: *const T, bytes:
     }
 }
 
+// `T` must be a primitive integer type, and `bytes` must be a multiple of `mem::size_of::<T>()`
 fn memset_element_unordered_atomic<T>(s: *mut T, c: u8, bytes: usize)
 where
     T: Copy + From<u8> + Shl<u32, Output = T> + BitOr<T, Output = T>,
 {
     unsafe {
-        let n = unchecked_div(bytes, mem::size_of::<T>());
+        let n = exact_div(bytes, mem::size_of::<T>());
+
+        // Construct a value of type `T` consisting of repeated `c`
+        // bytes, to let us ensure we write each `T` atomically.
         let mut x = T::from(c);
         let mut i = 1;
         while i < mem::size_of::<T>() {
             x = x << 8 | T::from(c);
             i += 1;
         }
+
+        // Write it to `s`
         let mut i = 0;
         while i < n {
             atomic_store_unordered(s.add(i), x);
