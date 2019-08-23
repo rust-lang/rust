@@ -1648,6 +1648,19 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
             remove_drop_and_storage_dead_on_promoted_locals(body, promoted_temps);
         }
 
+        // HACK(eddyb) try to prevent global mutable state in proc macros.
+        // (this is not perfect and could also have false positives)
+        if mode == Mode::Static || mode == Mode::StaticMut {
+            use rustc::session::config::CrateType;
+            if tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro) {
+                let ty = body.return_ty();
+                let param_env = ty::ParamEnv::empty();
+                if mode == Mode::StaticMut || !ty.is_freeze(tcx, param_env, DUMMY_SP) {
+                    tcx.sess.span_err(body.span, "mutable global state in a proc-macro");
+                }
+            }
+        }
+
         if mode == Mode::Static && !tcx.has_attr(def_id, sym::thread_local) {
             // `static`s (not `static mut`s) which are not `#[thread_local]` must be `Sync`.
             check_static_is_sync(tcx, body, hir_id);
