@@ -5,7 +5,5 @@ fn foo() {
         X | Y if Z => (),
         | X | Y if Z => (),
         | X => (),
-        box X => (),
-        Some(box X) => (),
     };
 }

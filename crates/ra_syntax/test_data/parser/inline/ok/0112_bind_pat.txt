@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 178)
-  FN_DEF@[0; 177)
+SOURCE_FILE@[0; 146)
+  FN_DEF@[0; 145)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 7)
@@ -8,7 +8,7 @@ SOURCE_FILE@[0; 178)
       L_PAREN@[7; 8) "("
       R_PAREN@[8; 9) ")"
     WHITESPACE@[9; 10) " "
-    BLOCK@[10; 177)
+    BLOCK@[10; 145)
       L_CURLY@[10; 11) "{"
       WHITESPACE@[11; 16) "\n    "
       LET_STMT@[16; 27)
@@ -122,35 +122,6 @@ SOURCE_FILE@[0; 178)
           L_PAREN@[140; 141) "("
           R_PAREN@[141; 142) ")"
         SEMI@[142; 143) ";"
-      WHITESPACE@[143; 148) "\n    "
-      LET_STMT@[148; 175)
-        LET_KW@[148; 151) "let"
-        WHITESPACE@[151; 152) " "
-        BIND_PAT@[152; 157)
-          BOX_KW@[152; 155) "box"
-          WHITESPACE@[155; 156) " "
-          NAME@[156; 157)
-            IDENT@[156; 157) "i"
-        WHITESPACE@[157; 158) " "
-        EQ@[158; 159) "="
-        WHITESPACE@[159; 160) " "
-        CALL_EXPR@[160; 174)
-          PATH_EXPR@[160; 168)
-            PATH@[160; 168)
-              PATH@[160; 163)
-                PATH_SEGMENT@[160; 163)
-                  NAME_REF@[160; 163)
-                    IDENT@[160; 163) "Box"
-              COLONCOLON@[163; 165) "::"
-              PATH_SEGMENT@[165; 168)
-                NAME_REF@[165; 168)
-                  IDENT@[165; 168) "new"
-          ARG_LIST@[168; 174)
-            L_PAREN@[168; 169) "("
-            LITERAL@[169; 173)
-              INT_NUMBER@[169; 173) "1i32"
-            R_PAREN@[173; 174) ")"
-        SEMI@[174; 175) ";"
-      WHITESPACE@[175; 176) "\n"
-      R_CURLY@[176; 177) "}"
-  WHITESPACE@[177; 178) "\n"
+      WHITESPACE@[143; 144) "\n"
+      R_CURLY@[144; 145) "}"
+  WHITESPACE@[145; 146) "\n"
