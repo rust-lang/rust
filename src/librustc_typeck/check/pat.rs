@@ -56,34 +56,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("check_pat_walk(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
 
-        let mut path_resolution = None;
-        let is_non_ref_pat = match pat.node {
-            PatKind::Struct(..) |
-            PatKind::TupleStruct(..) |
-            PatKind::Or(_) |
-            PatKind::Tuple(..) |
-            PatKind::Box(_) |
-            PatKind::Range(..) |
-            PatKind::Slice(..) => true,
-            PatKind::Lit(ref lt) => {
-                let ty = self.check_expr(lt);
-                match ty.sty {
-                    ty::Ref(..) => false,
-                    _ => true,
-                }
-            }
-            PatKind::Path(ref qpath) => {
-                let resolution = self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span);
-                path_resolution = Some(resolution);
-                match resolution.0 {
-                    Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => false,
-                    _ => true,
-                }
-            }
-            PatKind::Wild |
-            PatKind::Binding(..) |
-            PatKind::Ref(..) => false,
+        let path_resolution = match &pat.node {
+            PatKind::Path(qpath) => Some(self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span)),
+            _ => None,
         };
+
+        let is_non_ref_pat = self.is_non_ref_pat(pat, path_resolution.map(|(res, ..)| res));
         if is_non_ref_pat {
             debug!("pattern is non reference pattern");
             let mut exp_ty = self.resolve_type_vars_with_obligations(&expected);
@@ -558,6 +536,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // bound in a closure signature, and that detection gets thrown
         // off when we substitute fresh region variables here to enable
         // subtyping.
+    }
+
+    /// Is the pattern a "non reference pattern"?
+    /// When the pattern is a path pattern, `opt_path_res` must be `Some(res)`.
+    fn is_non_ref_pat(&self, pat: &'tcx hir::Pat, opt_path_res: Option<Res>) -> bool {
+        match pat.node {
+            PatKind::Struct(..) |
+            PatKind::TupleStruct(..) |
+            PatKind::Or(_) |
+            PatKind::Tuple(..) |
+            PatKind::Box(_) |
+            PatKind::Range(..) |
+            PatKind::Slice(..) => true,
+            PatKind::Lit(ref lt) => {
+                let ty = self.check_expr(lt);
+                match ty.sty {
+                    ty::Ref(..) => false,
+                    _ => true,
+                }
+            }
+            PatKind::Path(_) => {
+                match opt_path_res.unwrap() {
+                    Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => false,
+                    _ => true,
+                }
+            }
+            PatKind::Wild |
+            PatKind::Binding(..) |
+            PatKind::Ref(..) => false,
+        }
     }
 
     fn borrow_pat_suggestion(
