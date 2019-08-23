@@ -553,22 +553,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pat_adjustments.push(expected);
 
             expected = inner_ty;
-            def_bm = match def_bm {
+            def_bm = ty::BindByReference(match def_bm {
                 // If default binding mode is by value, make it `ref` or `ref mut`
                 // (depending on whether we observe `&` or `&mut`).
-                ty::BindByValue(_) =>
-                    ty::BindByReference(inner_mutability),
-
-                // Once a `ref`, always a `ref`. This is because a `& &mut` can't mutate
-                // the underlying value.
-                ty::BindByReference(hir::Mutability::MutImmutable) =>
-                    ty::BindByReference(hir::Mutability::MutImmutable),
-
-                // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref`
-                // (on `&`).
-                ty::BindByReference(hir::Mutability::MutMutable) =>
-                    ty::BindByReference(inner_mutability),
-            };
+                ty::BindByValue(_) |
+                // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
+                ty::BindByReference(hir::Mutability::MutMutable) => inner_mutability,
+                // Once a `ref`, always a `ref`.
+                // This is because a `& &mut` cannot mutate the underlying value.
+                ty::BindByReference(m @ hir::Mutability::MutImmutable) => m,
+            });
         }
 
         if pat_adjustments.len() > 0 {
