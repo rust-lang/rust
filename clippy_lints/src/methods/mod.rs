@@ -1229,43 +1229,36 @@ fn lint_or_fun_call<'a, 'tcx>(
         or_has_args: bool,
         span: Span,
     ) -> bool {
-        if or_has_args {
-            return false;
-        }
+        if_chain! {
+            if !or_has_args;
+            if name == "unwrap_or";
+            if let hir::ExprKind::Path(ref qpath) = fun.node;
+            let path = &*last_path_segment(qpath).ident.as_str();
+            if ["default", "new"].contains(&path);
+            let arg_ty = cx.tables.expr_ty(arg);
+            if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
+            if implements_trait(cx, arg_ty, default_trait_id, &[]);
 
-        if name == "unwrap_or" {
-            if let hir::ExprKind::Path(ref qpath) = fun.node {
-                let path = &*last_path_segment(qpath).ident.as_str();
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                span_lint_and_sugg(
+                    cx,
+                    OR_FUN_CALL,
+                    span,
+                    &format!("use of `{}` followed by a call to `{}`", name, path),
+                    "try this",
+                    format!(
+                        "{}.unwrap_or_default()",
+                        snippet_with_applicability(cx, self_expr.span, "_", &mut applicability)
+                    ),
+                    applicability,
+                );
 
-                if ["default", "new"].contains(&path) {
-                    let arg_ty = cx.tables.expr_ty(arg);
-                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
-                        default_trait_id
-                    } else {
-                        return false;
-                    };
-
-                    if implements_trait(cx, arg_ty, default_trait_id, &[]) {
-                        let mut applicability = Applicability::MachineApplicable;
-                        span_lint_and_sugg(
-                            cx,
-                            OR_FUN_CALL,
-                            span,
-                            &format!("use of `{}` followed by a call to `{}`", name, path),
-                            "try this",
-                            format!(
-                                "{}.unwrap_or_default()",
-                                snippet_with_applicability(cx, self_expr.span, "_", &mut applicability)
-                            ),
-                            applicability,
-                        );
-                        return true;
-                    }
-                }
+                true
+            } else {
+                false
             }
         }
-
-        false
     }
 
     /// Checks for `*or(foo())`.
