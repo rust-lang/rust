@@ -19,6 +19,15 @@ use std::cmp;
 
 use super::report_unexpected_variant_res;
 
+const CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
+This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
+pattern. Every trait defines a type, but because the size of trait implementors isn't fixed, \
+this type has no compile-time size. Therefore, all accesses to trait types must be through \
+pointers. If you encounter this error you should try to avoid dereferencing the pointer.
+
+You can read more about trait objects in the Trait Objects section of the Reference: \
+https://doc.rust-lang.org/reference/types.html#trait-objects";
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// `discrim_span` argument having a `Span` indicates that this pattern is part of a match
     /// expression arm guard, and it points to the match discriminant to add context in type errors.
@@ -607,14 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                     err.span_label(span, format!("type `{}` cannot be dereferenced", type_str));
                     if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note("\
-This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
-pattern. Every trait defines a type, but because the size of trait implementors isn't fixed, \
-this type has no compile-time size. Therefore, all accesses to trait types must be through \
-pointers. If you encounter this error you should try to avoid dereferencing the pointer.
-
-You can read more about trait objects in the Trait Objects section of the Reference: \
-https://doc.rust-lang.org/reference/types.html#trait-objects");
+                        err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
                     }
                     err.emit();
                     return false
