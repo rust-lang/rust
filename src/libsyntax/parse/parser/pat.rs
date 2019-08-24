@@ -81,7 +81,10 @@ impl<'a> Parser<'a> {
         let lo = first_pat.span;
         let mut pats = vec![first_pat];
         while self.eat_or_separator() {
-            let pat = self.parse_pat(None)?;
+            let pat = self.parse_pat(None).map_err(|mut err| {
+                err.span_label(lo, "while parsing this or-pattern staring here");
+                err
+            })?;
             self.maybe_recover_unexpected_comma(pat.span, top_level)?;
             pats.push(pat);
         }
