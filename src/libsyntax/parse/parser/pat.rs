@@ -14,6 +14,10 @@ use errors::{Applicability, DiagnosticBuilder};
 
 type Expected = Option<&'static str>;
 
+/// Whether or not an or-pattern should be gated when occurring in the current context.
+#[derive(PartialEq)]
+pub enum GateOr { Yes, No }
+
 impl<'a> Parser<'a> {
     /// Parses a pattern.
     ///
@@ -26,7 +30,7 @@ impl<'a> Parser<'a> {
 
     // FIXME(or_patterns, Centril | dlrobertson):
     // remove this and use `parse_top_pat` everywhere it is used instead.
-    pub(super) fn parse_top_pat_unpack(&mut self, gate_or: bool) -> PResult<'a, Vec<P<Pat>>> {
+    pub(super) fn parse_top_pat_unpack(&mut self, gate_or: GateOr) -> PResult<'a, Vec<P<Pat>>> {
         self.parse_top_pat(gate_or)
             .map(|pat| pat.and_then(|pat| match pat.node {
                 PatKind::Or(pats) => pats,
@@ -36,9 +40,9 @@ impl<'a> Parser<'a> {
 
     /// Entry point to the main pattern parser.
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
-    pub(super) fn parse_top_pat(&mut self, gate_or: bool) -> PResult<'a, P<Pat>> {
+    pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
         // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
-        if self.eat_or_separator() && gate_or {
+        if self.eat_or_separator() && gate_or == GateOr::Yes {
             self.sess.gated_spans.or_patterns.borrow_mut().push(self.prev_span);
         }
 
@@ -50,7 +54,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_with_or(
         &mut self,
         expected: Expected,
-        gate_or: bool,
+        gate_or: GateOr,
         top_level: bool
     ) -> PResult<'a, P<Pat>> {
         // Parse the first pattern.
@@ -73,7 +77,7 @@ impl<'a> Parser<'a> {
         let or_pattern_span = lo.to(self.prev_span);
 
         // Feature gate the or-pattern if instructed:
-        if gate_or {
+        if gate_or == GateOr::Yes {
             self.sess.gated_spans.or_patterns.borrow_mut().push(or_pattern_span);
         }
 
@@ -171,7 +175,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
-        self.parse_pat_with_or(expected, true, false)
+        self.parse_pat_with_or(expected, GateOr::Yes, false)
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are

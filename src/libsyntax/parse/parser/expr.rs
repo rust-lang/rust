@@ -1,6 +1,7 @@
 use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle};
 use super::{BlockMode, SemiColonMode};
 use super::{SeqSep, TokenExpectType};
+use super::pat::GateOr;
 
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::ptr::P;
@@ -1246,7 +1247,7 @@ impl<'a> Parser<'a> {
     fn parse_let_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         // FIXME(or_patterns, Centril | dlrobertson): use `parse_top_pat` instead.
-        let pat = self.parse_top_pat_unpack(false)?;
+        let pat = self.parse_top_pat_unpack(GateOr::No)?;
         self.expect(&token::Eq)?;
         let expr = self.with_res(
             Restrictions::NO_STRUCT_LITERAL,
@@ -1284,7 +1285,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        let pat = self.parse_top_pat(true)?;
+        let pat = self.parse_top_pat(GateOr::Yes)?;
         if !self.eat_keyword(kw::In) {
             let in_span = self.prev_span.between(self.token.span);
             self.struct_span_err(in_span, "missing `in` in `for` loop")
@@ -1389,7 +1390,7 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
         // FIXME(or_patterns, Centril | dlrobertson): use `parse_top_pat` instead.
-        let pat = self.parse_top_pat_unpack(false)?;
+        let pat = self.parse_top_pat_unpack(GateOr::No)?;
         let guard = if self.eat_keyword(kw::If) {
             Some(self.parse_expr()?)
         } else {
