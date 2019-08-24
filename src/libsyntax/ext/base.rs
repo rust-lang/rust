@@ -944,9 +944,6 @@ pub fn expr_to_spanned_string<'a>(
     mut expr: P<ast::Expr>,
     err_msg: &str,
 ) -> Result<Spanned<(Symbol, ast::StrStyle)>, Option<DiagnosticBuilder<'a>>> {
-    // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
-    expr.span = expr.span.apply_mark(cx.current_expansion.id);
-
     // we want to be able to handle e.g., `concat!("foo", "bar")`
     cx.expander().visit_expr(&mut expr);
     Err(match expr.node {
