@@ -952,22 +952,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         discrim_span: Option<Span>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let inner_ty = self.next_ty_var(TypeVariableOrigin {
-            kind: TypeVariableOriginKind::TypeInference,
-            span: inner.span,
-        });
-        let uniq_ty = tcx.mk_box(inner_ty);
-
-        if self.check_dereferencable(span, expected, &inner) {
+        let (box_ty, inner_ty) = if self.check_dereferencable(span, expected, &inner) {
             // Here, `demand::subtype` is good enough, but I don't
             // think any errors can be introduced by using `demand::eqtype`.
-            self.demand_eqtype_pat(span, expected, uniq_ty, discrim_span);
-            self.check_pat(&inner, inner_ty, def_bm, discrim_span);
-            uniq_ty
+            let inner_ty = self.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::TypeInference,
+                span: inner.span,
+            });
+            let box_ty = tcx.mk_box(inner_ty);
+            self.demand_eqtype_pat(span, expected, box_ty, discrim_span);
+            (box_ty, inner_ty)
         } else {
-            self.check_pat(&inner, tcx.types.err, def_bm, discrim_span);
-            tcx.types.err
-        }
+            (tcx.types.err, tcx.types.err)
+        };
+        self.check_pat(&inner, inner_ty, def_bm, discrim_span);
+        box_ty
     }
 
     fn check_pat_ref(
