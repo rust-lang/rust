@@ -118,7 +118,8 @@ function switchTheme(styleElem, mainStyleElem, newTheme, saveTheme) {
 }
 
 function getSystemValue() {
-    return getComputedStyle(document.documentElement).getPropertyValue('content');
+    var property = getComputedStyle(document.documentElement).getPropertyValue('content');
+    return property.replace(/\"\'/g, "");
 }
 
 switchTheme(currentTheme, mainTheme,
