@@ -18,6 +18,10 @@ type Expected = Option<&'static str>;
 #[derive(PartialEq)]
 pub enum GateOr { Yes, No }
 
+/// Whether or not this is the top level pattern context.
+#[derive(PartialEq, Copy, Clone)]
+enum TopLevel { Yes, No }
+
 impl<'a> Parser<'a> {
     /// Parses a pattern.
     ///
@@ -46,7 +50,7 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.or_patterns.borrow_mut().push(self.prev_span);
         }
 
-        self.parse_pat_with_or(None, gate_or, true)
+        self.parse_pat_with_or(None, gate_or, TopLevel::Yes)
     }
 
     /// Parses a pattern, that may be a or-pattern (e.g. `Foo | Bar` in `Some(Foo | Bar)`).
@@ -55,7 +59,7 @@ impl<'a> Parser<'a> {
         &mut self,
         expected: Expected,
         gate_or: GateOr,
-        top_level: bool
+        top_level: TopLevel,
     ) -> PResult<'a, P<Pat>> {
         // Parse the first pattern.
         let first_pat = self.parse_pat(expected)?;
@@ -112,8 +116,8 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    fn maybe_recover_unexpected_comma(&mut self, lo: Span, top_level: bool) -> PResult<'a, ()> {
-        if !top_level || self.token != token::Comma {
+    fn maybe_recover_unexpected_comma(&mut self, lo: Span, top_level: TopLevel) -> PResult<'a, ()> {
+        if top_level == TopLevel::No || self.token != token::Comma {
             return Ok(());
         }
 
@@ -175,7 +179,7 @@ impl<'a> Parser<'a> {
             self.bump();
         }
 
-        self.parse_pat_with_or(expected, GateOr::Yes, false)
+        self.parse_pat_with_or(expected, GateOr::Yes, TopLevel::No)
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
