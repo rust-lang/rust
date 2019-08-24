@@ -169,7 +169,7 @@ pub trait Hash {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     ///
-    /// [`Hasher`]: trait.Hasher.html
+    /// [`Hasher`]: hash::Hasher
     #[stable(feature = "rust1", since = "1.0.0")]
     fn hash<H: Hasher>(&self, state: &mut H);
 
@@ -187,7 +187,7 @@ pub trait Hash {
     /// println!("Hash is {:x}!", hasher.finish());
     /// ```
     ///
-    /// [`Hasher`]: trait.Hasher.html
+    /// [`Hasher`]: hash::Hasher
     #[stable(feature = "hash_slice", since = "1.3.0")]
     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
         where Self: Sized
