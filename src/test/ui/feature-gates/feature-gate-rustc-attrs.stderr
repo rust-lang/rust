@@ -43,7 +43,7 @@ error: cannot find attribute macro `rustc_unknown` in this scope
 LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
 
-error[E0658]: used by the test suite
+error[E0658]: the `#[rustc_dummy]` attribute is just used for rustc unit tests and will never be stable
   --> $DIR/feature-gate-rustc-attrs.rs:18:1
    |
 LL | #[rustc_dummy]

@@ -1,17 +1,17 @@
 #![crate_type="rlib"]
-#![optimize(speed)] //~ ERROR `#[optimize]` attribute is an unstable feature
+#![optimize(speed)] //~ ERROR the `#[optimize]` attribute is an experimental feature
 
-#[optimize(size)] //~ ERROR `#[optimize]` attribute is an unstable feature
+#[optimize(size)] //~ ERROR the `#[optimize]` attribute is an experimental feature
 mod module {
 
-#[optimize(size)] //~ ERROR `#[optimize]` attribute is an unstable feature
+#[optimize(size)] //~ ERROR the `#[optimize]` attribute is an experimental feature
 fn size() {}
 
-#[optimize(speed)] //~ ERROR `#[optimize]` attribute is an unstable feature
+#[optimize(speed)] //~ ERROR the `#[optimize]` attribute is an experimental feature
 fn speed() {}
 
 #[optimize(banana)]
-//~^ ERROR `#[optimize]` attribute is an unstable feature
+//~^ ERROR the `#[optimize]` attribute is an experimental feature
 //~| ERROR E0722
 fn not_known() {}
 
