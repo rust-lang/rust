@@ -22,6 +22,8 @@ jobs:
         IMAGE: x86_64-gnu-llvm-6.0
       mingw-check:
         IMAGE: mingw-check
+      dist-aarch64-linux:
+        IMAGE: dist-aarch64-linux
 
 - job: LinuxTools
   timeoutInMinutes: 600
