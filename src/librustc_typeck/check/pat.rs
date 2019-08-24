@@ -111,50 +111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_box(pat.span, inner, expected, def_bm, discrim_span)
             }
             PatKind::Ref(ref inner, mutbl) => {
-                let expected = self.shallow_resolve(expected);
-                if self.check_dereferencable(pat.span, expected, &inner) {
-                    // `demand::subtype` would be good enough, but using
-                    // `eqtype` turns out to be equally general. See (*)
-                    // below for details.
-
-                    // Take region, inner-type from expected type if we
-                    // can, to avoid creating needless variables.  This
-                    // also helps with the bad interactions of the given
-                    // hack detailed in (*) below.
-                    debug!("check_pat_walk: expected={:?}", expected);
-                    let (rptr_ty, inner_ty) = match expected.sty {
-                        ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
-                            (expected, r_ty)
-                        }
-                        _ => {
-                            let inner_ty = self.next_ty_var(
-                                TypeVariableOrigin {
-                                    kind: TypeVariableOriginKind::TypeInference,
-                                    span: inner.span,
-                                }
-                            );
-                            let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
-                            let region = self.next_region_var(infer::PatternRegion(pat.span));
-                            let rptr_ty = tcx.mk_ref(region, mt);
-                            debug!("check_pat_walk: demanding {:?} = {:?}", expected, rptr_ty);
-                            let err = self.demand_eqtype_diag(pat.span, expected, rptr_ty);
-
-                            // Look for a case like `fn foo(&foo: u32)` and suggest
-                            // `fn foo(foo: &u32)`
-                            if let Some(mut err) = err {
-                                self.borrow_pat_suggestion(&mut err, &pat, &inner, &expected);
-                                err.emit();
-                            }
-                            (rptr_ty, inner_ty)
-                        }
-                    };
-
-                    self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
-                    rptr_ty
-                } else {
-                    self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
-                    tcx.types.err
-                }
+                self.check_pat_ref(pat, inner, mutbl, expected, def_bm, discrim_span)
             }
             PatKind::Slice(ref before, ref slice, ref after) => {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
@@ -1054,6 +1011,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_eqtype_pat(span, expected, uniq_ty, discrim_span);
             self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
             uniq_ty
+        } else {
+            self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
+            tcx.types.err
+        }
+    }
+
+    fn check_pat_ref(
+        &self,
+        pat: &hir::Pat,
+        inner: &'tcx hir::Pat,
+        mutbl: hir::Mutability,
+        expected: Ty<'tcx>,
+        def_bm: ty::BindingMode,
+        discrim_span: Option<Span>,
+    ) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        let expected = self.shallow_resolve(expected);
+        if self.check_dereferencable(pat.span, expected, &inner) {
+            // `demand::subtype` would be good enough, but using `eqtype` turns
+            // out to be equally general. See (*) below for details.
+
+            // Take region, inner-type from expected type if we can,
+            // to avoid creating needless variables. This also helps with
+            // the bad  interactions of the given hack detailed in (*) below.
+            debug!("check_pat_ref: expected={:?}", expected);
+            let (rptr_ty, inner_ty) = match expected.sty {
+                ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
+                    (expected, r_ty)
+                }
+                _ => {
+                    let inner_ty = self.next_ty_var(
+                        TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::TypeInference,
+                            span: inner.span,
+                        }
+                    );
+                    let mt = ty::TypeAndMut { ty: inner_ty, mutbl };
+                    let region = self.next_region_var(infer::PatternRegion(pat.span));
+                    let rptr_ty = tcx.mk_ref(region, mt);
+                    debug!("check_pat_ref: demanding {:?} = {:?}", expected, rptr_ty);
+                    let err = self.demand_eqtype_diag(pat.span, expected, rptr_ty);
+
+                    // Look for a case like `fn foo(&foo: u32)` and suggest
+                    // `fn foo(foo: &u32)`
+                    if let Some(mut err) = err {
+                        self.borrow_pat_suggestion(&mut err, &pat, &inner, &expected);
+                        err.emit();
+                    }
+                    (rptr_ty, inner_ty)
+                }
+            };
+
+            self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
+            rptr_ty
         } else {
             self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
             tcx.types.err
