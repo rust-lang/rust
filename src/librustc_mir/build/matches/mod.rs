@@ -942,16 +942,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for Binding { source, .. }
                 in matched_candidates.iter().flat_map(|candidate| &candidate.bindings)
             {
-                for (i, elem) in source.projection.iter().enumerate().rev() {
+                if let Some(i) =
+                    source.projection.iter().rposition(|elem| *elem == ProjectionElem::Deref)
+                {
                     let proj_base = &source.projection[..i];
 
-                    if let ProjectionElem::Deref = elem {
-                        fake_borrows.insert(Place {
-                            base: source.base.clone(),
-                            projection: proj_base.to_vec().into_boxed_slice(),
-                        });
-                        break;
-                    }
+                    fake_borrows.insert(Place {
+                        base: source.base.clone(),
+                        projection: proj_base.to_vec().into_boxed_slice(),
+                    });
                 }
             }
         }
