@@ -6,6 +6,7 @@ use errors;
 use getopts;
 use rustc::lint::Level;
 use rustc::session;
+use rustc::session::config::{CrateType, parse_crate_types_from_list};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
                              get_cmd_lint_options, ExternEntry};
@@ -32,6 +33,8 @@ pub struct Options {
     pub input: PathBuf,
     /// The name of the crate being documented.
     pub crate_name: Option<String>,
+    /// Whether or not this is a proc-macro crate
+    pub proc_macro_crate: bool,
     /// How to format errors and warnings.
     pub error_format: ErrorOutputType,
     /// Library search paths to hand to the compiler.
@@ -111,6 +114,7 @@ impl fmt::Debug for Options {
         f.debug_struct("Options")
             .field("input", &self.input)
             .field("crate_name", &self.crate_name)
+            .field("proc_macro_crate", &self.proc_macro_crate)
             .field("error_format", &self.error_format)
             .field("libs", &self.libs)
             .field("externs", &FmtExterns(&self.externs))
@@ -431,7 +435,16 @@ impl Options {
         };
         let manual_passes = matches.opt_strs("passes");
 
+        let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
+            Ok(types) => types,
+            Err(e) =>{
+                diag.struct_err(&format!("unknown crate type: {}", e)).emit();
+                return Err(1);
+            }
+        };
+
         let crate_name = matches.opt_str("crate-name");
+        let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
         let display_warnings = matches.opt_present("display-warnings");
@@ -454,6 +467,7 @@ impl Options {
         Ok(Options {
             input,
             crate_name,
+            proc_macro_crate,
             error_format,
             libs,
             externs,

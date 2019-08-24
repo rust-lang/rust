@@ -473,27 +473,22 @@ fn configure_and_expand_inner<'a>(
         ast_validation::check_crate(sess, &krate)
     });
 
-    // If we're in rustdoc we're always compiling as an rlib, but that'll trip a
-    // bunch of checks in the `modify` function below. For now just skip this
-    // step entirely if we're rustdoc as it's not too useful anyway.
-    if !sess.opts.actually_rustdoc {
-        krate = time(sess, "maybe creating a macro crate", || {
-            let crate_types = sess.crate_types.borrow();
-            let num_crate_types = crate_types.len();
-            let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
-            let is_test_crate = sess.opts.test;
-            syntax_ext::proc_macro_harness::inject(
-                &sess.parse_sess,
-                &mut resolver,
-                krate,
-                is_proc_macro_crate,
-                has_proc_macro_decls,
-                is_test_crate,
-                num_crate_types,
-                sess.diagnostic(),
-            )
-        });
-    }
+    krate = time(sess, "maybe creating a macro crate", || {
+        let crate_types = sess.crate_types.borrow();
+        let num_crate_types = crate_types.len();
+        let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
+        let is_test_crate = sess.opts.test;
+        syntax_ext::proc_macro_harness::inject(
+            &sess.parse_sess,
+            &mut resolver,
+            krate,
+            is_proc_macro_crate,
+            has_proc_macro_decls,
+            is_test_crate,
+            num_crate_types,
+            sess.diagnostic(),
+        )
+    });
 
     // Done with macro expansion!
 
