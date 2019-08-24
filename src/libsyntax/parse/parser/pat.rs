@@ -119,7 +119,7 @@ impl<'a> Parser<'a> {
         self.struct_span_err(self.token.span, "unexpected token `||` after pattern")
             .span_suggestion(
                 self.token.span,
-                "use a single `|` to specify multiple patterns",
+                "use a single `|` to separate multiple alternative patterns",
                 "|".to_owned(),
                 Applicability::MachineApplicable
             )
