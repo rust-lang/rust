@@ -1012,59 +1012,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_ty = self.structurally_resolved_type(span, expected);
         let (inner_ty, slice_ty) = match expected_ty.sty {
             ty::Array(inner_ty, size) => {
-                if let Some(size) = size.try_eval_usize(tcx, self.param_env) {
+                let slice_ty = if let Some(size) = size.try_eval_usize(tcx, self.param_env) {
                     let min_len = before.len() as u64 + after.len() as u64;
                     if slice.is_none() {
                         if min_len != size {
-                            struct_span_err!(
-                                tcx.sess, span, E0527,
-                                "pattern requires {} elements but array has {}",
-                                min_len, size
-                            )
-                            .span_label(span, format!("expected {} elements", size))
-                            .emit();
+                            self.error_scrutinee_inconsistent_length(span, min_len, size)
                         }
-                        (inner_ty, tcx.types.err)
+                        tcx.types.err
                     } else if let Some(rest) = size.checked_sub(min_len) {
-                        (inner_ty, tcx.mk_array(inner_ty, rest))
+                        tcx.mk_array(inner_ty, rest)
                     } else {
-                        let msg = format!("pattern cannot match array of {} elements", size);
-                        struct_span_err!(
-                            tcx.sess, span, E0528,
-                            "pattern requires at least {} elements but array has {}",
-                            min_len, size
-                        )
-                        .span_label(span, msg)
-                        .emit();
-                        (inner_ty, tcx.types.err)
+                        self.error_scrutinee_with_rest_inconsistent_length(span, min_len, size);
+                        tcx.types.err
                     }
                 } else {
-                    struct_span_err!(
-                        tcx.sess, span, E0730,
-                        "cannot pattern-match on an array without a fixed length",
-                    )
-                    .emit();
-                    (inner_ty, tcx.types.err)
-                }
+                    self.error_scrutinee_unfixed_length(span);
+                    tcx.types.err
+                };
+                (inner_ty, slice_ty)
             }
             ty::Slice(inner_ty) => (inner_ty, expected_ty),
             _ => {
                 if !expected_ty.references_error() {
-                    let mut err = struct_span_err!(
-                        tcx.sess, span, E0529,
-                        "expected an array or slice, found `{}`",
-                        expected_ty
-                    );
-                    if let ty::Ref(_, ty, _) = expected_ty.sty {
-                        if let ty::Array(..) | ty::Slice(..) = ty.sty {
-                            err.help("the semantics of slice patterns changed \
-                                     recently; see issue #62254");
-                        }
-                    }
-
-                    let msg = format!("pattern cannot match with input type `{}`", expected_ty);
-                    err.span_label(span, msg);
-                    err.emit();
+                    self.error_expected_array_or_slice(span, expected_ty);
                 }
                 (tcx.types.err, tcx.types.err)
             }
@@ -1080,5 +1050,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_pat(&elt, inner_ty, def_bm, discrim_span);
         }
         expected_ty
+    }
+
+    fn error_scrutinee_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {
+        struct_span_err!(
+            self.tcx.sess, span, E0527,
+            "pattern requires {} elements but array has {}",
+            min_len, size
+        )
+        .span_label(span, format!("expected {} elements", size))
+        .emit();
+    }
+
+    fn error_scrutinee_with_rest_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {
+        struct_span_err!(
+            self.tcx.sess, span, E0528,
+            "pattern requires at least {} elements but array has {}",
+            min_len, size
+        )
+        .span_label(span, format!("pattern cannot match array of {} elements", size))
+        .emit();
+    }
+
+    fn error_scrutinee_unfixed_length(&self, span: Span) {
+        struct_span_err!(
+            self.tcx.sess, span, E0730,
+            "cannot pattern-match on an array without a fixed length",
+        )
+        .emit();
+    }
+
+    fn error_expected_array_or_slice(&self, span: Span, expected_ty: Ty<'tcx>) {
+        let mut err = struct_span_err!(
+            self.tcx.sess, span, E0529,
+            "expected an array or slice, found `{}`",
+            expected_ty
+        );
+        if let ty::Ref(_, ty, _) = expected_ty.sty {
+            if let ty::Array(..) | ty::Slice(..) = ty.sty {
+                err.help("the semantics of slice patterns changed recently; see issue #62254");
+            }
+        }
+        err.span_label(span, format!("pattern cannot match with input type `{}`", expected_ty));
+        err.emit();
     }
 }
