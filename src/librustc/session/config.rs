@@ -1719,13 +1719,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                              static, framework, or dylib (the default).",
             "[KIND=]NAME",
         ),
-        opt::multi_s(
-            "",
-            "crate-type",
-            "Comma separated list of types of crates
-                                    for the compiler to emit",
-            "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
-        ),
+        make_crate_type_option(),
         opt::opt_s(
             "",
             "crate-name",
@@ -2503,6 +2497,16 @@ pub fn build_session_options_and_crate_config(
             json_artifact_notifications,
         },
         cfg,
+    )
+}
+
+pub fn make_crate_type_option() -> RustcOptGroup {
+    opt::multi_s(
+        "",
+        "crate-type",
+        "Comma separated list of types of crates
+                                for the compiler to emit",
+        "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
     )
 }
 

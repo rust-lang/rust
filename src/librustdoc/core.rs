@@ -228,6 +228,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     let RustdocOptions {
         input,
         crate_name,
+        proc_macro_crate,
         error_format,
         libs,
         externs,
@@ -293,11 +294,16 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     }).collect();
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
+    let crate_types = if proc_macro_crate {
+        vec![config::CrateType::ProcMacro]
+    } else {
+        vec![config::CrateType::Rlib]
+    };
     // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,
         search_paths: libs,
-        crate_types: vec![config::CrateType::Rlib],
+        crate_types,
         lint_opts: if !display_warnings {
             lint_opts
         } else {
