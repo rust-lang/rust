@@ -1209,9 +1209,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
     }
 
-    fn visit_generic_params(&mut self, params: &mut Vec<ast::GenericParam>) {
-        self.cfg.configure_generic_params(params);
-        noop_visit_generic_params(params, self);
+   fn flat_map_generic_param(
+       &mut self,
+       param: ast::GenericParam
+    ) -> SmallVec<[ast::GenericParam; 1]>
+    {
+        let param = configure!(self, param);
+        noop_flat_map_generic_param(param, self)
     }
 
     fn visit_attribute(&mut self, at: &mut ast::Attribute) {
