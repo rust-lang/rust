@@ -184,6 +184,7 @@ pub trait FnMut<Args> : FnOnce<Args> {
 /// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples
+///
 /// ## Using a `FnOnce` parameter
 ///
 /// ```
