@@ -108,23 +108,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_tuple(pat.span, elements, ddpos, expected, def_bm, discrim_span)
             }
             PatKind::Box(ref inner) => {
-                let inner_ty = self.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span: inner.span,
-                });
-                let uniq_ty = tcx.mk_box(inner_ty);
-
-                if self.check_dereferencable(pat.span, expected, &inner) {
-                    // Here, `demand::subtype` is good enough, but I don't
-                    // think any errors can be introduced by using
-                    // `demand::eqtype`.
-                    self.demand_eqtype_pat(pat.span, expected, uniq_ty, discrim_span);
-                    self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
-                    uniq_ty
-                } else {
-                    self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
-                    tcx.types.err
-                }
+                self.check_pat_box(pat.span, inner, expected, def_bm, discrim_span)
             }
             PatKind::Ref(ref inner, mutbl) => {
                 let expected = self.shallow_resolve(expected);
@@ -1046,5 +1030,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         no_field_errors
+    }
+
+    fn check_pat_box(
+        &self,
+        span: Span,
+        inner: &'tcx hir::Pat,
+        expected: Ty<'tcx>,
+        def_bm: ty::BindingMode,
+        discrim_span: Option<Span>,
+    ) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        let inner_ty = self.next_ty_var(TypeVariableOrigin {
+            kind: TypeVariableOriginKind::TypeInference,
+            span: inner.span,
+        });
+        let uniq_ty = tcx.mk_box(inner_ty);
+
+        if self.check_dereferencable(span, expected, &inner) {
+            // Here, `demand::subtype` is good enough, but I don't
+            // think any errors can be introduced by using
+            // `demand::eqtype`.
+            self.demand_eqtype_pat(span, expected, uniq_ty, discrim_span);
+            self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
+            uniq_ty
+        } else {
+            self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
+            tcx.types.err
+        }
     }
 }
