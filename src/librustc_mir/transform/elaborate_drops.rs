@@ -236,18 +236,18 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     }
 
     fn field_subpath(&self, path: Self::Path, field: Field) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| match p {
-            [.., ProjectionElem::Field(idx, _)] => *idx == field,
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::Field(idx, _) => *idx == field,
             _ => false,
         })
     }
 
     fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| match p {
-            [.., ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false }] => {
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false } => {
                 *offset == index
             }
-            [.., ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true }] => {
+            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true } => {
                 size - offset == index
             }
             _ => false,
@@ -255,17 +255,14 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
     }
 
     fn deref_subpath(&self, path: Self::Path) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| {
-            match p {
-                [.., ProjectionElem::Deref] => true,
-                _ => false
-            }
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| {
+            *e == ProjectionElem::Deref
         })
     }
 
     fn downcast_subpath(&self, path: Self::Path, variant: VariantIdx) -> Option<Self::Path> {
-        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |p| match p {
-            [.., ProjectionElem::Downcast(_, idx)] => *idx == variant,
+        dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
+            ProjectionElem::Downcast(_, idx) => *idx == variant,
             _ => false
         })
     }
