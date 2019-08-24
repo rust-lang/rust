@@ -65,6 +65,16 @@ macro_rules! declare_features {
     };
 }
 
+impl Feature {
+    /// Set this feature in `Features`. Panics if called on a non-active feature.
+    pub fn set(&self, features: &mut Features, span: Span) {
+        match self.state {
+            State::Active { set } => set(features, span),
+            _ => panic!("Called `set` on feature `{}` which is not `active`", self.name)
+        }
+    }
+}
+
 // If you change this, please modify `src/doc/unstable-book` as well.
 //
 // Don't ever remove anything from this list; move them to `removed.rs`.

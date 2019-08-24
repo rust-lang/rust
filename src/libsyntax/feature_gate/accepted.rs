@@ -1,14 +1,24 @@
 //! List of the accepted feature gates.
 
-use crate::symbol::{Symbol, sym};
+use crate::symbol::sym;
+use super::{State, Feature};
 
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* (accepted, $feature:ident, $ver:expr, $issue:expr, None),
     )+) => {
         /// Those language feature has since been Accepted (it was once Active)
-        pub const ACCEPTED_FEATURES: &[(Symbol, &str, Option<u32>, Option<&str>)] = &[
-            $((sym::$feature, $ver, $issue, None)),+
+        pub const ACCEPTED_FEATURES: &[Feature] = &[
+            $(
+                Feature {
+                    state: State::Accepted,
+                    name: sym::$feature,
+                    since: $ver,
+                    issue: $issue,
+                    edition: None,
+                    description: concat!($($doc,)*),
+                }
+            ),+
         ];
     }
 }

@@ -1,14 +1,24 @@
 //! List of the removed feature gates.
 
-use crate::symbol::{Symbol, sym};
+use crate::symbol::sym;
+use super::{State, Feature};
 
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, None, $reason:expr),
     )+) => {
         /// Represents unstable features which have since been removed (it was once Active)
-        pub const REMOVED_FEATURES: &[(Symbol, &str, Option<u32>, Option<&str>)] = &[
-            $((sym::$feature, $ver, $issue, $reason)),+
+        pub const REMOVED_FEATURES: &[Feature] = &[
+            $(
+                Feature {
+                    state: State::Removed { reason: $reason },
+                    name: sym::$feature,
+                    since: $ver,
+                    issue: $issue,
+                    edition: None,
+                    description: concat!($($doc,)*),
+                }
+            ),+
         ];
     };
 
@@ -16,8 +26,17 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (stable_removed, $feature:ident, $ver:expr, $issue:expr, None),
     )+) => {
         /// Represents stable features which have since been removed (it was once Accepted)
-        pub const STABLE_REMOVED_FEATURES: &[(Symbol, &str, Option<u32>, Option<&str>)] = &[
-            $((sym::$feature, $ver, $issue, None)),+
+        pub const STABLE_REMOVED_FEATURES: &[Feature] = &[
+            $(
+                Feature {
+                    state: State::Stabilized { reason: None },
+                    name: sym::$feature,
+                    since: $ver,
+                    issue: $issue,
+                    edition: None,
+                    description: concat!($($doc,)*),
+                }
+            ),+
         ];
     };
 }
