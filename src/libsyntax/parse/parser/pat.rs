@@ -178,8 +178,13 @@ impl<'a> Parser<'a> {
     /// Recursive possibly-or-pattern parser with recovery for an erroneous leading `|`.
     /// See `parse_pat_with_or` for details on parsing or-patterns.
     fn parse_pat_with_or_inner(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
-        // Recover if `|` or `||` is here.
-        // The user is thinking that a leading `|` is allowed in this position.
+        self.recover_inner_leading_vert();
+        self.parse_pat_with_or(expected, GateOr::Yes, TopLevel::No)
+    }
+
+    /// Recover if `|` or `||` is here.
+    /// The user is thinking that a leading `|` is allowed in this position.
+    fn recover_inner_leading_vert(&mut self) {
         if let token::BinOp(token::Or) | token::OrOr = self.token.kind {
             let span = self.token.span;
             let rm_msg = format!("remove the `{}`", pprust::token_to_string(&self.token));
@@ -190,8 +195,6 @@ impl<'a> Parser<'a> {
 
             self.bump();
         }
-
-        self.parse_pat_with_or(expected, GateOr::Yes, TopLevel::No)
     }
 
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
