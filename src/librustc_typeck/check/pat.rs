@@ -71,57 +71,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_lit(pat.span, lt, expected, discrim_span)
             }
             PatKind::Range(ref begin, ref end, _) => {
-                let lhs_ty = self.check_expr(begin);
-                let rhs_ty = self.check_expr(end);
-
-                // Check that both end-points are of numeric or char type.
-                let numeric_or_char = |ty: Ty<'_>| {
-                    ty.is_numeric()
-                    || ty.is_char()
-                    || ty.references_error()
-                };
-                let lhs_compat = numeric_or_char(lhs_ty);
-                let rhs_compat = numeric_or_char(rhs_ty);
-
-                if !lhs_compat || !rhs_compat {
-                    let span = if !lhs_compat && !rhs_compat {
-                        pat.span
-                    } else if !lhs_compat {
-                        begin.span
-                    } else {
-                        end.span
-                    };
-
-                    let mut err = struct_span_err!(
-                        tcx.sess,
-                        span,
-                        E0029,
-                        "only char and numeric types are allowed in range patterns"
-                    );
-                    err.span_label(span, "ranges require char or numeric types");
-                    err.note(&format!("start type: {}", self.ty_to_string(lhs_ty)));
-                    err.note(&format!("end type: {}", self.ty_to_string(rhs_ty)));
-                    if tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note(
-                            "In a match expression, only numbers and characters can be matched \
-                             against a range. This is because the compiler checks that the range \
-                             is non-empty at compile-time, and is unable to evaluate arbitrary \
-                             comparison functions. If you want to capture values of an orderable \
-                             type between two end-points, you can use a guard."
-                         );
-                    }
-                    err.emit();
-                    return;
+                match self.check_pat_range(pat.span, begin, end, expected, discrim_span) {
+                    None => return,
+                    Some(ty) => ty,
                 }
-
-                // Now that we know the types can be unified we find the unified type and use
-                // it to type the entire expression.
-                let common_type = self.resolve_vars_if_possible(&lhs_ty);
-
-                // Subtyping doesn't matter here, as the value is some kind of scalar.
-                self.demand_eqtype_pat(pat.span, expected, lhs_ty, discrim_span);
-                self.demand_eqtype_pat(pat.span, expected, rhs_ty, discrim_span);
-                common_type
             }
             PatKind::Binding(ba, var_id, _, ref sub) => {
                 let bm = if ba == hir::BindingAnnotation::Unannotated {
@@ -597,6 +550,66 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_ty
     }
 
+    fn check_pat_range(
+        &self,
+        span: Span,
+        begin: &'tcx hir::Expr,
+        end: &'tcx hir::Expr,
+        expected: Ty<'tcx>,
+        discrim_span: Option<Span>,
+    ) -> Option<Ty<'tcx>> {
+        let lhs_ty = self.check_expr(begin);
+        let rhs_ty = self.check_expr(end);
+
+        // Check that both end-points are of numeric or char type.
+        let numeric_or_char = |ty: Ty<'_>| {
+            ty.is_numeric()
+            || ty.is_char()
+            || ty.references_error()
+        };
+        let lhs_compat = numeric_or_char(lhs_ty);
+        let rhs_compat = numeric_or_char(rhs_ty);
+
+        if !lhs_compat || !rhs_compat {
+            let span = if !lhs_compat && !rhs_compat {
+                span
+            } else if !lhs_compat {
+                begin.span
+            } else {
+                end.span
+            };
+
+            let mut err = struct_span_err!(
+                self.tcx.sess,
+                span,
+                E0029,
+                "only char and numeric types are allowed in range patterns"
+            );
+            err.span_label(span, "ranges require char or numeric types");
+            err.note(&format!("start type: {}", self.ty_to_string(lhs_ty)));
+            err.note(&format!("end type: {}", self.ty_to_string(rhs_ty)));
+            if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                err.note(
+                    "In a match expression, only numbers and characters can be matched \
+                        against a range. This is because the compiler checks that the range \
+                        is non-empty at compile-time, and is unable to evaluate arbitrary \
+                        comparison functions. If you want to capture values of an orderable \
+                        type between two end-points, you can use a guard."
+                    );
+            }
+            err.emit();
+            return None;
+        }
+
+        // Now that we know the types can be unified we find the unified type and use
+        // it to type the entire expression.
+        let common_type = self.resolve_vars_if_possible(&lhs_ty);
+
+        // Subtyping doesn't matter here, as the value is some kind of scalar.
+        self.demand_eqtype_pat(span, expected, lhs_ty, discrim_span);
+        self.demand_eqtype_pat(span, expected, rhs_ty, discrim_span);
+        Some(common_type)
+    }
 
     fn borrow_pat_suggestion(
         &self,
