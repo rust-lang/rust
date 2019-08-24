@@ -873,34 +873,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if etc {
                 tcx.sess.span_err(span, "`..` cannot be used in union patterns");
             }
-        } else if !etc {
-            if unmentioned_fields.len() > 0 {
-                let field_names = if unmentioned_fields.len() == 1 {
-                    format!("field `{}`", unmentioned_fields[0])
-                } else {
-                    format!("fields {}",
-                            unmentioned_fields.iter()
-                                .map(|name| format!("`{}`", name))
-                                .collect::<Vec<String>>()
-                                .join(", "))
-                };
-                let mut diag = struct_span_err!(tcx.sess, span, E0027,
-                                                "pattern does not mention {}",
-                                                field_names);
-                diag.span_label(span, format!("missing {}", field_names));
-                if variant.ctor_kind == CtorKind::Fn {
-                    diag.note("trying to match a tuple variant with a struct variant pattern");
-                }
-                if tcx.sess.teach(&diag.get_code().unwrap()) {
-                    diag.note(
-                        "This error indicates that a pattern for a struct fails to specify a \
-                         sub-pattern for every one of the struct's fields. Ensure that each field \
-                         from the struct's definition is mentioned in the pattern, or use `..` to \
-                         ignore unwanted fields."
-                    );
-                }
-                diag.emit();
-            }
+        } else if !etc && unmentioned_fields.len() > 0 {
+            self.error_unmentioned_fields(span, unmentioned_fields, variant);
         }
         no_field_errors
     }
@@ -914,6 +888,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .span_label(span, format!("multiple uses of `{}` in pattern", ident))
         .span_label(other_field, format!("first use of `{}`", ident))
         .emit();
+    }
+
+    fn error_unmentioned_fields(
+        &self,
+        span: Span,
+        unmentioned_fields: Vec<ast::Ident>,
+        variant: &ty::VariantDef,
+    ) {
+        let field_names = if unmentioned_fields.len() == 1 {
+            format!("field `{}`", unmentioned_fields[0])
+        } else {
+            let fields = unmentioned_fields.iter()
+                .map(|name| format!("`{}`", name))
+                .collect::<Vec<String>>()
+                .join(", ");
+            format!("fields {}", fields)
+        };
+        let mut diag = struct_span_err!(
+            self.tcx.sess, span, E0027,
+            "pattern does not mention {}",
+            field_names
+        );
+        diag.span_label(span, format!("missing {}", field_names));
+        if variant.ctor_kind == CtorKind::Fn {
+            diag.note("trying to match a tuple variant with a struct variant pattern");
+        }
+        if self.tcx.sess.teach(&diag.get_code().unwrap()) {
+            diag.note(
+                "This error indicates that a pattern for a struct fails to specify a \
+                    sub-pattern for every one of the struct's fields. Ensure that each field \
+                    from the struct's definition is mentioned in the pattern, or use `..` to \
+                    ignore unwanted fields."
+            );
+        }
+        diag.emit();
     }
 
     fn check_pat_box(
