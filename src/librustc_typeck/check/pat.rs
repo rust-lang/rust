@@ -115,12 +115,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.write_ty(pat.hir_id, ty);
 
-        // (*) In most of the cases above (literals and constants being
-        // the exception), we relate types using strict equality, even
-        // though subtyping would be sufficient. There are a few reasons
-        // for this, some of which are fairly subtle and which cost me
-        // (nmatsakis) an hour or two debugging to remember, so I thought
-        // I'd write them down this time.
+        // (note_1): In most of the cases where (note_1) is referenced
+        // (literals and constants being the exception), we relate types
+        // using strict equality, even though subtyping would be sufficient.
+        // There are a few reasons for this, some of which are fairly subtle
+        // and which cost me (nmatsakis) an hour or two debugging to remember,
+        // so I thought I'd write them down this time.
         //
         // 1. There is no loss of expressiveness here, though it does
         // cause some inconvenience. What we are saying is that the type
@@ -427,12 +427,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)`
                 // is required. However, we use equality, which is stronger.
-                // See (*) for an explanation.
+                // See (note_1) for an explanation.
                 region_ty
             }
             // Otherwise, the type of x is the expected type `T`.
             ty::BindByValue(_) => {
-                // As above, `T <: typeof(x)` is required, but we use equality, see (*) below.
+                // As above, `T <: typeof(x)` is required, but we use equality, see (note_1).
                 expected
             }
         };
@@ -955,11 +955,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected = self.shallow_resolve(expected);
         if self.check_dereferencable(pat.span, expected, &inner) {
             // `demand::subtype` would be good enough, but using `eqtype` turns
-            // out to be equally general. See (*) below for details.
+            // out to be equally general. See (note_1) for details.
 
             // Take region, inner-type from expected type if we can,
             // to avoid creating needless variables. This also helps with
-            // the bad  interactions of the given hack detailed in (*) below.
+            // the bad  interactions of the given hack detailed in (note_1).
             debug!("check_pat_ref: expected={:?}", expected);
             let (rptr_ty, inner_ty) = match expected.sty {
                 ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
