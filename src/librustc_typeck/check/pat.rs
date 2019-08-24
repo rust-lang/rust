@@ -77,53 +77,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             PatKind::Binding(ba, var_id, _, ref sub) => {
-                let bm = if ba == hir::BindingAnnotation::Unannotated {
-                    def_bm
-                } else {
-                    ty::BindingMode::convert(ba)
-                };
-                self.inh
-                    .tables
-                    .borrow_mut()
-                    .pat_binding_modes_mut()
-                    .insert(pat.hir_id, bm);
-                debug!("check_pat_walk: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
-                let local_ty = self.local_ty(pat.span, pat.hir_id).decl_ty;
-                match bm {
-                    ty::BindByReference(mutbl) => {
-                        // If the binding is like
-                        //     ref x | ref const x | ref mut x
-                        // then `x` is assigned a value of type `&M T` where M is the mutability
-                        // and T is the expected type.
-                        let region_var = self.next_region_var(infer::PatternRegion(pat.span));
-                        let mt = ty::TypeAndMut { ty: expected, mutbl: mutbl };
-                        let region_ty = tcx.mk_ref(region_var, mt);
-
-                        // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)` is
-                        // required. However, we use equality, which is stronger. See (*) for
-                        // an explanation.
-                        self.demand_eqtype_pat(pat.span, region_ty, local_ty, discrim_span);
-                    }
-                    // Otherwise, the type of x is the expected type `T`.
-                    ty::BindByValue(_) => {
-                        // As above, `T <: typeof(x)` is required, but we
-                        // use equality, see (*) below.
-                        self.demand_eqtype_pat(pat.span, expected, local_ty, discrim_span);
-                    }
-                }
-
-                // If there are multiple arms, make sure they all agree on
-                // what the type of the binding `x` ought to be.
-                if var_id != pat.hir_id {
-                    let vt = self.local_ty(pat.span, var_id).decl_ty;
-                    self.demand_eqtype_pat(pat.span, vt, local_ty, discrim_span);
-                }
-
-                if let Some(ref p) = *sub {
-                    self.check_pat_walk(&p, expected, def_bm, discrim_span);
-                }
-
-                local_ty
+                let sub = sub.as_deref();
+                self.check_pat_ident(pat, ba, var_id, sub, expected, def_bm, discrim_span)
             }
             PatKind::TupleStruct(ref qpath, ref subpats, ddpos) => {
                 self.check_pat_tuple_struct(
@@ -609,6 +564,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_pat(span, expected, lhs_ty, discrim_span);
         self.demand_eqtype_pat(span, expected, rhs_ty, discrim_span);
         Some(common_type)
+    }
+
+    fn check_pat_ident(
+        &self,
+        pat: &hir::Pat,
+        ba: hir::BindingAnnotation,
+        var_id: hir::HirId,
+        sub: Option<&'tcx hir::Pat>,
+        expected: Ty<'tcx>,
+        def_bm: ty::BindingMode,
+        discrim_span: Option<Span>,
+    ) -> Ty<'tcx> {
+        // Determine the binding mode...
+        let bm = match ba {
+            hir::BindingAnnotation::Unannotated => def_bm,
+            _ => ty::BindingMode::convert(ba),
+        };
+        // ...and store it in a side table:
+        self.inh
+            .tables
+            .borrow_mut()
+            .pat_binding_modes_mut()
+            .insert(pat.hir_id, bm);
+
+        debug!("check_pat_ident: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
+
+        let local_ty = self.local_ty(pat.span, pat.hir_id).decl_ty;
+        let eq_ty = match bm {
+            ty::BindByReference(mutbl) => {
+                // If the binding is like `ref x | ref const x | ref mut x`
+                // then `x` is assigned a value of type `&M T` where M is the
+                // mutability and T is the expected type.
+                let region_var = self.next_region_var(infer::PatternRegion(pat.span));
+                let mt = ty::TypeAndMut { ty: expected, mutbl };
+                let region_ty = self.tcx.mk_ref(region_var, mt);
+
+                // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)`
+                // is required. However, we use equality, which is stronger.
+                // See (*) for an explanation.
+                region_ty
+            }
+            // Otherwise, the type of x is the expected type `T`.
+            ty::BindByValue(_) => {
+                // As above, `T <: typeof(x)` is required, but we use equality, see (*) below.
+                expected
+            }
+        };
+        self.demand_eqtype_pat(pat.span, eq_ty, local_ty, discrim_span);
+
+        // If there are multiple arms, make sure they all agree on
+        // what the type of the binding `x` ought to be.
+        if var_id != pat.hir_id {
+            let vt = self.local_ty(pat.span, var_id).decl_ty;
+            self.demand_eqtype_pat(pat.span, vt, local_ty, discrim_span);
+        }
+
+        if let Some(p) = sub {
+            self.check_pat_walk(&p, expected, def_bm, discrim_span);
+        }
+
+        local_ty
     }
 
     fn borrow_pat_suggestion(
