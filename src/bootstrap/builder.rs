@@ -337,7 +337,6 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
-                compile::Test,
                 compile::Rustc,
                 compile::CodegenBackend,
                 compile::StartupObjects,
@@ -363,7 +362,6 @@ impl<'a> Builder<'a> {
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
-                check::Test,
                 check::Rustc,
                 check::CodegenBackend,
                 check::Rustdoc
@@ -425,8 +423,6 @@ impl<'a> Builder<'a> {
                 doc::TheBook,
                 doc::Standalone,
                 doc::Std,
-                doc::Test,
-                doc::WhitelistedRustc,
                 doc::Rustc,
                 doc::Rustdoc,
                 doc::ErrorIndex,
@@ -801,7 +797,7 @@ impl<'a> Builder<'a> {
         }
 
         match mode {
-            Mode::Std | Mode::Test | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTest=> {},
+            Mode::Std | Mode::ToolBootstrap | Mode::ToolStd => {},
             Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
                 // Build proc macros both for the host and the target
                 if target != compiler.host && cmd != "check" {
@@ -852,7 +848,6 @@ impl<'a> Builder<'a> {
         // things still build right, please do!
         match mode {
             Mode::Std => metadata.push_str("std"),
-            Mode::Test => metadata.push_str("test"),
             _ => {},
         }
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
@@ -948,9 +943,9 @@ impl<'a> Builder<'a> {
 
         let debuginfo_level = match mode {
             Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
-            Mode::Std | Mode::Test => self.config.rust_debuginfo_level_std,
+            Mode::Std => self.config.rust_debuginfo_level_std,
             Mode::ToolBootstrap | Mode::ToolStd |
-            Mode::ToolTest | Mode::ToolRustc => self.config.rust_debuginfo_level_tools,
+            Mode::ToolRustc => self.config.rust_debuginfo_level_tools,
         };
         cargo.env("RUSTC_DEBUGINFO_LEVEL", debuginfo_level.to_string());
 
@@ -1150,7 +1145,6 @@ impl<'a> Builder<'a> {
 
         match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
             (Mode::Std, Some(n), _) |
-            (Mode::Test, Some(n), _) |
             (_, _, Some(n)) => {
                 cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
             }
