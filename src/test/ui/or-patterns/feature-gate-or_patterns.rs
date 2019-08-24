@@ -26,10 +26,8 @@ fn or_patterns() {
     // Gated:
 
     let | A | B; //~ ERROR or-patterns syntax is experimental
-    //~^ ERROR or-patterns syntax is experimental
     let A | B; //~ ERROR or-patterns syntax is experimental
     for | A | B in 0 {} //~ ERROR or-patterns syntax is experimental
-    //~^ ERROR or-patterns syntax is experimental
     for A | B in 0 {} //~ ERROR or-patterns syntax is experimental
     fn fun((A | B): _) {} //~ ERROR or-patterns syntax is experimental
     let _ = |(A | B): u8| (); //~ ERROR or-patterns syntax is experimental

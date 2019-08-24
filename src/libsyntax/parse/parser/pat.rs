@@ -46,11 +46,23 @@ impl<'a> Parser<'a> {
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
     pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
         // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
-        if self.eat_or_separator() && gate_or == GateOr::Yes {
-            self.sess.gated_spans.or_patterns.borrow_mut().push(self.prev_span);
+        let gated_leading_vert = self.eat_or_separator() && gate_or == GateOr::Yes;
+
+        // Parse the possibly-or-pattern.
+        let pat = self.parse_pat_with_or(None, gate_or, TopLevel::Yes)?;
+
+        // If we parsed a leading `|` which should be gated,
+        // and no other gated or-pattern has been parsed thus far,
+        // then we should really gate the leading `|`.
+        // This complicated procedure is done purely for diagnostics UX.
+        if gated_leading_vert {
+            let mut or_pattern_spans = self.sess.gated_spans.or_patterns.borrow_mut();
+            if or_pattern_spans.is_empty() {
+                or_pattern_spans.push(self.prev_span);
+            }
         }
 
-        self.parse_pat_with_or(None, gate_or, TopLevel::Yes)
+        Ok(pat)
     }
 
     /// Parses a pattern, that may be a or-pattern (e.g. `Foo | Bar` in `Some(Foo | Bar)`).

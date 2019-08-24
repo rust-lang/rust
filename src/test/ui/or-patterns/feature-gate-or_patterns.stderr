@@ -8,15 +8,6 @@ LL |         Some(0 | 1 | 2) => {}
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:28:9
-   |
-LL |     let | A | B;
-   |         ^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
-   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
-
-error[E0658]: or-patterns syntax is experimental
   --> $DIR/feature-gate-or_patterns.rs:28:11
    |
 LL |     let | A | B;
@@ -26,7 +17,7 @@ LL |     let | A | B;
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:30:9
+  --> $DIR/feature-gate-or_patterns.rs:29:9
    |
 LL |     let A | B;
    |         ^^^^^
@@ -35,16 +26,7 @@ LL |     let A | B;
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:31:9
-   |
-LL |     for | A | B in 0 {}
-   |         ^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
-   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
-
-error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:31:11
+  --> $DIR/feature-gate-or_patterns.rs:30:11
    |
 LL |     for | A | B in 0 {}
    |           ^^^^^
@@ -53,7 +35,7 @@ LL |     for | A | B in 0 {}
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:33:9
+  --> $DIR/feature-gate-or_patterns.rs:31:9
    |
 LL |     for A | B in 0 {}
    |         ^^^^^
@@ -62,7 +44,7 @@ LL |     for A | B in 0 {}
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:34:13
+  --> $DIR/feature-gate-or_patterns.rs:32:13
    |
 LL |     fn fun((A | B): _) {}
    |             ^^^^^
@@ -71,7 +53,7 @@ LL |     fn fun((A | B): _) {}
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:35:15
+  --> $DIR/feature-gate-or_patterns.rs:33:15
    |
 LL |     let _ = |(A | B): u8| ();
    |               ^^^^^
@@ -80,7 +62,7 @@ LL |     let _ = |(A | B): u8| ();
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:36:10
+  --> $DIR/feature-gate-or_patterns.rs:34:10
    |
 LL |     let (A | B);
    |          ^^^^^
@@ -89,7 +71,7 @@ LL |     let (A | B);
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:37:10
+  --> $DIR/feature-gate-or_patterns.rs:35:10
    |
 LL |     let (A | B,);
    |          ^^^^^
@@ -98,7 +80,7 @@ LL |     let (A | B,);
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:38:11
+  --> $DIR/feature-gate-or_patterns.rs:36:11
    |
 LL |     let A(B | C);
    |           ^^^^^
@@ -107,7 +89,7 @@ LL |     let A(B | C);
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:39:14
+  --> $DIR/feature-gate-or_patterns.rs:37:14
    |
 LL |     let E::V(B | C);
    |              ^^^^^
@@ -116,7 +98,7 @@ LL |     let E::V(B | C);
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:40:17
+  --> $DIR/feature-gate-or_patterns.rs:38:17
    |
 LL |     let S { f1: B | C, f2 };
    |                 ^^^^^
@@ -125,7 +107,7 @@ LL |     let S { f1: B | C, f2 };
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:41:20
+  --> $DIR/feature-gate-or_patterns.rs:39:20
    |
 LL |     let E::V { f1: B | C, f2 };
    |                    ^^^^^
@@ -134,7 +116,7 @@ LL |     let E::V { f1: B | C, f2 };
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
 error[E0658]: or-patterns syntax is experimental
-  --> $DIR/feature-gate-or_patterns.rs:42:10
+  --> $DIR/feature-gate-or_patterns.rs:40:10
    |
 LL |     let [A | B];
    |          ^^^^^
@@ -187,6 +169,6 @@ LL | accept_pat!([p | q]);
    = note: for more information, see https://github.com/rust-lang/rust/issues/54883
    = help: add `#![feature(or_patterns)]` to the crate attributes to enable
 
-error: aborting due to 21 previous errors
+error: aborting due to 19 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
