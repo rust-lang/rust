@@ -42,8 +42,23 @@ pub fn floorf(x: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use core::f32::*;
+
     #[test]
-    fn no_overflow() {
-        assert_eq!(super::floorf(0.5), 0.0);
+    fn sanity_check() {
+        assert_eq!(floorf(0.5), 0.0);
+        assert_eq!(floorf(1.1), 1.0);
+        assert_eq!(floorf(2.9), 2.0);
+    }
+
+    /// The spec: https://en.cppreference.com/w/cpp/numeric/math/floor
+    #[test]
+    fn spec_tests() {
+        // Not Asserted: that the current rounding mode has no effect.
+        assert!(floorf(NAN).is_nan());
+        for f in [0.0, -0.0, INFINITY, NEG_INFINITY].iter().copied() {
+            assert_eq!(floorf(f), f);
+        }
     }
 }

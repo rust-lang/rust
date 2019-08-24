@@ -127,3 +127,26 @@ pub fn sqrtf(x: f32) -> f32 {
         f32::from_bits(ix as u32)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::f32::*;
+
+    #[test]
+    fn sanity_check() {
+        assert_eq!(sqrtf(100.0), 10.0);
+        assert_eq!(sqrtf(4.0), 2.0);
+    }
+
+    /// The spec: https://en.cppreference.com/w/cpp/numeric/math/sqrt
+    #[test]
+    fn spec_tests() {
+        // Not Asserted: FE_INVALID exception is raised if argument is negative.
+        assert!(sqrtf(-1.0).is_nan());
+        assert!(sqrtf(NAN).is_nan());
+        for f in [0.0, -0.0, INFINITY].iter().copied() {
+            assert_eq!(sqrtf(f), f);
+        }
+    }
+}

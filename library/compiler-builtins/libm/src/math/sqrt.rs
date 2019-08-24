@@ -37,7 +37,7 @@
  *      If (2) is false, then q   = q ; otherwise q   = q  + 2      .
  *                             i+1   i             i+1   i
  *
- *      With some algebric manipulation, it is not difficult to see
+ *      With some algebraic manipulation, it is not difficult to see
  *      that (2) is equivalent to
  *                             -(i+1)
  *                      s  +  2       <= y                      (3)
@@ -237,5 +237,28 @@ pub fn sqrt(x: f64) -> f64 {
         }
         ix0 += m << 20;
         f64::from_bits((ix0 as u64) << 32 | ix1.0 as u64)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::f64::*;
+
+    #[test]
+    fn sanity_check() {
+        assert_eq!(sqrt(100.0), 10.0);
+        assert_eq!(sqrt(4.0), 2.0);
+    }
+
+    /// The spec: https://en.cppreference.com/w/cpp/numeric/math/sqrt
+    #[test]
+    fn spec_tests() {
+        // Not Asserted: FE_INVALID exception is raised if argument is negative.
+        assert!(sqrt(-1.0).is_nan());
+        assert!(sqrt(NAN).is_nan());
+        for f in [0.0, -0.0, INFINITY].iter().copied() {
+            assert_eq!(sqrt(f), f);
+        }
     }
 }
