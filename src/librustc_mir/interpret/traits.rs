@@ -144,11 +144,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let size = alloc.read_ptr_sized(
             self,
             vtable.offset(pointer_size, self)?
-        )?.to_bits(pointer_size)? as u64;
+        )?.not_undef()?;
+        let size = self.force_bits(size, pointer_size)? as u64;
         let align = alloc.read_ptr_sized(
             self,
             vtable.offset(pointer_size * 2, self)?,
-        )?.to_bits(pointer_size)? as u64;
+        )?.not_undef()?;
+        let align = self.force_bits(align, pointer_size)? as u64;
         Ok((Size::from_bytes(size), Align::from_bytes(align).unwrap()))
     }
 }
