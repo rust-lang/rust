@@ -1,42 +1,38 @@
+// run-rustfix
+
 #[warn(clippy::cmp_owned)]
-#[allow(clippy::unnecessary_operation)]
+#[allow(clippy::unnecessary_operation, clippy::no_effect, unused_must_use, clippy::eq_op)]
 fn main() {
     fn with_to_string(x: &str) {
-        x != "foo".to_string();
+        x != "foo";
 
-        "foo".to_string() != x;
+        "foo" != x;
     }
 
     let x = "oh";
 
     with_to_string(x);
 
-    x != "foo".to_owned();
+    x != "foo";
 
-    x != String::from("foo");
+    x != "foo";
 
     42.to_string() == "42";
 
-    Foo.to_owned() == Foo;
-
-    "abc".chars().filter(|c| c.to_owned() != 'X');
+    Foo == Foo;
 
     "abc".chars().filter(|c| *c != 'X');
 
-    let x = &Baz;
-    let y = &Baz;
-
-    y.to_owned() == *x;
-
-    let x = &&Baz;
-    let y = &Baz;
-
-    y.to_owned() == **x;
+    "abc".chars().filter(|c| *c != 'X');
 }
 
 struct Foo;
 
 impl PartialEq for Foo {
+    // Allow this here, because it emits the lint
+    // without a suggestion. This is tested in
+    // `tests/ui/cmp_owned_without_suggestion.rs`
+    #[allow(clippy::cmp_owned)]
     fn eq(&self, other: &Self) -> bool {
         self.to_owned() == *other
     }
