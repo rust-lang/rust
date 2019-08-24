@@ -385,7 +385,6 @@ impl<'tcx> ClosureSubsts<'tcx> {
         let ty = self.closure_sig_ty(def_id, tcx);
         match ty.sty {
             ty::FnPtr(sig) => sig,
-            ty::Infer(_) | ty::Error => ty::Binder::dummy(FnSig::fake()),  // ignore errors
             _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty.sty),
         }
     }
