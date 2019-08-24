@@ -68,49 +68,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expected
             }
             PatKind::Lit(ref lt) => {
-                // We've already computed the type above (when checking for a non-ref pat), so
-                // avoid computing it again.
-                let ty = self.node_ty(lt.hir_id);
-
-                // Byte string patterns behave the same way as array patterns
-                // They can denote both statically and dynamically-sized byte arrays.
-                let mut pat_ty = ty;
-                if let hir::ExprKind::Lit(ref lt) = lt.node {
-                    if let ast::LitKind::ByteStr(_) = lt.node {
-                        let expected_ty = self.structurally_resolved_type(pat.span, expected);
-                        if let ty::Ref(_, r_ty, _) = expected_ty.sty {
-                            if let ty::Slice(_) = r_ty.sty {
-                                pat_ty = tcx.mk_imm_ref(tcx.lifetimes.re_static,
-                                                        tcx.mk_slice(tcx.types.u8))
-                            }
-                        }
-                    }
-                }
-
-                // Somewhat surprising: in this case, the subtyping
-                // relation goes the opposite way as the other
-                // cases. Actually what we really want is not a subtyping
-                // relation at all but rather that there exists a LUB (so
-                // that they can be compared). However, in practice,
-                // constants are always scalars or strings.  For scalars
-                // subtyping is irrelevant, and for strings `ty` is
-                // type is `&'static str`, so if we say that
-                //
-                //     &'static str <: expected
-                //
-                // then that's equivalent to there existing a LUB.
-                if let Some(mut err) = self.demand_suptype_diag(pat.span, expected, pat_ty) {
-                    err.emit_unless(discrim_span
-                        .filter(|&s| {
-                            // In the case of `if`- and `while`-expressions we've already checked
-                            // that `scrutinee: bool`. We know that the pattern is `true`,
-                            // so an error here would be a duplicate and from the wrong POV.
-                            s.is_desugaring(DesugaringKind::CondTemporary)
-                        })
-                        .is_some());
-                }
-
-                pat_ty
+                self.check_pat_lit(pat.span, lt, expected, discrim_span)
             }
             PatKind::Range(ref begin, ref end, _) => {
                 let lhs_ty = self.check_expr(begin);
@@ -585,6 +543,60 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         (expected, def_bm)
     }
+
+    fn check_pat_lit(
+        &self,
+        span: Span,
+        lt: &hir::Expr,
+        expected: Ty<'tcx>,
+        discrim_span: Option<Span>,
+    ) -> Ty<'tcx> {
+        // We've already computed the type above (when checking for a non-ref pat),
+        // so avoid computing it again.
+        let ty = self.node_ty(lt.hir_id);
+
+        // Byte string patterns behave the same way as array patterns
+        // They can denote both statically and dynamically-sized byte arrays.
+        let mut pat_ty = ty;
+        if let hir::ExprKind::Lit(ref lt) = lt.node {
+            if let ast::LitKind::ByteStr(_) = lt.node {
+                let expected_ty = self.structurally_resolved_type(span, expected);
+                if let ty::Ref(_, r_ty, _) = expected_ty.sty {
+                    if let ty::Slice(_) = r_ty.sty {
+                        let tcx = self.tcx;
+                        pat_ty = tcx.mk_imm_ref(
+                            tcx.lifetimes.re_static,
+                            tcx.mk_slice(tcx.types.u8),
+                        );
+                    }
+                }
+            }
+        }
+
+        // Somewhat surprising: in this case, the subtyping relation goes the
+        // opposite way as the other cases. Actually what we really want is not
+        // a subtyping relation at all but rather that there exists a LUB
+        // (so that they can be compared). However, in practice, constants are
+        // always scalars or strings. For scalars subtyping is irrelevant,
+        // and for strings `ty` is type is `&'static str`, so if we say that
+        //
+        //     &'static str <: expected
+        //
+        // then that's equivalent to there existing a LUB.
+        if let Some(mut err) = self.demand_suptype_diag(span, expected, pat_ty) {
+            err.emit_unless(discrim_span
+                .filter(|&s| {
+                    // In the case of `if`- and `while`-expressions we've already checked
+                    // that `scrutinee: bool`. We know that the pattern is `true`,
+                    // so an error here would be a duplicate and from the wrong POV.
+                    s.is_desugaring(DesugaringKind::CondTemporary)
+                })
+                .is_some());
+        }
+
+        pat_ty
+    }
+
 
     fn borrow_pat_suggestion(
         &self,
