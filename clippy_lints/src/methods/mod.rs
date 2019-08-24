@@ -433,7 +433,7 @@ declare_clippy_lint! {
     /// Could be written as
     /// ```rust
     /// # let vec = vec![1];
-    /// vec.iter().any(|x| **x == 0);
+    /// vec.iter().any(|x| *x == 0);
     /// ```
     pub SEARCH_IS_SOME,
     complexity,
