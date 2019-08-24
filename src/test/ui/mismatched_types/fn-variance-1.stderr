@@ -3,15 +3,12 @@ error[E0631]: type mismatch in function arguments
    |
 LL | fn takes_mut(x: &mut isize) { }
    | --------------------------- found signature of `for<'r> fn(&'r mut isize) -> _`
+LL | 
+LL | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
+   | --------------------------------------------- required by `apply`
 ...
 LL |     apply(&3, takes_mut);
    |     ^^^^^ expected signature of `fn(&{integer}) -> _`
-   |
-note: required by `apply`
-  --> $DIR/fn-variance-1.rs:5:1
-   |
-LL | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/fn-variance-1.rs:15:5
@@ -19,14 +16,11 @@ error[E0631]: type mismatch in function arguments
 LL | fn takes_imm(x: &isize) { }
    | ----------------------- found signature of `for<'r> fn(&'r isize) -> _`
 ...
+LL | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
+   | --------------------------------------------- required by `apply`
+...
 LL |     apply(&mut 3, takes_imm);
    |     ^^^^^ expected signature of `fn(&mut {integer}) -> _`
-   |
-note: required by `apply`
-  --> $DIR/fn-variance-1.rs:5:1
-   |
-LL | fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

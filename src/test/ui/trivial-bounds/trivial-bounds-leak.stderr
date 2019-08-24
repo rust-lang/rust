@@ -21,26 +21,20 @@ LL |     3i32.test();
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/trivial-bounds-leak.rs:25:5
    |
+LL |     fn test(&self);
+   |     --------------- required by `Foo::test`
+...
 LL |     Foo::test(&4i32);
    |     ^^^^^^^^^ the trait `Foo` is not implemented for `i32`
-   |
-note: required by `Foo::test`
-  --> $DIR/trivial-bounds-leak.rs:5:5
-   |
-LL |     fn test(&self);
-   |     ^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/trivial-bounds-leak.rs:26:5
    |
 LL |     generic_function(5i32);
    |     ^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `i32`
-   |
-note: required by `generic_function`
-  --> $DIR/trivial-bounds-leak.rs:29:1
-   |
+...
 LL | fn generic_function<T: Foo>(t: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | --------------------------------- required by `generic_function`
 
 error: aborting due to 4 previous errors
 

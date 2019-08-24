@@ -1,14 +1,11 @@
 error[E0277]: the trait bound `dyn Foo<(isize,), isize, Output = ()>: Eq<dyn Foo<(isize,), Output = ()>>` is not satisfied
   --> $DIR/unboxed-closure-sugar-default.rs:21:5
    |
+LL | fn eq<A: ?Sized,B: ?Sized>() where A : Eq<B> { }
+   | -------------------------------------------- required by `eq`
+...
 LL |     eq::<dyn Foo<(isize,), isize, Output=()>, dyn Foo(isize)>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Eq<dyn Foo<(isize,), Output = ()>>` is not implemented for `dyn Foo<(isize,), isize, Output = ()>`
-   |
-note: required by `eq`
-  --> $DIR/unboxed-closure-sugar-default.rs:14:1
-   |
-LL | fn eq<A: ?Sized,B: ?Sized>() where A : Eq<B> { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

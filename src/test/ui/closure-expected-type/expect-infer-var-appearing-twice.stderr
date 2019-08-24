@@ -1,19 +1,16 @@
 error[E0631]: type mismatch in closure arguments
   --> $DIR/expect-infer-var-appearing-twice.rs:14:5
    |
-LL |     with_closure(|x: u32, y: i32| {
-   |     ^^^^^^^^^^^^ ---------------- found signature of `fn(u32, i32) -> _`
-   |     |
-   |     expected signature of `fn(_, _) -> _`
-   |
-note: required by `with_closure`
-  --> $DIR/expect-infer-var-appearing-twice.rs:1:1
-   |
 LL | / fn with_closure<F, A>(_: F)
 LL | |     where F: FnOnce(A, A)
 LL | | {
 LL | | }
-   | |_^
+   | |_- required by `with_closure`
+...
+LL |       with_closure(|x: u32, y: i32| {
+   |       ^^^^^^^^^^^^ ---------------- found signature of `fn(u32, i32) -> _`
+   |       |
+   |       expected signature of `fn(_, _) -> _`
 
 error: aborting due to previous error
 

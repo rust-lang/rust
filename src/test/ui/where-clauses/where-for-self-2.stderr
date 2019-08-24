@@ -1,18 +1,16 @@
 error[E0277]: the trait bound `for<'a> &'a _: Bar` is not satisfied
   --> $DIR/where-for-self-2.rs:21:5
    |
-LL |     foo(&X);
-   |     ^^^ the trait `for<'a> Bar` is not implemented for `&'a _`
-   |
-   = help: the following implementations were found:
-             <&'static u32 as Bar>
-note: required by `foo`
-  --> $DIR/where-for-self-2.rs:16:1
-   |
 LL | / fn foo<T>(x: &T)
 LL | |     where for<'a> &'a T: Bar
 LL | | {}
-   | |__^
+   | |__- required by `foo`
+...
+LL |       foo(&X);
+   |       ^^^ the trait `for<'a> Bar` is not implemented for `&'a _`
+   |
+   = help: the following implementations were found:
+             <&'static u32 as Bar>
 
 error: aborting due to previous error
 

@@ -3,14 +3,12 @@ error[E0277]: `<T as Trait>::AssocType` cannot be sent between threads safely
    |
 LL |     is_send::<T::AssocType>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ `<T as Trait>::AssocType` cannot be sent between threads safely
+...
+LL | fn is_send<T:Send>() {
+   | -------------------- required by `is_send`
    |
    = help: the trait `std::marker::Send` is not implemented for `<T as Trait>::AssocType`
    = help: consider adding a `where <T as Trait>::AssocType: std::marker::Send` bound
-note: required by `is_send`
-  --> $DIR/typeck-default-trait-impl-assoc-type.rs:12:1
-   |
-LL | fn is_send<T:Send>() {
-   | ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

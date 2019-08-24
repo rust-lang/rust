@@ -3,34 +3,33 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
    |
 LL |     f2::<X>(x);
    |     ^^^^^^^ doesn't have a size known at compile-time
+...
+LL | fn f2<X>(x: &X) {
+   | --------------- required by `f2`
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where X: std::marker::Sized` bound
-note: required by `f2`
-  --> $DIR/unsized3.rs:10:1
-   |
-LL | fn f2<X>(x: &X) {
-   | ^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:18:5
    |
 LL |     f4::<X>(x);
    |     ^^^^^^^ doesn't have a size known at compile-time
+...
+LL | fn f4<X: T>(x: &X) {
+   | ------------------ required by `f4`
    |
    = help: the trait `std::marker::Sized` is not implemented for `X`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where X: std::marker::Sized` bound
-note: required by `f4`
-  --> $DIR/unsized3.rs:21:1
-   |
-LL | fn f4<X: T>(x: &X) {
-   | ^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:33:5
    |
+LL | fn f5<Y>(x: &Y) {}
+   | --------------- required by `f5`
+...
 LL |     f5(x1);
    |     ^^ doesn't have a size known at compile-time
    |
@@ -38,11 +37,6 @@ LL |     f5(x1);
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where X: std::marker::Sized` bound
    = note: required because it appears within the type `S<X>`
-note: required by `f5`
-  --> $DIR/unsized3.rs:24:1
-   |
-LL | fn f5<Y>(x: &Y) {}
-   | ^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:40:5
@@ -72,6 +66,9 @@ LL |     f5(&(32, *x1));
 error[E0277]: the size for values of type `X` cannot be known at compilation time
   --> $DIR/unsized3.rs:45:5
    |
+LL | fn f5<Y>(x: &Y) {}
+   | --------------- required by `f5`
+...
 LL |     f5(&(32, *x1));
    |     ^^ doesn't have a size known at compile-time
    |
@@ -80,11 +77,6 @@ LL |     f5(&(32, *x1));
    = help: consider adding a `where X: std::marker::Sized` bound
    = note: required because it appears within the type `S<X>`
    = note: required because it appears within the type `({integer}, S<X>)`
-note: required by `f5`
-  --> $DIR/unsized3.rs:24:1
-   |
-LL | fn f5<Y>(x: &Y) {}
-   | ^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 
