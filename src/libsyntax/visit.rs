@@ -92,8 +92,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_poly_trait_ref(&mut self, t: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
         walk_poly_trait_ref(self, t, m)
     }
-    fn visit_variant_data(&mut self, s: &'ast VariantData, _: Ident,
-                          _: &'ast Generics, _: NodeId, _: Span) {
+    fn visit_variant_data(&mut self, s: &'ast VariantData) {
         walk_struct_def(self, s)
     }
     fn visit_struct_field(&mut self, s: &'ast StructField) { walk_struct_field(self, s) }
@@ -101,8 +100,8 @@ pub trait Visitor<'ast>: Sized {
                       generics: &'ast Generics, item_id: NodeId, _: Span) {
         walk_enum_def(self, enum_definition, generics, item_id)
     }
-    fn visit_variant(&mut self, v: &'ast Variant, g: &'ast Generics, item_id: NodeId) {
-        walk_variant(self, v, g, item_id)
+    fn visit_variant(&mut self, v: &'ast Variant) {
+        walk_variant(self, v)
     }
     fn visit_label(&mut self, label: &'ast Label) {
         walk_label(self, label)
@@ -162,6 +161,12 @@ pub trait Visitor<'ast>: Sized {
     }
     fn visit_fn_header(&mut self, _header: &'ast FnHeader) {
         // Nothing to do
+    }
+    fn visit_field(&mut self, f: &'ast Field) {
+        walk_field(self, f)
+    }
+    fn visit_field_pattern(&mut self, fp: &'ast FieldPat) {
+        walk_field_pattern(self, fp)
     }
 }
 
@@ -280,8 +285,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::Struct(ref struct_definition, ref generics) |
         ItemKind::Union(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
-            visitor.visit_variant_data(struct_definition, item.ident,
-                                     generics, item.id, item.span);
+            visitor.visit_variant_data(struct_definition);
         }
         ItemKind::Trait(.., ref generics, ref bounds, ref methods) => {
             visitor.visit_generics(generics);
@@ -300,22 +304,30 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
 
 pub fn walk_enum_def<'a, V: Visitor<'a>>(visitor: &mut V,
                                  enum_definition: &'a EnumDef,
-                                 generics: &'a Generics,
-                                 item_id: NodeId) {
-    walk_list!(visitor, visit_variant, &enum_definition.variants, generics, item_id);
+                                 _: &'a Generics,
+                                 _: NodeId) {
+    walk_list!(visitor, visit_variant, &enum_definition.variants);
 }
 
-pub fn walk_variant<'a, V>(visitor: &mut V,
-                           variant: &'a Variant,
-                           generics: &'a Generics,
-                           item_id: NodeId)
+pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant)
     where V: Visitor<'a>,
 {
     visitor.visit_ident(variant.ident);
-    visitor.visit_variant_data(&variant.data, variant.ident,
-                             generics, item_id, variant.span);
+    visitor.visit_variant_data(&variant.data);
     walk_list!(visitor, visit_anon_const, &variant.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.attrs);
+}
+
+pub fn walk_field<'a, V: Visitor<'a>>(visitor: &mut V, f: &'a Field) {
+    visitor.visit_expr(&f.expr);
+    visitor.visit_ident(f.ident);
+    walk_list!(visitor, visit_attribute, f.attrs.iter());
+}
+
+pub fn walk_field_pattern<'a, V: Visitor<'a>>(visitor: &mut V, fp: &'a FieldPat) {
+    visitor.visit_ident(fp.ident);
+    visitor.visit_pat(&fp.pat);
+    walk_list!(visitor, visit_attribute, fp.attrs.iter());
 }
 
 pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
@@ -441,11 +453,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
         }
         PatKind::Struct(ref path, ref fields, _) => {
             visitor.visit_path(path, pattern.id);
-            for field in fields {
-                walk_list!(visitor, visit_attribute, field.attrs.iter());
-                visitor.visit_ident(field.ident);
-                visitor.visit_pat(&field.pat)
-            }
+            walk_list!(visitor, visit_field_pattern, fields);
         }
         PatKind::Box(ref subpattern) |
         PatKind::Ref(ref subpattern, _) |
@@ -686,11 +694,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         }
         ExprKind::Struct(ref path, ref fields, ref optional_base) => {
             visitor.visit_path(path, expression.id);
-            for field in fields {
-                walk_list!(visitor, visit_attribute, field.attrs.iter());
-                visitor.visit_ident(field.ident);
-                visitor.visit_expr(&field.expr)
-            }
+            walk_list!(visitor, visit_field, fields);
             walk_list!(visitor, visit_expr, optional_base);
         }
         ExprKind::Tup(ref subexpressions) => {
