@@ -29,6 +29,16 @@ You can read more about trait objects in the Trait Objects section of the Refere
 https://doc.rust-lang.org/reference/types.html#trait-objects";
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn check_pat_top(
+        &self,
+        pat: &'tcx hir::Pat,
+        expected: Ty<'tcx>,
+        discrim_span: Option<Span>,
+    ) {
+        let def_bm = ty::BindingMode::BindByValue(hir::Mutability::MutImmutable);
+        self.check_pat_walk(pat, expected, def_bm, discrim_span);
+    }
+
     /// `discrim_span` argument having a `Span` indicates that this pattern is part of a match
     /// expression arm guard, and it points to the match discriminant to add context in type errors.
     /// In the following example, `discrim_span` corresponds to the `a + b` expression:
@@ -45,7 +55,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///   = note: expected type `usize`
     ///              found type `std::result::Result<_, _>`
     /// ```
-    pub fn check_pat_walk(
+    fn check_pat_walk(
         &self,
         pat: &'tcx hir::Pat,
         expected: Ty<'tcx>,

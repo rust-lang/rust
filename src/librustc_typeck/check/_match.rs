@@ -3,7 +3,7 @@ use crate::check::coercion::CoerceMany;
 use rustc::hir::{self, ExprKind};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::traits::{ObligationCause, ObligationCauseCode};
-use rustc::ty::{self, Ty};
+use rustc::ty::Ty;
 use syntax_pos::Span;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -59,8 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut all_pats_diverge = Diverges::WarnedAlways;
             for p in &arm.pats {
                 self.diverges.set(Diverges::Maybe);
-                let binding_mode = ty::BindingMode::BindByValue(hir::Mutability::MutImmutable);
-                self.check_pat_walk(&p, discrim_ty, binding_mode, Some(discrim.span));
+                self.check_pat_top(&p, discrim_ty, Some(discrim.span));
                 all_pats_diverge &= self.diverges.get();
             }
 
