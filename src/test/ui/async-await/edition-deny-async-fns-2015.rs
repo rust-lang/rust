@@ -1,7 +1,5 @@
 // edition:2015
 
-#![feature(async_await)]
-
 async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
 
 fn baz() { async fn foo() {} } //~ ERROR `async fn` is not permitted in the 2015 edition

@@ -572,8 +572,8 @@ impl CString {
     /// use std::ffi::{CString, CStr};
     ///
     /// let c_string = CString::new(b"foo".to_vec()).expect("CString::new failed");
-    /// let c_str = c_string.as_c_str();
-    /// assert_eq!(c_str,
+    /// let cstr = c_string.as_c_str();
+    /// assert_eq!(cstr,
     ///            CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed"));
     /// ```
     #[inline]
@@ -994,8 +994,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"hello");
-    /// assert!(c_str.is_err());
+    /// let cstr = CStr::from_bytes_with_nul(b"hello");
+    /// assert!(cstr.is_err());
     /// ```
     ///
     /// Creating a `CStr` with an interior nul byte is an error:
@@ -1003,8 +1003,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"he\0llo\0");
-    /// assert!(c_str.is_err());
+    /// let cstr = CStr::from_bytes_with_nul(b"he\0llo\0");
+    /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     pub fn from_bytes_with_nul(bytes: &[u8])
@@ -1111,8 +1111,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(c_str.to_bytes(), b"foo");
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    /// assert_eq!(cstr.to_bytes(), b"foo");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1137,8 +1137,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(c_str.to_bytes_with_nul(), b"foo\0");
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    /// assert_eq!(cstr.to_bytes_with_nul(), b"foo\0");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1164,8 +1164,8 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(c_str.to_str(), Ok("foo"));
+    /// let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
     pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
@@ -1205,9 +1205,9 @@ impl CStr {
     /// use std::borrow::Cow;
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"Hello World\0")
+    /// let cstr = CStr::from_bytes_with_nul(b"Hello World\0")
     ///                  .expect("CStr::from_bytes_with_nul failed");
-    /// assert_eq!(c_str.to_string_lossy(), Cow::Borrowed("Hello World"));
+    /// assert_eq!(cstr.to_string_lossy(), Cow::Borrowed("Hello World"));
     /// ```
     ///
     /// Calling `to_string_lossy` on a `CStr` containing invalid UTF-8:
@@ -1216,10 +1216,10 @@ impl CStr {
     /// use std::borrow::Cow;
     /// use std::ffi::CStr;
     ///
-    /// let c_str = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
+    /// let cstr = CStr::from_bytes_with_nul(b"Hello \xF0\x90\x80World\0")
     ///                  .expect("CStr::from_bytes_with_nul failed");
     /// assert_eq!(
-    ///     c_str.to_string_lossy(),
+    ///     cstr.to_string_lossy(),
     ///     Cow::Owned(String::from("Hello �World")) as Cow<'_, str>
     /// );
     /// ```

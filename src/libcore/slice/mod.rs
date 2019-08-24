@@ -3026,8 +3026,7 @@ macro_rules! len {
         if size == 0 {
             // This _cannot_ use `unchecked_sub` because we depend on wrapping
             // to represent the length of long ZST slice iterators.
-            let diff = ($self.end as usize).wrapping_sub(start as usize);
-            diff
+            ($self.end as usize).wrapping_sub(start as usize)
         } else {
             // We know that `start <= end`, so can do better than `offset_from`,
             // which needs to deal in signed.  By setting appropriate flags here
@@ -4635,6 +4634,22 @@ impl<'a, T> DoubleEndedIterator for ChunksExactMut<'a, T> {
             let (head, tail) = tmp.split_at_mut(tmp_len - self.chunk_size);
             self.v = head;
             Some(tail)
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let len = self.len();
+        if n >= len {
+            self.v = &mut [];
+            None
+        } else {
+            let start = (len - 1 - n) * self.chunk_size;
+            let end = start + self.chunk_size;
+            let (temp, _tail) = mem::replace(&mut self.v, &mut []).split_at_mut(end);
+            let (head, nth_back) = temp.split_at_mut(start);
+            self.v = head;
+            Some(nth_back)
         }
     }
 }

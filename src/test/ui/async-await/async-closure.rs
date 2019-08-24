@@ -3,7 +3,7 @@
 // edition:2018
 // aux-build:arc_wake.rs
 
-#![feature(async_await, async_closure)]
+#![feature(async_closure)]
 
 extern crate arc_wake;
 

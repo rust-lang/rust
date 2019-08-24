@@ -2,8 +2,6 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
-#![feature(async_await)]
-
 async fn conditional_and_guaranteed_initialization(x: usize) -> usize {
     let y;
     if x > 5 {

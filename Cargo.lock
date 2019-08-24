@@ -185,7 +185,7 @@ dependencies = [
  "serde",
  "serde_json",
  "time",
- "toml 0.4.10",
+ "toml",
 ]
 
 [[package]]
@@ -202,7 +202,7 @@ name = "build-manifest"
 version = "0.1.0"
 dependencies = [
  "serde",
- "toml 0.4.10",
+ "toml",
 ]
 
 [[package]]
@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.39.0"
+version = "0.40.0"
 dependencies = [
  "atty",
  "bytesize",
@@ -287,7 +287,7 @@ dependencies = [
  "git2-curl",
  "glob",
  "hex",
- "home",
+ "home 0.4.2",
  "ignore",
  "im-rc",
  "jobserver",
@@ -309,16 +309,16 @@ dependencies = [
  "same-file",
  "semver",
  "serde",
- "serde_ignored",
+ "serde_ignored 0.1.0",
  "serde_json",
  "shell-escape",
  "strip-ansi-escapes",
  "tar",
  "tempfile",
  "termcolor",
- "toml 0.5.1",
+ "toml",
  "unicode-width",
- "url 2.0.0",
+ "url 2.1.0",
  "walkdir",
  "winapi 0.3.6",
 ]
@@ -442,9 +442,9 @@ dependencies = [
  "semver",
  "serde",
  "smallvec",
- "toml 0.5.1",
+ "toml",
  "unicode-normalization",
- "url 1.7.2",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -574,7 +574,7 @@ checksum = "e7ca8a5221364ef15ce201e8ed2f609fc312682a8f4e0e3d4aa5879764e0fa3b"
 
 [[package]]
 name = "crates-io"
-version = "0.27.0"
+version = "0.28.0"
 dependencies = [
  "curl",
  "failure",
@@ -583,7 +583,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "url 2.0.0",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -946,6 +946,7 @@ name = "error_index_generator"
 version = "0.0.0"
 dependencies = [
  "rustdoc",
+ "walkdir",
 ]
 
 [[package]]
@@ -1138,10 +1139,12 @@ dependencies = [
 
 [[package]]
 name = "getopts"
-version = "0.2.19"
+version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72327b15c228bfe31f1390f93dd5e9279587f0463836393c9df719ce62a3e450"
+checksum = "14dbbfd5c71d70241ecf9e6f13737f7b5ce823821063188d7e46c41d371eebd5"
 dependencies = [
+ "rustc-std-workspace-core",
+ "rustc-std-workspace-std",
  "unicode-width",
 ]
 
@@ -1167,7 +1170,7 @@ dependencies = [
  "log",
  "openssl-probe",
  "openssl-sys",
- "url 2.0.0",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1179,7 +1182,7 @@ dependencies = [
  "curl",
  "git2",
  "log",
- "url 2.0.0",
+ "url 2.1.0",
 ]
 
 [[package]]
@@ -1274,6 +1277,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80dff82fb58cfbbc617fb9a9184b010be0529201553cda50ad04372bc2333aff"
 dependencies = [
  "scopeguard 0.3.3",
+ "winapi 0.3.6",
+]
+
+[[package]]
+name = "home"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "013e4e6e9134211bb4d6bf53dd8cfb75d9e2715cc33614b9c0827718c6fbe0b8"
+dependencies = [
+ "scopeguard 1.0.0",
  "winapi 0.3.6",
 ]
 
@@ -1569,9 +1582,9 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 
 [[package]]
 name = "libc"
-version = "0.2.60"
+version = "0.2.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d44e80633f007889c7eff624b709ab43c92d708caad982295768a7b13ca3b5eb"
+checksum = "c665266eb592905e8503ba3403020f4b8794d26263f412ca33171600eca9a6fa"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -1775,7 +1788,7 @@ dependencies = [
  "serde_json",
  "shlex",
  "tempfile",
- "toml 0.5.1",
+ "toml",
  "toml-query",
 ]
 
@@ -2364,6 +2377,9 @@ dependencies = [
 [[package]]
 name = "proc_macro"
 version = "0.0.0"
+dependencies = [
+ "std",
+]
 
 [[package]]
 name = "profiler_builtins"
@@ -2720,7 +2736,7 @@ dependencies = [
  "failure",
  "futures",
  "heck",
- "home",
+ "home 0.3.3",
  "itertools 0.8.0",
  "jsonrpc-core",
  "lazy_static 1.3.0",
@@ -2744,13 +2760,13 @@ dependencies = [
  "rustfmt-nightly",
  "serde",
  "serde_derive",
- "serde_ignored",
+ "serde_ignored 0.0.4",
  "serde_json",
  "tempfile",
  "tokio",
  "tokio-process",
  "tokio-timer",
- "toml 0.5.1",
+ "toml",
  "url 1.7.2",
  "walkdir",
 ]
@@ -3053,6 +3069,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc-std-workspace-std"
+version = "1.0.0"
+dependencies = [
+ "std",
+]
+
+[[package]]
 name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
@@ -3189,6 +3212,7 @@ dependencies = [
  "rustc_interface",
  "rustc_metadata",
  "rustc_mir",
+ "rustc_plugin",
  "rustc_plugin_impl",
  "rustc_save_analysis",
  "rustc_target",
@@ -3373,6 +3397,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_plugin"
+version = "0.0.0"
+dependencies = [
+ "rustc_plugin_impl",
+]
+
+[[package]]
 name = "rustc_plugin_impl"
 version = "0.0.0"
 dependencies = [
@@ -3546,7 +3577,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.4"
+version = "1.4.5"
 dependencies = [
  "annotate-snippets",
  "atty",
@@ -3572,7 +3603,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "term 0.6.0",
- "toml 0.5.1",
+ "toml",
  "unicode-segmentation",
  "unicode-width",
  "unicode_categories",
@@ -3666,9 +3697,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.92"
+version = "1.0.99"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32746bf0f26eab52f06af0d0aa1984f641341d06d8d673c693871da2d188c9be"
+checksum = "fec2851eb56d010dc9a21b89ca53ee75e6528bab60c11e89d38390904982da9f"
 dependencies = [
  "serde_derive",
 ]
@@ -3689,6 +3720,15 @@ name = "serde_ignored"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "190e9765dcedb56be63b6e0993a006c7e3b071a016a304736e4a315dc01fb142"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde_ignored"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c24bbb8f4b81834f618cd3e28698235c2fba06ddf7f4fbe30519dd081364e59"
 dependencies = [
  "serde",
 ]
@@ -4040,6 +4080,10 @@ dependencies = [
 [[package]]
 name = "term"
 version = "0.0.0"
+dependencies = [
+ "core",
+ "std",
+]
 
 [[package]]
 name = "term"
@@ -4086,8 +4130,13 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
+ "core",
  "getopts",
+ "libc",
+ "panic_abort",
+ "panic_unwind",
  "proc_macro",
+ "std",
  "term 0.0.0",
 ]
 
@@ -4357,18 +4406,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.4.10"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "toml"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8c96d7873fa7ef8bdeb3a9cda3ac48389b4154f32b9803b4bc26220b677b039"
+checksum = "c7aabe75941d914b72bf3e5d3932ed92ce0664d49d8432305a8b547c37227724"
 dependencies = [
  "serde",
 ]
@@ -4384,7 +4424,7 @@ dependencies = [
  "is-match",
  "lazy_static 1.3.0",
  "regex",
- "toml 0.5.1",
+ "toml",
  "toml-query_derive",
 ]
 
@@ -4464,9 +4504,14 @@ checksum = "aa6024fc12ddfd1c6dbc14a80fa2324d4568849869b779f6bd37e5e4c03344d1"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "882386231c45df4700b275c7ff55b6f3698780a650026380e72dabe76fa46526"
+checksum = "7007dbd421b92cc6e28410fe7362e2e0a2503394908f417b68ec8d1c364c4e20"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-core",
+ "rustc-std-workspace-std",
+]
 
 [[package]]
 name = "unicode-xid"
@@ -4512,9 +4557,9 @@ dependencies = [
 
 [[package]]
 name = "url"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77ddaf52e65c6b81c56b7e957c0b1970f7937f21c5c6774c4e56fcb4e20b48c6"
+checksum = "75b414f6c464c879d7f9babf951f23bc3743fb7313c081b2e6ca719067ea9d61"
 dependencies = [
  "idna 0.2.0",
  "matches",

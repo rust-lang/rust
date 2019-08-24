@@ -6,8 +6,6 @@
 
 // compile-flags: --edition=2018
 
-#![feature(async_await)]
-
 pub enum Uninhabited { }
 
 fn uninhabited_async() -> Uninhabited {
@@ -16,14 +14,12 @@ fn uninhabited_async() -> Uninhabited {
 
 async fn noop() { }
 
-#[allow(unused)]
 async fn contains_never() {
     let error = uninhabited_async();
     noop().await;
     let error2 = error;
 }
 
-#[allow(unused)]
 async fn overlap_never() {
     let error1 = uninhabited_async();
     noop().await;
@@ -35,6 +31,4 @@ async fn overlap_never() {
 
 #[allow(unused_must_use)]
 fn main() {
-    contains_never();
-    overlap_never();
 }

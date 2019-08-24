@@ -221,7 +221,14 @@ fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
 }
 
 pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
-    let contents = t!(fs::read_to_string(base_src_path.join("libsyntax/feature_gate.rs")));
+    let mut all = collect_lang_features_in(base_src_path, "active.rs", bad);
+    all.extend(collect_lang_features_in(base_src_path, "accepted.rs", bad));
+    all.extend(collect_lang_features_in(base_src_path, "removed.rs", bad));
+    all
+}
+
+fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features {
+    let contents = t!(fs::read_to_string(base.join("libsyntax/feature_gate").join(file)));
 
     // We allow rustc-internal features to omit a tracking issue.
     // To make tidy accept omitting a tracking issue, group the list of features

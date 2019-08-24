@@ -305,9 +305,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 continue
             };
 
-            let scope =
+            let eager_expansion_root =
                 if self.monotonic { invoc.expansion_data.id } else { orig_expansion_data.id };
-            let ext = match self.cx.resolver.resolve_macro_invocation(&invoc, scope, force) {
+            let ext = match self.cx.resolver.resolve_macro_invocation(
+                &invoc, eager_expansion_root, force
+            ) {
                 Ok(ext) => ext,
                 Err(Indeterminate) => {
                     undetermined_invocations.push(invoc);
@@ -318,7 +320,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             progress = true;
             let ExpansionData { depth, id: expn_id, .. } = invoc.expansion_data;
             self.cx.current_expansion = invoc.expansion_data.clone();
-            self.cx.current_expansion.id = scope;
 
             // FIXME(jseyfried): Refactor out the following logic
             let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
@@ -564,7 +565,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         return fragment_kind.dummy(span);
                     }
                     let meta = ast::MetaItem { node: ast::MetaItemKind::Word, span, path };
-                    let span = span.with_ctxt(self.cx.backtrace());
                     let items = expander.expand(self.cx, span, &meta, item);
                     fragment_kind.expect_from_annotatables(items)
                 }
@@ -1386,19 +1386,5 @@ impl<'feat> ExpansionConfig<'feat> {
     }
     fn custom_inner_attributes(&self) -> bool {
         self.features.map_or(false, |features| features.custom_inner_attributes)
-    }
-}
-
-// A Marker adds the given mark to the syntax context.
-#[derive(Debug)]
-pub struct Marker(pub ExpnId);
-
-impl MutVisitor for Marker {
-    fn visit_span(&mut self, span: &mut Span) {
-        *span = span.apply_mark(self.0)
-    }
-
-    fn visit_mac(&mut self, mac: &mut ast::Mac) {
-        noop_visit_mac(mac, self)
     }
 }

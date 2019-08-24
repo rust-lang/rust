@@ -20,7 +20,7 @@ pub struct RegularStruct {
     z: i16,
 }
 
-// Change field value (regular struct) -----------------------------------------
+// Change field value (regular struct)
 #[cfg(cfail1)]
 pub fn change_field_value_regular_struct() -> RegularStruct {
     RegularStruct {
@@ -43,7 +43,7 @@ pub fn change_field_value_regular_struct() -> RegularStruct {
 
 
 
-// Change field order (regular struct) -----------------------------------------
+// Change field order (regular struct)
 #[cfg(cfail1)]
 pub fn change_field_order_regular_struct() -> RegularStruct {
     RegularStruct {
@@ -66,7 +66,7 @@ pub fn change_field_order_regular_struct() -> RegularStruct {
 
 
 
-// Add field (regular struct) --------------------------------------------------
+// Add field (regular struct)
 #[cfg(cfail1)]
 pub fn add_field_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
@@ -100,7 +100,7 @@ pub fn add_field_regular_struct() -> RegularStruct {
 
 
 
-// Change field label (regular struct) -----------------------------------------
+// Change field label (regular struct)
 #[cfg(cfail1)]
 pub fn change_field_label_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
@@ -141,7 +141,7 @@ pub struct RegularStruct2 {
     z: i8,
 }
 
-// Change constructor path (regular struct) ------------------------------------
+// Change constructor path (regular struct)
 #[cfg(cfail1)]
 pub fn change_constructor_path_regular_struct() {
     let _ = RegularStruct {
@@ -164,7 +164,7 @@ pub fn change_constructor_path_regular_struct() {
 
 
 
-// Change constructor path indirectly (regular struct) -------------------------
+// Change constructor path indirectly (regular struct)
 pub mod change_constructor_path_indirectly_regular_struct {
     #[cfg(cfail1)]
     use super::RegularStruct as Struct;
@@ -189,7 +189,7 @@ pub mod change_constructor_path_indirectly_regular_struct {
 
 pub struct TupleStruct(i32, i64, i16);
 
-// Change field value (tuple struct) -------------------------------------------
+// Change field value (tuple struct)
 #[cfg(cfail1)]
 pub fn change_field_value_tuple_struct() -> TupleStruct {
     TupleStruct(0, 1, 2)
@@ -206,7 +206,7 @@ pub fn change_field_value_tuple_struct() -> TupleStruct {
 
 pub struct TupleStruct2(u16, u16, u16);
 
-// Change constructor path (tuple struct) --------------------------------------
+// Change constructor path (tuple struct)
 #[cfg(cfail1)]
 pub fn change_constructor_path_tuple_struct() {
     let _ = TupleStruct(0, 1, 2);
@@ -221,7 +221,7 @@ pub fn change_constructor_path_tuple_struct() {
 
 
 
-// Change constructor path indirectly (tuple struct) ---------------------------
+// Change constructor path indirectly (tuple struct)
 pub mod change_constructor_path_indirectly_tuple_struct {
     #[cfg(cfail1)]
     use super::TupleStruct as Struct;

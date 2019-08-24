@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
-  --> $DIR/issue-61452.rs:5:5
+  --> $DIR/issue-61452.rs:4:5
    |
 LL | pub async fn f(x: Option<usize>) {
    |                - help: consider changing this to be mutable: `mut x`
@@ -7,7 +7,7 @@ LL |     x.take();
    |     ^ cannot borrow as mutable
 
 error[E0384]: cannot assign twice to immutable variable `x`
-  --> $DIR/issue-61452.rs:10:5
+  --> $DIR/issue-61452.rs:9:5
    |
 LL | pub async fn g(x: usize) {
    |                -

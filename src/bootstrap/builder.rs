@@ -337,7 +337,6 @@ impl<'a> Builder<'a> {
         match kind {
             Kind::Build => describe!(
                 compile::Std,
-                compile::Test,
                 compile::Rustc,
                 compile::CodegenBackend,
                 compile::StartupObjects,
@@ -363,7 +362,6 @@ impl<'a> Builder<'a> {
             ),
             Kind::Check | Kind::Clippy | Kind::Fix => describe!(
                 check::Std,
-                check::Test,
                 check::Rustc,
                 check::CodegenBackend,
                 check::Rustdoc
@@ -425,8 +423,6 @@ impl<'a> Builder<'a> {
                 doc::TheBook,
                 doc::Standalone,
                 doc::Std,
-                doc::Test,
-                doc::WhitelistedRustc,
                 doc::Rustc,
                 doc::Rustdoc,
                 doc::ErrorIndex,
@@ -618,13 +614,7 @@ impl<'a> Builder<'a> {
             }
 
             fn run(self, builder: &Builder<'_>) -> Interned<PathBuf> {
-                let compiler = self.compiler;
-                let config = &builder.build.config;
-                let lib = if compiler.stage >= 1 && config.libdir_relative().is_some() {
-                    builder.build.config.libdir_relative().unwrap()
-                } else {
-                    Path::new("lib")
-                };
+                let lib = builder.sysroot_libdir_relative(self.compiler);
                 let sysroot = builder
                     .sysroot(self.compiler)
                     .join(lib)
@@ -675,6 +665,18 @@ impl<'a> Builder<'a> {
                     => relative_libdir,
                 _ => libdir(&compiler.host).as_ref()
             }
+        }
+    }
+
+    /// Returns the compiler's relative libdir where the standard library and other artifacts are
+    /// found for a compiler's sysroot.
+    ///
+    /// For example this returns `lib` on Unix and Windows.
+    pub fn sysroot_libdir_relative(&self, compiler: Compiler) -> &Path {
+        match self.config.libdir_relative() {
+            Some(relative_libdir) if compiler.stage >= 1
+                => relative_libdir,
+            _ => Path::new("lib")
         }
     }
 
@@ -795,7 +797,7 @@ impl<'a> Builder<'a> {
         }
 
         match mode {
-            Mode::Std | Mode::Test | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTest=> {},
+            Mode::Std | Mode::ToolBootstrap | Mode::ToolStd => {},
             Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
                 // Build proc macros both for the host and the target
                 if target != compiler.host && cmd != "check" {
@@ -846,7 +848,6 @@ impl<'a> Builder<'a> {
         // things still build right, please do!
         match mode {
             Mode::Std => metadata.push_str("std"),
-            Mode::Test => metadata.push_str("test"),
             _ => {},
         }
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
@@ -859,18 +860,17 @@ impl<'a> Builder<'a> {
             stage = compiler.stage;
         }
 
-        let mut extra_args = env::var(&format!("RUSTFLAGS_STAGE_{}", stage)).unwrap_or_default();
+        let mut extra_args = String::new();
         if stage != 0 {
-            let s = env::var("RUSTFLAGS_STAGE_NOT_0").unwrap_or_default();
-            if !extra_args.is_empty() {
-                extra_args.push_str(" ");
-            }
+            let s = env::var("RUSTFLAGS_NOT_BOOTSTRAP").unwrap_or_default();
+            extra_args.push_str(&s);
+        } else {
+            let s = env::var("RUSTFLAGS_BOOTSTRAP").unwrap_or_default();
             extra_args.push_str(&s);
         }
 
         if cmd == "clippy" {
-            extra_args.push_str("-Zforce-unstable-if-unmarked -Zunstable-options \
-                --json-rendered=termcolor");
+            extra_args.push_str("-Zforce-unstable-if-unmarked");
         }
 
         if !extra_args.is_empty() {
@@ -943,9 +943,9 @@ impl<'a> Builder<'a> {
 
         let debuginfo_level = match mode {
             Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
-            Mode::Std | Mode::Test => self.config.rust_debuginfo_level_std,
+            Mode::Std => self.config.rust_debuginfo_level_std,
             Mode::ToolBootstrap | Mode::ToolStd |
-            Mode::ToolTest | Mode::ToolRustc => self.config.rust_debuginfo_level_tools,
+            Mode::ToolRustc => self.config.rust_debuginfo_level_tools,
         };
         cargo.env("RUSTC_DEBUGINFO_LEVEL", debuginfo_level.to_string());
 
@@ -1145,7 +1145,6 @@ impl<'a> Builder<'a> {
 
         match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
             (Mode::Std, Some(n), _) |
-            (Mode::Test, Some(n), _) |
             (_, _, Some(n)) => {
                 cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
             }

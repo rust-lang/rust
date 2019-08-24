@@ -13,7 +13,7 @@
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
 
-// Change simple index ---------------------------------------------------------
+// Change simple index
 #[cfg(cfail1)]
 fn change_simple_index(slice: &[u32]) -> u32 {
     slice[3]
@@ -30,7 +30,7 @@ fn change_simple_index(slice: &[u32]) -> u32 {
 
 
 
-// Change lower bound ----------------------------------------------------------
+// Change lower bound
 #[cfg(cfail1)]
 fn change_lower_bound(slice: &[u32]) -> &[u32] {
     &slice[3..5]
@@ -47,7 +47,7 @@ fn change_lower_bound(slice: &[u32]) -> &[u32] {
 
 
 
-// Change upper bound ----------------------------------------------------------
+// Change upper bound
 #[cfg(cfail1)]
 fn change_upper_bound(slice: &[u32]) -> &[u32] {
     &slice[3..5]
@@ -64,7 +64,7 @@ fn change_upper_bound(slice: &[u32]) -> &[u32] {
 
 
 
-// Add lower bound -------------------------------------------------------------
+// Add lower bound
 #[cfg(cfail1)]
 fn add_lower_bound(slice: &[u32]) -> &[u32] {
     &slice[..4]
@@ -81,7 +81,7 @@ fn add_lower_bound(slice: &[u32]) -> &[u32] {
 
 
 
-// Add upper bound -------------------------------------------------------------
+// Add upper bound
 #[cfg(cfail1)]
 fn add_upper_bound(slice: &[u32]) -> &[u32] {
     &slice[3..]
@@ -98,7 +98,7 @@ fn add_upper_bound(slice: &[u32]) -> &[u32] {
 
 
 
-// Change mutability -----------------------------------------------------------
+// Change mutability
 #[cfg(cfail1)]
 fn change_mutability(slice: &mut [u32]) -> u32 {
     (&mut slice[3..5])[0]
@@ -115,7 +115,7 @@ fn change_mutability(slice: &mut [u32]) -> u32 {
 
 
 
-// Exclusive to inclusive range ------------------------------------------------
+// Exclusive to inclusive range
 #[cfg(cfail1)]
 fn exclusive_to_inclusive_range(slice: &[u32]) -> &[u32] {
     &slice[3..7]

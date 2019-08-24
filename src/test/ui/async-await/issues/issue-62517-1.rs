@@ -5,8 +5,6 @@
 // edition:2018
 // check-pass
 
-#![feature(async_await)]
-
 trait FirstTrait {}
 trait SecondTrait {
     type Item: ?Sized;

@@ -1,8 +1,6 @@
 // edition:2018
 // check-pass
 
-#![feature(async_await)]
-
 #![feature(arbitrary_self_types)]
 #![allow(non_snake_case)]
 

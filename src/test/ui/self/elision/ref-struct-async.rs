@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(async_await)]
-
 #![feature(arbitrary_self_types)]
 #![allow(non_snake_case)]
 

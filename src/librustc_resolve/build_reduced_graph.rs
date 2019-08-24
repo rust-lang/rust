@@ -145,7 +145,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
+    crate fn get_macro_by_def_id(&mut self, def_id: DefId) -> Option<Lrc<SyntaxExtension>> {
         if let Some(ext) = self.macro_map.get(&def_id) {
             return Some(ext.clone());
         }

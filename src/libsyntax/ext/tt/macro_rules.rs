@@ -19,6 +19,7 @@ use crate::{ast, attr, attr::TransparencyError};
 
 use errors::{DiagnosticBuilder, FatalError};
 use log::debug;
+use syntax_pos::hygiene::Transparency;
 use syntax_pos::Span;
 
 use rustc_data_structures::fx::FxHashMap;
@@ -128,6 +129,7 @@ impl<'a> ParserAnyMacro<'a> {
 struct MacroRulesMacroExpander {
     name: ast::Ident,
     span: Span,
+    transparency: Transparency,
     lhses: Vec<quoted::TokenTree>,
     rhses: Vec<quoted::TokenTree>,
     valid: bool,
@@ -143,7 +145,9 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         if !self.valid {
             return DummyResult::any(sp);
         }
-        generic_extension(cx, sp, self.span, self.name, input, &self.lhses, &self.rhses)
+        generic_extension(
+            cx, sp, self.span, self.name, self.transparency, input, &self.lhses, &self.rhses
+        )
     }
 }
 
@@ -158,6 +162,7 @@ fn generic_extension<'cx>(
     sp: Span,
     def_span: Span,
     name: ast::Ident,
+    transparency: Transparency,
     arg: TokenStream,
     lhses: &[quoted::TokenTree],
     rhses: &[quoted::TokenTree],
@@ -187,7 +192,7 @@ fn generic_extension<'cx>(
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut tts = transcribe(cx, &named_matches, rhs);
+                let mut tts = transcribe(cx, &named_matches, rhs, transparency);
 
                 // Replace all the tokens for the corresponding positions in the macro, to maintain
                 // proper positions in error reporting, while maintaining the macro_backtrace.
@@ -415,11 +420,7 @@ pub fn compile(
     // that is not lint-checked and trigger the "failed to process buffered lint here" bug.
     valid &= macro_check::check_meta_variables(sess, ast::CRATE_NODE_ID, def.span, &lhses, &rhses);
 
-    let expander: Box<_> =
-        Box::new(MacroRulesMacroExpander { name: def.ident, span: def.span, lhses, rhses, valid });
-
-    let (default_transparency, transparency_error) =
-        attr::find_transparency(&def.attrs, body.legacy);
+    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, body.legacy);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) =>
             sess.span_diagnostic.span_err(
@@ -431,6 +432,10 @@ pub fn compile(
             ),
         None => {}
     }
+
+    let expander: Box<_> = Box::new(MacroRulesMacroExpander {
+        name: def.ident, span: def.span, transparency, lhses, rhses, valid
+    });
 
     let allow_internal_unstable =
         attr::find_by_name(&def.attrs, sym::allow_internal_unstable).map(|attr| {
@@ -473,7 +478,6 @@ pub fn compile(
     SyntaxExtension {
         kind: SyntaxExtensionKind::LegacyBang(expander),
         span: def.span,
-        default_transparency,
         allow_internal_unstable,
         allow_internal_unsafe: attr::contains_name(&def.attrs, sym::allow_internal_unsafe),
         local_inner_macros,

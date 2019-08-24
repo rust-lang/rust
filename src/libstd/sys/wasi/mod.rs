@@ -67,8 +67,25 @@ pub fn unsupported_err() -> std_io::Error {
     )
 }
 
-pub fn decode_error_kind(_code: i32) -> std_io::ErrorKind {
-    std_io::ErrorKind::Other
+pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
+    use std_io::ErrorKind::*;
+    match errno as libc::c_int {
+        wasi::ECONNREFUSED => ConnectionRefused,
+        wasi::ECONNRESET => ConnectionReset,
+        wasi::EPERM | libc::EACCES => PermissionDenied,
+        wasi::EPIPE => BrokenPipe,
+        wasi::ENOTCONN => NotConnected,
+        wasi::ECONNABORTED => ConnectionAborted,
+        wasi::EADDRNOTAVAIL => AddrNotAvailable,
+        wasi::EADDRINUSE => AddrInUse,
+        wasi::ENOENT => NotFound,
+        wasi::EINTR => Interrupted,
+        wasi::EINVAL => InvalidInput,
+        wasi::ETIMEDOUT => TimedOut,
+        wasi::EEXIST => AlreadyExists,
+        wasi::EAGAIN => WouldBlock,
+        _ => ErrorKind::Other,
+    }
 }
 
 // This enum is used as the storage for a bunch of types which can't actually

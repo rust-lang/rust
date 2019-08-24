@@ -965,12 +965,11 @@ fn use_color(opts: &TestOpts) -> bool {
 
 #[cfg(any(
     target_os = "cloudabi",
-    target_os = "redox",
     all(target_arch = "wasm32", not(target_os = "emscripten")),
     all(target_vendor = "fortanix", target_env = "sgx")
 ))]
 fn stdout_isatty() -> bool {
-    // FIXME: Implement isatty on Redox and SGX
+    // FIXME: Implement isatty on SGX
     false
 }
 #[cfg(unix)]
@@ -1193,15 +1192,15 @@ fn get_concurrency() -> usize {
         }
     }
 
-    #[cfg(target_os = "redox")]
-    fn num_cpus() -> usize {
-        // FIXME: Implement num_cpus on Redox
-        1
-    }
-
     #[cfg(target_os = "vxworks")]
     fn num_cpus() -> usize {
         // FIXME: Implement num_cpus on vxWorks
+        1
+    }
+
+    #[cfg(target_os = "redox")]
+    fn num_cpus() -> usize {
+        // FIXME: Implement num_cpus on Redox
         1
     }
 
@@ -1221,7 +1220,7 @@ fn get_concurrency() -> usize {
         target_os = "ios",
         target_os = "linux",
         target_os = "macos",
-        target_os = "solaris"
+        target_os = "solaris",
     ))]
     fn num_cpus() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }

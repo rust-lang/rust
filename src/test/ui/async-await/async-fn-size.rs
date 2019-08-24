@@ -2,8 +2,6 @@
 // aux-build:arc_wake.rs
 // edition:2018
 
-#![feature(async_await)]
-
 extern crate arc_wake;
 
 use std::pin::Pin;

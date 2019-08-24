@@ -16,7 +16,7 @@
 #![crate_type="rlib"]
 
 
-// Change static visibility ---------------------------------------------------
+// Change static visibility
 #[cfg(cfail1)]
 static STATIC_VISIBILITY: u8 = 0;
 
@@ -26,7 +26,7 @@ static STATIC_VISIBILITY: u8 = 0;
 pub static STATIC_VISIBILITY: u8 = 0;
 
 
-// Change static mutability ---------------------------------------------------
+// Change static mutability
 #[cfg(cfail1)]
 static STATIC_MUTABILITY: u8 = 0;
 
@@ -36,7 +36,7 @@ static STATIC_MUTABILITY: u8 = 0;
 static mut STATIC_MUTABILITY: u8 = 0;
 
 
-// Add linkage attribute ------------------------------------------------------
+// Add linkage attribute
 #[cfg(cfail1)]
 static STATIC_LINKAGE: u8 = 0;
 
@@ -47,7 +47,7 @@ static STATIC_LINKAGE: u8 = 0;
 static STATIC_LINKAGE: u8 = 0;
 
 
-// Add no_mangle attribute ----------------------------------------------------
+// Add no_mangle attribute
 #[cfg(cfail1)]
 static STATIC_NO_MANGLE: u8 = 0;
 
@@ -58,7 +58,7 @@ static STATIC_NO_MANGLE: u8 = 0;
 static STATIC_NO_MANGLE: u8 = 0;
 
 
-// Add thread_local attribute -------------------------------------------------
+// Add thread_local attribute
 #[cfg(cfail1)]
 static STATIC_THREAD_LOCAL: u8 = 0;
 
@@ -69,7 +69,7 @@ static STATIC_THREAD_LOCAL: u8 = 0;
 static STATIC_THREAD_LOCAL: u8 = 0;
 
 
-// Change type from i16 to u64 ------------------------------------------------
+// Change type from i16 to u64
 #[cfg(cfail1)]
 static STATIC_CHANGE_TYPE_1: i16 = 0;
 
@@ -79,7 +79,7 @@ static STATIC_CHANGE_TYPE_1: i16 = 0;
 static STATIC_CHANGE_TYPE_1: u64 = 0;
 
 
-// Change type from Option<i8> to Option<u16> ---------------------------------
+// Change type from Option<i8> to Option<u16>
 #[cfg(cfail1)]
 static STATIC_CHANGE_TYPE_2: Option<i8> = None;
 
@@ -89,7 +89,7 @@ static STATIC_CHANGE_TYPE_2: Option<i8> = None;
 static STATIC_CHANGE_TYPE_2: Option<u16> = None;
 
 
-// Change value between simple literals ---------------------------------------
+// Change value between simple literals
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
 static STATIC_CHANGE_VALUE_1: i16 = {
@@ -101,7 +101,7 @@ static STATIC_CHANGE_VALUE_1: i16 = {
 };
 
 
-// Change value between expressions -------------------------------------------
+// Change value between expressions
 #[rustc_clean(cfg="cfail2", except="HirBody")]
 #[rustc_clean(cfg="cfail3")]
 static STATIC_CHANGE_VALUE_2: i16 = {
@@ -133,7 +133,7 @@ static STATIC_CHANGE_VALUE_4: i16 = {
 };
 
 
-// Change type indirectly -----------------------------------------------------
+// Change type indirectly
 struct ReferencedType1;
 struct ReferencedType2;
 

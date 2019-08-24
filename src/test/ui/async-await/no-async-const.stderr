@@ -1,5 +1,5 @@
 error: expected one of `fn` or `unsafe`, found `const`
-  --> $DIR/no-async-const.rs:7:11
+  --> $DIR/no-async-const.rs:5:11
    |
 LL | pub async const fn x() {}
    |           ^^^^^ expected one of `fn` or `unsafe` here
