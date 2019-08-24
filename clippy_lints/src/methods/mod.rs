@@ -1075,56 +1075,57 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             if let hir::ImplItemKind::Method(ref sig, id) = impl_item.node;
             if let Some(first_arg) = iter_input_pats(&sig.decl, cx.tcx.hir().body(id)).next();
             if let hir::ItemKind::Impl(_, _, _, _, None, _, _) = item.node;
+
+            let method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
+            let method_sig = cx.tcx.fn_sig(method_def_id);
+            let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
+
+            let first_arg_ty = &method_sig.inputs().iter().next();
+
+            // check conventions w.r.t. conversion method names and predicates
+            if let Some(first_arg_ty) = first_arg_ty;
+
             then {
-                let method_def_id = cx.tcx.hir().local_def_id(impl_item.hir_id);
-                let method_sig = cx.tcx.fn_sig(method_def_id);
-                let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
-
-                let first_arg_ty = &method_sig.inputs().iter().next();
-
-                // check conventions w.r.t. conversion method names and predicates
-                if let Some(first_arg_ty) = first_arg_ty {
-
-                    if cx.access_levels.is_exported(impl_item.hir_id) {
-                    // check missing trait implementations
-                        for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                            if name == method_name &&
-                            sig.decl.inputs.len() == n_args &&
-                            out_type.matches(cx, &sig.decl.output) &&
-                            self_kind.matches(cx, ty, first_arg_ty) {
-                                span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
-                                    "defining a method called `{}` on this type; consider implementing \
-                                    the `{}` trait or choosing a less ambiguous name", name, trait_name));
-                            }
+                if cx.access_levels.is_exported(impl_item.hir_id) {
+                // check missing trait implementations
+                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                        if name == method_name &&
+                        sig.decl.inputs.len() == n_args &&
+                        out_type.matches(cx, &sig.decl.output) &&
+                        self_kind.matches(cx, ty, first_arg_ty) {
+                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, impl_item.span, &format!(
+                                "defining a method called `{}` on this type; consider implementing \
+                                the `{}` trait or choosing a less ambiguous name", name, trait_name));
                         }
                     }
+                }
 
-                    for &(ref conv, self_kinds) in &CONVENTIONS {
-                        if conv.check(&name) {
-                            if !self_kinds
+                if let Some((ref conv, self_kinds)) = &CONVENTIONS
+                    .iter()
+                    .find(|(ref conv, _)| conv.check(&name))
+                {
+                    if !self_kinds.iter().any(|k| k.matches(cx, ty, first_arg_ty)) {
+                        let lint = if item.vis.node.is_pub() {
+                            WRONG_PUB_SELF_CONVENTION
+                        } else {
+                            WRONG_SELF_CONVENTION
+                        };
+
+                        span_lint(
+                            cx,
+                            lint,
+                            first_arg.pat.span,
+                            &format!(
+                               "methods called `{}` usually take {}; consider choosing a less \
+                                 ambiguous name",
+                                conv,
+                                &self_kinds
                                     .iter()
-                                    .any(|k| k.matches(cx, ty, first_arg_ty)) {
-                                let lint = if item.vis.node.is_pub() {
-                                    WRONG_PUB_SELF_CONVENTION
-                                } else {
-                                    WRONG_SELF_CONVENTION
-                                };
-                                span_lint(cx,
-                                          lint,
-                                          first_arg.pat.span,
-                                          &format!("methods called `{}` usually take {}; consider choosing a less \
-                                                    ambiguous name",
-                                                   conv,
-                                                   &self_kinds.iter()
-                                                              .map(|k| k.description())
-                                                              .collect::<Vec<_>>()
-                                                              .join(" or ")));
-                            }
-
-                            // Only check the first convention to match (CONVENTIONS should be listed from most to least
-                            // specific)
-                            break;
-                        }
+                                    .map(|k| k.description())
+                                    .collect::<Vec<_>>()
+                                    .join(" or ")
+                            ),
+                        );
                     }
                 }
             }
@@ -1134,10 +1135,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             let ret_ty = return_ty(cx, impl_item.hir_id);
 
             // walk the return type and check for Self (this does not check associated types)
-            for inner_type in ret_ty.walk() {
-                if same_tys(cx, ty, inner_type) {
-                    return;
-                }
+            if ret_ty.walk().any(|inner_type| same_tys(cx, ty, inner_type)) {
+                return;
             }
 
             // if return type is impl trait, check the associated types
@@ -1230,43 +1229,36 @@ fn lint_or_fun_call<'a, 'tcx>(
         or_has_args: bool,
         span: Span,
     ) -> bool {
-        if or_has_args {
-            return false;
-        }
+        if_chain! {
+            if !or_has_args;
+            if name == "unwrap_or";
+            if let hir::ExprKind::Path(ref qpath) = fun.node;
+            let path = &*last_path_segment(qpath).ident.as_str();
+            if ["default", "new"].contains(&path);
+            let arg_ty = cx.tables.expr_ty(arg);
+            if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
+            if implements_trait(cx, arg_ty, default_trait_id, &[]);
 
-        if name == "unwrap_or" {
-            if let hir::ExprKind::Path(ref qpath) = fun.node {
-                let path = &*last_path_segment(qpath).ident.as_str();
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                span_lint_and_sugg(
+                    cx,
+                    OR_FUN_CALL,
+                    span,
+                    &format!("use of `{}` followed by a call to `{}`", name, path),
+                    "try this",
+                    format!(
+                        "{}.unwrap_or_default()",
+                        snippet_with_applicability(cx, self_expr.span, "_", &mut applicability)
+                    ),
+                    applicability,
+                );
 
-                if ["default", "new"].contains(&path) {
-                    let arg_ty = cx.tables.expr_ty(arg);
-                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
-                        default_trait_id
-                    } else {
-                        return false;
-                    };
-
-                    if implements_trait(cx, arg_ty, default_trait_id, &[]) {
-                        let mut applicability = Applicability::MachineApplicable;
-                        span_lint_and_sugg(
-                            cx,
-                            OR_FUN_CALL,
-                            span,
-                            &format!("use of `{}` followed by a call to `{}`", name, path),
-                            "try this",
-                            format!(
-                                "{}.unwrap_or_default()",
-                                snippet_with_applicability(cx, self_expr.span, "_", &mut applicability)
-                            ),
-                            applicability,
-                        );
-                        return true;
-                    }
-                }
+                true
+            } else {
+                false
             }
         }
-
-        false
     }
 
     /// Checks for `*or(foo())`.
@@ -1289,46 +1281,37 @@ fn lint_or_fun_call<'a, 'tcx>(
             (&paths::RESULT, true, &["or", "unwrap_or"], "else"),
         ];
 
-        // early check if the name is one we care about
-        if know_types.iter().all(|k| !k.2.contains(&name)) {
-            return;
+        if_chain! {
+            if know_types.iter().any(|k| k.2.contains(&name));
+
+            let mut finder = FunCallFinder { cx: &cx, found: false };
+            if { finder.visit_expr(&arg); finder.found };
+
+            let self_ty = cx.tables.expr_ty(self_expr);
+
+            if let Some(&(_, fn_has_arguments, poss, suffix)) =
+                   know_types.iter().find(|&&i| match_type(cx, self_ty, i.0));
+
+            if poss.contains(&name);
+
+            then {
+                let sugg: Cow<'_, _> = match (fn_has_arguments, !or_has_args) {
+                    (true, _) => format!("|_| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
+                    (false, false) => format!("|| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
+                    (false, true) => snippet_with_macro_callsite(cx, fun_span, ".."),
+                };
+                let span_replace_word = method_span.with_hi(span.hi());
+                span_lint_and_sugg(
+                    cx,
+                    OR_FUN_CALL,
+                    span_replace_word,
+                    &format!("use of `{}` followed by a function call", name),
+                    "try this",
+                    format!("{}_{}({})", name, suffix, sugg),
+                    Applicability::HasPlaceholders,
+                );
+            }
         }
-
-        let mut finder = FunCallFinder { cx: &cx, found: false };
-        finder.visit_expr(&arg);
-        if !finder.found {
-            return;
-        }
-
-        let self_ty = cx.tables.expr_ty(self_expr);
-
-        let (fn_has_arguments, poss, suffix) = if let Some(&(_, fn_has_arguments, poss, suffix)) =
-            know_types.iter().find(|&&i| match_type(cx, self_ty, i.0))
-        {
-            (fn_has_arguments, poss, suffix)
-        } else {
-            return;
-        };
-
-        if !poss.contains(&name) {
-            return;
-        }
-
-        let sugg: Cow<'_, _> = match (fn_has_arguments, !or_has_args) {
-            (true, _) => format!("|_| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
-            (false, false) => format!("|| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
-            (false, true) => snippet_with_macro_callsite(cx, fun_span, ".."),
-        };
-        let span_replace_word = method_span.with_hi(span.hi());
-        span_lint_and_sugg(
-            cx,
-            OR_FUN_CALL,
-            span_replace_word,
-            &format!("use of `{}` followed by a function call", name),
-            "try this",
-            format!("{}_{}({})", name, suffix, sugg),
-            Applicability::HasPlaceholders,
-        );
     }
 
     if args.len() == 2 {
@@ -1413,18 +1396,20 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         a: &hir::Expr,
         applicability: &mut Applicability,
     ) -> Vec<String> {
-        if let hir::ExprKind::AddrOf(_, ref format_arg) = a.node {
-            if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.node {
-                if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.node {
-                    return format_arg_expr_tup
-                        .iter()
-                        .map(|a| snippet_with_applicability(cx, a.span, "..", applicability).into_owned())
-                        .collect();
-                }
-            }
-        };
+        if_chain! {
+            if let hir::ExprKind::AddrOf(_, ref format_arg) = a.node;
+            if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.node;
+            if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.node;
 
-        unreachable!()
+            then {
+                format_arg_expr_tup
+                    .iter()
+                    .map(|a| snippet_with_applicability(cx, a.span, "..", applicability).into_owned())
+                    .collect()
+            } else {
+                unreachable!()
+            }
+        }
     }
 
     fn is_call(node: &hir::ExprKind) -> bool {
@@ -1688,20 +1673,22 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, source: &hir:
 }
 
 fn lint_iter_cloned_collect<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_args: &'tcx [hir::Expr]) {
-    if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC) {
-        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])) {
-            if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite()) {
-                span_lint_and_sugg(
-                    cx,
-                    ITER_CLONED_COLLECT,
-                    to_replace,
-                    "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
-                     more readable",
-                    "try",
-                    ".to_vec()".to_string(),
-                    Applicability::MachineApplicable,
-                );
-            }
+    if_chain! {
+        if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC);
+        if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0]));
+        if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
+
+        then {
+            span_lint_and_sugg(
+                cx,
+                ITER_CLONED_COLLECT,
+                to_replace,
+                "called `iter().cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
+                 more readable",
+                "try",
+                ".to_vec()".to_string(),
+                Applicability::MachineApplicable,
+            );
         }
     }
 }
@@ -1961,18 +1948,20 @@ fn lint_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, unwrap_args: &[hir::E
 
 /// lint use of `ok().expect()` for `Result`s
 fn lint_ok_expect(cx: &LateContext<'_, '_>, expr: &hir::Expr, ok_args: &[hir::Expr]) {
-    // lint if the caller of `ok()` is a `Result`
-    if match_type(cx, cx.tables.expr_ty(&ok_args[0]), &paths::RESULT) {
+    if_chain! {
+        // lint if the caller of `ok()` is a `Result`
+        if match_type(cx, cx.tables.expr_ty(&ok_args[0]), &paths::RESULT);
         let result_type = cx.tables.expr_ty(&ok_args[0]);
-        if let Some(error_type) = get_error_type(cx, result_type) {
-            if has_debug_impl(error_type, cx) {
-                span_lint(
-                    cx,
-                    OK_EXPECT,
-                    expr.span,
-                    "called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`",
-                );
-            }
+        if let Some(error_type) = get_error_type(cx, result_type);
+        if has_debug_impl(error_type, cx);
+
+        then {
+            span_lint(
+                cx,
+                OK_EXPECT,
+                expr.span,
+                "called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`",
+            );
         }
     }
 }
@@ -2524,11 +2513,11 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
                 applicability,
             );
 
-            return true;
+            true
+        } else {
+            false
         }
     }
-
-    false
 }
 
 /// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
@@ -2616,7 +2605,7 @@ fn ty_has_iter_method(
     cx: &LateContext<'_, '_>,
     self_ref_ty: Ty<'_>,
 ) -> Option<(&'static Lint, &'static str, &'static str)> {
-    if let Some(ty_name) = has_iter_method(cx, self_ref_ty) {
+    has_iter_method(cx, self_ref_ty).map(|ty_name| {
         let lint = if ty_name == "array" || ty_name == "PathBuf" {
             INTO_ITER_ON_ARRAY
         } else {
@@ -2630,10 +2619,8 @@ fn ty_has_iter_method(
             hir::MutImmutable => "iter",
             hir::MutMutable => "iter_mut",
         };
-        Some((lint, ty_name, method_name))
-    } else {
-        None
-    }
+        (lint, ty_name, method_name)
+    })
 }
 
 fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_>, method_span: Span) {
@@ -2668,14 +2655,9 @@ fn lint_suspicious_map(cx: &LateContext<'_, '_>, expr: &hir::Expr) {
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
-    if let ty::Adt(_, substs) = ty.sty {
-        if match_type(cx, ty, &paths::RESULT) {
-            substs.types().nth(1)
-        } else {
-            None
-        }
-    } else {
-        None
+    match ty.sty {
+        ty::Adt(_, substs) if match_type(cx, ty, &paths::RESULT) => substs.types().nth(1),
+        _ => None,
     }
 }
 
