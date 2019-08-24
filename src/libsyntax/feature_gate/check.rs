@@ -732,13 +732,9 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         }
     }
 
-    for &(name, .., f_edition, set) in ACTIVE_FEATURES {
-        if let Some(f_edition) = f_edition {
-            if f_edition <= crate_edition {
-                set(&mut features, DUMMY_SP);
-                edition_enabled_features.insert(name, crate_edition);
-            }
-        }
+    for feature in active_features_up_to(crate_edition) {
+        feature.set(&mut features, DUMMY_SP);
+        edition_enabled_features.insert(feature.name, crate_edition);
     }
 
     // Process the edition umbrella feature-gates first, to ensure
@@ -760,20 +756,17 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 
             let name = mi.name_or_empty();
 
-            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
-                if *edition <= crate_edition {
+            let edition = ALL_EDITIONS.iter().find(|e| name == e.feature_name()).copied();
+            if let Some(edition) = edition {
+                if edition <= crate_edition {
                     continue;
                 }
 
-                for &(name, .., f_edition, set) in ACTIVE_FEATURES {
-                    if let Some(f_edition) = f_edition {
-                        if f_edition <= *edition {
-                            // FIXME(Manishearth) there is currently no way to set
-                            // lib features by edition
-                            set(&mut features, DUMMY_SP);
-                            edition_enabled_features.insert(name, *edition);
-                        }
-                    }
+                for feature in active_features_up_to(edition) {
+                    // FIXME(Manishearth) there is currently no way to set
+                    // lib features by edition
+                    feature.set(&mut features, DUMMY_SP);
+                    edition_enabled_features.insert(feature.name, edition);
                 }
             }
         }
@@ -865,6 +858,17 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     }
 
     features
+}
+
+fn active_features_up_to(edition: Edition) -> impl Iterator<Item=&'static Feature> {
+    ACTIVE_FEATURES.iter()
+    .filter(move |feature| {
+        if let Some(feature_edition) = feature.edition {
+            feature_edition <= edition
+        } else {
+            false
+        }
+    })
 }
 
 pub fn check_crate(krate: &ast::Crate,
