@@ -981,7 +981,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected = self.shallow_resolve(expected);
-        if self.check_dereferencable(pat.span, expected, &inner) {
+        let (rptr_ty, inner_ty) = if self.check_dereferencable(pat.span, expected, &inner) {
             // `demand::subtype` would be good enough, but using `eqtype` turns
             // out to be equally general. See (note_1) for details.
 
@@ -989,10 +989,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // to avoid creating needless variables. This also helps with
             // the bad  interactions of the given hack detailed in (note_1).
             debug!("check_pat_ref: expected={:?}", expected);
-            let (rptr_ty, inner_ty) = match expected.sty {
-                ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
-                    (expected, r_ty)
-                }
+            match expected.sty {
+                ty::Ref(_, r_ty, r_mutbl) if r_mutbl == mutbl => (expected, r_ty),
                 _ => {
                     let inner_ty = self.next_ty_var(
                         TypeVariableOrigin {
@@ -1012,14 +1010,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     (rptr_ty, inner_ty)
                 }
-            };
-
-            self.check_pat(&inner, inner_ty, def_bm, discrim_span);
-            rptr_ty
+            }
         } else {
-            self.check_pat(&inner, tcx.types.err, def_bm, discrim_span);
-            tcx.types.err
-        }
+            (tcx.types.err, tcx.types.err)
+        };
+        self.check_pat(&inner, inner_ty, def_bm, discrim_span);
+        rptr_ty
     }
 
     /// Create a reference type with a fresh region variable.
