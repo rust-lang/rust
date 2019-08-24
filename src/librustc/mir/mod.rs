@@ -1555,7 +1555,7 @@ pub struct Statement<'tcx> {
 #[cfg(target_arch = "x86_64")]
 static_assert_size!(Statement<'_>, 56);
 
-impl<'tcx> Statement<'tcx> {
+impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
     pub fn make_nop(&mut self) {
@@ -1677,7 +1677,7 @@ pub struct InlineAsm<'tcx> {
     pub inputs: Box<[(Span, Operand<'tcx>)]>,
 }
 
-impl<'tcx> Debug for Statement<'tcx> {
+impl Debug for Statement<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
         match self.kind {
@@ -2047,7 +2047,7 @@ impl<'p, 'tcx> Iterator for ProjectionsIter<'p, 'tcx> {
 
 impl<'p, 'tcx> FusedIterator for ProjectionsIter<'p, 'tcx> {}
 
-impl<'tcx> Debug for Place<'tcx> {
+impl Debug for Place<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         self.iterate(|_place_base, place_projections| {
             // FIXME: remove this collect once we have migrated to slices
