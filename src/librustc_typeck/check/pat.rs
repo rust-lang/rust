@@ -426,9 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If the binding is like `ref x | ref const x | ref mut x`
                 // then `x` is assigned a value of type `&M T` where M is the
                 // mutability and T is the expected type.
-                let region_var = self.next_region_var(infer::PatternRegion(pat.span));
-                let mt = ty::TypeAndMut { ty: expected, mutbl };
-                let region_ty = self.tcx.mk_ref(region_var, mt);
+                let region_ty = self.new_ref_ty(pat.span, mutbl, expected);
 
                 // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)`
                 // is required. However, we use equality, which is stronger.
@@ -971,9 +969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             span: inner.span,
                         }
                     );
-                    let mt = ty::TypeAndMut { ty: inner_ty, mutbl };
-                    let region = self.next_region_var(infer::PatternRegion(pat.span));
-                    let rptr_ty = tcx.mk_ref(region, mt);
+                    let rptr_ty = self.new_ref_ty(pat.span, mutbl, inner_ty);
                     debug!("check_pat_ref: demanding {:?} = {:?}", expected, rptr_ty);
                     let err = self.demand_eqtype_diag(pat.span, expected, rptr_ty);
 
@@ -993,6 +989,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_pat(&inner, tcx.types.err, def_bm, discrim_span);
             tcx.types.err
         }
+    }
+
+    /// Create a reference type with a fresh region variable.
+    fn new_ref_ty(&self, span: Span, mutbl: hir::Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
+        let region = self.next_region_var(infer::PatternRegion(span));
+        let mt = ty::TypeAndMut { ty, mutbl };
+        self.tcx.mk_ref(region, mt)
     }
 
     fn check_pat_slice(
