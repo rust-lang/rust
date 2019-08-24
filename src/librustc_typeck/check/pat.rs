@@ -36,7 +36,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         discrim_span: Option<Span>,
     ) {
         let def_bm = ty::BindingMode::BindByValue(hir::Mutability::MutImmutable);
-        self.check_pat_walk(pat, expected, def_bm, discrim_span);
+        self.check_pat(pat, expected, def_bm, discrim_span);
     }
 
     /// `discrim_span` argument having a `Span` indicates that this pattern is part of a match
@@ -55,14 +55,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///   = note: expected type `usize`
     ///              found type `std::result::Result<_, _>`
     /// ```
-    fn check_pat_walk(
+    fn check_pat(
         &self,
         pat: &'tcx hir::Pat,
         expected: Ty<'tcx>,
         def_bm: ty::BindingMode,
         discrim_span: Option<Span>,
     ) {
-        debug!("check_pat_walk(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
+        debug!("check_pat(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
 
         let path_resolution = match &pat.node {
             PatKind::Path(qpath) => Some(self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span)),
@@ -104,7 +104,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Or(pats) => {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 for pat in pats {
-                    self.check_pat_walk(pat, expected, def_bm, discrim_span);
+                    self.check_pat(pat, expected, def_bm, discrim_span);
                 }
                 expected_ty
             }
@@ -456,7 +456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         if let Some(p) = sub {
-            self.check_pat_walk(&p, expected, def_bm, discrim_span);
+            self.check_pat(&p, expected, def_bm, discrim_span);
         }
 
         local_ty
@@ -544,7 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             variant_ty
         } else {
             for field in fields {
-                self.check_pat_walk(&field.pat, self.tcx.types.err, def_bm, discrim_span);
+                self.check_pat(&field.pat, self.tcx.types.err, def_bm, discrim_span);
             }
             return self.tcx.types.err;
         };
@@ -607,7 +607,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let on_error = || {
             for pat in subpats {
-                self.check_pat_walk(&pat, tcx.types.err, def_bm, match_arm_pat_span);
+                self.check_pat(&pat, tcx.types.err, def_bm, match_arm_pat_span);
             }
         };
         let report_unexpected_res = |res: Res| {
@@ -677,7 +677,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
-                self.check_pat_walk(&subpat, field_ty, def_bm, match_arm_pat_span);
+                self.check_pat(&subpat, field_ty, def_bm, match_arm_pat_span);
 
                 self.tcx.check_stability(variant.fields[i].did, Some(pat.hir_id), subpat.span);
             }
@@ -734,17 +734,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // further errors being emitted when using the bindings. #50333
             let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
             for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat_walk(elem, &tcx.types.err, def_bm, discrim_span);
+                self.check_pat(elem, &tcx.types.err, def_bm, discrim_span);
             }
             tcx.mk_tup(element_tys_iter)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat_walk(
-                    elem,
-                    &element_tys[i].expect_ty(),
-                    def_bm,
-                    discrim_span,
-                );
+                self.check_pat(elem, &element_tys[i].expect_ty(), def_bm, discrim_span);
             }
             pat_ty
         }
@@ -813,7 +808,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            self.check_pat_walk(&field.pat, field_ty, def_bm, None);
+            self.check_pat(&field.pat, field_ty, def_bm, None);
         }
         let mut unmentioned_fields = variant.fields
                 .iter()
@@ -941,13 +936,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if self.check_dereferencable(span, expected, &inner) {
             // Here, `demand::subtype` is good enough, but I don't
-            // think any errors can be introduced by using
-            // `demand::eqtype`.
+            // think any errors can be introduced by using `demand::eqtype`.
             self.demand_eqtype_pat(span, expected, uniq_ty, discrim_span);
-            self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
+            self.check_pat(&inner, inner_ty, def_bm, discrim_span);
             uniq_ty
         } else {
-            self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
+            self.check_pat(&inner, tcx.types.err, def_bm, discrim_span);
             tcx.types.err
         }
     }
@@ -998,10 +992,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             };
 
-            self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
+            self.check_pat(&inner, inner_ty, def_bm, discrim_span);
             rptr_ty
         } else {
-            self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
+            self.check_pat(&inner, tcx.types.err, def_bm, discrim_span);
             tcx.types.err
         }
     }
@@ -1079,13 +1073,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         for elt in before {
-            self.check_pat_walk(&elt, inner_ty, def_bm, discrim_span);
+            self.check_pat(&elt, inner_ty, def_bm, discrim_span);
         }
         if let Some(slice) = slice {
-            self.check_pat_walk(&slice, slice_ty, def_bm, discrim_span);
+            self.check_pat(&slice, slice_ty, def_bm, discrim_span);
         }
         for elt in after {
-            self.check_pat_walk(&elt, inner_ty, def_bm, discrim_span);
+            self.check_pat(&elt, inner_ty, def_bm, discrim_span);
         }
         expected_ty
     }
