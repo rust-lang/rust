@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
         let gated_leading_vert = self.eat_or_separator() && gate_or == GateOr::Yes;
 
         // Parse the possibly-or-pattern.
-        let pat = self.parse_pat_with_or(None, gate_or, TopLevel::Yes)?;
+        let pat = self.parse_pat_with_or(gate_or, TopLevel::Yes)?;
 
         // If we parsed a leading `|` which should be gated,
         // and no other gated or-pattern has been parsed thus far,
@@ -67,14 +67,9 @@ impl<'a> Parser<'a> {
 
     /// Parses a pattern, that may be a or-pattern (e.g. `Foo | Bar` in `Some(Foo | Bar)`).
     /// Corresponds to `pat<allow_top_alt>` in RFC 2535.
-    fn parse_pat_with_or(
-        &mut self,
-        expected: Expected,
-        gate_or: GateOr,
-        top_level: TopLevel,
-    ) -> PResult<'a, P<Pat>> {
+    fn parse_pat_with_or(&mut self, gate_or: GateOr, top_level: TopLevel) -> PResult<'a, P<Pat>> {
         // Parse the first pattern.
-        let first_pat = self.parse_pat(expected)?;
+        let first_pat = self.parse_pat(None)?;
         self.maybe_recover_unexpected_comma(first_pat.span, top_level)?;
 
         // If the next token is not a `|`,
@@ -86,7 +81,7 @@ impl<'a> Parser<'a> {
         let lo = first_pat.span;
         let mut pats = vec![first_pat];
         while self.eat_or_separator() {
-            let pat = self.parse_pat(expected)?;
+            let pat = self.parse_pat(None)?;
             self.maybe_recover_unexpected_comma(pat.span, top_level)?;
             pats.push(pat);
         }
@@ -177,9 +172,9 @@ impl<'a> Parser<'a> {
 
     /// Recursive possibly-or-pattern parser with recovery for an erroneous leading `|`.
     /// See `parse_pat_with_or` for details on parsing or-patterns.
-    fn parse_pat_with_or_inner(&mut self, expected: Expected) -> PResult<'a, P<Pat>> {
+    fn parse_pat_with_or_inner(&mut self) -> PResult<'a, P<Pat>> {
         self.recover_inner_leading_vert();
-        self.parse_pat_with_or(expected, GateOr::Yes, TopLevel::No)
+        self.parse_pat_with_or(GateOr::Yes, TopLevel::No)
     }
 
     /// Recover if `|` or `||` is here.
@@ -215,7 +210,7 @@ impl<'a> Parser<'a> {
                 // Parse `[pat, pat,...]` as a slice pattern.
                 let (pats, _) = self.parse_delim_comma_seq(
                     token::Bracket,
-                    |p| p.parse_pat_with_or_inner(None),
+                    |p| p.parse_pat_with_or_inner(),
                 )?;
                 PatKind::Slice(pats)
             }
@@ -344,9 +339,7 @@ impl<'a> Parser<'a> {
 
     /// Parse a tuple or parenthesis pattern.
     fn parse_pat_tuple_or_parens(&mut self) -> PResult<'a, PatKind> {
-        let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| {
-            p.parse_pat_with_or_inner(None)
-        })?;
+        let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner())?;
 
         // Here, `(pat,)` is a tuple pattern.
         // For backward compatibility, `(..)` is a tuple pattern as well.
@@ -589,7 +582,7 @@ impl<'a> Parser<'a> {
             err.span_label(self.token.span, msg);
             return Err(err);
         }
-        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner(None))?;
+        let (fields, _) = self.parse_paren_comma_seq(|p| p.parse_pat_with_or_inner())?;
         Ok(PatKind::TupleStruct(path, fields))
     }
 
@@ -733,7 +726,7 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form "fieldname: pat"
             let fieldname = self.parse_field_name()?;
             self.bump();
-            let pat = self.parse_pat_with_or_inner(None)?;
+            let pat = self.parse_pat_with_or_inner()?;
             hi = pat.span;
             (pat, fieldname, false)
         } else {
