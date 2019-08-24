@@ -60,7 +60,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
     };
 
     // We want to make sure we have the ctxt set so that we can use unstable methods
-    let span = span.with_ctxt(cx.backtrace());
+    let span = cx.with_def_site_ctxt(span);
     let name = cx.expr_lit(span, ast::LitKind::Str(ident.name, ast::StrStyle::Cooked));
     let builder = Ident::from_str_and_span("debug_trait_builder", span);
     let builder_expr = cx.expr_ident(span, builder.clone());

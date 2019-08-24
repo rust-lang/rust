@@ -565,7 +565,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         return fragment_kind.dummy(span);
                     }
                     let meta = ast::MetaItem { node: ast::MetaItemKind::Word, span, path };
-                    let span = span.with_ctxt(self.cx.backtrace());
                     let items = expander.expand(self.cx, span, &meta, item);
                     fragment_kind.expect_from_annotatables(items)
                 }
@@ -1387,19 +1386,5 @@ impl<'feat> ExpansionConfig<'feat> {
     }
     fn custom_inner_attributes(&self) -> bool {
         self.features.map_or(false, |features| features.custom_inner_attributes)
-    }
-}
-
-// A Marker adds the given mark to the syntax context.
-#[derive(Debug)]
-pub struct Marker(pub ExpnId);
-
-impl MutVisitor for Marker {
-    fn visit_span(&mut self, span: &mut Span) {
-        *span = span.apply_mark(self.0)
-    }
-
-    fn visit_mac(&mut self, mac: &mut ast::Mac) {
-        noop_visit_mac(mac, self)
     }
 }

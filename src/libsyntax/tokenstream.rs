@@ -19,7 +19,7 @@ use crate::parse::Directory;
 use crate::parse::token::{self, DelimToken, Token, TokenKind};
 use crate::print::pprust;
 
-use syntax_pos::{BytePos, ExpnId, Span, DUMMY_SP};
+use syntax_pos::{BytePos, Span, DUMMY_SP};
 #[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::Lrc;
@@ -546,12 +546,5 @@ impl DelimSpan {
 
     pub fn entire(self) -> Span {
         self.open.with_hi(self.close.hi())
-    }
-
-    pub fn apply_mark(self, expn_id: ExpnId) -> Self {
-        DelimSpan {
-            open: self.open.apply_mark(expn_id),
-            close: self.close.apply_mark(expn_id),
-        }
     }
 }
