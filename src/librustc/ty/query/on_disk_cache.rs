@@ -20,7 +20,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use std::mem;
-use syntax::ast::NodeId;
+use syntax::ast::{Ident, NodeId};
 use syntax::source_map::{SourceMap, StableSourceFileId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
 use syntax_pos::hygiene::{ExpnId, SyntaxContext};
@@ -591,7 +591,8 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
         // FIXME(mw): This method does not restore `ExpnData::parent` or
         // `SyntaxContextData::prev_ctxt` or `SyntaxContextData::opaque`. These things
         // don't seem to be used after HIR lowering, so everything should be fine
-        // as long as incremental compilation does not kick in before that.
+        // until we want incremental compilation to serialize Spans that we need
+        // full hygiene information for.
         let location = || Span::with_root_ctxt(lo, hi);
         let recover_from_expn_data = |this: &Self, expn_data, transparency, pos| {
             let span = location().fresh_expansion_with_transparency(expn_data, transparency);
@@ -623,6 +624,13 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
                 unreachable!()
             }
         })
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<Ident> for CacheDecoder<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<Ident, Self::Error> {
+        // FIXME: Handle hygiene in incremental
+        bug!("Trying to decode Ident for incremental");
     }
 }
 
@@ -830,6 +838,19 @@ where
                 (expn_data, transparency).encode(self)
             }
         }
+    }
+}
+
+impl<'a, 'tcx, E> SpecializedEncoder<Ident> for CacheEncoder<'a, 'tcx, E>
+where
+    E: 'a + ty_codec::TyEncoder,
+{
+    fn specialized_encode(&mut self, _: &Ident) -> Result<(), Self::Error> {
+        // We don't currently encode enough information to ensure hygiene works
+        // with incremental, so panic rather than risk incremental bugs.
+
+        // FIXME: Handle hygiene in incremental
+        bug!("Trying to encode Ident for incremental")
     }
 }
 
