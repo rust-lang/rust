@@ -105,48 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expected_ty
             }
             PatKind::Tuple(ref elements, ddpos) => {
-                let mut expected_len = elements.len();
-                if ddpos.is_some() {
-                    // Require known type only when `..` is present.
-                    if let ty::Tuple(ref tys) =
-                            self.structurally_resolved_type(pat.span, expected).sty {
-                        expected_len = tys.len();
-                    }
-                }
-                let max_len = cmp::max(expected_len, elements.len());
-
-                let element_tys_iter = (0..max_len).map(|_| {
-                    Kind::from(self.next_ty_var(
-                        // FIXME: `MiscVariable` for now -- obtaining the span and name information
-                        // from all tuple elements isn't trivial.
-                        TypeVariableOrigin {
-                            kind: TypeVariableOriginKind::TypeInference,
-                            span: pat.span,
-                        },
-                    ))
-                });
-                let element_tys = tcx.mk_substs(element_tys_iter);
-                let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
-                if let Some(mut err) = self.demand_eqtype_diag(pat.span, expected, pat_ty) {
-                    err.emit();
-                    // Walk subpatterns with an expected type of `err` in this case to silence
-                    // further errors being emitted when using the bindings. #50333
-                    let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
-                    for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                        self.check_pat_walk(elem, &tcx.types.err, def_bm, discrim_span);
-                    }
-                    tcx.mk_tup(element_tys_iter)
-                } else {
-                    for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                        self.check_pat_walk(
-                            elem,
-                            &element_tys[i].expect_ty(),
-                            def_bm,
-                            discrim_span,
-                        );
-                    }
-                    pat_ty
-                }
+                self.check_pat_tuple(pat.span, elements, ddpos, expected, def_bm, discrim_span)
             }
             PatKind::Box(ref inner) => {
                 let inner_ty = self.next_ty_var(TypeVariableOrigin {
@@ -807,7 +766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pat.hir_id);
         if !pat_ty.is_fn() {
             report_unexpected_res(res);
-            return self.tcx.types.err;
+            return tcx.types.err;
         }
 
         let variant = match res {
@@ -833,8 +792,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_pat(pat.span, expected, pat_ty, match_arm_pat_span);
 
         // Type-check subpatterns.
-        if subpats.len() == variant.fields.len() ||
-                subpats.len() < variant.fields.len() && ddpos.is_some() {
+        if subpats.len() == variant.fields.len()
+            || subpats.len() < variant.fields.len() && ddpos.is_some()
+        {
             let substs = match pat_ty.sty {
                 ty::Adt(_, substs) => substs,
                 _ => bug!("unexpected pattern type {:?}", pat_ty),
@@ -859,6 +819,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return tcx.types.err;
         }
         pat_ty
+    }
+
+    fn check_pat_tuple(
+        &self,
+        span: Span,
+        elements: &'tcx [P<hir::Pat>],
+        ddpos: Option<usize>,
+        expected: Ty<'tcx>,
+        def_bm: ty::BindingMode,
+        discrim_span: Option<Span>,
+    ) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        let mut expected_len = elements.len();
+        if ddpos.is_some() {
+            // Require known type only when `..` is present.
+            if let ty::Tuple(ref tys) = self.structurally_resolved_type(span, expected).sty {
+                expected_len = tys.len();
+            }
+        }
+        let max_len = cmp::max(expected_len, elements.len());
+
+        let element_tys_iter = (0..max_len).map(|_| {
+            Kind::from(self.next_ty_var(
+                // FIXME: `MiscVariable` for now -- obtaining the span and name information
+                // from all tuple elements isn't trivial.
+                TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                },
+            ))
+        });
+        let element_tys = tcx.mk_substs(element_tys_iter);
+        let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
+        if let Some(mut err) = self.demand_eqtype_diag(span, expected, pat_ty) {
+            err.emit();
+            // Walk subpatterns with an expected type of `err` in this case to silence
+            // further errors being emitted when using the bindings. #50333
+            let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
+            for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
+                self.check_pat_walk(elem, &tcx.types.err, def_bm, discrim_span);
+            }
+            tcx.mk_tup(element_tys_iter)
+        } else {
+            for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
+                self.check_pat_walk(
+                    elem,
+                    &element_tys[i].expect_ty(),
+                    def_bm,
+                    discrim_span,
+                );
+            }
+            pat_ty
+        }
     }
 
     fn check_struct_pat_fields(
