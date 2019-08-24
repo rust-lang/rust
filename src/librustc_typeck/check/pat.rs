@@ -796,66 +796,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             self.check_pat(&field.pat, field_ty, def_bm, None);
         }
+
         let mut unmentioned_fields = variant.fields
                 .iter()
                 .map(|field| field.ident.modern())
                 .filter(|ident| !used_fields.contains_key(&ident))
                 .collect::<Vec<_>>();
-        if inexistent_fields.len() > 0 && !variant.recovered {
-            let (field_names, t, plural) = if inexistent_fields.len() == 1 {
-                (format!("a field named `{}`", inexistent_fields[0]), "this", "")
-            } else {
-                (format!("fields named {}",
-                         inexistent_fields.iter()
-                            .map(|ident| format!("`{}`", ident))
-                            .collect::<Vec<String>>()
-                            .join(", ")), "these", "s")
-            };
-            let spans = inexistent_fields.iter().map(|ident| ident.span).collect::<Vec<_>>();
-            let mut err = struct_span_err!(tcx.sess,
-                                           spans,
-                                           E0026,
-                                           "{} `{}` does not have {}",
-                                           kind_name,
-                                           tcx.def_path_str(variant.def_id),
-                                           field_names);
-            if let Some(ident) = inexistent_fields.last() {
-                err.span_label(ident.span,
-                               format!("{} `{}` does not have {} field{}",
-                                       kind_name,
-                                       tcx.def_path_str(variant.def_id),
-                                       t,
-                                       plural));
-                if plural == "" {
-                    let input = unmentioned_fields.iter().map(|field| &field.name);
-                    let suggested_name =
-                        find_best_match_for_name(input, &ident.as_str(), None);
-                    if let Some(suggested_name) = suggested_name {
-                        err.span_suggestion(
-                            ident.span,
-                            "a field with a similar name exists",
-                            suggested_name.to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
 
-                        // we don't want to throw `E0027` in case we have thrown `E0026` for them
-                        unmentioned_fields.retain(|&x| x.as_str() != suggested_name.as_str());
-                    }
-                }
-            }
-            if tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note(
-                    "This error indicates that a struct pattern attempted to \
-                     extract a non-existent field from a struct. Struct fields \
-                     are identified by the name used before the colon : so struct \
-                     patterns should resemble the declaration of the struct type \
-                     being matched.\n\n\
-                     If you are using shorthand field patterns but want to refer \
-                     to the struct field by a different name, you should rename \
-                     it explicitly."
-                );
-            }
-            err.emit();
+        if inexistent_fields.len() > 0 && !variant.recovered {
+            self.error_inexistent_fields(
+                kind_name,
+                &inexistent_fields,
+                &mut unmentioned_fields,
+                variant
+            );
         }
 
         // Require `..` if struct has non_exhaustive attribute.
@@ -874,7 +828,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 tcx.sess.span_err(span, "`..` cannot be used in union patterns");
             }
         } else if !etc && unmentioned_fields.len() > 0 {
-            self.error_unmentioned_fields(span, unmentioned_fields, variant);
+            self.error_unmentioned_fields(span, &unmentioned_fields, variant);
         }
         no_field_errors
     }
@@ -890,10 +844,74 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .emit();
     }
 
+    fn error_inexistent_fields(
+        &self,
+        kind_name: &str,
+        inexistent_fields: &[ast::Ident],
+        unmentioned_fields: &mut Vec<ast::Ident>,
+        variant: &ty::VariantDef,
+    ) {
+        let tcx = self.tcx;
+        let (field_names, t, plural) = if inexistent_fields.len() == 1 {
+            (format!("a field named `{}`", inexistent_fields[0]), "this", "")
+        } else {
+            (format!("fields named {}",
+                        inexistent_fields.iter()
+                        .map(|ident| format!("`{}`", ident))
+                        .collect::<Vec<String>>()
+                        .join(", ")), "these", "s")
+        };
+        let spans = inexistent_fields.iter().map(|ident| ident.span).collect::<Vec<_>>();
+        let mut err = struct_span_err!(tcx.sess,
+                                        spans,
+                                        E0026,
+                                        "{} `{}` does not have {}",
+                                        kind_name,
+                                        tcx.def_path_str(variant.def_id),
+                                        field_names);
+        if let Some(ident) = inexistent_fields.last() {
+            err.span_label(ident.span,
+                            format!("{} `{}` does not have {} field{}",
+                                    kind_name,
+                                    tcx.def_path_str(variant.def_id),
+                                    t,
+                                    plural));
+            if plural == "" {
+                let input = unmentioned_fields.iter().map(|field| &field.name);
+                let suggested_name =
+                    find_best_match_for_name(input, &ident.as_str(), None);
+                if let Some(suggested_name) = suggested_name {
+                    err.span_suggestion(
+                        ident.span,
+                        "a field with a similar name exists",
+                        suggested_name.to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+
+                    // we don't want to throw `E0027` in case we have thrown `E0026` for them
+                    unmentioned_fields.retain(|&x| x.as_str() != suggested_name.as_str());
+                }
+            }
+        }
+        if tcx.sess.teach(&err.get_code().unwrap()) {
+            err.note(
+                "This error indicates that a struct pattern attempted to \
+                    extract a non-existent field from a struct. Struct fields \
+                    are identified by the name used before the colon : so struct \
+                    patterns should resemble the declaration of the struct type \
+                    being matched.\n\n\
+                    If you are using shorthand field patterns but want to refer \
+                    to the struct field by a different name, you should rename \
+                    it explicitly."
+            );
+        }
+        err.emit();
+    }
+
     fn error_unmentioned_fields(
         &self,
         span: Span,
-        unmentioned_fields: Vec<ast::Ident>,
+        unmentioned_fields: &[ast::Ident],
         variant: &ty::VariantDef,
     ) {
         let field_names = if unmentioned_fields.len() == 1 {
