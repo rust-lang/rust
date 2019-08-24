@@ -415,20 +415,21 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             "{:?}",
             move_place.ty(self.body, self.infcx.tcx).ty,
         );
-        let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
-        let is_option = move_ty.starts_with("std::option::Option");
-        let is_result = move_ty.starts_with("std::result::Result");
-        if  is_option || is_result {
-            err.span_suggestion(
-                span,
-                &format!("consider borrowing the `{}`'s content", if is_option {
-                    "Option"
-                } else {
-                    "Result"
-                }),
-                format!("{}.as_ref()", snippet),
-                Applicability::MaybeIncorrect,
-            );
+        if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+            let is_option = move_ty.starts_with("std::option::Option");
+            let is_result = move_ty.starts_with("std::result::Result");
+            if is_option || is_result {
+                err.span_suggestion(
+                    span,
+                    &format!("consider borrowing the `{}`'s content", if is_option {
+                        "Option"
+                    } else {
+                        "Result"
+                    }),
+                    format!("{}.as_ref()", snippet),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         err
     }
@@ -439,19 +440,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
     ) {
-        let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
         match error {
             GroupedMoveError::MovesFromPlace {
                 mut binds_to,
                 move_from,
                 ..
             } => {
-                err.span_suggestion(
-                    span,
-                    "consider borrowing here",
-                    format!("&{}", snippet),
-                    Applicability::Unspecified,
-                );
+                if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+                    err.span_suggestion(
+                        span,
+                        "consider borrowing here",
+                        format!("&{}", snippet),
+                        Applicability::Unspecified,
+                    );
+                }
 
                 if binds_to.is_empty() {
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
@@ -517,27 +519,27 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ..
                 }))
             ) = bind_to.is_user_variable {
-                let pat_snippet = self.infcx.tcx.sess.source_map()
-                    .span_to_snippet(pat_span)
-                    .unwrap();
-                if pat_snippet.starts_with('&') {
-                    let pat_snippet = pat_snippet[1..].trim_start();
-                    let suggestion;
-                    let to_remove;
-                    if pat_snippet.starts_with("mut")
-                        && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
-                    {
-                        suggestion = pat_snippet["mut".len()..].trim_start();
-                        to_remove = "&mut";
-                    } else {
-                        suggestion = pat_snippet;
-                        to_remove = "&";
+                if let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
+                {
+                    if pat_snippet.starts_with('&') {
+                        let pat_snippet = pat_snippet[1..].trim_start();
+                        let suggestion;
+                        let to_remove;
+                        if pat_snippet.starts_with("mut")
+                            && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
+                        {
+                            suggestion = pat_snippet["mut".len()..].trim_start();
+                            to_remove = "&mut";
+                        } else {
+                            suggestion = pat_snippet;
+                            to_remove = "&";
+                        }
+                        suggestions.push((
+                            pat_span,
+                            to_remove,
+                            suggestion.to_owned(),
+                        ));
                     }
-                    suggestions.push((
-                        pat_span,
-                        to_remove,
-                        suggestion.to_owned(),
-                    ));
                 }
             }
         }
