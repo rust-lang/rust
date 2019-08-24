@@ -184,15 +184,6 @@ pub trait FnMut<Args> : FnOnce<Args> {
 /// [nomicon]: ../../nomicon/hrtb.html
 ///
 /// # Examples
-///
-/// ## Calling a by-value closure
-///
-/// ```
-/// let x = 5;
-/// let square_x = move || x * x;
-/// assert_eq!(square_x(), 25);
-/// ```
-///
 /// ## Using a `FnOnce` parameter
 ///
 /// ```
