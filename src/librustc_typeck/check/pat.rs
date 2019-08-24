@@ -774,14 +774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ident = tcx.adjust_ident(field.ident, variant.def_id);
             let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
-                    struct_span_err!(tcx.sess, span, E0025,
-                                     "field `{}` bound multiple times \
-                                      in the pattern",
-                                     field.ident)
-                        .span_label(span,
-                                    format!("multiple uses of `{}` in pattern", field.ident))
-                        .span_label(*occupied.get(), format!("first use of `{}`", field.ident))
-                        .emit();
+                    self.error_field_already_bound(span, field.ident, *occupied.get());
                     no_field_errors = false;
                     tcx.types.err
                 }
@@ -910,6 +903,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         no_field_errors
+    }
+
+    fn error_field_already_bound(&self, span: Span, ident: ast::Ident, other_field: Span) {
+        struct_span_err!(
+            self.tcx.sess, span, E0025,
+            "field `{}` bound multiple times in the pattern",
+            ident
+        )
+        .span_label(span, format!("multiple uses of `{}` in pattern", ident))
+        .span_label(other_field, format!("first use of `{}`", ident))
+        .emit();
     }
 
     fn check_pat_box(
