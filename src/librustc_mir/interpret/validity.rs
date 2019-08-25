@@ -379,15 +379,22 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             ty::RawPtr(..) => {
+                // Check pointer part.
                 if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: For consistency with integers, we do not
                     // accept undef.
                     let _ptr = try_validation!(value.to_scalar_ptr(),
                         "undefined address in raw pointer", self.path);
-                    let _meta = try_validation!(value.to_meta(),
-                        "uninitialized data in raw fat pointer metadata", self.path);
                 } else {
                     // Remain consistent with `usize`: Accept anything.
+                }
+
+                // Check metadata.
+                let meta = try_validation!(value.to_meta(),
+                    "uninitialized data in wide pointer metadata", self.path);
+                let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
+                if layout.is_unsized() {
+                    self.check_wide_ptr_meta(meta, layout)?;
                 }
             }
             _ if ty.is_box() || ty.is_region_ptr() => {
