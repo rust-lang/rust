@@ -550,7 +550,7 @@ impl Span {
     /// The returned span belongs to the created expansion and has the new properties,
     /// but its location is inherited from the current span.
     pub fn fresh_expansion(self, expn_data: ExpnData) -> Span {
-        self.fresh_expansion_with_transparency(expn_data, Transparency::SemiTransparent)
+        self.fresh_expansion_with_transparency(expn_data, Transparency::Transparent)
     }
 
     pub fn fresh_expansion_with_transparency(

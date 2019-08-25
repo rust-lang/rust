@@ -8,6 +8,7 @@ use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
 use crate::Namespace::*;
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
+use rustc::hir::def_id;
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
@@ -16,7 +17,7 @@ use syntax::edition::Edition;
 use syntax::ext::base::{self, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
-use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
+use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind, Transparency};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
@@ -25,6 +26,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
+use syntax_pos::hygiene::AstPass;
 
 type Res = def::Res<NodeId>;
 
@@ -134,6 +136,41 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.session.span_err(ident.span,
                                   &format!("built-in macro `{}` was already defined", ident));
         }
+    }
+
+    // Create a Span with modern hygiene with a definition site of the provided
+    // module, or a fake empty `#[no_implicit_prelude]` module if no module is
+    // provided.
+    fn span_for_ast_pass(
+        &mut self,
+        base_span: Span,
+        pass: AstPass,
+        features: &[Symbol],
+        parent_module_id: Option<NodeId>,
+    ) -> Span {
+        let span = base_span.fresh_expansion_with_transparency(
+            ExpnData::allow_unstable(
+                ExpnKind::AstPass(pass),
+                base_span,
+                self.session.edition(),
+                features.into(),
+            ),
+            Transparency::Opaque,
+        );
+        let expn_id = span.ctxt().outer_expn();
+        let parent_scope = if let Some(module_id) = parent_module_id {
+            let parent_def_id = self.definitions.local_def_id(module_id);
+            self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id);
+            self.module_map[&parent_def_id]
+        } else {
+            self.definitions.add_parent_module_of_macro_def(
+                expn_id,
+                def_id::DefId::local(def_id::CRATE_DEF_INDEX),
+            );
+            self.empty_module
+        };
+        self.ast_transform_scopes.insert(expn_id, parent_scope);
+        span
     }
 
     fn resolve_imports(&mut self) {

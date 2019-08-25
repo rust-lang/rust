@@ -15,7 +15,7 @@ use crate::tokenstream::{self, TokenStream, TokenTree};
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{ExpnData, ExpnKind};
+use syntax_pos::hygiene::{AstPass, ExpnData, ExpnKind};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
@@ -659,6 +659,14 @@ pub trait Resolver {
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment,
                                             extra_placeholders: &[NodeId]);
     fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension);
+
+    fn span_for_ast_pass(
+        &mut self,
+        span: Span,
+        pass: AstPass,
+        features: &[Symbol],
+        parent_module_id: Option<NodeId>,
+    ) -> Span;
 
     fn resolve_imports(&mut self);
 
