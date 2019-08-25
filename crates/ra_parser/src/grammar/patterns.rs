@@ -56,37 +56,33 @@ const PAT_RECOVERY_SET: TokenSet =
     token_set![LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW, R_PAREN, COMMA];
 
 fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
-    let la0 = p.nth(0);
-    let la1 = p.nth(1);
-    if la0 == T![ref]
-        || la0 == T![mut]
-        || la0 == T![box]
-        || (la0 == IDENT && !(la1 == T![::] || la1 == T!['('] || la1 == T!['{'] || la1 == T![!]))
-    {
-        return Some(bind_pat(p, true));
-    }
-    if paths::is_use_path_start(p) {
-        return Some(path_pat(p));
-    }
+    // Checks the token after an IDENT to see if a pattern is a path (Struct { .. }) or macro
+    // (T![x]).
+    let is_path_or_macro_pat =
+        |la1| la1 == T![::] || la1 == T!['('] || la1 == T!['{'] || la1 == T![!];
 
-    if is_literal_pat_start(p) {
-        return Some(literal_pat(p));
-    }
+    let m = match p.nth(0) {
+        T![box] => box_pat(p),
+        T![ref] | T![mut] | IDENT if !is_path_or_macro_pat(p.nth(1)) => bind_pat(p, true),
 
-    let m = match la0 {
+        _ if paths::is_use_path_start(p) => path_pat(p),
+        _ if is_literal_pat_start(p) => literal_pat(p),
+
         T![_] => placeholder_pat(p),
         T![&] => ref_pat(p),
         T!['('] => tuple_pat(p),
         T!['['] => slice_pat(p),
+
         _ => {
             p.err_recover("expected pattern", recovery_set);
             return None;
         }
     };
+
     Some(m)
 }
 
-fn is_literal_pat_start(p: &mut Parser) -> bool {
+fn is_literal_pat_start(p: &Parser) -> bool {
     p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER)
         || p.at_ts(expressions::LITERAL_FIRST)
 }
@@ -165,6 +161,9 @@ fn record_field_pat_list(p: &mut Parser) {
             T![..] => p.bump(),
             IDENT if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
+            T![box] => {
+                box_pat(p);
+            }
             _ => {
                 bind_pat(p, false);
             }
@@ -261,11 +260,9 @@ fn pat_list(p: &mut Parser, ket: SyntaxKind) {
 //     let ref mut d = ();
 //     let e @ _ = ();
 //     let ref mut f @ g @ _ = ();
-//     let box i = Box::new(1i32);
 // }
 fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
     let m = p.start();
-    p.eat(T![box]);
     p.eat(T![ref]);
     p.eat(T![mut]);
     name(p);
@@ -273,4 +270,18 @@ fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
         pattern(p);
     }
     m.complete(p, BIND_PAT)
+}
+
+// test box_pat
+// fn main() {
+//     let box i = ();
+//     let box Outer { box i, j: box Inner(box &x) } = ();
+//     let box ref mut i = ();
+// }
+fn box_pat(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(T![box]));
+    let m = p.start();
+    p.bump();
+    pattern(p);
+    m.complete(p, BOX_PAT)
 }

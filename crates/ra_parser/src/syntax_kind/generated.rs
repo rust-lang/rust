@@ -149,6 +149,7 @@ pub enum SyntaxKind {
     IMPL_TRAIT_TYPE,
     DYN_TRAIT_TYPE,
     REF_PAT,
+    BOX_PAT,
     BIND_PAT,
     PLACEHOLDER_PAT,
     PATH_PAT,
