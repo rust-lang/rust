@@ -281,6 +281,34 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         }
     }
 
+    fn variant_size(&self,
+                    fields: &[TyLayout<'_>],
+                    repr: &ReprOptions) -> Option<(Size, AbiAndPrefAlign)> {
+        let dl = self.data_layout();
+        let (mut align, pack) = self.align_and_pack(repr);
+
+        let optimize = !repr.inhibit_struct_field_reordering_opt();
+
+        let mut size = Size::ZERO;
+        for field in fields.iter() {
+            assert!(!field.is_unsized());
+            let field_align = if let Some(pack) = pack {
+                field.align.min(AbiAndPrefAlign::new(pack))
+            } else {
+                field.align
+            };
+            if !optimize {
+                size = size.align_to(field_align.abi);
+            }
+            align = align.max(field_align);
+            size = size.checked_add(field.size, dl)?;
+        }
+        if !optimize {
+            size = size.align_to(align.abi);
+        }
+        Some((size, align))
+    }
+
     fn univariant_uninterned(&self,
                              ty: Ty<'tcx>,
                              fields: &[TyLayout<'_>],
@@ -293,10 +321,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let mut offsets = vec![Size::ZERO; fields.len()];
         let mut inverse_memory_index: Vec<u32> = (0..fields.len() as u32).collect();
 
-        let mut optimize = !repr.inhibit_struct_field_reordering_opt();
-        if let StructKind::Prefixed(_, align) = kind {
-            optimize &= align.bytes() == 1;
-        }
+        let optimize = !repr.inhibit_struct_field_reordering_opt();
 
         if optimize {
             let end = if let StructKind::MaybeUnsized = kind {
@@ -886,6 +911,16 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     return Ok(tcx.intern_layout(st));
                 }
 
+                let mut align = dl.i8_align;
+                let mut max_size = Size::ZERO;
+
+                for fields in variants.iter() {
+                    let (v_size, v_align) = self.variant_size(fields, &def.repr)
+                        .ok_or(LayoutError::SizeOverflow(ty))?;
+                    max_size = max_size.max(v_size);
+                    align = align.max(v_align);
+                }
+
                 // The current code for niche-filling relies on variant indices
                 // instead of actual discriminants, so dataful enums with
                 // explicit discriminants (RFC #2363) would misbehave.
@@ -936,14 +971,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 None => continue,
                             };
 
-                            let mut align = dl.aggregate_align;
                             let st = variants.iter_enumerated().map(|(j, v)| {
                                 let mut st = self.univariant_uninterned(ty, v,
                                     &def.repr, StructKind::AlwaysSized)?;
                                 st.variants = Variants::Single { index: j };
-
-                                align = align.max(st.align);
-
+                                assert!(st.align.abi <= align.abi && st.align.pref <= align.pref);
                                 Ok(st)
                             }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
@@ -1005,6 +1037,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
                 }
 
+                let mut gap = max_size.align_to(align.abi) - max_size;
+
                 let (mut min, mut max) = (i128::max_value(), i128::min_value());
                 let discr_type = def.repr.discr_type();
                 let bits = Integer::from_attr(self, discr_type).size().bits();
@@ -1028,52 +1062,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 assert!(min <= max, "discriminant range is {}...{}", min, max);
                 let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
 
-                let mut align = dl.aggregate_align;
-                let mut size = Size::ZERO;
-
-                // We're interested in the smallest alignment, so start large.
-                let mut start_align = Align::from_bytes(256).unwrap();
-                assert_eq!(Integer::for_align(dl, start_align), None);
-
-                // repr(C) on an enum tells us to make a (tag, union) layout,
-                // so we need to grow the prefix alignment to be at least
-                // the alignment of the union. (This value is used both for
-                // determining the alignment of the overall enum, and the
-                // determining the alignment of the payload after the tag.)
-                let mut prefix_align = min_ity.align(dl).abi;
-                if def.repr.c() {
-                    for fields in &variants {
-                        for field in fields {
-                            prefix_align = prefix_align.max(field.align.abi);
-                        }
-                    }
-                }
-
-                // Create the set of structs that represent each variant.
-                let mut layout_variants = variants.iter_enumerated().map(|(i, field_layouts)| {
-                    let mut st = self.univariant_uninterned(ty, &field_layouts,
-                        &def.repr, StructKind::Prefixed(min_ity.size(), prefix_align))?;
-                    st.variants = Variants::Single { index: i };
-                    // Find the first field we can't move later
-                    // to make room for a larger discriminant.
-                    for field in st.fields.index_by_increasing_offset().map(|j| field_layouts[j]) {
-                        if !field.is_zst() || field.align.abi.bytes() != 1 {
-                            start_align = start_align.min(field.align.abi);
-                            break;
-                        }
-                    }
-                    size = cmp::max(size, st.size);
-                    align = align.max(st.align);
-                    Ok(st)
-                }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
-
-                // Align the maximum variant size to the largest alignment.
-                size = size.align_to(align.abi);
-
-                if size.bytes() >= dl.obj_size_bound() {
-                    return Err(LayoutError::SizeOverflow(ty));
-                }
-
                 let typeck_ity = Integer::from_attr(dl, def.repr.discr_type());
                 if typeck_ity < min_ity {
                     // It is a bug if Layout decided on a greater discriminant size than typeck for
@@ -1091,47 +1079,50 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // after this point – we’ll just truncate the value we load in codegen.
                 }
 
-                // Check to see if we should use a different type for the
-                // discriminant. We can safely use a type with the same size
-                // as the alignment of the first field of each variant.
+                if min_ity.size() > gap {
+                    gap += (min_ity.size() - gap).align_to(align.abi);
+                }
+
                 // We increase the size of the discriminant to avoid LLVM copying
                 // padding when it doesn't need to. This normally causes unaligned
                 // load/stores and excessive memcpy/memset operations. By using a
                 // bigger integer size, LLVM can be sure about its contents and
                 // won't be so conservative.
-
-                // Use the initial field alignment
-                let mut ity = if def.repr.c() || def.repr.int.is_some() {
+                let ity = if def.repr.inhibit_enum_layout_opt() {
                     min_ity
                 } else {
-                    Integer::for_align(dl, start_align).unwrap_or(min_ity)
+                    Integer::approximate_size(gap).unwrap()
                 };
 
-                // If the alignment is not larger than the chosen discriminant size,
-                // don't use the alignment as the final size.
-                if ity <= min_ity {
-                    ity = min_ity;
-                } else {
-                    // Patch up the variants' first few fields.
-                    let old_ity_size = min_ity.size();
-                    let new_ity_size = ity.size();
-                    for variant in &mut layout_variants {
-                        match variant.fields {
-                            FieldPlacement::Arbitrary { ref mut offsets, .. } => {
-                                for i in offsets {
-                                    if *i <= old_ity_size {
-                                        assert_eq!(*i, old_ity_size);
-                                        *i = new_ity_size;
-                                    }
-                                }
-                                // We might be making the struct larger.
-                                if variant.size <= old_ity_size {
-                                    variant.size = new_ity_size;
-                                }
-                            }
-                            _ => bug!()
-                        }
-                    }
+                let mut prefix_align = ity.align(dl).abi;
+                let align = align.max(AbiAndPrefAlign::new(prefix_align));
+
+                // repr(C) on an enum tells us to make a (tag, union) layout,
+                // so we need to grow the prefix alignment to be at least
+                // the alignment of the union. (This value is used both for
+                // determining the alignment of the overall enum, and the
+                // determining the alignment of the payload after the tag.)
+                if def.repr.c() {
+                    prefix_align = align.abi;
+                }
+
+                let mut size = Size::ZERO;
+
+                // Create the set of structs that represent each variant.
+                let layout_variants = variants.iter_enumerated().map(|(i, field_layouts)| {
+                    let mut st = self.univariant_uninterned(ty, &field_layouts,
+                        &def.repr, StructKind::Prefixed(ity.size(), prefix_align))?;
+                    st.variants = Variants::Single { index: i };
+                    size = cmp::max(size, st.size);
+                    assert!(st.align.abi <= align.abi && st.align.pref <= align.pref);
+                    Ok(st)
+                }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+
+                // Align the maximum variant size to the largest alignment.
+                size = size.align_to(align.abi);
+
+                if size.bytes() >= dl.obj_size_bound() {
+                    return Err(LayoutError::SizeOverflow(ty));
                 }
 
                 let tag_mask = !0u128 >> (128 - ity.size().bits());

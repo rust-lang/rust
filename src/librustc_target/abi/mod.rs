@@ -533,6 +533,16 @@ impl Integer {
         }
         I8
     }
+
+    /// Finds the largest integer with the given size or less.
+    pub fn approximate_size(wanted: Size) -> Option<Integer> {
+        for &candidate in &[I64, I32, I16, I8] {
+            if wanted >= candidate.size() {
+                return Some(candidate);
+            }
+        }
+        None
+    }
 }
 
 

@@ -26,8 +26,9 @@ pub enum Enum64 {
     A(Align64),
     B(i32),
 }
-// CHECK: %Enum64 = type { [0 x i32], i32, [31 x i32] }
+// CHECK: %Enum64 = type { [0 x i64], i64, [15 x i64] }
 // CHECK: %"Enum64::A" = type { [8 x i64], %Align64, [0 x i64] }
+// CHECK: %"Enum64::B" = type { [2 x i32], i32, [1 x i32] }
 
 // CHECK-LABEL: @align64
 #[no_mangle]
@@ -69,5 +70,13 @@ pub fn enum4(a: i32) -> Enum4 {
 pub fn enum64(a: Align64) -> Enum64 {
 // CHECK: %e64 = alloca %Enum64, align 64
     let e64 = Enum64::A(a);
+    e64
+}
+
+// CHECK-LABEL: @enum64_b
+#[no_mangle]
+pub fn enum64_b(b: i32) -> Enum64 {
+// CHECK: %e64 = alloca %Enum64, align 64
+    let e64 = Enum64::B(b);
     e64
 }
