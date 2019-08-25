@@ -70,6 +70,7 @@ type parameter).
 mod autoderef;
 pub mod dropck;
 pub mod _match;
+mod pat;
 pub mod writeback;
 mod regionck;
 pub mod coercion;
@@ -1103,8 +1104,7 @@ fn check_fn<'a, 'tcx>(
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
         // Check the pattern.
-        let binding_mode = ty::BindingMode::BindByValue(hir::Mutability::MutImmutable);
-        fcx.check_pat_walk(&arg.pat, arg_ty, binding_mode, None);
+        fcx.check_pat_top(&arg.pat, arg_ty, None);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -3630,12 +3630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        self.check_pat_walk(
-            &local.pat,
-            t,
-            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
-            None,
-        );
+        self.check_pat_top(&local.pat, t, None);
         let pat_ty = self.node_ty(local.pat.hir_id);
         if pat_ty.references_error() {
             self.write_ty(local.hir_id, pat_ty);
