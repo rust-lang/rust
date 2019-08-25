@@ -152,6 +152,18 @@ pub fn to_string<F>(f: F) -> String where
     printer.s.eof()
 }
 
+// This makes comma-separated lists look slightly nicer,
+// and also addresses a specific regression described in issue #63896.
+fn tt_prepend_space(tt: &TokenTree) -> bool {
+    match tt {
+        TokenTree::Token(token) => match token.kind {
+            token::Comma => false,
+            _ => true,
+        }
+        _ => true,
+    }
+}
+
 fn binop_to_string(op: BinOpToken) -> &'static str {
     match op {
         token::Plus     => "+",
@@ -696,7 +708,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
 
     fn print_tts(&mut self, tts: tokenstream::TokenStream, convert_dollar_crate: bool) {
         for (i, tt) in tts.into_trees().enumerate() {
-            if i != 0 {
+            if i != 0 && tt_prepend_space(&tt) {
                 self.space();
             }
             self.print_tt(tt, convert_dollar_crate);
