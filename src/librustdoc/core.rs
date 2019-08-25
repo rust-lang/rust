@@ -61,8 +61,8 @@ pub struct DocContext<'tcx> {
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
     /// Table `DefId` of const parameter -> substituted const
     pub ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
-    /// Table DefId of `impl Trait` in argument position -> bounds
-    pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
+    /// Table synthetic type parameter for `impl Trait` in argument position -> bounds
+    pub impl_trait_bounds: RefCell<FxHashMap<ImplTraitParam, Vec<clean::GenericBound>>>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
@@ -458,4 +458,24 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             (krate, ctxt.renderinfo.into_inner(), render_options)
         })
     })
+}
+
+/// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter
+/// for `impl Trait` in argument position.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ImplTraitParam {
+    DefId(DefId),
+    ParamIndex(u32),
+}
+
+impl From<DefId> for ImplTraitParam {
+    fn from(did: DefId) -> Self {
+        ImplTraitParam::DefId(did)
+    }
+}
+
+impl From<u32> for ImplTraitParam {
+    fn from(idx: u32) -> Self {
+        ImplTraitParam::ParamIndex(idx)
+    }
 }

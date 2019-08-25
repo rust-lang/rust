@@ -1,0 +1,32 @@
+// aux-build:impl_trait_aux.rs
+
+extern crate impl_trait_aux;
+
+// @has impl_trait/fn.func.html
+// @has - '//pre[@class="rust fn"]' "pub fn func<'a>(_x: impl Clone + Into<Vec<u8>> + 'a)"
+// @!has - '//pre[@class="rust fn"]' 'where'
+pub use impl_trait_aux::func;
+
+// @has impl_trait/fn.func2.html
+// @has - '//pre[@class="rust fn"]' "func2<T>("
+// @has - '//pre[@class="rust fn"]' "_x: impl Deref<Target = Option<T>> + Iterator<Item = T>,"
+// @has - '//pre[@class="rust fn"]' "_y: impl Iterator<Item = u8>)"
+// @!has - '//pre[@class="rust fn"]' 'where'
+pub use impl_trait_aux::func2;
+
+// @has impl_trait/fn.func3.html
+// @has - '//pre[@class="rust fn"]' "func3("
+// @has - '//pre[@class="rust fn"]' "_x: impl Clone + Iterator<Item = impl Iterator<Item = u8>>)"
+// @!has - '//pre[@class="rust fn"]' 'where'
+pub use impl_trait_aux::func3;
+
+
+// @has impl_trait/fn.func4.html
+// @has - '//pre[@class="rust fn"]' "func4<T>("
+// @has - '//pre[@class="rust fn"]' "T: Iterator<Item = impl Clone>,"
+pub use impl_trait_aux::func4;
+
+// @has impl_trait/struct.Foo.html
+// @has - '//code[@id="method.v"]' "pub fn method<'a>(_x: impl Clone + Into<Vec<u8>> + 'a)"
+// @!has - '//code[@id="method.v"]' 'where'
+pub use impl_trait_aux::Foo;
