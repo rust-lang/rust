@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use ra_db::SourceDatabase;
-use ra_hir::{Crate, HasSource, ImplItem, ModuleDef, Ty};
+use ra_hir::{Crate, HasSource, HirDisplay, ImplItem, ModuleDef, Ty};
 use ra_syntax::AstNode;
 
 use crate::Result;
@@ -66,6 +66,7 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
     let mut num_exprs = 0;
     let mut num_exprs_unknown = 0;
     let mut num_exprs_partially_unknown = 0;
+    let mut num_type_mismatches = 0;
     for f in funcs {
         let name = f.name(db);
         let mut msg = format!("processing: {}", name);
@@ -100,6 +101,40 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
                     num_exprs_partially_unknown += 1;
                 }
             }
+            if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
+                num_type_mismatches += 1;
+                if verbose {
+                    let src = f.source(db);
+                    let original_file = src.file_id.original_file(db);
+                    let path = db.file_relative_path(original_file);
+                    let line_index = host.analysis().file_line_index(original_file).unwrap();
+                    let body_source_map = f.body_source_map(db);
+                    let syntax_node = body_source_map.expr_syntax(expr_id);
+                    let line_col = syntax_node.map(|syntax_node| {
+                        (
+                            line_index.line_col(syntax_node.range().start()),
+                            line_index.line_col(syntax_node.range().end()),
+                        )
+                    });
+                    let line_col = match line_col {
+                        Some((start, end)) => format!(
+                            "{}:{}-{}:{}",
+                            start.line + 1,
+                            start.col_utf16,
+                            end.line + 1,
+                            end.col_utf16
+                        ),
+                        None => "?:?".to_string(),
+                    };
+                    bar.println(format!(
+                        "{} {}: Expected {}, got {}",
+                        path.display(),
+                        line_col,
+                        mismatch.expected.display(db),
+                        mismatch.actual.display(db)
+                    ));
+                }
+            }
         }
         bar.inc(1);
     }
@@ -115,6 +150,7 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
         num_exprs_partially_unknown,
         (num_exprs_partially_unknown * 100 / num_exprs)
     );
+    println!("Type mismatches: {}", num_type_mismatches);
     println!("Inference: {:?}, {}", inference_time.elapsed(), ra_prof::memory_usage());
     println!("Total: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 

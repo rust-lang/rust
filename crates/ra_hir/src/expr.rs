@@ -128,27 +128,27 @@ impl Index<PatId> for Body {
 }
 
 impl BodySourceMap {
-    pub(crate) fn expr_syntax(&self, expr: ExprId) -> Option<SyntaxNodePtr> {
+    pub fn expr_syntax(&self, expr: ExprId) -> Option<SyntaxNodePtr> {
         self.expr_map_back.get(expr).cloned()
     }
 
-    pub(crate) fn syntax_expr(&self, ptr: SyntaxNodePtr) -> Option<ExprId> {
+    pub fn syntax_expr(&self, ptr: SyntaxNodePtr) -> Option<ExprId> {
         self.expr_map.get(&ptr).cloned()
     }
 
-    pub(crate) fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
+    pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
         self.expr_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
     }
 
-    pub(crate) fn pat_syntax(&self, pat: PatId) -> Option<PatPtr> {
+    pub fn pat_syntax(&self, pat: PatId) -> Option<PatPtr> {
         self.pat_map_back.get(pat).cloned()
     }
 
-    pub(crate) fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
+    pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
         self.pat_map.get(&Either::A(AstPtr::new(node))).cloned()
     }
 
-    pub(crate) fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::RecordField> {
+    pub fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::RecordField> {
         self.field_map[&(expr, field)]
     }
 }

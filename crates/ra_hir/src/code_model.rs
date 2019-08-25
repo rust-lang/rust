@@ -617,7 +617,7 @@ impl Function {
         self.data(db).name.clone()
     }
 
-    pub(crate) fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+    pub fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map(self.into()).1
     }
 
