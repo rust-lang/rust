@@ -457,8 +457,9 @@ impl<T: Ord> Ord for Reverse<T> {
 ///
 /// An order is a total order if it is (for all `a`, `b` and `c`):
 ///
-/// - total and antisymmetric: exactly one of `a < b`, `a == b` or `a > b` is true; and
-/// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+/// - totality: `a < b` or `b < a`
+/// - antisymmetric: `a < b` and `b < a`, then `a == b`
+/// - transitive: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
 ///
 /// ## Derivable
 ///
