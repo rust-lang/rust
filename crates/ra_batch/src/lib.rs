@@ -2,10 +2,11 @@ use std::{collections::HashSet, error::Error, path::Path};
 
 use rustc_hash::FxHashMap;
 
+use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{CrateGraph, FileId, SourceRootId};
 use ra_ide_api::{AnalysisChange, AnalysisHost, FeatureFlags};
 use ra_project_model::{PackageRoot, ProjectWorkspace};
-use ra_vfs::{RootEntry, Vfs, VfsChange};
+use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask};
 use ra_vfs_glob::RustPackageFilterBuilder;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -21,6 +22,8 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, 
     let root = std::env::current_dir()?.join(root);
     let ws = ProjectWorkspace::discover(root.as_ref())?;
     let project_roots = ws.to_roots();
+    let (sender, receiver) = unbounded();
+    let sender = Box::new(move |t| sender.send(t).unwrap());
     let (mut vfs, roots) = Vfs::new(
         project_roots
             .iter()
@@ -33,6 +36,7 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, 
                 )
             })
             .collect(),
+        sender,
     );
     let crate_graph = ws.to_crate_graph(&mut |path: &Path| {
         let vfs_file = vfs.load(path);
@@ -53,7 +57,7 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, 
             (source_root_id, project_root)
         })
         .collect::<FxHashMap<_, _>>();
-    let host = load(&source_roots, crate_graph, &mut vfs);
+    let host = load(&source_roots, crate_graph, &mut vfs, receiver);
     Ok((host, source_roots))
 }
 
@@ -61,6 +65,7 @@ pub fn load(
     source_roots: &FxHashMap<SourceRootId, PackageRoot>,
     crate_graph: CrateGraph,
     vfs: &mut Vfs,
+    receiver: Receiver<VfsTask>,
 ) -> AnalysisHost {
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<usize>().ok());
     let mut host = AnalysisHost::new(lru_cap, FeatureFlags::default());
@@ -68,7 +73,6 @@ pub fn load(
     analysis_change.set_crate_graph(crate_graph);
 
     // wait until Vfs has loaded all roots
-    let receiver = vfs.task_receiver().clone();
     let mut roots_loaded = HashSet::new();
     for task in receiver {
         vfs.handle_task(task);

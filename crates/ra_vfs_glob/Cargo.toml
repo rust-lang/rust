@@ -5,5 +5,5 @@ version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
 [dependencies]
-ra_vfs = "0.2.0"
+ra_vfs = "0.3.0"
 globset = "0.4.4"

@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use crossbeam_channel::{unbounded, Receiver};
 use gen_lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
@@ -10,7 +11,7 @@ use ra_ide_api::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
     SourceRootId,
 };
-use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot};
+use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask};
 use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
 
@@ -39,6 +40,7 @@ pub struct WorldState {
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub vfs: Arc<RwLock<Vfs>>,
+    pub task_receiver: Receiver<VfsTask>,
     pub latest_requests: Arc<RwLock<LatestRequests>>,
 }
 
@@ -80,8 +82,9 @@ impl WorldState {
                 RootEntry::new(pkg_root.path().clone(), filter.into_vfs_filter())
             }));
         }
-
-        let (mut vfs, vfs_roots) = Vfs::new(roots);
+        let (task_sender, task_receiver) = unbounded();
+        let task_sender = Box::new(move |t| task_sender.send(t).unwrap());
+        let (mut vfs, vfs_roots) = Vfs::new(roots, task_sender);
         let roots_to_scan = vfs_roots.len();
         for r in vfs_roots {
             let vfs_root_path = vfs.root2path(r);
@@ -109,6 +112,7 @@ impl WorldState {
             workspaces: Arc::new(workspaces),
             analysis_host,
             vfs: Arc::new(RwLock::new(vfs)),
+            task_receiver,
             latest_requests: Default::default(),
         }
     }

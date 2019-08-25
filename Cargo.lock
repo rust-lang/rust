@@ -1080,12 +1080,13 @@ dependencies = [
 name = "ra_batch"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_db 0.1.0",
  "ra_hir 0.1.0",
  "ra_ide_api 0.1.0",
  "ra_project_model 0.1.0",
- "ra_vfs 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_vfs_glob 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1191,7 +1192,7 @@ dependencies = [
  "ra_project_model 0.1.0",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
- "ra_vfs 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_vfs_glob 0.1.0",
  "relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1300,7 +1301,7 @@ dependencies = [
 
 [[package]]
 name = "ra_vfs"
-version = "0.2.8"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "crossbeam-channel 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1318,7 +1319,7 @@ name = "ra_vfs_glob"
 version = "0.1.0"
 dependencies = [
  "globset 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "ra_vfs 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2120,7 +2121,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum quote 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)" = "6ce23b6b870e8f94f81fb0a363d65d86675884b34a09043c81e5562f11c1f8e1"
 "checksum quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "053a8c8bcc71fcce321828dc897a98ab9760bef03a4fc36693c231e5b3216cfe"
 "checksum ra_rustc_lexer 0.1.0-pre.3 (registry+https://github.com/rust-lang/crates.io-index)" = "04371af481820ff8d35c7d12b503eb09cf9e1bd246269bf4a33e3d8c54fa3a4a"
-"checksum ra_vfs 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "9e891866e1bb03f50a28cc01e3f244a62107c301ae674ba06b2e7a9b310ae75a"
+"checksum ra_vfs 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ccc8b709e0b7ceec822513451b610df1b9370b01953a8bc545a041a6b3bfef01"
 "checksum rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "6d71dacdc3c88c1fde3885a3be3fbab9f35724e6ce99467f7d9c5026132184ca"
 "checksum rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d47eab0e83d9693d40f825f86948aa16eff6750ead4bdffc4ab95b8b3a7f052c"
 "checksum rand_chacha 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "556d3a1ca6600bfcbab7c7c91ccb085ac7fbbcd70e008a98742e7847f4f7bcef"
