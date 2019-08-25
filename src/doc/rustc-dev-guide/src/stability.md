@@ -16,6 +16,13 @@ You can make specific sub-items stable by using the `#[stable]` attribute on the
 The stability scheme works similarly to how `pub` works. You can have public functions of
 nonpublic modules and you can have stable functions in unstable modules or vice versa.
 
+Note, however, that due to a [rustc bug], stable items inside unstable modules
+*are* available to stable code in that location!  So, for example, stable code
+can import `core::intrinsics::transmute` even though `intrinsics` is an unstable
+module.  Thus, this kind of nesting should be avoided when possible.
+
+[rustc bug]: https://github.com/rust-lang/rust/issues/15702
+
 # stable
 
 The `#[stable(feature = "foo", "since = "1.420.69")]` attribute explicitly marks an item as
