@@ -90,20 +90,11 @@ impl OptimizationFinder<'b, 'tcx> {
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, Place {
-            base: _,
-            projection: box [.., elem],
+            base,
+            projection: box [proj_base @ .., ProjectionElem::Deref],
         }) = rvalue {
-            if *elem == ProjectionElem::Deref {
-                // FIXME remove this once we can use slices patterns
-                if let Rvalue::Ref(_, _, Place {
-                    base,
-                    projection,
-                }) = rvalue {
-                    let proj_base = &projection[..projection.len() - 1];
-                    if Place::ty_from(base, proj_base, self.body, self.tcx).ty.is_region_ptr() {
-                        self.optimizations.and_stars.insert(location);
-                    }
-                }
+            if Place::ty_from(base, proj_base, self.body, self.tcx).ty.is_region_ptr() {
+                self.optimizations.and_stars.insert(location);
             }
         }
 

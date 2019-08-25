@@ -179,10 +179,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             PlaceRef {
                 base,
-                projection: [.., elem],
+                projection: [proj_base @ .., elem],
             } => {
-                let proj_base = &place.projection[..place.projection.len() - 1];
-
                 match elem {
                     ProjectionElem::Deref => {
                         let upvar_field_projection =
@@ -363,11 +361,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.describe_field_from_ty(&static_.ty, field, None),
             PlaceRef {
                 base,
-                projection: [.., elem],
+                projection: [proj_base @ .., elem],
             } => match elem {
                 ProjectionElem::Deref => {
-                    let proj_base = &place.projection[..place.projection.len() - 1];
-
                     self.describe_field(PlaceRef {
                         base,
                         projection: proj_base,
@@ -384,8 +380,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    let proj_base = &place.projection[..place.projection.len() - 1];
-
                     self.describe_field(PlaceRef {
                         base,
                         projection: proj_base,

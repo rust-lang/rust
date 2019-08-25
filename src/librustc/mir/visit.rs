@@ -720,12 +720,9 @@ macro_rules! make_mir_visitor {
                                 projection: & $($mutability)? [PlaceElem<'tcx>],
                                 context: PlaceContext,
                                 location: Location) {
-                if !projection.is_empty() {
-                    let proj_len = projection.len();
-                    let proj_base = & $($mutability)? projection[..proj_len - 1];
+                if let [proj_base @ .., elem] = projection {
                     self.visit_projection(base, proj_base, context, location);
 
-                    let elem = & $($mutability)? projection[proj_len - 1];
                     match elem {
                         ProjectionElem::Field(_field, ty) => {
                             self.visit_ty(ty, TyContext::Location(location));

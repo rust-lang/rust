@@ -2187,10 +2187,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             PlaceRef {
                 base: _,
-                projection: [.., elem],
+                projection: [proj_base @ .., elem],
             } => {
-                let proj_base = &place.projection[..place.projection.len() - 1];
-
                 match elem {
                     ProjectionElem::Deref => {
                         let base_ty =

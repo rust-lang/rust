@@ -105,10 +105,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     ) {
         let cx = self.fx.cx;
 
-        if let [.., elem] = place_ref.projection {
-            // FIXME(spastorino) include this in the pattern when stabilized
-            let proj_base = &place_ref.projection[..place_ref.projection.len() - 1];
-
+        if let [proj_base @ .., elem] = place_ref.projection {
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
                 PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |

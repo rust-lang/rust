@@ -65,10 +65,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
             PlaceRef {
                 base: _,
-                projection: [.., ProjectionElem::Field(upvar_index, _)],
+                projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
-                let proj_base = &the_place_err.projection[..the_place_err.projection.len() - 1];
-
                 debug_assert!(is_closure_or_generator(
                     Place::ty_from(&the_place_err.base, proj_base, self.body, self.infcx.tcx).ty
                 ));
@@ -329,10 +327,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // Also suggest adding mut for upvars
             PlaceRef {
                 base,
-                projection: [.., ProjectionElem::Field(upvar_index, _)],
+                projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
-                let proj_base = &the_place_err.projection[..the_place_err.projection.len() - 1];
-
                 debug_assert!(is_closure_or_generator(
                     Place::ty_from(base, proj_base, self.body, self.infcx.tcx).ty
                 ));

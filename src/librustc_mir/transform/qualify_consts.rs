@@ -187,27 +187,28 @@ trait Qualif {
         cx: &ConstCx<'_, 'tcx>,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
-        let elem = &place.projection[place.projection.len() - 1];
-        let proj_base = &place.projection[..place.projection.len() - 1];
+        if let [proj_base @ .., elem] = place.projection {
+            let base_qualif = Self::in_place(cx, PlaceRef {
+                base: place.base,
+                projection: proj_base,
+            });
+            let qualif = base_qualif && Self::mask_for_ty(
+                cx,
+                Place::ty_from(place.base, proj_base, cx.body, cx.tcx)
+                    .projection_ty(cx.tcx, elem)
+                    .ty,
+            );
+            match elem {
+                ProjectionElem::Deref |
+                ProjectionElem::Subslice { .. } |
+                ProjectionElem::Field(..) |
+                ProjectionElem::ConstantIndex { .. } |
+                ProjectionElem::Downcast(..) => qualif,
 
-        let base_qualif = Self::in_place(cx, PlaceRef {
-            base: place.base,
-            projection: proj_base,
-        });
-        let qualif = base_qualif && Self::mask_for_ty(
-            cx,
-            Place::ty_from(place.base, proj_base, cx.body, cx.tcx)
-                .projection_ty(cx.tcx, elem)
-                .ty,
-        );
-        match elem {
-            ProjectionElem::Deref |
-            ProjectionElem::Subslice { .. } |
-            ProjectionElem::Field(..) |
-            ProjectionElem::ConstantIndex { .. } |
-            ProjectionElem::Downcast(..) => qualif,
-
-            ProjectionElem::Index(local) => qualif || Self::in_local(cx, *local),
+                ProjectionElem::Index(local) => qualif || Self::in_local(cx, *local),
+            }
+        } else {
+            bug!("This should be called if projection is not empty");
         }
     }
 
@@ -290,10 +291,7 @@ trait Qualif {
 
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
-                if !place.projection.is_empty() {
-                    let elem = &place.projection[place.projection.len() - 1];
-                    let proj_base = &place.projection[..place.projection.len() - 1];
-
+                if let box [proj_base @ .., elem] = &place.projection {
                     if ProjectionElem::Deref == *elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.sty {
@@ -457,31 +455,32 @@ impl Qualif for IsNotPromotable {
         cx: &ConstCx<'_, 'tcx>,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
-        let elem = &place.projection[place.projection.len() - 1];
-        let proj_base = &place.projection[..place.projection.len() - 1];
+        if let [proj_base @ .., elem] = place.projection {
+            match elem {
+                ProjectionElem::Deref |
+                ProjectionElem::Downcast(..) => return true,
 
-        match elem {
-            ProjectionElem::Deref |
-            ProjectionElem::Downcast(..) => return true,
+                ProjectionElem::ConstantIndex {..} |
+                ProjectionElem::Subslice {..} |
+                ProjectionElem::Index(_) => {}
 
-            ProjectionElem::ConstantIndex {..} |
-            ProjectionElem::Subslice {..} |
-            ProjectionElem::Index(_) => {}
-
-            ProjectionElem::Field(..) => {
-                if cx.mode == Mode::NonConstFn {
-                    let base_ty = Place::ty_from(place.base, proj_base, cx.body, cx.tcx).ty;
-                    if let Some(def) = base_ty.ty_adt_def() {
-                        // No promotion of union field accesses.
-                        if def.is_union() {
-                            return true;
+                ProjectionElem::Field(..) => {
+                    if cx.mode == Mode::NonConstFn {
+                        let base_ty = Place::ty_from(place.base, proj_base, cx.body, cx.tcx).ty;
+                        if let Some(def) = base_ty.ty_adt_def() {
+                            // No promotion of union field accesses.
+                            if def.is_union() {
+                                return true;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Self::in_projection_structurally(cx, place)
+            Self::in_projection_structurally(cx, place)
+        } else {
+            bug!("This should be called if projection is not empty");
+        }
     }
 
     fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
@@ -866,14 +865,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 // projections are transparent for assignments
                 // we qualify the entire destination at once, even if just a field would have
                 // stricter qualification
-                (base, proj @ [.., _]) => {
-                    let proj_base = &proj[..proj.len() - 1];
-
+                (base, [proj_base @ .., _]) => {
                     // Catch more errors in the destination. `visit_place` also checks various
                     // projection rules like union field access and raw pointer deref
                     let context = PlaceContext::MutatingUse(MutatingUseContext::Store);
                     self.visit_place_base(base, context, location);
-                    self.visit_projection(base, proj, context, location);
+                    self.visit_projection(base, dest_projection, context, location);
                     dest_projection = proj_base;
                 },
                 (&PlaceBase::Static(box Static {
@@ -1096,10 +1093,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         );
         self.super_projection(place_base, proj, context, location);
 
-        if !proj.is_empty() {
-            let elem = &proj[proj.len() - 1];
-            let proj_base = &proj[..proj.len() - 1];
-
+        if let [proj_base @ .., elem] = proj {
             match elem {
                 ProjectionElem::Deref => {
                     if context.is_mutating_use() {
@@ -1187,9 +1181,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Special-case reborrows.
             let mut reborrow_place = None;
-            if let box [.., elem] = &place.projection {
+            if let box [proj_base @ .., elem] = &place.projection {
                 if *elem == ProjectionElem::Deref {
-                    let proj_base = &place.projection[..place.projection.len() - 1];
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.sty {
                         reborrow_place = Some(proj_base);

@@ -88,10 +88,8 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                 }
                 PlaceRef {
                     base: _,
-                    projection: [.., elem],
+                    projection: [proj_base @ .., elem],
                 } => {
-                    let proj_base = &cursor.projection[..cursor.projection.len() - 1];
-
                     match elem {
                         ProjectionElem::Field(_ /*field*/, _ /*ty*/) => {
                             // FIXME: add union handling

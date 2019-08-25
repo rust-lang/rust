@@ -305,11 +305,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let upvar_field = self.prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
 
-        let deref_base = match deref_target_place.projection {
-            box [.., ProjectionElem::Deref] => {
-                let proj_base =
-                    &deref_target_place.projection[..deref_target_place.projection.len() - 1];
-
+        let deref_base = match &deref_target_place.projection {
+            box [proj_base @ .., ProjectionElem::Deref] => {
                 PlaceRef {
                     base: &deref_target_place.base,
                     projection: proj_base,

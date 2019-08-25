@@ -61,9 +61,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         if let Rvalue::Use(Operand::Move(ref src_place)) = rvalue {
-            if let box [.., elem] = &src_place.projection {
-                let proj_base = &src_place.projection[..src_place.projection.len() - 1];
-
+            if let box [proj_base @ .., elem] = &src_place.projection {
                 if let ProjectionElem::ConstantIndex{offset: _,
                                                      min_length: _,
                                                      from_end: false} = elem {
@@ -102,10 +100,7 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                proj: &[PlaceElem<'tcx>],
                item_ty: &'tcx ty::TyS<'tcx>,
                size: u32) {
-        if !proj.is_empty() {
-            let elem = &proj[proj.len() - 1];
-            let proj_base = &proj[..proj.len() - 1];
-
+        if let [proj_base @ .., elem] = proj {
             match elem {
                 // uniforms statements like_10 = move _2[:-1];
                 ProjectionElem::Subslice{from, to} => {
@@ -314,11 +309,9 @@ impl RestoreSubsliceArrayMoveOut {
                         _,
                         box Rvalue::Use(Operand::Move(Place {
                             base,
-                            projection,
+                            projection: box [proj_base @ .., _],
                         })),
-                        ) = &statement.kind {
-                        let proj_base = &projection[..projection.len() - 1];
-
+                    ) = &statement.kind {
                         return Some((*offset, PlaceRef {
                             base,
                             projection: proj_base,

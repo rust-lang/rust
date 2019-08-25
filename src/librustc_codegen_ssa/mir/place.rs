@@ -514,10 +514,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             },
             mir::PlaceRef {
                 base,
-                projection: [.., mir::ProjectionElem::Deref],
+                projection: [proj_base @ .., mir::ProjectionElem::Deref],
             } => {
-                let proj_base = &place_ref.projection[..place_ref.projection.len() - 1];
-
                 // Load the pointer from its location.
                 self.codegen_consume(bx, &mir::PlaceRef {
                     base,
@@ -526,10 +524,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::PlaceRef {
                 base,
-                projection: [.., elem],
+                projection: [proj_base @ .., elem],
             } => {
-                let proj_base = &place_ref.projection[..place_ref.projection.len() - 1];
-
                 // FIXME turn this recursion into iteration
                 let cg_base = self.codegen_place(bx, &mir::PlaceRef {
                     base,
