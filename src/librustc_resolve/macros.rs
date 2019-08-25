@@ -97,16 +97,6 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.session.next_node_id()
     }
 
-    fn get_module_scope(&mut self, id: NodeId) -> ExpnId {
-        let expn_id = ExpnId::fresh(Some(ExpnData::default(
-            ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
-        )));
-        let module = self.module_map[&self.definitions.local_def_id(id)];
-        self.invocation_parent_scopes.insert(expn_id, ParentScope::module(module));
-        self.definitions.set_invocation_parent(expn_id, module.def_id().unwrap().index);
-        expn_id
-    }
-
     fn resolve_dollar_crates(&mut self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));

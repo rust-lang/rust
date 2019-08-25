@@ -653,8 +653,6 @@ bitflags::bitflags! {
 pub trait Resolver {
     fn next_node_id(&mut self) -> NodeId;
 
-    fn get_module_scope(&mut self, id: NodeId) -> ExpnId;
-
     fn resolve_dollar_crates(&mut self);
     fn visit_ast_fragment_with_placeholders(&mut self, expn_id: ExpnId, fragment: &AstFragment,
                                             extra_placeholders: &[NodeId]);
