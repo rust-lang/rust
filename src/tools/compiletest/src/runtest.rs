@@ -2,6 +2,7 @@
 
 use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, Rustdoc};
 use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
@@ -286,6 +287,11 @@ struct DebuggerCommands {
 enum ReadFrom {
     Path,
     Stdin(String),
+}
+
+enum TestOutput {
+    Compile,
+    Run,
 }
 
 impl<'test> TestCx<'test> {
@@ -2934,9 +2940,16 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn load_compare_outputs(&self, proc_res: &ProcRes, explicit_format: bool) -> usize {
-        let expected_stderr = self.load_expected_output(UI_STDERR);
-        let expected_stdout = self.load_expected_output(UI_STDOUT);
+    fn load_compare_outputs(&self, proc_res: &ProcRes,
+        output_kind: TestOutput, explicit_format: bool) -> usize {
+
+        let (stderr_kind, stdout_kind) = match output_kind {
+            TestOutput::Compile => (UI_STDERR, UI_STDOUT),
+            TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT)
+        };
+
+        let expected_stderr = self.load_expected_output(stderr_kind);
+        let expected_stdout = self.load_expected_output(stdout_kind);
 
         let normalized_stdout =
             self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
@@ -2949,11 +2962,19 @@ impl<'test> TestCx<'test> {
 
         let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
         let mut errors = 0;
-        if !self.props.dont_check_compiler_stdout {
-            errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
-        }
-        if !self.props.dont_check_compiler_stderr {
-            errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+        match output_kind {
+            TestOutput::Compile => {
+                if !self.props.dont_check_compiler_stdout {
+                    errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+                }
+                if !self.props.dont_check_compiler_stderr {
+                    errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+                }
+            }
+            TestOutput::Run => {
+                errors += self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
+                errors += self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
+            }
         }
         errors
     }
@@ -2975,14 +2996,7 @@ impl<'test> TestCx<'test> {
         let modes_to_prune = vec![CompareMode::Nll];
         self.prune_duplicate_outputs(&modes_to_prune);
 
-        // if the user specified to check the results of the
-        // run-pass test, delay loading and comparing output
-        // until execution of the binary
-        let mut errors = if !self.props.check_run_results {
-            self.load_compare_outputs(&proc_res, explicit)
-        } else {
-            0
-        };
+        let mut errors = self.load_compare_outputs(&proc_res, TestOutput::Compile, explicit);
 
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
@@ -3062,7 +3076,7 @@ impl<'test> TestCx<'test> {
         if self.should_run_successfully() {
             let proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
-                self.load_compare_outputs(&proc_res, explicit)
+                self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
             } else {
                 0
             };
