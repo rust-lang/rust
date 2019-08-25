@@ -799,12 +799,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// adjusted type of the expression, if successful.
     /// Adjustments are only recorded if the coercion succeeded.
     /// The expressions *must not* have any pre-existing adjustments.
-    pub fn try_coerce(&self,
-                      expr: &hir::Expr,
-                      expr_ty: Ty<'tcx>,
-                      target: Ty<'tcx>,
-                      allow_two_phase: AllowTwoPhase)
-                      -> RelateResult<'tcx, Ty<'tcx>> {
+    pub fn try_coerce(
+        &self,
+        expr: &hir::Expr,
+        expr_ty: Ty<'tcx>,
+        target: Ty<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 

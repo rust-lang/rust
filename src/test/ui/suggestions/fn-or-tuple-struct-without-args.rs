@@ -42,4 +42,6 @@ fn main() {
     let _: usize = X::bal; //~ ERROR mismatched types
     let _: usize = X.ban; //~ ERROR attempted to take value of method
     let _: usize = X.bal; //~ ERROR attempted to take value of method
+    let closure = || 42;
+    let _: usize = closure; //~ ERROR mismatched types
 }

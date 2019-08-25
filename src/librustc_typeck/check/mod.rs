@@ -3917,75 +3917,99 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        match found.sty {
-            ty::FnDef(..) | ty::FnPtr(_) => {}
-            _ => return false,
-        }
         let hir = self.tcx.hir();
+        let (def_id, sig) = match found.sty {
+            ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
+            ty::Closure(def_id, substs) => {
+                // We don't use `closure_sig` to account for malformed closures like
+                // `|_: [_; continue]| {}` and instead we don't suggest anything.
+                let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
+                (def_id, match closure_sig_ty.sty {
+                    ty::FnPtr(sig) => sig,
+                    _ => return false,
+                })
+            }
+            _ => return false,
+        };
 
-        let sig = found.fn_sig(self.tcx);
         let sig = self
             .replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, &sig)
             .0;
         let sig = self.normalize_associated_types_in(expr.span, &sig);
-        if let Ok(_) = self.try_coerce(expr, sig.output(), expected, AllowTwoPhase::No) {
+        if self.can_coerce(sig.output(), expected) {
             let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
                 (String::new(), Applicability::MachineApplicable)
             } else {
                 ("...".to_string(), Applicability::HasPlaceholders)
             };
             let mut msg = "call this function";
-            if let ty::FnDef(def_id, ..) = found.sty {
-                match hir.get_if_local(def_id) {
-                    Some(Node::Item(hir::Item {
-                        node: ItemKind::Fn(.., body_id),
-                        ..
-                    })) |
-                    Some(Node::ImplItem(hir::ImplItem {
-                        node: hir::ImplItemKind::Method(_, body_id),
-                        ..
-                    })) |
-                    Some(Node::TraitItem(hir::TraitItem {
-                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
-                        ..
-                    })) => {
-                        let body = hir.body(*body_id);
-                        sugg_call = body.arguments.iter()
-                            .map(|arg| match &arg.pat.node {
-                                hir::PatKind::Binding(_, _, ident, None)
-                                if ident.name != kw::SelfLower => ident.to_string(),
-                                _ => "_".to_string(),
-                            }).collect::<Vec<_>>().join(", ");
-                    }
-                    Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
-                        sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                        match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
-                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
-                                msg = "instantiate this tuple variant";
-                            }
-                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
-                                msg = "instantiate this tuple struct";
-                            }
-                            _ => {}
-                        }
-                    }
-                    Some(Node::ForeignItem(hir::ForeignItem {
-                        node: hir::ForeignItemKind::Fn(_, idents, _),
-                        ..
-                    })) |
-                    Some(Node::TraitItem(hir::TraitItem {
-                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
-                        ..
-                    })) => sugg_call = idents.iter()
-                            .map(|ident| if ident.name != kw::SelfLower {
-                                ident.to_string()
-                            } else {
-                                "_".to_string()
-                            }).collect::<Vec<_>>()
-                            .join(", "),
-                    _ => {}
+            match hir.get_if_local(def_id) {
+                Some(Node::Item(hir::Item {
+                    node: ItemKind::Fn(.., body_id),
+                    ..
+                })) |
+                Some(Node::ImplItem(hir::ImplItem {
+                    node: hir::ImplItemKind::Method(_, body_id),
+                    ..
+                })) |
+                Some(Node::TraitItem(hir::TraitItem {
+                    node: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
+                    ..
+                })) => {
+                    let body = hir.body(*body_id);
+                    sugg_call = body.arguments.iter()
+                        .map(|arg| match &arg.pat.node {
+                            hir::PatKind::Binding(_, _, ident, None)
+                            if ident.name != kw::SelfLower => ident.to_string(),
+                            _ => "_".to_string(),
+                        }).collect::<Vec<_>>().join(", ");
                 }
-            };
+                Some(Node::Expr(hir::Expr {
+                    node: ExprKind::Closure(_, _, body_id, closure_span, _),
+                    span: full_closure_span,
+                    ..
+                })) => {
+                    if *full_closure_span == expr.span {
+                        return false;
+                    }
+                    err.span_label(*closure_span, "closure defined here");
+                    msg = "call this closure";
+                    let body = hir.body(*body_id);
+                    sugg_call = body.arguments.iter()
+                        .map(|arg| match &arg.pat.node {
+                            hir::PatKind::Binding(_, _, ident, None)
+                            if ident.name != kw::SelfLower => ident.to_string(),
+                            _ => "_".to_string(),
+                        }).collect::<Vec<_>>().join(", ");
+                }
+                Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
+                    sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                    match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
+                        Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
+                            msg = "instantiate this tuple variant";
+                        }
+                        Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
+                            msg = "instantiate this tuple struct";
+                        }
+                        _ => {}
+                    }
+                }
+                Some(Node::ForeignItem(hir::ForeignItem {
+                    node: hir::ForeignItemKind::Fn(_, idents, _),
+                    ..
+                })) |
+                Some(Node::TraitItem(hir::TraitItem {
+                    node: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
+                    ..
+                })) => sugg_call = idents.iter()
+                        .map(|ident| if ident.name != kw::SelfLower {
+                            ident.to_string()
+                        } else {
+                            "_".to_string()
+                        }).collect::<Vec<_>>()
+                        .join(", "),
+                _ => {}
+            }
             if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
                 err.span_suggestion(
                     expr.span,
