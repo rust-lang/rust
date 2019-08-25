@@ -128,10 +128,14 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
         let fake_attr = attr::mk_attr_inner(list);
         s.print_attribute(&fake_attr);
 
-        // #![no_std]
-        let no_std_meta = attr::mk_word_item(ast::Ident::with_dummy_span(sym::no_std));
-        let fake_attr = attr::mk_attr_inner(no_std_meta);
-        s.print_attribute(&fake_attr);
+        // Currently on Rust 2018 we don't have `extern crate std;` at the crate
+        // root, so this is not needed, and actually breaks things.
+        if sess.edition == syntax_pos::edition::Edition::Edition2015 {
+            // #![no_std]
+            let no_std_meta = attr::mk_word_item(ast::Ident::with_dummy_span(sym::no_std));
+            let fake_attr = attr::mk_attr_inner(no_std_meta);
+            s.print_attribute(&fake_attr);
+        }
     }
 
     s.print_mod(&krate.module, &krate.attrs);
