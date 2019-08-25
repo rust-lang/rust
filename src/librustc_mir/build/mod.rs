@@ -11,11 +11,9 @@ use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::HirIdMap;
-use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use std::u32;
 use rustc_target::spec::abi::Abi;
-use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::kw;
 use syntax_pos::Span;
 
@@ -485,29 +483,6 @@ macro_rules! unpack {
     };
 }
 
-fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
-    // Not callable from C, so we can safely unwind through these
-    if abi == Abi::Rust || abi == Abi::RustCall { return false; }
-
-    // Validate `#[unwind]` syntax regardless of platform-specific panic strategy
-    let attrs = &tcx.get_attrs(fn_def_id);
-    let unwind_attr = attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs);
-
-    // We never unwind, so it's not relevant to stop an unwind
-    if tcx.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
-
-    // We cannot add landing pads, so don't add one
-    if tcx.sess.no_landing_pads() { return false; }
-
-    // This is a special case: some functions have a C abi but are meant to
-    // unwind anyway. Don't stop them.
-    match unwind_attr {
-        None => false, // FIXME(#58794)
-        Some(UnwindAttr::Allowed) => false,
-        Some(UnwindAttr::Aborts) => true,
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
@@ -599,7 +574,7 @@ where
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, |builder| {
-        if should_abort_on_panic(tcx, fn_def_id, abi) {
+        if tcx.abort_on_panic_shim(fn_def_id, abi) {
             builder.schedule_abort();
         }
 

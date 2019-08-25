@@ -65,7 +65,7 @@ use std::ops::{Deref, Bound};
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
-use rustc_target::spec::abi;
+use rustc_target::spec::{abi, PanicStrategy};
 use rustc_macros::HashStable;
 use syntax::ast;
 use syntax::attr;
@@ -1580,6 +1580,28 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(&self) -> bool {
         self.gcx.sess.target.target.arch.contains("nvptx")
+    }
+
+    /// Determine if this function gets a shim to catch panics and abort.
+    pub fn abort_on_panic_shim(&self, fn_def_id: DefId, _abi: abi::Abi) -> bool {
+        // Validate `#[unwind]` syntax regardless of platform-specific panic strategy
+        let attrs = &self.get_attrs(fn_def_id);
+        let unwind_attr = attr::find_unwind_attr(Some(self.sess.diagnostic()), attrs);
+
+        // We never unwind, so it's not relevant to stop an unwind
+        if self.sess.panic_strategy() != PanicStrategy::Unwind { return false; }
+
+        // We cannot add landing pads, so don't add one
+        if self.sess.no_landing_pads() { return false; }
+
+        // For the common case, check the attribute.
+        match unwind_attr {
+            Some(attr::UnwindAttr::Allowed) => false,
+            Some(attr::UnwindAttr::Aborts) => true,
+            None =>
+                // Default: don't catch panics.
+                false, // FIXME(#58794), should be `abi != Abi::Rust && abi != Abi::RustCall`
+        }
     }
 }
 

@@ -14,7 +14,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
 
-use crate::abi::Abi;
 use crate::attributes;
 use crate::llvm::{self, Attribute};
 use crate::llvm::AttributePlace::Function;
@@ -267,27 +266,24 @@ pub fn from_fn_attrs(
         // In panic=abort mode we assume nothing can unwind anywhere, so
         // optimize based on this!
         false
-    } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        // If a specific #[unwind] attribute is present, use that.
-        // FIXME: We currently assume it can unwind even with `#[unwind(aborts)]`.
-        true
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        // Special attribute for allocator functions, which can't unwind
+        // Special attribute for allocator functions, which can't unwind.
         false
     } else if let Some(id) = id {
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if cx.tcx.is_foreign_item(id) && sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
-            // Foreign non-Rust items like `extern "C" { fn foo(); }` are assumed not to
-            // unwind
+        if cx.tcx.is_foreign_item(id) {
+            // Foreign items like `extern "C" { fn foo(); }` and `extern "Rust" { fn bar(); }`
+            // are assumed not to unwind.
+            false
+        } else if cx.tcx.abort_on_panic_shim(id, sig.abi) {
+            // Since we are adding a shim to abort on panic, this cannot unwind.
             false
         } else {
-            // Anything else defined in Rust is assumed that it can possibly
-            // unwind
+            // Anything else defined in Rust and can possibly unwind.
             true
         }
     } else {
-        // assume this can possibly unwind, avoiding the application of a
-        // `nounwind` attribute below.
+        // Assume this can possibly unwind.
         true
     });
 

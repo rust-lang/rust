@@ -2527,8 +2527,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
         } else if attr.check_name(sym::rustc_allocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
-        } else if attr.check_name(sym::unwind) {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
         } else if attr.check_name(sym::ffi_returns_twice) {
             if tcx.is_foreign_item(id) {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
