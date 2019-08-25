@@ -190,11 +190,19 @@ pub fn push_debuginfo_type_name<'tcx>(
             // processing
             visited.remove(t);
         },
-        ty::Closure(..) => {
+        ty::Closure(def_id, ..) => {
             output.push_str("closure");
+            let disambiguator = tcx.def_key(def_id).disambiguated_data.disambiguator;
+            if disambiguator != 0 {
+                output.push_str(&format!("-{}", disambiguator));
+            }
         }
-        ty::Generator(..) => {
+        ty::Generator(def_id, ..) => {
             output.push_str("generator");
+            let disambiguator = tcx.def_key(def_id).disambiguated_data.disambiguator;
+            if disambiguator != 0 {
+                output.push_str(&format!("-{}", disambiguator));
+            }
         }
         ty::Error |
         ty::Infer(_) |
