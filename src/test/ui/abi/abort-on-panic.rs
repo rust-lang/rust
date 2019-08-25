@@ -19,8 +19,20 @@ extern "C" fn panic_in_ffi() {
     panic!("Test");
 }
 
+#[unwind(aborts)]
+extern "Rust" fn panic_in_rust_abi() {
+    panic!("TestRust");
+}
+
 fn test() {
     let _ = panic::catch_unwind(|| { panic_in_ffi(); });
+    // The process should have aborted by now.
+    io::stdout().write(b"This should never be printed.\n");
+    let _ = io::stdout().flush();
+}
+
+fn testrust() {
+    let _ = panic::catch_unwind(|| { panic_in_rust_abi(); });
     // The process should have aborted by now.
     io::stdout().write(b"This should never be printed.\n");
     let _ = io::stdout().flush();
@@ -31,10 +43,19 @@ fn main() {
     if args.len() > 1 && args[1] == "test" {
         return test();
     }
+    if args.len() > 1 && args[1] == "testrust" {
+        return testrust();
+    }
 
     let mut p = Command::new(&args[0])
                         .stdout(Stdio::piped())
                         .stdin(Stdio::piped())
                         .arg("test").spawn().unwrap();
+    assert!(!p.wait().unwrap().success());
+
+    let mut p = Command::new(&args[0])
+                        .stdout(Stdio::piped())
+                        .stdin(Stdio::piped())
+                        .arg("testrust").spawn().unwrap();
     assert!(!p.wait().unwrap().success());
 }
