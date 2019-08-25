@@ -21,9 +21,7 @@ environments, and Lambda Prolog-style proof search. Quite readable.
 <a name="slg"></a> 
 
 ["A new formulation of tabled resolution with delay"][nftrd], by
-[Theresa Swift]. This paper gives a kind of abstract treatment of the
+Theresa Swift. This paper gives a kind of abstract treatment of the
 SLG formulation that is the basis for our on-demand solver.
 
 [nftrd]: https://dl.acm.org/citation.cfm?id=651202
-[ts]: http://www3.cs.stonybrook.edu/~tswift/
-[Theresa Swift]: http://www3.cs.stonybrook.edu/~tswift/
