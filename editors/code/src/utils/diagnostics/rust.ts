@@ -64,7 +64,7 @@ function mapLevelToSeverity(s: string): vscode.DiagnosticSeverity {
  * Converts a Rust span to a VsCode location
  */
 function mapSpanToLocation(span: RustDiagnosticSpan): vscode.Location {
-    const fileName = path.join(vscode.workspace.rootPath!, span.file_name);
+    const fileName = path.join(vscode.workspace.rootPath || '', span.file_name);
     const fileUri = vscode.Uri.file(fileName);
 
     const range = new vscode.Range(

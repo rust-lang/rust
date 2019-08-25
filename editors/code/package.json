@@ -13,18 +13,17 @@
         "Other"
     ],
     "engines": {
-        "vscode": "^1.33.0"
+        "vscode": "^1.36.0"
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "package": "vsce package",
         "compile": "tsc -p ./ && shx cp src/utils/terminateProcess.sh out/utils/terminateProcess.sh",
         "watch": "tsc -watch -p ./",
-        "postinstall": "node ./node_modules/vscode/bin/install",
         "fix": "prettier **/*.{json,ts} --write && tslint --project . --fix",
         "lint": "tslint --project .",
-        "test": "node node_modules/vscode/bin/test",
         "prettier": "prettier **/*.{json,ts}",
+        "test": "node ./out/test/runTest.js",
         "travis": "npm run compile && npm run test && npm run lint && npm run prettier -- --write && git diff --exit-code"
     },
     "prettier": {
@@ -39,13 +38,17 @@
         "@types/mocha": "^5.2.7",
         "@types/node": "^10.14.13",
         "@types/seedrandom": "^2.4.28",
+        "@types/glob": "^7.1.1",
+        "@types/vscode": "^1.36.0",
+        "glob": "^7.1.4",
+        "mocha": "^6.2.0",
         "prettier": "^1.18.2",
         "shx": "^0.3.1",
         "tslint": "^5.18.0",
         "tslint-config-prettier": "^1.18.0",
         "typescript": "^3.5.3",
         "vsce": "^1.66.0",
-        "vscode": "^1.1.35"
+        "vscode-test": "^1.2.0"
     },
     "activationEvents": [
         "onLanguage:rust",
