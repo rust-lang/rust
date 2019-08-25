@@ -196,7 +196,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
     }
 
-    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, v: &'tcx hir::Variant, _: &hir::Generics) {
+    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, v: &'tcx hir::Variant) {
         self.check_missing_docs_attrs(cx, &v.attrs, v.span, "a variant");
     }
 }

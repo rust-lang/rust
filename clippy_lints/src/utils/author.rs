@@ -90,12 +90,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
         done();
     }
 
-    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant, generics: &hir::Generics) {
+    fn check_variant(&mut self, cx: &LateContext<'a, 'tcx>, var: &'tcx hir::Variant) {
         if !has_attr(cx.sess(), &var.attrs) {
             return;
         }
         prelude();
-        PrintVisitor::new("var").visit_variant(var, generics, hir::DUMMY_HIR_ID);
+        PrintVisitor::new("var").visit_variant(var, &hir::Generics::empty(), hir::DUMMY_HIR_ID);
         done();
     }
 
