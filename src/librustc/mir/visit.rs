@@ -724,10 +724,6 @@ macro_rules! make_mir_visitor {
                 }
 
                 match & $($mutability)? proj.elem {
-                    ProjectionElem::Deref => {
-                    }
-                    ProjectionElem::Subslice { from: _, to: _ } => {
-                    }
                     ProjectionElem::Field(_field, ty) => {
                         self.visit_ty(ty, TyContext::Location(location));
                     }
@@ -738,11 +734,12 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
+                    ProjectionElem::Deref |
+                    ProjectionElem::Subslice { from: _, to: _ } |
                     ProjectionElem::ConstantIndex { offset: _,
                                                     min_length: _,
-                                                    from_end: _ } => {
-                    }
-                    ProjectionElem::Downcast(_name, _variant_index) => {
+                                                    from_end: _ } |
+                    ProjectionElem::Downcast(_, _) => {
                     }
                 }
             }

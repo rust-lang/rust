@@ -136,7 +136,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                 }
                 PrefixSet::All => {
                     // all prefixes: just blindly enqueue the base
-                    // of the projection
+                    // of the projection.
                     self.next = Some(PlaceRef {
                         base: cursor.base,
                         projection: &proj.base,
