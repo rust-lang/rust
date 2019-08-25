@@ -3586,7 +3586,7 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     [166; 169) '{t}': T
     [167; 168) 't': T
     [257; 258) 'x': T
-    [263; 264) 'y': impl Trait + 
+    [263; 264) 'y': impl Trait<Type = i64>
     [290; 398) '{     ...r>); }': ()
     [296; 299) 'get': fn get<T>(T) -> <T as Trait>::Type
     [296; 302) 'get(x)': {unknown}
@@ -3594,12 +3594,12 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
     [308; 312) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
     [308; 315) 'get2(x)': {unknown}
     [313; 314) 'x': T
-    [321; 324) 'get': fn get<impl Trait + >(T) -> <T as Trait>::Type
+    [321; 324) 'get': fn get<impl Trait<Type = i64>>(T) -> <T as Trait>::Type
     [321; 327) 'get(y)': {unknown}
-    [325; 326) 'y': impl Trait + 
+    [325; 326) 'y': impl Trait<Type = i64>
     [333; 337) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
     [333; 340) 'get2(y)': {unknown}
-    [338; 339) 'y': impl Trait + 
+    [338; 339) 'y': impl Trait<Type = i64>
     [346; 349) 'get': fn get<S<u64>>(T) -> <T as Trait>::Type
     [346; 357) 'get(set(S))': u64
     [350; 353) 'set': fn set<S<u64>>(T) -> T

@@ -121,6 +121,16 @@ pub struct ProjectionTy {
 }
 
 impl ProjectionTy {
+    pub fn trait_ref(&self, db: &impl HirDatabase) -> TraitRef {
+        TraitRef {
+            trait_: self
+                .associated_ty
+                .parent_trait(db)
+                .expect("projection ty without parent trait"),
+            substs: self.parameters.clone(),
+        }
+    }
+
     pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
         self.parameters.walk(f);
     }
@@ -338,6 +348,21 @@ impl GenericPredicate {
         match self {
             GenericPredicate::Error => true,
             _ => false,
+        }
+    }
+
+    pub fn is_implemented(&self) -> bool {
+        match self {
+            GenericPredicate::Implemented(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn trait_ref(&self, db: &impl HirDatabase) -> Option<TraitRef> {
+        match self {
+            GenericPredicate::Implemented(tr) => Some(tr.clone()),
+            GenericPredicate::Projection(proj) => Some(proj.projection_ty.trait_ref(db)),
+            GenericPredicate::Error => None,
         }
     }
 
@@ -769,23 +794,66 @@ impl HirDisplay for Ty {
                     Ty::Opaque(_) => write!(f, "impl ")?,
                     _ => unreachable!(),
                 };
-                // looping by hand here just to format the bounds in a slightly nicer way
+                // Note: This code is written to produce nice results (i.e.
+                // corresponding to surface Rust) for types that can occur in
+                // actual Rust. It will have weird results if the predicates
+                // aren't as expected (i.e. self types = $0, projection
+                // predicates for a certain trait come after the Implemented
+                // predicate for that trait).
                 let mut first = true;
+                let mut angle_open = false;
                 for p in predicates.iter() {
-                    if !first {
-                        write!(f, " + ")?;
+                    match p {
+                        GenericPredicate::Implemented(trait_ref) => {
+                            if angle_open {
+                                write!(f, ">")?;
+                            }
+                            if !first {
+                                write!(f, " + ")?;
+                            }
+                            // We assume that the self type is $0 (i.e. the
+                            // existential) here, which is the only thing that's
+                            // possible in actual Rust, and hence don't print it
+                            write!(
+                                f,
+                                "{}",
+                                trait_ref.trait_.name(f.db).unwrap_or_else(Name::missing)
+                            )?;
+                            if trait_ref.substs.len() > 1 {
+                                write!(f, "<")?;
+                                f.write_joined(&trait_ref.substs[1..], ", ")?;
+                                // there might be assoc type bindings, so we leave the angle brackets open
+                                angle_open = true;
+                            }
+                        }
+                        GenericPredicate::Projection(projection_pred) => {
+                            // in types in actual Rust, these will always come
+                            // after the corresponding Implemented predicate
+                            if angle_open {
+                                write!(f, ", ")?;
+                            } else {
+                                write!(f, "<")?;
+                                angle_open = true;
+                            }
+                            let name = projection_pred.projection_ty.associated_ty.name(f.db);
+                            write!(f, "{} = ", name)?;
+                            projection_pred.ty.hir_fmt(f)?;
+                        }
+                        GenericPredicate::Error => {
+                            if angle_open {
+                                // impl Trait<X, {error}>
+                                write!(f, ", ")?;
+                            } else if !first {
+                                // impl Trait + {error}
+                                write!(f, " + ")?;
+                            }
+                            p.hir_fmt(f)?;
+                        }
                     }
                     first = false;
-                    match p {
-                        // don't show the $0 self type
-                        GenericPredicate::Implemented(trait_ref) => {
-                            trait_ref.hir_fmt_ext(f, false)?
-                        }
-                        GenericPredicate::Projection(_projection_pred) => {
-                            // TODO show something
-                        }
-                        GenericPredicate::Error => p.hir_fmt(f)?,
-                    }
+                }
+                if angle_open {
+                    write!(f, ">")?;
                 }
             }
             Ty::Unknown => write!(f, "{{unknown}}")?,
@@ -796,13 +864,12 @@ impl HirDisplay for Ty {
 }
 
 impl TraitRef {
-    fn hir_fmt_ext(
-        &self,
-        f: &mut HirFormatter<impl HirDatabase>,
-        with_self_ty: bool,
-    ) -> fmt::Result {
-        if with_self_ty {
-            write!(f, "{}: ", self.substs[0].display(f.db),)?;
+    fn hir_fmt_ext(&self, f: &mut HirFormatter<impl HirDatabase>, use_as: bool) -> fmt::Result {
+        self.substs[0].hir_fmt(f)?;
+        if use_as {
+            write!(f, " as ")?;
+        } else {
+            write!(f, ": ")?;
         }
         write!(f, "{}", self.trait_.name(f.db).unwrap_or_else(Name::missing))?;
         if self.substs.len() > 1 {
@@ -816,7 +883,7 @@ impl TraitRef {
 
 impl HirDisplay for TraitRef {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        self.hir_fmt_ext(f, true)
+        self.hir_fmt_ext(f, false)
     }
 }
 
@@ -831,7 +898,14 @@ impl HirDisplay for GenericPredicate {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
             GenericPredicate::Projection(projection_pred) => {
-                // TODO print something
+                write!(f, "<")?;
+                projection_pred.projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?;
+                write!(
+                    f,
+                    ">::{} = {}",
+                    projection_pred.projection_ty.associated_ty.name(f.db),
+                    projection_pred.ty.display(f.db)
+                )?;
             }
             GenericPredicate::Error => write!(f, "{{error}}")?,
         }
