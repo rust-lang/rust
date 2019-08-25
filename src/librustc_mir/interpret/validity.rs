@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::{sym, Symbol};
 use rustc::hir;
-use rustc::ty::layout::{self, TyLayout, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, Size, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 
@@ -276,8 +276,20 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 // FIXME: More checks for the vtable.
             }
             ty::Slice(..) | ty::Str => {
-                try_validation!(meta.unwrap().to_usize(self.ecx),
+                let len = try_validation!(meta.unwrap().to_usize(self.ecx),
                     "non-integer slice length in wide pointer", self.path);
+                // check max slice length
+                let elem_size = match tail.sty {
+                    ty::Str => Size::from_bytes(1),
+                    ty::Slice(ty) => self.ecx.layout_of(ty)?.size,
+                    _ => bug!("It cannot be another type"),
+                };
+                if elem_size.checked_mul(len, &*self.ecx.tcx).is_none() {
+                    throw_validation_failure!(
+                        "too large slice (longer than isize::MAX bytes)",
+                        self.path
+                    );
+                }
             }
             ty::Foreign(..) => {
                 // Unsized, but not wide.

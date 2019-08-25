@@ -126,6 +126,8 @@ const I3: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]
 // # raw slice
 const RAW_SLICE_VALID: *const [u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 1 } }.raw_slice}; // ok
 const RAW_SLICE_TOO_LONG: *const [u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.raw_slice}; // ok because raw
+const RAW_SLICE_MUCH_TOO_LONG: *const [u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: usize::max_value() } }.raw_slice};
+//~^ ERROR it is undefined behavior to use this value
 const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe { SliceTransmute { addr: 42 }.raw_slice};
 //~^ ERROR it is undefined behavior to use this value
 
