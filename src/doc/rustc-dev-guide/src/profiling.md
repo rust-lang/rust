@@ -1,9 +1,16 @@
 # Profiling the compiler
 
-This discussion talks about how profile the compiler and find out
-where it spends its time.  If you just want to get a general overview,
-it is often a good idea to just add `-Zself-profile` option to the
-rustc command line. This will break down time spent into various
-categories.  But if you want a more detailed look, you probably want
-to break out a custom profiler.
+This section talks about how to profile the compiler and find out where it spends its time.  
+
+Depending on what you're trying to measure, there are several different approaches:
+
+- If you want to see if a PR improves or regresses compiler performance:
+  - The [rustc-perf](https://github.com/rust-lang-nursery/rustc-perf) project makes this easy and can be triggered to run on a PR via the `@rustc-perf` bot.
+  
+- If you want a medium-to-high level overview of where `rustc` is spending its time:
+  - The `-Zself-profile` flag and [measureme](https://github.com/rust-lang/measureme) tools offer a query-based approach to profiling.
+    See [their docs](https://github.com/rust-lang/measureme/blob/master/summarize/Readme.md) for more information.
+    
+- If you want function level performance data or even just more details than the above approaches:
+  - Consider using a native code profiler such as [perf](profiling/with_perf.html).
 
