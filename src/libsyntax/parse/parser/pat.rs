@@ -21,9 +21,9 @@ pub(super) const PARAM_EXPECTED: Expected = Some("parameter name");
 #[derive(PartialEq)]
 pub enum GateOr { Yes, No }
 
-/// Whether or not this is the top level pattern context.
+/// Whether or not to recover a `,` when parsing or-patterns.
 #[derive(PartialEq, Copy, Clone)]
-enum TopLevel { Yes, No }
+enum RecoverComma { Yes, No }
 
 impl<'a> Parser<'a> {
     /// Parses a pattern.
@@ -52,7 +52,7 @@ impl<'a> Parser<'a> {
         let gated_leading_vert = self.eat_or_separator() && gate_or == GateOr::Yes;
 
         // Parse the possibly-or-pattern.
-        let pat = self.parse_pat_with_or(None, gate_or, TopLevel::Yes)?;
+        let pat = self.parse_pat_with_or(None, gate_or, RecoverComma::Yes)?;
 
         // If we parsed a leading `|` which should be gated,
         // and no other gated or-pattern has been parsed thus far,
@@ -72,7 +72,7 @@ impl<'a> Parser<'a> {
     /// Special recovery is provided for or-patterns and leading `|`.
     pub(super) fn parse_fn_param_pat(&mut self) -> PResult<'a, P<Pat>> {
         self.recover_leading_vert("not allowed in a parameter pattern");
-        let pat = self.parse_pat_with_or(PARAM_EXPECTED, GateOr::No, TopLevel::No)?;
+        let pat = self.parse_pat_with_or(PARAM_EXPECTED, GateOr::No, RecoverComma::No)?;
 
         if let PatKind::Or(..) = &pat.node {
             self.ban_illegal_fn_param_or_pat(&pat);
@@ -96,11 +96,11 @@ impl<'a> Parser<'a> {
         &mut self,
         expected: Expected,
         gate_or: GateOr,
-        top_level: TopLevel,
+        rc: RecoverComma,
     ) -> PResult<'a, P<Pat>> {
         // Parse the first pattern.
         let first_pat = self.parse_pat(expected)?;
-        self.maybe_recover_unexpected_comma(first_pat.span, top_level)?;
+        self.maybe_recover_unexpected_comma(first_pat.span, rc)?;
 
         // If the next token is not a `|`,
         // this is not an or-pattern and we should exit here.
@@ -115,7 +115,7 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, "while parsing this or-pattern staring here");
                 err
             })?;
-            self.maybe_recover_unexpected_comma(pat.span, top_level)?;
+            self.maybe_recover_unexpected_comma(pat.span, rc)?;
             pats.push(pat);
         }
         let or_pattern_span = lo.to(self.prev_span);
@@ -156,8 +156,8 @@ impl<'a> Parser<'a> {
 
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
-    fn maybe_recover_unexpected_comma(&mut self, lo: Span, top_level: TopLevel) -> PResult<'a, ()> {
-        if top_level == TopLevel::No || self.token != token::Comma {
+    fn maybe_recover_unexpected_comma(&mut self, lo: Span, rc: RecoverComma) -> PResult<'a, ()> {
+        if rc == RecoverComma::No || self.token != token::Comma {
             return Ok(());
         }
 
@@ -207,7 +207,7 @@ impl<'a> Parser<'a> {
     /// See `parse_pat_with_or` for details on parsing or-patterns.
     fn parse_pat_with_or_inner(&mut self) -> PResult<'a, P<Pat>> {
         self.recover_leading_vert("only allowed in a top-level pattern");
-        self.parse_pat_with_or(None, GateOr::Yes, TopLevel::No)
+        self.parse_pat_with_or(None, GateOr::Yes, RecoverComma::No)
     }
 
     /// Recover if `|` or `||` is here.
