@@ -150,12 +150,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
         highlight: Option<ty::print::RegionHighlightMode>,
-    ) -> String {
+    ) -> (String, Option<Span>) {
         if let ty::Infer(ty::TyVar(ty_vid)) = ty.sty {
             let ty_vars = self.type_variables.borrow();
-            if let TypeVariableOriginKind::TypeParameterDefinition(name) =
-                ty_vars.var_origin(ty_vid).kind {
-                return name.to_string();
+            let var_origin = ty_vars.var_origin(ty_vid);
+            if let TypeVariableOriginKind::TypeParameterDefinition(name) = var_origin.kind {
+                return (name.to_string(), Some(var_origin.span));
             }
         }
 
@@ -165,7 +165,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             printer.region_highlight_mode = highlight;
         }
         let _ = ty.print(printer);
-        s
+        (s, None)
     }
 
     pub fn need_type_info_err(
@@ -175,7 +175,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
-        let name = self.extract_type_name(&ty, None);
+        let (name, name_sp) = self.extract_type_name(&ty, None);
 
         let mut local_visitor = FindLocalByTypeVisitor::new(&self, ty, &self.tcx.hir());
         let ty_to_string = |ty: Ty<'tcx>| -> String {
@@ -200,6 +200,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
         let err_span = if let Some(pattern) = local_visitor.found_arg_pattern {
             pattern.span
+        } else if let Some(span) = name_sp {
+            // `span` here lets us point at `sum` instead of the entire right hand side expr:
+            // error[E0282]: type annotations needed
+            //  --> file2.rs:3:15
+            //   |
+            // 3 |     let _ = x.sum() as f64;
+            //   |               ^^^ cannot infer type for `S`
+            span
         } else {
             span
         };
@@ -325,6 +333,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
             err.span_label(pattern.span, msg);
         }
+        // Instead of the following:
+        // error[E0282]: type annotations needed
+        //  --> file2.rs:3:15
+        //   |
+        // 3 |     let _ = x.sum() as f64;
+        //   |             --^^^--------- cannot infer type for `S`
+        //   |
+        //   = note: type must be known at this point
+        // We want:
+        // error[E0282]: type annotations needed
+        //  --> file2.rs:3:15
+        //   |
+        // 3 |     let _ = x.sum() as f64;
+        //   |               ^^^ cannot infer type for `S`
+        //   |
+        //   = note: type must be known at this point
+        let span = name_sp.unwrap_or(span);
         if !err.span.span_labels().iter().any(|span_label| {
                 span_label.label.is_some() && span_label.span == span
             }) && local_visitor.found_arg_pattern.is_none()
@@ -342,7 +367,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let ty = self.resolve_vars_if_possible(&ty);
-        let name = self.extract_type_name(&ty, None);
+        let name = self.extract_type_name(&ty, None).0;
         let mut err = struct_span_err!(
             self.tcx.sess, span, E0698, "type inside {} must be known in this context", kind,
         );
