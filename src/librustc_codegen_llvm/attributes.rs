@@ -271,11 +271,7 @@ pub fn from_fn_attrs(
         false
     } else if let Some(id) = id {
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if cx.tcx.is_foreign_item(id) {
-            // Foreign items like `extern "C" { fn foo(); }` and `extern "Rust" { fn bar(); }`
-            // are assumed not to unwind.
-            false
-        } else if cx.tcx.abort_on_panic_shim(id, sig.abi) {
+        if cx.tcx.abort_on_panic_shim(id, sig.abi) {
             // Since we are adding a shim to abort on panic, this cannot unwind.
             false
         } else {
