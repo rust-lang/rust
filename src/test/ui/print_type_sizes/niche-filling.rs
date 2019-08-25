@@ -27,7 +27,7 @@ impl<T> Default for MyOption<T> {
 
 pub enum EmbeddedDiscr {
     None,
-    Record { pre: u8, val: NonZeroU32, post: u16 },
+    Record { pre1: u8, pre2: u8, val: NonZeroU32, post: u16 },
 }
 
 impl Default for EmbeddedDiscr {
@@ -53,6 +53,15 @@ impl Default for NestedNonZero {
     }
 }
 
+pub enum BadNiche {
+    None,
+    Record { pre: u8, val: NonZeroU32, post: u16 },
+}
+
+impl Default for BadNiche {
+    fn default() -> Self { BadNiche::None }
+}
+
 pub enum Enum4<A, B, C, D> {
     One(A),
     Two(B),
@@ -74,6 +83,7 @@ fn start(_: isize, _: *const *const u8) -> isize {
     let _x: MyOption<NonZeroU32> = Default::default();
     let _y: EmbeddedDiscr = Default::default();
     let _z: MyOption<IndirectNonZero> = Default::default();
+    let _w: BadNiche = Default::default();
     let _a: MyOption<bool> = Default::default();
     let _b: MyOption<char> = Default::default();
     let _c: MyOption<std::cmp::Ordering> = Default::default();

@@ -921,6 +921,64 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     align = align.max(v_align);
                 }
 
+                let mut gap = max_size.align_to(align.abi) - max_size;
+
+                let (mut min, mut max) = (i128::max_value(), i128::min_value());
+                let discr_type = def.repr.discr_type();
+                let bits = Integer::from_attr(self, discr_type).size().bits();
+                for (i, discr) in def.discriminants(tcx) {
+                    if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
+                        continue;
+                    }
+                    let mut x = discr.val as i128;
+                    if discr_type.is_signed() {
+                        // sign extend the raw representation to be an i128
+                        x = (x << (128 - bits)) >> (128 - bits);
+                    }
+                    if x < min { min = x; }
+                    if x > max { max = x; }
+                }
+                // We might have no inhabited variants, so pretend there's at least one.
+                if (min, max) == (i128::max_value(), i128::min_value()) {
+                    min = 0;
+                    max = 0;
+                }
+                assert!(min <= max, "discriminant range is {}...{}", min, max);
+                let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
+
+                let typeck_ity = Integer::from_attr(dl, def.repr.discr_type());
+                if typeck_ity < min_ity {
+                    // It is a bug if Layout decided on a greater discriminant size than typeck for
+                    // some reason at this point (based on values discriminant can take on). Mostly
+                    // because this discriminant will be loaded, and then stored into variable of
+                    // type calculated by typeck. Consider such case (a bug): typeck decided on
+                    // byte-sized discriminant, but layout thinks we need a 16-bit to store all
+                    // discriminant values. That would be a bug, because then, in codegen, in order
+                    // to store this 16-bit discriminant into 8-bit sized temporary some of the
+                    // space necessary to represent would have to be discarded (or layout is wrong
+                    // on thinking it needs 16 bits)
+                    bug!("layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
+                         min_ity, typeck_ity);
+                    // However, it is fine to make discr type however large (as an optimisation)
+                    // after this point – we’ll just truncate the value we load in codegen.
+                }
+
+                let must_grow = min_ity.size() > gap;
+                if must_grow {
+                    gap += (min_ity.size() - gap).align_to(align.abi);
+                }
+
+                // We increase the size of the discriminant to avoid LLVM copying
+                // padding when it doesn't need to. This normally causes unaligned
+                // load/stores and excessive memcpy/memset operations. By using a
+                // bigger integer size, LLVM can be sure about its contents and
+                // won't be so conservative.
+                let ity = if def.repr.inhibit_enum_layout_opt() {
+                    min_ity
+                } else {
+                    Integer::approximate_size(gap).unwrap()
+                };
+
                 // The current code for niche-filling relies on variant indices
                 // instead of actual discriminants, so dataful enums with
                 // explicit discriminants (RFC #2363) would misbehave.
@@ -966,6 +1024,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                                 Some(niche) => niche,
                                 _ => continue,
                             };
+                            // Do not use a niche smaller than the tag unless it reduces the size.
+                            if !must_grow && niche.available(dl) >> ity.size().bits() == 0 {
+                                continue;
+                            }
                             let (niche_start, niche_scalar) = match niche.reserve(self, count) {
                                 Some(pair) => pair,
                                 None => continue,
@@ -1036,63 +1098,6 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         }
                     }
                 }
-
-                let mut gap = max_size.align_to(align.abi) - max_size;
-
-                let (mut min, mut max) = (i128::max_value(), i128::min_value());
-                let discr_type = def.repr.discr_type();
-                let bits = Integer::from_attr(self, discr_type).size().bits();
-                for (i, discr) in def.discriminants(tcx) {
-                    if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
-                        continue;
-                    }
-                    let mut x = discr.val as i128;
-                    if discr_type.is_signed() {
-                        // sign extend the raw representation to be an i128
-                        x = (x << (128 - bits)) >> (128 - bits);
-                    }
-                    if x < min { min = x; }
-                    if x > max { max = x; }
-                }
-                // We might have no inhabited variants, so pretend there's at least one.
-                if (min, max) == (i128::max_value(), i128::min_value()) {
-                    min = 0;
-                    max = 0;
-                }
-                assert!(min <= max, "discriminant range is {}...{}", min, max);
-                let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
-
-                let typeck_ity = Integer::from_attr(dl, def.repr.discr_type());
-                if typeck_ity < min_ity {
-                    // It is a bug if Layout decided on a greater discriminant size than typeck for
-                    // some reason at this point (based on values discriminant can take on). Mostly
-                    // because this discriminant will be loaded, and then stored into variable of
-                    // type calculated by typeck. Consider such case (a bug): typeck decided on
-                    // byte-sized discriminant, but layout thinks we need a 16-bit to store all
-                    // discriminant values. That would be a bug, because then, in codegen, in order
-                    // to store this 16-bit discriminant into 8-bit sized temporary some of the
-                    // space necessary to represent would have to be discarded (or layout is wrong
-                    // on thinking it needs 16 bits)
-                    bug!("layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
-                         min_ity, typeck_ity);
-                    // However, it is fine to make discr type however large (as an optimisation)
-                    // after this point – we’ll just truncate the value we load in codegen.
-                }
-
-                if min_ity.size() > gap {
-                    gap += (min_ity.size() - gap).align_to(align.abi);
-                }
-
-                // We increase the size of the discriminant to avoid LLVM copying
-                // padding when it doesn't need to. This normally causes unaligned
-                // load/stores and excessive memcpy/memset operations. By using a
-                // bigger integer size, LLVM can be sure about its contents and
-                // won't be so conservative.
-                let ity = if def.repr.inhibit_enum_layout_opt() {
-                    min_ity
-                } else {
-                    Integer::approximate_size(gap).unwrap()
-                };
 
                 let mut prefix_align = ity.align(dl).abi;
                 let align = align.max(AbiAndPrefAlign::new(prefix_align));
