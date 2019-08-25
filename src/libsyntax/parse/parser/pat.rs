@@ -14,6 +14,9 @@ use errors::{Applicability, DiagnosticBuilder};
 
 type Expected = Option<&'static str>;
 
+/// `Expected` for function and lambda parameter patterns.
+pub(super) const PARAM_EXPECTED: Expected = Some("parameter name");
+
 /// Whether or not an or-pattern should be gated when occurring in the current context.
 #[derive(PartialEq)]
 pub enum GateOr { Yes, No }
@@ -49,7 +52,7 @@ impl<'a> Parser<'a> {
         let gated_leading_vert = self.eat_or_separator() && gate_or == GateOr::Yes;
 
         // Parse the possibly-or-pattern.
-        let pat = self.parse_pat_with_or(gate_or, TopLevel::Yes)?;
+        let pat = self.parse_pat_with_or(None, gate_or, TopLevel::Yes)?;
 
         // If we parsed a leading `|` which should be gated,
         // and no other gated or-pattern has been parsed thus far,
@@ -65,11 +68,38 @@ impl<'a> Parser<'a> {
         Ok(pat)
     }
 
+    /// Parse the pattern for a function or function pointer parameter.
+    /// Special recovery is provided for or-patterns and leading `|`.
+    pub(super) fn parse_fn_param_pat(&mut self) -> PResult<'a, P<Pat>> {
+        self.recover_leading_vert("not allowed in a parameter pattern");
+        let pat = self.parse_pat_with_or(PARAM_EXPECTED, GateOr::No, TopLevel::No)?;
+
+        if let PatKind::Or(..) = &pat.node {
+            self.ban_illegal_fn_param_or_pat(&pat);
+        }
+
+        Ok(pat)
+    }
+
+    /// Ban `A | B` immediately in a parameter pattern and suggest wrapping in parens.
+    fn ban_illegal_fn_param_or_pat(&self, pat: &Pat) {
+        let msg = "wrap the pattern in parenthesis";
+        let fix = format!("({})", pprust::pat_to_string(pat));
+        self.struct_span_err(pat.span, "an or-pattern parameter must be wrapped in parenthesis")
+            .span_suggestion(pat.span, msg, fix, Applicability::MachineApplicable)
+            .emit();
+    }
+
     /// Parses a pattern, that may be a or-pattern (e.g. `Foo | Bar` in `Some(Foo | Bar)`).
     /// Corresponds to `pat<allow_top_alt>` in RFC 2535.
-    fn parse_pat_with_or(&mut self, gate_or: GateOr, top_level: TopLevel) -> PResult<'a, P<Pat>> {
+    fn parse_pat_with_or(
+        &mut self,
+        expected: Expected,
+        gate_or: GateOr,
+        top_level: TopLevel,
+    ) -> PResult<'a, P<Pat>> {
         // Parse the first pattern.
-        let first_pat = self.parse_pat(None)?;
+        let first_pat = self.parse_pat(expected)?;
         self.maybe_recover_unexpected_comma(first_pat.span, top_level)?;
 
         // If the next token is not a `|`,
@@ -81,7 +111,7 @@ impl<'a> Parser<'a> {
         let lo = first_pat.span;
         let mut pats = vec![first_pat];
         while self.eat_or_separator() {
-            let pat = self.parse_pat(None).map_err(|mut err| {
+            let pat = self.parse_pat(expected).map_err(|mut err| {
                 err.span_label(lo, "while parsing this or-pattern staring here");
                 err
             })?;
@@ -176,18 +206,18 @@ impl<'a> Parser<'a> {
     /// Recursive possibly-or-pattern parser with recovery for an erroneous leading `|`.
     /// See `parse_pat_with_or` for details on parsing or-patterns.
     fn parse_pat_with_or_inner(&mut self) -> PResult<'a, P<Pat>> {
-        self.recover_inner_leading_vert();
-        self.parse_pat_with_or(GateOr::Yes, TopLevel::No)
+        self.recover_leading_vert("only allowed in a top-level pattern");
+        self.parse_pat_with_or(None, GateOr::Yes, TopLevel::No)
     }
 
     /// Recover if `|` or `||` is here.
     /// The user is thinking that a leading `|` is allowed in this position.
-    fn recover_inner_leading_vert(&mut self) {
+    fn recover_leading_vert(&mut self, ctx: &str) {
         if let token::BinOp(token::Or) | token::OrOr = self.token.kind {
             let span = self.token.span;
             let rm_msg = format!("remove the `{}`", pprust::token_to_string(&self.token));
 
-            self.struct_span_err(span, "a leading `|` is only allowed in a top-level pattern")
+            self.struct_span_err(span, &format!("a leading `|` is {}", ctx))
                 .span_suggestion(span, &rm_msg, String::new(), Applicability::MachineApplicable)
                 .emit();
 

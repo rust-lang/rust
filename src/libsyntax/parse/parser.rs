@@ -988,7 +988,7 @@ impl<'a> Parser<'a> {
         let (pat, ty) = if is_name_required || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (is_name_required:{})", is_name_required);
 
-            let pat = self.parse_pat(Some("argument name"))?;
+            let pat = self.parse_fn_param_pat()?;
             if let Err(mut err) = self.expect(&token::Colon) {
                 if let Some(ident) = self.argument_without_type(
                     &mut err,

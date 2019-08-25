@@ -1,7 +1,7 @@
 use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle};
 use super::{BlockMode, SemiColonMode};
 use super::{SeqSep, TokenExpectType};
-use super::pat::GateOr;
+use super::pat::{GateOr, PARAM_EXPECTED};
 
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::ptr::P;
@@ -1176,7 +1176,7 @@ impl<'a> Parser<'a> {
     fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
         let lo = self.token.span;
         let attrs = self.parse_arg_attributes()?;
-        let pat = self.parse_pat(Some("argument name"))?;
+        let pat = self.parse_pat(PARAM_EXPECTED)?;
         let t = if self.eat(&token::Colon) {
             self.parse_ty()?
         } else {

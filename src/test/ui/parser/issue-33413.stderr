@@ -1,8 +1,8 @@
-error: expected argument name, found `*`
+error: expected parameter name, found `*`
   --> $DIR/issue-33413.rs:4:10
    |
 LL |     fn f(*, a: u8) -> u8 {}
-   |          ^ expected argument name
+   |          ^ expected parameter name
 
 error: aborting due to previous error
 
