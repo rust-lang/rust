@@ -967,10 +967,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let self_ty = trait_ref.self_ty();
         match self_ty.sty {
             ty::FnDef(def_id, _) => {
-                // We tried to apply the bound to an `fn`. Check wether calling it
-                // would evaluate to a type that *would* satisfy the trait binding.
-                // If it would, suggest calling it: `bar(foo)` -> `bar(foo)`. This
-                // case is *very* to hit if `foo` is `async`.
+                // We tried to apply the bound to an `fn`. Check whether calling it would evaluate
+                // to a type that *would* satisfy the trait binding. If it would, suggest calling
+                // it: `bar(foo)` -> `bar(foo)`. This case is *very* likely to be hit if `foo` is
+                // `async`.
                 let output_ty = self_ty.fn_sig(self.tcx).output();
                 let new_trait_ref = ty::TraitRef {
                     def_id: trait_ref.def_id(),
