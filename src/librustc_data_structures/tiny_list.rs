@@ -20,7 +20,6 @@ pub struct TinyList<T: PartialEq> {
 }
 
 impl<T: PartialEq> TinyList<T> {
-
     #[inline]
     pub fn new() -> TinyList<T> {
         TinyList {
@@ -60,20 +59,24 @@ impl<T: PartialEq> TinyList<T> {
 
     #[inline]
     pub fn contains(&self, data: &T) -> bool {
-        if let Some(ref head) = self.head {
-            head.contains(data)
-        } else {
-            false
+        let mut elem = self.head.as_ref();
+        while let Some(ref e) = elem {
+            if &e.data == data {
+                return true;
+            }
+            elem = e.next.as_ref().map(|e| &**e);
         }
+        false
     }
 
     #[inline]
     pub fn len(&self) -> usize {
-        if let Some(ref head) = self.head {
-            head.len()
-        } else {
-            0
+        let (mut elem, mut count) = (self.head.as_ref(), 0);
+        while let Some(ref e) = elem {
+            count += 1;
+            elem = e.next.as_ref().map(|e| &**e);
         }
+        count
     }
 }
 
@@ -84,40 +87,13 @@ struct Element<T: PartialEq> {
 }
 
 impl<T: PartialEq> Element<T> {
-
     fn remove_next(&mut self, data: &T) -> bool {
-        let new_next = if let Some(ref mut next) = self.next {
-            if next.data != *data {
-                return next.remove_next(data)
-            } else {
-                next.next.take()
-            }
-        } else {
-            return false
+        let new_next = match self.next {
+            Some(ref mut next) if next.data == *data => next.next.take(),
+            Some(ref mut next) => return next.remove_next(data),
+            None => return false,
         };
-
         self.next = new_next;
-
         true
-    }
-
-    fn len(&self) -> usize {
-        if let Some(ref next) = self.next {
-            1 + next.len()
-        } else {
-            1
-        }
-    }
-
-    fn contains(&self, data: &T) -> bool {
-        if self.data == *data {
-            return true
-        }
-
-        if let Some(ref next) = self.next {
-            next.contains(data)
-        } else {
-            false
-        }
     }
 }

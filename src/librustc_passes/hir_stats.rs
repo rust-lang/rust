@@ -334,12 +334,9 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         ast_visit::walk_struct_field(self, s)
     }
 
-    fn visit_variant(&mut self,
-                     v: &'v ast::Variant,
-                     g: &'v ast::Generics,
-                     item_id: NodeId) {
+    fn visit_variant(&mut self, v: &'v ast::Variant) {
         self.record("Variant", Id::None, v);
-        ast_visit::walk_variant(self, v, g, item_id)
+        ast_visit::walk_variant(self, v)
     }
 
     fn visit_lifetime(&mut self, lifetime: &'v ast::Lifetime) {
