@@ -1307,12 +1307,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 None => continue,
             };
 
-            // Filter away ambiguous and gensymed imports. Gensymed imports
-            // (e.g. implicitly injected `std`) cannot be properly encoded in metadata,
-            // so they can cause name conflict errors downstream.
-            let is_good_import = binding.is_import() && !binding.is_ambiguity() &&
-                                 // Note that as_str() de-gensyms the Symbol
-                                 !(ident.is_gensymed() && ident.name.as_str() != "_");
+            // Filter away ambiguous imports.
+            let is_good_import = binding.is_import() && !binding.is_ambiguity();
             if is_good_import || binding.is_macro_def() {
                 let res = binding.res();
                 if res != Res::Err {
