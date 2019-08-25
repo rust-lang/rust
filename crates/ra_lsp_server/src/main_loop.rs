@@ -217,7 +217,7 @@ fn main_loop_inner(
                 Err(RecvError) => Err("client exited without shutdown")?,
             },
             recv(task_receiver) -> task => Event::Task(task.unwrap()),
-            recv(state.vfs.read().task_receiver()) -> task => match task {
+            recv(state.task_receiver) -> task => match task {
                 Ok(task) => Event::Vfs(task),
                 Err(RecvError) => Err("vfs died")?,
             },
