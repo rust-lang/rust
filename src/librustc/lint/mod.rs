@@ -888,7 +888,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     let expn_data = span.ctxt().outer_expn_data();
     match expn_data.kind {
         ExpnKind::Root | ExpnKind::Desugaring(DesugaringKind::ForLoop) => false,
-        ExpnKind::Desugaring(_) => true, // well, it's "external"
+        ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             if expn_data.def_site.is_dummy() {
                 // dummy span for the def_site means it's an external macro

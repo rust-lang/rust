@@ -442,6 +442,7 @@ impl Span {
                 let (pre, post) = match expn_data.kind {
                     ExpnKind::Root => break,
                     ExpnKind::Desugaring(..) => ("desugaring of ", ""),
+                    ExpnKind::AstPass(..) => ("", ""),
                     ExpnKind::Macro(macro_kind, _) => match macro_kind {
                         MacroKind::Bang => ("", "!"),
                         MacroKind::Attr => ("#[", "]"),
