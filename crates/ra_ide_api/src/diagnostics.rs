@@ -75,6 +75,19 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
             severity: Severity::Error,
             fix: Some(fix),
         })
+    })
+    .on::<hir::diagnostics::MissingOkInTailExpr, _>(|d| {
+        let node = d.ast(db);
+        let mut builder = TextEditBuilder::default();
+        let replacement = format!("Ok({})", node.syntax());
+        builder.replace(node.syntax().text_range(), replacement);
+        let fix = SourceChange::source_file_edit_from("wrap with ok", file_id, builder.finish());
+        res.borrow_mut().push(Diagnostic {
+            range: d.highlight_range(),
+            message: d.message(),
+            severity: Severity::Error,
+            fix: Some(fix),
+        })
     });
     if let Some(m) = source_binder::module_from_file_id(db, file_id) {
         m.diagnostics(db, &mut sink);
@@ -171,10 +184,11 @@ fn check_struct_shorthand_initialization(
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot_matches;
+    use join_to_string::join;
     use ra_syntax::SourceFile;
     use test_utils::assert_eq_text;
 
-    use crate::mock_analysis::single_file;
+    use crate::mock_analysis::{analysis_and_position, single_file};
 
     use super::*;
 
@@ -203,6 +217,48 @@ mod tests {
         assert_eq_text!(after, &actual);
     }
 
+    /// Takes a multi-file input fixture with annotated cursor positions,
+    /// and checks that:
+    ///  * a diagnostic is produced
+    ///  * this diagnostic touches the input cursor position
+    ///  * that the contents of the file containing the cursor match `after` after the diagnostic fix is applied
+    fn check_apply_diagnostic_fix_from_position(fixture: &str, after: &str) {
+        let (analysis, file_position) = analysis_and_position(fixture);
+        let diagnostic = analysis.diagnostics(file_position.file_id).unwrap().pop().unwrap();
+        let mut fix = diagnostic.fix.unwrap();
+        let edit = fix.source_file_edits.pop().unwrap().edit;
+        let target_file_contents = analysis.file_text(file_position.file_id).unwrap();
+        let actual = edit.apply(&target_file_contents);
+
+        // Strip indent and empty lines from `after`, to match the behaviour of
+        // `parse_fixture` called from `analysis_and_position`.
+        let margin = fixture
+            .lines()
+            .filter(|it| it.trim_start().starts_with("//-"))
+            .map(|it| it.len() - it.trim_start().len())
+            .next()
+            .expect("empty fixture");
+        let after = join(after.lines().filter_map(|line| {
+            if line.len() > margin {
+                Some(&line[margin..])
+            } else {
+                None
+            }
+        }))
+        .separator("\n")
+        .suffix("\n")
+        .to_string();
+
+        assert_eq_text!(&after, &actual);
+        assert!(
+            diagnostic.range.start() <= file_position.offset
+                && diagnostic.range.end() >= file_position.offset,
+            "diagnostic range {} does not touch cursor position {}",
+            diagnostic.range,
+            file_position.offset
+        );
+    }
+
     fn check_apply_diagnostic_fix(before: &str, after: &str) {
         let (analysis, file_id) = single_file(before);
         let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
@@ -212,10 +268,167 @@ mod tests {
         assert_eq_text!(after, &actual);
     }
 
+    /// Takes a multi-file input fixture with annotated cursor position and checks that no diagnostics
+    /// apply to the file containing the cursor.
+    fn check_no_diagnostic_for_target_file(fixture: &str) {
+        let (analysis, file_position) = analysis_and_position(fixture);
+        let diagnostics = analysis.diagnostics(file_position.file_id).unwrap();
+        assert_eq!(diagnostics.len(), 0);
+    }
+
     fn check_no_diagnostic(content: &str) {
         let (analysis, file_id) = single_file(content);
         let diagnostics = analysis.diagnostics(file_id).unwrap();
         assert_eq!(diagnostics.len(), 0);
+    }
+
+    #[test]
+    fn test_wrap_return_type() {
+        let before = r#"
+            //- /main.rs
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            fn div(x: i32, y: i32) -> Result<i32, String> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                x / y<|>
+            }
+
+            //- /std/lib.rs
+            pub mod string {
+                pub struct String { }
+            }
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
+        "#;
+        let after = r#"
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            fn div(x: i32, y: i32) -> Result<i32, String> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                Ok(x / y)
+            }
+        "#;
+        check_apply_diagnostic_fix_from_position(before, after);
+    }
+
+    #[test]
+    fn test_wrap_return_type_handles_generic_functions() {
+        let before = r#"
+            //- /main.rs
+            use std::result::Result::{self, Ok, Err};
+
+            fn div<T>(x: T) -> Result<T, i32> {
+                if x == 0 {
+                    return Err(7);
+                }
+                <|>x
+            }
+
+            //- /std/lib.rs
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
+        "#;
+        let after = r#"
+            use std::result::Result::{self, Ok, Err};
+
+            fn div<T>(x: T) -> Result<T, i32> {
+                if x == 0 {
+                    return Err(7);
+                }
+                Ok(x)
+            }
+        "#;
+        check_apply_diagnostic_fix_from_position(before, after);
+    }
+
+    #[test]
+    fn test_wrap_return_type_handles_type_aliases() {
+        let before = r#"
+            //- /main.rs
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            type MyResult<T> = Result<T, String>;
+
+            fn div(x: i32, y: i32) -> MyResult<i32> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                x <|>/ y
+            }
+
+            //- /std/lib.rs
+            pub mod string {
+                pub struct String { }
+            }
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
+        "#;
+        let after = r#"
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            type MyResult<T> = Result<T, String>;
+            fn div(x: i32, y: i32) -> MyResult<i32> {
+                if y == 0 {
+                    return Err("div by zero".into());
+                }
+                Ok(x / y)
+            }
+        "#;
+        check_apply_diagnostic_fix_from_position(before, after);
+    }
+
+    #[test]
+    fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
+        let content = r#"
+            //- /main.rs
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            fn foo() -> Result<String, i32> {
+                0<|>
+            }
+
+            //- /std/lib.rs
+            pub mod string {
+                pub struct String { }
+            }
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
+        "#;
+        check_no_diagnostic_for_target_file(content);
+    }
+
+    #[test]
+    fn test_wrap_return_type_not_applicable_when_return_type_is_not_result() {
+        let content = r#"
+            //- /main.rs
+            use std::{string::String, result::Result::{self, Ok, Err}};
+
+            enum SomeOtherEnum {
+                Ok(i32),
+                Err(String),
+            }
+
+            fn foo() -> SomeOtherEnum {
+                0<|>
+            }
+
+            //- /std/lib.rs
+            pub mod string {
+                pub struct String { }
+            }
+            pub mod result {
+                pub enum Result<T, E> { Ok(T), Err(E) }
+            }
+        "#;
+        check_no_diagnostic_for_target_file(content);
     }
 
     #[test]

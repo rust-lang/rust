@@ -106,6 +106,13 @@ impl Default for BindingMode {
     }
 }
 
+/// A mismatch between an expected and an inferred type.
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct TypeMismatch {
+    pub expected: Ty,
+    pub actual: Ty,
+}
+
 /// The result of type inference: A mapping from expressions and patterns to types.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct InferenceResult {
@@ -120,6 +127,7 @@ pub struct InferenceResult {
     diagnostics: Vec<InferenceDiagnostic>,
     pub(super) type_of_expr: ArenaMap<ExprId, Ty>,
     pub(super) type_of_pat: ArenaMap<PatId, Ty>,
+    pub(super) type_mismatches: ArenaMap<ExprId, TypeMismatch>,
 }
 
 impl InferenceResult {
@@ -140,6 +148,9 @@ impl InferenceResult {
     }
     pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<ImplItem> {
         self.assoc_resolutions.get(&id.into()).copied()
+    }
+    pub fn type_mismatch_for_expr(&self, expr: ExprId) -> Option<&TypeMismatch> {
+        self.type_mismatches.get(expr)
     }
     pub(crate) fn add_diagnostics(
         &self,
@@ -1345,9 +1356,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
-        self.unify(&ty, &expected.ty);
+        let could_unify = self.unify(&ty, &expected.ty);
         let ty = self.resolve_ty_as_possible(&mut vec![], ty);
         self.write_expr_ty(tgt_expr, ty.clone());
+        if !could_unify {
+            self.result.type_mismatches.insert(
+                tgt_expr,
+                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
+            );
+        }
         ty
     }
 
