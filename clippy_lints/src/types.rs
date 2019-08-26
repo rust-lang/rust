@@ -779,6 +779,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
 
         match expr.kind {
             ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args) => {
+                let mut args_to_recover = vec![];
                 for arg in args {
                     if is_unit(cx.tables.expr_ty(arg)) && !is_unit_literal(arg) {
                         if let ExprKind::Match(.., match_source) = &arg.kind {
@@ -787,16 +788,39 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                             }
                         }
 
-                        span_lint_and_sugg(
-                            cx,
-                            UNIT_ARG,
-                            arg.span,
-                            "passing a unit value to a function",
-                            "if you intended to pass a unit value, use a unit literal instead",
-                            "()".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
+                        args_to_recover.push(arg);
                     }
+                }
+                if !args_to_recover.is_empty() {
+                    let mut applicability = Applicability::MachineApplicable;
+                    span_lint_and_then(cx, UNIT_ARG, expr.span, "passing a unit value to a function", |db| {
+                        db.span_suggestion(
+                            expr.span.with_hi(expr.span.lo()),
+                            "move the expressions in front of the call...",
+                            format!(
+                                "{} ",
+                                args_to_recover
+                                    .iter()
+                                    .map(|arg| {
+                                        format!(
+                                            "{};",
+                                            snippet_with_applicability(cx, arg.span, "..", &mut applicability)
+                                        )
+                                    })
+                                    .collect::<Vec<String>>()
+                                    .join(" ")
+                            ),
+                            applicability,
+                        );
+                        db.multipart_suggestion(
+                            "...and use unit literals instead",
+                            args_to_recover
+                                .iter()
+                                .map(|arg| (arg.span, "()".to_string()))
+                                .collect::<Vec<_>>(),
+                            applicability,
+                        );
+                    });
                 }
             },
             _ => (),
