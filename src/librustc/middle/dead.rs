@@ -30,10 +30,11 @@ fn should_explore(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
         Some(Node::Item(..)) |
         Some(Node::ImplItem(..)) |
         Some(Node::ForeignItem(..)) |
-        Some(Node::TraitItem(..)) =>
-            true,
-        _ =>
-            false
+        Some(Node::TraitItem(..)) |
+        Some(Node::Variant(..)) |
+        Some(Node::AnonConst(..)) |
+        Some(Node::Pat(..)) => true,
+        _ => false
     }
 }
 
@@ -75,7 +76,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 self.check_def_id(res.def_id());
             }
             _ if self.in_pat => {},
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::SelfCtor(..) |
+            Res::PrimTy(..) | Res::SelfCtor(..) |
             Res::Local(..) => {}
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
                 let variant_id = self.tcx.parent(ctor_def_id).unwrap();
@@ -90,6 +91,14 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&variant_id) {
                     self.check_def_id(variant_id);
+                }
+            }
+            Res::SelfTy(t, i) => {
+                if let Some(t) = t {
+                    self.check_def_id(t);
+                }
+                if let Some(i) = i {
+                    self.check_def_id(i);
                 }
             }
             Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}
@@ -271,7 +280,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
                 let res = self.tables.qpath_res(path, pat.hir_id);
                 self.handle_field_pattern_match(pat, res, fields);
             }
-            PatKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
+            PatKind::Path(ref qpath) => {
                 let res = self.tables.qpath_res(qpath, pat.hir_id);
                 self.handle_res(res);
             }
@@ -297,6 +306,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             _ => ()
         }
         intravisit::walk_ty(self, ty);
+    }
+
+    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+        self.live_symbols.insert(c.hir_id);
+        intravisit::walk_anon_const(self, c);
     }
 }
 
