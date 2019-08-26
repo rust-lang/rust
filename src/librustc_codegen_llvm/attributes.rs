@@ -268,21 +268,17 @@ pub fn from_fn_attrs(
         // optimize based on this!
         false
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        // If a specific #[unwind] attribute is present, use that
+        // If a specific #[unwind] attribute is present, use that.
+        // FIXME: We currently assume it can unwind even with `#[unwind(aborts)]`.
         true
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
         // Special attribute for allocator functions, which can't unwind
         false
     } else if let Some(id) = id {
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if cx.tcx.is_foreign_item(id) {
-            // Foreign items like `extern "C" { fn foo(); }` are assumed not to
+        if cx.tcx.is_foreign_item(id) && sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
+            // Foreign non-Rust items like `extern "C" { fn foo(); }` are assumed not to
             // unwind
-            false
-        } else if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
-            // Any items defined in Rust that *don't* have the `extern` ABI are
-            // defined to not unwind. We insert shims to abort if an unwind
-            // happens to enforce this.
             false
         } else {
             // Anything else defined in Rust is assumed that it can possibly
