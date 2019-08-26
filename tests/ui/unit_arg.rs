@@ -1,6 +1,6 @@
 // run-rustfix
 #![warn(clippy::unit_arg)]
-#![allow(unused_braces, clippy::no_effect, unused_must_use)]
+#![allow(clippy::no_effect, unused_must_use, unused_variables)]
 
 use std::fmt::Debug;
 
@@ -35,6 +35,7 @@ fn bad() {
     b.bar({
         1;
     });
+    taking_multiple_units(foo(0), foo(1));
 }
 
 fn ok() {
@@ -64,6 +65,13 @@ mod issue_2945 {
         Ok(unit_fn()?)
     }
 }
+
+#[allow(dead_code)]
+fn returning_expr() -> Option<()> {
+    Some(foo(1))
+}
+
+fn taking_multiple_units(a: (), b: ()) {}
 
 fn main() {
     bad();
