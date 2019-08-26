@@ -634,7 +634,10 @@ $EndFeature, "
 
         doc_comment! {
             concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
-cannot occur."),
+cannot occur.
+
+This results in undefined behavior when `self + rhs > ", stringify!($SelfT), "::max_value()`
+or `self + rhs < ", stringify!($SelfT), "::min_value()`.),
             #[unstable(feature = "unchecked_math", issue = "0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
@@ -670,7 +673,10 @@ $EndFeature, "
 
         doc_comment! {
             concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
-cannot occur."),
+cannot occur.
+
+This results in undefined behavior when `self - rhs > ", stringify!($SelfT), "::max_value()`
+or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
             #[unstable(feature = "unchecked_math", issue = "0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
@@ -2712,7 +2718,10 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", 
 
         doc_comment! {
             concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
-cannot occur."),
+cannot occur.
+
+This results in undefined behavior when `self + rhs > ", stringify!($SelfT), "::max_value()`
+or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
             #[unstable(feature = "unchecked_math", issue = "0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
@@ -2746,7 +2755,10 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 
         doc_comment! {
             concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
-cannot occur."),
+cannot occur.
+
+This results in undefined behavior when `self - rhs > ", stringify!($SelfT), "::max_value()`
+or `self - rhs < ", stringify!($SelfT), "::min_value()`."),
             #[unstable(feature = "unchecked_math", issue = "0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
