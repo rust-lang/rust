@@ -63,9 +63,8 @@
 //! T` obtained from `Box::<T>::into_raw` may be deallocated using the
 //! [`Global`] allocator with `Layout::for_value(&*value)`.
 //!
-//! `Box<T>` has the same representation as `*mut T`. In particular, when
-//! `T: Sized`, this means that `Box<T>` has the same representation as
-//! a C pointer, making the following code valid in FFI:
+//! `Box<T>` has the same ABI as `&mut T`. In particular, when `T: Sized`,
+//! this allows using `Box<T>` in FFI:
 //!
 //! ```c
 //! /* C header */
