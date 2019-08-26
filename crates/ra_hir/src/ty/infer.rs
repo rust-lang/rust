@@ -1009,16 +1009,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 let then_ty = self.infer_expr_inner(*then_branch, &expected);
                 self.coerce(&then_ty, &expected.ty);
-                match else_branch {
-                    Some(else_branch) => {
-                        let else_ty = self.infer_expr_inner(*else_branch, &expected);
-                        self.coerce(&else_ty, &expected.ty);
-                    }
-                    None => {
-                        // no else branch -> unit
-                        self.unify(&then_ty, &Ty::unit()); // actually coerce
-                    }
+
+                let else_ty = match else_branch {
+                    Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
+                    None => Ty::unit(),
                 };
+                self.coerce(&else_ty, &expected.ty);
 
                 expected.ty.clone()
             }
@@ -1422,7 +1418,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
         }
-        let ty = if let Some(expr) = tail { self.infer_expr_inner(expr, expected) } else { Ty::unit() };
+        let ty =
+            if let Some(expr) = tail { self.infer_expr_inner(expr, expected) } else { Ty::unit() };
         ty
     }
 
@@ -1665,8 +1662,8 @@ fn calculate_least_upper_bound(expected_ty: Ty, actual_tys: &[Ty]) -> Ty {
             all_never = false;
             least_upper_bound = match (actual_ty, &least_upper_bound) {
                 (_, Ty::Unknown)
-                    | (Ty::Infer(_), Ty::Infer(InferTy::TypeVar(_)))
-                    | (Ty::Apply(_), _) => actual_ty.clone(),
+                | (Ty::Infer(_), Ty::Infer(InferTy::TypeVar(_)))
+                | (Ty::Apply(_), _) => actual_ty.clone(),
                 _ => least_upper_bound,
             }
         }
