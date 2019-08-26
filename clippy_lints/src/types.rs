@@ -812,14 +812,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                             ),
                             applicability,
                         );
-                        db.multipart_suggestion(
-                            "...and use unit literals instead",
-                            args_to_recover
-                                .iter()
-                                .map(|arg| (arg.span, "()".to_string()))
-                                .collect::<Vec<_>>(),
-                            applicability,
-                        );
+                        for arg in args_to_recover {
+                            db.span_suggestion(
+                                arg.span,
+                                "...and use unit literals instead",
+                                "()".to_string(),
+                                applicability,
+                            );
+                        }
                     });
                 }
             },
