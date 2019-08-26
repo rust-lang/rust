@@ -9,6 +9,8 @@ LL |     fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
    |
    = note: expected type `fn(&(), &B, &impl Debug)`
               found type `fn(&(), &impl Debug, &B)`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
 error: aborting due to previous error
 

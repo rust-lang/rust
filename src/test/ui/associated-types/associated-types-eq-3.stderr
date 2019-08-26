@@ -6,6 +6,8 @@ LL |     let _: Bar = x.boo();
    |
    = note: expected type `Bar`
               found type `<I as Foo>::A`
+   = note: consider constraining the associated type `<I as Foo>::A` to `Bar`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:38:5
