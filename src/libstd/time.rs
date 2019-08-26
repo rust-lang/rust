@@ -70,7 +70,9 @@ pub use core::time::Duration;
 /// |    UNIX   | [mach_absolute_time](https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/services/services.html)                           |
 /// |  VXWorks  | [clock_gettime (Monotonic Clock)](https://linux.die.net/man/3/clock_gettime)                                |
 /// |    WASI   | [__wasi_clock_time_get (Monotonic Clock)](https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-api.md#clock_time_get)      |
-/// |  Windows  | [QueryPerformanceCounter](https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter)                      |
+/// |  Windows  | [QueryPerformanceCounter] |
+
+[QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
