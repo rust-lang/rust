@@ -2386,6 +2386,7 @@ fn lint_search_is_some<'a, 'tcx>(
         let search_snippet = snippet(cx, search_args[1].span, "..");
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
+            // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
             let any_search_snippet = if_chain! {
                 if search_method == "find";
                 if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].node;
@@ -2393,24 +2394,32 @@ fn lint_search_is_some<'a, 'tcx>(
                 if let Some(closure_arg) = closure_body.params.get(0);
                 if let hir::PatKind::Ref(..) = closure_arg.pat.node;
                 then {
-                    Some(search_snippet.replacen('&', "", 1))
+                    match &closure_arg.pat.node {
+                        hir::PatKind::Ref(..) => Some(search_snippet.replacen('&', "", 1)),
+                        hir::PatKind::Binding(_, _, expr, _) => {
+                            let closure_arg_snip = snippet(cx, expr.span, "..");
+                            Some(search_snippet.replace(&format!("*{}", closure_arg_snip), &closure_arg_snip))
+                        }
+                        _ => None,
+                    }
                 } else {
                     None
                 }
             };
             // add note if not multi-line
-            span_note_and_lint(
+            span_lint_and_sugg(
                 cx,
                 SEARCH_IS_SOME,
                 expr.span,
                 &msg,
-                expr.span,
-                &format!(
-                    "replace `{0}({1}).is_some()` with `any({2})`",
-                    search_method,
-                    search_snippet,
-                    any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
+                "try this",
+                format!(
+                    "any({})",
+                    any_search_snippet
+                        .as_ref()
+                        .map_or(&*search_snippet, String::as_str)
                 ),
+                Applicability::MachineApplicable,
             );
         } else {
             span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);

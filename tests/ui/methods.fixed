@@ -264,9 +264,9 @@ fn search_is_some() {
     let y = &&42;
 
     // Check `find().is_some()`, single-line case.
-    let _ = v.iter().find(|&x| *x < 0).is_some();
-    let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
-    let _ = (0..1).find(|x| *x == 0).is_some();
+    let _ = any(|x| *x < 0);
+    let _ = any(|x| **y == x); // one dereference less
+    let _ = any(|x| x == 0);
 
     // Check `find().is_some()`, multi-line case.
     let _ = v.iter().find(|&x| {
@@ -275,7 +275,7 @@ fn search_is_some() {
                    ).is_some();
 
     // Check `position().is_some()`, single-line case.
-    let _ = v.iter().position(|&x| x < 0).is_some();
+    let _ = any(|&x| x < 0);
 
     // Check `position().is_some()`, multi-line case.
     let _ = v.iter().position(|&x| {
@@ -284,7 +284,7 @@ fn search_is_some() {
                    ).is_some();
 
     // Check `rposition().is_some()`, single-line case.
-    let _ = v.iter().rposition(|&x| x < 0).is_some();
+    let _ = any(|&x| x < 0);
 
     // Check `rposition().is_some()`, multi-line case.
     let _ = v.iter().rposition(|&x| {
