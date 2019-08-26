@@ -1,4 +1,4 @@
 fn f(+x: isize) {}
-//~^ ERROR expected argument name, found `+`
+//~^ ERROR expected parameter name, found `+`
 
 fn main() {}
