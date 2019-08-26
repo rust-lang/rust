@@ -6,7 +6,6 @@ use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, Lin
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use std::char;
 use syntax::ast::*;
 use syntax::source_map::Span;
 use syntax::visit::{walk_expr, FnKind, Visitor};
@@ -391,92 +390,93 @@ impl EarlyLintPass for MiscEarlyLints {
 
 impl MiscEarlyLints {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
-        if_chain! {
-            if let LitKind::Int(value, ..) = lit.node;
-            if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(firstch) = src.chars().next();
-            if char::to_digit(firstch, 10).is_some();
-            then {
-                let mut prev = '\0';
-                for (idx, ch) in src.chars().enumerate() {
-                    if ch == 'i' || ch == 'u' {
-                        if prev != '_' {
-                            span_lint_and_sugg(
-                                cx,
-                                UNSEPARATED_LITERAL_SUFFIX,
-                                lit.span,
-                                "integer type suffix should be separated by an underscore",
-                                "add an underscore",
-                                format!("{}_{}", &src[0..idx], &src[idx..]),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        break;
-                    }
-                    prev = ch;
+        // The `line!()` macro is compiler built-in and a special case for these lints.
+        let lit_snip = match snippet_opt(cx, lit.span) {
+            Some(snip) => {
+                if snip.contains('!') {
+                    return;
                 }
-                if src.starts_with("0x") {
-                    let mut seen = (false, false);
-                    for ch in src.chars() {
-                        match ch {
-                            'a' ..= 'f' => seen.0 = true,
-                            'A' ..= 'F' => seen.1 = true,
-                            'i' | 'u'   => break,   // start of suffix already
-                            _ => ()
-                        }
+                snip
+            },
+            _ => return,
+        };
+
+        if let LitKind::Int(value, lit_int_type) = lit.node {
+            let suffix = match lit_int_type {
+                LitIntType::Signed(ty) => ty.ty_to_string(),
+                LitIntType::Unsigned(ty) => ty.ty_to_string(),
+                LitIntType::Unsuffixed => "",
+            };
+
+            let maybe_last_sep_idx = lit_snip.len() - suffix.len() - 1;
+            // Do not lint when literal is unsuffixed.
+            if !suffix.is_empty() && lit_snip.as_bytes()[maybe_last_sep_idx] != b'_' {
+                span_lint_and_sugg(
+                    cx,
+                    UNSEPARATED_LITERAL_SUFFIX,
+                    lit.span,
+                    "integer type suffix should be separated by an underscore",
+                    "add an underscore",
+                    format!("{}_{}", &lit_snip[..=maybe_last_sep_idx], suffix),
+                    Applicability::MachineApplicable,
+                );
+            }
+
+            if lit_snip.starts_with("0x") {
+                let mut seen = (false, false);
+                for ch in lit_snip.as_bytes()[2..=maybe_last_sep_idx].iter() {
+                    match ch {
+                        b'a'..=b'f' => seen.0 = true,
+                        b'A'..=b'F' => seen.1 = true,
+                        _ => {},
                     }
                     if seen.0 && seen.1 {
-                        span_lint(cx, MIXED_CASE_HEX_LITERALS, lit.span,
-                                    "inconsistent casing in hexadecimal literal");
+                        span_lint(
+                            cx,
+                            MIXED_CASE_HEX_LITERALS,
+                            lit.span,
+                            "inconsistent casing in hexadecimal literal",
+                        );
+                        break;
                     }
-                } else if src.starts_with("0b") || src.starts_with("0o") {
-                    /* nothing to do */
-                } else if value != 0 && src.starts_with('0') {
-                    span_lint_and_then(cx,
-                                        ZERO_PREFIXED_LITERAL,
-                                        lit.span,
-                                        "this is a decimal constant",
-                                        |db| {
+                }
+            } else if lit_snip.starts_with("0b") || lit_snip.starts_with("0o") {
+                /* nothing to do */
+            } else if value != 0 && lit_snip.starts_with('0') {
+                span_lint_and_then(
+                    cx,
+                    ZERO_PREFIXED_LITERAL,
+                    lit.span,
+                    "this is a decimal constant",
+                    |db| {
                         db.span_suggestion(
                             lit.span,
-                            "if you mean to use a decimal constant, remove the `0` to remove confusion",
-                            src.trim_start_matches(|c| c == '_' || c == '0').to_string(),
+                            "if you mean to use a decimal constant, remove the `0` to avoid confusion",
+                            lit_snip.trim_start_matches(|c| c == '_' || c == '0').to_string(),
                             Applicability::MaybeIncorrect,
                         );
                         db.span_suggestion(
                             lit.span,
                             "if you mean to use an octal constant, use `0o`",
-                            format!("0o{}", src.trim_start_matches(|c| c == '_' || c == '0')),
+                            format!("0o{}", lit_snip.trim_start_matches(|c| c == '_' || c == '0')),
                             Applicability::MaybeIncorrect,
                         );
-                    });
-                }
+                    },
+                );
             }
-        }
-        if_chain! {
-            if let LitKind::Float(..) = lit.node;
-            if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(firstch) = src.chars().next();
-            if char::to_digit(firstch, 10).is_some();
-            then {
-                let mut prev = '\0';
-                for (idx, ch) in src.chars().enumerate() {
-                    if ch == 'f' {
-                        if prev != '_' {
-                            span_lint_and_sugg(
-                                cx,
-                                UNSEPARATED_LITERAL_SUFFIX,
-                                lit.span,
-                                "float type suffix should be separated by an underscore",
-                                "add an underscore",
-                                format!("{}_{}", &src[0..idx], &src[idx..]),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        break;
-                    }
-                    prev = ch;
-                }
+        } else if let LitKind::Float(_, float_ty) = lit.node {
+            let suffix = float_ty.ty_to_string();
+            let maybe_last_sep_idx = lit_snip.len() - suffix.len() - 1;
+            if lit_snip.as_bytes()[maybe_last_sep_idx] != b'_' {
+                span_lint_and_sugg(
+                    cx,
+                    UNSEPARATED_LITERAL_SUFFIX,
+                    lit.span,
+                    "float type suffix should be separated by an underscore",
+                    "add an underscore",
+                    format!("{}_{}", &lit_snip[..=maybe_last_sep_idx], suffix),
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }
