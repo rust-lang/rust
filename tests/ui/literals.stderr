@@ -25,7 +25,7 @@ LL |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^
    |
    = note: `-D clippy::zero-prefixed-literal` implied by `-D warnings`
-help: if you mean to use a decimal constant, remove the `0` to remove confusion
+help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
 LL |     let fail_multi_zero = 123usize;
    |                           ^^^^^^^^
@@ -39,7 +39,7 @@ error: this is a decimal constant
    |
 LL |     let fail8 = 0123;
    |                 ^^^^
-help: if you mean to use a decimal constant, remove the `0` to remove confusion
+help: if you mean to use a decimal constant, remove the `0` to avoid confusion
    |
 LL |     let fail8 = 123;
    |                 ^^^
