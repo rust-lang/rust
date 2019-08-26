@@ -1,5 +1,5 @@
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:18:59
+  --> $DIR/unused_unit.rs:19:59
    |
 LL |       pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) ->
    |  ___________________________________________________________^
@@ -13,37 +13,37 @@ LL | #![deny(clippy::unused_unit)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:28:19
+  --> $DIR/unused_unit.rs:29:19
    |
 LL |     fn into(self) -> () {
    |                   ^^^^^ help: remove the `-> ()`
 
 error: unneeded unit expression
-  --> $DIR/unused_unit.rs:29:9
+  --> $DIR/unused_unit.rs:30:9
    |
 LL |         ()
    |         ^^ help: remove the final `()`
 
 error: unneeded unit return type
-  --> $DIR/unused_unit.rs:33:18
+  --> $DIR/unused_unit.rs:34:18
    |
 LL | fn return_unit() -> () { () }
    |                  ^^^^^ help: remove the `-> ()`
 
 error: unneeded unit expression
-  --> $DIR/unused_unit.rs:33:26
+  --> $DIR/unused_unit.rs:34:26
    |
 LL | fn return_unit() -> () { () }
    |                          ^^ help: remove the final `()`
 
 error: unneeded `()`
-  --> $DIR/unused_unit.rs:42:14
+  --> $DIR/unused_unit.rs:43:14
    |
 LL |         break();
    |              ^^ help: remove the `()`
 
 error: unneeded `()`
-  --> $DIR/unused_unit.rs:44:11
+  --> $DIR/unused_unit.rs:45:11
    |
 LL |     return();
    |           ^^ help: remove the `()`
