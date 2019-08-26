@@ -555,15 +555,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtensionKind) -> AstFragment {
-        let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
-        if fragment_kind == AstFragmentKind::ForeignItems && !self.cx.ecfg.macros_in_extern() {
-            if let SyntaxExtensionKind::NonMacroAttr { .. } = ext {} else {
-                emit_feature_err(&self.cx.parse_sess, sym::macros_in_extern,
-                                 span, GateIssue::Language,
-                                 "macro invocations in `extern {}` blocks are experimental");
-            }
-        }
-
         if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
             let expn_data = self.cx.current_expansion.id.expn_data();
             let suggested_limit = self.cx.ecfg.recursion_limit * 2;
@@ -578,6 +569,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             FatalError.raise();
         }
 
+        let (fragment_kind, span) = (invoc.fragment_kind, invoc.span());
         match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
@@ -1578,9 +1570,6 @@ impl<'feat> ExpansionConfig<'feat> {
         }
     }
 
-    fn macros_in_extern(&self) -> bool {
-        self.features.map_or(false, |features| features.macros_in_extern)
-    }
     fn proc_macro_hygiene(&self) -> bool {
         self.features.map_or(false, |features| features.proc_macro_hygiene)
     }
