@@ -2008,14 +2008,14 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///         .map(|res| res.map(|e| e.path()))
 ///         .collect::<Result<Vec<_>, io::Error>>()?;
 ///
-///     println!(
-///         "Entries before sorting (may or may not be sorted already): {:?}",
-///         entries
-///     );
+///     // println!(
+///     //     "Entries before sorting (may or may not be sorted already): {:?}",
+///     //     entries
+///     // );
 ///
 ///     entries.sort();
 ///
-///     println!("Entries after sorting: {:?}", entries);
+///     // println!("Entries after sorting: {:?}", entries);
 ///     Ok(())
 /// }
 /// ```
