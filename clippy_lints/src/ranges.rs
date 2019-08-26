@@ -43,6 +43,11 @@ declare_clippy_lint! {
     /// # let x = vec![1];
     /// x.iter().zip(0..x.len());
     /// ```
+    /// Could be written as
+    /// ```rust
+    /// # let x = vec![1];
+    /// x.iter().enumerate();
+    /// ```
     pub RANGE_ZIP_WITH_LEN,
     complexity,
     "zipping iterator with a range when `enumerate()` would do"
@@ -64,6 +69,10 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// for x..(y+1) { .. }
     /// ```
+    /// Could be written as
+    /// ```rust,ignore
+    /// for x..=y { .. }
+    /// ```
     pub RANGE_PLUS_ONE,
     complexity,
     "`x..(y+1)` reads better as `x..=y`"
@@ -81,6 +90,10 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust,ignore
     /// for x..=(y-1) { .. }
+    /// ```
+    /// Could be written as
+    /// ```rust,ignore
+    /// for x..y { .. }
     /// ```
     pub RANGE_MINUS_ONE,
     complexity,

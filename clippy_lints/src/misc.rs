@@ -105,6 +105,12 @@ declare_clippy_lint! {
     /// # let y = String::from("foo");
     /// if x.to_owned() == y {}
     /// ```
+    /// Could be written as
+    /// ```rust
+    /// # let x = "foo";
+    /// # let y = String::from("foo");
+    /// if x == y {}
+    /// ```
     pub CMP_OWNED,
     perf,
     "creating owned instances for comparing with others, e.g., `x == \"foo\".to_string()`"

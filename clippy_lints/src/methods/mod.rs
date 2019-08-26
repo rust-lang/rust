@@ -302,6 +302,11 @@ declare_clippy_lint! {
     /// # let vec = vec![1];
     /// vec.iter().filter(|x| **x == 0).next();
     /// ```
+    /// Could be written as
+    /// ```rust
+    /// # let vec = vec![1];
+    /// vec.iter().find(|x| **x == 0);
+    /// ```
     pub FILTER_NEXT,
     complexity,
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
@@ -425,6 +430,11 @@ declare_clippy_lint! {
     /// # let vec = vec![1];
     /// vec.iter().find(|x| **x == 0).is_some();
     /// ```
+    /// Could be written as
+    /// ```rust
+    /// # let vec = vec![1];
+    /// vec.iter().any(|x| *x == 0);
+    /// ```
     pub SEARCH_IS_SOME,
     complexity,
     "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`"
@@ -442,7 +452,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let name = "foo";
-    /// name.chars().next() == Some('_');
+    /// if name.chars().next() == Some('_') {};
+    /// ```
+    /// Could be written as
+    /// ```rust
+    /// let name = "foo";
+    /// if name.starts_with('_') {};
     /// ```
     pub CHARS_NEXT_CMP,
     complexity,
@@ -888,6 +903,10 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// let _ = [1, 2, 3].into_iter().map(|x| *x).collect::<Vec<u32>>();
+    /// ```
+    /// Could be written as:
+    /// ```rust
+    /// let _ = [1, 2, 3].iter().map(|x| *x).collect::<Vec<u32>>();
     /// ```
     pub INTO_ITER_ON_ARRAY,
     correctness,

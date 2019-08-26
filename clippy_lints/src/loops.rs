@@ -312,6 +312,14 @@ declare_clippy_lint! {
     /// for i in 0..v.len() { foo(v[i]); }
     /// for i in 0..v.len() { bar(i, v[i]); }
     /// ```
+    /// Could be written as
+    /// ```rust
+    /// # let v = vec![1];
+    /// # fn foo(bar: usize) {}
+    /// # fn bar(bar: usize, baz: usize) {}
+    /// for item in &v { foo(*item); }
+    /// for (i, item) in v.iter().enumerate() { bar(i, *item); }
+    /// ```
     pub EXPLICIT_COUNTER_LOOP,
     complexity,
     "for-looping with an explicit counter when `_.enumerate()` would do"
