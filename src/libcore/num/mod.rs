@@ -633,6 +633,18 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
+cannot occur."),
+            #[unstable(feature = "unchecked_math", issue = "0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+                intrinsics::unchecked_add(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer subtraction. Computes `self - rhs`, returning `None` if
 overflow occurred.
 
@@ -653,6 +665,18 @@ $EndFeature, "
             pub fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
+cannot occur."),
+            #[unstable(feature = "unchecked_math", issue = "0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+                intrinsics::unchecked_sub(self, rhs)
             }
         }
 
@@ -2687,6 +2711,18 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", 
         }
 
         doc_comment! {
+            concat!("Unchecked integer addition. Computes `self + rhs`, assuming overflow
+cannot occur."),
+            #[unstable(feature = "unchecked_math", issue = "0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_add(self, rhs: Self) -> Self {
+                intrinsics::unchecked_add(self, rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer subtraction. Computes `self - rhs`, returning
 `None` if overflow occurred.
 
@@ -2705,6 +2741,18 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
             pub fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
+            }
+        }
+
+        doc_comment! {
+            concat!("Unchecked integer subtraction. Computes `self - rhs`, assuming overflow
+cannot occur."),
+            #[unstable(feature = "unchecked_math", issue = "0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
+            #[inline]
+            pub unsafe fn unchecked_sub(self, rhs: Self) -> Self {
+                intrinsics::unchecked_sub(self, rhs)
             }
         }
 
