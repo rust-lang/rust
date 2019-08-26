@@ -136,6 +136,15 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         mir
     }
+    promoted_mir => {
+        let promoted = cdata.maybe_get_promoted_mir(tcx, def_id.index).unwrap_or_else(|| {
+            bug!("get_promoted_mir: missing promoted MIR for `{:?}`", def_id)
+        });
+
+        let promoted = tcx.arena.alloc(promoted);
+
+        promoted
+    }
     mir_const_qualif => {
         (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
     }

@@ -294,6 +294,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn load_mir(
         &self,
         instance: ty::InstanceDef<'tcx>,
+        promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
@@ -303,7 +304,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         {
             throw_inval!(TypeckError)
         }
-        trace!("load mir {:?}", instance);
+        trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
+        if let Some(promoted) = promoted {
+            return Ok(&self.tcx.promoted_mir(did)[promoted]);
+        }
         match instance {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
                 Ok(self.tcx.optimized_mir(did))

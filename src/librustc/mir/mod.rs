@@ -108,11 +108,6 @@ pub struct Body<'tcx> {
     /// needn't) be tracked across crates.
     pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
 
-    /// Rvalues promoted from this function, such as borrows of constants.
-    /// Each of them is the Body of a constant with the fn's type parameters
-    /// in scope, but a separate set of locals.
-    pub promoted: IndexVec<Promoted, Body<'tcx>>,
-
     /// Yields type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
@@ -174,7 +169,6 @@ impl<'tcx> Body<'tcx> {
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
         source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-        promoted: IndexVec<Promoted, Body<'tcx>>,
         yield_ty: Option<Ty<'tcx>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
@@ -196,7 +190,6 @@ impl<'tcx> Body<'tcx> {
             basic_blocks,
             source_scopes,
             source_scope_local_data,
-            promoted,
             yield_ty,
             generator_drop: None,
             generator_layout: None,
@@ -418,7 +411,6 @@ impl_stable_hash_for!(struct Body<'tcx> {
     basic_blocks,
     source_scopes,
     source_scope_local_data,
-    promoted,
     yield_ty,
     generator_drop,
     generator_layout,
@@ -1737,23 +1729,25 @@ pub enum PlaceBase<'tcx> {
 }
 
 /// We store the normalized type to avoid requiring normalization when reading MIR
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
-    pub kind: StaticKind,
+    pub kind: StaticKind<'tcx>,
+    pub def_id: DefId,
 }
 
 #[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable,
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable,
 )]
-pub enum StaticKind {
-    Promoted(Promoted),
-    Static(DefId),
+pub enum StaticKind<'tcx> {
+    Promoted(Promoted, SubstsRef<'tcx>),
+    Static,
 }
 
 impl_stable_hash_for!(struct Static<'tcx> {
     ty,
-    kind
+    kind,
+    def_id
 });
 
 /// The `Projection` data structure defines things of the form `base.x`, `*b` or `b[index]`.
@@ -2114,10 +2108,12 @@ impl Debug for PlaceBase<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match *self {
             PlaceBase::Local(id) => write!(fmt, "{:?}", id),
-            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static(def_id) }) => {
+            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static, def_id }) => {
                 write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.def_path_str(def_id)), ty)
             }
-            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Promoted(promoted) }) => {
+            PlaceBase::Static(box self::Static {
+                ty, kind: StaticKind::Promoted(promoted, _), def_id: _
+            }) => {
                 write!(fmt, "({:?}: {:?})", promoted, ty)
             }
         }
@@ -3032,7 +3028,6 @@ BraceStructTypeFoldableImpl! {
         basic_blocks,
         source_scopes,
         source_scope_local_data,
-        promoted,
         yield_ty,
         generator_drop,
         generator_layout,
@@ -3226,13 +3221,63 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         Place {
-            base: self.base.clone(),
+            base: self.base.fold_with(folder),
             projection: self.projection.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.projection.visit_with(visitor)
+        self.base.visit_with(visitor) || self.projection.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for PlaceBase<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        match self {
+            PlaceBase::Local(local) => PlaceBase::Local(local.fold_with(folder)),
+            PlaceBase::Static(static_) => PlaceBase::Static(static_.fold_with(folder)),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match self {
+            PlaceBase::Local(local) => local.visit_with(visitor),
+            PlaceBase::Static(static_) => (**static_).visit_with(visitor),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Static<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        Static {
+            ty: self.ty.fold_with(folder),
+            kind: self.kind.fold_with(folder),
+            def_id: self.def_id,
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        let Static { ty, kind, def_id: _ } = self;
+
+        ty.visit_with(visitor) || kind.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for StaticKind<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        match self {
+            StaticKind::Promoted(promoted, substs) =>
+                StaticKind::Promoted(promoted.fold_with(folder), substs.fold_with(folder)),
+            StaticKind::Static => StaticKind::Static
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match self {
+            StaticKind::Promoted(promoted, substs) =>
+                promoted.visit_with(visitor) || substs.visit_with(visitor),
+            StaticKind::Static => { false }
+        }
     }
 }
 

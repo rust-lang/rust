@@ -21,7 +21,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, interpret, ProjectionKind};
+use crate::mir::{Body, interpret, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -1094,6 +1094,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
         self.arena.alloc(Steal::new(mir))
+    }
+
+    pub fn alloc_steal_promoted(self, promoted: IndexVec<Promoted, Body<'tcx>>) ->
+        &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
+        self.arena.alloc(Steal::new(promoted))
+    }
+
+    pub fn intern_promoted(self, promoted: IndexVec<Promoted, Body<'tcx>>) ->
+        &'tcx IndexVec<Promoted, Body<'tcx>> {
+        self.arena.alloc(promoted)
     }
 
     pub fn alloc_adt_def(

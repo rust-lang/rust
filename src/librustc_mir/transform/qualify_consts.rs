@@ -25,6 +25,7 @@ use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
+use std::cell::Cell;
 use std::fmt;
 use std::ops::{Deref, Index, IndexMut};
 use std::usize;
@@ -222,7 +223,7 @@ trait Qualif {
             } => Self::in_local(cx, *local),
             PlaceRef {
                 base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_),
+                    kind: StaticKind::Promoted(..),
                     ..
                 }),
                 projection: None,
@@ -433,13 +434,13 @@ impl Qualif for IsNotPromotable {
 
     fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
         match static_.kind {
-            StaticKind::Promoted(_) => unreachable!(),
-            StaticKind::Static(def_id) => {
+            StaticKind::Promoted(_, _) => unreachable!(),
+            StaticKind::Static => {
                 // Only allow statics (not consts) to refer to other statics.
                 let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
 
                 !allowed ||
-                    cx.tcx.get_attrs(def_id).iter().any(
+                    cx.tcx.get_attrs(static_.def_id).iter().any(
                         |attr| attr.check_name(sym::thread_local)
                     )
             }
@@ -872,7 +873,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     dest_projection = &proj.base;
                 },
                 (&PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_),
+                    kind: StaticKind::Promoted(..),
                     ..
                 }), None) => bug!("promoteds don't exist yet during promotion"),
                 (&PlaceBase::Static(box Static{ kind: _, .. }), None) => {
@@ -1027,10 +1028,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         self.super_place_base(place_base, context, location);
         match place_base {
             PlaceBase::Local(_) => {}
-            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. }) => {
+            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_, _), .. }) => {
                 unreachable!()
             }
-            PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. }) => {
+            PlaceBase::Static(box Static{ kind: StaticKind::Static, def_id, .. }) => {
                 if self.tcx
                         .get_attrs(*def_id)
                         .iter()
@@ -1570,10 +1571,20 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
     Checker::new(tcx, def_id, body, Mode::Const).check_const()
 }
 
-pub struct QualifyAndPromoteConstants;
+pub struct QualifyAndPromoteConstants<'tcx> {
+    pub promoted: Cell<IndexVec<Promoted, Body<'tcx>>>,
+}
 
-impl MirPass for QualifyAndPromoteConstants {
-    fn run_pass<'tcx>(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> Default for QualifyAndPromoteConstants<'tcx> {
+    fn default() -> Self {
+        QualifyAndPromoteConstants {
+            promoted: Cell::new(IndexVec::new()),
+        }
+    }
+}
+
+impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         if body.return_ty().references_error() {
             tcx.sess.delay_span_bug(body.span, "QualifyAndPromoteConstants: MIR had errors");
@@ -1649,7 +1660,9 @@ impl MirPass for QualifyAndPromoteConstants {
             };
 
             // Do the actual promotion, now that we know what's viable.
-            promote_consts::promote_candidates(body, tcx, temps, candidates);
+            self.promoted.set(
+                promote_consts::promote_candidates(def_id, body, tcx, temps, candidates)
+            );
         } else {
             if !body.control_flow_destroyed.is_empty() {
                 let mut locals = body.vars_iter();

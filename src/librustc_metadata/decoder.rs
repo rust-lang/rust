@@ -3,6 +3,7 @@
 use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule, FullProcMacro};
 use crate::schema::*;
 
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
@@ -17,7 +18,7 @@ use rustc::mir::interpret::AllocDecodingSession;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
-use rustc::mir::Body;
+use rustc::mir::{Body, Promoted};
 use rustc::util::captures::Captures;
 
 use std::io;
@@ -920,6 +921,17 @@ impl<'a, 'tcx> CrateMetadata {
         match self.is_proc_macro(id) {
             true => None,
             false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),
+        }
+    }
+
+    pub fn maybe_get_promoted_mir(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        id: DefIndex,
+    ) -> Option<IndexVec<Promoted, Body<'tcx>>> {
+        match self.is_proc_macro(id) {
+            true => None,
+            false => self.entry(id).promoted_mir.map(|promoted| promoted.decode((self, tcx)),)
         }
     }
 

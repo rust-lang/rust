@@ -25,6 +25,16 @@ macro_rules! arena_types {
             [] adt_def: rustc::ty::AdtDef,
             [] steal_mir: rustc::ty::steal::Steal<rustc::mir::Body<$tcx>>,
             [] mir: rustc::mir::Body<$tcx>,
+            [] steal_promoted: rustc::ty::steal::Steal<
+                rustc_data_structures::indexed_vec::IndexVec<
+                    rustc::mir::Promoted,
+                    rustc::mir::Body<$tcx>
+                >
+            >,
+            [] promoted: rustc_data_structures::indexed_vec::IndexVec<
+                rustc::mir::Promoted,
+                rustc::mir::Body<$tcx>
+            >,
             [] tables: rustc::ty::TypeckTables<$tcx>,
             [] const_allocs: rustc::mir::interpret::Allocation,
             [] vtable_method: Option<(

@@ -329,11 +329,11 @@ fn place_base_conflict<'tcx>(
         }
         (PlaceBase::Static(s1), PlaceBase::Static(s2)) => {
             match (&s1.kind, &s2.kind) {
-                (StaticKind::Static(def_id_1), StaticKind::Static(def_id_2)) => {
-                    if def_id_1 != def_id_2 {
+                (StaticKind::Static, StaticKind::Static) => {
+                    if s1.def_id != s2.def_id {
                         debug!("place_element_conflict: DISJOINT-STATIC");
                         Overlap::Disjoint
-                    } else if tcx.is_mutable_static(*def_id_1) {
+                    } else if tcx.is_mutable_static(s1.def_id) {
                         // We ignore mutable statics - they can only be unsafe code.
                         debug!("place_element_conflict: IGNORE-STATIC-MUT");
                         Overlap::Disjoint
@@ -342,7 +342,7 @@ fn place_base_conflict<'tcx>(
                         Overlap::EqualOrDisjoint
                     }
                 },
-                (StaticKind::Promoted(promoted_1), StaticKind::Promoted(promoted_2)) => {
+                (StaticKind::Promoted(promoted_1, _), StaticKind::Promoted(promoted_2, _)) => {
                     if promoted_1 == promoted_2 {
                         if let ty::Array(_, len) = s1.ty.sty {
                             if let Some(0) = len.try_eval_usize(tcx, param_env) {

@@ -149,7 +149,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(_),
+                        kind: StaticKind::Promoted(..),
                         ..
                     }),
                 projection: None,
@@ -158,7 +158,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Static(def_id),
+                        kind: StaticKind::Static,
+                        def_id,
                         ..
                     }),
                 projection: None,

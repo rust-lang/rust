@@ -49,17 +49,6 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
     InterpCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), Default::default())
 }
 
-pub(crate) fn eval_promoted<'mir, 'tcx>(
-    tcx: TyCtxt<'tcx>,
-    cid: GlobalId<'tcx>,
-    body: &'mir mir::Body<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-    let span = tcx.def_span(cid.instance.def_id());
-    let mut ecx = mk_eval_cx(tcx, span, param_env);
-    eval_body_using_ecx(&mut ecx, cid, body, param_env)
-}
-
 fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
@@ -360,7 +349,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         }
         // This is a const fn. Call it.
-        Ok(Some(match ecx.load_mir(instance.def) {
+        Ok(Some(match ecx.load_mir(instance.def, None) {
             Ok(body) => body,
             Err(err) => {
                 if let err_unsup!(NoMirFor(ref path)) = err.kind {
@@ -664,14 +653,8 @@ pub fn const_eval_raw_provider<'tcx>(
         Default::default()
     );
 
-    let res = ecx.load_mir(cid.instance.def);
-    res.map(|body| {
-        if let Some(index) = cid.promoted {
-            &body.promoted[index]
-        } else {
-            body
-        }
-    }).and_then(
+    let res = ecx.load_mir(cid.instance.def, cid.promoted);
+    res.and_then(
         |body| eval_body_using_ecx(&mut ecx, cid, body, key.param_env)
     ).and_then(|place| {
         Ok(RawConst {

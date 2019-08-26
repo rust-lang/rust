@@ -13,7 +13,7 @@ use rustc::mir::{
     ClearCrossCrate, Local, Location, Body, Mutability, Operand, Place, PlaceBase, PlaceRef,
     Static, StaticKind
 };
-use rustc::mir::{Field, Projection, ProjectionElem, Rvalue, Statement, StatementKind};
+use rustc::mir::{Field, Projection, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
@@ -22,6 +22,7 @@ use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::indexed_vec::IndexVec;
 use smallvec::SmallVec;
 
 use std::collections::BTreeMap;
@@ -86,12 +87,13 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> BorrowCheckResult<'_> {
-    let input_body = tcx.mir_validated(def_id);
+    let (input_body, promoted) = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def_id));
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
-        do_mir_borrowck(&infcx, input_body, def_id)
+        let promoted: &IndexVec<_, _> = &promoted.borrow();
+        do_mir_borrowck(&infcx, input_body, promoted, def_id)
     });
     debug!("mir_borrowck done");
 
@@ -101,6 +103,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> BorrowCheckResult<'_> {
 fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
+    input_promoted: &IndexVec<Promoted, Body<'tcx>>,
     def_id: DefId,
 ) -> BorrowCheckResult<'tcx> {
     debug!("do_mir_borrowck(def_id = {:?})", def_id);
@@ -147,7 +150,9 @@ fn do_mir_borrowck<'a, 'tcx>(
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
     let mut body: Body<'tcx> = input_body.clone();
-    let free_regions = nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body);
+    let mut promoted: IndexVec<Promoted, Body<'tcx>> = input_promoted.clone();
+    let free_regions =
+        nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
     let body = &body; // no further changes
     let location_table = &LocationTable::new(body);
 
@@ -184,6 +189,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         def_id,
         free_regions,
         body,
+        &promoted,
         &upvars,
         location_table,
         param_env,
@@ -1462,13 +1468,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         assert!(root_place.projection.is_none());
         let (might_be_alive, will_be_dropped) = match root_place.base {
             PlaceBase::Static(box Static {
-                kind: StaticKind::Promoted(_),
+                kind: StaticKind::Promoted(..),
                 ..
             }) => {
                 (true, false)
             }
             PlaceBase::Static(box Static {
-                kind: StaticKind::Static(_),
+                kind: StaticKind::Static,
                 ..
             }) => {
                 // Thread-locals might be dropped after the function exits, but
@@ -2150,7 +2156,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // `Place::Promoted` if the promotion weren't 100% legal. So we just forward this
             PlaceRef {
                 base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(_),
+                    kind: StaticKind::Promoted(..),
                     ..
                 }),
                 projection: None,
@@ -2162,7 +2168,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }),
             PlaceRef {
                 base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Static(def_id),
+                    kind: StaticKind::Static,
+                    def_id,
                     ..
                 }),
                 projection: None,
