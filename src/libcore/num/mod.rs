@@ -637,7 +637,7 @@ $EndFeature, "
 cannot occur.
 
 This results in undefined behavior when `self + rhs > ", stringify!($SelfT), "::max_value()`
-or `self + rhs < ", stringify!($SelfT), "::min_value()`.),
+or `self + rhs < ", stringify!($SelfT), "::min_value()`."),
             #[unstable(feature = "unchecked_math", issue = "0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
