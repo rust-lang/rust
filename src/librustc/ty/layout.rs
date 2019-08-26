@@ -273,14 +273,12 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                              repr: &ReprOptions,
                              kind: StructKind) -> Result<LayoutDetails, LayoutError<'tcx>> {
         let dl = self.data_layout();
-        let packed = repr.packed();
-        if packed && repr.align > 0 {
+        let pack = repr.pack;
+        if pack.is_some() && repr.align.is_some() {
             bug!("struct cannot be packed and aligned");
         }
 
-        let pack = Align::from_bytes(repr.pack as u64).unwrap();
-
-        let mut align = if packed {
+        let mut align = if pack.is_some() {
             dl.i8_align
         } else {
             dl.aggregate_align
@@ -303,7 +301,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             };
             let optimizing = &mut inverse_memory_index[..end];
             let field_align = |f: &TyLayout<'_>| {
-                if packed { f.align.abi.min(pack) } else { f.align.abi }
+                if let Some(pack) = pack { f.align.abi.min(pack) } else { f.align.abi }
             };
             match kind {
                 StructKind::AlwaysSized |
@@ -334,7 +332,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let mut largest_niche_available = 0;
 
         if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
-            let prefix_align = if packed {
+            let prefix_align = if let Some(pack) = pack {
                 prefix_align.min(pack)
             } else {
                 prefix_align
@@ -355,7 +353,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
 
             // Invariant: offset < dl.obj_size_bound() <= 1<<61
-            let field_align = if packed {
+            let field_align = if let Some(pack) = pack {
                 field.align.min(AbiAndPrefAlign::new(pack))
             } else {
                 field.align
@@ -379,10 +377,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 .ok_or(LayoutError::SizeOverflow(ty))?;
         }
 
-        if repr.align > 0 {
-            let repr_align = repr.align as u64;
-            align = align.max(AbiAndPrefAlign::new(Align::from_bytes(repr_align).unwrap()));
-            debug!("univariant repr_align: {:?}", repr_align);
+        if let Some(repr_align) = repr.align {
+            align = align.max(AbiAndPrefAlign::new(repr_align));
         }
 
         debug!("univariant min_size: {:?}", offset);
@@ -730,23 +726,18 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                 if def.is_union() {
-                    let packed = def.repr.packed();
-                    if packed && def.repr.align > 0 {
-                        bug!("Union cannot be packed and aligned");
+                    if def.repr.pack.is_some() && def.repr.align.is_some() {
+                        bug!("union cannot be packed and aligned");
                     }
 
-                    let pack = Align::from_bytes(def.repr.pack as u64).unwrap();
-
-                    let mut align = if packed {
+                    let mut align = if def.repr.pack.is_some() {
                         dl.i8_align
                     } else {
                         dl.aggregate_align
                     };
 
-                    if def.repr.align > 0 {
-                        let repr_align = def.repr.align as u64;
-                        align = align.max(
-                            AbiAndPrefAlign::new(Align::from_bytes(repr_align).unwrap()));
+                    if let Some(repr_align) = def.repr.align {
+                        align = align.max(AbiAndPrefAlign::new(repr_align));
                     }
 
                     let optimize = !def.repr.inhibit_union_abi_opt();
@@ -755,13 +746,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     let index = VariantIdx::new(0);
                     for field in &variants[index] {
                         assert!(!field.is_unsized());
-
-                        let field_align = if packed {
-                            field.align.min(AbiAndPrefAlign::new(pack))
-                        } else {
-                            field.align
-                        };
-                        align = align.max(field_align);
+                        align = align.max(field.align);
 
                         // If all non-ZST fields have the same ABI, forward this ABI
                         if optimize && !field.is_zst() {
@@ -794,6 +779,10 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         }
 
                         size = cmp::max(size, field.size);
+                    }
+
+                    if let Some(pack) = def.repr.pack {
+                        align = align.min(AbiAndPrefAlign::new(pack));
                     }
 
                     return Ok(tcx.intern_layout(LayoutDetails {
@@ -1637,7 +1626,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
 
         let adt_kind = adt_def.adt_kind();
-        let adt_packed = adt_def.repr.packed();
+        let adt_packed = adt_def.repr.pack.is_some();
 
         let build_variant_info = |n: Option<Ident>,
                                   flds: &[ast::Name],

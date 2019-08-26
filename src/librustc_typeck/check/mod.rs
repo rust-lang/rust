@@ -1859,14 +1859,18 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
         for attr in tcx.get_attrs(def_id).iter() {
             for r in attr::find_repr_attrs(&tcx.sess.parse_sess, attr) {
                 if let attr::ReprPacked(pack) = r {
-                    if pack != repr.pack {
-                        struct_span_err!(tcx.sess, sp, E0634,
-                                         "type has conflicting packed representation hints").emit();
+                    if let Some(repr_pack) = repr.pack {
+                        if pack as u64 != repr_pack.bytes() {
+                            struct_span_err!(
+                                tcx.sess, sp, E0634,
+                                "type has conflicting packed representation hints"
+                            ).emit();
+                        }
                     }
                 }
             }
         }
-        if repr.align > 0 {
+        if repr.align.is_some() {
             struct_span_err!(tcx.sess, sp, E0587,
                              "type has conflicting packed and align representation hints").emit();
         }
@@ -1885,7 +1889,7 @@ fn check_packed_inner(tcx: TyCtxt<'_>, def_id: DefId, stack: &mut Vec<DefId>) ->
     }
     if let ty::Adt(def, substs) = t.sty {
         if def.is_struct() || def.is_union() {
-            if tcx.adt_def(def.did).repr.align > 0 {
+            if tcx.adt_def(def.did).repr.align.is_some() {
                 return true;
             }
             // push struct def_id before checking fields
