@@ -243,7 +243,7 @@ fn setup(ask_user: bool) {
     }
 
     // First, we need xargo.
-    if xargo_version().map_or(true, |v| v < (0, 3, 15)) {
+    if xargo_version().map_or(true, |v| v < (0, 3, 16)) {
         if ask_user {
             ask("It seems you do not have a recent enough xargo installed. I will run `cargo install xargo -f`. Proceed?");
         } else {
@@ -297,7 +297,6 @@ default_features = false
 features = ["panic_unwind"]
 
 [dependencies.test]
-stage = 1
         "#).unwrap();
     // The boring bits: a dummy project for xargo.
     File::create(dir.join("Cargo.toml")).unwrap()
