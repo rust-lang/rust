@@ -8,7 +8,7 @@ enforcing a number of properties:
 - That you can't move a value while it is borrowed.
 - That you can't access a place while it is mutably borrowed (except through
   the reference).
-- That you can't mutate a place while it is shared borrowed.
+- That you can't mutate a place while it is shared or borrowed.
 - etc
 
 At the time of this writing, the code is in a state of transition. The
