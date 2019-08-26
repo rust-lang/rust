@@ -50,6 +50,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
         // Allow a '|' before the pats (RFCs 1925, 2530, and 2535).
         let gated_leading_vert = self.eat_or_separator() && gate_or == GateOr::Yes;
+        let leading_vert_span = self.prev_span;
 
         // Parse the possibly-or-pattern.
         let pat = self.parse_pat_with_or(None, gate_or, RecoverComma::Yes)?;
@@ -61,7 +62,7 @@ impl<'a> Parser<'a> {
         if gated_leading_vert {
             let mut or_pattern_spans = self.sess.gated_spans.or_patterns.borrow_mut();
             if or_pattern_spans.is_empty() {
-                or_pattern_spans.push(self.prev_span);
+                or_pattern_spans.push(leading_vert_span);
             }
         }
 
