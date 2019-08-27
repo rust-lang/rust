@@ -309,11 +309,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn check_ptr_access(
         &self,
         sptr: Scalar<M::PointerTag>,
-        size: Size,
-        align: Align,
+        mem_pos: MemoryPosition,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
-        let align = if M::CHECK_ALIGN { Some(align) } else { None };
-        self.check_ptr_access_align(sptr, size, align, CheckInAllocMsg::MemoryAccessTest)
+        let align = if M::CHECK_ALIGN { Some(mem_pos.align) } else { None };
+        self.check_ptr_access_align(sptr, mem_pos.size, align, CheckInAllocMsg::MemoryAccessTest)
     }
 
     /// Like `check_ptr_access`, but *definitely* checks alignment when `align`
@@ -776,7 +775,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         ptr: Scalar<M::PointerTag>,
         size: Size,
     ) -> InterpResult<'tcx, &[u8]> {
-        let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
+        let mem_pos = MemoryPosition::new(size, Align::from_bytes(1).unwrap());
+        let ptr = match self.check_ptr_access(ptr, mem_pos)? {
             Some(ptr) => ptr,
             None => return Ok(&[]), // zero-sized access
         };
@@ -803,7 +803,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let src = src.into_iter();
         let size = Size::from_bytes(src.size_hint().0 as u64);
         // `write_bytes` checks that this lower bound matches the upper bound matches reality.
-        let ptr = match self.check_ptr_access(ptr, size, Align::from_bytes(1).unwrap())? {
+        let mem_pos = MemoryPosition::new(size, Align::from_bytes(1).unwrap());
+        let ptr = match self.check_ptr_access(ptr, mem_pos)? {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
         };

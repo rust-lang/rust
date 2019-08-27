@@ -422,7 +422,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let mut args = args.to_vec();
-                let ptr_pos = self.pointer_pos();
+                let ptr_pos = self.pointer_pos().mem_pos();
                 // We have to implement all "object safe receivers".  Currently we
                 // support built-in pointers (&, &mut, Box) as well as unsized-self.  We do
                 // not yet support custom self types.
@@ -442,8 +442,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let vtable_slot = vtable.ptr_offset((ptr_pos * (idx as u64 + 3)).size, self)?;
                 let vtable_slot = self.memory.check_ptr_access(
                     vtable_slot,
-                    ptr_pos.size,
-                    ptr_pos.align.abi,
+                    ptr_pos,
                 )?.expect("cannot be a ZST");
                 let fn_ptr = self.memory.get_raw(vtable_slot.alloc_id)?
                     .read_ptr_sized(self, vtable_slot)?.not_undef()?;

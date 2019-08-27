@@ -269,8 +269,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 try_validation!(
                     self.ecx.memory.check_ptr_access(
                         vtable,
-                        3*self.ecx.tcx.data_layout.pointer_pos.size, // drop, size, align
-                        self.ecx.tcx.data_layout.pointer_pos.align.abi,
+                        3 * self.ecx.tcx.data_layout.pointer_pos.mem_pos(), // drop, size, align
                     ),
                     "dangling or unaligned vtable pointer in wide pointer or too small vtable",
                     self.path

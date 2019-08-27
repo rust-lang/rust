@@ -106,8 +106,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // we don't care about the pointee type, we just want a pointer
         let vtable = self.memory.check_ptr_access(
             vtable,
-            self.tcx.data_layout.pointer_pos.size,
-            self.tcx.data_layout.pointer_pos.align.abi,
+            self.tcx.data_layout.pointer_pos.mem_pos(),
         )?.expect("cannot be a ZST");
         let drop_fn = self.memory
             .get_raw(vtable.alloc_id)?
@@ -128,13 +127,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         vtable: Scalar<M::PointerTag>,
     ) -> InterpResult<'tcx, (Size, Align)> {
-        let ptr_pos = self.pointer_pos();
+        let ptr_pos = self.pointer_pos().mem_pos();
         // We check for size = 3*ptr_size, that covers the drop fn (unused here),
         // the size, and the align (which we read below).
         let vtable = self.memory.check_ptr_access(
             vtable,
-            (3 * ptr_pos).size,
-            self.tcx.data_layout.pointer_pos.align.abi,
+            3 * ptr_pos,
         )?.expect("cannot be a ZST");
         let alloc = self.memory.get_raw(vtable.alloc_id)?;
         let size = alloc.read_ptr_sized(

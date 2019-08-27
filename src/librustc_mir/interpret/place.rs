@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::mir::interpret::truncate;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{
-    self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
+    self, Size, Align, MemoryPosition, LayoutOf, TyLayout, HasDataLayout, VariantIdx, PrimitiveExt
 };
 use rustc::ty::TypeFoldable;
 
@@ -332,12 +332,14 @@ where
         place: MPlaceTy<'tcx, M::PointerTag>,
         size: Option<Size>,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
-        let size = size.unwrap_or_else(|| {
+        let mem_pos = if let Some(size) = size {
+            MemoryPosition::new(size, place.align)
+        } else {
             assert!(!place.layout.is_unsized());
             assert!(place.meta.is_none());
-            place.layout.pref_pos.size
-        });
-        self.memory.check_ptr_access(place.ptr, size, place.align)
+            place.layout.pref_pos.mem_pos()
+        };
+        self.memory.check_ptr_access(place.ptr, mem_pos)
     }
 
     /// Return the "access-checked" version of this `MPlace`, where for non-ZST
