@@ -28,7 +28,7 @@
 pub use self::ExternalLocation::*;
 
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, VecDeque};
 use std::default::Default;
@@ -72,6 +72,7 @@ use crate::html::format::fmt_impl_for_trait_page;
 use crate::html::item_type::ItemType;
 use crate::html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCodes, IdMap};
 use crate::html::{highlight, layout, static_files};
+use crate::html::sources;
 
 use minifier;
 
@@ -173,7 +174,7 @@ struct Context {
     playground: Option<markdown::Playground>,
 }
 
-struct SharedContext {
+crate struct SharedContext {
     /// The path to the crate root source minus the file name.
     /// Used for simplifying paths to the highlighted source code files.
     pub src_root: PathBuf,
@@ -218,7 +219,7 @@ struct SharedContext {
 }
 
 impl SharedContext {
-    fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
+    crate fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
         if !dirs.contains(dst) {
             try_err!(self.fs.create_dir_all(dst), dst);
@@ -281,11 +282,6 @@ impl Impl {
 /// rendering threads.
 #[derive(Default)]
 pub struct Cache {
-    /// Mapping of typaram ids to the name of the type parameter. This is used
-    /// when pretty-printing a type (so pretty-printing doesn't have to
-    /// painfully maintain a context like this)
-    pub param_names: FxHashMap<DefId, String>,
-
     /// Maps a type ID to all known implementations for that type. This is only
     /// recognized for intra-crate `ResolvedPath` types, and is used to print
     /// out extra documentation on the page of an enum/struct.
@@ -381,25 +377,12 @@ pub struct Cache {
 pub struct RenderInfo {
     pub inlined: FxHashSet<DefId>,
     pub external_paths: crate::core::ExternalPaths,
-    pub external_param_names: FxHashMap<DefId, String>,
     pub exact_paths: FxHashMap<DefId, Vec<String>>,
     pub access_levels: AccessLevels<DefId>,
     pub deref_trait_did: Option<DefId>,
     pub deref_mut_trait_did: Option<DefId>,
     pub owned_box_did: Option<DefId>,
 }
-
-/// Helper struct to render all source code to HTML pages
-struct SourceCollector<'a> {
-    scx: &'a mut SharedContext,
-
-    /// Root destination to place all HTML output into
-    dst: PathBuf,
-}
-
-/// Wrapper struct to render the source code of a file. This will do things like
-/// adding line numbers to the left-hand side.
-struct Source<'a>(&'a str);
 
 // Helper structs for rendering items/sidebars and carrying along contextual
 // information
@@ -496,7 +479,7 @@ impl ToJson for IndexItemFunctionType {
 }
 
 thread_local!(static CACHE_KEY: RefCell<Arc<Cache>> = Default::default());
-thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> = RefCell::new(Vec::new()));
+thread_local!(pub static CURRENT_DEPTH: Cell<usize> = Cell::new(0));
 
 pub fn initial_ids() -> Vec<String> {
     [
@@ -612,7 +595,7 @@ pub fn run(mut krate: clean::Crate,
     }
     let dst = output;
     scx.ensure_dir(&dst)?;
-    krate = render_sources(&dst, &mut scx, krate)?;
+    krate = sources::render(&dst, &mut scx, krate)?;
     let mut cx = Context {
         current: Vec::new(),
         dst,
@@ -628,7 +611,6 @@ pub fn run(mut krate: clean::Crate,
     let RenderInfo {
         inlined: _,
         external_paths,
-        external_param_names,
         exact_paths,
         access_levels,
         deref_trait_did,
@@ -662,7 +644,6 @@ pub fn run(mut krate: clean::Crate,
         deref_mut_trait_did,
         owned_box_did,
         masked_crates: mem::take(&mut krate.masked_crates),
-        param_names: external_param_names,
         aliases: Default::default(),
     };
 
@@ -714,7 +695,7 @@ pub fn run(mut krate: clean::Crate,
     // for future parallelization opportunities
     let cache = Arc::new(cache);
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
-    CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
+    CURRENT_DEPTH.with(|s| s.set(0));
 
     // Write shared runs within a flock; disable thread dispatching of IO temporarily.
     Arc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
@@ -751,7 +732,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
                 path: fqp[..fqp.len() - 1].join("::"),
-                desc: plain_summary_line_short(item.doc_value()),
+                desc: shorten(plain_summary_line(item.doc_value())),
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
@@ -789,7 +770,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     }
 
     let crate_doc = krate.module.as_ref().map(|module| {
-        plain_summary_line_short(module.doc_value())
+        shorten(plain_summary_line(module.doc_value()))
     }).unwrap_or(String::new());
 
     let mut crate_data = BTreeMap::new();
@@ -1293,18 +1274,6 @@ themePicker.onblur = handleThemeButtonsBlur;
     Ok(())
 }
 
-fn render_sources(dst: &Path, scx: &mut SharedContext,
-                  krate: clean::Crate) -> Result<clean::Crate, Error> {
-    info!("emitting source files");
-    let dst = dst.join("src").join(&krate.name);
-    scx.ensure_dir(&dst)?;
-    let mut folder = SourceCollector {
-        dst,
-        scx,
-    };
-    Ok(folder.fold_crate(krate))
-}
-
 fn write_minify(fs:&DocFS, dst: PathBuf, contents: &str, enable_minification: bool
                 ) -> Result<(), Error> {
     if enable_minification {
@@ -1384,33 +1353,6 @@ fn write_minify_replacer<W: Write>(
     }
 }
 
-/// Takes a path to a source file and cleans the path to it. This canonicalizes
-/// things like ".." to components which preserve the "top down" hierarchy of a
-/// static HTML tree. Each component in the cleaned path will be passed as an
-/// argument to `f`. The very last component of the path (ie the file name) will
-/// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
-where
-    F: FnMut(&OsStr),
-{
-    // make it relative, if possible
-    let p = p.strip_prefix(src_root).unwrap_or(p);
-
-    let mut iter = p.components().peekable();
-
-    while let Some(c) = iter.next() {
-        if !keep_filename && iter.peek().is_none() {
-            break;
-        }
-
-        match c {
-            Component::ParentDir => f("up".as_ref()),
-            Component::Normal(c) => f(c),
-            _ => continue,
-        }
-    }
-}
-
 /// Attempts to find where an external crate is located, given that we're
 /// rendering in to the specified source destination.
 fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Path)
@@ -1444,102 +1386,6 @@ fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Pat
     }).next().unwrap_or(Unknown) // Well, at least we tried.
 }
 
-impl<'a> DocFolder for SourceCollector<'a> {
-    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
-        // If we're including source files, and we haven't seen this file yet,
-        // then we need to render it out to the filesystem.
-        if self.scx.include_sources
-            // skip all invalid or macro spans
-            && item.source.filename.is_real()
-            // skip non-local items
-            && item.def_id.is_local() {
-
-            // If it turns out that we couldn't read this file, then we probably
-            // can't read any of the files (generating html output from json or
-            // something like that), so just don't include sources for the
-            // entire crate. The other option is maintaining this mapping on a
-            // per-file basis, but that's probably not worth it...
-            self.scx
-                .include_sources = match self.emit_source(&item.source.filename) {
-                Ok(()) => true,
-                Err(e) => {
-                    println!("warning: source code was requested to be rendered, \
-                              but processing `{}` had an error: {}",
-                             item.source.filename, e);
-                    println!("         skipping rendering of source code");
-                    false
-                }
-            };
-        }
-        self.fold_item_recur(item)
-    }
-}
-
-impl<'a> SourceCollector<'a> {
-    /// Renders the given filename into its corresponding HTML source file.
-    fn emit_source(&mut self, filename: &FileName) -> Result<(), Error> {
-        let p = match *filename {
-            FileName::Real(ref file) => file,
-            _ => return Ok(()),
-        };
-        if self.scx.local_sources.contains_key(&**p) {
-            // We've already emitted this source
-            return Ok(());
-        }
-
-        let contents = try_err!(fs::read_to_string(&p), &p);
-
-        // Remove the utf-8 BOM if any
-        let contents = if contents.starts_with("\u{feff}") {
-            &contents[3..]
-        } else {
-            &contents[..]
-        };
-
-        // Create the intermediate directories
-        let mut cur = self.dst.clone();
-        let mut root_path = String::from("../../");
-        let mut href = String::new();
-        clean_srcpath(&self.scx.src_root, &p, false, |component| {
-            cur.push(component);
-            root_path.push_str("../");
-            href.push_str(&component.to_string_lossy());
-            href.push('/');
-        });
-        self.scx.ensure_dir(&cur)?;
-        let mut fname = p.file_name()
-                         .expect("source has no filename")
-                         .to_os_string();
-        fname.push(".html");
-        cur.push(&fname);
-        href.push_str(&fname.to_string_lossy());
-
-        let mut v = Vec::new();
-        let title = format!("{} -- source", cur.file_name().expect("failed to get file name")
-                                               .to_string_lossy());
-        let desc = format!("Source to the Rust file `{}`.", filename);
-        let page = layout::Page {
-            title: &title,
-            css_class: "source",
-            root_path: &root_path,
-            static_root_path: self.scx.static_root_path.as_deref(),
-            description: &desc,
-            keywords: BASIC_KEYWORDS,
-            resource_suffix: &self.scx.resource_suffix,
-            extra_scripts: &[&format!("source-files{}", self.scx.resource_suffix)],
-            static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
-        };
-        try_err!(layout::render(&mut v, &self.scx.layout,
-                       &page, &(""), &Source(contents),
-                       self.scx.css_file_extension.is_some(),
-                       &self.scx.themes,
-                       self.scx.generate_search_filter), &cur);
-        self.scx.fs.write(&cur, &v)?;
-        self.scx.local_sources.insert(p.clone(), href);
-        Ok(())
-    }
-}
-
 impl DocFolder for Cache {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         if item.def_id.is_local() {
@@ -1563,12 +1409,6 @@ impl DocFolder for Cache {
                i.for_.def_id().map_or(false, |d| self.masked_crates.contains(&d.krate)) {
                 return None;
             }
-        }
-
-        // Register any generics to their corresponding string. This is used
-        // when pretty-printing types.
-        if let Some(generics) = item.inner.generics() {
-            self.generics(generics);
         }
 
         // Propagate a trait method's documentation to all implementors of the
@@ -1642,7 +1482,7 @@ impl DocFolder for Cache {
                             ty: item.type_(),
                             name: s.to_string(),
                             path: path.join("::"),
-                            desc: plain_summary_line_short(item.doc_value()),
+                            desc: shorten(plain_summary_line(item.doc_value())),
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),
@@ -1803,18 +1643,6 @@ impl DocFolder for Cache {
 }
 
 impl Cache {
-    fn generics(&mut self, generics: &clean::Generics) {
-        for param in &generics.params {
-            match param.kind {
-                clean::GenericParamDefKind::Lifetime => {}
-                clean::GenericParamDefKind::Type { did, .. } |
-                clean::GenericParamDefKind::Const { did, .. } => {
-                    self.param_names.insert(did, param.name.clone());
-                }
-            }
-        }
-    }
-
     fn add_aliases(&mut self, item: &clean::Item) {
         if item.def_id.index == CRATE_DEF_INDEX {
             return
@@ -1836,7 +1664,7 @@ impl Cache {
                                 ty: item.type_(),
                                 name: item_name.to_string(),
                                 path: path.clone(),
-                                desc: plain_summary_line_short(item.doc_value()),
+                                desc: shorten(plain_summary_line(item.doc_value())),
                                 parent: None,
                                 parent_idx: None,
                                 search_type: get_index_search_type(&item),
@@ -2057,31 +1885,6 @@ impl Context {
         "../".repeat(self.current.len())
     }
 
-    /// Recurse in the directory structure and change the "root path" to make
-    /// sure it always points to the top (relatively).
-    fn recurse<T, F>(&mut self, s: String, f: F) -> T where
-        F: FnOnce(&mut Context) -> T,
-    {
-        if s.is_empty() {
-            panic!("Unexpected empty destination: {:?}", self.current);
-        }
-        let prev = self.dst.clone();
-        self.dst.push(&s);
-        self.current.push(s);
-
-        info!("Recursing into {}", self.dst.display());
-
-        let ret = f(self);
-
-        info!("Recursed; leaving {}", self.dst.display());
-
-        // Go back to where we were at
-        self.dst = prev;
-        self.current.pop().unwrap();
-
-        ret
-    }
-
     /// Main method for rendering a crate.
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
@@ -2175,8 +1978,8 @@ impl Context {
                    -> io::Result<()> {
         // A little unfortunate that this is done like this, but it sure
         // does make formatting *a lot* nicer.
-        CURRENT_LOCATION_KEY.with(|slot| {
-            *slot.borrow_mut() = self.current.clone();
+        CURRENT_DEPTH.with(|slot| {
+            slot.set(self.current.len());
         });
 
         let mut title = if it.is_primitive() || it.is_keyword() {
@@ -2262,42 +2065,50 @@ impl Context {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             let name = item.name.as_ref().unwrap().to_string();
-            let mut item = Some(item);
-            let scx = self.shared.clone();
-            self.recurse(name, |this| {
-                let item = item.take().unwrap();
+            let scx = &self.shared;
+            if name.is_empty() {
+                panic!("Unexpected empty destination: {:?}", self.current);
+            }
+            let prev = self.dst.clone();
+            self.dst.push(&name);
+            self.current.push(name);
 
-                let mut buf = Vec::new();
-                this.render_item(&mut buf, &item, false).unwrap();
-                // buf will be empty if the module is stripped and there is no redirect for it
-                if !buf.is_empty() {
-                    this.shared.ensure_dir(&this.dst)?;
-                    let joint_dst = this.dst.join("index.html");
-                    scx.fs.write(&joint_dst, buf)?;
-                }
+            info!("Recursing into {}", self.dst.display());
 
-                let m = match item.inner {
-                    clean::StrippedItem(box clean::ModuleItem(m)) |
-                    clean::ModuleItem(m) => m,
-                    _ => unreachable!()
-                };
+            let mut buf = Vec::new();
+            self.render_item(&mut buf, &item, false).unwrap();
+            // buf will be empty if the module is stripped and there is no redirect for it
+            if !buf.is_empty() {
+                self.shared.ensure_dir(&self.dst)?;
+                let joint_dst = self.dst.join("index.html");
+                scx.fs.write(&joint_dst, buf)?;
+            }
 
-                // Render sidebar-items.js used throughout this module.
-                if !this.render_redirect_pages {
-                    let items = this.build_sidebar_items(&m);
-                    let js_dst = this.dst.join("sidebar-items.js");
-                    let mut v = Vec::new();
-                    try_err!(write!(&mut v, "initSidebarItems({});",
-                                    as_json(&items)), &js_dst);
-                    scx.fs.write(&js_dst, &v)?;
-                }
+            let m = match item.inner {
+                clean::StrippedItem(box clean::ModuleItem(m)) |
+                clean::ModuleItem(m) => m,
+                _ => unreachable!()
+            };
 
-                for item in m.items {
-                    f(this, item);
-                }
+            // Render sidebar-items.js used throughout this module.
+            if !self.render_redirect_pages {
+                let items = self.build_sidebar_items(&m);
+                let js_dst = self.dst.join("sidebar-items.js");
+                let mut v = Vec::new();
+                try_err!(write!(&mut v, "initSidebarItems({});",
+                                as_json(&items)), &js_dst);
+                scx.fs.write(&js_dst, &v)?;
+            }
 
-                Ok(())
-            })?;
+            for item in m.items {
+                f(self, item);
+            }
+
+            info!("Recursed; leaving {}", self.dst.display());
+
+            // Go back to where we were at
+            self.dst = prev;
+            self.current.pop().unwrap();
         } else if item.name.is_some() {
             let mut buf = Vec::new();
             self.render_item(&mut buf, &item, true).unwrap();
@@ -2399,7 +2210,7 @@ impl<'a> Item<'a> {
                 (_, _, Unknown) => return None,
             };
 
-            clean_srcpath(&src_root, file, false, |component| {
+            sources::clean_path(&src_root, file, false, |component| {
                 path.push_str(&component.to_string_lossy());
                 path.push('/');
             });
@@ -2549,29 +2360,39 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     s
 }
 
-fn shorter(s: Option<&str>) -> String {
-    match s {
-        Some(s) => s.lines()
-            .skip_while(|s| s.chars().all(|c| c.is_whitespace()))
-            .take_while(|line|{
-            (*line).chars().any(|chr|{
-                !chr.is_whitespace()
-            })
-        }).collect::<Vec<_>>().join("\n"),
-        None => String::new()
-    }
-}
-
 #[inline]
 fn plain_summary_line(s: Option<&str>) -> String {
-    let line = shorter(s).replace("\n", " ");
-    markdown::plain_summary_line_full(&line[..], false)
+    let s = s.unwrap_or("");
+    // This essentially gets the first paragraph of text in one line.
+    let mut line = s.lines()
+        .skip_while(|line| line.chars().all(|c| c.is_whitespace()))
+        .take_while(|line| line.chars().any(|c| !c.is_whitespace()))
+        .fold(String::new(), |mut acc, line| {
+            acc.push_str(line);
+            acc.push(' ');
+            acc
+        });
+    // remove final whitespace
+    line.pop();
+    markdown::plain_summary_line(&line[..])
 }
 
-#[inline]
-fn plain_summary_line_short(s: Option<&str>) -> String {
-    let line = shorter(s).replace("\n", " ");
-    markdown::plain_summary_line_full(&line[..], true)
+fn shorten(s: String) -> String {
+    if s.chars().count() > 60 {
+        let mut len = 0;
+        let mut ret = s.split_whitespace()
+                        .take_while(|p| {
+                            // + 1 for the added character after the word.
+                            len += p.chars().count() + 1;
+                            len < 60
+                        })
+                        .collect::<Vec<_>>()
+                        .join(" ");
+        ret.push('…');
+        ret
+    } else {
+        s
+    }
 }
 
 fn document(w: &mut fmt::Formatter<'_>, cx: &Context, item: &clean::Item) -> fmt::Result {
@@ -2816,19 +2637,19 @@ fn item_module(w: &mut fmt::Formatter<'_>, cx: &Context,
 
         match myitem.inner {
             clean::ExternCrateItem(ref name, ref src) => {
-                use crate::html::format::HRef;
+                use crate::html::format::anchor;
 
                 match *src {
                     Some(ref src) => {
                         write!(w, "<tr><td><code>{}extern crate {} as {};",
                                VisSpace(&myitem.visibility),
-                               HRef::new(myitem.def_id, src),
+                               anchor(myitem.def_id, src),
                                name)?
                     }
                     None => {
                         write!(w, "<tr><td><code>{}extern crate {};",
                                VisSpace(&myitem.visibility),
-                               HRef::new(myitem.def_id, name))?
+                               anchor(myitem.def_id, name))?
                     }
                 }
                 write!(w, "</code></td></tr>")?;
@@ -5048,27 +4869,6 @@ fn sidebar_foreign_type(fmt: &mut fmt::Formatter<'_>, it: &clean::Item) -> fmt::
     Ok(())
 }
 
-impl<'a> fmt::Display for Source<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Source(s) = *self;
-        let lines = s.lines().count();
-        let mut cols = 0;
-        let mut tmp = lines;
-        while tmp > 0 {
-            cols += 1;
-            tmp /= 10;
-        }
-        write!(fmt, "<pre class=\"line-numbers\">")?;
-        for i in 1..=lines {
-            write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
-        }
-        write!(fmt, "</pre>")?;
-        write!(fmt, "{}",
-               highlight::render_with_highlighting(s, None, None, None))?;
-        Ok(())
-    }
-}
-
 fn item_macro(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
     wrap_into_docblock(w, |w| {
@@ -5125,7 +4925,7 @@ fn item_keyword(w: &mut fmt::Formatter<'_>, cx: &Context,
     document(w, cx, it)
 }
 
-const BASIC_KEYWORDS: &'static str = "rust, rustlang, rust-lang";
+crate const BASIC_KEYWORDS: &'static str = "rust, rustlang, rust-lang";
 
 fn make_item_keywords(it: &clean::Item) -> String {
     format!("{}, {}", BASIC_KEYWORDS, it.name.as_ref().unwrap())

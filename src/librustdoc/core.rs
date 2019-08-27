@@ -30,7 +30,7 @@ use std::rc::Rc;
 
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::clean;
-use crate::clean::{Clean, MAX_DEF_ID, AttributesExt};
+use crate::clean::{MAX_DEF_ID, AttributesExt};
 use crate::html::render::RenderInfo;
 
 use crate::passes;
@@ -363,7 +363,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut renderinfo = RenderInfo::default();
             renderinfo.access_levels = access_levels;
 
-            let ctxt = DocContext {
+            let mut ctxt = DocContext {
                 tcx,
                 resolver,
                 cstore: compiler.cstore().clone(),
@@ -383,7 +383,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             };
             debug!("crate: {:?}", tcx.hir().krate());
 
-            let mut krate = tcx.hir().krate().clean(&ctxt);
+            let mut krate = clean::krate(&mut ctxt);
 
             fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
                 let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
