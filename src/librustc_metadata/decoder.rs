@@ -917,22 +917,32 @@ impl<'a, 'tcx> CrateMetadata {
         self.maybe_entry(id).and_then(|item| item.decode(self).mir).is_some()
     }
 
-    pub fn maybe_get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Option<Body<'tcx>> {
-        match self.is_proc_macro(id) {
-            true => None,
-            false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),
-        }
+    pub fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
+        let mir =
+            match self.is_proc_macro(id) {
+                true => None,
+                false => self.entry(id).mir.map(|mir| mir.decode((self, tcx))),
+            };
+
+        mir.unwrap_or_else(|| {
+            bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
+        })
     }
 
-    pub fn maybe_get_promoted_mir(
+    pub fn get_promoted_mir(
         &self,
         tcx: TyCtxt<'tcx>,
         id: DefIndex,
-    ) -> Option<IndexVec<Promoted, Body<'tcx>>> {
-        match self.is_proc_macro(id) {
-            true => None,
-            false => self.entry(id).promoted_mir.map(|promoted| promoted.decode((self, tcx)),)
-        }
+    ) -> IndexVec<Promoted, Body<'tcx>> {
+        let promoted =
+            match self.is_proc_macro(id) {
+                true => None,
+                false => self.entry(id).promoted_mir.map(|promoted| promoted.decode((self, tcx)))
+            };
+
+        promoted.unwrap_or_else(|| {
+            bug!("get_promoted_mir: missing MIR for `{:?}`", self.local_def_id(id))
+        })
     }
 
     pub fn mir_const_qualif(&self, id: DefIndex) -> u8 {
