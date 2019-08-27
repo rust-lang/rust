@@ -6,6 +6,7 @@ use std::path::Path;
 /// List of whitelisted sources for packages.
 const WHITELISTED_SOURCES: &[&str] = &[
     "\"registry+https://github.com/rust-lang/crates.io-index\"",
+    "\"git+https://github.com/djrenren/libtest.git#3824d622c489ba314a0fa355fc47779a8251b235\""
 ];
 
 /// Checks for external package sources.

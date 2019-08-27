@@ -47,3 +47,6 @@
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
 	url = https://github.com/rust-embedded/book.git
+[submodule "src/tools/compiletest"]
+	path = src/tools/compiletest
+	url = https://github.com/djrenren/compiletest.git
