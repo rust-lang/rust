@@ -1,0 +1,4 @@
+error: requires `generator` lang_item
+
+error: aborting due to previous error
+
