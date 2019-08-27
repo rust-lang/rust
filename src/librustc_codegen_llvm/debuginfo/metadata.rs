@@ -654,12 +654,11 @@ pub fn type_metadata(
                     // type is going to see *somthing* weird - the only
                     // question is what exactly it will see
                     let mem_pos = cx.mem_pos_of(t);
-                    let (size, align) = (mem_pos.size, mem_pos.align);
                     llvm::LLVMRustDIBuilderCreateBasicType(
                         DIB(cx),
                         SmallCStr::new("<recur_type>").as_ptr(),
-                        size.bits(),
-                        align.bits() as u32,
+                        mem_pos.size.bits(),
+                        mem_pos.align.bits() as u32,
                         DW_ATE_unsigned)
                 }
             };
@@ -853,14 +852,13 @@ fn basic_type_metadata(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
     };
 
     let mem_pos = cx.mem_pos_of(t);
-    let (size, align) = (mem_pos.size, mem_pos.align);
     let name = SmallCStr::new(name);
     let ty_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
             name.as_ptr(),
-            size.bits(),
-            align.bits() as u32,
+            mem_pos.size.bits(),
+            mem_pos.align.bits() as u32,
             encoding)
     };
 
@@ -1923,8 +1921,6 @@ fn prepare_enum_metadata(
         } => {
             let discr_type = discr.value.to_ty(cx.tcx);
             let mem_pos = cx.mem_pos_of(discr_type);
-            let (size, align) = (mem_pos.size, mem_pos.align);
-
 
             let discr_metadata = basic_type_metadata(cx, discr_type);
             unsafe {
@@ -1934,8 +1930,8 @@ fn prepare_enum_metadata(
                     discriminator_name,
                     file_metadata,
                     UNKNOWN_LINE_NUMBER,
-                    size.bits(),
-                    align.bits() as u32,
+                    mem_pos.size.bits(),
+                    mem_pos.align.bits() as u32,
                     layout.fields.offset(discr_index).bits(),
                     DIFlags::FlagArtificial,
                     discr_metadata))
@@ -2137,7 +2133,6 @@ fn create_struct_stub(
     containing_scope: Option<&'ll DIScope>,
 ) -> &'ll DICompositeType {
     let struct_mem_pos = cx.mem_pos_of(struct_type);
-    let (struct_size, struct_align) = (struct_mem_pos.size, struct_mem_pos.align);
 
     let name = SmallCStr::new(struct_type_name);
     let unique_type_id = SmallCStr::new(
@@ -2155,8 +2150,8 @@ fn create_struct_stub(
             name.as_ptr(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
-            struct_size.bits(),
-            struct_align.bits() as u32,
+            struct_mem_pos.size.bits(),
+            struct_mem_pos.align.bits() as u32,
             DIFlags::FlagZero,
             None,
             empty_array,

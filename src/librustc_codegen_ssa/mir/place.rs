@@ -399,7 +399,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // as this will yield the lowest alignment.
         let layout = self.layout.field(bx, 0);
         let offset = if let Some(llindex) = bx.const_to_opt_uint(llindex) {
-            layout.pref_pos.size.checked_mul(llindex, bx).unwrap_or(layout.pref_pos.size)
+            layout.pref_pos.checked_mul(llindex, bx).unwrap_or(layout.pref_pos).size
         } else {
             layout.pref_pos.size
         };
