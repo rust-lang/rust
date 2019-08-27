@@ -104,6 +104,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InherentToString {
             if impl_item.ident.name.as_str() == "to_string";
             let decl = &signature.decl;
             if decl.implicit_self.has_implicit_self();
+            if decl.inputs.len() == 1;
 
             // Check if return type is String
             if match_type(cx, return_ty(cx, impl_item.hir_id), &paths::STRING);
