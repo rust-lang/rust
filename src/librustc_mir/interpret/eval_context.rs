@@ -442,27 +442,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Issue #27023: must add any necessary padding to `size`
                 // (to make it a multiple of `align`) before returning it.
-                //
-                // Namely, the returned size should be, in C notation:
-                //
-                //   `size + ((size & (align-1)) ? align : 0)`
-                //
-                // emulated via the semi-standard fast bit trick:
-                //
-                //   `(size + (align-1)) & -align`
+                let size = size.align_to(align);
 
-                Ok(Some((size.align_to(align), align)))
+                // Check if this brought us over the size limit.
+                if size.bytes() >= self.tcx.data_layout().obj_size_bound() {
+                    throw_ub_format!("wide pointer metadata contains invalid information: \
+                        total size is bigger than largest supported object");
+                }
+                Ok(Some((size, align)))
             }
             ty::Dynamic(..) => {
                 let vtable = metadata.expect("dyn trait fat ptr must have vtable");
-                // the second entry in the vtable is the dynamic size of the object.
+                // Read size and align from vtable (already checks size).
                 Ok(Some(self.read_size_and_align_from_vtable(vtable)?))
             }
 
             ty::Slice(_) | ty::Str => {
                 let len = metadata.expect("slice fat ptr must have vtable").to_usize(self)?;
                 let elem = layout.field(self, 0)?;
-                Ok(Some((elem.size * len, elem.align.abi)))
+
+                // Make sure the slice is not too big.
+                let size = elem.size.checked_mul(len, &*self.tcx)
+                    .ok_or_else(|| err_ub_format!("invalid slice: \
+                        total size is bigger than largest supported object"))?;
+                Ok(Some((size, elem.align.abi)))
             }
 
             ty::Foreign(_) => {
