@@ -224,13 +224,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// fn takes_ref(_: &Foo) {}
     /// let ref opt = Some(Foo);
     ///
-    /// opt.map(|arg| takes_ref(arg));
+    /// opt.map(|param| takes_ref(param));
     /// ```
-    /// Suggest using `opt.as_ref().map(|arg| takes_ref(arg));` instead.
+    /// Suggest using `opt.as_ref().map(|param| takes_ref(param));` instead.
     ///
     /// It only checks for `Option` and `Result` and won't work with
     /// ```
-    /// opt.map(|arg| { takes_ref(arg) });
+    /// opt.map(|param| { takes_ref(param) });
     /// ```
     fn can_use_as_ref(
         &self,
@@ -247,13 +247,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let local_parent = self.tcx.hir().get_parent_node(local_id);
-        let arg_hir_id = match self.tcx.hir().find(local_parent) {
-            Some(Node::Arg(hir::Arg { hir_id, .. })) => hir_id,
+        let param_hir_id = match self.tcx.hir().find(local_parent) {
+            Some(Node::Param(hir::Param { hir_id, .. })) => hir_id,
             _ => return None
         };
 
-        let arg_parent = self.tcx.hir().get_parent_node(*arg_hir_id);
-        let (expr_hir_id, closure_fn_decl) = match self.tcx.hir().find(arg_parent) {
+        let param_parent = self.tcx.hir().get_parent_node(*param_hir_id);
+        let (expr_hir_id, closure_fn_decl) = match self.tcx.hir().find(param_parent) {
             Some(Node::Expr(
                 hir::Expr { hir_id, node: hir::ExprKind::Closure(_, decl, ..), .. }
             )) => (hir_id, decl),

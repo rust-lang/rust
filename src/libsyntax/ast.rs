@@ -1789,11 +1789,11 @@ pub struct InlineAsm {
     pub dialect: AsmDialect,
 }
 
-/// An argument in a function header.
+/// A parameter in a function header.
 ///
 /// E.g., `bar: usize` as in `fn foo(bar: usize)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Arg {
+pub struct Param {
     pub attrs: ThinVec<Attribute>,
     pub ty: P<Ty>,
     pub pat: P<Pat>,
@@ -1816,7 +1816,7 @@ pub enum SelfKind {
 
 pub type ExplicitSelf = Spanned<SelfKind>;
 
-impl Arg {
+impl Param {
     pub fn to_self(&self) -> Option<ExplicitSelf> {
         if let PatKind::Ident(BindingMode::ByValue(mutbl), ident, _) = self.pat.node {
             if ident.name == kw::SelfLower {
@@ -1843,14 +1843,14 @@ impl Arg {
         }
     }
 
-    pub fn from_self(attrs: ThinVec<Attribute>, eself: ExplicitSelf, eself_ident: Ident) -> Arg {
+    pub fn from_self(attrs: ThinVec<Attribute>, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
             node: TyKind::ImplicitSelf,
             span,
         });
-        let arg = |mutbl, ty| Arg {
+        let param = |mutbl, ty| Param {
             attrs,
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
@@ -1862,9 +1862,9 @@ impl Arg {
             id: DUMMY_NODE_ID,
         };
         match eself.node {
-            SelfKind::Explicit(ty, mutbl) => arg(mutbl, ty),
-            SelfKind::Value(mutbl) => arg(mutbl, infer_ty),
-            SelfKind::Region(lt, mutbl) => arg(
+            SelfKind::Explicit(ty, mutbl) => param(mutbl, ty),
+            SelfKind::Value(mutbl) => param(mutbl, infer_ty),
+            SelfKind::Region(lt, mutbl) => param(
                 Mutability::Immutable,
                 P(Ty {
                     id: DUMMY_NODE_ID,
@@ -1887,17 +1887,17 @@ impl Arg {
 /// E.g., `fn foo(bar: baz)`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnDecl {
-    pub inputs: Vec<Arg>,
+    pub inputs: Vec<Param>,
     pub output: FunctionRetTy,
     pub c_variadic: bool,
 }
 
 impl FnDecl {
     pub fn get_self(&self) -> Option<ExplicitSelf> {
-        self.inputs.get(0).and_then(Arg::to_self)
+        self.inputs.get(0).and_then(Param::to_self)
     }
     pub fn has_self(&self) -> bool {
-        self.inputs.get(0).map(Arg::is_self).unwrap_or(false)
+        self.inputs.get(0).map(Param::is_self).unwrap_or(false)
     }
 }
 

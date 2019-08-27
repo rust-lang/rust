@@ -66,7 +66,7 @@ pub trait Visitor<'ast>: Sized {
     fn visit_local(&mut self, l: &'ast Local) { walk_local(self, l) }
     fn visit_block(&mut self, b: &'ast Block) { walk_block(self, b) }
     fn visit_stmt(&mut self, s: &'ast Stmt) { walk_stmt(self, s) }
-    fn visit_arg(&mut self, arg: &'ast Arg) { walk_arg(self, arg) }
+    fn visit_param(&mut self, param: &'ast Param) { walk_param(self, param) }
     fn visit_arm(&mut self, a: &'ast Arm) { walk_arm(self, a) }
     fn visit_pat(&mut self, p: &'ast Pat) { walk_pat(self, p) }
     fn visit_anon_const(&mut self, c: &'ast AnonConst) { walk_anon_const(self, c) }
@@ -555,8 +555,8 @@ pub fn walk_fn_ret_ty<'a, V: Visitor<'a>>(visitor: &mut V, ret_ty: &'a FunctionR
 }
 
 pub fn walk_fn_decl<'a, V: Visitor<'a>>(visitor: &mut V, function_declaration: &'a FnDecl) {
-    for arg in &function_declaration.inputs {
-        visitor.visit_arg(arg);
+    for param in &function_declaration.inputs {
+        visitor.visit_param(param);
     }
     visitor.visit_fn_ret_ty(&function_declaration.output);
 }
@@ -824,10 +824,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
     visitor.visit_expr_post(expression)
 }
 
-pub fn walk_arg<'a, V: Visitor<'a>>(visitor: &mut V, arg: &'a Arg) {
-    walk_list!(visitor, visit_attribute, arg.attrs.iter());
-    visitor.visit_pat(&arg.pat);
-    visitor.visit_ty(&arg.ty);
+pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) {
+    walk_list!(visitor, visit_attribute, param.attrs.iter());
+    visitor.visit_pat(&param.pat);
+    visitor.visit_ty(&param.ty);
 }
 
 pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {

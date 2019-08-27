@@ -78,12 +78,12 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
     }
 
     fn visit_body(&mut self, body: &'tcx Body) {
-        for argument in &body.arguments {
+        for param in &body.params {
             if let (None, Some(ty)) = (
                 self.found_arg_pattern,
-                self.node_matches_type(argument.hir_id),
+                self.node_matches_type(param.hir_id),
             ) {
-                self.found_arg_pattern = Some(&*argument.pat);
+                self.found_arg_pattern = Some(&*param.pat);
                 self.found_ty = Some(ty);
             }
         }

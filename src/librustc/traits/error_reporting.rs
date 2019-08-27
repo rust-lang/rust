@@ -1044,7 +1044,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 node: hir::ExprKind::Closure(_, ref _decl, id, span, _),
                 ..
             }) => {
-                (self.tcx.sess.source_map().def_span(span), self.tcx.hir().body(id).arguments.iter()
+                (self.tcx.sess.source_map().def_span(span),
+                 self.tcx.hir().body(id).params.iter()
                     .map(|arg| {
                         if let hir::Pat {
                             node: hir::PatKind::Tuple(ref args, _),

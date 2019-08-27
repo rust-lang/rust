@@ -32,7 +32,7 @@ use syntax::source_map::Spanned;
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
-use syntax::print::pprust::{arg_to_string, ty_to_string};
+use syntax::print::pprust::{param_to_string, ty_to_string};
 use syntax_pos::*;
 
 use dump_visitor::DumpVisitor;
@@ -934,7 +934,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     sig.push('(');
     sig.push_str(&decl.inputs
         .iter()
-        .map(arg_to_string)
+        .map(param_to_string)
         .collect::<Vec<_>>()
         .join(", "));
     sig.push(')');

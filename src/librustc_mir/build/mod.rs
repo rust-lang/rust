@@ -94,7 +94,7 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
 
             let body = tcx.hir().body(body_id);
             let explicit_arguments =
-                body.arguments
+                body.params
                     .iter()
                     .enumerate()
                     .map(|(index, arg)| {
@@ -511,7 +511,7 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-struct ArgInfo<'tcx>(Ty<'tcx>, Option<Span>, Option<&'tcx hir::Arg>, Option<ImplicitSelfKind>);
+struct ArgInfo<'tcx>(Ty<'tcx>, Option<Span>, Option<&'tcx hir::Param>, Option<ImplicitSelfKind>);
 
 fn construct_fn<'a, 'tcx, A>(
     hir: Cx<'a, 'tcx>,

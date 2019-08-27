@@ -468,7 +468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let binding_parent = tcx.hir().get(binding_parent_id);
             debug!("inner {:?} pat {:?} parent {:?}", inner, pat, binding_parent);
             match binding_parent {
-                hir::Node::Arg(hir::Arg { span, .. }) => {
+                hir::Node::Param(hir::Param { span, .. }) => {
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
                         err.span_suggestion(
                             *span,

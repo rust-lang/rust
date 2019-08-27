@@ -1,5 +1,5 @@
 use syntax::ast::{ItemKind, Mutability, Stmt, Ty, TyKind, Unsafety};
-use syntax::ast::{self, Arg, Attribute, Expr, FnHeader, Generics, Ident};
+use syntax::ast::{self, Param, Attribute, Expr, FnHeader, Generics, Ident};
 use syntax::attr::check_builtin_macro_attribute;
 use syntax::ext::allocator::{AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 use syntax::ext::base::{Annotatable, ExtCtxt};
@@ -114,7 +114,7 @@ impl AllocFnFactory<'_, '_> {
     fn arg_ty(
         &self,
         ty: &AllocatorTy,
-        args: &mut Vec<Arg>,
+        args: &mut Vec<Param>,
         ident: &mut dyn FnMut() -> Ident,
     ) -> P<Expr> {
         match *ty {
@@ -123,8 +123,8 @@ impl AllocFnFactory<'_, '_> {
                 let ty_usize = self.cx.ty_path(usize);
                 let size = ident();
                 let align = ident();
-                args.push(self.cx.arg(self.span, size, ty_usize.clone()));
-                args.push(self.cx.arg(self.span, align, ty_usize));
+                args.push(self.cx.param(self.span, size, ty_usize.clone()));
+                args.push(self.cx.param(self.span, align, ty_usize));
 
                 let layout_new = self.cx.std_path(&[
                     Symbol::intern("alloc"),
@@ -140,14 +140,14 @@ impl AllocFnFactory<'_, '_> {
 
             AllocatorTy::Ptr => {
                 let ident = ident();
-                args.push(self.cx.arg(self.span, ident, self.ptr_u8()));
+                args.push(self.cx.param(self.span, ident, self.ptr_u8()));
                 let arg = self.cx.expr_ident(self.span, ident);
                 self.cx.expr_cast(self.span, arg, self.ptr_u8())
             }
 
             AllocatorTy::Usize => {
                 let ident = ident();
-                args.push(self.cx.arg(self.span, ident, self.usize()));
+                args.push(self.cx.param(self.span, ident, self.usize()));
                 self.cx.expr_ident(self.span, ident)
             }
 

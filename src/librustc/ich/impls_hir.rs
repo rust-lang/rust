@@ -331,13 +331,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Body {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let hir::Body {
-            arguments,
+            params,
             value,
             generator_kind,
         } = self;
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::Ignore, |hcx| {
-            arguments.hash_stable(hcx, hasher);
+            params.hash_stable(hcx, hasher);
             value.hash_stable(hcx, hasher);
             generator_kind.hash_stable(hcx, hasher);
         });

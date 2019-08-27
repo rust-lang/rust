@@ -7,7 +7,7 @@ use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::ptr::P;
 use crate::ast::{self, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode};
 use crate::ast::{Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm};
-use crate::ast::{Ty, TyKind, FunctionRetTy, Arg, FnDecl};
+use crate::ast::{Ty, TyKind, FunctionRetTy, Param, FnDecl};
 use crate::ast::{BinOpKind, BinOp, UnOp};
 use crate::ast::{Mac, AnonConst, Field};
 
@@ -1157,7 +1157,7 @@ impl<'a> Parser<'a> {
                     &[&token::BinOp(token::Or), &token::OrOr],
                     SeqSep::trailing_allowed(token::Comma),
                     TokenExpectType::NoExpect,
-                    |p| p.parse_fn_block_arg()
+                    |p| p.parse_fn_block_param()
                 )?.0;
                 self.expect_or()?;
                 args
@@ -1172,10 +1172,10 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Parses an argument in a lambda header (e.g., `|arg, arg|`).
-    fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
+    /// Parses a parameter in a lambda header (e.g., `|arg, arg|`).
+    fn parse_fn_block_param(&mut self) -> PResult<'a, Param> {
         let lo = self.token.span;
-        let attrs = self.parse_arg_attributes()?;
+        let attrs = self.parse_param_attributes()?;
         let pat = self.parse_pat(PARAM_EXPECTED)?;
         let t = if self.eat(&token::Colon) {
             self.parse_ty()?
@@ -1187,7 +1187,7 @@ impl<'a> Parser<'a> {
             })
         };
         let span = lo.to(self.token.span);
-        Ok(Arg {
+        Ok(Param {
             attrs: attrs.into(),
             ty: t,
             pat,

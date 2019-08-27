@@ -869,18 +869,18 @@ impl EncodeContext<'tcx> {
             }
             ty::AssocKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
-                    let arg_names = match *m {
+                    let param_names = match *m {
                         hir::TraitMethod::Required(ref names) => {
-                            self.encode_fn_arg_names(names)
+                            self.encode_fn_param_names(names)
                         }
                         hir::TraitMethod::Provided(body) => {
-                            self.encode_fn_arg_names_for_body(body)
+                            self.encode_fn_param_names_for_body(body)
                         }
                     };
                     FnData {
                         constness: hir::Constness::NotConst,
-                        arg_names,
-                        sig: self.lazy(tcx.fn_sig(def_id)),
+                        param_names,
+                        sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -976,8 +976,8 @@ impl EncodeContext<'tcx> {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
                     FnData {
                         constness: sig.header.constness,
-                        arg_names: self.encode_fn_arg_names_for_body(body),
-                        sig: self.lazy(tcx.fn_sig(def_id)),
+                        param_names: self.encode_fn_param_names_for_body(body),
+                        sig: self.lazy(&tcx.fn_sig(def_id)),
                     }
                 } else {
                     bug!()
@@ -1033,11 +1033,11 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_fn_arg_names_for_body(&mut self, body_id: hir::BodyId)
+    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId)
                                     -> Lazy<[ast::Name]> {
         self.tcx.dep_graph.with_ignore(|| {
             let body = self.tcx.hir().body(body_id);
-            self.lazy(body.arguments.iter().map(|arg| {
+            self.lazy(body.params.iter().map(|arg| {
                 match arg.pat.node {
                     PatKind::Binding(_, _, ident, _) => ident.name,
                     _ => kw::Invalid,
@@ -1046,7 +1046,7 @@ impl EncodeContext<'tcx> {
         })
     }
 
-    fn encode_fn_arg_names(&mut self, param_names: &[ast::Ident]) -> Lazy<[ast::Name]> {
+    fn encode_fn_param_names(&mut self, param_names: &[ast::Ident]) -> Lazy<[ast::Name]> {
         self.lazy(param_names.iter().map(|ident| ident.name))
     }
 
@@ -1122,7 +1122,7 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Fn(_, header, .., body) => {
                 let data = FnData {
                     constness: header.constness,
-                    arg_names: self.encode_fn_arg_names_for_body(body),
+                    param_names: self.encode_fn_param_names_for_body(body),
                     sig: self.lazy(tcx.fn_sig(def_id)),
                 };
 
@@ -1663,7 +1663,7 @@ impl EncodeContext<'tcx> {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 let data = FnData {
                     constness: hir::Constness::NotConst,
-                    arg_names: self.encode_fn_arg_names(names),
+                    param_names: self.encode_fn_param_names(names),
                     sig: self.lazy(tcx.fn_sig(def_id)),
                 };
                 EntryKind::ForeignFn(self.lazy(data))
