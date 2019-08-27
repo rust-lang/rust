@@ -930,7 +930,7 @@ pub struct Local {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arm {
     pub attrs: Vec<Attribute>,
-    pub pats: Vec<P<Pat>>,
+    pub pat: P<Pat>,
     pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
     pub span: Span,
@@ -1148,12 +1148,12 @@ pub enum ExprKind {
     Cast(P<Expr>, P<Ty>),
     /// A type ascription (e.g., `42: usize`).
     Type(P<Expr>, P<Ty>),
-    /// A `let pats = expr` expression that is only semantically allowed in the condition
+    /// A `let pat = expr` expression that is only semantically allowed in the condition
     /// of `if` / `while` expressions. (e.g., `if let 0 = x { .. }`).
     ///
     /// The `Vec<P<Pat>>` is for or-patterns at the top level.
     /// FIXME(54883): Change this to just `P<Pat>`.
-    Let(Vec<P<Pat>>, P<Expr>),
+    Let(P<Pat>, P<Expr>),
     /// An `if` block, with an optional `else` block.
     ///
     /// `if expr { block } else { expr }`
