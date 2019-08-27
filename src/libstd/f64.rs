@@ -244,7 +244,7 @@ impl f64 {
     pub fn div_euclid(self, rhs: f64) -> f64 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 }
+            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
         }
         q
     }
@@ -437,9 +437,9 @@ impl f64 {
     pub fn log2(self) -> f64 {
         self.log_wrapper(|n| {
             #[cfg(target_os = "android")]
-            return crate::sys::android::log2f64(n);
+                return crate::sys::android::log2f64(n);
             #[cfg(not(target_os = "android"))]
-            return unsafe { intrinsics::log2f64(n) };
+                return unsafe { intrinsics::log2f64(n) };
         })
     }
 
@@ -481,16 +481,16 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     #[rustc_deprecated(since = "1.10.0",
-                       reason = "you probably meant `(self - other).abs()`: \
+    reason = "you probably meant `(self - other).abs()`: \
                                  this operation is `(self - other).max(0.0)` \
                                  except that `abs_sub` also propagates NaNs (also \
                                  known as `fdim` in C). If you truly need the positive \
                                  difference, consider using that expression or the C function \
                                  `fdim`, depending on how you wish to handle NaN (please consider \
                                  filing an issue describing your use-case too).")]
-     pub fn abs_sub(self, other: f64) -> f64 {
-         unsafe { cmath::fdim(self, other) }
-     }
+    pub fn abs_sub(self, other: f64) -> f64 {
+        unsafe { cmath::fdim(self, other) }
+    }
 
     /// Takes the cubic root of a number.
     ///
@@ -833,7 +833,7 @@ impl f64 {
         if self == NEG_INFINITY {
             NEG_INFINITY
         } else {
-            (self + ((self * self) + 1.0).sqrt()).ln()
+            (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
         }
     }
 
@@ -852,9 +852,10 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
-        match self {
-            x if x < 1.0 => NAN,
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
+        if self < 1.0 {
+            NAN
+        } else {
+            (self + ((self * self) - 1.0).sqrt()).ln()
         }
     }
 
@@ -1187,7 +1188,7 @@ mod tests {
         assert_eq!((-0f64).abs(), 0f64);
         assert_eq!((-1f64).abs(), 1f64);
         assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f64/NEG_INFINITY).abs(), 0f64);
+        assert_eq!((1f64 / NEG_INFINITY).abs(), 0f64);
         assert!(NAN.abs().is_nan());
     }
 
@@ -1199,7 +1200,7 @@ mod tests {
         assert_eq!((-0f64).signum(), -1f64);
         assert_eq!((-1f64).signum(), -1f64);
         assert_eq!(NEG_INFINITY.signum(), -1f64);
-        assert_eq!((1f64/NEG_INFINITY).signum(), -1f64);
+        assert_eq!((1f64 / NEG_INFINITY).signum(), -1f64);
         assert!(NAN.signum().is_nan());
     }
 
@@ -1211,7 +1212,7 @@ mod tests {
         assert!(!(-0f64).is_sign_positive());
         assert!(!(-1f64).is_sign_positive());
         assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f64/NEG_INFINITY).is_sign_positive());
+        assert!(!(1f64 / NEG_INFINITY).is_sign_positive());
         assert!(NAN.is_sign_positive());
         assert!(!(-NAN).is_sign_positive());
     }
@@ -1224,7 +1225,7 @@ mod tests {
         assert!((-0f64).is_sign_negative());
         assert!((-1f64).is_sign_negative());
         assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f64/NEG_INFINITY).is_sign_negative());
+        assert!((1f64 / NEG_INFINITY).is_sign_negative());
         assert!(!NAN.is_sign_negative());
         assert!((-NAN).is_sign_negative());
     }
@@ -1433,6 +1434,8 @@ mod tests {
         assert_eq!(inf.asinh(), inf);
         assert_eq!(neg_inf.asinh(), neg_inf);
         assert!(nan.asinh().is_nan());
+        assert!((-0.0f64).asinh().is_sign_negative());
+        // issue 63271
         assert_approx_eq!(2.0f64.asinh(), 1.443635475178810342493276740273105f64);
         assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
     }

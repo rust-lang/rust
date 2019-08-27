@@ -910,7 +910,7 @@ impl f32 {
         if self == NEG_INFINITY {
             NEG_INFINITY
         } else {
-            (self + ((self * self) + 1.0).sqrt()).ln()
+            (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
         }
     }
 
@@ -931,9 +931,10 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
-        match self {
-            x if x < 1.0 => crate::f32::NAN,
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
+        if self < 1.0 {
+            crate::f32::NAN
+        } else {
+            (self + ((self * self) - 1.0).sqrt()).ln()
         }
     }
 
@@ -1487,6 +1488,7 @@ mod tests {
         assert_eq!(inf.asinh(), inf);
         assert_eq!(neg_inf.asinh(), neg_inf);
         assert!(nan.asinh().is_nan());
+        assert!((-0.0f32).asinh().is_sign_negative()); // issue 63271
         assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
         assert_approx_eq!((-2.0f32).asinh(), -1.443635475178810342493276740273105f32);
     }
