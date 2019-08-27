@@ -304,9 +304,14 @@ pub fn intern_const_alloc_recursive(
 
     let mut todo: Vec<_> = leftover_relocations.iter().cloned().collect();
     while let Some(alloc_id) = todo.pop() {
-        if let Some((_, alloc)) = ecx.memory_mut().alloc_map.remove(&alloc_id) {
+        if let Some((_, mut alloc)) = ecx.memory_mut().alloc_map.remove(&alloc_id) {
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe
             // references. So we hand-roll the interning logic here again.
+            if base_intern_mode != InternMode::Static {
+                // If it's not a static, it *must* be immutable.
+                // We cannot have mutable memory inside a constant.
+                alloc.mutability = Mutability::Immutable;
+            }
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
             for &(_, ((), reloc)) in alloc.relocations().iter() {
