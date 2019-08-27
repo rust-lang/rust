@@ -47,6 +47,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Otherwise, load the MIR.
-        Ok(Some(this.load_mir(instance.def)?))
+        Ok(Some(this.load_mir(instance.def, None)?))
     }
 }

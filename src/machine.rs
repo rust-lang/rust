@@ -204,7 +204,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         // Call the `exchange_malloc` lang item.
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
         let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
-        let malloc_mir = ecx.load_mir(malloc.def)?;
+        let malloc_mir = ecx.load_mir(malloc.def, None)?;
         ecx.push_stack_frame(
             malloc,
             malloc_mir.span,
