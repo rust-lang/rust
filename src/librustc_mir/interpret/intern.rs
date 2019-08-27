@@ -22,6 +22,9 @@ struct InternVisitor<'rt, 'mir, 'tcx> {
     ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,
     /// Previously encountered safe references.
     ref_tracking: &'rt mut RefTracking<(MPlaceTy<'tcx>, Mutability, InternMode)>,
+    /// A list of all encountered allocations. After type-based interning, we traverse this list to
+    /// also intern allocations that are only referenced by a raw pointer or inside a union.
+    leftover_allocations: &'rt mut FxHashSet<AllocId>,
     /// The root node of the value that we're looking at. This field is never mutated and only used
     /// for sanity assertions that will ICE when `const_qualif` screws up.
     mode: InternMode,
@@ -31,9 +34,6 @@ struct InternVisitor<'rt, 'mir, 'tcx> {
     /// despite the nested mutable reference!
     /// The field gets updated when an `UnsafeCell` is encountered.
     mutability: Mutability,
-    /// A list of all encountered relocations. After type-based interning, we traverse this list to
-    /// also intern allocations that are only referenced by a raw pointer or inside a union.
-    leftover_relocations: &'rt mut FxHashSet<AllocId>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, Eq)]
@@ -59,7 +59,7 @@ struct IsStaticOrFn;
 /// `immutable` things might become mutable if `ty` is not frozen.
 fn intern_shallow<'rt, 'mir, 'tcx>(
     ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,
-    leftover_relocations: &'rt mut FxHashSet<AllocId>,
+    leftover_allocations: &'rt mut FxHashSet<AllocId>,
     mode: InternMode,
     alloc_id: AllocId,
     mutability: Mutability,
@@ -120,7 +120,7 @@ fn intern_shallow<'rt, 'mir, 'tcx>(
     };
     // link the alloc id to the actual allocation
     let alloc = tcx.intern_const_alloc(alloc);
-    leftover_relocations.extend(alloc.relocations().iter().map(|&(_, ((), reloc))| reloc));
+    leftover_allocations.extend(alloc.relocations().iter().map(|&(_, ((), reloc))| reloc));
     tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
     Ok(None)
 }
@@ -134,7 +134,7 @@ impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
     ) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
         intern_shallow(
             self.ecx,
-            self.leftover_relocations,
+            self.leftover_allocations,
             self.mode,
             alloc_id,
             mutability,
@@ -276,14 +276,18 @@ pub fn intern_const_alloc_recursive(
         Some(hir::Mutability::MutMutable) => (Mutability::Mutable, InternMode::Static),
     };
 
-    // type based interning
+    // Type based interning.
+    // `ref_tracking` tracks typed references we have seen and still need to crawl for
+    // more typed information inside them.
+    // `leftover_allocations` collects *all* allocations we see, because some might not
+    // be available in a typed way. They get interned at the end.
     let mut ref_tracking = RefTracking::new((ret, base_mutability, base_intern_mode));
-    let leftover_relocations = &mut FxHashSet::default();
+    let leftover_allocations = &mut FxHashSet::default();
 
     // start with the outermost allocation
     intern_shallow(
         ecx,
-        leftover_relocations,
+        leftover_allocations,
         base_intern_mode,
         ret.ptr.to_ptr()?.alloc_id,
         base_mutability,
@@ -295,7 +299,7 @@ pub fn intern_const_alloc_recursive(
             ref_tracking: &mut ref_tracking,
             ecx,
             mode,
-            leftover_relocations,
+            leftover_allocations,
             mutability,
         }.visit_value(mplace);
         if let Err(error) = interned {
@@ -318,11 +322,12 @@ pub fn intern_const_alloc_recursive(
     // Intern the rest of the allocations as mutable. These might be inside unions, padding, raw
     // pointers, ... So we can't intern them according to their type rules
 
-    let mut todo: Vec<_> = leftover_relocations.iter().cloned().collect();
+    let mut todo: Vec<_> = leftover_allocations.iter().cloned().collect();
     while let Some(alloc_id) = todo.pop() {
         if let Some((_, mut alloc)) = ecx.memory_mut().alloc_map.remove(&alloc_id) {
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe
-            // references. So we hand-roll the interning logic here again.
+            // references and a `leftover_allocations` set (where we only have a todo-list here).
+            // So we hand-roll the interning logic here again.
             if base_intern_mode != InternMode::Static {
                 // If it's not a static, it *must* be immutable.
                 // We cannot have mutable memory inside a constant.
@@ -331,7 +336,7 @@ pub fn intern_const_alloc_recursive(
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
             for &(_, ((), reloc)) in alloc.relocations().iter() {
-                if leftover_relocations.insert(reloc) {
+                if leftover_allocations.insert(reloc) {
                     todo.push(reloc);
                 }
             }
