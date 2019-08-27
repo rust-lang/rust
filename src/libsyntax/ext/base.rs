@@ -1,11 +1,11 @@
 use crate::ast::{self, NodeId, Attribute, Name, PatKind};
-use crate::attr::{HasAttrs, Stability, Deprecation};
+use crate::attr::{self, HasAttrs, Stability, Deprecation};
 use crate::source_map::SourceMap;
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
 use crate::ext::hygiene::{ExpnId, Transparency};
 use crate::mut_visit::{self, MutVisitor};
-use crate::parse::{self, parser, DirectoryOwnership};
+use crate::parse::{self, parser, ParseSess, DirectoryOwnership};
 use crate::parse::token;
 use crate::ptr::P;
 use crate::symbol::{kw, sym, Ident, Symbol};
@@ -598,6 +598,69 @@ impl SyntaxExtension {
             is_builtin: false,
             is_derive_copy: false,
             kind,
+        }
+    }
+
+    /// Constructs a syntax extension with the given properties
+    /// and other properties converted from attributes.
+    pub fn new(
+        sess: &ParseSess,
+        kind: SyntaxExtensionKind,
+        span: Span,
+        helper_attrs: Vec<Symbol>,
+        edition: Edition,
+        name: Name,
+        attrs: &[ast::Attribute],
+    ) -> SyntaxExtension {
+        let allow_internal_unstable =
+            attr::find_by_name(attrs, sym::allow_internal_unstable).map(|attr| {
+                attr.meta_item_list()
+                    .map(|list| {
+                        list.iter()
+                            .filter_map(|it| {
+                                let name = it.ident().map(|ident| ident.name);
+                                if name.is_none() {
+                                    sess.span_diagnostic.span_err(
+                                        it.span(), "allow internal unstable expects feature names"
+                                    )
+                                }
+                                name
+                            })
+                            .collect::<Vec<Symbol>>()
+                            .into()
+                    })
+                    .unwrap_or_else(|| {
+                        sess.span_diagnostic.span_warn(
+                            attr.span,
+                            "allow_internal_unstable expects list of feature names. In the future \
+                             this will become a hard error. Please use `allow_internal_unstable(\
+                             foo, bar)` to only allow the `foo` and `bar` features",
+                        );
+                        vec![sym::allow_internal_unstable_backcompat_hack].into()
+                    })
+            });
+
+        let mut local_inner_macros = false;
+        if let Some(macro_export) = attr::find_by_name(attrs, sym::macro_export) {
+            if let Some(l) = macro_export.meta_item_list() {
+                local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
+            }
+        }
+
+        let is_builtin = attr::contains_name(attrs, sym::rustc_builtin_macro);
+
+        SyntaxExtension {
+            kind,
+            span,
+            allow_internal_unstable,
+            allow_internal_unsafe: attr::contains_name(attrs, sym::allow_internal_unsafe),
+            local_inner_macros,
+            stability: attr::find_stability(&sess, attrs, span),
+            deprecation: attr::find_deprecation(&sess, attrs, span),
+            helper_attrs,
+            edition,
+            is_builtin,
+            is_derive_copy: is_builtin && name == sym::Copy,
         }
     }
 

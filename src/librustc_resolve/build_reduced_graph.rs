@@ -150,12 +150,12 @@ impl<'a> Resolver<'a> {
             return Some(ext.clone());
         }
 
-        let macro_def = match self.cstore.load_macro_untracked(def_id, &self.session) {
-            LoadedMacro::MacroDef(macro_def) => macro_def,
-            LoadedMacro::ProcMacro(ext) => return Some(ext),
-        };
+        let ext = Lrc::new(match self.cstore.load_macro_untracked(def_id, &self.session) {
+            LoadedMacro::MacroDef(item) =>
+                self.compile_macro(&item, self.cstore.crate_edition_untracked(def_id.krate)),
+            LoadedMacro::ProcMacro(ext) => ext,
+        });
 
-        let ext = self.compile_macro(&macro_def, self.cstore.crate_edition_untracked(def_id.krate));
         self.macro_map.insert(def_id, ext.clone());
         Some(ext)
     }
@@ -1104,7 +1104,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let expansion = parent_scope.expansion;
         let (ext, ident, span, is_legacy) = match &item.node {
             ItemKind::MacroDef(def) => {
-                let ext = self.r.compile_macro(item, self.r.session.edition());
+                let ext = Lrc::new(self.r.compile_macro(item, self.r.session.edition()));
                 (ext, item.ident, item.span, def.legacy)
             }
             ItemKind::Fn(..) => match Self::proc_macro_stub(item) {
