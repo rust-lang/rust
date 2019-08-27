@@ -287,7 +287,7 @@ dependencies = [
  "git2-curl",
  "glob",
  "hex",
- "home 0.4.2",
+ "home 0.5.0",
  "ignore",
  "im-rc",
  "jobserver",
@@ -1160,9 +1160,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.9.2"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cb400360e8a4d61b10e648285bbfa919bbf9519d0d5d5720354456f44349226"
+checksum = "327d698f86a7ebdfeb86a4238ccdb004828939d3a3555b6ead679541d14e36c0"
 dependencies = [
  "bitflags",
  "libc",
@@ -1175,9 +1175,9 @@ dependencies = [
 
 [[package]]
 name = "git2-curl"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2293de73491c3dc4174c5949ef53d2cc037b27613f88d72032e3f5237247a7dd"
+checksum = "cd6527e480187ce19aaf4fa6acfb7657b25628ce31cb8ffabdfca3bf731524c5"
 dependencies = [
  "curl",
  "git2",
@@ -1282,9 +1282,9 @@ dependencies = [
 
 [[package]]
 name = "home"
-version = "0.4.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "013e4e6e9134211bb4d6bf53dd8cfb75d9e2715cc33614b9c0827718c6fbe0b8"
+checksum = "c07c315e106bd6f83f026a20ddaeef2706782e490db1dcdd37caad38a0e895b3"
 dependencies = [
  "scopeguard 1.0.0",
  "winapi 0.3.6",
@@ -1604,9 +1604,9 @@ dependencies = [
 
 [[package]]
 name = "libgit2-sys"
-version = "0.8.2"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c179ed6d19cd3a051e68c177fbbc214e79ac4724fac3a850ec9f3d3eb8a5578"
+checksum = "8c2078aec6f4b16d1b89f6a72e4f6eb1e75ffa85312023291e89c6d3087bc8fb"
 dependencies = [
  "cc",
  "libc",
@@ -1668,9 +1668,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.6"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c84ec4b527950aa83a329754b01dbe3f58361d1c5efacd1f6d68c494d08a17c6"
+checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 dependencies = [
  "cfg-if",
 ]
