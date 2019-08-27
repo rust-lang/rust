@@ -1733,6 +1733,10 @@ pub enum PlaceBase<'tcx> {
 pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: StaticKind<'tcx>,
+    /// The `DefId` of the item this static was declared in. For promoted values, usually, this is
+    /// the same as the `DefId` of the `mir::Body` containing the `Place` this promoted appears in.
+    /// However, after inlining, that might no longer be the case as inlined `Place`s are copied
+    /// into the calling frame.
     pub def_id: DefId,
 }
 
@@ -1740,6 +1744,9 @@ pub struct Static<'tcx> {
     Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, RustcEncodable, RustcDecodable,
 )]
 pub enum StaticKind<'tcx> {
+    /// Promoted references consist of an id (`Promoted`) and the substs necessary to monomorphize
+    /// it. Usually, these substs are just the identity substs for the item. However, the inliner
+    /// will adjust these substs when it inlines a function based on the substs at the callsite.
     Promoted(Promoted, SubstsRef<'tcx>),
     Static,
 }
