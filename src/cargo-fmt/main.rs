@@ -45,6 +45,10 @@ pub struct Opts {
     #[structopt(long = "manifest-path", value_name = "manifest-path")]
     manifest_path: Option<String>,
 
+    /// Specify message-format: short|json|human
+    #[structopt(long = "message-format", value_name = "message-format")]
+    message_format: Option<String>,
+
     /// Options passed to rustfmt
     // 'raw = true' to make `--` explicit.
     #[structopt(name = "rustfmt_options", raw(raw = "true"))]
@@ -100,6 +104,14 @@ fn execute() -> i32 {
     }
 
     let strategy = CargoFmtStrategy::from_opts(&opts);
+    let mut rustfmt_args = opts.rustfmt_options;
+    if let Some(message_format) = opts.message_format {
+        if let Err(msg) = convert_message_format_to_rustfmt_args(&message_format, &mut rustfmt_args)
+        {
+            print_usage_to_stderr(&msg);
+            return FAILURE;
+        }
+    }
 
     if let Some(specified_manifest_path) = opts.manifest_path {
         if !specified_manifest_path.ends_with("Cargo.toml") {
@@ -110,16 +122,61 @@ fn execute() -> i32 {
         handle_command_status(format_crate(
             verbosity,
             &strategy,
-            opts.rustfmt_options,
+            rustfmt_args,
             Some(&manifest_path),
         ))
     } else {
-        handle_command_status(format_crate(
-            verbosity,
-            &strategy,
-            opts.rustfmt_options,
-            None,
-        ))
+        handle_command_status(format_crate(verbosity, &strategy, rustfmt_args, None))
+    }
+}
+
+fn convert_message_format_to_rustfmt_args(
+    message_format: &str,
+    rustfmt_args: &mut Vec<String>,
+) -> Result<(), String> {
+    let mut contains_emit_mode = false;
+    let mut contains_check = false;
+    let mut contains_list_files = false;
+    for arg in rustfmt_args.iter() {
+        if arg.starts_with("--emit") {
+            contains_emit_mode = true;
+        }
+        if arg == "--check" {
+            contains_check = true;
+        }
+        if arg == "-l" || arg == "--files-with-diff" {
+            contains_list_files = true;
+        }
+    }
+    match message_format {
+        "short" => {
+            if !contains_list_files {
+                rustfmt_args.push(String::from("-l"));
+            }
+            Ok(())
+        }
+        "json" => {
+            if contains_emit_mode {
+                return Err(String::from(
+                    "cannot include --emit arg when --message-format is set to json",
+                ));
+            }
+            if contains_check {
+                return Err(String::from(
+                    "cannot include --check arg when --message-format is set to json",
+                ));
+            }
+            rustfmt_args.push(String::from("--emit"));
+            rustfmt_args.push(String::from("json"));
+            Ok(())
+        }
+        "human" => Ok(()),
+        _ => {
+            return Err(format!(
+                "invalid --message-format value: {}. Allowed values are: short|json|human",
+                message_format
+            ));
+        }
     }
 }
 
@@ -483,6 +540,8 @@ mod cargo_fmt_tests {
         assert_eq!(empty, o.packages);
         assert_eq!(empty, o.rustfmt_options);
         assert_eq!(false, o.format_all);
+        assert_eq!(None, o.manifest_path);
+        assert_eq!(None, o.message_format);
     }
 
     #[test]
@@ -494,6 +553,8 @@ mod cargo_fmt_tests {
             "p1",
             "-p",
             "p2",
+            "--message-format",
+            "short",
             "--",
             "--edition",
             "2018",
@@ -504,6 +565,7 @@ mod cargo_fmt_tests {
         assert_eq!(vec!["p1", "p2"], o.packages);
         assert_eq!(vec!["--edition", "2018"], o.rustfmt_options);
         assert_eq!(false, o.format_all);
+        assert_eq!(Some(String::from("short")), o.message_format);
     }
 
     #[test]
@@ -596,5 +658,88 @@ mod cargo_fmt_tests {
                 .get_matches_from_safe(&["test", "-p", "--check"])
                 .is_err()
         );
+    }
+
+    mod convert_message_format_to_rustfmt_args_tests {
+        use super::*;
+
+        #[test]
+        fn invalid_message_format() {
+            assert_eq!(
+                convert_message_format_to_rustfmt_args("awesome", &mut vec![]),
+                Err(String::from(
+                    "invalid --message-format value: awesome. Allowed values are: short|json|human"
+                )),
+            );
+        }
+
+        #[test]
+        fn json_message_format_and_check_arg() {
+            let mut args = vec![String::from("--check")];
+            assert_eq!(
+                convert_message_format_to_rustfmt_args("json", &mut args),
+                Err(String::from(
+                    "cannot include --check arg when --message-format is set to json"
+                )),
+            );
+        }
+
+        #[test]
+        fn json_message_format_and_emit_arg() {
+            let mut args = vec![String::from("--emit"), String::from("checkstyle")];
+            assert_eq!(
+                convert_message_format_to_rustfmt_args("json", &mut args),
+                Err(String::from(
+                    "cannot include --emit arg when --message-format is set to json"
+                )),
+            );
+        }
+
+        #[test]
+        fn json_message_format() {
+            let mut args = vec![String::from("--edition"), String::from("2018")];
+            assert!(convert_message_format_to_rustfmt_args("json", &mut args).is_ok());
+            assert_eq!(
+                args,
+                vec![
+                    String::from("--edition"),
+                    String::from("2018"),
+                    String::from("--emit"),
+                    String::from("json")
+                ]
+            );
+        }
+
+        #[test]
+        fn human_message_format() {
+            let exp_args = vec![String::from("--emit"), String::from("json")];
+            let mut act_args = exp_args.clone();
+            assert!(convert_message_format_to_rustfmt_args("human", &mut act_args).is_ok());
+            assert_eq!(act_args, exp_args);
+        }
+
+        #[test]
+        fn short_message_format() {
+            let mut args = vec![String::from("--check")];
+            assert!(convert_message_format_to_rustfmt_args("short", &mut args).is_ok());
+            assert_eq!(args, vec![String::from("--check"), String::from("-l")]);
+        }
+
+        #[test]
+        fn short_message_format_included_short_list_files_flag() {
+            let mut args = vec![String::from("--check"), String::from("-l")];
+            assert!(convert_message_format_to_rustfmt_args("short", &mut args).is_ok());
+            assert_eq!(args, vec![String::from("--check"), String::from("-l")]);
+        }
+
+        #[test]
+        fn short_message_format_included_long_list_files_flag() {
+            let mut args = vec![String::from("--check"), String::from("--files-with-diff")];
+            assert!(convert_message_format_to_rustfmt_args("short", &mut args).is_ok());
+            assert_eq!(
+                args,
+                vec![String::from("--check"), String::from("--files-with-diff")]
+            );
+        }
     }
 }
