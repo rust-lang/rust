@@ -1,8 +1,19 @@
 error: hello to you, too!
-  --> $DIR/multispan.rs:14:5
+  --> $DIR/auxiliary/multispan.rs:31:1
    |
-LL |     hello!(hi);
-   |     ^^^^^^^^^^^ in this macro invocation
+LL | / pub fn hello(input: TokenStream) -> TokenStream {
+LL | |     if let Err(diag) = parse(input) {
+LL | |         diag.emit();
+LL | |     }
+LL | |
+LL | |     TokenStream::new()
+LL | | }
+   | |_^
+   | 
+  ::: $DIR/multispan.rs:14:5
+   |
+LL |       hello!(hi);
+   |       ----------- in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:14:12
@@ -11,10 +22,21 @@ LL |     hello!(hi);
    |            ^^
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:17:5
+  --> $DIR/auxiliary/multispan.rs:31:1
    |
-LL |     hello!(hi hi);
-   |     ^^^^^^^^^^^^^^ in this macro invocation
+LL | / pub fn hello(input: TokenStream) -> TokenStream {
+LL | |     if let Err(diag) = parse(input) {
+LL | |         diag.emit();
+LL | |     }
+LL | |
+LL | |     TokenStream::new()
+LL | | }
+   | |_^
+   | 
+  ::: $DIR/multispan.rs:17:5
+   |
+LL |       hello!(hi hi);
+   |       -------------- in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:17:12
@@ -23,10 +45,21 @@ LL |     hello!(hi hi);
    |            ^^ ^^
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:20:5
+  --> $DIR/auxiliary/multispan.rs:31:1
    |
-LL |     hello!(hi hi hi);
-   |     ^^^^^^^^^^^^^^^^^ in this macro invocation
+LL | / pub fn hello(input: TokenStream) -> TokenStream {
+LL | |     if let Err(diag) = parse(input) {
+LL | |         diag.emit();
+LL | |     }
+LL | |
+LL | |     TokenStream::new()
+LL | | }
+   | |_^
+   | 
+  ::: $DIR/multispan.rs:20:5
+   |
+LL |       hello!(hi hi hi);
+   |       ----------------- in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:20:12
@@ -35,10 +68,21 @@ LL |     hello!(hi hi hi);
    |            ^^ ^^ ^^
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:23:5
+  --> $DIR/auxiliary/multispan.rs:31:1
    |
-LL |     hello!(hi hey hi yo hi beep beep hi hi);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
+LL | / pub fn hello(input: TokenStream) -> TokenStream {
+LL | |     if let Err(diag) = parse(input) {
+LL | |         diag.emit();
+LL | |     }
+LL | |
+LL | |     TokenStream::new()
+LL | | }
+   | |_^
+   | 
+  ::: $DIR/multispan.rs:23:5
+   |
+LL |       hello!(hi hey hi yo hi beep beep hi hi);
+   |       ---------------------------------------- in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:23:12
@@ -47,10 +91,21 @@ LL |     hello!(hi hey hi yo hi beep beep hi hi);
    |            ^^     ^^    ^^           ^^ ^^
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:24:5
+  --> $DIR/auxiliary/multispan.rs:31:1
    |
-LL |     hello!(hi there, hi how are you? hi... hi.);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
+LL | / pub fn hello(input: TokenStream) -> TokenStream {
+LL | |     if let Err(diag) = parse(input) {
+LL | |         diag.emit();
+LL | |     }
+LL | |
+LL | |     TokenStream::new()
+LL | | }
+   | |_^
+   | 
+  ::: $DIR/multispan.rs:24:5
+   |
+LL |       hello!(hi there, hi how are you? hi... hi.);
+   |       -------------------------------------------- in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:24:12
@@ -59,10 +114,21 @@ LL |     hello!(hi there, hi how are you? hi... hi.);
    |            ^^        ^^              ^^    ^^
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:25:5
+  --> $DIR/auxiliary/multispan.rs:31:1
    |
-LL |     hello!(whoah. hi di hi di ho);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
+LL | / pub fn hello(input: TokenStream) -> TokenStream {
+LL | |     if let Err(diag) = parse(input) {
+LL | |         diag.emit();
+LL | |     }
+LL | |
+LL | |     TokenStream::new()
+LL | | }
+   | |_^
+   | 
+  ::: $DIR/multispan.rs:25:5
+   |
+LL |       hello!(whoah. hi di hi di ho);
+   |       ------------------------------ in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:25:19
@@ -71,10 +137,21 @@ LL |     hello!(whoah. hi di hi di ho);
    |                   ^^    ^^
 
 error: hello to you, too!
-  --> $DIR/multispan.rs:26:5
+  --> $DIR/auxiliary/multispan.rs:31:1
    |
-LL |     hello!(hi good hi and good bye);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
+LL | / pub fn hello(input: TokenStream) -> TokenStream {
+LL | |     if let Err(diag) = parse(input) {
+LL | |         diag.emit();
+LL | |     }
+LL | |
+LL | |     TokenStream::new()
+LL | | }
+   | |_^
+   | 
+  ::: $DIR/multispan.rs:26:5
+   |
+LL |       hello!(hi good hi and good bye);
+   |       -------------------------------- in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:26:12
