@@ -7,6 +7,8 @@ use crate::*;
 
 #[derive(Default)]
 pub struct EnvVars {
+    /// Stores pointers to the environment variables. These variables must be stored as
+    /// null-terminated C strings with the `"{name}={value}"` format.
     map: HashMap<Vec<u8>, Pointer<Tag>>,
 }
 
@@ -59,6 +61,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let name = this.memory().read_c_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(name) {
+            // The offset is used to strip the "{name}=" part of the string.
             Some(var_ptr) => Scalar::Ptr(var_ptr.offset(Size::from_bytes(name.len() as u64 + 1), this)?),
             None => Scalar::ptr_null(&*this.tcx),
         })
