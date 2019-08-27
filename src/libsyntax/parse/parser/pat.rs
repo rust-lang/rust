@@ -4,6 +4,7 @@ use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use crate::ptr::P;
 use crate::ast::{self, Attribute, Pat, PatKind, FieldPat, RangeEnd, RangeSyntax, Mac};
 use crate::ast::{BindingMode, Ident, Mutability, Path, QSelf, Expr, ExprKind};
+use crate::mut_visit::{noop_visit_pat, MutVisitor};
 use crate::parse::token::{self};
 use crate::print::pprust;
 use crate::source_map::{respan, Span, Spanned};
@@ -273,7 +274,7 @@ impl<'a> Parser<'a> {
                 // Parse _
                 PatKind::Wild
             } else if self.eat_keyword(kw::Mut) {
-                self.recover_pat_ident_mut_first()?
+                self.parse_pat_ident_mut()?
             } else if self.eat_keyword(kw::Ref) {
                 // Parse ref ident @ pat / ref mut ident @ pat
                 let mutbl = self.parse_mutability();
@@ -281,13 +282,12 @@ impl<'a> Parser<'a> {
             } else if self.eat_keyword(kw::Box) {
                 // Parse `box pat`
                 PatKind::Box(self.parse_pat_with_range_pat(false, None)?)
-            } else if self.token.is_ident() && !self.token.is_reserved_ident() &&
-                      self.parse_as_ident() {
+            } else if self.can_be_ident_pat() {
                 // Parse `ident @ pat`
                 // This can give false positives and parse nullary enums,
                 // they are dealt with later in resolve.
                 self.parse_pat_ident(BindingMode::ByValue(Mutability::Immutable))?
-            } else if self.token.is_path_start() {
+            } else if self.is_start_of_pat_with_path() {
                 // Parse pattern starting with a path
                 let (qself, path) = if self.eat_lt() {
                     // Parse a qualified path
@@ -384,24 +384,85 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn parse_pat_ident_mut(&mut self) -> PResult<'a, PatKind> {
+        let mut_span = self.prev_span;
+
+        if self.eat_keyword(kw::Ref) {
+            return self.recover_mut_ref_ident(mut_span)
+        }
+
+        self.recover_additional_muts();
+
+        let mut pat = self.parse_pat(Some("identifier"))?;
+
+        // Add `mut` to any binding in the parsed pattern.
+        struct AddMut;
+        impl MutVisitor for AddMut {
+            fn visit_pat(&mut self, pat: &mut P<Pat>) {
+                if let PatKind::Ident(BindingMode::ByValue(ref mut m), ..) = pat.node {
+                    *m = Mutability::Mutable;
+                }
+                noop_visit_pat(pat, self);
+            }
+        }
+        AddMut.visit_pat(&mut pat);
+
+        // Unwrap; If we don't have `mut $ident`, error.
+        let pat = pat.into_inner();
+        match &pat.node {
+            PatKind::Ident(..) => {}
+            _ => self.ban_mut_general_pat(mut_span, &pat),
+        }
+
+        Ok(pat.node)
+    }
+
     /// Recover on `mut ref? ident @ pat` and suggest
     /// that the order of `mut` and `ref` is incorrect.
-    fn recover_pat_ident_mut_first(&mut self) -> PResult<'a, PatKind> {
-        let mutref_span = self.prev_span.to(self.token.span);
-        let binding_mode = if self.eat_keyword(kw::Ref) {
-            self.struct_span_err(mutref_span, "the order of `mut` and `ref` is incorrect")
-                .span_suggestion(
-                    mutref_span,
-                    "try switching the order",
-                    "ref mut".into(),
-                    Applicability::MachineApplicable
-                )
-                .emit();
-            BindingMode::ByRef(Mutability::Mutable)
-        } else {
-            BindingMode::ByValue(Mutability::Mutable)
-        };
-        self.parse_pat_ident(binding_mode)
+    fn recover_mut_ref_ident(&mut self, lo: Span) -> PResult<'a, PatKind> {
+        let mutref_span = lo.to(self.prev_span);
+        self.struct_span_err(mutref_span, "the order of `mut` and `ref` is incorrect")
+            .span_suggestion(
+                mutref_span,
+                "try switching the order",
+                "ref mut".into(),
+                Applicability::MachineApplicable
+            )
+            .emit();
+
+        self.parse_pat_ident(BindingMode::ByRef(Mutability::Mutable))
+    }
+
+    /// Error on `mut $pat` where `$pat` is not an ident.
+    fn ban_mut_general_pat(&self, lo: Span, pat: &Pat) {
+        let span = lo.to(pat.span);
+        self.struct_span_err(span, "`mut` must be attached to each individual binding")
+            .span_suggestion(
+                span,
+                "add `mut` to each binding",
+                pprust::pat_to_string(&pat),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+    }
+
+    /// Eat any extraneous `mut`s and error + recover if we ate any.
+    fn recover_additional_muts(&mut self) {
+        let lo = self.token.span;
+        while self.eat_keyword(kw::Mut) {}
+        if lo == self.token.span {
+            return;
+        }
+
+        let span = lo.to(self.prev_span);
+        self.struct_span_err(span, "`mut` on a binding may not be repeated")
+            .span_suggestion(
+                span,
+                "remove the additional `mut`s",
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 
     /// Parse macro invocation
@@ -479,17 +540,6 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    // Helper function to decide whether to parse as ident binding
-    // or to try to do something more complex like range patterns.
-    fn parse_as_ident(&mut self) -> bool {
-        self.look_ahead(1, |t| match t.kind {
-            token::OpenDelim(token::Paren) | token::OpenDelim(token::Brace) |
-            token::DotDotDot | token::DotDotEq | token::DotDot |
-            token::ModSep | token::Not => false,
-            _ => true,
-        })
-    }
-
     /// Is the current token suitable as the start of a range patterns end?
     fn is_pat_range_end_start(&self) -> bool {
         self.token.is_path_start() // e.g. `MY_CONST`;
@@ -561,6 +611,30 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_literal_maybe_minus()
         }
+    }
+
+    /// Is this the start of a pattern beginning with a path?
+    fn is_start_of_pat_with_path(&mut self) -> bool {
+        self.check_path()
+        // Just for recovery (see `can_be_ident`).
+        || self.token.is_ident() && !self.token.is_bool_lit() && !self.token.is_keyword(kw::In)
+    }
+
+    /// Would `parse_pat_ident` be appropriate here?
+    fn can_be_ident_pat(&mut self) -> bool {
+        self.check_ident()
+        && !self.token.is_bool_lit() // Avoid `true` or `false` as a binding as it is a literal.
+        && !self.token.is_path_segment_keyword() // Avoid e.g. `Self` as it is a path.
+        // Avoid `in`. Due to recovery in the list parser this messes with `for ( $pat in $expr )`.
+        && !self.token.is_keyword(kw::In)
+        && self.look_ahead(1, |t| match t.kind { // Try to do something more complex?
+            token::OpenDelim(token::Paren) // A tuple struct pattern.
+            | token::OpenDelim(token::Brace) // A struct pattern.
+            | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
+            | token::ModSep // A tuple / struct variant pattern.
+            | token::Not => false, // A macro expanding to a pattern.
+            _ => true,
+        })
     }
 
     /// Parses `ident` or `ident @ pat`.

@@ -1,8 +1,68 @@
-error: expected one of `:`, `;`, `=`, `@`, or `|`, found `{`
-  --> $DIR/mut-patterns.rs:5:17
+error: `mut` on a binding may not be repeated
+  --> $DIR/mut-patterns.rs:9:13
+   |
+LL |     let mut mut x = 0;
+   |             ^^^ help: remove the additional `mut`s
+
+error: `mut` must be attached to each individual binding
+  --> $DIR/mut-patterns.rs:14:9
    |
 LL |     let mut Foo { x: x } = Foo { x: 3 };
-   |                 ^ expected one of `:`, `;`, `=`, `@`, or `|` here
+   |         ^^^^^^^^^^^^^^^^ help: add `mut` to each binding: `Foo { x: mut x }`
 
-error: aborting due to previous error
+error: `mut` must be attached to each individual binding
+  --> $DIR/mut-patterns.rs:18:9
+   |
+LL |     let mut Foo { x } = Foo { x: 3 };
+   |         ^^^^^^^^^^^^^ help: add `mut` to each binding: `Foo { mut x }`
+
+error: `mut` on a binding may not be repeated
+  --> $DIR/mut-patterns.rs:23:13
+   |
+LL |     let mut mut yield(become, await) = r#yield(0, 0);
+   |             ^^^ help: remove the additional `mut`s
+
+error: expected identifier, found reserved keyword `yield`
+  --> $DIR/mut-patterns.rs:23:17
+   |
+LL |     let mut mut yield(become, await) = r#yield(0, 0);
+   |                 ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let mut mut r#yield(become, await) = r#yield(0, 0);
+   |                 ^^^^^^^
+
+error: expected identifier, found reserved keyword `become`
+  --> $DIR/mut-patterns.rs:23:23
+   |
+LL |     let mut mut yield(become, await) = r#yield(0, 0);
+   |                       ^^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let mut mut yield(r#become, await) = r#yield(0, 0);
+   |                       ^^^^^^^^
+
+error: expected identifier, found reserved keyword `await`
+  --> $DIR/mut-patterns.rs:23:31
+   |
+LL |     let mut mut yield(become, await) = r#yield(0, 0);
+   |                               ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let mut mut yield(become, r#await) = r#yield(0, 0);
+   |                               ^^^^^^^
+
+error: `mut` must be attached to each individual binding
+  --> $DIR/mut-patterns.rs:23:9
+   |
+LL |     let mut mut yield(become, await) = r#yield(0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `mut` to each binding: `r#yield(mut r#become, mut r#await)`
+
+error: `mut` must be attached to each individual binding
+  --> $DIR/mut-patterns.rs:32:9
+   |
+LL |     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `mut` to each binding: `W(mut a, W(mut b, W(ref c, W(mut d, B { box mut f }))))`
+
+error: aborting due to 9 previous errors
 

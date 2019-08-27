@@ -1,8 +1,8 @@
-error: expected identifier, found reserved identifier `_`
-  --> $DIR/issue-32501.rs:7:13
+error: `mut` must be attached to each individual binding
+  --> $DIR/issue-32501.rs:7:9
    |
 LL |     let mut _ = 0;
-   |             ^ expected identifier, found reserved identifier
+   |         ^^^^^ help: add `mut` to each binding: `_`
 
 error: aborting due to previous error
 
