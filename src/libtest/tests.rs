@@ -181,6 +181,17 @@ fn parse_ignored_flag() {
 }
 
 #[test]
+fn parse_show_output_flag() {
+    let args = vec![
+        "progname".to_string(),
+        "filter".to_string(),
+        "--show-output".to_string(),
+    ];
+    let opts = parse_opts(&args).unwrap().unwrap();
+    assert!(opts.options.display_output);
+}
+
+#[test]
 fn parse_include_ignored_flag() {
     let args = vec![
         "progname".to_string(),
