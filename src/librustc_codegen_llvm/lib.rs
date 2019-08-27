@@ -54,6 +54,7 @@ use syntax_pos::symbol::InternedString;
 pub use llvm_util::target_features;
 use std::any::Any;
 use std::sync::{mpsc, Arc};
+use std::ffi::CStr;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
@@ -386,13 +387,13 @@ impl ModuleLlvm {
 
     fn parse(
         cgcx: &CodegenContext<LlvmCodegenBackend>,
-        name: &str,
-        buffer: &back::lto::ModuleBuffer,
+        name: &CStr,
+        buffer: &[u8],
         handler: &Handler,
     ) -> Result<Self, FatalError> {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
-            let llmod_raw = buffer.parse(name, llcx, handler)?;
+            let llmod_raw = back::lto::parse_module(llcx, name, buffer, handler)?;
             let tm = match (cgcx.tm_factory.0)() {
                 Ok(m) => m,
                 Err(e) => {
