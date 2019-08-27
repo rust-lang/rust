@@ -3,7 +3,7 @@
 //! After a const evaluation has computed a value, before we destroy the const evaluator's session
 //! memory, we need to extract all memory allocations to the global memory pool so they stay around.
 
-use rustc::ty::{Ty, TyCtxt, ParamEnv, self};
+use rustc::ty::{Ty, ParamEnv, self};
 use rustc::mir::interpret::{InterpResult, ErrorHandled};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -11,10 +11,9 @@ use super::validity::RefTracking;
 use rustc_data_structures::fx::FxHashSet;
 
 use syntax::ast::Mutability;
-use syntax_pos::Span;
 
 use super::{
-    ValueVisitor, MemoryKind, Pointer, AllocId, MPlaceTy, Scalar,
+    ValueVisitor, MemoryKind, AllocId, MPlaceTy, Scalar,
 };
 use crate::const_eval::{CompileTimeInterpreter, CompileTimeEvalContext};
 
@@ -27,12 +26,10 @@ struct InternVisitor<'rt, 'mir, 'tcx> {
     /// for sanity assertions that will ICE when `const_qualif` screws up.
     mode: InternMode,
     /// This field stores the mutability of the value *currently* being checked.
-    /// It is set to mutable when an `UnsafeCell` is encountered
-    /// When recursing across a reference, we don't recurse but store the
-    /// value to be checked in `ref_tracking` together with the mutability at which we are checking
-    /// the value.
-    /// When encountering an immutable reference, we treat everything as immutable that is behind
-    /// it.
+    /// When encountering a mutable reference, we determine the pointee mutability
+    /// taking into account the mutability of the context: `& &mut i32` is entirely immutable,
+    /// despite the nested mutable reference!
+    /// The field gets updated when an `UnsafeCell` is encountered.
     mutability: Mutability,
     /// A list of all encountered relocations. After type-based interning, we traverse this list to
     /// also intern allocations that are only referenced by a raw pointer or inside a union.
@@ -45,9 +42,10 @@ enum InternMode {
     /// `static`. In a `static mut` we start out as mutable and thus can also contain further `&mut`
     /// that will actually be treated as mutable.
     Static,
-    /// UnsafeCell is OK in the value of a constant, but not behind references in a constant
+    /// UnsafeCell is OK in the value of a constant: `const FOO = Cell::new(0)` creates
+    /// a new cell every time it is used.
     ConstBase,
-    /// `UnsafeCell` ICEs
+    /// `UnsafeCell` ICEs.
     Const,
 }
 
@@ -56,26 +54,31 @@ enum InternMode {
 struct IsStaticOrFn;
 
 impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
-    /// Intern an allocation without looking at its children
+    /// Intern an allocation without looking at its children.
+    /// `mutablity` is the mutability of the place to be interned; even if that says
+    /// `immutable` things might become mutable if `ty` is not frozen.
     fn intern_shallow(
         &mut self,
-        ptr: Pointer,
+        alloc_id: AllocId,
         mutability: Mutability,
+        ty: Option<Ty<'tcx>>,
     ) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
         trace!(
             "InternVisitor::intern {:?} with {:?}",
-            ptr, mutability,
+            alloc_id, mutability,
         );
         // remove allocation
         let tcx = self.ecx.tcx;
         let memory = self.ecx.memory_mut();
-        let (kind, mut alloc) = match memory.alloc_map.remove(&ptr.alloc_id) {
+        let (kind, mut alloc) = match memory.alloc_map.remove(&alloc_id) {
             Some(entry) => entry,
             None => {
-                // if the pointer is dangling (neither in local nor global memory), we leave it
+                // Pointer not found in local memory map. It is either a pointer to the global
+                // map, or dangling.
+                // If the pointer is dangling (neither in local nor global memory), we leave it
                 // to validation to error. The `delay_span_bug` ensures that we don't forget such
                 // a check in validation.
-                if tcx.alloc_map.lock().get(ptr.alloc_id).is_none() {
+                if tcx.alloc_map.lock().get(alloc_id).is_none() {
                     tcx.sess.delay_span_bug(self.ecx.tcx.span, "tried to intern dangling pointer");
                 }
                 // treat dangling pointers like other statics
@@ -88,14 +91,35 @@ impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
         match kind {
             MemoryKind::Stack | MemoryKind::Vtable => {},
         }
-        // Ensure llvm knows to only put this into immutable memory if the value is immutable either
-        // by being behind a reference or by being part of a static or const without interior
-        // mutability
-        alloc.mutability = mutability;
+        // Set allocation mutability as appropriate. This is used by LLVM to put things into
+        // read-only memory, and also by Miri when evluating other constants/statics that
+        // access this one.
+        if self.mode == InternMode::Static {
+            let frozen = ty.map_or(true, |ty| ty.is_freeze(
+                self.ecx.tcx.tcx,
+                self.param_env,
+                self.ecx.tcx.span,
+            ));
+            // For statics, allocation mutability is the combination of the place mutability and
+            // the type mutability.
+            // The entire allocation needs to be mutable if it contains an `UnsafeCell` anywhere.
+            if mutability == Mutability::Immutable && frozen {
+                alloc.mutability = Mutability::Immutable;
+            } else {
+                // Just making sure we are not "upgrading" an immutable allocation to mutable.
+                assert_eq!(alloc.mutability, Mutability::Mutable);
+            }
+        } else {
+            // We *could* be non-frozen at `ConstBase`, for constants like `Cell::new(0)`.
+            // But we still intern that as immutable as the memory cannot be changed once the
+            // initial value was computed.
+            // Constants are never mutable.
+            alloc.mutability = Mutability::Immutable;
+        };
         // link the alloc id to the actual allocation
         let alloc = tcx.intern_const_alloc(alloc);
         self.leftover_relocations.extend(alloc.relocations().iter().map(|&(_, ((), reloc))| reloc));
-        tcx.alloc_map.lock().set_alloc_id_memory(ptr.alloc_id, alloc);
+        tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
         Ok(None)
     }
 }
@@ -119,14 +143,16 @@ for
     ) -> InterpResult<'tcx> {
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
             if Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type() {
-                // We are crossing over an `UnsafeCell`, we can mutate again
+                // We are crossing over an `UnsafeCell`, we can mutate again. This means that
+                // References we encounter inside here are interned as pointing to mutable
+                // allocations.
                 let old = std::mem::replace(&mut self.mutability, Mutability::Mutable);
                 assert_ne!(
                     self.mode, InternMode::Const,
                     "UnsafeCells are not allowed behind references in constants. This should have \
                     been prevented statically by const qualification. If this were allowed one \
-                    would be able to change a constant at one use site and other use sites may \
-                    arbitrarily decide to change, too.",
+                    would be able to change a constant at one use site and other use sites could \
+                    observe that mutation.",
                 );
                 let walked = self.walk_aggregate(mplace, fields);
                 self.mutability = old;
@@ -150,7 +176,7 @@ for
                     if let Ok(vtable) = meta.unwrap().to_ptr() {
                         // explitly choose `Immutable` here, since vtables are immutable, even
                         // if the reference of the fat pointer is mutable
-                        self.intern_shallow(vtable, Mutability::Immutable)?;
+                        self.intern_shallow(vtable.alloc_id, Mutability::Immutable, None)?;
                     }
                 }
             }
@@ -195,21 +221,13 @@ for
                     (Mutability::Mutable, hir::Mutability::MutMutable) => Mutability::Mutable,
                     _ => Mutability::Immutable,
                 };
-                // Compute the mutability of the allocation
-                let intern_mutability = intern_mutability(
-                    self.ecx.tcx.tcx,
-                    self.param_env,
-                    mplace.layout.ty,
-                    self.ecx.tcx.span,
-                    mutability,
-                );
                 // Recursing behind references changes the intern mode for constants in order to
                 // cause assertions to trigger if we encounter any `UnsafeCell`s.
                 let mode = match self.mode {
                     InternMode::ConstBase => InternMode::Const,
                     other => other,
                 };
-                match self.intern_shallow(ptr, intern_mutability)? {
+                match self.intern_shallow(ptr.alloc_id, mutability, Some(mplace.layout.ty))? {
                     // No need to recurse, these are interned already and statics may have
                     // cycles, so we don't want to recurse there
                     Some(IsStaticOrFn) => {},
@@ -224,23 +242,6 @@ for
     }
 }
 
-/// Figure out the mutability of the allocation.
-/// Mutable if it has interior mutability *anywhere* in the type.
-fn intern_mutability<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-    span: Span,
-    mutability: Mutability,
-) -> Mutability {
-    let has_interior_mutability = !ty.is_freeze(tcx, param_env, span);
-    if has_interior_mutability {
-        Mutability::Mutable
-    } else {
-        mutability
-    }
-}
-
 pub fn intern_const_alloc_recursive(
     ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
     def_id: DefId,
@@ -251,7 +252,7 @@ pub fn intern_const_alloc_recursive(
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
     // this `mutability` is the mutability of the place, ignoring the type
-    let (mutability, base_intern_mode) = match tcx.static_mutability(def_id) {
+    let (base_mutability, base_intern_mode) = match tcx.static_mutability(def_id) {
         Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),
         None => (Mutability::Immutable, InternMode::ConstBase),
         // `static mut` doesn't care about interior mutability, it's mutable anyway
@@ -259,16 +260,8 @@ pub fn intern_const_alloc_recursive(
     };
 
     // type based interning
-    let mut ref_tracking = RefTracking::new((ret, mutability, base_intern_mode));
+    let mut ref_tracking = RefTracking::new((ret, base_mutability, base_intern_mode));
     let leftover_relocations = &mut FxHashSet::default();
-
-    // This mutability is the combination of the place mutability and the type mutability. If either
-    // is mutable, `alloc_mutability` is mutable. This exists because the entire allocation needs
-    // to be mutable if it contains an `UnsafeCell` anywhere. The other `mutability` exists so that
-    // the visitor does not treat everything outside the `UnsafeCell` as mutable.
-    let alloc_mutability = intern_mutability(
-        tcx.tcx, param_env, ret.layout.ty, tcx.span, mutability,
-    );
 
     // start with the outermost allocation
     InternVisitor {
@@ -277,8 +270,8 @@ pub fn intern_const_alloc_recursive(
         mode: base_intern_mode,
         leftover_relocations,
         param_env,
-        mutability,
-    }.intern_shallow(ret.ptr.to_ptr()?, alloc_mutability)?;
+        mutability: base_mutability,
+    }.intern_shallow(ret.ptr.to_ptr()?.alloc_id, base_mutability, Some(ret.layout.ty))?;
 
     while let Some(((mplace, mutability, mode), _)) = ref_tracking.todo.pop() {
         let interned = InternVisitor {
@@ -312,8 +305,8 @@ pub fn intern_const_alloc_recursive(
     let mut todo: Vec<_> = leftover_relocations.iter().cloned().collect();
     while let Some(alloc_id) = todo.pop() {
         if let Some((_, alloc)) = ecx.memory_mut().alloc_map.remove(&alloc_id) {
-            // We can't call the `intern` method here, as its logic is tailored to safe references.
-            // So we hand-roll the interning logic here again
+            // We can't call the `intern_shallow` method here, as its logic is tailored to safe
+            // references. So we hand-roll the interning logic here again.
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
             for &(_, ((), reloc)) in alloc.relocations().iter() {
