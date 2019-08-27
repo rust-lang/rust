@@ -522,6 +522,9 @@ declare_features! (
     /// Allows the definition of `const extern fn` and `const unsafe extern fn`.
     (active, const_extern_fn, "1.40.0", Some(64926), None),
 
+    // Allows the use of raw-dylibs (RFC 2627).
+    (active, raw_dylib, "1.39.0", Some(58713), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
