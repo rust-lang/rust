@@ -54,13 +54,14 @@ pub fn codegen_static_ref<'tcx>(
 
 pub fn trans_promoted<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    instance: Instance<'tcx>,
     promoted: Promoted,
     dest_ty: Ty<'tcx>,
 ) -> CPlace<'tcx> {
     match fx
         .tcx
         .const_eval(ParamEnv::reveal_all().and(GlobalId {
-            instance: fx.instance,
+            instance,
             promoted: Some(promoted),
         }))
     {
@@ -461,10 +462,11 @@ pub fn mir_operand_get_const_val<'tcx>(
     };
 
     Some(match &static_.kind {
-        StaticKind::Static(_) => unimplemented!(),
-        StaticKind::Promoted(promoted) => {
+        StaticKind::Static => unimplemented!(),
+        StaticKind::Promoted(promoted, substs) => {
+            let instance = Instance::new(static_.def_id, fx.monomorphize(substs));
             fx.tcx.const_eval(ParamEnv::reveal_all().and(GlobalId {
-                instance: fx.instance,
+                instance,
                 promoted: Some(*promoted),
             })).unwrap()
         }

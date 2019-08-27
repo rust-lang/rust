@@ -558,11 +558,12 @@ pub fn trans_place<'tcx>(
     let base = match &place.base {
         PlaceBase::Local(local) => fx.get_local_place(*local),
         PlaceBase::Static(static_) => match static_.kind {
-            StaticKind::Static(def_id) => {
-                crate::constant::codegen_static_ref(fx, def_id, static_.ty)
+            StaticKind::Static => {
+                crate::constant::codegen_static_ref(fx, static_.def_id, static_.ty)
             }
-            StaticKind::Promoted(promoted) => {
-                crate::constant::trans_promoted(fx, promoted, static_.ty)
+            StaticKind::Promoted(promoted, substs) => {
+                let instance = Instance::new(static_.def_id, fx.monomorphize(&substs));
+                crate::constant::trans_promoted(fx, instance, promoted, static_.ty)
             }
         }
     };
