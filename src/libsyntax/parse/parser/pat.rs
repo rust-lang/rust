@@ -36,16 +36,6 @@ impl<'a> Parser<'a> {
         self.parse_pat_with_range_pat(true, expected)
     }
 
-    // FIXME(or_patterns, Centril | dlrobertson):
-    // remove this and use `parse_top_pat` everywhere it is used instead.
-    pub(super) fn parse_top_pat_unpack(&mut self, gate_or: GateOr) -> PResult<'a, Vec<P<Pat>>> {
-        self.parse_top_pat(gate_or)
-            .map(|pat| pat.and_then(|pat| match pat.node {
-                PatKind::Or(pats) => pats,
-                node => vec![self.mk_pat(pat.span, node)],
-            }))
-    }
-
     /// Entry point to the main pattern parser.
     /// Corresponds to `top_pat` in RFC 2535 and allows or-pattern at the top level.
     pub(super) fn parse_top_pat(&mut self, gate_or: GateOr) -> PResult<'a, P<Pat>> {
