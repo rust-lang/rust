@@ -448,8 +448,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::Dynamic(..) => {
                 let vtable = metadata.expect("dyn trait fat ptr must have vtable");
                 // Read size and align from vtable (already checks size).
-                let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
-                let mem_pos = MemoryPosition::new(size, align);
+                let mem_pos = self.read_mem_pos_from_vtable(vtable)?;
+
                 Ok(Some(mem_pos))
             }
 

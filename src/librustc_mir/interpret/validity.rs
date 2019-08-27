@@ -276,7 +276,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                 );
                 try_validation!(self.ecx.read_drop_type_from_vtable(vtable),
                     "invalid drop fn in vtable", self.path);
-                try_validation!(self.ecx.read_size_and_align_from_vtable(vtable),
+                try_validation!(self.ecx.read_mem_pos_from_vtable(vtable),
                     "invalid size or align in vtable", self.path);
                 // FIXME: More checks for the vtable.
             }

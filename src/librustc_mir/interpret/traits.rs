@@ -1,5 +1,5 @@
 use rustc::ty::{self, Ty, Instance, TypeFoldable};
-use rustc::ty::layout::{Size, Align, LayoutOf, HasDataLayout};
+use rustc::ty::layout::{Size, MemoryPosition, Align, LayoutOf, HasDataLayout};
 use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic,};
 
 use super::{InterpCx, Machine, MemoryKind, FnVal};
@@ -123,10 +123,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok((drop_instance, ty))
     }
 
-    pub fn read_size_and_align_from_vtable(
+    pub fn read_mem_pos_from_vtable(
         &self,
         vtable: Scalar<M::PointerTag>,
-    ) -> InterpResult<'tcx, (Size, Align)> {
+    ) -> InterpResult<'tcx, MemoryPosition> {
         let ptr_pos = self.pointer_pos().mem_pos();
         // We check for size = 3*ptr_size, that covers the drop fn (unused here),
         // the size, and the align (which we read below).
@@ -150,6 +150,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_ub_format!("invalid vtable: \
                 size is bigger than largest supported object");
         }
-        Ok((Size::from_bytes(size), Align::from_bytes(align).unwrap()))
+        Ok(MemoryPosition::new(Size::from_bytes(size), Align::from_bytes(align).unwrap()))
     }
 }
