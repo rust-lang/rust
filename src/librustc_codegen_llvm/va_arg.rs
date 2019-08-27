@@ -4,7 +4,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::traits::{BaseTypeMethods, BuilderMethods, ConstMethods, DerivedTypeMethods};
-use rustc::ty::layout::{Align, HasDataLayout, HasTyCtxt, LayoutOf, Size};
+use rustc::ty::layout::{Align, HasDataLayout, HasTyCtxt, LayoutOf, MemoryPosition};
 use rustc::ty::Ty;
 
 #[allow(dead_code)]
@@ -24,8 +24,7 @@ fn emit_direct_ptr_va_arg(
     bx: &mut Builder<'a, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
     llty: &'ll Type,
-    size: Size,
-    align: Align,
+    mem_pos: MemoryPosition,
     slot_size: Align,
     allow_higher_align: bool
 ) -> (&'ll Value, Align) {
@@ -38,21 +37,21 @@ fn emit_direct_ptr_va_arg(
 
     let ptr = bx.load(va_list_addr, bx.tcx().data_layout.pointer_pos.align.abi);
 
-    let (addr, addr_align) = if allow_higher_align && align > slot_size {
-        (round_pointer_up_to_alignment(bx, ptr, align, bx.cx().type_i8p()), align)
+    let (addr, addr_align) = if allow_higher_align && mem_pos.align > slot_size {
+        (round_pointer_up_to_alignment(bx, ptr, mem_pos.align, bx.cx().type_i8p()), mem_pos.align)
     } else {
         (ptr, slot_size)
     };
 
 
-    let aligned_size = size.align_to(slot_size).bytes() as i32;
+    let aligned_size = mem_pos.size.align_to(slot_size).bytes() as i32;
     let full_direct_size = bx.cx().const_i32(aligned_size);
     let next = bx.inbounds_gep(addr, &[full_direct_size]);
     bx.store(next, va_list_addr, bx.tcx().data_layout.pointer_pos.align.abi);
 
-    if size.bytes() < slot_size.bytes() &&
+    if mem_pos.size.bytes() < slot_size.bytes() &&
             &*bx.tcx().sess.target.target.target_endian == "big" {
-        let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
+        let adjusted_size = bx.cx().const_i32((slot_size.bytes() - mem_pos.size.bytes()) as i32);
         let adjusted = bx.inbounds_gep(addr, &[adjusted_size]);
         (bx.bitcast(adjusted, bx.cx().type_ptr_to(llty)), addr_align)
     } else {
@@ -69,20 +68,18 @@ fn emit_ptr_va_arg(
     allow_higher_align: bool
 ) -> &'ll Value {
     let layout = bx.cx.layout_of(target_ty);
-    let (llty, size, align) = if indirect {
+    let (llty, pref_pos) = if indirect {
         (bx.cx.layout_of(bx.cx.tcx.mk_imm_ptr(target_ty)).llvm_type(bx.cx),
-         bx.cx.data_layout().pointer_pos.size,
-         bx.cx.data_layout().pointer_pos.align)
+         bx.cx.data_layout().pointer_pos)
     } else {
         (layout.llvm_type(bx.cx),
-         layout.pref_pos.size,
-         layout.pref_pos.align)
+         layout.pref_pos)
     };
-    let (addr, addr_align) = emit_direct_ptr_va_arg(bx, list, llty, size, align.abi,
+    let (addr, addr_align) = emit_direct_ptr_va_arg(bx, list, llty, pref_pos.mem_pos(),
                                                     slot_size, allow_higher_align);
     if indirect {
         let tmp_ret = bx.load(addr, addr_align);
-        bx.load(tmp_ret, align.abi)
+        bx.load(tmp_ret, pref_pos.align.abi)
     } else {
         bx.load(addr, addr_align)
     }
