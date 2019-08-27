@@ -41,7 +41,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let body_expr = &body[body.body_expr()];
         if let Expr::Block { statements: _, tail: Some(t) } = body_expr {
-            self.validate_results_in_tail_expr(*t, db);
+            self.validate_results_in_tail_expr(body.body_expr(), *t, db);
         }
     }
 
@@ -97,8 +97,14 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
     }
 
-    fn validate_results_in_tail_expr(&mut self, id: ExprId, db: &impl HirDatabase) {
-        let mismatch = match self.infer.type_mismatch_for_expr(id) {
+    fn validate_results_in_tail_expr(
+        &mut self,
+        body_id: ExprId,
+        id: ExprId,
+        db: &impl HirDatabase,
+    ) {
+        // the mismatch will be on the whole block currently
+        let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
             Some(m) => m,
             None => return,
         };

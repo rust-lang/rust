@@ -280,8 +280,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let ty1 = self.resolve_ty_shallow(ty1);
         let ty2 = self.resolve_ty_shallow(ty2);
         match (&*ty1, &*ty2) {
-            (Ty::Unknown, ..) => true,
-            (.., Ty::Unknown) => true,
+            (Ty::Unknown, _) | (_, Ty::Unknown) => true,
             (Ty::Apply(a_ty1), Ty::Apply(a_ty2)) if a_ty1.ctor == a_ty2.ctor => {
                 self.unify_substs(&a_ty1.parameters, &a_ty2.parameters, depth + 1)
             }
@@ -976,24 +975,48 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ret_ty
     }
 
+    /// This is similar to unify, but it makes the first type coerce to the
+    /// second one.
+    fn coerce(&mut self, from_ty: &Ty, to_ty: &Ty) -> bool {
+        if is_never(from_ty) {
+            // ! coerces to any type
+            true
+        } else {
+            self.unify(from_ty, to_ty)
+        }
+    }
+
     fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
+        let ty = self.infer_expr_inner(tgt_expr, expected);
+        let could_unify = self.unify(&ty, &expected.ty);
+        if !could_unify {
+            self.result.type_mismatches.insert(
+                tgt_expr,
+                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
+            );
+        }
+        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        ty
+    }
+
+    fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
         let ty = match &body[tgt_expr] {
             Expr::Missing => Ty::Unknown,
             Expr::If { condition, then_branch, else_branch } => {
                 // if let is desugared to match, so this is always simple if
                 self.infer_expr(*condition, &Expectation::has_type(Ty::simple(TypeCtor::Bool)));
-                let then_ty = self.infer_expr(*then_branch, expected);
-                match else_branch {
-                    Some(else_branch) => {
-                        self.infer_expr(*else_branch, expected);
-                    }
-                    None => {
-                        // no else branch -> unit
-                        self.unify(&then_ty, &Ty::unit()); // actually coerce
-                    }
+
+                let then_ty = self.infer_expr_inner(*then_branch, &expected);
+                self.coerce(&then_ty, &expected.ty);
+
+                let else_ty = match else_branch {
+                    Some(else_branch) => self.infer_expr_inner(*else_branch, &expected),
+                    None => Ty::unit(),
                 };
-                then_ty
+                self.coerce(&else_ty, &expected.ty);
+
+                expected.ty.clone()
             }
             Expr::Block { statements, tail } => self.infer_block(statements, *tail, expected),
             Expr::TryBlock { body } => {
@@ -1073,12 +1096,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
                 .infer_method_call(tgt_expr, *receiver, &args, &method_name, generic_args.as_ref()),
             Expr::Match { expr, arms } => {
+                let input_ty = self.infer_expr(*expr, &Expectation::none());
                 let expected = if expected.ty == Ty::Unknown {
                     Expectation::has_type(self.new_type_var())
                 } else {
                     expected.clone()
                 };
-                let input_ty = self.infer_expr(*expr, &Expectation::none());
+
+                let mut arm_tys = Vec::with_capacity(arms.len());
 
                 for arm in arms {
                     for &pat in &arm.pats {
@@ -1090,10 +1115,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             &Expectation::has_type(Ty::simple(TypeCtor::Bool)),
                         );
                     }
-                    self.infer_expr(arm.expr, &expected);
+                    arm_tys.push(self.infer_expr_inner(arm.expr, &expected));
                 }
 
-                expected.ty
+                let lub_ty = calculate_least_upper_bound(expected.ty.clone(), &arm_tys);
+
+                for arm_ty in &arm_tys {
+                    self.coerce(arm_ty, &lub_ty);
+                }
+
+                lub_ty
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
@@ -1356,15 +1387,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
-        let could_unify = self.unify(&ty, &expected.ty);
         let ty = self.resolve_ty_as_possible(&mut vec![], ty);
         self.write_expr_ty(tgt_expr, ty.clone());
-        if !could_unify {
-            self.result.type_mismatches.insert(
-                tgt_expr,
-                TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
-            );
-        }
         ty
     }
 
@@ -1394,7 +1418,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
         }
-        let ty = if let Some(expr) = tail { self.infer_expr(expr, expected) } else { Ty::unit() };
+        let ty =
+            if let Some(expr) = tail { self.infer_expr_inner(expr, expected) } else { Ty::unit() };
         ty
     }
 
@@ -1614,5 +1639,39 @@ mod diagnostics {
                 }
             }
         }
+    }
+}
+
+fn is_never(ty: &Ty) -> bool {
+    if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Never, .. }) = ty {
+        true
+    } else {
+        false
+    }
+}
+
+fn calculate_least_upper_bound(expected_ty: Ty, actual_tys: &[Ty]) -> Ty {
+    let mut all_never = true;
+    let mut last_never_ty = None;
+    let mut least_upper_bound = expected_ty;
+
+    for actual_ty in actual_tys {
+        if is_never(actual_ty) {
+            last_never_ty = Some(actual_ty.clone());
+        } else {
+            all_never = false;
+            least_upper_bound = match (actual_ty, &least_upper_bound) {
+                (_, Ty::Unknown)
+                | (Ty::Infer(_), Ty::Infer(InferTy::TypeVar(_)))
+                | (Ty::Apply(_), _) => actual_ty.clone(),
+                _ => least_upper_bound,
+            }
+        }
+    }
+
+    if all_never && last_never_ty.is_some() {
+        last_never_ty.unwrap()
+    } else {
+        least_upper_bound
     }
 }
