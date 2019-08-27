@@ -1754,7 +1754,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                                               ty,
                                               tcx.require_lang_item(
                                                   lang_items::SyncTraitLangItem,
-                                                  None
+                                                  Some(body.span)
                                               ),
                                               cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {

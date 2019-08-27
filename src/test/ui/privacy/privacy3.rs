@@ -8,7 +8,7 @@ mod bar {
     pub use self::glob::*;
 
     mod glob {
-        fn gpriv() {}
+        fn gpriv() {} //~ ERROR: requires `sized` lang_item
     }
 }
 

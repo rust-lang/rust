@@ -11,7 +11,7 @@ mod bar {
     }
 }
 
-pub fn foo() {}
+pub fn foo() {} //~ ERROR: requires `sized` lang_item
 
 fn test1() {
     use bar::foo;
