@@ -191,18 +191,16 @@ pub fn push_debuginfo_type_name<'tcx>(
             visited.remove(t);
         },
         ty::Closure(def_id, ..) => {
-            output.push_str("closure");
-            let disambiguator = tcx.def_key(def_id).disambiguated_data.disambiguator;
-            if disambiguator != 0 {
-                output.push_str(&format!("-{}", disambiguator));
-            }
+            output.push_str(&format!(
+                "closure-{}",
+                tcx.def_key(def_id).disambiguated_data.disambiguator
+            ));
         }
         ty::Generator(def_id, ..) => {
-            output.push_str("generator");
-            let disambiguator = tcx.def_key(def_id).disambiguated_data.disambiguator;
-            if disambiguator != 0 {
-                output.push_str(&format!("-{}", disambiguator));
-            }
+            output.push_str(&format!(
+                "generator-{}",
+                tcx.def_key(def_id).disambiguated_data.disambiguator
+            ));
         }
         ty::Error |
         ty::Infer(_) |
