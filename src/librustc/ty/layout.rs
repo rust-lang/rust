@@ -1612,8 +1612,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             let type_desc = format!("{:?}", layout.ty);
             self.tcx.sess.code_stats.record_type_size(kind,
                                                       type_desc,
-                                                      layout.pref_pos.align.abi,
-                                                      layout.pref_pos.size,
+                                                      layout.pref_pos.mem_pos(),
                                                       packed,
                                                       opt_discr_size,
                                                       variants);

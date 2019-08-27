@@ -1,4 +1,4 @@
-use rustc_target::abi::{Align, Size};
+use rustc_target::abi::{MemoryPosition, Size};
 use rustc_data_structures::fx::{FxHashSet};
 use std::cmp::{self, Ordering};
 use rustc_data_structures::sync::Lock;
@@ -54,8 +54,7 @@ impl CodeStats {
     pub fn record_type_size<S: ToString>(&self,
                                          kind: DataTypeKind,
                                          type_desc: S,
-                                         align: Align,
-                                         overall_size: Size,
+                                         mem_pos: MemoryPosition,
                                          packed: bool,
                                          opt_discr_size: Option<Size>,
                                          mut variants: Vec<VariantInfo>) {
@@ -68,8 +67,8 @@ impl CodeStats {
         let info = TypeSizeInfo {
             kind,
             type_description: type_desc.to_string(),
-            align: align.bytes(),
-            overall_size: overall_size.bytes(),
+            align: mem_pos.align.bytes(),
+            overall_size: mem_pos.size.bytes(),
             packed: packed,
             opt_discr_size: opt_discr_size.map(|s| s.bytes()),
             variants,
