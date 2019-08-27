@@ -849,9 +849,29 @@ impl fmt::Display for Ident {
     }
 }
 
-impl UseSpecializedEncodable for Ident {}
+impl UseSpecializedEncodable for Ident {
+    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_struct("Ident", 2, |s| {
+            s.emit_struct_field("name", 0, |s| {
+                self.name.encode(s)
+            })?;
+            s.emit_struct_field("span", 1, |s| {
+                self.span.encode(s)
+            })
+        })
+    }
+}
 
-impl UseSpecializedDecodable for Ident {}
+impl UseSpecializedDecodable for Ident {
+    fn default_decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        d.read_struct("Ident", 2, |d| {
+            Ok(Ident {
+                name: d.read_struct_field("name", 0, Decodable::decode)?,
+                span: d.read_struct_field("span", 1, Decodable::decode)?,
+            })
+        })
+    }
+}
 
 /// A symbol is an interned or gensymed string. A gensym is a symbol that is
 /// never equal to any other symbol.
