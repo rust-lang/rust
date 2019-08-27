@@ -2622,7 +2622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  span: Span,
                                  code: traits::ObligationCauseCode<'tcx>)
     {
-        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
+        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         self.require_type_meets(ty, span, code, lang_item);
     }
 

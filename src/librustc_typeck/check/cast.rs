@@ -649,7 +649,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn type_is_known_to_be_sized_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
+        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         traits::type_known_to_meet_bound_modulo_regions(self, self.param_env, ty, lang_item, span)
     }
 }

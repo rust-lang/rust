@@ -287,7 +287,7 @@ fn check_type_defn<'tcx, F>(
                 let last = idx == variant.fields.len() - 1;
                 fcx.register_bound(
                     field.ty,
-                    fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                    fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                     traits::ObligationCause::new(
                         field.span,
                         fcx.body_id,
@@ -375,7 +375,7 @@ fn check_item_type(
         if forbid_unsized {
             fcx.register_bound(
                 item_ty,
-                fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None),
                 traits::ObligationCause::new(ty_span, fcx.body_id, traits::MiscObligation),
             );
         }

@@ -897,7 +897,7 @@ where
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Place::from(self.new_temp(tcx.mk_unit()));
-        let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
+        let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem, None);
         let args = adt.variants[VariantIdx::new(0)].fields.iter().enumerate().map(|(i, f)| {
             let field = Field::new(i);
             let field_ty = f.ty(self.tcx(), substs);

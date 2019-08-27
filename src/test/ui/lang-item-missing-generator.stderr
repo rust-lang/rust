@@ -1,4 +1,8 @@
 error: requires `generator` lang_item
+  --> $DIR/lang-item-missing-generator.rs:15:17
+   |
+LL | pub fn abc() -> impl FnOnce(f32) {
+   |                 ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
