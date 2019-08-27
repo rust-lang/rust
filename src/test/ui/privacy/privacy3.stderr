@@ -5,10 +5,6 @@ LL |     use bar::gpriv;
    |         ^^^^^^^^^^ no `gpriv` in `bar`
 
 error: requires `sized` lang_item
-  --> $DIR/privacy3.rs:11:20
-   |
-LL |         fn gpriv() {}
-   |                    ^
 
 error: aborting due to 2 previous errors
 

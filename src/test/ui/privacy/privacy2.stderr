@@ -11,10 +11,6 @@ LL |     use bar::glob::foo;
    |                    ^^^
 
 error: requires `sized` lang_item
-  --> $DIR/privacy2.rs:14:14
-   |
-LL | pub fn foo() {}
-   |              ^
 
 error: aborting due to 3 previous errors
 

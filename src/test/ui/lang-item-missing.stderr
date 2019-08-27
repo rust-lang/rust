@@ -1,8 +1,4 @@
 error: requires `sized` lang_item
-  --> $DIR/lang-item-missing.rs:10:50
-   |
-LL | fn start(argc: isize, argv: *const *const u8) -> isize {
-   |                                                  ^^^^^
 
 error: aborting due to previous error
 
