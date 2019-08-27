@@ -268,7 +268,6 @@ pub fn from_fn_attrs(
         false
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
         // If a specific #[unwind] attribute is present, use that.
-        // FIXME: We currently assume it can unwind even with `#[unwind(aborts)]`.
         true
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
         // Special attribute for allocator functions, which can't unwind

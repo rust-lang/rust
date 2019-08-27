@@ -2528,6 +2528,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         } else if attr.check_name(sym::rustc_allocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
         } else if attr.check_name(sym::unwind) {
+            // FIXME: We currently assume it can unwind even with `#[unwind(aborts)]`.
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
         } else if attr.check_name(sym::ffi_returns_twice) {
             if tcx.is_foreign_item(id) {
