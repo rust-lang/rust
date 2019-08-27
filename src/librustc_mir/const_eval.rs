@@ -519,6 +519,9 @@ pub fn const_variant_index<'tcx>(
     ecx.read_discriminant(op).unwrap().1
 }
 
+/// Turn an interpreter error into something to report to the user.
+/// As a side-effect, if RUSTC_CTFE_BACKTRACE is set, this prints the backtrace.
+/// Should be called only if the error is actually going to to be reported!
 pub fn error_to_const_error<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     mut error: InterpErrorInfo<'tcx>,
