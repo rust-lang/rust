@@ -69,10 +69,10 @@ The result is that compiling `rustc` is done in stages:
 - **Stage 0:** the stage0 compiler is usually (you can configure `x.py` to use
   something else) the current _beta_ `rustc` compiler and its associated dynamic
   libraries (which `x.py` will download for you). This stage0 compiler is then
-  used only to compile `rustbuild`, `std`, `test`, and `rustc`. When compiling
-  `test` and `rustc`, this stage0 compiler uses the freshly compiled `std`.
+  used only to compile `rustbuild`, `std`, and `rustc`. When compiling
+  `rustc`, this stage0 compiler uses the freshly compiled `std`.
   There are two concepts at play here: a compiler (with its set of dependencies)
-  and its 'target' or 'object' libraries (`std`, `test`, and `rustc`).
+  and its 'target' or 'object' libraries (`std` and `rustc`).
   Both are staged, but in a staggered manner.
 - **Stage 1:** the code in your clone (for new version) is then
   compiled with the stage0 compiler to produce the stage1 compiler.
@@ -102,8 +102,6 @@ When running `x.py` you will see output such as:
 ```txt
 Building stage0 std artifacts
 Copying stage0 std from stage0
-Building stage0 test artifacts
-Copying stage0 test from stage0
 Building stage0 compiler artifacts
 Copying stage0 rustc from stage0
 Building LLVM for x86_64-apple-darwin
@@ -111,8 +109,6 @@ Building stage0 codegen artifacts
 Assembling stage1 compiler
 Building stage1 std artifacts
 Copying stage1 std from stage1
-Building stage1 test artifacts
-Copying stage1 test from stage1
 Building stage1 compiler artifacts
 Copying stage1 rustc from stage1
 Building stage1 codegen artifacts
@@ -127,13 +123,10 @@ Building rustdoc for stage2
 Documenting book redirect pages
 Documenting stage2 std
 Building rustdoc for stage1
-Documenting stage2 test
 Documenting stage2 whitelisted compiler
 Documenting stage2 compiler
 Documenting stage2 rustdoc
 Documenting error index
-Uplifting stage1 test
-Copying stage2 test from stage1
 Uplifting stage1 rustc
 Copying stage2 rustc from stage1
 Building stage2 tool error_index_generator
@@ -155,8 +148,6 @@ The following tables indicate the outputs of various stage actions:
 | `stage0` builds `bootstrap`                               | `build/bootstrap`                            |
 | `stage0` builds `libstd`                                  | `build/HOST/stage0-std/TARGET`               |
 | copy `stage0-std` (HOST only)                             | `build/HOST/stage0-sysroot/lib/rustlib/HOST` |
-| `stage0` builds `libtest` with `stage0-sysroot`           | `build/HOST/stage0-test/TARGET`              |
-| copy `stage0-test` (HOST only)                            | `build/HOST/stage0-sysroot/lib/rustlib/HOST` |
 | `stage0` builds `rustc` with `stage0-sysroot`             | `build/HOST/stage0-rustc/HOST`               |
 | copy `stage0-rustc (except executable)`                   | `build/HOST/stage0-sysroot/lib/rustlib/HOST` |
 | build `llvm`                                              | `build/HOST/llvm`                            |
@@ -172,8 +163,6 @@ The following tables indicate the outputs of various stage actions:
 | copy (uplift) `stage0-sysroot` to `stage1`          | `build/HOST/stage1/lib`               |
 | `stage1` builds `libstd`                            | `build/HOST/stage1-std/TARGET`        |
 | copy `stage1-std` (HOST only)                       | `build/HOST/stage1/lib/rustlib/HOST`  |
-| `stage1` builds `libtest`                           | `build/HOST/stage1-test/TARGET`       |
-| copy `stage1-test` (HOST only)                      | `build/HOST/stage1/lib/rustlib/HOST`  |
 | `stage1` builds `rustc`                             | `build/HOST/stage1-rustc/HOST`        |
 | copy `stage1-rustc` (except executable)             | `build/HOST/stage1/lib/rustlib/HOST`  |
 | `stage1` builds `codegen`                           | `build/HOST/stage1-codegen/HOST`      |
@@ -186,8 +175,6 @@ The following tables indicate the outputs of various stage actions:
 | copy (uplift) `stage1-sysroot`            | `build/HOST/stage2/lib and build/HOST/stage2/lib/rustlib/HOST`  |
 | `stage2` builds `libstd` (except HOST?)   | `build/HOST/stage2-std/TARGET`                                  |
 | copy `stage2-std` (not HOST targets)      | `build/HOST/stage2/lib/rustlib/TARGET`                          |
-| `stage2` builds `libtest` (except HOST?)  | `build/HOST/stage2-test/TARGET`                                 |
-| copy `stage2-test` (not HOST targets)     | `build/HOST/stage2/lib/rustlib/TARGET`                          |
 | `stage2` builds `rustdoc`                 | `build/HOST/stage2-tools/HOST`                                  |
 | copy `rustdoc`                            | `build/HOST/stage2/bin`                                         |
 
@@ -201,10 +188,10 @@ Note that the convention `x.py` uses is that:
 In short, _stage 0 uses the stage0 compiler to create stage0 artifacts which
 will later be uplifted to stage1_.
 
-Every time any of the main artifacts (`std`, `test`, `rustc`) are compiled, two
+Every time any of the main artifacts (`std` and `rustc`) are compiled, two
 steps are performed.
 When `std` is compiled by a stage N compiler, that `std` will be linked to
-programs built by the stage N compiler (including test and `rustc` built later
+programs built by the stage N compiler (including `rustc` built later
 on). It will also be used by the stage (N+1) compiler to link against itself.
 This is somewhat intuitive if one thinks of the stage (N+1) compiler as "just"
 another program we are building with the stage N compiler. In some ways, `rustc`
@@ -213,7 +200,7 @@ another program we are building with the stage N compiler. In some ways, `rustc`
 
 So "stage0 std artifacts" are in fact the output of the downloaded stage0
 compiler, and are going to be used for anything built by the stage0 compiler:
-e.g. `rustc`, `test` artifacts. When it announces that it is "building stage1
+e.g. `rustc` artifacts. When it announces that it is "building stage1
 std artifacts" it has moved on to the next bootstrapping phase. This pattern
 continues in latter stages.
 
@@ -247,9 +234,9 @@ recompiling that `std`.
 `--keep-stage` simply assumes the previous compile is fine and copies those
 artifacts into the appropriate place, skipping the cargo invocation.
 
-The reason we first build `std`, then `test`, then `rustc`, is largely just
+The reason we first build `std`, then `rustc`, is largely just
 because we want to minimize `cfg(stage0)` in the code for `rustc`.
-Currently `rustc` is always linked against a "new" `std`/`test` so it doesn't
+Currently `rustc` is always linked against a "new" `std` so it doesn't
 ever need to be concerned with differences in std; it can assume that the std is
 as fresh as possible.
 
@@ -265,7 +252,7 @@ same libraries as the `stage2/bin/rustc` compiler uses itself for programs it
 links against.
 
 This `stage2/bin/rustc` compiler is shipped to end-users, along with the
-`stage 1 {std,test,rustc}` artifacts.
+`stage 1 {std,rustc}` artifacts.
 
 If you want to learn more about `x.py`, read its README.md
 [here](https://github.com/rust-lang/rust/blob/master/src/bootstrap/README.md).
