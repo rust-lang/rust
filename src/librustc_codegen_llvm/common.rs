@@ -245,21 +245,19 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         struct_in_context(self.llcx, elts, packed)
     }
 
-    fn const_to_uint(&self, v: &'ll Value) -> u64 {
-        unsafe {
-            llvm::LLVMConstIntGetZExtValue(v)
-        }
-    }
-
-    fn is_const_integral(&self, v: &'ll Value) -> bool {
-        unsafe {
-            llvm::LLVMIsAConstantInt(v).is_some()
+    fn const_to_opt_uint(&self, v: &'ll Value) -> Option<u64> {
+        if is_const_integral(v) {
+            unsafe {
+                Some(llvm::LLVMConstIntGetZExtValue(v))
+            }
+        } else {
+            None
         }
     }
 
     fn const_to_opt_u128(&self, v: &'ll Value, sign_ext: bool) -> Option<u128> {
         unsafe {
-            if self.is_const_integral(v) {
+            if is_const_integral(v) {
                 let (mut lo, mut hi) = (0u64, 0u64);
                 let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
                                                            &mut hi, &mut lo);
@@ -387,4 +385,10 @@ pub fn struct_in_context(
 #[inline]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
+}
+
+fn is_const_integral(v: &'ll Value) -> bool {
+    unsafe {
+        llvm::LLVMIsAConstantInt(v).is_some()
+    }
 }

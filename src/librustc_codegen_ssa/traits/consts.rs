@@ -21,10 +21,8 @@ pub trait ConstMethods<'tcx>: BackendTypes {
 
     fn const_struct(&self, elts: &[Self::Value], packed: bool) -> Self::Value;
 
-    fn const_to_uint(&self, v: Self::Value) -> u64;
+    fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
     fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
-
-    fn is_const_integral(&self, v: Self::Value) -> bool;
 
     fn scalar_to_backend(
         &self,
