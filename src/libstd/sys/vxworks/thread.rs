@@ -77,7 +77,7 @@ impl Thread {
     }
 
     pub fn set_name(_name: &CStr) {
-        assert!(false, "FIXME: set_name");
+        // VxWorks does not provide a way to set the task name except at creation time
     }
 
     pub fn sleep(dur: Duration) {

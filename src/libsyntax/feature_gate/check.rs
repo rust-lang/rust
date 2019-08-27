@@ -1,4 +1,4 @@
-use super::active::{ACTIVE_FEATURES, Features};
+use super::{active::{ACTIVE_FEATURES, Features}, Feature, State as FeatureState};
 use super::accepted::ACCEPTED_FEATURES;
 use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use super::builtin_attrs::{AttributeGate, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -127,17 +127,16 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
 }
 
 fn find_lang_feature_issue(feature: Symbol) -> Option<u32> {
-    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.0 == feature) {
-        let issue = info.2;
+    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
         // FIXME (#28244): enforce that active features have issue numbers
-        // assert!(issue.is_some())
-        issue
+        // assert!(info.issue.is_some())
+        info.issue
     } else {
         // search in Accepted, Removed, or Stable Removed features
         let found = ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).chain(STABLE_REMOVED_FEATURES)
-            .find(|t| t.0 == feature);
+            .find(|t| t.name == feature);
         match found {
-            Some(&(_, _, issue, _)) => issue,
+            Some(&Feature { issue, .. }) => issue,
             None => panic!("Feature `{}` is not declared anywhere", feature),
         }
     }
@@ -733,13 +732,9 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         }
     }
 
-    for &(name, .., f_edition, set) in ACTIVE_FEATURES {
-        if let Some(f_edition) = f_edition {
-            if f_edition <= crate_edition {
-                set(&mut features, DUMMY_SP);
-                edition_enabled_features.insert(name, crate_edition);
-            }
-        }
+    for feature in active_features_up_to(crate_edition) {
+        feature.set(&mut features, DUMMY_SP);
+        edition_enabled_features.insert(feature.name, crate_edition);
     }
 
     // Process the edition umbrella feature-gates first, to ensure
@@ -761,20 +756,17 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 
             let name = mi.name_or_empty();
 
-            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
-                if *edition <= crate_edition {
+            let edition = ALL_EDITIONS.iter().find(|e| name == e.feature_name()).copied();
+            if let Some(edition) = edition {
+                if edition <= crate_edition {
                     continue;
                 }
 
-                for &(name, .., f_edition, set) in ACTIVE_FEATURES {
-                    if let Some(f_edition) = f_edition {
-                        if f_edition <= *edition {
-                            // FIXME(Manishearth) there is currently no way to set
-                            // lib features by edition
-                            set(&mut features, DUMMY_SP);
-                            edition_enabled_features.insert(name, *edition);
-                        }
-                    }
+                for feature in active_features_up_to(edition) {
+                    // FIXME(Manishearth) there is currently no way to set
+                    // lib features by edition
+                    feature.set(&mut features, DUMMY_SP);
+                    edition_enabled_features.insert(feature.name, edition);
                 }
             }
         }
@@ -829,14 +821,18 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 continue;
             }
 
-            let removed = REMOVED_FEATURES.iter().find(|f| name == f.0);
-            let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.0);
-            if let Some((.., reason)) = removed.or(stable_removed) {
-                feature_removed(span_handler, mi.span(), *reason);
-                continue;
+            let removed = REMOVED_FEATURES.iter().find(|f| name == f.name);
+            let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.name);
+            if let Some(Feature { state, .. }) = removed.or(stable_removed) {
+                if let FeatureState::Removed { reason }
+                | FeatureState::Stabilized { reason } = state
+                {
+                    feature_removed(span_handler, mi.span(), *reason);
+                    continue;
+                }
             }
 
-            if let Some((_, since, ..)) = ACCEPTED_FEATURES.iter().find(|f| name == f.0) {
+            if let Some(Feature { since, .. }) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
                 let since = Some(Symbol::intern(since));
                 features.declared_lang_features.push((name, mi.span(), since));
                 continue;
@@ -851,8 +847,8 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 }
             }
 
-            if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
-                set(&mut features, mi.span());
+            if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.name) {
+                f.set(&mut features, mi.span());
                 features.declared_lang_features.push((name, mi.span(), None));
                 continue;
             }
@@ -862,6 +858,17 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     }
 
     features
+}
+
+fn active_features_up_to(edition: Edition) -> impl Iterator<Item=&'static Feature> {
+    ACTIVE_FEATURES.iter()
+    .filter(move |feature| {
+        if let Some(feature_edition) = feature.edition {
+            feature_edition <= edition
+        } else {
+            false
+        }
+    })
 }
 
 pub fn check_crate(krate: &ast::Crate,

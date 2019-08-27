@@ -1,6 +1,7 @@
 use super::{Parser, PResult, Restrictions, PrevTokenKind, TokenType, PathStyle};
 use super::{BlockMode, SemiColonMode};
 use super::{SeqSep, TokenExpectType};
+use super::pat::{GateOr, PARAM_EXPECTED};
 
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use crate::ptr::P;
@@ -1175,7 +1176,7 @@ impl<'a> Parser<'a> {
     fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
         let lo = self.token.span;
         let attrs = self.parse_arg_attributes()?;
-        let pat = self.parse_pat(Some("argument name"))?;
+        let pat = self.parse_pat(PARAM_EXPECTED)?;
         let t = if self.eat(&token::Colon) {
             self.parse_ty()?
         } else {
@@ -1241,11 +1242,12 @@ impl<'a> Parser<'a> {
         Ok(cond)
     }
 
-    /// Parses a `let $pats = $expr` pseudo-expression.
+    /// Parses a `let $pat = $expr` pseudo-expression.
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
-        let pats = self.parse_pats()?;
+        // FIXME(or_patterns, Centril | dlrobertson): use `parse_top_pat` instead.
+        let pat = self.parse_top_pat_unpack(GateOr::No)?;
         self.expect(&token::Eq)?;
         let expr = self.with_res(
             Restrictions::NO_STRUCT_LITERAL,
@@ -1253,7 +1255,7 @@ impl<'a> Parser<'a> {
         )?;
         let span = lo.to(expr.span);
         self.sess.gated_spans.let_chains.borrow_mut().push(span);
-        Ok(self.mk_expr(span, ExprKind::Let(pats, expr), attrs))
+        Ok(self.mk_expr(span, ExprKind::Let(pat, expr), attrs))
     }
 
     /// `else` token already eaten
@@ -1283,7 +1285,7 @@ impl<'a> Parser<'a> {
             _ => None,
         };
 
-        let pat = self.parse_top_level_pat()?;
+        let pat = self.parse_top_pat(GateOr::Yes)?;
         if !self.eat_keyword(kw::In) {
             let in_span = self.prev_span.between(self.token.span);
             self.struct_span_err(in_span, "missing `in` in `for` loop")
@@ -1387,7 +1389,8 @@ impl<'a> Parser<'a> {
     crate fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
-        let pats = self.parse_pats()?;
+        // FIXME(or_patterns, Centril | dlrobertson): use `parse_top_pat` instead.
+        let pat = self.parse_top_pat_unpack(GateOr::No)?;
         let guard = if self.eat_keyword(kw::If) {
             Some(self.parse_expr()?)
         } else {
@@ -1448,7 +1451,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Arm {
             attrs,
-            pats,
+            pats: pat, // FIXME(or_patterns, Centril | dlrobertson): this should just be `pat,`.
             guard,
             body: expr,
             span: lo.to(hi),
