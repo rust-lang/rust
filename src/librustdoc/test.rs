@@ -45,7 +45,7 @@ pub fn run(options: Options) -> i32 {
         vec![config::CrateType::Dylib]
     };
 
-    let mut sessopts = config::Options {
+    let sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone(),
         search_paths: options.libs.clone(),
         crate_types,
@@ -84,6 +84,7 @@ pub fn run(options: Options) -> i32 {
 
         let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
         opts.display_warnings |= options.display_warnings;
+        let enable_per_target_ignores = options.enable_per_target_ignores;
         let mut collector = Collector::new(
             compiler.crate_name()?.peek().to_string(),
             options,
@@ -91,6 +92,7 @@ pub fn run(options: Options) -> i32 {
             opts,
             Some(compiler.source_map().clone()),
             None,
+            enable_per_target_ignores,
         );
 
         let mut global_ctxt = compiler.global_ctxt()?.take();
@@ -275,6 +277,7 @@ fn run_test(
     if no_run {
         compiler.arg("--emit=metadata");
     }
+    compiler.arg("--target").arg(target.to_string());
 
     compiler.arg("-");
     compiler.stdin(Stdio::piped());
@@ -616,6 +619,7 @@ pub struct Collector {
 
     options: Options,
     use_headers: bool,
+    enable_per_target_ignores: bool,
     cratename: String,
     opts: TestOptions,
     position: Span,
@@ -625,12 +629,14 @@ pub struct Collector {
 
 impl Collector {
     pub fn new(cratename: String, options: Options, use_headers: bool, opts: TestOptions,
-               source_map: Option<Lrc<SourceMap>>, filename: Option<PathBuf>,) -> Collector {
+               source_map: Option<Lrc<SourceMap>>, filename: Option<PathBuf>,
+               enable_per_target_ignores: bool) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
             options,
             use_headers,
+            enable_per_target_ignores,
             cratename,
             opts,
             position: DUMMY_SP,
@@ -674,13 +680,9 @@ impl Tester for Collector {
         let opts = self.opts.clone();
         let edition = config.edition.unwrap_or(self.options.edition.clone());
         let options = self.options.clone();
-        let maybe_sysroot = self.maybe_sysroot.clone();
-        let linker = self.linker.clone();
-        let edition = config.edition.unwrap_or(self.edition);
-        let persist_doctests = self.persist_doctests.clone();
-        let runtool = self.runtool.clone();
-        let runtool_args = self.runtool_args.clone();
-        let target = self.target.clone();
+        let runtool = self.options.runtool.clone();
+        let runtool_args = self.options.runtool_args.clone();
+        let target = self.options.target.clone();
         let target_str = target.to_string();
 
         debug!("creating test {}: {}", name, test);

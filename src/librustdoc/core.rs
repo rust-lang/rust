@@ -293,7 +293,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         }
     }).collect();
 
-    let host_triple = TargetTriple::from_triple(config::host_triple());
     let crate_types = if proc_macro_crate {
         vec![config::CrateType::ProcMacro]
     } else {

@@ -143,7 +143,8 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
     opts.no_crate_inject = true;
     opts.display_warnings = options.display_warnings;
     let mut collector = Collector::new(options.input.display().to_string(), options.clone(),
-                                       true, opts, None, Some(options.input));
+                                       true, opts, None, Some(options.input),
+                                       options.enable_per_target_ignores);
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 
