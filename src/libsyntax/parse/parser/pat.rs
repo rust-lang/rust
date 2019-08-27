@@ -384,6 +384,7 @@ impl<'a> Parser<'a> {
         })
     }
 
+    /// Parse a mutable binding with the `mut` token already eaten.
     fn parse_pat_ident_mut(&mut self) -> PResult<'a, PatKind> {
         let mut_span = self.prev_span;
 
@@ -393,6 +394,14 @@ impl<'a> Parser<'a> {
 
         self.recover_additional_muts();
 
+        // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
+        if let token::Interpolated(ref nt) = self.token.kind {
+             if let token::NtPat(_) = **nt {
+                 self.expected_ident_found().emit();
+             }
+        }
+
+        // Parse the pattern we hope to be an identifier.
         let mut pat = self.parse_pat(Some("identifier"))?;
 
         // Add `mut` to any binding in the parsed pattern.

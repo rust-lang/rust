@@ -64,5 +64,14 @@ error: `mut` must be attached to each individual binding
 LL |     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add `mut` to each binding: `W(mut a, W(mut b, W(ref c, W(mut d, B { box mut f }))))`
 
-error: aborting due to 9 previous errors
+error: expected identifier, found `x`
+  --> $DIR/mut-patterns.rs:39:21
+   |
+LL |             let mut $p = 0;
+   |                     ^^ expected identifier
+...
+LL |     foo!(x);
+   |     -------- in this macro invocation
+
+error: aborting due to 10 previous errors
 

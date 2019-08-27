@@ -32,4 +32,12 @@ pub fn main() {
     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
     //~^ ERROR `mut` must be attached to each individual binding
         = W(0, W(1, W(2, W(3, B { f: Box::new(4u8) }))));
+
+    // Make sure we don't accidentally allow `mut $p` where `$p:pat`.
+    macro_rules! foo {
+        ($p:pat) => {
+            let mut $p = 0; //~ ERROR expected identifier, found `x`
+        }
+    }
+    foo!(x);
 }
