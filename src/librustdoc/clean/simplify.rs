@@ -122,9 +122,9 @@ pub fn merge_bounds(
                     },
                 });
             }
-            PP::Parenthesized { ref mut output, .. } => {
-                assert!(output.is_none());
-                if *rhs != clean::Type::Tuple(Vec::new()) {
+            PP::Parenthesized { ref mut output, .. } => match output {
+                Some(o) => assert!(o == rhs),
+                None => if *rhs != clean::Type::Tuple(Vec::new()) {
                     *output = Some(rhs.clone());
                 }
             }
