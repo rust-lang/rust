@@ -331,6 +331,8 @@ pub fn intern_const_alloc_recursive(
             if base_intern_mode != InternMode::Static {
                 // If it's not a static, it *must* be immutable.
                 // We cannot have mutable memory inside a constant.
+                // FIXME: ideally we would assert that they already are immutable, to double-
+                // check our static checks.
                 alloc.mutability = Mutability::Immutable;
             }
             let alloc = tcx.intern_const_alloc(alloc);
