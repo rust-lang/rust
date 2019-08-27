@@ -44,7 +44,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     // Setup first stack-frame
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
-    let main_mir = ecx.load_mir(main_instance.def)?;
+    let main_mir = ecx.load_mir(main_instance.def, None)?;
 
     if !main_mir.return_ty().is_unit() || main_mir.arg_count != 0 {
         throw_unsup_format!(
@@ -62,7 +62,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         ecx.tcx.mk_substs(
             ::std::iter::once(ty::subst::Kind::from(main_ret_ty)))
         ).unwrap();
-    let start_mir = ecx.load_mir(start_instance.def)?;
+    let start_mir = ecx.load_mir(start_instance.def, None)?;
 
     if start_mir.arg_count != 3 {
         bug!(

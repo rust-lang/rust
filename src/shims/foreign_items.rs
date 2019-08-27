@@ -341,7 +341,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Now we make a function call.
                 // TODO: consider making this reusable? `InterpCx::step` does something similar
                 // for the TLS destructors, and of course `eval_main`.
-                let mir = this.load_mir(f_instance.def)?;
+                let mir = this.load_mir(f_instance.def, None)?;
                 let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
                 this.push_stack_frame(
                     f_instance,
