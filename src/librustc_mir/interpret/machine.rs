@@ -164,6 +164,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     ///
     /// This allocation will then be fed to `tag_allocation` to initialize the "extra" state.
     fn find_foreign_static(
+        memory_extra: &Self::MemoryExtra,
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation>>;

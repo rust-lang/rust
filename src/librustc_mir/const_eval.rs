@@ -410,6 +410,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn find_foreign_static(
+        _memory_extra: &Self::MemoryExtra,
         _tcx: TyCtxt<'tcx>,
         _def_id: DefId,
     ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
