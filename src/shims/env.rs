@@ -7,6 +7,8 @@ use crate::*;
 
 #[derive(Default)]
 pub struct EnvVars {
+    /// Stores pointers to the environment variables. These variables must be stored as
+    /// null-terminated C strings with the `"{name}={value}"` format.
     map: HashMap<Vec<u8>, Pointer<Tag>>,
 }
 
@@ -16,17 +18,19 @@ impl EnvVars {
     ) {
         if ecx.machine.communicate {
             for (name, value) in std::env::vars() {
-                let value = alloc_env_value(value.as_bytes(), ecx.memory_mut());
-                ecx.machine.env_vars.map.insert(name.into_bytes(), value);
+                let var_ptr = alloc_env_var(name.as_bytes(), value.as_bytes(), ecx.memory_mut());
+                ecx.machine.env_vars.map.insert(name.into_bytes(), var_ptr);
             }
         }
     }
 }
 
-fn alloc_env_value<'mir, 'tcx>(
-    bytes: &[u8],
+fn alloc_env_var<'mir, 'tcx>(
+    name: &[u8],
+    value: &[u8],
     memory: &mut Memory<'mir, 'tcx, Evaluator<'tcx>>,
 ) -> Pointer<Tag> {
+    let bytes = [name, b"=", value].concat();
     let tcx = {memory.tcx.tcx};
     let length = bytes.len() as u64;
     // `+1` for the null terminator.
@@ -57,7 +61,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let name_ptr = this.read_scalar(name_op)?.not_undef()?;
         let name = this.memory().read_c_str(name_ptr)?;
         Ok(match this.machine.env_vars.map.get(name) {
-            Some(&var) => Scalar::Ptr(var),
+            // The offset is used to strip the "{name}=" part of the string.
+            Some(var_ptr) => Scalar::Ptr(var_ptr.offset(Size::from_bytes(name.len() as u64 + 1), this)?),
             None => Scalar::ptr_null(&*this.tcx),
         })
     }
@@ -80,8 +85,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
         if let Some((name, value)) = new {
-            let value_copy = alloc_env_value(&value, this.memory_mut());
-            if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), value_copy) {
+            let var_ptr = alloc_env_var(&name, &value, this.memory_mut());
+            if let Some(var) = this.machine.env_vars.map.insert(name.to_owned(), var_ptr) {
                 this.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
             }
             Ok(0)
