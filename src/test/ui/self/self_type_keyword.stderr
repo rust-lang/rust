@@ -10,11 +10,13 @@ error: expected identifier, found keyword `Self`
 LL |         ref Self => (),
    |             ^^^^ expected identifier, found keyword
 
-error: `mut` must be attached to each individual binding
+error: `mut` must be followed by a named binding
   --> $DIR/self_type_keyword.rs:16:9
    |
 LL |         mut Self => (),
-   |         ^^^^^^^^ help: add `mut` to each binding: `Self`
+   |         ^^^^^^^^ help: remove the `mut` prefix: `Self`
+   |
+   = note: `mut` may be followed by `variable` and `variable @ pattern`
 
 error: expected identifier, found keyword `Self`
   --> $DIR/self_type_keyword.rs:19:17

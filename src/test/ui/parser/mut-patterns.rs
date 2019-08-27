@@ -6,6 +6,9 @@
 #![allow(warnings)]
 
 pub fn main() {
+    let mut _ = 0; //~ ERROR `mut` must be followed by a named binding
+    let mut (_, _) = (0, 0); //~ ERROR `mut` must be followed by a named binding
+
     let mut mut x = 0;
     //~^ ERROR `mut` on a binding may not be repeated
     //~| remove the additional `mut`s

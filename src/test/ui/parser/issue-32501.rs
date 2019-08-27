@@ -5,5 +5,5 @@ fn main() {
     let mut b = 0;
     let mut _b = 0;
     let mut _ = 0;
-    //~^ ERROR `mut` must be attached to each individual binding
+    //~^ ERROR `mut` must be followed by a named binding
 }

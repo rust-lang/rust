@@ -405,22 +405,13 @@ impl<'a> Parser<'a> {
         let mut pat = self.parse_pat(Some("identifier"))?;
 
         // Add `mut` to any binding in the parsed pattern.
-        struct AddMut;
-        impl MutVisitor for AddMut {
-            fn visit_pat(&mut self, pat: &mut P<Pat>) {
-                if let PatKind::Ident(BindingMode::ByValue(ref mut m), ..) = pat.node {
-                    *m = Mutability::Mutable;
-                }
-                noop_visit_pat(pat, self);
-            }
-        }
-        AddMut.visit_pat(&mut pat);
+        let changed_any_binding = Self::make_all_value_bindings_mutable(&mut pat);
 
         // Unwrap; If we don't have `mut $ident`, error.
         let pat = pat.into_inner();
         match &pat.node {
             PatKind::Ident(..) => {}
-            _ => self.ban_mut_general_pat(mut_span, &pat),
+            _ => self.ban_mut_general_pat(mut_span, &pat, changed_any_binding),
         }
 
         Ok(pat.node)
@@ -442,17 +433,40 @@ impl<'a> Parser<'a> {
         self.parse_pat_ident(BindingMode::ByRef(Mutability::Mutable))
     }
 
+    /// Turn all by-value immutable bindings in a pattern into mutable bindings.
+    /// Returns `true` if any change was made.
+    fn make_all_value_bindings_mutable(pat: &mut P<Pat>) -> bool {
+        struct AddMut(bool);
+        impl MutVisitor for AddMut {
+            fn visit_pat(&mut self, pat: &mut P<Pat>) {
+                if let PatKind::Ident(BindingMode::ByValue(ref mut m @ Mutability::Immutable), ..)
+                    = pat.node
+                {
+                    *m = Mutability::Mutable;
+                    self.0 = true;
+                }
+                noop_visit_pat(pat, self);
+            }
+        }
+
+        let mut add_mut = AddMut(false);
+        add_mut.visit_pat(pat);
+        add_mut.0
+    }
+
     /// Error on `mut $pat` where `$pat` is not an ident.
-    fn ban_mut_general_pat(&self, lo: Span, pat: &Pat) {
+    fn ban_mut_general_pat(&self, lo: Span, pat: &Pat, changed_any_binding: bool) {
         let span = lo.to(pat.span);
-        self.struct_span_err(span, "`mut` must be attached to each individual binding")
-            .span_suggestion(
-                span,
-                "add `mut` to each binding",
-                pprust::pat_to_string(&pat),
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        let fix = pprust::pat_to_string(&pat);
+        let (problem, suggestion) = if changed_any_binding {
+            ("`mut` must be attached to each individual binding", "add `mut` to each binding")
+        } else {
+            ("`mut` must be followed by a named binding", "remove the `mut` prefix")
+        };
+        self.struct_span_err(span, problem)
+            .span_suggestion(span, suggestion, fix, Applicability::MachineApplicable)
+            .note("`mut` may be followed by `variable` and `variable @ pattern`")
+            .emit()
     }
 
     /// Eat any extraneous `mut`s and error + recover if we ate any.
