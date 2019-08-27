@@ -417,10 +417,8 @@ impl Token {
     /// for example a '-42', or one of the boolean idents).
     crate fn can_begin_literal_or_bool(&self) -> bool {
         match self.kind {
-            Literal(..)  => true,
-            BinOp(Minus) => true,
-            Ident(name, false) if name == kw::True => true,
-            Ident(name, false) if name == kw::False => true,
+            Literal(..) | BinOp(Minus) => true,
+            Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match **nt {
                 NtLiteral(..) => true,
                 _             => false,
@@ -535,6 +533,11 @@ impl Token {
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
         self.is_non_raw_ident_where(ast::Ident::is_reserved)
+    }
+
+    /// Returns `true` if the token is the identifier `true` or `false`.
+    crate fn is_bool_lit(&self) -> bool {
+        self.is_non_raw_ident_where(|id| id.name.is_bool_lit())
     }
 
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
