@@ -749,14 +749,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn gate_proc_macro_expansion_kind(&self, span: Span, kind: AstFragmentKind) {
         let kind = match kind {
-            AstFragmentKind::Expr => "expressions",
+            AstFragmentKind::Expr |
             AstFragmentKind::OptExpr => "expressions",
             AstFragmentKind::Pat => "patterns",
-            AstFragmentKind::Ty => "types",
             AstFragmentKind::Stmts => "statements",
-            AstFragmentKind::Items => return,
-            AstFragmentKind::TraitItems => return,
-            AstFragmentKind::ImplItems => return,
+            AstFragmentKind::Ty |
+            AstFragmentKind::Items |
+            AstFragmentKind::TraitItems |
+            AstFragmentKind::ImplItems |
             AstFragmentKind::ForeignItems => return,
             AstFragmentKind::Arms
             | AstFragmentKind::Fields
