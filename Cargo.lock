@@ -1992,6 +1992,7 @@ dependencies = [
  "compiletest_rs",
  "directories",
  "env_logger 0.6.0",
+ "getrandom",
  "hex",
  "log",
  "num-traits",
