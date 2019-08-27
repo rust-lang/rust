@@ -4,9 +4,9 @@
 #![feature(unwind_attributes)]
 
 extern {
-// CHECK: Function Attrs: nounwind
-// CHECK-NEXT: declare void @extern_fn
-    fn extern_fn(); // assumed not to unwind
+// CHECK-NOT: nounwind
+// CHECK: declare void @extern_fn
+    fn extern_fn();
 // CHECK-NOT: nounwind
 // CHECK: declare void @unwinding_extern_fn
     #[unwind(allowed)]

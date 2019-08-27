@@ -6,7 +6,7 @@ use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::{Sanitizer, OptLevel};
-use rustc::ty::{self, TyCtxt, PolyFnSig};
+use rustc::ty::{TyCtxt, PolyFnSig};
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -14,7 +14,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
 
-use crate::abi::Abi;
 use crate::attributes;
 use crate::llvm::{self, Attribute};
 use crate::llvm::AttributePlace::Function;
@@ -201,7 +200,7 @@ pub fn from_fn_attrs(
     cx: &CodegenCx<'ll, 'tcx>,
     llfn: &'ll Value,
     id: Option<DefId>,
-    sig: PolyFnSig<'tcx>,
+    _sig: PolyFnSig<'tcx>,
 ) {
     let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
         .unwrap_or_else(|| CodegenFnAttrs::new());
@@ -274,17 +273,6 @@ pub fn from_fn_attrs(
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
         // Special attribute for allocator functions, which can't unwind
         false
-    } else if let Some(id) = id {
-        let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if cx.tcx.is_foreign_item(id) && sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
-            // Foreign non-Rust items like `extern "C" { fn foo(); }` are assumed not to
-            // unwind
-            false
-        } else {
-            // Anything else defined in Rust is assumed that it can possibly
-            // unwind
-            true
-        }
     } else {
         // assume this can possibly unwind, avoiding the application of a
         // `nounwind` attribute below.
