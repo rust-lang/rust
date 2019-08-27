@@ -339,7 +339,7 @@ pub fn look_for_tests<'tcx>(
     find_testable_code(&dox, &mut tests, ErrorCodes::No);
 
     if check_missing_code == true && tests.found_tests == 0 {
-        let sp = span_of_attrs(&item.attrs).substitute_dummy(item.source.span());
+        let sp = span_of_attrs(&item.attrs).unwrap_or(item.source.span());
         let mut diag = cx.tcx.struct_span_lint_hir(
             lint::builtin::MISSING_DOC_CODE_EXAMPLES,
             hir_id,
@@ -352,20 +352,23 @@ pub fn look_for_tests<'tcx>(
         let mut diag = cx.tcx.struct_span_lint_hir(
             lint::builtin::PRIVATE_DOC_TESTS,
             hir_id,
-            span_of_attrs(&item.attrs),
+            span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
             "Documentation test in private item");
         diag.emit();
     }
 }
 
 /// Returns a span encompassing all the given attributes.
-crate fn span_of_attrs(attrs: &clean::Attributes) -> Span {
+crate fn span_of_attrs(attrs: &clean::Attributes) -> Option<Span> {
     if attrs.doc_strings.is_empty() {
-        return DUMMY_SP;
+        return None;
     }
     let start = attrs.doc_strings[0].span();
+    if start == DUMMY_SP {
+        return None;
+    }
     let end = attrs.doc_strings.last().expect("No doc strings provided").span();
-    start.to(end)
+    Some(start.to(end))
 }
 
 /// Attempts to match a range of bytes from parsed markdown to a `Span` in the source code.
@@ -391,7 +394,7 @@ crate fn source_span_for_markdown_range(
     let snippet = cx
         .sess()
         .source_map()
-        .span_to_snippet(span_of_attrs(attrs))
+        .span_to_snippet(span_of_attrs(attrs)?)
         .ok()?;
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
@@ -441,10 +444,8 @@ crate fn source_span_for_markdown_range(
         }
     }
 
-    let sp = span_of_attrs(attrs).from_inner(InnerSpan::new(
+    Some(span_of_attrs(attrs)?.from_inner(InnerSpan::new(
         md_range.start + start_bytes,
         md_range.end + start_bytes + end_bytes,
-    ));
-
-    Some(sp)
+    )))
 }
