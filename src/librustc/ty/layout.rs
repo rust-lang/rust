@@ -2205,8 +2205,7 @@ where
             ty::RawPtr(mt) if offset.bytes() == 0 => {
                 cx.layout_of(mt.ty).to_result().ok()
                     .map(|layout| PointeeInfo {
-                        size: layout.pref_pos.size,
-                        align: layout.pref_pos.align.abi,
+                        mem_pos: layout.pref_pos.mem_pos(),
                         safe: None,
                     })
             }
@@ -2244,8 +2243,7 @@ where
 
                 cx.layout_of(ty).to_result().ok()
                     .map(|layout| PointeeInfo {
-                        size: layout.pref_pos.size,
-                        align: layout.pref_pos.align.abi,
+                        mem_pos: layout.pref_pos.mem_pos(),
                         safe: Some(kind),
                     })
             }
@@ -2681,8 +2679,8 @@ where
 
             if let Some(pointee) = layout.pointee_info_at(cx, offset) {
                 if let Some(kind) = pointee.safe {
-                    attrs.pointee_size = pointee.size;
-                    attrs.pointee_align = Some(pointee.align);
+                    attrs.pointee_size = pointee.mem_pos.size;
+                    attrs.pointee_align = Some(pointee.mem_pos.align);
 
                     // `Box` pointer parameters never alias because ownership is transferred
                     // `&mut` pointer parameters never alias other parameters,

@@ -1282,8 +1282,7 @@ pub enum PointerKind {
 
 #[derive(Copy, Clone)]
 pub struct PointeeInfo {
-    pub size: Size,
-    pub align: Align,
+    pub mem_pos: MemoryPosition,
     pub safe: Option<PointerKind>,
 }
 
