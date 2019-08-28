@@ -1396,8 +1396,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx().sess,
             expr.span,
             E0616,
-            "field `{}` of struct `{}` is private",
+            "field `{}` of `{}` `{}` is private",
             field,
+            if let Some(def_kind) = self.tcx().def_kind(base_did){ def_kind.descr(base_did) }
+            else { " " },
             struct_path
         );
         // Also check if an accessible method exists, which is often what is meant.
