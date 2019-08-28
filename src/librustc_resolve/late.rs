@@ -425,14 +425,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
         self.label_ribs.push(Rib::new(rib_kind));
 
         // Add each argument to the rib.
-        let mut bindings_list = FxHashMap::default();
-        for argument in &declaration.inputs {
-            self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
+        self.resolve_params(&declaration.inputs);
 
-            self.visit_ty(&argument.ty);
-
-            debug!("(resolving function) recorded argument");
-        }
         visit::walk_fn_ret_ty(self, &declaration.output);
 
         // Resolve the function body, potentially inside the body of an async closure
@@ -1132,6 +1126,15 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 let path = &self.current_trait_ref.as_ref().unwrap().1.path;
                 self.r.report_error(span, err(ident.name, &path_names_to_string(path)));
             }
+        }
+    }
+
+    fn resolve_params(&mut self, params: &[Arg]) {
+        let mut bindings_list = FxHashMap::default();
+        for param in params {
+            self.resolve_pattern(&param.pat, PatternSource::FnParam, &mut bindings_list);
+            self.visit_ty(&param.ty);
+            debug!("(resolving function / closure) recorded parameter");
         }
     }
 
@@ -1860,20 +1863,12 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
-            ExprKind::Closure(
-                _, IsAsync::Async { .. }, _,
-                ref fn_decl, ref body, _span,
-            ) => {
-                let rib_kind = NormalRibKind;
-                self.ribs[ValueNS].push(Rib::new(rib_kind));
+            ExprKind::Closure(_, IsAsync::Async { .. }, _, ref fn_decl, ref body, _span) => {
+                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
                 // Resolve arguments:
-                let mut bindings_list = FxHashMap::default();
-                for argument in &fn_decl.inputs {
-                    self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
-                    self.visit_ty(&argument.ty);
-                }
-                // No need to resolve return type-- the outer closure return type is
-                // FunctionRetTy::Default
+                self.resolve_params(&fn_decl.inputs);
+                // No need to resolve return type --
+                // the outer closure return type is `FunctionRetTy::Default`.
 
                 // Now resolve the inner closure
                 {
