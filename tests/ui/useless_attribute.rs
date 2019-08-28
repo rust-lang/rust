@@ -1,4 +1,3 @@
-// run-rustfix
 // aux-build:proc_macro_derive.rs
 
 #![warn(clippy::useless_attribute)]
