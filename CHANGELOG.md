@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [1.4.6] 2019-08-28
+
+## Added
+
+- Add `--message-format` command line option to `cargo-fmt`.
+- Add `-l,--files-with-diff` command line option to `rustfmt`.
+- Add `json` emit mode. 
+
+### Fixed
+
+- Fix removing attributes on struct pattern's fields.
+- Fix non-idempotent formatting of match arm.
+- Fix `merge_imports` generating invalid code.
+- Fix imports with `#![macro_use]` getting reordered with `reorder_imports`.
+- Fix calculation of line numbers in checkstyle output.
+- Fix poor formatting of complex fn type.
+
 ## [1.4.5] 2019-08-13
 
 ### Fixed
