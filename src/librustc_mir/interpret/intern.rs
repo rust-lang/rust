@@ -57,6 +57,8 @@ struct IsStaticOrFn;
 /// `mode` is the mode of the environment where we found this pointer.
 /// `mutablity` is the mutability of the place to be interned; even if that says
 /// `immutable` things might become mutable if `ty` is not frozen.
+/// `ty` can be `None` if there is no potential interior mutability
+/// to account for (e.g. for vtables).
 fn intern_shallow<'rt, 'mir, 'tcx>(
     ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,
     leftover_allocations: &'rt mut FxHashSet<AllocId>,
@@ -97,6 +99,7 @@ fn intern_shallow<'rt, 'mir, 'tcx>(
     // read-only memory, and also by Miri when evluating other constants/statics that
     // access this one.
     if mode == InternMode::Static {
+        // When `ty` is `None`, we assume no interior mutability.
         let frozen = ty.map_or(true, |ty| ty.is_freeze(
             ecx.tcx.tcx,
             ecx.param_env,
