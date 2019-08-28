@@ -1229,49 +1229,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
     }
 
-    fn resolve_block(&mut self, block: &Block) {
-        debug!("(resolving block) entering block");
-        // Move down in the graph, if there's an anonymous module rooted here.
-        let orig_module = self.parent_scope.module;
-        let anonymous_module = self.r.block_map.get(&block.id).cloned(); // clones a reference
-
-        let mut num_macro_definition_ribs = 0;
-        if let Some(anonymous_module) = anonymous_module {
-            debug!("(resolving block) found anonymous module, moving down");
-            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
-            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
-            self.parent_scope.module = anonymous_module;
-        } else {
-            self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-        }
-
-        // Descend into the block.
-        for stmt in &block.stmts {
-            if let StmtKind::Item(ref item) = stmt.node {
-                if let ItemKind::MacroDef(..) = item.node {
-                    num_macro_definition_ribs += 1;
-                    let res = self.r.definitions.local_def_id(item.id);
-                    self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
-                    self.label_ribs.push(Rib::new(MacroDefinition(res)));
-                }
-            }
-
-            self.visit_stmt(stmt);
-        }
-
-        // Move back up.
-        self.parent_scope.module = orig_module;
-        for _ in 0 .. num_macro_definition_ribs {
-            self.ribs[ValueNS].pop();
-            self.label_ribs.pop();
-        }
-        self.ribs[ValueNS].pop();
-        if anonymous_module.is_some() {
-            self.ribs[TypeNS].pop();
-        }
-        debug!("(resolving block) leaving block");
-    }
-
     fn resolve_pattern(
         &mut self,
         pat: &Pat,
@@ -1727,6 +1684,49 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn resolve_labeled_block(&mut self, label: Option<Label>, id: NodeId, block: &Block) {
         self.with_resolved_label(label, id, |this| this.visit_block(block));
+    }
+
+    fn resolve_block(&mut self, block: &Block) {
+        debug!("(resolving block) entering block");
+        // Move down in the graph, if there's an anonymous module rooted here.
+        let orig_module = self.parent_scope.module;
+        let anonymous_module = self.r.block_map.get(&block.id).cloned(); // clones a reference
+
+        let mut num_macro_definition_ribs = 0;
+        if let Some(anonymous_module) = anonymous_module {
+            debug!("(resolving block) found anonymous module, moving down");
+            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
+            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
+            self.parent_scope.module = anonymous_module;
+        } else {
+            self.ribs[ValueNS].push(Rib::new(NormalRibKind));
+        }
+
+        // Descend into the block.
+        for stmt in &block.stmts {
+            if let StmtKind::Item(ref item) = stmt.node {
+                if let ItemKind::MacroDef(..) = item.node {
+                    num_macro_definition_ribs += 1;
+                    let res = self.r.definitions.local_def_id(item.id);
+                    self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
+                    self.label_ribs.push(Rib::new(MacroDefinition(res)));
+                }
+            }
+
+            self.visit_stmt(stmt);
+        }
+
+        // Move back up.
+        self.parent_scope.module = orig_module;
+        for _ in 0 .. num_macro_definition_ribs {
+            self.ribs[ValueNS].pop();
+            self.label_ribs.pop();
+        }
+        self.ribs[ValueNS].pop();
+        if anonymous_module.is_some() {
+            self.ribs[TypeNS].pop();
+        }
+        debug!("(resolving block) leaving block");
     }
 
     fn resolve_expr(&mut self, expr: &Expr, parent: Option<&Expr>) {
