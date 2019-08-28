@@ -35,8 +35,10 @@ mod diagnostics;
 
 type Res = def::Res<NodeId>;
 
+type IdentMap<T> = FxHashMap<Ident, T>;
+
 /// Map from the name in a pattern to its binding mode.
-type BindingMap = FxHashMap<Ident, BindingInfo>;
+type BindingMap = IdentMap<BindingInfo>;
 
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
@@ -143,7 +145,7 @@ impl RibKind<'_> {
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
 crate struct Rib<'a, R = Res> {
-    pub bindings: FxHashMap<Ident, R>,
+    pub bindings: IdentMap<R>,
     pub kind: RibKind<'a>,
 }
 
@@ -1275,7 +1277,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                      pat_id: NodeId,
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
-                     bindings: &mut FxHashMap<Ident, NodeId>)
+                     bindings: &mut IdentMap<NodeId>)
                      -> Res {
         // Add the binding to the local ribs, if it
         // doesn't already exist in the bindings map. (We
@@ -1323,7 +1325,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         res
     }
 
-    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut FxHashMap<Ident, Res> {
+    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut IdentMap<Res> {
         &mut self.ribs[ns].last_mut().unwrap().bindings
     }
 
@@ -1332,7 +1334,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         pat: &Pat,
         pat_src: PatternSource,
         // Maps idents to the node ID for the outermost pattern that binds them.
-        bindings: &mut FxHashMap<Ident, NodeId>,
+        bindings: &mut IdentMap<NodeId>,
     ) {
         // Visit all direct subpatterns of this pattern.
         let outer_pat_id = pat.id;
