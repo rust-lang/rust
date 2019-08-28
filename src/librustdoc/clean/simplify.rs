@@ -118,7 +118,7 @@ pub fn merge_bounds(
                 });
             }
             PP::Parenthesized { ref mut output, .. } => match output {
-                Some(o) => assert!(o == rhs),
+                Some(o) => assert_eq!(o, rhs),
                 None => if *rhs != clean::Type::Tuple(Vec::new()) {
                     *output = Some(rhs.clone());
                 }
