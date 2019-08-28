@@ -280,7 +280,7 @@ impl_lint_pass!(OuterExpnDataPass => [OUTER_EXPN_EXPN_DATA]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        let (method_names, arg_lists) = method_calls(expr, 2);
+        let (method_names, arg_lists, spans) = method_calls(expr, 2);
         let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
         let method_names: Vec<&str> = method_names.iter().map(std::convert::AsRef::as_ref).collect();
         if_chain! {
@@ -294,10 +294,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OuterExpnDataPass {
                 span_lint_and_sugg(
                     cx,
                     OUTER_EXPN_EXPN_DATA,
-                    expr.span.trim_start(self_arg.span).unwrap_or(expr.span),
+                    spans[1].with_hi(expr.span.hi()),
                     "usage of `outer_expn().expn_data()`",
                     "try",
-                    ".outer_expn_data()".to_string(),
+                    "outer_expn_data()".to_string(),
                     Applicability::MachineApplicable,
                 );
             }
