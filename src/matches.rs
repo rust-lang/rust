@@ -278,6 +278,7 @@ fn block_can_be_flattened<'a>(
     match expr.node {
         ast::ExprKind::Block(ref block, _)
             if !is_unsafe_block(block)
+                && !context.inside_macro()
                 && is_simple_block(block, Some(&expr.attrs), context.source_map) =>
         {
             Some(&*block)
@@ -394,25 +395,26 @@ fn rewrite_match_body(
         }
 
         let indent_str = shape.indent.to_string_with_newline(context.config);
-        let (body_prefix, body_suffix) = if context.config.match_arm_blocks() {
-            let comma = if context.config.match_block_trailing_comma() {
-                ","
-            } else {
-                ""
-            };
-            let semicolon = if context.config.version() == Version::One {
-                ""
-            } else {
-                if semicolon_for_expr(context, body) {
-                    ";"
+        let (body_prefix, body_suffix) =
+            if context.config.match_arm_blocks() && !context.inside_macro() {
+                let comma = if context.config.match_block_trailing_comma() {
+                    ","
                 } else {
                     ""
-                }
+                };
+                let semicolon = if context.config.version() == Version::One {
+                    ""
+                } else {
+                    if semicolon_for_expr(context, body) {
+                        ";"
+                    } else {
+                        ""
+                    }
+                };
+                ("{", format!("{}{}}}{}", semicolon, indent_str, comma))
+            } else {
+                ("", String::from(","))
             };
-            ("{", format!("{}{}}}{}", semicolon, indent_str, comma))
-        } else {
-            ("", String::from(","))
-        };
 
         let block_sep = match context.config.control_brace_style() {
             ControlBraceStyle::AlwaysNextLine => format!("{}{}", alt_block_sep, body_prefix),
@@ -468,7 +470,9 @@ fn rewrite_match_body(
         next_line_body_shape.width,
     );
     match (orig_body, next_line_body) {
-        (Some(ref orig_str), Some(ref next_line_str)) if orig_str == next_line_str => {
+        (Some(ref orig_str), Some(ref next_line_str))
+            if orig_str == next_line_str || context.inside_macro() =>
+        {
             combine_orig_body(orig_str)
         }
         (Some(ref orig_str), Some(ref next_line_str))
