@@ -406,44 +406,32 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
             visit::walk_foreign_item(this, foreign_item);
         });
     }
-    fn visit_fn(&mut self,
-                function_kind: FnKind<'tcx>,
-                declaration: &'tcx FnDecl,
-                _: Span,
-                _: NodeId)
-    {
+    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, _: Span, _: NodeId) {
         debug!("(resolving function) entering function");
-        let rib_kind = match function_kind {
+        let rib_kind = match fn_kind {
             FnKind::ItemFn(..) => FnItemRibKind,
             FnKind::Method(..) | FnKind::Closure(_) => NormalRibKind,
         };
 
         // Create a value rib for the function.
-        self.ribs[ValueNS].push(Rib::new(rib_kind));
+        self.with_rib(ValueNS, rib_kind, |this| {
+            // Create a label rib for the function.
+            this.with_label_rib(rib_kind, |this| {
+                // Add each argument to the rib.
+                this.resolve_params(&declaration.inputs);
 
-        // Create a label rib for the function.
-        self.label_ribs.push(Rib::new(rib_kind));
+                visit::walk_fn_ret_ty(this, &declaration.output);
 
-        // Add each argument to the rib.
-        self.resolve_params(&declaration.inputs);
+                // Resolve the function body, potentially inside the body of an async closure
+                match fn_kind {
+                    FnKind::ItemFn(.., body) |
+                    FnKind::Method(.., body) => this.visit_block(body),
+                    FnKind::Closure(body) => this.visit_expr(body),
+                };
 
-        visit::walk_fn_ret_ty(self, &declaration.output);
-
-        // Resolve the function body, potentially inside the body of an async closure
-        match function_kind {
-            FnKind::ItemFn(.., body) |
-            FnKind::Method(.., body) => {
-                self.visit_block(body);
-            }
-            FnKind::Closure(body) => {
-                self.visit_expr(body);
-            }
-        };
-
-        debug!("(resolving function) leaving function");
-
-        self.label_ribs.pop();
-        self.ribs[ValueNS].pop();
+                debug!("(resolving function) leaving function");
+            })
+        });
     }
 
     fn visit_generics(&mut self, generics: &'tcx Generics) {
@@ -522,13 +510,14 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
         let parent_scope = ParentScope::module(graph_root);
+        let start_rib_kind = ModuleRibKind(graph_root);
         LateResolutionVisitor {
             r: resolver,
             parent_scope,
             ribs: PerNS {
-                value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-                type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-                macro_ns: vec![Rib::new(ModuleRibKind(graph_root))],
+                value_ns: vec![Rib::new(start_rib_kind)],
+                type_ns: vec![Rib::new(start_rib_kind)],
+                macro_ns: vec![Rib::new(start_rib_kind)],
             },
             label_ribs: Vec::new(),
             current_trait_ref: None,
@@ -582,23 +571,32 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope<F, T>(&mut self, id: NodeId, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
-    {
+    /// Do some `work` within a new innermost rib of the given `kind` in the given namespace (`ns`).
+    fn with_rib<T>(
+        &mut self,
+        ns: Namespace,
+        kind: RibKind<'a>,
+        work: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        self.ribs[ns].push(Rib::new(kind));
+        let ret = work(self);
+        self.ribs[ns].pop();
+        ret
+    }
+
+    fn with_scope<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         let id = self.r.definitions.local_def_id(id);
         let module = self.r.module_map.get(&id).cloned(); // clones a reference
         if let Some(module) = module {
             // Move down in the graph.
             let orig_module = replace(&mut self.parent_scope.module, module);
-            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
-            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
-
-            let ret = f(self);
-
-            self.parent_scope.module = orig_module;
-            self.ribs[ValueNS].pop();
-            self.ribs[TypeNS].pop();
-            ret
+            self.with_rib(ValueNS, ModuleRibKind(module), |this| {
+                this.with_rib(TypeNS, ModuleRibKind(module), |this| {
+                    let ret = f(this);
+                    this.parent_scope.module = orig_module;
+                    ret
+                })
+            })
         } else {
             f(self)
         }
@@ -802,7 +800,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     fn with_generic_param_rib<'c, F>(&'c mut self, generic_params: GenericParameters<'a, 'c>, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
+        where F: FnOnce(&mut Self)
     {
         debug!("with_generic_param_rib");
         match generic_params {
@@ -888,38 +886,24 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
     }
 
-    fn with_label_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
-        self.label_ribs.push(Rib::new(NormalRibKind));
+    fn with_label_rib(&mut self, kind: RibKind<'a>, f: impl FnOnce(&mut Self)) {
+        self.label_ribs.push(Rib::new(kind));
         f(self);
         self.label_ribs.pop();
     }
 
-    fn with_item_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
-        self.ribs[ValueNS].push(Rib::new(ItemRibKind));
-        self.ribs[TypeNS].push(Rib::new(ItemRibKind));
-        f(self);
-        self.ribs[TypeNS].pop();
-        self.ribs[ValueNS].pop();
+    fn with_item_rib(&mut self, f: impl FnOnce(&mut Self)) {
+        self.with_rib(ValueNS, ItemRibKind, |this| this.with_rib(TypeNS, ItemRibKind, f))
     }
 
-    fn with_constant_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
+    fn with_constant_rib(&mut self, f: impl FnOnce(&mut Self)) {
         debug!("with_constant_rib");
-        self.ribs[ValueNS].push(Rib::new(ConstantItemRibKind));
-        self.label_ribs.push(Rib::new(ConstantItemRibKind));
-        f(self);
-        self.label_ribs.pop();
-        self.ribs[ValueNS].pop();
+        self.with_rib(ValueNS, ConstantItemRibKind, |this| {
+            this.with_label_rib(ConstantItemRibKind, f);
+        });
     }
 
-    fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
-    {
+    fn with_current_self_type<T>(&mut self, self_type: &Ty, f: impl FnOnce(&mut Self) -> T) -> T {
         // Handle nested impls (inside fn bodies)
         let previous_value = replace(&mut self.current_self_type, Some(self_type.clone()));
         let result = f(self);
@@ -927,9 +911,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         result
     }
 
-    fn with_current_self_item<T, F>(&mut self, self_item: &Item, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
-    {
+    fn with_current_self_item<T>(&mut self, self_item: &Item, f: impl FnOnce(&mut Self) -> T) -> T {
         let previous_value = replace(&mut self.current_self_item, Some(self_item.id));
         let result = f(self);
         self.current_self_item = previous_value;
@@ -937,9 +919,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
-    fn with_trait_items<T, F>(&mut self, trait_items: &Vec<TraitItem>, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
-    {
+    fn with_trait_items<T>(
+        &mut self,
+        trait_items: &Vec<TraitItem>,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let trait_assoc_types = replace(
             &mut self.current_trait_assoc_types,
             trait_items.iter().filter_map(|item| match &item.node {
@@ -953,9 +937,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`).
-    fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>, Option<DefId>) -> T
-    {
+    fn with_optional_trait_ref<T>(
+        &mut self,
+        opt_trait_ref: Option<&TraitRef>,
+        f: impl FnOnce(&mut Self, Option<DefId>) -> T
+    ) -> T {
         let mut new_val = None;
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
@@ -990,27 +976,18 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         result
     }
 
-    fn with_self_rib<F>(&mut self, self_res: Res, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
+    fn with_self_rib_ns(&mut self, ns: Namespace, self_res: Res, f: impl FnOnce(&mut Self)) {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // Plain insert (no renaming, since types are not currently hygienic)
         self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
-        self.ribs[TypeNS].push(self_type_rib);
+        self.ribs[ns].push(self_type_rib);
         f(self);
-        self.ribs[TypeNS].pop();
+        self.ribs[ns].pop();
     }
 
-    fn with_self_struct_ctor_rib<F>(&mut self, impl_id: DefId, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
-        let self_res = Res::SelfCtor(impl_id);
-        let mut self_type_rib = Rib::new(NormalRibKind);
-        self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
-        self.ribs[ValueNS].push(self_type_rib);
-        f(self);
-        self.ribs[ValueNS].pop();
+    fn with_self_rib(&mut self, self_res: Res, f: impl FnOnce(&mut Self)) {
+        self.with_self_rib_ns(TypeNS, self_res, f)
     }
 
     fn resolve_implementation(&mut self,
@@ -1038,8 +1015,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                         this.visit_generics(generics);
                         // Resolve the items within the impl.
                         this.with_current_self_type(self_type, |this| {
-                            this.with_self_struct_ctor_rib(item_def_id, |this| {
-                                debug!("resolve_implementation with_self_struct_ctor_rib");
+                            this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
+                                debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                 for impl_item in impl_items {
                                     // We also need a new scope for the impl item type parameters.
                                     let generic_params = HasGenericParams(&impl_item.generics,
@@ -1231,16 +1208,13 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     fn resolve_arm(&mut self, arm: &Arm) {
-        self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-
-        self.resolve_pats(&arm.pats, PatternSource::Match);
-
-        if let Some(ref expr) = arm.guard {
-            self.visit_expr(expr)
-        }
-        self.visit_expr(&arm.body);
-
-        self.ribs[ValueNS].pop();
+        self.with_rib(ValueNS, NormalRibKind, |this| {
+            this.resolve_pats(&arm.pats, PatternSource::Match);
+            if let Some(ref expr) = arm.guard {
+                this.visit_expr(expr)
+            }
+            this.visit_expr(&arm.body);
+        });
     }
 
     /// Arising from `source`, resolve a sequence of patterns (top level or-patterns).
@@ -1333,7 +1307,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                         pat_src == PatternSource::Let => {
                 // `Variant1(a) | Variant2(a)`, ok
                 // Reuse definition from the first `a`.
-                res = self.ribs[ValueNS].last_mut().unwrap().bindings[&ident];
+                res = self.innermost_rib_bindings(ValueNS)[&ident];
             }
             Some(..) => {
                 span_bug!(ident.span, "two bindings with the same name from \
@@ -1343,12 +1317,16 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 // A completely fresh binding, add to the lists if it's valid.
                 if ident.name != kw::Invalid {
                     bindings.insert(ident, outer_pat_id);
-                    self.ribs[ValueNS].last_mut().unwrap().bindings.insert(ident, res);
+                    self.innermost_rib_bindings(ValueNS).insert(ident, res);
                 }
             }
         }
 
         res
+    }
+
+    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut FxHashMap<Ident, Res> {
+        &mut self.ribs[ns].last_mut().unwrap().bindings
     }
 
     fn resolve_pattern(&mut self,
@@ -1726,12 +1704,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         Some(result)
     }
 
-    fn with_resolved_label<F>(&mut self, label: Option<Label>, id: NodeId, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
+    fn with_resolved_label(&mut self, label: Option<Label>, id: NodeId, f: impl FnOnce(&mut Self)) {
         if let Some(label) = label {
             self.unused_labels.insert(id, label.ident.span);
-            self.with_label_rib(|this| {
+            self.with_label_rib(NormalRibKind, |this| {
                 let ident = label.ident.modern_and_legacy();
                 this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
                 f(this);
@@ -1805,33 +1781,30 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             }
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {
-                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                self.visit_expr(cond);
-                self.visit_block(then);
-                self.ribs[ValueNS].pop();
-
+                self.with_rib(ValueNS, NormalRibKind, |this| {
+                    this.visit_expr(cond);
+                    this.visit_block(then);
+                });
                 opt_else.as_ref().map(|expr| self.visit_expr(expr));
             }
 
             ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
 
-            ExprKind::While(ref subexpression, ref block, label) => {
+            ExprKind::While(ref cond, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
-                    this.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                    this.visit_expr(subexpression);
-                    this.visit_block(block);
-                    this.ribs[ValueNS].pop();
+                    this.with_rib(ValueNS, NormalRibKind, |this| {
+                        this.visit_expr(cond);
+                        this.visit_block(block);
+                    })
                 });
             }
 
-            ExprKind::ForLoop(ref pattern, ref subexpression, ref block, label) => {
-                self.visit_expr(subexpression);
-                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::For, &mut FxHashMap::default());
-
-                self.resolve_labeled_block(label, expr.id, block);
-
-                self.ribs[ValueNS].pop();
+            ExprKind::ForLoop(ref pat, ref iter_expr, ref block, label) => {
+                self.visit_expr(iter_expr);
+                self.with_rib(ValueNS, NormalRibKind, |this| {
+                    this.resolve_pattern(pat, PatternSource::For, &mut FxHashMap::default());
+                    this.resolve_labeled_block(label, expr.id, block);
+                });
             }
 
             ExprKind::Block(ref block, label) => self.resolve_labeled_block(label, block.id, block),
@@ -1864,21 +1837,21 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
             ExprKind::Closure(_, IsAsync::Async { .. }, _, ref fn_decl, ref body, _span) => {
-                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                // Resolve arguments:
-                self.resolve_params(&fn_decl.inputs);
-                // No need to resolve return type --
-                // the outer closure return type is `FunctionRetTy::Default`.
+                self.with_rib(ValueNS, NormalRibKind, |this| {
+                    // Resolve arguments:
+                    this.resolve_params(&fn_decl.inputs);
+                    // No need to resolve return type --
+                    // the outer closure return type is `FunctionRetTy::Default`.
 
-                // Now resolve the inner closure
-                {
-                    // No need to resolve arguments: the inner closure has none.
-                    // Resolve the return type:
-                    visit::walk_fn_ret_ty(self, &fn_decl.output);
-                    // Resolve the body
-                    self.visit_expr(body);
-                }
-                self.ribs[ValueNS].pop();
+                    // Now resolve the inner closure
+                    {
+                        // No need to resolve arguments: the inner closure has none.
+                        // Resolve the return type:
+                        visit::walk_fn_ret_ty(this, &fn_decl.output);
+                        // Resolve the body
+                        this.visit_expr(body);
+                    }
+                });
             }
             _ => {
                 visit::walk_expr(self, expr);
