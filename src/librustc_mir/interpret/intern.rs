@@ -116,6 +116,10 @@ fn intern_shallow<'rt, 'mir, 'tcx>(
         // But we still intern that as immutable as the memory cannot be changed once the
         // initial value was computed.
         // Constants are never mutable.
+        assert_eq!(
+            mutability, Mutability::Immutable,
+            "Something went very wrong: mutability requested for a constant"
+        );
         alloc.mutability = Mutability::Immutable;
     };
     // link the alloc id to the actual allocation
