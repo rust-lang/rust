@@ -1,8 +1,0 @@
-error[E0628]: generators cannot have explicit arguments
-  --> $DIR/no-arguments-on-generators.rs:4:15
-   |
-LL |     let gen = |start| {
-   |               ^^^^^^^
-
-error: aborting due to previous error
-

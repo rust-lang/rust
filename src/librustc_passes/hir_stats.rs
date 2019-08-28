@@ -94,9 +94,9 @@ impl<'k> StatCollector<'k> {
 }
 
 impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
-    fn visit_arg(&mut self, arg: &'v hir::Arg) {
-        self.record("Arg", Id::Node(arg.hir_id), arg);
-        hir_visit::walk_arg(self, arg)
+    fn visit_param(&mut self, param: &'v hir::Param) {
+        self.record("Param", Id::Node(param.hir_id), param);
+        hir_visit::walk_param(self, param)
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> hir_visit::NestedVisitorMap<'this, 'v> {

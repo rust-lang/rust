@@ -1383,8 +1383,8 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 
         // The arguments and `self` are parented to the fn.
         self.cx.var_parent = self.cx.parent.take();
-        for argument in &body.arguments {
-            self.visit_pat(&argument.pat);
+        for param in &body.params {
+            self.visit_pat(&param.pat);
         }
 
         // The body of the every fn is a root scope.

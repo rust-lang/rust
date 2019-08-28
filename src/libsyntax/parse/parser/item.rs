@@ -422,7 +422,7 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
                 self.bump();  // `(`
-                let kw_name = if let Ok(Some(_)) = self.parse_self_arg_with_attrs()
+                let kw_name = if let Ok(Some(_)) = self.parse_self_parameter_with_attrs()
                     .map_err(|mut e| e.cancel())
                 {
                     "method"
@@ -475,7 +475,7 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[&token::Gt]);
                 self.bump();  // `>`
                 let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
-                    if let Ok(Some(_)) = self.parse_self_arg_with_attrs()
+                    if let Ok(Some(_)) = self.parse_self_parameter_with_attrs()
                         .map_err(|mut e| e.cancel())
                     {
                         ("fn", "method", false)
@@ -861,7 +861,7 @@ impl<'a> Parser<'a> {
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
             let decl = self.parse_fn_decl_with_self(|p| {
-                p.parse_arg_general(true, false, |_| true)
+                p.parse_param_general(true, false, |_| true)
             })?;
             generics.where_clause = self.parse_where_clause()?;
             *at_end = true;
@@ -1040,7 +1040,7 @@ impl<'a> Parser<'a> {
 
                 // We don't allow argument names to be left off in edition 2018.
                 let is_name_required = p.token.span.rust_2018();
-                p.parse_arg_general(true, false, |_| is_name_required)
+                p.parse_param_general(true, false, |_| is_name_required)
             })?;
             generics.where_clause = self.parse_where_clause()?;
 
@@ -1291,7 +1291,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the argument list and result type of a function declaration.
     fn parse_fn_decl(&mut self, allow_c_variadic: bool) -> PResult<'a, P<FnDecl>> {
-        let (args, c_variadic) = self.parse_fn_args(true, allow_c_variadic)?;
+        let (args, c_variadic) = self.parse_fn_params(true, allow_c_variadic)?;
         let ret_ty = self.parse_ret_ty(true)?;
 
         Ok(P(FnDecl {

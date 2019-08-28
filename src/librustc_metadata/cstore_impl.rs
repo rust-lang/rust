@@ -164,7 +164,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     // a `fn` when encoding, so the dep-tracking wouldn't work.
     // This is only used by rustdoc anyway, which shouldn't have
     // incremental recompilation ever enabled.
-    fn_arg_names => { cdata.get_fn_arg_names(def_id.index) }
+    fn_arg_names => { cdata.get_fn_param_names(def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
     impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }

@@ -929,10 +929,10 @@ impl<'a> MethodDef<'a> {
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
                 let ident = Ident::with_dummy_span(kw::SelfLower).with_span_pos(trait_.span);
-                ast::Arg::from_self(ThinVec::default(), explicit_self, ident)
+                ast::Param::from_self(ThinVec::default(), explicit_self, ident)
             });
             let nonself_args = arg_types.into_iter()
-                .map(|(name, ty)| cx.arg(trait_.span, name, ty));
+                .map(|(name, ty)| cx.param(trait_.span, name, ty));
             self_args.into_iter().chain(nonself_args).collect()
         };
 

@@ -418,8 +418,8 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
     to_string(|s| s.print_attribute(attr))
 }
 
-pub fn arg_to_string(arg: &ast::Arg) -> String {
-    to_string(|s| s.print_arg(arg, false))
+pub fn param_to_string(arg: &ast::Param) -> String {
+    to_string(|s| s.print_param(arg, false))
 }
 
 fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
@@ -2101,7 +2101,7 @@ impl<'a> State<'a> {
                 self.print_asyncness(asyncness);
                 self.print_capture_clause(capture_clause);
 
-                self.print_fn_block_args(decl);
+                self.print_fn_block_params(decl);
                 self.s.space();
                 self.print_expr(body);
                 self.end(); // need to close a box
@@ -2536,21 +2536,21 @@ impl<'a> State<'a> {
             self.print_ident(name);
         }
         self.print_generic_params(&generics.params);
-        self.print_fn_args_and_ret(decl);
+        self.print_fn_params_and_ret(decl);
         self.print_where_clause(&generics.where_clause)
     }
 
-    crate fn print_fn_args_and_ret(&mut self, decl: &ast::FnDecl) {
+    crate fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl) {
         self.popen();
-        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, false));
+        self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, false));
         self.pclose();
 
         self.print_fn_output(decl)
     }
 
-    crate fn print_fn_block_args(&mut self, decl: &ast::FnDecl) {
+    crate fn print_fn_block_params(&mut self, decl: &ast::FnDecl) {
         self.s.word("|");
-        self.commasep(Inconsistent, &decl.inputs, |s, arg| s.print_arg(arg, true));
+        self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, true));
         self.s.word("|");
 
         if let ast::FunctionRetTy::Default(..) = decl.output {
@@ -2759,7 +2759,7 @@ impl<'a> State<'a> {
         self.print_type(&mt.ty)
     }
 
-    crate fn print_arg(&mut self, input: &ast::Arg, is_closure: bool) {
+    crate fn print_param(&mut self, input: &ast::Param, is_closure: bool) {
         self.ibox(INDENT_UNIT);
 
         self.print_outer_attributes_inline(&input.attrs);

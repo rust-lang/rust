@@ -206,7 +206,7 @@ macro_rules! declare_lint_pass {
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt, [$hir:tt]) => (
         $macro!($args, [$hir], [
-            fn check_arg(a: &$hir hir::Arg);
+            fn check_param(a: &$hir hir::Param);
             fn check_body(a: &$hir hir::Body);
             fn check_body_post(a: &$hir hir::Body);
             fn check_name(a: Span, b: ast::Name);
@@ -349,7 +349,7 @@ macro_rules! declare_combined_late_lint_pass {
 macro_rules! early_lint_methods {
     ($macro:path, $args:tt) => (
         $macro!($args, [
-            fn check_arg(a: &ast::Arg);
+            fn check_param(a: &ast::Param);
             fn check_ident(a: ast::Ident);
             fn check_crate(a: &ast::Crate);
             fn check_crate_post(a: &ast::Crate);
@@ -792,9 +792,9 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
         intravisit::NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_arg(&mut self, arg: &'tcx hir::Arg) {
-        self.with_lint_attrs(arg.hir_id, &arg.attrs, |builder| {
-            intravisit::walk_arg(builder, arg);
+    fn visit_param(&mut self, param: &'tcx hir::Param) {
+        self.with_lint_attrs(param.hir_id, &param.attrs, |builder| {
+            intravisit::walk_param(builder, param);
         });
     }
 

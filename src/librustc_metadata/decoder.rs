@@ -1135,14 +1135,14 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_fn_arg_names(&self, id: DefIndex) -> Vec<ast::Name> {
-        let arg_names = match self.entry(id).kind {
+    pub fn get_fn_param_names(&self, id: DefIndex) -> Vec<ast::Name> {
+        let param_names = match self.entry(id).kind {
             EntryKind::Fn(data) |
-            EntryKind::ForeignFn(data) => data.decode(self).arg_names,
-            EntryKind::Method(data) => data.decode(self).fn_data.arg_names,
+            EntryKind::ForeignFn(data) => data.decode(self).param_names,
+            EntryKind::Method(data) => data.decode(self).fn_data.param_names,
             _ => Lazy::empty(),
         };
-        arg_names.decode(self).collect()
+        param_names.decode(self).collect()
     }
 
     pub fn exported_symbols(

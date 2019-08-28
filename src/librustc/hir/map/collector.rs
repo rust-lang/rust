@@ -363,11 +363,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.currently_in_body = prev_in_body;
     }
 
-    fn visit_arg(&mut self, arg: &'hir Arg) {
-        let node = Node::Arg(arg);
-        self.insert(arg.pat.span, arg.hir_id, node);
-        self.with_parent(arg.hir_id, |this| {
-            intravisit::walk_arg(this, arg);
+    fn visit_param(&mut self, param: &'hir Param) {
+        let node = Node::Param(param);
+        self.insert(param.pat.span, param.hir_id, node);
+        self.with_parent(param.hir_id, |this| {
+            intravisit::walk_param(this, param);
         });
     }
 

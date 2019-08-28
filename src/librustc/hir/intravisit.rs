@@ -210,8 +210,8 @@ pub trait Visitor<'v> : Sized {
         }
     }
 
-    fn visit_arg(&mut self, arg: &'v Arg) {
-        walk_arg(self, arg)
+    fn visit_param(&mut self, param: &'v Param) {
+        walk_param(self, param)
     }
 
     /// Visits the top-level item and (optionally) nested items / impl items. See
@@ -400,7 +400,7 @@ pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod, mod_hir_id
 }
 
 pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body) {
-    walk_list!(visitor, visit_arg, &body.arguments);
+    walk_list!(visitor, visit_param, &body.params);
     visitor.visit_expr(&body.value);
 }
 
@@ -454,10 +454,10 @@ pub fn walk_trait_ref<'v, V>(visitor: &mut V, trait_ref: &'v TraitRef)
     visitor.visit_path(&trait_ref.path, trait_ref.hir_ref_id)
 }
 
-pub fn walk_arg<'v, V: Visitor<'v>>(visitor: &mut V, arg: &'v Arg) {
-    visitor.visit_id(arg.hir_id);
-    visitor.visit_pat(&arg.pat);
-    walk_list!(visitor, visit_attribute, &arg.attrs);
+pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param) {
+    visitor.visit_id(param.hir_id);
+    visitor.visit_pat(&param.pat);
+    walk_list!(visitor, visit_attribute, &param.attrs);
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {

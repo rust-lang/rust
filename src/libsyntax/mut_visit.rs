@@ -225,8 +225,8 @@ pub trait MutVisitor: Sized {
         noop_visit_attribute(at, self);
     }
 
-    fn flat_map_arg(&mut self, arg: Arg) -> SmallVec<[Arg; 1]> {
-        noop_flat_map_arg(arg, self)
+    fn flat_map_param(&mut self, param: Param) -> SmallVec<[Param; 1]> {
+        noop_flat_map_param(param, self)
     }
 
     fn visit_generics(&mut self, generics: &mut Generics) {
@@ -587,14 +587,14 @@ pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_flat_map_arg<T: MutVisitor>(mut arg: Arg, vis: &mut T) -> SmallVec<[Arg; 1]> {
-    let Arg { attrs, id, pat, span, ty } = &mut arg;
+pub fn noop_flat_map_param<T: MutVisitor>(mut param: Param, vis: &mut T) -> SmallVec<[Param; 1]> {
+    let Param { attrs, id, pat, span, ty } = &mut param;
     vis.visit_id(id);
     visit_thin_attrs(attrs, vis);
     vis.visit_pat(pat);
     vis.visit_span(span);
     vis.visit_ty(ty);
-    smallvec![arg]
+    smallvec![param]
 }
 
 pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
@@ -720,7 +720,7 @@ pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T)
 
 pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
     let FnDecl { inputs, output, c_variadic: _ } = decl.deref_mut();
-    inputs.flat_map_in_place(|arg| vis.flat_map_arg(arg));
+    inputs.flat_map_in_place(|param| vis.flat_map_param(param));
     match output {
         FunctionRetTy::Default(span) => vis.visit_span(span),
         FunctionRetTy::Ty(ty) => vis.visit_ty(ty),

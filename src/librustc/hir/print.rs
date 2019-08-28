@@ -33,7 +33,7 @@ pub enum Nested {
     TraitItem(hir::TraitItemId),
     ImplItem(hir::ImplItemId),
     Body(hir::BodyId),
-    BodyArgPat(hir::BodyId, usize)
+    BodyParamPat(hir::BodyId, usize)
 }
 
 pub trait PpAnn {
@@ -62,7 +62,7 @@ impl PpAnn for hir::Crate {
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
-            Nested::BodyArgPat(id, i) => state.print_pat(&self.body(id).arguments[i].pat)
+            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat)
         }
     }
 }
@@ -318,7 +318,7 @@ impl<'a> State<'a> {
             }
             hir::TyKind::BareFn(ref f) => {
                 self.print_ty_fn(f.abi, f.unsafety, &f.decl, None, &f.generic_params,
-                                 &f.arg_names[..]);
+                                 &f.param_names[..]);
             }
             hir::TyKind::Def(..) => {},
             hir::TyKind::Path(ref qpath) => {
@@ -1290,7 +1290,7 @@ impl<'a> State<'a> {
             hir::ExprKind::Closure(capture_clause, ref decl, body, _fn_decl_span, _gen) => {
                 self.print_capture_clause(capture_clause);
 
-                self.print_closure_args(&decl, body);
+                self.print_closure_params(&decl, body);
                 self.s.space();
 
                 // this is a bare expression
@@ -1775,7 +1775,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Pat(pat))
     }
 
-    pub fn print_arg(&mut self, arg: &hir::Arg) {
+    pub fn print_param(&mut self, arg: &hir::Param) {
         self.print_outer_attributes(&arg.attrs);
         self.print_pat(&arg.pat);
     }
@@ -1864,7 +1864,7 @@ impl<'a> State<'a> {
                 s.s.word(":");
                 s.s.space();
             } else if let Some(body_id) = body_id {
-                s.ann.nested(s, Nested::BodyArgPat(body_id, i));
+                s.ann.nested(s, Nested::BodyParamPat(body_id, i));
                 s.s.word(":");
                 s.s.space();
             }
@@ -1881,13 +1881,13 @@ impl<'a> State<'a> {
         self.print_where_clause(&generics.where_clause)
     }
 
-    fn print_closure_args(&mut self, decl: &hir::FnDecl, body_id: hir::BodyId) {
+    fn print_closure_params(&mut self, decl: &hir::FnDecl, body_id: hir::BodyId) {
         self.s.word("|");
         let mut i = 0;
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(INDENT_UNIT);
 
-            s.ann.nested(s, Nested::BodyArgPat(body_id, i));
+            s.ann.nested(s, Nested::BodyParamPat(body_id, i));
             i += 1;
 
             if let hir::TyKind::Infer = ty.node {

@@ -1,5 +1,5 @@
-error[E0708]: `async` non-`move` closures with arguments are not currently supported
-  --> $DIR/no-args-non-move-async-closure.rs:6:13
+error[E0708]: `async` non-`move` closures with parameters are not currently supported
+  --> $DIR/no-params-non-move-async-closure.rs:6:13
    |
 LL |     let _ = async |x: u8| {};
    |             ^^^^^^^^^^^^^

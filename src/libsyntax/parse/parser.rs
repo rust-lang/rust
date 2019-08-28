@@ -10,7 +10,7 @@ pub use path::PathStyle;
 mod stmt;
 mod generics;
 
-use crate::ast::{self, AttrStyle, Attribute, Arg, BindingMode, StrStyle, SelfKind};
+use crate::ast::{self, AttrStyle, Attribute, Param, BindingMode, StrStyle, SelfKind};
 use crate::ast::{FnDecl, Ident, IsAsync, MacDelimiter, Mutability, TyKind};
 use crate::ast::{Visibility, VisibilityKind, Unsafety, CrateSugar};
 use crate::source_map::{self, respan};
@@ -971,27 +971,27 @@ impl<'a> Parser<'a> {
 
     /// Skips unexpected attributes and doc comments in this position and emits an appropriate
     /// error.
-    /// This version of parse arg doesn't necessarily require identifier names.
-    fn parse_arg_general(
+    /// This version of parse param doesn't necessarily require identifier names.
+    fn parse_param_general(
         &mut self,
         is_trait_item: bool,
         allow_c_variadic: bool,
         is_name_required: impl Fn(&token::Token) -> bool,
-    ) -> PResult<'a, Arg> {
+    ) -> PResult<'a, Param> {
         let lo = self.token.span;
-        let attrs = self.parse_arg_attributes()?;
-        if let Some(mut arg) = self.parse_self_arg()? {
-            arg.attrs = attrs.into();
-            return self.recover_bad_self_arg(arg, is_trait_item);
+        let attrs = self.parse_param_attributes()?;
+        if let Some(mut param) = self.parse_self_param()? {
+            param.attrs = attrs.into();
+            return self.recover_bad_self_param(param, is_trait_item);
         }
 
         let is_name_required = is_name_required(&self.token);
         let (pat, ty) = if is_name_required || self.is_named_argument() {
-            debug!("parse_arg_general parse_pat (is_name_required:{})", is_name_required);
+            debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
 
             let pat = self.parse_fn_param_pat()?;
             if let Err(mut err) = self.expect(&token::Colon) {
-                if let Some(ident) = self.argument_without_type(
+                if let Some(ident) = self.parameter_without_type(
                     &mut err,
                     pat,
                     is_name_required,
@@ -1004,12 +1004,12 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            self.eat_incorrect_doc_comment_for_arg_type();
+            self.eat_incorrect_doc_comment_for_param_type();
             (pat, self.parse_ty_common(true, true, allow_c_variadic)?)
         } else {
-            debug!("parse_arg_general ident_to_pat");
+            debug!("parse_param_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
-            self.eat_incorrect_doc_comment_for_arg_type();
+            self.eat_incorrect_doc_comment_for_param_type();
             let mut ty = self.parse_ty_common(true, true, allow_c_variadic);
             if ty.is_ok() && self.token != token::Comma &&
                self.token != token::CloseDelim(token::Paren) {
@@ -1040,7 +1040,7 @@ impl<'a> Parser<'a> {
 
         let span = lo.to(self.token.span);
 
-        Ok(Arg { attrs: attrs.into(), id: ast::DUMMY_NODE_ID, pat, span, ty })
+        Ok(Param { attrs: attrs.into(), id: ast::DUMMY_NODE_ID, pat, span, ty })
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -1186,26 +1186,26 @@ impl<'a> Parser<'a> {
 
     }
 
-    fn parse_fn_args(&mut self, named_args: bool, allow_c_variadic: bool)
-                     -> PResult<'a, (Vec<Arg> , bool)> {
+    fn parse_fn_params(&mut self, named_params: bool, allow_c_variadic: bool)
+                     -> PResult<'a, (Vec<Param> , bool)> {
         let sp = self.token.span;
         let mut c_variadic = false;
-        let (args, _): (Vec<Option<Arg>>, _) = self.parse_paren_comma_seq(|p| {
+        let (params, _): (Vec<Option<Param>>, _) = self.parse_paren_comma_seq(|p| {
             let do_not_enforce_named_arguments_for_c_variadic =
                 |token: &token::Token| -> bool {
                     if token == &token::DotDotDot {
                         false
                     } else {
-                        named_args
+                        named_params
                     }
                 };
-            match p.parse_arg_general(
+            match p.parse_param_general(
                 false,
                 allow_c_variadic,
                 do_not_enforce_named_arguments_for_c_variadic
             ) {
-                Ok(arg) => {
-                    if let TyKind::CVarArgs = arg.ty.node {
+                Ok(param) => {
+                    if let TyKind::CVarArgs = param.ty.node {
                         c_variadic = true;
                         if p.token != token::CloseDelim(token::Paren) {
                             let span = p.token.span;
@@ -1213,10 +1213,10 @@ impl<'a> Parser<'a> {
                                 "`...` must be the last argument of a C-variadic function");
                             Ok(None)
                         } else {
-                            Ok(Some(arg))
+                            Ok(Some(param))
                         }
                     } else {
-                        Ok(Some(arg))
+                        Ok(Some(param))
                     }
                 },
                 Err(mut e) => {
@@ -1231,20 +1231,20 @@ impl<'a> Parser<'a> {
             }
         })?;
 
-        let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
+        let params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
 
-        if c_variadic && args.len() <= 1 {
+        if c_variadic && params.len() <= 1 {
             self.span_err(sp,
                           "C-variadic function must be declared with at least one named argument");
         }
 
-        Ok((args, c_variadic))
+        Ok((params, c_variadic))
     }
 
-    /// Returns the parsed optional self argument and whether a self shortcut was used.
+    /// Returns the parsed optional self parameter and whether a self shortcut was used.
     ///
-    /// See `parse_self_arg_with_attrs` to collect attributes.
-    fn parse_self_arg(&mut self) -> PResult<'a, Option<Arg>> {
+    /// See `parse_self_param_with_attrs` to collect attributes.
+    fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         let expect_ident = |this: &mut Self| match this.token.kind {
             // Preserve hygienic context.
             token::Ident(name, _) =>
@@ -1349,49 +1349,51 @@ impl<'a> Parser<'a> {
         };
 
         let eself = source_map::respan(eself_lo.to(eself_hi), eself);
-        Ok(Some(Arg::from_self(ThinVec::default(), eself, eself_ident)))
+        Ok(Some(Param::from_self(ThinVec::default(), eself, eself_ident)))
     }
 
-    /// Returns the parsed optional self argument with attributes and whether a self
+    /// Returns the parsed optional self parameter with attributes and whether a self
     /// shortcut was used.
-    fn parse_self_arg_with_attrs(&mut self) -> PResult<'a, Option<Arg>> {
-        let attrs = self.parse_arg_attributes()?;
-        let arg_opt = self.parse_self_arg()?;
-        Ok(arg_opt.map(|mut arg| {
-            arg.attrs = attrs.into();
-            arg
+    fn parse_self_parameter_with_attrs(&mut self) -> PResult<'a, Option<Param>> {
+        let attrs = self.parse_param_attributes()?;
+        let param_opt = self.parse_self_param()?;
+        Ok(param_opt.map(|mut param| {
+            param.attrs = attrs.into();
+            param
         }))
     }
 
     /// Parses the parameter list and result type of a function that may have a `self` parameter.
-    fn parse_fn_decl_with_self<F>(&mut self, parse_arg_fn: F) -> PResult<'a, P<FnDecl>>
-        where F: FnMut(&mut Parser<'a>) -> PResult<'a,  Arg>,
+    fn parse_fn_decl_with_self<F>(&mut self, parse_param_fn: F) -> PResult<'a, P<FnDecl>>
+        where F: FnMut(&mut Parser<'a>) -> PResult<'a,  Param>,
     {
         self.expect(&token::OpenDelim(token::Paren))?;
 
         // Parse optional self argument.
-        let self_arg = self.parse_self_arg_with_attrs()?;
+        let self_param = self.parse_self_parameter_with_attrs()?;
 
         // Parse the rest of the function parameter list.
         let sep = SeqSep::trailing_allowed(token::Comma);
-        let (mut fn_inputs, recovered) = if let Some(self_arg) = self_arg {
+        let (mut fn_inputs, recovered) = if let Some(self_param) = self_param {
             if self.check(&token::CloseDelim(token::Paren)) {
-                (vec![self_arg], false)
+                (vec![self_param], false)
             } else if self.eat(&token::Comma) {
-                let mut fn_inputs = vec![self_arg];
+                let mut fn_inputs = vec![self_param];
                 let (mut input, _, recovered) = self.parse_seq_to_before_end(
-                    &token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
+                    &token::CloseDelim(token::Paren), sep, parse_param_fn)?;
                 fn_inputs.append(&mut input);
                 (fn_inputs, recovered)
             } else {
                 match self.expect_one_of(&[], &[]) {
                     Err(err) => return Err(err),
-                    Ok(recovered) => (vec![self_arg], recovered),
+                    Ok(recovered) => (vec![self_param], recovered),
                 }
             }
         } else {
             let (input, _, recovered) =
-                self.parse_seq_to_before_end(&token::CloseDelim(token::Paren), sep, parse_arg_fn)?;
+                self.parse_seq_to_before_end(&token::CloseDelim(token::Paren),
+                                             sep,
+                                             parse_param_fn)?;
             (input, recovered)
         };
 
@@ -1399,8 +1401,8 @@ impl<'a> Parser<'a> {
             // Parse closing paren and return type.
             self.expect(&token::CloseDelim(token::Paren))?;
         }
-        // Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
-        self.deduplicate_recovered_arg_names(&mut fn_inputs);
+        // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
+        self.deduplicate_recovered_params_names(&mut fn_inputs);
 
         Ok(P(FnDecl {
             inputs: fn_inputs,

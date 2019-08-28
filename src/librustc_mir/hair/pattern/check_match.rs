@@ -91,9 +91,9 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     fn visit_body(&mut self, body: &'tcx hir::Body) {
         intravisit::walk_body(self, body);
 
-        for arg in &body.arguments {
-            self.check_irrefutable(&arg.pat, "function argument");
-            self.check_patterns(false, slice::from_ref(&arg.pat));
+        for param in &body.params {
+            self.check_irrefutable(&param.pat, "function argument");
+            self.check_patterns(false, slice::from_ref(&param.pat));
         }
     }
 }

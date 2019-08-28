@@ -2095,7 +2095,7 @@ impl<'a> Clean<Arguments> for (&'a [hir::Ty], hir::BodyId) {
         Arguments {
             values: self.0.iter().enumerate().map(|(i, ty)| {
                 Argument {
-                    name: name_from_pat(&body.arguments[i].pat),
+                    name: name_from_pat(&body.params[i].pat),
                     type_: ty.clean(cx),
                 }
             }).collect()
@@ -3779,7 +3779,7 @@ pub struct BareFunctionDecl {
 impl Clean<BareFunctionDecl> for hir::BareFnTy {
     fn clean(&self, cx: &DocContext<'_>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, || {
-            (self.generic_params.clean(cx), (&*self.decl, &self.arg_names[..]).clean(cx))
+            (self.generic_params.clean(cx), (&*self.decl, &self.param_names[..]).clean(cx))
         });
         BareFunctionDecl {
             unsafety: self.unsafety,

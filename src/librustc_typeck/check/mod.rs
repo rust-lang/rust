@@ -1102,19 +1102,19 @@ fn check_fn<'a, 'tcx>(
     GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id, }.visit_body(body);
 
     // Add formal parameters.
-    for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
+    for (param_ty, param) in fn_sig.inputs().iter().zip(&body.params) {
         // Check the pattern.
-        fcx.check_pat_top(&arg.pat, arg_ty, None);
+        fcx.check_pat_top(&param.pat, param_ty, None);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if arg.pat.simple_ident().is_none() && !fcx.tcx.features().unsized_locals {
-            fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::SizedArgumentType);
+        if param.pat.simple_ident().is_none() && !fcx.tcx.features().unsized_locals {
+            fcx.require_type_is_sized(param_ty, decl.output.span(), traits::SizedArgumentType);
         }
 
-        fcx.write_ty(arg.hir_id, arg_ty);
+        fcx.write_ty(param.hir_id, param_ty);
     }
 
     inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
@@ -3952,8 +3952,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ..
                 })) => {
                     let body = hir.body(*body_id);
-                    sugg_call = body.arguments.iter()
-                        .map(|arg| match &arg.pat.node {
+                    sugg_call = body.params.iter()
+                        .map(|param| match &param.pat.node {
                             hir::PatKind::Binding(_, _, ident, None)
                             if ident.name != kw::SelfLower => ident.to_string(),
                             _ => "_".to_string(),
@@ -3970,8 +3970,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(*closure_span, "closure defined here");
                     msg = "call this closure";
                     let body = hir.body(*body_id);
-                    sugg_call = body.arguments.iter()
-                        .map(|arg| match &arg.pat.node {
+                    sugg_call = body.params.iter()
+                        .map(|param| match &param.pat.node {
                             hir::PatKind::Binding(_, _, ident, None)
                             if ident.name != kw::SelfLower => ident.to_string(),
                             _ => "_".to_string(),
