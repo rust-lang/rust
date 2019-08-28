@@ -326,12 +326,13 @@ fn mk_decls(
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],
 ) -> P<ast::Item> {
-    let span = cx.resolver.span_for_ast_pass(
+    let expn_id = cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::ProcMacroHarness,
         &[sym::rustc_attrs, sym::proc_macro_internals],
         None,
     );
+    let span = DUMMY_SP.with_def_site_ctxt(expn_id);
 
     let proc_macro = Ident::new(sym::proc_macro, span);
     let krate = cx.item(span,

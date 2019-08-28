@@ -17,7 +17,7 @@ use syntax::edition::Edition;
 use syntax::ext::base::{self, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
-use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind, Transparency};
+use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
 use syntax::feature_gate::GateIssue;
@@ -131,23 +131,20 @@ impl<'a> base::Resolver for Resolver<'a> {
     // Create a Span with modern hygiene with a definition site of the provided
     // module, or a fake empty `#[no_implicit_prelude]` module if no module is
     // provided.
-    fn span_for_ast_pass(
+    fn expansion_for_ast_pass(
         &mut self,
-        base_span: Span,
+        call_site: Span,
         pass: AstPass,
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
-    ) -> Span {
-        let span = base_span.fresh_expansion_with_transparency(
-            ExpnData::allow_unstable(
-                ExpnKind::AstPass(pass),
-                base_span,
-                self.session.edition(),
-                features.into(),
-            ),
-            Transparency::Opaque,
-        );
-        let expn_id = span.ctxt().outer_expn();
+    ) -> ExpnId {
+        let expn_id = ExpnId::fresh(Some(ExpnData::allow_unstable(
+            ExpnKind::AstPass(pass),
+            call_site,
+            self.session.edition(),
+            features.into(),
+        )));
+
         let parent_scope = if let Some(module_id) = parent_module_id {
             let parent_def_id = self.definitions.local_def_id(module_id);
             self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id);
@@ -160,7 +157,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.empty_module
         };
         self.ast_transform_scopes.insert(expn_id, parent_scope);
-        span
+        expn_id
     }
 
     fn resolve_imports(&mut self) {

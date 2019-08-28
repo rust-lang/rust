@@ -3,7 +3,7 @@ use crate::attr::{HasAttrs, Stability, Deprecation};
 use crate::source_map::SourceMap;
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
-use crate::ext::hygiene::{ExpnId, Transparency};
+use crate::ext::hygiene::ExpnId;
 use crate::mut_visit::{self, MutVisitor};
 use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
@@ -658,13 +658,13 @@ pub trait Resolver {
                                             extra_placeholders: &[NodeId]);
     fn register_builtin_macro(&mut self, ident: ast::Ident, ext: SyntaxExtension);
 
-    fn span_for_ast_pass(
+    fn expansion_for_ast_pass(
         &mut self,
-        span: Span,
+        call_site: Span,
         pass: AstPass,
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
-    ) -> Span;
+    ) -> ExpnId;
 
     fn resolve_imports(&mut self);
 
@@ -750,20 +750,20 @@ impl<'a> ExtCtxt<'a> {
     /// Equivalent of `Span::def_site` from the proc macro API,
     /// except that the location is taken from the span passed as an argument.
     pub fn with_def_site_ctxt(&self, span: Span) -> Span {
-        span.with_ctxt_from_mark(self.current_expansion.id, Transparency::Opaque)
+        span.with_def_site_ctxt(self.current_expansion.id)
     }
 
     /// Equivalent of `Span::call_site` from the proc macro API,
     /// except that the location is taken from the span passed as an argument.
     pub fn with_call_site_ctxt(&self, span: Span) -> Span {
-        span.with_ctxt_from_mark(self.current_expansion.id, Transparency::Transparent)
+        span.with_call_site_ctxt(self.current_expansion.id)
     }
 
     /// Span with a context reproducing `macro_rules` hygiene (hygienic locals, unhygienic items).
     /// FIXME: This should be eventually replaced either with `with_def_site_ctxt` (preferably),
     /// or with `with_call_site_ctxt` (where necessary).
     pub fn with_legacy_ctxt(&self, span: Span) -> Span {
-        span.with_ctxt_from_mark(self.current_expansion.id, Transparency::SemiTransparent)
+        span.with_legacy_ctxt(self.current_expansion.id)
     }
 
     /// Returns span for the macro which originally caused the current expansion to happen.

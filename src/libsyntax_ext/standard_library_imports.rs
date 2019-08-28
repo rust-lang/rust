@@ -28,19 +28,21 @@ pub fn inject(
         &[sym::std]
     };
 
-    let span = resolver.span_for_ast_pass(
+    let expn_id = resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::StdImports,
         &[sym::prelude_import],
         None,
     );
+    let span = DUMMY_SP.with_def_site_ctxt(expn_id);
+    let call_site = DUMMY_SP.with_call_site_ctxt(expn_id);
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &orig_name_sym in names.iter().rev() {
         let (rename, orig_name) = if rust_2018 {
             (Ident::new(kw::Underscore, span), Some(orig_name_sym))
         } else {
-            (Ident::with_dummy_span(orig_name_sym), None)
+            (Ident::new(orig_name_sym, call_site), None)
         };
         krate.module.items.insert(0, P(ast::Item {
             attrs: vec![attr::mk_attr_outer(
@@ -65,7 +67,7 @@ pub fn inject(
             .collect()
     } else {
         [kw::PathRoot, name, sym::prelude, sym::v1].iter()
-            .map(|symbol| ast::PathSegment::from_ident(ast::Ident::with_dummy_span(*symbol)))
+            .map(|symbol| ast::PathSegment::from_ident(ast::Ident::new(*symbol, call_site)))
             .collect()
     };
 

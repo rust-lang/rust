@@ -97,15 +97,16 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
                 };
                 // Create an identifier that will hygienically resolve the test
                 // case name, even in another module.
-                let sp = self.cx.ext_cx.resolver.span_for_ast_pass(
+                let expn_id = self.cx.ext_cx.resolver.expansion_for_ast_pass(
                     module.inner,
                     AstPass::TestHarness,
                     &[],
                     Some(parent),
                 );
-                let expn = sp.ctxt().outer_expn();
                 for test in &mut tests {
-                    test.ident.span = test.ident.span.apply_mark(expn, Transparency::Opaque);
+                    // See the comment on `mk_main` for why we're using
+                    // `apply_mark` directly.
+                    test.ident.span = test.ident.span.apply_mark(expn_id, Transparency::Opaque);
                 }
                 self.cx.test_cases.extend(tests);
             }
@@ -207,12 +208,13 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     //            #![main]
     //            test::test_main_static(&[..tests]);
     //        }
-    let sp = cx.ext_cx.resolver.span_for_ast_pass(
+    let expn_id = cx.ext_cx.resolver.expansion_for_ast_pass(
         DUMMY_SP,
         AstPass::TestHarness,
         &[sym::main, sym::test, sym::rustc_attrs],
         None,
     );
+    let sp = DUMMY_SP.with_def_site_ctxt(expn_id);
     let ecx = &cx.ext_cx;
     let test_id = Ident::new(sym::test, sp);
 

@@ -360,7 +360,7 @@ impl SyntaxContext {
     }
 
     /// Extend a syntax context with a given expansion and transparency.
-    pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
+    crate fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
         HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
     }
 
