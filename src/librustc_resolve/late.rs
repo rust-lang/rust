@@ -19,6 +19,7 @@ use rustc::hir::def::Namespace::{self, *};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::TraitCandidate;
 use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use smallvec::{smallvec, SmallVec};
 use syntax::{unwrap_or, walk_list};
 use syntax::ast::*;
@@ -408,7 +409,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
             visit::walk_foreign_item(this, foreign_item);
         });
     }
-    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, _: Span, _: NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, _: Span, id: NodeId) {
         debug!("(resolving function) entering function");
         let rib_kind = match fn_kind {
             FnKind::ItemFn(..) => FnItemRibKind,
@@ -420,7 +421,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
             // Create a label rib for the function.
             this.with_label_rib(rib_kind, |this| {
                 // Add each argument to the rib.
-                this.resolve_params(&declaration.inputs);
+                this.resolve_params(&declaration.inputs, id);
 
                 visit::walk_fn_ret_ty(this, &declaration.output);
 
@@ -1108,11 +1109,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
     }
 
-    fn resolve_params(&mut self, params: &[Arg]) {
-        let mut bindings_list = FxHashMap::default();
-        for param in params {
-            self.resolve_pattern(&param.pat, PatternSource::FnParam, &mut bindings_list);
-            self.visit_ty(&param.ty);
+    fn resolve_params(&mut self, params: &[Param], id: NodeId) {
+        let mut bindings = FxIndexMap::default();
+        for Param { pat, ty, .. } in params {
+            self.resolve_pattern(pat, PatternSource::FnParam, &mut smallvec![id], &mut bindings);
+            self.visit_ty(ty);
             debug!("(resolving function / closure) recorded parameter");
         }
     }
@@ -1125,7 +1126,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         walk_list!(self, visit_expr, &local.init);
 
         // Resolve the pattern.
-        self.resolve_pattern(&local.pat, PatternSource::Let, &mut FxHashMap::default());
+        self.resolve_pattern_top(&local.pat, PatternSource::Let);
     }
 
     // build a map from pattern identifiers to binding-info's.
@@ -1219,9 +1220,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     /// Arising from `source`, resolve a sequence of patterns (top level or-patterns).
     fn resolve_pats(&mut self, pats: &[P<Pat>], source: PatternSource) {
-        let mut bindings_list = FxHashMap::default();
+        let mut bindings_list = FxIndexMap::default();
         for pat in pats {
-            self.resolve_pattern(pat, source, &mut bindings_list);
+            self.resolve_pattern(pat, source, &mut smallvec![pat.id], &mut bindings_list);
         }
         // This has to happen *after* we determine which pat_idents are variants
         if pats.len() > 1 {
@@ -1229,15 +1230,29 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
     }
 
+    fn resolve_pattern_top(&mut self, pat: &Pat, pat_src: PatternSource) {
+        self.resolve_pattern(pat, pat_src, &mut smallvec![pat.id], &mut FxIndexMap::default());
+    }
+
     fn resolve_pattern(
         &mut self,
         pat: &Pat,
         pat_src: PatternSource,
-        // Maps idents to the node ID for the outermost pattern that binds them.
-        bindings: &mut IdentMap<NodeId>,
+        prod_ids: &mut SmallVec<[NodeId; 1]>,
+        bindings: &mut FxIndexMap<Ident, NodeId>,
+    ) {
+        self.resolve_pattern_inner(pat, pat_src, prod_ids, bindings);
+        visit::walk_pat(self, pat);
+    }
+
+    fn resolve_pattern_inner(
+        &mut self,
+        pat: &Pat,
+        pat_src: PatternSource,
+        prod_ids: &mut SmallVec<[NodeId; 1]>,
+        bindings: &mut FxIndexMap<Ident, NodeId>,
     ) {
         // Visit all direct subpatterns of this pattern.
-        let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
             debug!("resolve_pattern pat={:?} node={:?}", pat, pat.node);
             match pat.node {
@@ -1247,7 +1262,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                     let has_sub = sub.is_some();
                     let res = self.try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
                         .unwrap_or_else(|| {
-                            self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings)
+                            self.fresh_binding(ident, pat.id, pat_src, prod_ids, bindings)
                         });
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }
@@ -1260,59 +1275,70 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 PatKind::Struct(ref path, ..) => {
                     self.smart_resolve_path(pat.id, None, path, PathSource::Struct);
                 }
+                PatKind::Or(ref ps) => {
+                    let len_before = bindings.len();
+                    for p in ps {
+                        // We need to change `prod_ids.last()` at this point so that overlapping
+                        // bindings across the summands in the or-pattern do not result in an error.
+                        // The idea is that in `V1(a) | V2(a)`, the `a` in `V1` will be inserted
+                        // with a different id than the one in `V2`. As a result, `V1(a) | V2(a)`
+                        // compiles as it should. We will later check or-patterns for consistency.
+                        prod_ids.push(p.id);
+                        self.resolve_pattern_inner(p, pat_src, prod_ids, bindings);
+                        prod_ids.pop();
+                    }
+
+                    // We've rejected overlap in each product in the sum.
+                    // Now we must account for the possibility that the or-pattern is a factor
+                    // in a product. A basic case to reject here is `(V1(a) | V2(a), a)`.
+                    let last_id = *prod_ids.last().unwrap();
+                    bindings.values_mut().skip(len_before).for_each(|val| *val = last_id);
+
+                    // Prevent visiting `ps` as we've already done so above.
+                    return false;
+                }
                 _ => {}
             }
             true
         });
-
-        visit::walk_pat(self, pat);
     }
 
     fn fresh_binding(
         &mut self,
         ident: Ident,
         pat_id: NodeId,
-        outer_pat_id: NodeId,
         pat_src: PatternSource,
-        bindings: &mut IdentMap<NodeId>,
+        prod_ids: &[NodeId],
+        bindings: &mut FxIndexMap<Ident, NodeId>,
     ) -> Res {
         // Add the binding to the local ribs, if it doesn't already exist in the bindings map.
         // (We must not add it if it's in the bindings map because that breaks the assumptions
         // later passes make about or-patterns.)
         let ident = ident.modern_and_legacy();
-        let mut res = Res::Local(pat_id);
+        let res = Res::Local(pat_id);
         match bindings.get(&ident).cloned() {
-            Some(id) if id == outer_pat_id => {
-                // `Variant(a, a)`, error
-                self.r.report_error(
-                    ident.span,
-                    ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(&ident.as_str()),
-                );
-            }
-            Some(..) if pat_src == PatternSource::FnParam => {
-                // `fn f(a: u8, a: u8)`, error
-                self.r.report_error(
-                    ident.span,
-                    ResolutionError::IdentifierBoundMoreThanOnceInParameterList(&ident.as_str()),
-                );
-            }
-            Some(..) if pat_src == PatternSource::Match ||
-                        pat_src == PatternSource::Let => {
-                // `Variant1(a) | Variant2(a)`, ok
-                // Reuse definition from the first `a`.
-                res = self.innermost_rib_bindings(ValueNS)[&ident];
+            Some(id) if prod_ids.contains(&id) => {
+                // We have some overlap in a product pattern, e.g. `(a, a)` which is not allowed.
+                use ResolutionError::*;
+                let error = match pat_src {
+                    // `fn f(a: u8, a: u8)`:
+                    PatternSource::FnParam => IdentifierBoundMoreThanOnceInParameterList,
+                    // `Variant(a, a)`:
+                    _ => IdentifierBoundMoreThanOnceInSamePattern,
+                };
+                self.r.report_error(ident.span, error(&ident.as_str()));
             }
             Some(..) => {
-                span_bug!(ident.span, "two bindings with the same name from \
-                                       unexpected pattern source {:?}", pat_src);
+                // `Variant1(a) | Variant2(a)`, ok
+                // Reuse definition from the first `a`.
+                return self.innermost_rib_bindings(ValueNS)[&ident];
             }
-            None => {
-                // A completely fresh binding, add to the lists if it's valid.
-                if ident.name != kw::Invalid {
-                    bindings.insert(ident, outer_pat_id);
-                    self.innermost_rib_bindings(ValueNS).insert(ident, res);
-                }
+            // A completely fresh binding, add to the lists if it's valid.
+            None if ident.name != kw::Invalid => {
+                bindings.insert(ident, *prod_ids.last().unwrap());
+                self.innermost_rib_bindings(ValueNS).insert(ident, res);
             }
+            None => {}
         }
 
         res
@@ -1810,7 +1836,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             ExprKind::ForLoop(ref pat, ref iter_expr, ref block, label) => {
                 self.visit_expr(iter_expr);
                 self.with_rib(ValueNS, NormalRibKind, |this| {
-                    this.resolve_pattern(pat, PatternSource::For, &mut FxHashMap::default());
+                    this.resolve_pattern_top(pat, PatternSource::For);
                     this.resolve_labeled_block(label, expr.id, block);
                 });
             }
@@ -1847,7 +1873,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             ExprKind::Closure(_, IsAsync::Async { .. }, _, ref fn_decl, ref body, _span) => {
                 self.with_rib(ValueNS, NormalRibKind, |this| {
                     // Resolve arguments:
-                    this.resolve_params(&fn_decl.inputs);
+                    this.resolve_params(&fn_decl.inputs, expr.id);
                     // No need to resolve return type --
                     // the outer closure return type is `FunctionRetTy::Default`.
 

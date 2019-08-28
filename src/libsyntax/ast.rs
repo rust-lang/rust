@@ -561,29 +561,31 @@ impl Pat {
         }))
     }
 
-    pub fn walk<F>(&self, it: &mut F) -> bool
-    where
-        F: FnMut(&Pat) -> bool,
-    {
+    /// Walk top-down and call `it` in each place where a pattern occurs
+    /// starting with the root pattern `walk` is called on. If `it` returns
+    /// false then we will decend no further but siblings will be processed.
+    pub fn walk(&self, it: &mut impl FnMut(&Pat) -> bool) {
         if !it(self) {
-            return false;
+            return;
         }
 
         match &self.node {
             PatKind::Ident(_, _, Some(p)) => p.walk(it),
-            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk(it)),
+            PatKind::Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(it)),
             PatKind::TupleStruct(_, s)
             | PatKind::Tuple(s)
             | PatKind::Slice(s)
-            | PatKind::Or(s) => s.iter().all(|p| p.walk(it)),
-            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
+            | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
+            PatKind::Box(s)
+            | PatKind::Ref(s, _)
+            | PatKind::Paren(s) => s.walk(it),
             PatKind::Wild
             | PatKind::Rest
             | PatKind::Lit(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::Mac(_) => true,
+            | PatKind::Mac(_) => {},
         }
     }
 
