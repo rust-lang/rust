@@ -222,8 +222,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // This is `Freeze`, there cannot be an `UnsafeCell`
                     Ok(())
                 } else {
-                    // Proceed further
-                    self.walk_value(v)
+                    // We want to not actually read from memory for this visit. So, before
+                    // walking this value, we have to make sure it is not a
+                    // `Variants::Multiple`.
+                    match v.layout.variants {
+                        layout::Variants::Multiple { .. } => {
+                            // A multi-variant enum, or generator, or so.
+                            // Treat this like a union: without reading from memory,
+                            // we cannot determine the variant we are in. Reading from
+                            // memory would be subject to Stacked Borrows rules, leading
+                            // to all sorts of "funny" recursion.
+                            self.visit_union(v)
+                        }
+                        layout::Variants::Single { .. } => {
+                            // Proceed further
+                            self.walk_value(v)
+                        }
+                    }
                 }
             }
 
