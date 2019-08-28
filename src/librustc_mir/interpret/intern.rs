@@ -278,9 +278,10 @@ pub fn intern_const_alloc_recursive(
     // this `mutability` is the mutability of the place, ignoring the type
     let (base_mutability, base_intern_mode) = match tcx.static_mutability(def_id) {
         Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),
-        None => (Mutability::Immutable, InternMode::ConstBase),
         // `static mut` doesn't care about interior mutability, it's mutable anyway
         Some(hir::Mutability::MutMutable) => (Mutability::Mutable, InternMode::Static),
+        // consts, promoteds. FIXME: what about array lengths, array initializers?
+        None => (Mutability::Immutable, InternMode::ConstBase),
     };
 
     // Type based interning.
