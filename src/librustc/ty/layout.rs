@@ -769,7 +769,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 let e_abi = if let Abi::Scalar(ref scalar) = e_ly.abi {
                     scalar.clone()
                 } else {
-                    // This error isn;t caught in typeck, e.g., if
+                    // This error isn't caught in typeck, e.g., if
                     // the element type of the vector is generic.
                     tcx.sess.fatal(&format!(
                         "monomorphising SIMD type `{}` with a non-primitive-scalar \
