@@ -2,7 +2,7 @@ use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSynt
 use syntax::ptr;
 use syntax::source_map::{self, BytePos, Span};
 
-use crate::comment::FindUncommented;
+use crate::comment::{combine_strs_with_missing_comments, FindUncommented};
 use crate::config::lists::*;
 use crate::expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
 use crate::lists::{
@@ -179,7 +179,13 @@ fn rewrite_struct_pat(
         fields.iter(),
         terminator,
         ",",
-        |f| f.span.lo(),
+        |f| {
+            if f.node.attrs.is_empty() {
+                f.span.lo()
+            } else {
+                f.node.attrs.first().unwrap().span.lo()
+            }
+        },
         |f| f.span.hi(),
         |f| f.node.rewrite(context, v_shape),
         context.snippet_provider.span_after(span, "{"),
@@ -225,25 +231,50 @@ fn rewrite_struct_pat(
 
 impl Rewrite for FieldPat {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        let pat = self.pat.rewrite(context, shape);
-        if self.is_shorthand {
-            pat
+        let hi_pos = if let Some(last) = self.attrs.last() {
+            last.span.hi()
         } else {
-            let pat_str = pat?;
+            self.pat.span.lo()
+        };
+
+        let attrs_str = if self.attrs.is_empty() {
+            String::from("")
+        } else {
+            self.attrs.rewrite(context, shape)?
+        };
+
+        let pat_str = self.pat.rewrite(context, shape)?;
+        if self.is_shorthand {
+            combine_strs_with_missing_comments(
+                context,
+                &attrs_str,
+                &pat_str,
+                mk_sp(hi_pos, self.pat.span.lo()),
+                shape,
+                false,
+            )
+        } else {
+            let nested_shape = shape.block_indent(context.config.tab_spaces());
             let id_str = rewrite_ident(context, self.ident);
             let one_line_width = id_str.len() + 2 + pat_str.len();
-            if one_line_width <= shape.width {
-                Some(format!("{}: {}", id_str, pat_str))
+            let pat_and_id_str = if one_line_width <= shape.width {
+                format!("{}: {}", id_str, pat_str)
             } else {
-                let nested_shape = shape.block_indent(context.config.tab_spaces());
-                let pat_str = self.pat.rewrite(context, nested_shape)?;
-                Some(format!(
+                format!(
                     "{}:\n{}{}",
                     id_str,
                     nested_shape.indent.to_string(context.config),
-                    pat_str,
-                ))
-            }
+                    self.pat.rewrite(context, nested_shape)?
+                )
+            };
+            combine_strs_with_missing_comments(
+                context,
+                &attrs_str,
+                &pat_and_id_str,
+                mk_sp(hi_pos, self.pat.span.lo()),
+                nested_shape,
+                false,
+            )
         }
     }
 }
