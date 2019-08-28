@@ -1272,63 +1272,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         debug!("(resolving block) leaving block");
     }
 
-    fn fresh_binding(&mut self,
-                     ident: Ident,
-                     pat_id: NodeId,
-                     outer_pat_id: NodeId,
-                     pat_src: PatternSource,
-                     bindings: &mut IdentMap<NodeId>)
-                     -> Res {
-        // Add the binding to the local ribs, if it
-        // doesn't already exist in the bindings map. (We
-        // must not add it if it's in the bindings map
-        // because that breaks the assumptions later
-        // passes make about or-patterns.)
-        let ident = ident.modern_and_legacy();
-        let mut res = Res::Local(pat_id);
-        match bindings.get(&ident).cloned() {
-            Some(id) if id == outer_pat_id => {
-                // `Variant(a, a)`, error
-                self.r.report_error(
-                    ident.span,
-                    ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
-                        &ident.as_str())
-                );
-            }
-            Some(..) if pat_src == PatternSource::FnParam => {
-                // `fn f(a: u8, a: u8)`, error
-                self.r.report_error(
-                    ident.span,
-                    ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
-                        &ident.as_str())
-                );
-            }
-            Some(..) if pat_src == PatternSource::Match ||
-                        pat_src == PatternSource::Let => {
-                // `Variant1(a) | Variant2(a)`, ok
-                // Reuse definition from the first `a`.
-                res = self.innermost_rib_bindings(ValueNS)[&ident];
-            }
-            Some(..) => {
-                span_bug!(ident.span, "two bindings with the same name from \
-                                       unexpected pattern source {:?}", pat_src);
-            }
-            None => {
-                // A completely fresh binding, add to the lists if it's valid.
-                if ident.name != kw::Invalid {
-                    bindings.insert(ident, outer_pat_id);
-                    self.innermost_rib_bindings(ValueNS).insert(ident, res);
-                }
-            }
-        }
-
-        res
-    }
-
-    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut IdentMap<Res> {
-        &mut self.ribs[ns].last_mut().unwrap().bindings
-    }
-
     fn resolve_pattern(
         &mut self,
         pat: &Pat,
@@ -1366,6 +1309,60 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         });
 
         visit::walk_pat(self, pat);
+    }
+
+    fn fresh_binding(
+        &mut self,
+        ident: Ident,
+        pat_id: NodeId,
+        outer_pat_id: NodeId,
+        pat_src: PatternSource,
+        bindings: &mut IdentMap<NodeId>,
+    ) -> Res {
+        // Add the binding to the local ribs, if it doesn't already exist in the bindings map.
+        // (We must not add it if it's in the bindings map because that breaks the assumptions
+        // later passes make about or-patterns.)
+        let ident = ident.modern_and_legacy();
+        let mut res = Res::Local(pat_id);
+        match bindings.get(&ident).cloned() {
+            Some(id) if id == outer_pat_id => {
+                // `Variant(a, a)`, error
+                self.r.report_error(
+                    ident.span,
+                    ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(&ident.as_str()),
+                );
+            }
+            Some(..) if pat_src == PatternSource::FnParam => {
+                // `fn f(a: u8, a: u8)`, error
+                self.r.report_error(
+                    ident.span,
+                    ResolutionError::IdentifierBoundMoreThanOnceInParameterList(&ident.as_str()),
+                );
+            }
+            Some(..) if pat_src == PatternSource::Match ||
+                        pat_src == PatternSource::Let => {
+                // `Variant1(a) | Variant2(a)`, ok
+                // Reuse definition from the first `a`.
+                res = self.innermost_rib_bindings(ValueNS)[&ident];
+            }
+            Some(..) => {
+                span_bug!(ident.span, "two bindings with the same name from \
+                                       unexpected pattern source {:?}", pat_src);
+            }
+            None => {
+                // A completely fresh binding, add to the lists if it's valid.
+                if ident.name != kw::Invalid {
+                    bindings.insert(ident, outer_pat_id);
+                    self.innermost_rib_bindings(ValueNS).insert(ident, res);
+                }
+            }
+        }
+
+        res
+    }
+
+    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut IdentMap<Res> {
+        &mut self.ribs[ns].last_mut().unwrap().bindings
     }
 
     fn try_resolve_as_non_binding(
