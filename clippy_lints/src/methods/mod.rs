@@ -1732,8 +1732,8 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
             if bin_op.node == op;
 
             // Extract the names of the two arguments to the closure
-            if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
-            if let Some(second_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
+            if let Some(first_arg_ident) = get_arg_name(&closure_body.params[0].pat);
+            if let Some(second_arg_ident) = get_arg_name(&closure_body.params[1].pat);
 
             if match_var(&*left_expr, first_arg_ident);
             if replacement_has_args || match_var(&*right_expr, second_arg_ident);
@@ -2345,7 +2345,7 @@ fn lint_flat_map_identity<'a, 'tcx>(
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = arg_node;
             let body = cx.tcx.hir().body(*body_id);
 
-            if let hir::PatKind::Binding(_, _, binding_ident, _) = body.arguments[0].pat.node;
+            if let hir::PatKind::Binding(_, _, binding_ident, _) = body.params[0].pat.node;
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.node;
 
             if path.segments.len() == 1;
@@ -2390,7 +2390,7 @@ fn lint_search_is_some<'a, 'tcx>(
                 if search_method == "find";
                 if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].node;
                 let closure_body = cx.tcx.hir().body(body_id);
-                if let Some(closure_arg) = closure_body.arguments.get(0);
+                if let Some(closure_arg) = closure_body.params.get(0);
                 if let hir::PatKind::Ref(..) = closure_arg.pat.node;
                 then {
                     Some(search_snippet.replacen('&', "", 1))
