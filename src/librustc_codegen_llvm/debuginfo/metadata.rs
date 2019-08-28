@@ -683,11 +683,13 @@ pub fn type_metadata(
         }
         ty::Closure(def_id, substs) => {
             let upvar_tys : Vec<_> = substs.upvar_tys(def_id, cx.tcx).collect();
+            let containing_scope = get_namespace_for_item(cx, def_id);
             prepare_tuple_metadata(cx,
                                    t,
                                    &upvar_tys,
                                    unique_type_id,
-                                   usage_site_span).finalize(cx)
+                                   usage_site_span,
+                                   Some(containing_scope)).finalize(cx)
         }
         ty::Generator(def_id, substs,  _) => {
             let upvar_tys : Vec<_> = substs.prefix_tys(def_id, cx.tcx).map(|t| {
@@ -728,7 +730,8 @@ pub fn type_metadata(
                                    t,
                                    &tys,
                                    unique_type_id,
-                                   usage_site_span).finalize(cx)
+                                   usage_site_span,
+                                   NO_SCOPE_METADATA).finalize(cx)
         }
         _ => {
             bug!("debuginfo: unexpected type in type_metadata: {:?}", t)
@@ -1205,6 +1208,7 @@ fn prepare_tuple_metadata(
     component_types: &[Ty<'tcx>],
     unique_type_id: UniqueTypeId,
     span: Span,
+    containing_scope: Option<&'ll DIScope>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
     let tuple_name = compute_debuginfo_type_name(cx.tcx, tuple_type, false);
 
@@ -1212,7 +1216,7 @@ fn prepare_tuple_metadata(
                                          tuple_type,
                                          &tuple_name[..],
                                          unique_type_id,
-                                         NO_SCOPE_METADATA);
+                                         containing_scope);
 
     create_and_register_recursive_type_forward_declaration(
         cx,
