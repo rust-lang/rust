@@ -122,6 +122,14 @@ pub fn trans_const_value<'tcx>(
             let bits = const_.val.try_to_bits(layout.size).unwrap();
             CValue::const_val(fx, ty, rustc::mir::interpret::sign_extend(bits, layout.size))
         }
+        ty::Float(fty) => {
+            let bits = const_.val.try_to_bits(layout.size).unwrap();
+            let val = match fty {
+                FloatTy::F32 => fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(bits).unwrap())),
+                FloatTy::F64 => fx.bcx.ins().f64const(Ieee64::with_bits(u64::try_from(bits).unwrap())),
+            };
+            CValue::by_val(val, layout)
+        }
         ty::FnDef(_def_id, _substs) => CValue::by_ref(
             fx.bcx
                 .ins()
