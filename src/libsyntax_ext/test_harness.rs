@@ -25,6 +25,7 @@ struct Test {
 
 struct TestCtxt<'a> {
     ext_cx: ExtCtxt<'a>,
+    def_site: Span,
     test_cases: Vec<Test>,
     reexport_test_harness_main: Option<Symbol>,
     test_runner: Option<ast::Path>,
@@ -125,6 +126,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 struct EntryPointCleaner {
     // Current depth in the ast
     depth: usize,
+    def_site: Span,
 }
 
 impl MutVisitor for EntryPointCleaner {
@@ -141,8 +143,10 @@ impl MutVisitor for EntryPointCleaner {
             EntryPointType::MainAttr |
             EntryPointType::Start =>
                 item.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
-                    let allow_ident = Ident::with_dummy_span(sym::allow);
-                    let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
+                    let allow_ident = Ident::new(sym::allow, self.def_site);
+                    let dc_nested = attr::mk_nested_word_item(
+                        Ident::from_str_and_span("dead_code", self.def_site),
+                    );
                     let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(allow_dead_code_item);
 
@@ -180,15 +184,26 @@ fn generate_test_harness(sess: &ParseSess,
                          krate: &mut ast::Crate,
                          features: &Features,
                          test_runner: Option<ast::Path>) {
-    // Remove the entry points
-    let mut cleaner = EntryPointCleaner { depth: 0 };
-    cleaner.visit_crate(krate);
-
     let mut econfig = ExpansionConfig::default("test".to_string());
     econfig.features = Some(features);
 
+    let ext_cx = ExtCtxt::new(sess, econfig, resolver);
+
+    let expn_id = ext_cx.resolver.expansion_for_ast_pass(
+        DUMMY_SP,
+        AstPass::TestHarness,
+        &[sym::main, sym::test, sym::rustc_attrs],
+        None,
+    );
+    let def_site = DUMMY_SP.with_def_site_ctxt(expn_id);
+
+    // Remove the entry points
+    let mut cleaner = EntryPointCleaner { depth: 0, def_site };
+    cleaner.visit_crate(krate);
+
     let cx = TestCtxt {
-        ext_cx: ExtCtxt::new(sess, econfig, resolver),
+        ext_cx,
+        def_site,
         test_cases: Vec::new(),
         reexport_test_harness_main,
         test_runner
@@ -202,27 +217,40 @@ fn generate_test_harness(sess: &ParseSess,
 
 /// Creates a function item for use as the main function of a test build.
 /// This function will call the `test_runner` as specified by the crate attribute
+///
+/// By default this expands to
+///
+/// #[main]
+/// pub fn main() {
+///     extern crate test;
+///     test::test_main_static(&[
+///         &test_const1,
+///         &test_const2,
+///         &test_const3,
+///     ]);
+/// }
+///
+/// Most of the Ident have the usual def-site hygiene for the AST pass. The
+/// exception is the `test_const`s. These have a syntax context that has two
+/// opaque marks: one from the expansion of `test` or `test_case`, and one
+/// generated  in `TestHarnessGenerator::flat_map_item`. When resolving this
+/// identifier after failing to find a matching identifier in the root module
+/// we remove the outer mark, and try resolving at its def-site, which will
+/// then resolve to `test_const`.
+///
+/// The expansion here can be controlled by two attributes:
+///
+/// `reexport_test_harness_main` provides a different name for the `main`
+/// function and `test_runner` provides a path that replaces
+/// `test::test_main_static`.
 fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
-    // Writing this out by hand:
-    //        pub fn main() {
-    //            #![main]
-    //            test::test_main_static(&[..tests]);
-    //        }
-    let expn_id = cx.ext_cx.resolver.expansion_for_ast_pass(
-        DUMMY_SP,
-        AstPass::TestHarness,
-        &[sym::main, sym::test, sym::rustc_attrs],
-        None,
-    );
-    let sp = DUMMY_SP.with_def_site_ctxt(expn_id);
+    let sp = cx.def_site;
     let ecx = &cx.ext_cx;
     let test_id = Ident::new(sym::test, sp);
 
     // test::test_main_static(...)
     let mut test_runner = cx.test_runner.clone().unwrap_or(
-        ecx.path(sp, vec![
-            test_id, ecx.ident_of("test_main_static")
-        ]));
+        ecx.path(sp, vec![test_id, Ident::from_str_and_span("test_main_static", sp)]));
 
     test_runner.span = sp;
 
@@ -231,16 +259,16 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
                                        vec![mk_tests_slice(cx, sp)]);
     let call_test_main = ecx.stmt_expr(call_test_main);
 
-    // #![main]
-    let main_meta = ecx.meta_word(sp, sym::main);
-    let main_attr = ecx.attribute(main_meta);
-
     // extern crate test
     let test_extern_stmt = ecx.stmt_item(sp, ecx.item(sp,
         test_id,
         vec![],
         ast::ItemKind::ExternCrate(None)
     ));
+
+    // #[main]
+    let main_meta = ecx.meta_word(sp, sym::main);
+    let main_attr = ecx.attribute(main_meta);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
@@ -279,7 +307,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
 }
 
 /// Creates a slice containing every test like so:
-/// &[test1, test2]
+/// &[&test1, &test2]
 fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ref ecx = cx.ext_cx;
