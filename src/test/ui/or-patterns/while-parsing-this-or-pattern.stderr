@@ -4,7 +4,7 @@ error: expected pattern, found `.`
 LL |         Some(42) | .=. => {}
    |         --------   ^ expected pattern
    |         |
-   |         while parsing this or-pattern staring here
+   |         while parsing this or-pattern starting here
 
 error: aborting due to previous error
 
