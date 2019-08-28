@@ -900,11 +900,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         assert_eq!(size.bytes() as usize as u64, size.bytes());
 
         let src_alloc = self.get(src.alloc_id)?;
-        let compressed = src_alloc.compress_defined_range(src, size);
+        let compressed = src_alloc.compress_undef_range(src, size);
 
         // now fill in all the data
         let dest_allocation = self.get_mut(dest.alloc_id)?;
-        dest_allocation.mark_compressed_range(&compressed, dest, size, repeat);
+        dest_allocation.mark_compressed_undef_range(&compressed, dest, size, repeat);
 
         Ok(())
     }

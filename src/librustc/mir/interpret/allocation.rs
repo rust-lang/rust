@@ -136,7 +136,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         self.size.bytes() as usize
     }
 
-    /// Look at a slice which may describe undefined bytes or describe a relocation. This differs
+    /// Looks at a slice which may describe undefined bytes or describe a relocation. This differs
     /// from `get_bytes_with_undef_and_ptr` in that it does no relocation checks (even on the
     /// edges) at all. It further ignores `AllocationExtra` callbacks.
     /// This must not be used for reads affecting the interpreter execution.
@@ -144,7 +144,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         &self.bytes[range]
     }
 
-    /// View the undef mask.
+    /// Returns the undef mask.
     pub fn undef_mask(&self) -> &UndefMask {
         &self.undef_mask
     }
@@ -583,7 +583,7 @@ pub struct AllocationDefinedness {
 /// Transferring the definedness mask to other allocations.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a run-length encoding of the undef_mask.
-    pub fn compress_defined_range(
+    pub fn compress_undef_range(
         &self,
         src: Pointer<Tag>,
         size: Size,
@@ -622,7 +622,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 
     /// Apply multiple instances of the run-length encoding to the undef_mask.
-    pub fn mark_compressed_range(
+    pub fn mark_compressed_undef_range(
         &mut self,
         defined: &AllocationDefinedness,
         dest: Pointer<Tag>,

@@ -35,9 +35,9 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            // This `inspect` is okay since we have check that it is not within a relocation, it is
-            // within the bounds of the allocation, and it doesn't affect interpreter execution (we
-            // inspect the result after interpreter execution). Any undef byte is replaced with
+            // This `inspect` is okay since we have checked that it is not within a relocation, it
+            // is within the bounds of the allocation, and it doesn't affect interpreter execution
+            // (we inspect the result after interpreter execution). Any undef byte is replaced with
             // some arbitrary byte value.
             //
             // FIXME: relay undef bytes to codegen as undef const bytes
