@@ -445,6 +445,21 @@ if (!DOMTokenList.prototype.remove) {
         var OUTPUT_DATA = 1;
         var params = getQueryStringParams();
 
+        // Set the crate filter from saved storage, if the current page has the saved crate filter.
+        //
+        // If not, ignore the crate filter -- we want to support filtering for crates on sites like
+        // doc.rust-lang.org where the crates may differ from page to page while on the same domain.
+        var savedCrate = getCurrentValue("rustdoc-saved-filter-crate");
+        if (savedCrate !== null) {
+            onEachLazy(document.getElementById("crate-search").getElementsByTagName("option"),
+                       function(e) {
+                if (e.value === savedCrate) {
+                    document.getElementById("crate-search").value = e.value;
+                    return true;
+                }
+            });
+        }
+
         // Populate search bar with query string search term when provided,
         // but only if the input bar is empty. This avoid the obnoxious issue
         // where you start trying to do a search, and the index loads, and
@@ -1658,9 +1673,10 @@ if (!DOMTokenList.prototype.remove) {
             };
             search_input.onpaste = search_input.onchange;
 
-            var selectCrate = document.getElementById('crate-search');
+            var selectCrate = document.getElementById("crate-search");
             if (selectCrate) {
                 selectCrate.onchange = function() {
+                    updateLocalStorage("rustdoc-saved-filter-crate", selectCrate.value);
                     search(undefined, true);
                 };
             }
@@ -2496,7 +2512,7 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     function addSearchOptions(crates) {
-        var elem = document.getElementById('crate-search');
+        var elem = document.getElementById("crate-search");
 
         if (!elem) {
             return;
