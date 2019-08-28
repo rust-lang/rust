@@ -1042,8 +1042,8 @@ fn generic_simd_intrinsic(
     // Given a SIMD vector type `x` return the element type and the number of
     // elements in the vector.
     fn simd_ty_and_len(bx: &Builder<'a, 'll, 'tcx>, simd_ty: Ty<'tcx>) -> (Ty<'tcx>, usize) {
-        let ty = if let ty::Adt(def, substs) = simd_ty.sty {
-            let f0_ty = def.non_enum_variant().fields[0].ty(bx.tcx(), substs);
+        let ty = if let ty::Adt(_def, _substs) = simd_ty.sty {
+            let f0_ty = bx.layout_of(simd_ty).field(bx, 0).ty;
             if let ty::Array(element_ty, _) = f0_ty.sty {
                 element_ty
             } else {
