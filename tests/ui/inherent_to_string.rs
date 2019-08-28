@@ -1,5 +1,6 @@
 #![warn(clippy::inherent_to_string)]
 #![deny(clippy::inherent_to_string_shadow_display)]
+#![allow(clippy::many_single_char_names)]
 
 use std::fmt;
 
@@ -12,6 +13,7 @@ struct B;
 struct C;
 struct D;
 struct E;
+struct F;
 
 impl A {
     // Should be detected; emit warning
@@ -64,6 +66,13 @@ impl E {
     }
 }
 
+impl F {
+    // Should not be detected, as it does not match the function signature
+    fn to_string(&self, _i: i32) -> String {
+        "F.to_string()".to_string()
+    }
+}
+
 fn main() {
     let a = A;
     a.to_string();
@@ -81,4 +90,7 @@ fn main() {
     d.to_string();
 
     E::to_string();
+
+    let f = F;
+    f.to_string(1);
 }
