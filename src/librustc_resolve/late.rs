@@ -1210,9 +1210,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     fn resolve_arm(&mut self, arm: &Arm) {
         self.with_rib(ValueNS, NormalRibKind, |this| {
             this.resolve_pats(&arm.pats, PatternSource::Match);
-            if let Some(ref expr) = arm.guard {
-                this.visit_expr(expr)
-            }
+            walk_list!(this, visit_expr, &arm.guard);
             this.visit_expr(&arm.body);
         });
     }
