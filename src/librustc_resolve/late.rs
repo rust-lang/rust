@@ -9,7 +9,7 @@ use GenericParameters::*;
 use RibKind::*;
 
 use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
-use crate::{Module, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult};
+use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use log::debug;
@@ -1327,84 +1327,95 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         &mut self.ribs[ns].last_mut().unwrap().bindings
     }
 
-    fn resolve_pattern(&mut self,
-                       pat: &Pat,
-                       pat_src: PatternSource,
-                       // Maps idents to the node ID for the
-                       // outermost pattern that binds them.
-                       bindings: &mut FxHashMap<Ident, NodeId>) {
+    fn resolve_pattern(
+        &mut self,
+        pat: &Pat,
+        pat_src: PatternSource,
+        // Maps idents to the node ID for the outermost pattern that binds them.
+        bindings: &mut FxHashMap<Ident, NodeId>,
+    ) {
         // Visit all direct subpatterns of this pattern.
         let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
             debug!("resolve_pattern pat={:?} node={:?}", pat, pat.node);
             match pat.node {
-                PatKind::Ident(bmode, ident, ref opt_pat) => {
-                    // First try to resolve the identifier as some existing
-                    // entity, then fall back to a fresh binding.
-                    let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS,
-                                                                      None, pat.span)
-                                      .and_then(LexicalScopeBinding::item);
-                    let res = binding.map(NameBinding::res).and_then(|res| {
-                        let is_syntactic_ambiguity = opt_pat.is_none() &&
-                            bmode == BindingMode::ByValue(Mutability::Immutable);
-                        match res {
-                            Res::Def(DefKind::Ctor(_, CtorKind::Const), _) |
-                            Res::Def(DefKind::Const, _) if is_syntactic_ambiguity => {
-                                // Disambiguate in favor of a unit struct/variant
-                                // or constant pattern.
-                                self.r.record_use(ident, ValueNS, binding.unwrap(), false);
-                                Some(res)
-                            }
-                            Res::Def(DefKind::Ctor(..), _)
-                            | Res::Def(DefKind::Const, _)
-                            | Res::Def(DefKind::Static, _) => {
-                                // This is unambiguously a fresh binding, either syntactically
-                                // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
-                                // to something unusable as a pattern (e.g., constructor function),
-                                // but we still conservatively report an error, see
-                                // issues/33118#issuecomment-233962221 for one reason why.
-                                self.r.report_error(
-                                    ident.span,
-                                    ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), ident.name, binding.unwrap())
-                                );
-                                None
-                            }
-                            Res::Def(DefKind::Fn, _) | Res::Err => {
-                                // These entities are explicitly allowed
-                                // to be shadowed by fresh bindings.
-                                None
-                            }
-                            res => {
-                                span_bug!(ident.span, "unexpected resolution for an \
-                                                       identifier in pattern: {:?}", res);
-                            }
-                        }
-                    }).unwrap_or_else(|| {
-                        self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings)
-                    });
-
+                PatKind::Ident(bmode, ident, ref sub) => {
+                    // First try to resolve the identifier as some existing entity,
+                    // then fall back to a fresh binding.
+                    let has_sub = sub.is_some();
+                    let res = self.try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
+                        .unwrap_or_else(|| {
+                            self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings)
+                        });
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }
-
                 PatKind::TupleStruct(ref path, ..) => {
                     self.smart_resolve_path(pat.id, None, path, PathSource::TupleStruct);
                 }
-
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);
                 }
-
                 PatKind::Struct(ref path, ..) => {
                     self.smart_resolve_path(pat.id, None, path, PathSource::Struct);
                 }
-
                 _ => {}
             }
             true
         });
 
         visit::walk_pat(self, pat);
+    }
+
+    fn try_resolve_as_non_binding(
+        &mut self,
+        pat_src: PatternSource,
+        pat: &Pat,
+        bm: BindingMode,
+        ident: Ident,
+        has_sub: bool,
+    ) -> Option<Res> {
+        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?.item()?;
+        let res = binding.res();
+
+        // An immutable (no `mut`) by-value (no `ref`) binding pattern without
+        // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
+        // also be interpreted as a path to e.g. a constant, variant, etc.
+        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Immutable);
+
+        match res {
+            Res::Def(DefKind::Ctor(_, CtorKind::Const), _) |
+            Res::Def(DefKind::Const, _) if is_syntactic_ambiguity => {
+                // Disambiguate in favor of a unit struct/variant or constant pattern.
+                self.r.record_use(ident, ValueNS, binding, false);
+                Some(res)
+            }
+            Res::Def(DefKind::Ctor(..), _)
+            | Res::Def(DefKind::Const, _)
+            | Res::Def(DefKind::Static, _) => {
+                // This is unambiguously a fresh binding, either syntactically
+                // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
+                // to something unusable as a pattern (e.g., constructor function),
+                // but we still conservatively report an error, see
+                // issues/33118#issuecomment-233962221 for one reason why.
+                self.r.report_error(
+                    ident.span,
+                    ResolutionError::BindingShadowsSomethingUnacceptable(
+                        pat_src.descr(),
+                        ident.name,
+                        binding,
+                    ),
+                );
+                None
+            }
+            Res::Def(DefKind::Fn, _) | Res::Err => {
+                // These entities are explicitly allowed to be shadowed by fresh bindings.
+                None
+            }
+            res => {
+                span_bug!(ident.span, "unexpected resolution for an \
+                                        identifier in pattern: {:?}", res);
+            }
+        }
     }
 
     // High-level and context dependent path resolution routine.
