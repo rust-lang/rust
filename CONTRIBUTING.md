@@ -145,11 +145,26 @@ using that version of Rust.
 
 You can use [rustup-toolchain-install-master][rtim] to do that:
 
-```
+```bash
 cargo install rustup-toolchain-install-master
 rustup-toolchain-install-master -n master --force
 rustup override set master
 cargo test
+```
+
+After fixing the build failure on this repository, we can submit a pull request
+to [`rust-lang/rust`] to fix the toolstate.
+
+To submit a pull request, you should follow these steps:
+
+```bash
+# Assuming you already cloned the rust-lang/rust repo and you're in the correct directory
+git submodule update --remote src/tools/clippy
+cargo update -p clippy
+git add -u
+git commit -m "Update Clippy"
+./x.py test -i --stage 1 src/tools/clippy # This is optional and should succeed anyway
+# Open a PR in rust-lang/rust
 ```
 
 ## Issue and PR triage
@@ -211,3 +226,4 @@ or the [MIT](http://opensource.org/licenses/MIT) license.
 [homu]: https://github.com/servo/homu
 [homu_instructions]: https://buildbot2.rust-lang.org/homu/
 [homu_queue]: https://buildbot2.rust-lang.org/homu/queue/clippy
+[`rust-lang/rust`]: https://github.com/rust-lang/rust
