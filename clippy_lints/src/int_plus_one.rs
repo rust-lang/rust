@@ -158,7 +158,7 @@ impl IntPlusOne {
             |db| {
                 db.span_suggestion(
                     block.span,
-                    "change `>= y + 1` to `> y` as shown",
+                    "change it to",
                     recommendation,
                     Applicability::MachineApplicable, // snippet
                 );
