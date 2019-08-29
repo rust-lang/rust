@@ -94,7 +94,7 @@ impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
         alloc.mutability = mutability;
         // link the alloc id to the actual allocation
         let alloc = tcx.intern_const_alloc(alloc);
-        self.leftover_relocations.extend(alloc.relocations.iter().map(|&(_, ((), reloc))| reloc));
+        self.leftover_relocations.extend(alloc.relocations().iter().map(|&(_, ((), reloc))| reloc));
         tcx.alloc_map.lock().set_alloc_id_memory(ptr.alloc_id, alloc);
         Ok(None)
     }
@@ -316,7 +316,7 @@ pub fn intern_const_alloc_recursive(
             // So we hand-roll the interning logic here again
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.alloc_map.lock().set_alloc_id_memory(alloc_id, alloc);
-            for &(_, ((), reloc)) in alloc.relocations.iter() {
+            for &(_, ((), reloc)) in alloc.relocations().iter() {
                 if leftover_relocations.insert(reloc) {
                     todo.push(reloc);
                 }

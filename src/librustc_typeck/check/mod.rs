@@ -1570,7 +1570,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
         } else {
             bug!("Matching on non-ByRef static")
         };
-        if alloc.relocations.len() != 0 {
+        if alloc.relocations().len() != 0 {
             let msg = "statics with a custom `#[link_section]` must be a \
                        simple list of bytes on the wasm target with no \
                        extra levels of indirection such as references";

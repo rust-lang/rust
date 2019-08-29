@@ -647,7 +647,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         for i in 0..alloc.size.bytes() {
             let i = Size::from_bytes(i);
-            if let Some(&(_, target_id)) = alloc.relocations.get(&i) {
+            if let Some(&(_, target_id)) = alloc.relocations().get(&i) {
                 if allocs_seen.insert(target_id) {
                     allocs_to_print.push_back(target_id);
                 }
@@ -809,7 +809,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // (`get_bytes_with_undef_and_ptr` below checks that there are no
         // relocations overlapping the edges; those would not be handled correctly).
         let relocations = {
-            let relocations = self.get(src.alloc_id)?.relocations(self, src, size);
+            let relocations = self.get(src.alloc_id)?.get_relocations(self, src, size);
             if relocations.is_empty() {
                 // nothing to copy, ignore even the `length` loop
                 Vec::new()

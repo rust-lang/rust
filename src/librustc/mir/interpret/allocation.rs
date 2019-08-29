@@ -35,7 +35,7 @@ pub struct Allocation<Tag=(),Extra=()> {
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
     /// at the given offset.
-    pub relocations: Relocations<Tag>,
+    relocations: Relocations<Tag>,
     /// Denotes which part of this allocation is initialized.
     undef_mask: UndefMask,
     /// The size of the allocation. Currently, must always equal `bytes.len()`.
@@ -147,6 +147,11 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Returns the undef mask.
     pub fn undef_mask(&self) -> &UndefMask {
         &self.undef_mask
+    }
+
+    /// Returns the relocation list.
+    pub fn relocations(&self) -> &Relocations<Tag> {
+        &self.relocations
     }
 }
 
@@ -459,7 +464,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 /// Relocations
 impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Returns all relocations overlapping with the given ptr-offset pair.
-    pub fn relocations(
+    pub fn get_relocations(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
@@ -480,7 +485,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        if self.relocations(cx, ptr, size).is_empty() {
+        if self.get_relocations(cx, ptr, size).is_empty() {
             Ok(())
         } else {
             throw_unsup!(ReadPointerAsBytes)
@@ -502,7 +507,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
-            let relocations = self.relocations(cx, ptr, size);
+            let relocations = self.get_relocations(cx, ptr, size);
             if relocations.is_empty() {
                 return Ok(());
             }
