@@ -20,6 +20,7 @@ use crate::clean::{
     self,
     GetDefId,
     ToSource,
+    TypeKind
 };
 
 use super::Clean;
@@ -107,15 +108,16 @@ pub fn try_inline(
             record_extern_fqn(cx, did, clean::TypeKind::Const);
             clean::ConstantItem(build_const(cx, did))
         }
-        // FIXME: proc-macros don't propagate attributes or spans across crates, so they look empty
-        Res::Def(DefKind::Macro(MacroKind::Bang), did) => {
+        Res::Def(DefKind::Macro(kind), did) => {
             let mac = build_macro(cx, did, name);
-            if let clean::MacroItem(..) = mac {
-                record_extern_fqn(cx, did, clean::TypeKind::Macro);
-                mac
-            } else {
-                return None;
-            }
+
+            let type_kind = match kind {
+                MacroKind::Bang => TypeKind::Macro,
+                MacroKind::Attr => TypeKind::Attr,
+                MacroKind::Derive => TypeKind::Derive
+            };
+            record_extern_fqn(cx, did, type_kind);
+            mac
         }
         _ => return None,
     };

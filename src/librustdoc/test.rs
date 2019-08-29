@@ -43,10 +43,16 @@ pub struct TestOptions {
 pub fn run(options: Options) -> i32 {
     let input = config::Input::File(options.input.clone());
 
+    let crate_types = if options.proc_macro_crate {
+        vec![config::CrateType::ProcMacro]
+    } else {
+        vec![config::CrateType::Dylib]
+    };
+
     let sessopts = config::Options {
         maybe_sysroot: options.maybe_sysroot.clone(),
         search_paths: options.libs.clone(),
-        crate_types: vec![config::CrateType::Dylib],
+        crate_types,
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),

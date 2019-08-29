@@ -46,7 +46,7 @@ use std::panic;
 use std::process;
 
 use rustc::session::{early_warn, early_error};
-use rustc::session::config::{ErrorOutputType, RustcOptGroup};
+use rustc::session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
 
 #[macro_use]
 mod externalfiles;
@@ -133,6 +133,7 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("crate-name", |o| {
             o.optopt("", "crate-name", "specify the name of this crate", "NAME")
         }),
+        make_crate_type_option(),
         stable("L", |o| {
             o.optmulti("L", "library-path", "directory to add to crate search path",
                        "DIR")
