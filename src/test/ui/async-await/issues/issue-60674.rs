@@ -1,7 +1,6 @@
 // aux-build:issue-60674.rs
 // build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
-#![feature(async_await)]
 
 // This is a regression test that ensures that `mut` patterns are not lost when provided as input
 // to a proc macro.

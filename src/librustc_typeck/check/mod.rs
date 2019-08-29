@@ -1325,12 +1325,94 @@ fn check_union(tcx: TyCtxt<'_>, id: hir::HirId, span: Span) {
     check_packed(tcx, span, def_id);
 }
 
+/// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
+/// projections that would result in "inheriting lifetimes".
 fn check_opaque<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     substs: SubstsRef<'tcx>,
     span: Span,
-    origin: &hir::OpaqueTyOrigin
+    origin: &hir::OpaqueTyOrigin,
+) {
+    check_opaque_for_inheriting_lifetimes(tcx, def_id, span);
+    check_opaque_for_cycles(tcx, def_id, substs, span, origin);
+}
+
+/// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
+/// in "inheriting lifetimes".
+fn check_opaque_for_inheriting_lifetimes(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    span: Span,
+) {
+    let item = tcx.hir().expect_item(
+        tcx.hir().as_local_hir_id(def_id).expect("opaque type is not local"));
+    debug!("check_opaque_for_inheriting_lifetimes: def_id={:?} span={:?} item={:?}",
+           def_id, span, item);
+
+    #[derive(Debug)]
+    struct ProhibitOpaqueVisitor<'tcx> {
+        opaque_identity_ty: Ty<'tcx>,
+        generics: &'tcx ty::Generics,
+    };
+
+    impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueVisitor<'tcx> {
+        fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+            debug!("check_opaque_for_inheriting_lifetimes: (visit_ty) t={:?}", t);
+            if t == self.opaque_identity_ty { false } else { t.super_visit_with(self) }
+        }
+
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+            debug!("check_opaque_for_inheriting_lifetimes: (visit_region) r={:?}", r);
+            if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
+                return *index < self.generics.parent_count as u32;
+            }
+
+            r.super_visit_with(self)
+        }
+    }
+
+    let prohibit_opaque = match item.node {
+        ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::AsyncFn, .. }) |
+        ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn, .. }) => {
+            let mut visitor = ProhibitOpaqueVisitor {
+                opaque_identity_ty: tcx.mk_opaque(
+                    def_id, InternalSubsts::identity_for_item(tcx, def_id)),
+                generics: tcx.generics_of(def_id),
+            };
+            debug!("check_opaque_for_inheriting_lifetimes: visitor={:?}", visitor);
+
+            tcx.predicates_of(def_id).predicates.iter().any(
+                |(predicate, _)| predicate.visit_with(&mut visitor))
+        },
+        _ => false,
+    };
+
+    debug!("check_opaque_for_inheriting_lifetimes: prohibit_opaque={:?}", prohibit_opaque);
+    if prohibit_opaque {
+        let is_async = match item.node {
+            ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => match origin {
+                hir::OpaqueTyOrigin::AsyncFn => true,
+                _ => false,
+            },
+            _ => unreachable!(),
+        };
+
+        tcx.sess.span_err(span, &format!(
+            "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
+             a parent scope",
+            if is_async { "async fn" } else { "impl Trait" },
+        ));
+    }
+}
+
+/// Checks that an opaque type does not contain cycles.
+fn check_opaque_for_cycles<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+    span: Span,
+    origin: &hir::OpaqueTyOrigin,
 ) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
         if let hir::OpaqueTyOrigin::AsyncFn = origin {
@@ -1834,9 +1916,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, d
     );
     let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
     err.span_label(sp, &msg);
-    if let &[.., ref end] = &variant_spans[..] {
-        // FIXME: Ping cfg(bootstrap) -- Use `ref start @ ..` with new bootstrap compiler.
-        let start = &variant_spans[..variant_spans.len() - 1];
+    if let &[ref start @ .., ref end] = &variant_spans[..] {
         for variant_span in start {
             err.span_label(*variant_span, "");
         }
@@ -1968,19 +2048,19 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
     }
 
     for v in vs {
-        if let Some(ref e) = v.node.disr_expr {
+        if let Some(ref e) = v.disr_expr {
             tcx.typeck_tables_of(tcx.hir().local_def_id(e.hir_id));
         }
     }
 
     if tcx.adt_def(def_id).repr.int.is_none() && tcx.features().arbitrary_enum_discriminant {
         let is_unit =
-            |var: &hir::Variant| match var.node.data {
+            |var: &hir::Variant| match var.data {
                 hir::VariantData::Unit(..) => true,
                 _ => false
             };
 
-        let has_disr = |var: &hir::Variant| var.node.disr_expr.is_some();
+        let has_disr = |var: &hir::Variant| var.disr_expr.is_some();
         let has_non_units = vs.iter().any(|var| !is_unit(var));
         let disr_units = vs.iter().any(|var| is_unit(&var) && has_disr(&var));
         let disr_non_unit = vs.iter().any(|var| !is_unit(&var) && has_disr(&var));
@@ -1999,11 +2079,11 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
             let variant_did = def.variants[VariantIdx::new(i)].def_id;
             let variant_i_hir_id = tcx.hir().as_local_hir_id(variant_did).unwrap();
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
-            let i_span = match variant_i.node.disr_expr {
+            let i_span = match variant_i.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => tcx.hir().span(variant_i_hir_id)
             };
-            let span = match v.node.disr_expr {
+            let span = match v.disr_expr {
                 Some(ref expr) => tcx.hir().span(expr.hir_id),
                 None => v.span
             };
@@ -2863,7 +2943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (PlaceOp::Index, false) => (self.tcx.lang_items().index_trait(), sym::index),
             (PlaceOp::Index, true) => (self.tcx.lang_items().index_mut_trait(), sym::index_mut),
         };
-        (tr, ast::Ident::with_empty_ctxt(name))
+        (tr, ast::Ident::with_dummy_span(name))
     }
 
     fn try_overloaded_place_op(&self,
@@ -3820,6 +3900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err, &fn_decl, expected, found, can_suggest);
         }
         self.suggest_ref_or_into(err, expression, expected, found);
+        self.suggest_boxing_when_appropriate(err, expression, expected, found);
         pointing_at_return_type
     }
 
@@ -3980,6 +4061,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// When encountering the expected boxed value allocated in the stack, suggest allocating it
+    /// in the heap by calling `Box::new()`.
+    fn suggest_boxing_when_appropriate(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        expr: &hir::Expr,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        if self.tcx.hir().is_const_context(expr.hir_id) {
+            // Do not suggest `Box::new` in const context.
+            return;
+        }
+        if !expected.is_box() || found.is_box() {
+            return;
+        }
+        let boxed_found = self.tcx.mk_box(found);
+        if let (true, Ok(snippet)) = (
+            self.can_coerce(boxed_found, expected),
+            self.sess().source_map().span_to_snippet(expr.span),
+        ) {
+            err.span_suggestion(
+                expr.span,
+                "store this in the heap by calling `Box::new`",
+                format!("Box::new({})", snippet),
+                Applicability::MachineApplicable,
+            );
+            err.note("for more on the distinction between the stack and the \
+                        heap, read https://doc.rust-lang.org/book/ch15-01-box.html, \
+                        https://doc.rust-lang.org/rust-by-example/std/box.html, and \
+                        https://doc.rust-lang.org/std/boxed/index.html");
+        }
+    }
+
+
     /// A common error is to forget to add a semicolon at the end of a block, e.g.,
     ///
     /// ```
@@ -4081,8 +4197,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// A possible error is to forget to add `.await` when using futures:
     ///
     /// ```
-    /// #![feature(async_await)]
-    ///
     /// async fn make_u32() -> u32 {
     ///     22
     /// }

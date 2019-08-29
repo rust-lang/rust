@@ -12,7 +12,7 @@
 # source tarball for a stable release you'll likely see `1.x.0` for rustc and
 # `0.x.0` for Cargo where they were released on `date`.
 
-date: 2019-07-04
+date: 2019-08-13
 rustc: beta
 cargo: beta
 
@@ -25,7 +25,7 @@ cargo: beta
 #
 # This means that there's a small window of time (a few days) where artifacts
 # are downloaded from dev-static.rust-lang.org instead of static.rust-lang.org.
-# In order to ease this transition we have an extra key which is in the 
+# In order to ease this transition we have an extra key which is in the
 # configuration file below. When uncommented this will instruct the bootstrap.py
 # script to download from dev-static.rust-lang.org.
 #

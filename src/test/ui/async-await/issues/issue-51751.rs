@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(async_await)]
-
 async fn inc(limit: i64) -> i64 {
     limit + 1
 }

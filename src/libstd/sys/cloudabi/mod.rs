@@ -1,5 +1,3 @@
-#![allow(deprecated_in_future)] // mem::uninitialized; becomes `deprecated` when nightly is 1.39
-
 use crate::io::ErrorKind;
 use crate::mem;
 

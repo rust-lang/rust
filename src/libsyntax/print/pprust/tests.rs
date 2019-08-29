@@ -54,14 +54,15 @@ fn test_variant_to_string() {
     with_default_globals(|| {
         let ident = ast::Ident::from_str("principal_skinner");
 
-        let var = source_map::respan(syntax_pos::DUMMY_SP, ast::Variant_ {
+        let var = ast::Variant {
             ident,
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
             // making this up as I go.... ?
             data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),
             disr_expr: None,
-        });
+            span: syntax_pos::DUMMY_SP,
+        };
 
         let varstr = variant_to_string(&var);
         assert_eq!(varstr, "principal_skinner");

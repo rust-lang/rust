@@ -1,8 +1,6 @@
 // build-pass (FIXME(62277): could be check-pass?)
 // edition:2018
 
-#![feature(async_await)]
-
 use std::sync::Arc;
 
 trait SomeTrait: Send + Sync + 'static {

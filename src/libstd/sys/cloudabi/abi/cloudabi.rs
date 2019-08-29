@@ -115,6 +115,7 @@
 
 #![no_std]
 #![allow(non_camel_case_types)]
+#![allow(deprecated)] // FIXME: using `mem::uninitialized()`
 
 include!("bitflags.rs");
 

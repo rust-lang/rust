@@ -1,11 +1,12 @@
-//! The compiler code necessary to implement the `#[derive(Encodable)]`
-//! (and `Decodable`, in `decodable.rs`) extension. The idea here is that
-//! type-defining items may be tagged with `#[derive(Encodable, Decodable)]`.
+//! The compiler code necessary to implement the `#[derive(RustcEncodable)]`
+//! (and `RustcDecodable`, in `decodable.rs`) extension. The idea here is that
+//! type-defining items may be tagged with
+//! `#[derive(RustcEncodable, RustcDecodable)]`.
 //!
 //! For example, a type like:
 //!
 //! ```
-//! #[derive(Encodable, Decodable)]
+//! #[derive(RustcEncodable, RustcDecodable)]
 //! struct Node { id: usize }
 //! ```
 //!
@@ -40,15 +41,17 @@
 //! references other non-built-in types. A type definition like:
 //!
 //! ```
-//! # #[derive(Encodable, Decodable)] struct Span;
-//! #[derive(Encodable, Decodable)]
+//! # #[derive(RustcEncodable, RustcDecodable)]
+//! # struct Span;
+//! #[derive(RustcEncodable, RustcDecodable)]
 //! struct Spanned<T> { node: T, span: Span }
 //! ```
 //!
 //! would yield functions like:
 //!
 //! ```
-//! # #[derive(Encodable, Decodable)] struct Span;
+//! # #[derive(RustcEncodable, RustcDecodable)]
+//! # struct Span;
 //! # struct Spanned<T> { node: T, span: Span }
 //! impl<
 //!     S: Encoder<E>,
@@ -82,7 +85,7 @@
 //! }
 //! ```
 
-use crate::deriving::{self, pathvec_std};
+use crate::deriving::pathvec_std;
 use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
@@ -98,7 +101,7 @@ pub fn expand_deriving_rustc_encodable(cx: &mut ExtCtxt<'_>,
                                        item: &Annotatable,
                                        push: &mut dyn FnMut(Annotatable)) {
     let krate = "rustc_serialize";
-    let typaram = &*deriving::hygienic_type_parameter(item, "__S");
+    let typaram = "__S";
 
     let trait_def = TraitDef {
         span,
@@ -238,7 +241,7 @@ fn encodable_substructure(cx: &mut ExtCtxt<'_>,
             }
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
-            let name = cx.expr_str(trait_span, variant.node.ident.name);
+            let name = cx.expr_str(trait_span, variant.ident.name);
             let call = cx.expr_method_call(trait_span,
                                            blkencoder,
                                            cx.ident_of("emit_enum_variant"),

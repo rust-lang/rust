@@ -1,6 +1,6 @@
 //! This module contains `TyKind` and its major components.
 
-#![cfg_attr(not(bootstrap), allow(rustc::usage_of_ty_tykind))]
+#![allow(rustc::usage_of_ty_tykind)]
 
 use crate::hir;
 use crate::hir::def_id::DefId;
@@ -1141,13 +1141,6 @@ impl<'tcx> ParamTy {
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_param(self.index, self.name)
     }
-
-    pub fn is_self(&self) -> bool {
-        // FIXME(#50125): Ignoring `Self` with `index != 0` might lead to weird behavior elsewhere,
-        // but this should only be possible when using `-Z continue-parse-after-error` like
-        // `compile-fail/issue-36638.rs`.
-        self.name.as_symbol() == kw::SelfUpper && self.index == 0
-    }
 }
 
 #[derive(Copy, Clone, Hash, RustcEncodable, RustcDecodable,
@@ -1790,14 +1783,6 @@ impl<'tcx> TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_self(&self) -> bool {
-        match self.sty {
-            Param(ref p) => p.is_self(),
-            _ => false,
-        }
-    }
-
-    #[inline]
     pub fn is_slice(&self) -> bool {
         match self.sty {
             RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => match ty.sty {
@@ -2068,6 +2053,9 @@ impl<'tcx> TyS<'tcx> {
             Error => {  // ignore errors (#54954)
                 ty::Binder::dummy(FnSig::fake())
             }
+            Closure(..) => bug!(
+                "to get the signature of a closure, use `closure_sig()` not `fn_sig()`",
+            ),
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }

@@ -22,6 +22,8 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 
+pub extern crate rustc_plugin_impl as plugin;
+
 use pretty::{PpMode, UserIdentifiedItem};
 
 //use rustc_resolve as resolve;
@@ -678,7 +680,7 @@ impl RustcDefaultCalls {
 
                     let mut cfgs = sess.parse_sess.config.iter().filter_map(|&(name, ref value)| {
                         let gated_cfg = GatedCfg::gate(&ast::MetaItem {
-                            path: ast::Path::from_ident(ast::Ident::with_empty_ctxt(name)),
+                            path: ast::Path::from_ident(ast::Ident::with_dummy_span(name)),
                             node: ast::MetaItemKind::Word,
                             span: DUMMY_SP,
                         });

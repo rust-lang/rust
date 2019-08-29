@@ -2,7 +2,7 @@ error: hello to you, too!
   --> $DIR/multispan.rs:14:5
    |
 LL |     hello!(hi);
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:14:12
@@ -14,7 +14,7 @@ error: hello to you, too!
   --> $DIR/multispan.rs:17:5
    |
 LL |     hello!(hi hi);
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^ in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:17:12
@@ -26,7 +26,7 @@ error: hello to you, too!
   --> $DIR/multispan.rs:20:5
    |
 LL |     hello!(hi hi hi);
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^ in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:20:12
@@ -38,7 +38,7 @@ error: hello to you, too!
   --> $DIR/multispan.rs:23:5
    |
 LL |     hello!(hi hey hi yo hi beep beep hi hi);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:23:12
@@ -50,7 +50,7 @@ error: hello to you, too!
   --> $DIR/multispan.rs:24:5
    |
 LL |     hello!(hi there, hi how are you? hi... hi.);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:24:12
@@ -62,7 +62,7 @@ error: hello to you, too!
   --> $DIR/multispan.rs:25:5
    |
 LL |     hello!(whoah. hi di hi di ho);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:25:19
@@ -74,7 +74,7 @@ error: hello to you, too!
   --> $DIR/multispan.rs:26:5
    |
 LL |     hello!(hi good hi and good bye);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ in this macro invocation
    |
 note: found these 'hi's
   --> $DIR/multispan.rs:26:12

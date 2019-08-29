@@ -1,8 +1,19 @@
-warning: the feature `generic_associated_types` is incomplete and may cause the compiler to crash
-  --> $DIR/shadowing.rs:1:12
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowing.rs:19:14
    |
-LL | #![feature(generic_associated_types)]
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
+LL | trait ShadowT<T> {
+   |               - first use of `T`
+LL |     type Bar<T>;
+   |              ^ already used
 
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowing.rs:27:14
+   |
+LL | impl<T> NoShadowT<T> for Option<T> {
+   |      - first use of `T`
+LL |     type Bar<T> = i32;
+   |              ^ already used
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0403`.

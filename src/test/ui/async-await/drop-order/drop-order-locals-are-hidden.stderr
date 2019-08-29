@@ -1,23 +1,23 @@
 error[E0425]: cannot find value `__arg1` in this scope
-  --> $DIR/drop-order-locals-are-hidden.rs:7:16
+  --> $DIR/drop-order-locals-are-hidden.rs:4:16
    |
 LL |     assert_eq!(__arg1, (1, 2, 3));
    |                ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `__arg2` in this scope
-  --> $DIR/drop-order-locals-are-hidden.rs:8:16
+  --> $DIR/drop-order-locals-are-hidden.rs:5:16
    |
 LL |     assert_eq!(__arg2, 4);
    |                ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `__arg0` in this scope
-  --> $DIR/drop-order-locals-are-hidden.rs:12:16
+  --> $DIR/drop-order-locals-are-hidden.rs:9:16
    |
 LL |     assert_eq!(__arg0, 1);
    |                ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `__arg1` in this scope
-  --> $DIR/drop-order-locals-are-hidden.rs:13:16
+  --> $DIR/drop-order-locals-are-hidden.rs:10:16
    |
 LL |     assert_eq!(__arg1, 2);
    |                ^^^^^^ not found in this scope

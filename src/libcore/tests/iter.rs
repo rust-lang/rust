@@ -104,6 +104,22 @@ fn test_iterator_chain_nth() {
 }
 
 #[test]
+fn test_iterator_chain_nth_back() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let zs = [];
+    let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
+    for (i, x) in expected.iter().rev().enumerate() {
+        assert_eq!(Some(x), xs.iter().chain(&ys).nth_back(i));
+    }
+    assert_eq!(zs.iter().chain(&xs).nth_back(0), Some(&5));
+
+    let mut it = xs.iter().chain(&zs);
+    assert_eq!(it.nth_back(5), Some(&0));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
 fn test_iterator_chain_last() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];
@@ -134,6 +150,54 @@ fn test_iterator_chain_find() {
     assert_eq!(iter.next(), Some(&50));
     assert_eq!(iter.find(|&&i| i == 100), None);
     assert_eq!(iter.next(), None);
+}
+
+#[test]
+fn test_iterator_chain_size_hint() {
+    struct Iter {
+        is_empty: bool,
+    }
+
+    impl Iterator for Iter {
+        type Item = ();
+
+        // alternates between `None` and `Some(())`
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.is_empty {
+                self.is_empty = false;
+                None
+            } else {
+                self.is_empty = true;
+                Some(())
+            }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            if self.is_empty {
+                (0, Some(0))
+            } else {
+                (1, Some(1))
+            }
+        }
+    }
+
+    impl DoubleEndedIterator for Iter {
+        fn next_back(&mut self) -> Option<Self::Item> {
+            self.next()
+        }
+    }
+
+    // this chains an iterator of length 0 with an iterator of length 1,
+    // so after calling `.next()` once, the iterator is empty and the
+    // state is `ChainState::Back`. `.size_hint()` should now disregard
+    // the size hint of the left iterator
+    let mut iter = Iter { is_empty: true }.chain(once(()));
+    assert_eq!(iter.next(), Some(()));
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+
+    let mut iter = once(()).chain(Iter { is_empty: true });
+    assert_eq!(iter.next_back(), Some(()));
+    assert_eq!(iter.size_hint(), (0, Some(0)));
 }
 
 #[test]
@@ -1136,6 +1200,18 @@ fn test_cycle() {
     assert_eq!(empty::<i32>().cycle().fold(0, |acc, x| acc + x), 0);
 
     assert_eq!(once(1).cycle().skip(1).take(4).fold(0, |acc, x| acc + x), 4);
+
+    assert_eq!((0..10).cycle().take(5).sum::<i32>(), 10);
+    assert_eq!((0..10).cycle().take(15).sum::<i32>(), 55);
+    assert_eq!((0..10).cycle().take(25).sum::<i32>(), 100);
+
+    let mut iter = (0..10).cycle();
+    iter.nth(14);
+    assert_eq!(iter.take(8).sum::<i32>(), 38);
+
+    let mut iter = (0..10).cycle();
+    iter.nth(9);
+    assert_eq!(iter.take(3).sum::<i32>(), 3);
 }
 
 #[test]

@@ -30,7 +30,7 @@ rustc_passes = { path = "../librustc_passes" }
 rustc_typeck = { path = "../librustc_typeck" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_errors = { path = "../librustc_errors" }
-rustc_plugin = { path = "../librustc_plugin" }
+rustc_plugin = { path = "../librustc_plugin", package = "rustc_plugin_impl" }
 rustc_privacy = { path = "../librustc_privacy" }
 rustc_resolve = { path = "../librustc_resolve" }
 tempfile = "3.0.5"

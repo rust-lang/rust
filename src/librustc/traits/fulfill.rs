@@ -248,10 +248,10 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
     /// This is always inlined, despite its size, because it has a single
     /// callsite and it is called *very* frequently.
     #[inline(always)]
-    fn process_obligation(&mut self,
-                          pending_obligation: &mut Self::Obligation)
-                          -> ProcessResult<Self::Obligation, Self::Error>
-    {
+    fn process_obligation(
+        &mut self,
+        pending_obligation: &mut Self::Obligation,
+    ) -> ProcessResult<Self::Obligation, Self::Error> {
         // if we were stalled on some unresolved variables, first check
         // whether any of them have been resolved; if not, don't bother
         // doing more work yet
@@ -277,7 +277,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
                 self.selcx.infcx().resolve_vars_if_possible(&obligation.predicate);
         }
 
-        debug!("process_obligation: obligation = {:?}", obligation);
+        debug!("process_obligation: obligation = {:?} cause = {:?}", obligation, obligation.cause);
 
         match obligation.predicate {
             ty::Predicate::Trait(ref data) => {
@@ -425,10 +425,13 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             }
 
             ty::Predicate::WellFormed(ty) => {
-                match ty::wf::obligations(self.selcx.infcx(),
-                                          obligation.param_env,
-                                          obligation.cause.body_id,
-                                          ty, obligation.cause.span) {
+                match ty::wf::obligations(
+                    self.selcx.infcx(),
+                    obligation.param_env,
+                    obligation.cause.body_id,
+                    ty,
+                    obligation.cause.span,
+                ) {
                     None => {
                         pending_obligation.stalled_on = vec![ty];
                         ProcessResult::Unchanged

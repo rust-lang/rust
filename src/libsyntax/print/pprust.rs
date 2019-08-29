@@ -123,13 +123,13 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let pi_nested = attr::mk_nested_word_item(ast::Ident::with_empty_ctxt(sym::prelude_import));
-        let list = attr::mk_list_item(ast::Ident::with_empty_ctxt(sym::feature), vec![pi_nested]);
+        let pi_nested = attr::mk_nested_word_item(ast::Ident::with_dummy_span(sym::prelude_import));
+        let list = attr::mk_list_item(ast::Ident::with_dummy_span(sym::feature), vec![pi_nested]);
         let fake_attr = attr::mk_attr_inner(list);
         s.print_attribute(&fake_attr);
 
         // #![no_std]
-        let no_std_meta = attr::mk_word_item(ast::Ident::with_empty_ctxt(sym::no_std));
+        let no_std_meta = attr::mk_word_item(ast::Ident::with_dummy_span(sym::no_std));
         let fake_attr = attr::mk_attr_inner(no_std_meta);
         s.print_attribute(&fake_attr);
     }
@@ -436,16 +436,28 @@ pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefM
     fn print_ident(&mut self, ident: ast::Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
 
-    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F)
+    fn strsep<T, F>(&mut self, sep: &'static str, space_before: bool,
+                    b: Breaks, elts: &[T], mut op: F)
         where F: FnMut(&mut Self, &T),
     {
         self.rbox(0, b);
-        let mut first = true;
-        for elt in elts {
-            if first { first = false; } else { self.word_space(","); }
-            op(self, elt);
+        if let Some((first, rest)) = elts.split_first() {
+            op(self, first);
+            for elt in rest {
+                if space_before {
+                    self.space();
+                }
+                self.word_space(sep);
+                op(self, elt);
+            }
         }
         self.end();
+    }
+
+    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], op: F)
+        where F: FnMut(&mut Self, &T),
+    {
+        self.strsep(",", false, b, elts, op)
     }
 
     fn maybe_print_comment(&mut self, pos: BytePos) {
@@ -1067,7 +1079,7 @@ impl<'a> State<'a> {
             }
             ast::ForeignItemKind::Macro(ref m) => {
                 self.print_mac(m);
-                match m.node.delim {
+                match m.delim {
                     MacDelimiter::Brace => {},
                     _ => self.s.word(";")
                 }
@@ -1341,7 +1353,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.print_mac(mac);
-                match mac.node.delim {
+                match mac.delim {
                     MacDelimiter::Brace => {}
                     _ => self.s.word(";"),
                 }
@@ -1402,7 +1414,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(&v.node.attrs);
+            self.print_outer_attributes(&v.attrs);
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.s.word(",");
@@ -1492,8 +1504,8 @@ impl<'a> State<'a> {
     crate fn print_variant(&mut self, v: &ast::Variant) {
         self.head("");
         let generics = ast::Generics::default();
-        self.print_struct(&v.node.data, &generics, v.node.ident, v.span, false);
-        match v.node.disr_expr {
+        self.print_struct(&v.data, &generics, v.ident, v.span, false);
+        match v.disr_expr {
             Some(ref d) => {
                 self.s.space();
                 self.word_space("=");
@@ -1554,7 +1566,7 @@ impl<'a> State<'a> {
             }
             ast::TraitItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.node.delim {
+                match mac.delim {
                     MacDelimiter::Brace => {}
                     _ => self.s.word(";"),
                 }
@@ -1591,7 +1603,7 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.node.delim {
+                match mac.delim {
                     MacDelimiter::Brace => {}
                     _ => self.s.word(";"),
                 }
@@ -1749,11 +1761,11 @@ impl<'a> State<'a> {
 
     crate fn print_mac(&mut self, m: &ast::Mac) {
         self.print_mac_common(
-            Some(MacHeader::Path(&m.node.path)),
+            Some(MacHeader::Path(&m.path)),
             true,
             None,
-            m.node.delim.to_token(),
-            m.node.stream(),
+            m.delim.to_token(),
+            m.stream(),
             true,
             m.span,
         );
@@ -2353,6 +2365,9 @@ impl<'a> State<'a> {
                 self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
                 self.pclose();
             }
+            PatKind::Or(ref pats) => {
+                self.strsep("|", true, Inconsistent, &pats[..], |s, p| s.print_pat(p));
+            }
             PatKind::Path(None, ref path) => {
                 self.print_path(path, true, 0);
             }
@@ -2367,14 +2382,14 @@ impl<'a> State<'a> {
                     Consistent, &fields[..],
                     |s, f| {
                         s.cbox(INDENT_UNIT);
-                        if !f.node.is_shorthand {
-                            s.print_ident(f.node.ident);
+                        if !f.is_shorthand {
+                            s.print_ident(f.ident);
                             s.word_nbsp(":");
                         }
-                        s.print_pat(&f.node.pat);
+                        s.print_pat(&f.pat);
                         s.end();
                     },
-                    |f| f.node.pat.span);
+                    |f| f.pat.span);
                 if etc {
                     if !fields.is_empty() { self.word_space(","); }
                     self.s.word("..");
@@ -2429,16 +2444,7 @@ impl<'a> State<'a> {
     }
 
     fn print_pats(&mut self, pats: &[P<ast::Pat>]) {
-        let mut first = true;
-        for p in pats {
-            if first {
-                first = false;
-            } else {
-                self.s.space();
-                self.word_space("|");
-            }
-            self.print_pat(p);
-        }
+        self.strsep("|", true, Inconsistent, pats, |s, p| s.print_pat(p));
     }
 
     fn print_arm(&mut self, arm: &ast::Arm) {

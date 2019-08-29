@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::mem::size_of;
 use std::{usize, isize};
 use std::vec::{Drain, IntoIter};
-use std::collections::CollectionAllocErr::*;
+use std::collections::TryReserveError::*;
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -1121,11 +1121,11 @@ fn test_try_reserve() {
             } else { panic!("usize::MAX should trigger an overflow!") }
         } else {
             // Check isize::MAX + 1 is an OOM
-            if let Err(AllocErr) = empty_bytes.try_reserve(MAX_CAP + 1) {
+            if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_CAP + 1) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
 
             // Check usize::MAX is an OOM
-            if let Err(AllocErr) = empty_bytes.try_reserve(MAX_USIZE) {
+            if let Err(AllocError { .. }) = empty_bytes.try_reserve(MAX_USIZE) {
             } else { panic!("usize::MAX should trigger an OOM!") }
         }
     }
@@ -1145,7 +1145,7 @@ fn test_try_reserve() {
             if let Err(CapacityOverflow) = ten_bytes.try_reserve(MAX_CAP - 9) {
             } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
         } else {
-            if let Err(AllocErr) = ten_bytes.try_reserve(MAX_CAP - 9) {
+            if let Err(AllocError { .. }) = ten_bytes.try_reserve(MAX_CAP - 9) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
         // Should always overflow in the add-to-len
@@ -1168,7 +1168,7 @@ fn test_try_reserve() {
             if let Err(CapacityOverflow) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
             } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
         } else {
-            if let Err(AllocErr) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
+            if let Err(AllocError { .. }) = ten_u32s.try_reserve(MAX_CAP/4 - 9) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
         // Should fail in the mul-by-size
@@ -1209,10 +1209,10 @@ fn test_try_reserve_exact() {
             if let Err(CapacityOverflow) = empty_bytes.try_reserve_exact(MAX_USIZE) {
             } else { panic!("usize::MAX should trigger an overflow!") }
         } else {
-            if let Err(AllocErr) = empty_bytes.try_reserve_exact(MAX_CAP + 1) {
+            if let Err(AllocError { .. }) = empty_bytes.try_reserve_exact(MAX_CAP + 1) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
 
-            if let Err(AllocErr) = empty_bytes.try_reserve_exact(MAX_USIZE) {
+            if let Err(AllocError { .. }) = empty_bytes.try_reserve_exact(MAX_USIZE) {
             } else { panic!("usize::MAX should trigger an OOM!") }
         }
     }
@@ -1231,7 +1231,7 @@ fn test_try_reserve_exact() {
             if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
             } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
         } else {
-            if let Err(AllocErr) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
+            if let Err(AllocError { .. }) = ten_bytes.try_reserve_exact(MAX_CAP - 9) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
         if let Err(CapacityOverflow) = ten_bytes.try_reserve_exact(MAX_USIZE) {
@@ -1252,7 +1252,7 @@ fn test_try_reserve_exact() {
             if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
             } else { panic!("isize::MAX + 1 should trigger an overflow!"); }
         } else {
-            if let Err(AllocErr) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
+            if let Err(AllocError { .. }) = ten_u32s.try_reserve_exact(MAX_CAP/4 - 9) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
         if let Err(CapacityOverflow) = ten_u32s.try_reserve_exact(MAX_USIZE - 20) {

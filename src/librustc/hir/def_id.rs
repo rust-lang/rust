@@ -1,5 +1,4 @@
 use crate::ty::{self, TyCtxt};
-use crate::hir::map::definitions::FIRST_FREE_DEF_INDEX;
 use rustc_data_structures::indexed_vec::Idx;
 use std::fmt;
 use std::u32;
@@ -99,31 +98,6 @@ newtype_index! {
         /// The crate root is always assigned index 0 by the AST Map code,
         /// thanks to `NodeCollector::new`.
         const CRATE_DEF_INDEX = 0,
-    }
-}
-
-impl DefIndex {
-    // Proc macros from a proc-macro crate have a kind of virtual DefIndex. This
-    // function maps the index of the macro within the crate (which is also the
-    // index of the macro in the CrateMetadata::proc_macros array) to the
-    // corresponding DefIndex.
-    pub fn from_proc_macro_index(proc_macro_index: usize) -> DefIndex {
-        // DefIndex for proc macros start from FIRST_FREE_DEF_INDEX,
-        // because the first FIRST_FREE_DEF_INDEX indexes are reserved
-        // for internal use.
-        let def_index = DefIndex::from(
-            proc_macro_index.checked_add(FIRST_FREE_DEF_INDEX)
-                .expect("integer overflow adding `proc_macro_index`"));
-        assert!(def_index != CRATE_DEF_INDEX);
-        def_index
-    }
-
-    // This function is the reverse of from_proc_macro_index() above.
-    pub fn to_proc_macro_index(self: DefIndex) -> usize {
-        self.index().checked_sub(FIRST_FREE_DEF_INDEX)
-            .unwrap_or_else(|| {
-                bug!("using local index {:?} as proc-macro index", self)
-            })
     }
 }
 

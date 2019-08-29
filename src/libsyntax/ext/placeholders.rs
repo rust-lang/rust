@@ -2,7 +2,6 @@ use crate::ast::{self, NodeId};
 use crate::source_map::{DUMMY_SP, dummy_spanned};
 use crate::ext::base::ExtCtxt;
 use crate::ext::expand::{AstFragment, AstFragmentKind};
-use crate::ext::hygiene::ExpnId;
 use crate::tokenstream::TokenStream;
 use crate::mut_visit::*;
 use crate::ptr::P;
@@ -14,12 +13,13 @@ use rustc_data_structures::fx::FxHashMap;
 
 pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
-        dummy_spanned(ast::Mac_ {
+        ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
             tts: TokenStream::empty().into(),
             delim: ast::MacDelimiter::Brace,
+            span: DUMMY_SP,
             prior_type_ascription: None,
-        })
+        }
     }
 
     let ident = ast::Ident::invalid();
@@ -85,11 +85,11 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment, derives: Vec<ExpnId>) {
+    pub fn add(&mut self, id: ast::NodeId, mut fragment: AstFragment, placeholders: Vec<NodeId>) {
         fragment.mut_visit_with(self);
         if let AstFragment::Items(mut items) = fragment {
-            for derive in derives {
-                match self.remove(NodeId::placeholder_from_expn_id(derive)) {
+            for placeholder in placeholders {
+                match self.remove(placeholder) {
                     AstFragment::Items(derived_items) => items.extend(derived_items),
                     _ => unreachable!(),
                 }

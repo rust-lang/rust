@@ -2,8 +2,6 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
-#![feature(async_await)]
-
 struct Small {
     x: Vec<usize>,
     y: Vec<usize>,

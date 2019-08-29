@@ -1,11 +1,11 @@
-error: expected one of `)`, `,`, or `@`, found `[`
+error: expected one of `)`, `,`, `@`, or `|`, found `[`
   --> $DIR/pat-lt-bracket-7.rs:5:16
    |
 LL |     for Thing(x[]) in foo {}
-   |                ^ expected one of `)`, `,`, or `@` here
+   |                ^ expected one of `)`, `,`, `@`, or `|` here
 
 error[E0308]: mismatched types
-  --> $DIR/pat-lt-bracket-7.rs:8:30
+  --> $DIR/pat-lt-bracket-7.rs:9:30
    |
 LL | const RECOVERY_WITNESS: () = 0;
    |                              ^ expected (), found integer

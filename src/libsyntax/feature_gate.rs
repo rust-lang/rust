@@ -30,7 +30,6 @@ use crate::tokenstream::TokenTree;
 
 use errors::{Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::debug;
@@ -462,9 +461,6 @@ declare_features! (
     // Allows using `#[doc(keyword = "...")]`.
     (active, doc_keyword, "1.28.0", Some(51315), None),
 
-    // Allows async and await syntax.
-    (active, async_await, "1.28.0", Some(50547), None),
-
     // Allows reinterpretation of the bits of a value of one type as another type during const eval.
     (active, const_transmute, "1.29.0", Some(53605), None),
 
@@ -560,6 +556,9 @@ declare_features! (
     // Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
+    // Allows the use of or-patterns, e.g. `0 | 1`.
+    (active, or_patterns, "1.38.0", Some(54883), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
@@ -572,6 +571,7 @@ pub const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::impl_trait_in_bindings,
     sym::generic_associated_types,
     sym::const_generics,
+    sym::or_patterns,
     sym::let_chains,
 ];
 
@@ -854,6 +854,8 @@ declare_features! (
     (accepted, repr_align_enum, "1.37.0", Some(57996), None),
     // Allows `const _: TYPE = VALUE`.
     (accepted, underscore_const_names, "1.37.0", Some(54912), None),
+    // Allows free and inherent `async fn`s, `async` blocks, and `<expr>.await` expressions.
+    (accepted, async_await, "1.38.0", Some(50547), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
@@ -1956,7 +1958,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
             ast::ItemKind::Enum(ast::EnumDef{ref variants, ..}, ..) => {
                 for variant in variants {
-                    match (&variant.node.data, &variant.node.disr_expr) {
+                    match (&variant.data, &variant.disr_expr) {
                         (ast::VariantData::Unit(..), _) => {},
                         (_, Some(disr_expr)) =>
                             gate_feature_post!(
@@ -2088,11 +2090,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "type ascription is experimental");
                 }
             }
-            ast::ExprKind::Yield(..) => {
-                gate_feature_post!(&self, generators,
-                                  e.span,
-                                  "yield syntax is experimental");
-            }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
@@ -2101,12 +2098,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, label_break_value, label.ident.span,
                                     "labels on blocks are unstable");
                 }
-            }
-            ast::ExprKind::Async(..) => {
-                gate_feature_post!(&self, async_await, e.span, "async blocks are unstable");
-            }
-            ast::ExprKind::Await(_) => {
-                gate_feature_post!(&self, async_await, e.span, "async/await is unstable");
             }
             _ => {}
         }
@@ -2156,11 +2147,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 span: Span,
                 _node_id: NodeId) {
         if let Some(header) = fn_kind.header() {
-            // Check for const fn and async fn declarations.
-            if header.asyncness.node.is_async() {
-                gate_feature_post!(&self, async_await, span, "async fn is unstable");
-            }
-
             // Stability of const fn methods are covered in
             // `visit_trait_item` and `visit_impl_item` below; this is
             // because default methods don't pass through this point.
@@ -2199,9 +2185,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
-                }
-                if sig.header.asyncness.node.is_async() {
-                    gate_feature_post!(&self, async_await, ti.span, "async fn is unstable");
                 }
                 if sig.decl.c_variadic {
                     gate_feature_post!(&self, c_variadic, ti.span,
@@ -2427,10 +2410,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     features
 }
 
-fn for_each_in_lock<T>(vec: &Lock<Vec<T>>, f: impl Fn(&T)) {
-    vec.borrow().iter().for_each(f);
-}
-
 pub fn check_crate(krate: &ast::Crate,
                    sess: &ParseSess,
                    features: &Features,
@@ -2443,26 +2422,17 @@ pub fn check_crate(krate: &ast::Crate,
         plugin_attributes,
     };
 
-    for_each_in_lock(&sess.param_attr_spans, |span| gate_feature!(
-        &ctx,
-        param_attrs,
-        *span,
-        "attributes on function parameters are unstable"
-    ));
+    macro_rules! gate_all {
+        ($spans:ident, $gate:ident, $msg:literal) => {
+            for span in &*sess.$spans.borrow() { gate_feature!(&ctx, $gate, *span, $msg); }
+        }
+    }
 
-    for_each_in_lock(&sess.let_chains_spans, |span| gate_feature!(
-        &ctx,
-        let_chains,
-        *span,
-        "`let` expressions in this position are experimental"
-    ));
-
-    for_each_in_lock(&sess.async_closure_spans, |span| gate_feature!(
-        &ctx,
-        async_closure,
-        *span,
-        "async closures are unstable"
-    ));
+    gate_all!(param_attr_spans, param_attrs, "attributes on function parameters are unstable");
+    gate_all!(let_chains_spans, let_chains, "`let` expressions in this position are experimental");
+    gate_all!(async_closure_spans, async_closure, "async closures are unstable");
+    gate_all!(yield_spans, generators, "yield syntax is experimental");
+    gate_all!(or_pattern_spans, or_patterns, "or-patterns syntax is experimental");
 
     let visitor = &mut PostExpansionVisitor {
         context: &ctx,

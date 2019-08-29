@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/dont-print-desugared-async.rs:6:20
+  --> $DIR/dont-print-desugared-async.rs:5:20
    |
 LL | async fn async_fn(&ref mut s: &[i32]) {}
    |                   -^^^^^^^^^

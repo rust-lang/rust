@@ -151,6 +151,10 @@ fn main() {
         cfg.define("LLVM_RUSTLLVM", None);
     }
 
+    if env::var_os("LLVM_NDEBUG").is_some() {
+        cfg.define("NDEBUG", None);
+    }
+
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
     cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
@@ -250,8 +254,11 @@ fn main() {
     let llvm_use_libcxx = env::var_os("LLVM_USE_LIBCXX");
 
     let stdcppname = if target.contains("openbsd") {
-        // llvm-config on OpenBSD doesn't mention stdlib=libc++
-        "c++"
+        if target.contains("sparc64") {
+            "estdc++"
+        } else {
+            "c++"
+        }
     } else if target.contains("freebsd") {
         "c++"
     } else if target.contains("darwin") {

@@ -433,6 +433,7 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
         LifetimeName::Static |
         LifetimeName::Error |
         LifetimeName::Implicit |
+        LifetimeName::ImplicitObjectLifetimeDefault |
         LifetimeName::Underscore => {}
     }
 }
@@ -577,15 +578,15 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                         variant: &'v Variant,
                                         generics: &'v Generics,
                                         parent_item_id: HirId) {
-    visitor.visit_ident(variant.node.ident);
-    visitor.visit_id(variant.node.id);
-    visitor.visit_variant_data(&variant.node.data,
-                               variant.node.ident.name,
+    visitor.visit_ident(variant.ident);
+    visitor.visit_id(variant.id);
+    visitor.visit_variant_data(&variant.data,
+                               variant.ident.name,
                                generics,
                                parent_item_id,
                                variant.span);
-    walk_list!(visitor, visit_anon_const, &variant.node.disr_expr);
-    walk_list!(visitor, visit_attribute, &variant.node.attrs);
+    walk_list!(visitor, visit_anon_const, &variant.disr_expr);
+    walk_list!(visitor, visit_attribute, &variant.attrs);
 }
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
@@ -704,11 +705,12 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
         PatKind::Struct(ref qpath, ref fields, _) => {
             visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
             for field in fields {
-                visitor.visit_id(field.node.hir_id);
-                visitor.visit_ident(field.node.ident);
-                visitor.visit_pat(&field.node.pat)
+                visitor.visit_id(field.hir_id);
+                visitor.visit_ident(field.ident);
+                visitor.visit_pat(&field.pat)
             }
         }
+        PatKind::Or(ref pats) => walk_list!(visitor, visit_pat, pats),
         PatKind::Tuple(ref tuple_elements, _) => {
             walk_list!(visitor, visit_pat, tuple_elements);
         }

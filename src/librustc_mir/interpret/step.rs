@@ -177,7 +177,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // The operand always has the same type as the result.
                 let val = self.read_immediate(self.eval_operand(operand, Some(dest.layout))?)?;
                 let val = self.unary_op(un_op, val)?;
-                self.write_scalar(val, dest)?;
+                assert_eq!(val.layout, dest.layout, "layout mismatch for result of {:?}", un_op);
+                self.write_immediate(*val, dest)?;
             }
 
             Aggregate(ref kind, ref operands) => {
@@ -240,8 +241,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
-                let val = self.force_allocation(src)?;
-                self.write_immediate(val.to_ref(), dest)?;
+                let place = self.force_allocation(src)?;
+                if place.layout.size.bytes() > 0 {
+                    // definitely not a ZST
+                    assert!(place.ptr.is_ptr(), "non-ZST places should be normalized to `Pointer`");
+                }
+                self.write_immediate(place.to_ref(), dest)?;
             }
 
             NullaryOp(mir::NullOp::Box, _) => {
@@ -249,7 +254,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             NullaryOp(mir::NullOp::SizeOf, ty) => {
-                let ty = self.monomorphize(ty)?;
+                let ty = self.subst_from_frame_and_normalize_erasing_regions(ty);
                 let layout = self.layout_of(ty)?;
                 assert!(!layout.is_unsized(),
                         "SizeOf nullary MIR operator called for unsized type");

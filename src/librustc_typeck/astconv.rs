@@ -635,8 +635,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         });
         let default_needs_object_self = |param: &ty::GenericParamDef| {
             if let GenericParamDefKind::Type { has_default, .. } = param.kind {
-                if is_object && has_default {
-                    if tcx.at(span).type_of(param.def_id).has_self_ty() {
+                if is_object && has_default && has_self {
+                    let self_param = tcx.types.self_param;
+                    if tcx.at(span).type_of(param.def_id).walk().any(|ty| ty == self_param) {
                         // There is no suitable inference default for a type parameter
                         // that references self, in an object type.
                         return true;
@@ -2030,7 +2031,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // `Self` in trait or type alias.
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
-                tcx.mk_self_type()
+                tcx.types.self_param
             }
             Res::SelfTy(_, Some(def_id)) => {
                 // `Self` in impl (we know the concrete type).

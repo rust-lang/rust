@@ -8,7 +8,7 @@
 //! information, source code snippets, etc.
 
 pub use syntax_pos::*;
-pub use syntax_pos::hygiene::{ExpnKind, ExpnInfo};
+pub use syntax_pos::hygiene::{ExpnKind, ExpnData};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -29,14 +29,15 @@ mod tests;
 
 /// Returns the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
-/// following the `expn_info` chain.
+/// following the `expn_data` chain.
 pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
-    let call_site1 = sp.ctxt().outer_expn_info().map(|ei| ei.call_site);
-    let call_site2 = enclosing_sp.ctxt().outer_expn_info().map(|ei| ei.call_site);
-    match (call_site1, call_site2) {
-        (None, _) => sp,
-        (Some(call_site1), Some(call_site2)) if call_site1 == call_site2 => sp,
-        (Some(call_site1), _) => original_sp(call_site1, enclosing_sp),
+    let expn_data1 = sp.ctxt().outer_expn_data();
+    let expn_data2 = enclosing_sp.ctxt().outer_expn_data();
+    if expn_data1.is_root() ||
+       !expn_data2.is_root() && expn_data1.call_site == expn_data2.call_site {
+        sp
+    } else {
+        original_sp(expn_data1.call_site, enclosing_sp)
     }
 }
 
@@ -168,6 +169,26 @@ impl SourceMap {
         let src = self.file_loader.read_file(path)?;
         let filename = path.to_owned().into();
         Ok(self.new_source_file(filename, src))
+    }
+
+    /// Loads source file as a binary blob.
+    ///
+    /// Unlike `load_file`, guarantees that no normalization like BOM-removal
+    /// takes place.
+    pub fn load_binary_file(&self, path: &Path) -> io::Result<Vec<u8>> {
+        // Ideally, this should use `self.file_loader`, but it can't
+        // deal with binary files yet.
+        let bytes = fs::read(path)?;
+
+        // We need to add file to the `SourceMap`, so that it is present
+        // in dep-info. There's also an edge case that file might be both
+        // loaded as a binary via `include_bytes!` and as proper `SourceFile`
+        // via `mod`, so we try to use real file contents and not just an
+        // empty string.
+        let text = std::str::from_utf8(&bytes).unwrap_or("")
+            .to_string();
+        self.new_source_file(path.to_owned().into(), text);
+        Ok(bytes)
     }
 
     pub fn files(&self) -> MappedLockGuard<'_, Vec<Lrc<SourceFile>>> {
@@ -519,7 +540,7 @@ impl SourceMap {
     /// extract function takes three arguments: a string slice containing the source, an index in
     /// the slice for the beginning of the span and an index in the slice for the end of the span.
     fn span_to_source<F>(&self, sp: Span, extract_source: F) -> Result<String, SpanSnippetError>
-        where F: Fn(&str, usize, usize) -> String
+        where F: Fn(&str, usize, usize) -> Result<String, SpanSnippetError>
     {
         if sp.lo() > sp.hi() {
             return Err(SpanSnippetError::IllFormedSpan(sp));
@@ -554,9 +575,9 @@ impl SourceMap {
             }
 
             if let Some(ref src) = local_begin.sf.src {
-                return Ok(extract_source(src, start_index, end_index));
+                return extract_source(src, start_index, end_index);
             } else if let Some(src) = local_begin.sf.external_src.borrow().get_source() {
-                return Ok(extract_source(src, start_index, end_index));
+                return extract_source(src, start_index, end_index);
             } else {
                 return Err(SpanSnippetError::SourceNotAvailable {
                     filename: local_begin.sf.name.clone()
@@ -567,8 +588,9 @@ impl SourceMap {
 
     /// Returns the source snippet as `String` corresponding to the given `Span`
     pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
-        self.span_to_source(sp, |src, start_index, end_index| src[start_index..end_index]
-                                                                .to_string())
+        self.span_to_source(sp, |src, start_index, end_index| src.get(start_index..end_index)
+            .map(|s| s.to_string())
+            .ok_or_else(|| SpanSnippetError::IllFormedSpan(sp)))
     }
 
     pub fn span_to_margin(&self, sp: Span) -> Option<usize> {
@@ -582,7 +604,9 @@ impl SourceMap {
 
     /// Returns the source snippet as `String` before the given `Span`
     pub fn span_to_prev_source(&self, sp: Span) -> Result<String, SpanSnippetError> {
-        self.span_to_source(sp, |src, start_index, _| src[..start_index].to_string())
+        self.span_to_source(sp, |src, start_index, _| src.get(..start_index)
+            .map(|s| s.to_string())
+            .ok_or_else(|| SpanSnippetError::IllFormedSpan(sp)))
     }
 
     /// Extend the given `Span` to just after the previous occurrence of `c`. Return the same span

@@ -8,13 +8,13 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::newtype_index;
 use rustc_macros::symbols;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
 
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
 
-use crate::hygiene::SyntaxContext;
 use crate::{Span, DUMMY_SP, GLOBALS};
 
 #[cfg(test)]
@@ -470,6 +470,7 @@ symbols! {
         option_env,
         opt_out_copy,
         or,
+        or_patterns,
         Ord,
         Ordering,
         Output,
@@ -610,7 +611,6 @@ symbols! {
         rust_eh_personality,
         rust_eh_unwind_resume,
         rust_oom,
-        __rust_unstable_column,
         rvalue_static_promotion,
         sanitizer_runtime,
         _Self,
@@ -745,25 +745,25 @@ impl Ident {
         Ident { name, span }
     }
 
-    /// Constructs a new identifier with an empty syntax context.
+    /// Constructs a new identifier with a dummy span.
     #[inline]
-    pub const fn with_empty_ctxt(name: Symbol) -> Ident {
+    pub const fn with_dummy_span(name: Symbol) -> Ident {
         Ident::new(name, DUMMY_SP)
     }
 
     #[inline]
     pub fn invalid() -> Ident {
-        Ident::with_empty_ctxt(kw::Invalid)
+        Ident::with_dummy_span(kw::Invalid)
     }
 
     /// Maps an interned string to an identifier with an empty syntax context.
     pub fn from_interned_str(string: InternedString) -> Ident {
-        Ident::with_empty_ctxt(string.as_symbol())
+        Ident::with_dummy_span(string.as_symbol())
     }
 
     /// Maps a string to an identifier with an empty span.
     pub fn from_str(string: &str) -> Ident {
-        Ident::with_empty_ctxt(Symbol::intern(string))
+        Ident::with_dummy_span(Symbol::intern(string))
     }
 
     /// Maps a string and a span to an identifier.
@@ -849,28 +849,9 @@ impl fmt::Display for Ident {
     }
 }
 
-impl Encodable for Ident {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        if self.span.ctxt().modern() == SyntaxContext::empty() {
-            s.emit_str(&self.as_str())
-        } else { // FIXME(jseyfried): intercrate hygiene
-            let mut string = "#".to_owned();
-            string.push_str(&self.as_str());
-            s.emit_str(&string)
-        }
-    }
-}
+impl UseSpecializedEncodable for Ident {}
 
-impl Decodable for Ident {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        let string = d.read_str()?;
-        Ok(if !string.starts_with('#') {
-            Ident::from_str(&string)
-        } else { // FIXME(jseyfried): intercrate hygiene
-            Ident::from_str(&string[1..]).gensym()
-        })
-    }
-}
+impl UseSpecializedDecodable for Ident {}
 
 /// A symbol is an interned or gensymed string. A gensym is a symbol that is
 /// never equal to any other symbol.

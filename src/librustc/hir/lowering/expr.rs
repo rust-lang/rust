@@ -552,7 +552,7 @@ impl LoweringContext<'_> {
 
         // let mut pinned = <expr>;
         let expr = P(self.lower_expr(expr));
-        let pinned_ident = Ident::with_empty_ctxt(sym::pinned);
+        let pinned_ident = Ident::with_dummy_span(sym::pinned);
         let (pinned_pat, pinned_pat_hid) = self.pat_ident_binding_mode(
             span,
             pinned_ident,
@@ -593,7 +593,7 @@ impl LoweringContext<'_> {
         let loop_node_id = self.sess.next_node_id();
         let loop_hir_id = self.lower_node_id(loop_node_id);
         let ready_arm = {
-            let x_ident = Ident::with_empty_ctxt(sym::result);
+            let x_ident = Ident::with_dummy_span(sym::result);
             let (x_pat, x_pat_hid) = self.pat_ident(span, x_ident);
             let x_expr = P(self.expr_ident(span, x_ident, x_pat_hid));
             let ready_pat = self.pat_std_enum(
@@ -677,6 +677,7 @@ impl LoweringContext<'_> {
         let fn_decl = self.lower_fn_decl(decl, None, false, None);
 
         self.with_new_scopes(|this| {
+            let prev = this.current_item;
             this.current_item = Some(fn_decl_span);
             let mut generator_kind = None;
             let body_id = this.lower_fn_body(decl, |this| {
@@ -690,8 +691,10 @@ impl LoweringContext<'_> {
                 generator_kind,
                 movability,
             );
+            let capture_clause = this.lower_capture_clause(capture_clause);
+            this.current_item = prev;
             hir::ExprKind::Closure(
-                this.lower_capture_clause(capture_clause),
+                capture_clause,
                 fn_decl,
                 body_id,
                 fn_decl_span,
@@ -981,7 +984,6 @@ impl LoweringContext<'_> {
             volatile: asm.volatile,
             alignstack: asm.alignstack,
             dialect: asm.dialect,
-            ctxt: asm.ctxt,
         };
 
         let outputs = asm.outputs
@@ -1067,9 +1069,9 @@ impl LoweringContext<'_> {
         );
         head.span = desugared_span;
 
-        let iter = Ident::with_empty_ctxt(sym::iter);
+        let iter = Ident::with_dummy_span(sym::iter);
 
-        let next_ident = Ident::with_empty_ctxt(sym::__next);
+        let next_ident = Ident::with_dummy_span(sym::__next);
         let (next_pat, next_pat_hid) = self.pat_ident_binding_mode(
             desugared_span,
             next_ident,
@@ -1078,7 +1080,7 @@ impl LoweringContext<'_> {
 
         // `::std::option::Option::Some(val) => __next = val`
         let pat_arm = {
-            let val_ident = Ident::with_empty_ctxt(sym::val);
+            let val_ident = Ident::with_dummy_span(sym::val);
             let (val_pat, val_pat_hid) = self.pat_ident(pat.span, val_ident);
             let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat_hid));
             let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_hid));
@@ -1244,7 +1246,7 @@ impl LoweringContext<'_> {
 
         // `Ok(val) => #[allow(unreachable_code)] val,`
         let ok_arm = {
-            let val_ident = Ident::with_empty_ctxt(sym::val);
+            let val_ident = Ident::with_dummy_span(sym::val);
             let (val_pat, val_pat_nid) = self.pat_ident(span, val_ident);
             let val_expr = P(self.expr_ident_with_attrs(
                 span,
@@ -1260,7 +1262,7 @@ impl LoweringContext<'_> {
         // `Err(err) => #[allow(unreachable_code)]
         //              return Try::from_error(From::from(err)),`
         let err_arm = {
-            let err_ident = Ident::with_empty_ctxt(sym::err);
+            let err_ident = Ident::with_dummy_span(sym::err);
             let (err_local, err_local_nid) = self.pat_ident(try_span, err_ident);
             let from_expr = {
                 let from_path = &[sym::convert, sym::From, sym::from];

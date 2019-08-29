@@ -2088,7 +2088,6 @@ generator can be constructed.
 Erroneous code example:
 
 ```edition2018,compile-fail,E0698
-#![feature(async_await)]
 async fn bar<T>() -> () {}
 
 async fn foo() {
@@ -2101,7 +2100,6 @@ To fix this you must bind `T` to a concrete type such as `String`
 so that a generator can then be constructed:
 
 ```edition2018
-#![feature(async_await)]
 async fn bar<T>() -> () {}
 
 async fn foo() {

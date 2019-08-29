@@ -189,8 +189,11 @@ impl<'tcx, Tag> Pointer<Tag> {
         Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
     }
 
+    /// Test if the pointer is "inbounds" of an allocation of the given size.
+    /// A pointer is "inbounds" even if its offset is equal to the size; this is
+    /// a "one-past-the-end" pointer.
     #[inline(always)]
-    pub fn check_in_alloc(
+    pub fn check_inbounds_alloc(
         self,
         allocation_size: Size,
         msg: CheckInAllocMsg,

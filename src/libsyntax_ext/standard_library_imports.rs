@@ -1,8 +1,8 @@
 use syntax::{ast, attr};
 use syntax::edition::Edition;
-use syntax::ext::hygiene::{ExpnId, MacroKind};
+use syntax::ext::hygiene::MacroKind;
 use syntax::ptr::P;
-use syntax::source_map::{ExpnInfo, ExpnKind, dummy_spanned, respan};
+use syntax::source_map::{ExpnData, ExpnKind, dummy_spanned, respan};
 use syntax::symbol::{Ident, Symbol, kw, sym};
 use syntax_pos::DUMMY_SP;
 
@@ -32,7 +32,7 @@ pub fn inject(
         // HACK(eddyb) gensym the injected crates on the Rust 2018 edition,
         // so they don't accidentally interfere with the new import paths.
         let orig_name_sym = Symbol::intern(orig_name_str);
-        let orig_name_ident = Ident::with_empty_ctxt(orig_name_sym);
+        let orig_name_ident = Ident::with_dummy_span(orig_name_sym);
         let (rename, orig_name) = if rust_2018 {
             (orig_name_ident.gensym(), Some(orig_name_sym))
         } else {
@@ -40,7 +40,7 @@ pub fn inject(
         };
         krate.module.items.insert(0, P(ast::Item {
             attrs: vec![attr::mk_attr_outer(
-                attr::mk_word_item(ast::Ident::with_empty_ctxt(sym::macro_use))
+                attr::mk_word_item(ast::Ident::with_dummy_span(sym::macro_use))
             )],
             vis: dummy_spanned(ast::VisibilityKind::Inherited),
             node: ast::ItemKind::ExternCrate(alt_std_name.or(orig_name)),
@@ -55,7 +55,7 @@ pub fn inject(
     // the prelude.
     let name = names[0];
 
-    let span = DUMMY_SP.fresh_expansion(ExpnId::root(), ExpnInfo::allow_unstable(
+    let span = DUMMY_SP.fresh_expansion(ExpnData::allow_unstable(
         ExpnKind::Macro(MacroKind::Attr, sym::std_inject), DUMMY_SP, edition,
         [sym::prelude_import][..].into(),
     ));
@@ -66,7 +66,7 @@ pub fn inject(
         vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
-                segments: iter::once(ast::Ident::with_empty_ctxt(kw::PathRoot))
+                segments: iter::once(ast::Ident::with_dummy_span(kw::PathRoot))
                     .chain(
                         [name, "prelude", "v1"].iter().cloned()
                             .map(ast::Ident::from_str)

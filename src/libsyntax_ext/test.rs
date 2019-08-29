@@ -29,7 +29,7 @@ pub fn expand_test_case(
 
     if !ecx.ecfg.should_test { return vec![]; }
 
-    let sp = attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(ecx.current_expansion.id));
+    let sp = attr_sp.with_ctxt(SyntaxContext::root().apply_mark(ecx.current_expansion.id));
     let mut item = anno_item.expect_item();
     item = item.map(|mut item| {
         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
@@ -93,7 +93,7 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let ctxt = SyntaxContext::empty().apply_mark(cx.current_expansion.id);
+    let ctxt = SyntaxContext::root().apply_mark(cx.current_expansion.id);
     let (sp, attr_sp) = (item.span.with_ctxt(ctxt), attr_sp.with_ctxt(ctxt));
 
     // Gensym "test" so we can extern crate without conflicting with any local names

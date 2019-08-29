@@ -29,7 +29,7 @@ pub fn expand(
     };
 
     // Generate a bunch of new items using the AllocFnFactory
-    let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(ecx.current_expansion.id));
+    let span = item.span.with_ctxt(SyntaxContext::root().apply_mark(ecx.current_expansion.id));
     let f = AllocFnFactory {
         span,
         kind: AllocatorKind::Global,
@@ -44,7 +44,7 @@ pub fn expand(
     let const_ty = ecx.ty(span, TyKind::Tup(Vec::new()));
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item =
-        ecx.item_const(span, Ident::with_empty_ctxt(kw::Underscore), const_ty, const_body);
+        ecx.item_const(span, Ident::with_dummy_span(kw::Underscore), const_ty, const_body);
 
     // Return the original item and the new methods.
     vec![Annotatable::Item(item), Annotatable::Item(const_item)]
@@ -120,7 +120,7 @@ impl AllocFnFactory<'_, '_> {
     ) -> P<Expr> {
         match *ty {
             AllocatorTy::Layout => {
-                let usize = self.cx.path_ident(self.span, Ident::with_empty_ctxt(sym::usize));
+                let usize = self.cx.path_ident(self.span, Ident::with_dummy_span(sym::usize));
                 let ty_usize = self.cx.ty_path(usize);
                 let size = ident();
                 let align = ident();
@@ -178,12 +178,12 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn usize(&self) -> P<Ty> {
-        let usize = self.cx.path_ident(self.span, Ident::with_empty_ctxt(sym::usize));
+        let usize = self.cx.path_ident(self.span, Ident::with_dummy_span(sym::usize));
         self.cx.ty_path(usize)
     }
 
     fn ptr_u8(&self) -> P<Ty> {
-        let u8 = self.cx.path_ident(self.span, Ident::with_empty_ctxt(sym::u8));
+        let u8 = self.cx.path_ident(self.span, Ident::with_dummy_span(sym::u8));
         let ty_u8 = self.cx.ty_path(u8);
         self.cx.ty_ptr(self.span, ty_u8, Mutability::Mutable)
     }

@@ -127,6 +127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.suggest_compatible_variants(&mut err, expr, expected, expr_ty);
         self.suggest_ref_or_into(&mut err, expr, expected, expr_ty);
+        self.suggest_boxing_when_appropriate(&mut err, expr, expected, expr_ty);
         self.suggest_missing_await(&mut err, expr, expected, expr_ty);
 
         (expected, Some(err))
@@ -346,9 +347,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sp,
         );
 
-        // Check the `expn_info()` to see if this is a macro; if so, it's hard to
-        // extract the text and make a good suggestion, so don't bother.
-        let is_macro = sp.ctxt().outer_expn_info().is_some();
+        // If the span is from a macro, then it's hard to extract the text
+        // and make a good suggestion, so don't bother.
+        let is_macro = sp.from_expansion();
 
         match (&expr.node, &expected.sty, &checked_ty.sty) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
@@ -548,9 +549,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        if self.tcx.hir().is_const_scope(expr.hir_id) {
+        if self.tcx.hir().is_const_context(expr.hir_id) {
             // Shouldn't suggest `.into()` on `const`s.
             // FIXME(estebank): modify once we decide to suggest `as` casts
+            return false;
+        }
+        if !self.tcx.sess.source_map().span_to_filename(expr.span).is_real() {
+            // Ignore if span is from within a macro.
             return false;
         }
 

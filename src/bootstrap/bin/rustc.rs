@@ -37,24 +37,12 @@ fn main() {
             let mut new = None;
             if let Some(current_as_str) = args[i].to_str() {
                 if (&*args[i - 1] == "-C" && current_as_str.starts_with("metadata")) ||
-                   current_as_str.starts_with("-Cmetadata") {
+                    current_as_str.starts_with("-Cmetadata") {
                     new = Some(format!("{}-{}", current_as_str, s));
                 }
             }
             if let Some(new) = new { args[i] = new.into(); }
         }
-    }
-
-    // Drop `--error-format json` because despite our desire for json messages
-    // from Cargo we don't want any from rustc itself.
-    if let Some(n) = args.iter().position(|n| n == "--error-format") {
-        args.remove(n);
-        args.remove(n);
-    }
-
-    if let Some(s) = env::var_os("RUSTC_ERROR_FORMAT") {
-        args.push("--error-format".into());
-        args.push(s);
     }
 
     // Detect whether or not we're a build script depending on whether --target
@@ -101,7 +89,7 @@ fn main() {
     if let Some(crate_name) = crate_name {
         if let Some(target) = env::var_os("RUSTC_TIME") {
             if target == "all" ||
-               target.into_string().unwrap().split(",").any(|c| c.trim() == crate_name)
+                target.into_string().unwrap().split(",").any(|c| c.trim() == crate_name)
             {
                 cmd.arg("-Ztime");
             }
@@ -110,8 +98,17 @@ fn main() {
 
     // Non-zero stages must all be treated uniformly to avoid problems when attempting to uplift
     // compiler libraries and such from stage 1 to 2.
+    //
+    // FIXME: the fact that core here is excluded is due to core_arch from our stdarch submodule
+    // being broken on the beta compiler with bootstrap passed, so this is a temporary workaround
+    // (we've just snapped, so there are no cfg(bootstrap) related annotations in core).
     if stage == "0" {
-        cmd.arg("--cfg").arg("bootstrap");
+        if crate_name != Some("core") {
+            cmd.arg("--cfg").arg("bootstrap");
+        } else {
+            // NOTE(eddyb) see FIXME above, except now we need annotations again in core.
+            cmd.arg("--cfg").arg("boostrap_stdarch_ignore_this");
+        }
     }
 
     // Print backtrace in case of ICE
@@ -132,10 +129,7 @@ fn main() {
         cmd.arg("-Dwarnings");
         cmd.arg("-Drust_2018_idioms");
         cmd.arg("-Dunused_lifetimes");
-        // cfg(not(bootstrap)): Remove this during the next stage 0 compiler update.
-        // `-Drustc::internal` is a new feature and `rustc_version` mis-reports the `stage`.
-        let cfg_not_bootstrap = stage != "0" && crate_name != Some("rustc_version");
-        if cfg_not_bootstrap && use_internal_lints(crate_name) {
+        if use_internal_lints(crate_name) {
             cmd.arg("-Zunstable-options");
             cmd.arg("-Drustc::internal");
         }
@@ -287,10 +281,6 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
-
-        if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
-            cmd.arg("--remap-path-prefix").arg(&map);
-        }
     } else {
         // Override linker if necessary.
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
@@ -305,6 +295,10 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
+    }
+
+    if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
+        cmd.arg("--remap-path-prefix").arg(&map);
     }
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)

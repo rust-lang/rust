@@ -43,8 +43,7 @@ use syntax_pos::{BytePos,
                  SourceFile,
                  FileName,
                  MultiSpan,
-                 Span,
-                 NO_EXPANSION};
+                 Span};
 
 /// Indicates the confidence in the correctness of a suggestion.
 ///
@@ -189,7 +188,7 @@ impl CodeSuggestion {
             // Find the bounding span.
             let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
             let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
-            let bounding_span = Span::new(lo, hi, NO_EXPANSION);
+            let bounding_span = Span::with_root_ctxt(lo, hi);
             let lines = cm.span_to_lines(bounding_span).unwrap();
             assert!(!lines.lines.is_empty());
 
@@ -787,9 +786,6 @@ impl Handler {
 pub enum Level {
     Bug,
     Fatal,
-    // An error which while not immediately fatal, should stop the compiler
-    // progressing beyond the current phase.
-    PhaseFatal,
     Error,
     Warning,
     Note,
@@ -808,7 +804,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | Fatal | PhaseFatal | Error => {
+            Bug | Fatal | Error => {
                 spec.set_fg(Some(Color::Red))
                     .set_intense(true);
             }
@@ -833,7 +829,7 @@ impl Level {
     pub fn to_str(self) -> &'static str {
         match self {
             Bug => "error: internal compiler error",
-            Fatal | PhaseFatal | Error => "error",
+            Fatal | Error => "error",
             Warning => "warning",
             Note => "note",
             Help => "help",

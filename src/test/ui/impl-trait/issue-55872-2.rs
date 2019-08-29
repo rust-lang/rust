@@ -1,6 +1,7 @@
 // edition:2018
 // ignore-tidy-linelength
-#![feature(async_await, type_alias_impl_trait)]
+
+#![feature(type_alias_impl_trait)]
 
 pub trait Bar {
     type E: Copy;

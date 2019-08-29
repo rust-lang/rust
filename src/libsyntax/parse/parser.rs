@@ -13,7 +13,6 @@ mod generics;
 use crate::ast::{self, AttrStyle, Attribute, Arg, BindingMode, StrStyle, SelfKind};
 use crate::ast::{FnDecl, Ident, IsAsync, MacDelimiter, Mutability, TyKind};
 use crate::ast::{Visibility, VisibilityKind, Unsafety, CrateSugar};
-use crate::ext::hygiene::SyntaxContext;
 use crate::source_map::{self, respan};
 use crate::parse::{SeqSep, literal, token};
 use crate::parse::lexer::UnmatchedBrace;
@@ -1101,7 +1100,7 @@ impl<'a> Parser<'a> {
 
     crate fn process_potential_macro_variable(&mut self) {
         self.token = match self.token.kind {
-            token::Dollar if self.token.span.ctxt() != SyntaxContext::empty() &&
+            token::Dollar if self.token.span.from_expansion() &&
                              self.look_ahead(1, |t| t.is_ident()) => {
                 self.bump();
                 let name = match self.token.kind {
@@ -1236,7 +1235,7 @@ impl<'a> Parser<'a> {
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 
-        if c_variadic && args.is_empty() {
+        if c_variadic && args.len() <= 1 {
             self.span_err(sp,
                           "C-variadic function must be declared with at least one named argument");
         }

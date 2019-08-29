@@ -21,7 +21,7 @@
 #![feature(intrinsics)]
 
 
-// Change trait visibility --------------------------------------------------------
+// Change trait visibility
 #[cfg(cfail1)]
 trait TraitVisibility { }
 
@@ -32,7 +32,7 @@ pub trait TraitVisibility { }
 
 
 
-// Change trait unsafety ----------------------------------------------------------
+// Change trait unsafety
 #[cfg(cfail1)]
 trait TraitUnsafety { }
 
@@ -43,7 +43,7 @@ unsafe trait TraitUnsafety { }
 
 
 
-// Add method ---------------------------------------------------------------------
+// Add method
 #[cfg(cfail1)]
 trait TraitAddMethod {
 }
@@ -57,7 +57,7 @@ pub trait TraitAddMethod {
 
 
 
-// Change name of method ----------------------------------------------------------
+// Change name of method
 #[cfg(cfail1)]
 trait TraitChangeMethodName {
     fn method();
@@ -72,7 +72,7 @@ trait TraitChangeMethodName {
 
 
 
-// Add return type to method ------------------------------------------------------
+// Add return type to method
 #[cfg(cfail1)]
 trait TraitAddReturnType {
     fn method();
@@ -89,7 +89,7 @@ trait TraitAddReturnType {
 
 
 
-// Change return type of method ---------------------------------------------------
+// Change return type of method
 #[cfg(cfail1)]
 trait TraitChangeReturnType {
     fn method() -> u32;
@@ -106,7 +106,7 @@ trait TraitChangeReturnType {
 
 
 
-// Add parameter to method --------------------------------------------------------
+// Add parameter to method
 #[cfg(cfail1)]
 trait TraitAddParameterToMethod {
     fn method();
@@ -123,7 +123,7 @@ trait TraitAddParameterToMethod {
 
 
 
-// Change name of method parameter ------------------------------------------------
+// Change name of method parameter
 #[cfg(cfail1)]
 trait TraitChangeMethodParameterName {
     fn method(a: u32);
@@ -148,7 +148,7 @@ trait TraitChangeMethodParameterName {
 
 
 
-// Change type of method parameter (i32 => i64) -----------------------------------
+// Change type of method parameter (i32 => i64)
 #[cfg(cfail1)]
 trait TraitChangeMethodParameterType {
     fn method(a: i32);
@@ -165,7 +165,7 @@ trait TraitChangeMethodParameterType {
 
 
 
-// Change type of method parameter (&i32 => &mut i32) -----------------------------
+// Change type of method parameter (&i32 => &mut i32)
 #[cfg(cfail1)]
 trait TraitChangeMethodParameterTypeRef {
     fn method(a: &i32);
@@ -182,7 +182,7 @@ trait TraitChangeMethodParameterTypeRef {
 
 
 
-// Change order of method parameters ----------------------------------------------
+// Change order of method parameters
 #[cfg(cfail1)]
 trait TraitChangeMethodParametersOrder {
     fn method(a: i32, b: i64);
@@ -199,7 +199,7 @@ trait TraitChangeMethodParametersOrder {
 
 
 
-// Add default implementation to method -------------------------------------------
+// Add default implementation to method
 #[cfg(cfail1)]
 trait TraitAddMethodAutoImplementation {
     fn method();
@@ -216,7 +216,7 @@ trait TraitAddMethodAutoImplementation {
 
 
 
-// Change order of methods --------------------------------------------------------
+// Change order of methods
 #[cfg(cfail1)]
 trait TraitChangeOrderOfMethods {
     fn method0();
@@ -233,7 +233,7 @@ trait TraitChangeOrderOfMethods {
 
 
 
-// Change mode of self parameter --------------------------------------------------
+// Change mode of self parameter
 #[cfg(cfail1)]
 trait TraitChangeModeSelfRefToMut {
     fn method(&self);
@@ -284,7 +284,7 @@ trait TraitChangeModeSelfOwnToRef {
 
 
 
-// Add unsafe modifier to method --------------------------------------------------
+// Add unsafe modifier to method
 #[cfg(cfail1)]
 trait TraitAddUnsafeModifier {
     fn method();
@@ -301,7 +301,7 @@ trait TraitAddUnsafeModifier {
 
 
 
-// Add extern modifier to method --------------------------------------------------
+// Add extern modifier to method
 #[cfg(cfail1)]
 trait TraitAddExternModifier {
     fn method();
@@ -318,7 +318,7 @@ trait TraitAddExternModifier {
 
 
 
-// Change extern "C" to extern "rust-intrinsic" -----------------------------------
+// Change extern "C" to extern "rust-intrinsic"
 #[cfg(cfail1)]
 trait TraitChangeExternCToRustIntrinsic {
     extern "C" fn method();
@@ -335,7 +335,7 @@ trait TraitChangeExternCToRustIntrinsic {
 
 
 
-// Add type parameter to method ---------------------------------------------------
+// Add type parameter to method
 #[cfg(cfail1)]
 trait TraitAddTypeParameterToMethod {
     fn method();
@@ -352,7 +352,7 @@ trait TraitAddTypeParameterToMethod {
 
 
 
-// Add lifetime parameter to method -----------------------------------------------
+// Add lifetime parameter to method
 #[cfg(cfail1)]
 trait TraitAddLifetimeParameterToMethod {
     fn method();
@@ -373,7 +373,7 @@ trait TraitAddLifetimeParameterToMethod {
 trait ReferencedTrait0 { }
 trait ReferencedTrait1 { }
 
-// Add trait bound to method type parameter ---------------------------------------
+// Add trait bound to method type parameter
 #[cfg(cfail1)]
 trait TraitAddTraitBoundToMethodTypeParameter {
     fn method<T>();
@@ -390,7 +390,7 @@ trait TraitAddTraitBoundToMethodTypeParameter {
 
 
 
-// Add builtin bound to method type parameter -------------------------------------
+// Add builtin bound to method type parameter
 #[cfg(cfail1)]
 trait TraitAddBuiltinBoundToMethodTypeParameter {
     fn method<T>();
@@ -407,7 +407,7 @@ trait TraitAddBuiltinBoundToMethodTypeParameter {
 
 
 
-// Add lifetime bound to method lifetime parameter ------------------------------------
+// Add lifetime bound to method lifetime parameter
 #[cfg(cfail1)]
 trait TraitAddLifetimeBoundToMethodLifetimeParameter {
     fn method<'a, 'b>(a: &'a u32, b: &'b u32);
@@ -424,7 +424,7 @@ trait TraitAddLifetimeBoundToMethodLifetimeParameter {
 
 
 
-// Add second trait bound to method type parameter --------------------------------
+// Add second trait bound to method type parameter
 #[cfg(cfail1)]
 trait TraitAddSecondTraitBoundToMethodTypeParameter {
     fn method<T: ReferencedTrait0>();
@@ -441,7 +441,7 @@ trait TraitAddSecondTraitBoundToMethodTypeParameter {
 
 
 
-// Add second builtin bound to method type parameter ------------------------------
+// Add second builtin bound to method type parameter
 #[cfg(cfail1)]
 trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
     fn method<T: Sized>();
@@ -458,7 +458,7 @@ trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
 
 
 
-// Add second lifetime bound to method lifetime parameter -----------------------------
+// Add second lifetime bound to method lifetime parameter
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
     fn method<'a, 'b, 'c: 'a>(a: &'a u32, b: &'b u32, c: &'c u32);
@@ -475,7 +475,7 @@ trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
 
 
 
-// Add associated type ------------------------------------------------------------
+// Add associated type
 #[cfg(cfail1)]
 trait TraitAddAssociatedType {
 
@@ -495,7 +495,7 @@ trait TraitAddAssociatedType {
 
 
 
-// Add trait bound to associated type ---------------------------------------------
+// Add trait bound to associated type
 #[cfg(cfail1)]
 trait TraitAddTraitBoundToAssociatedType {
     type Associated;
@@ -519,7 +519,7 @@ trait TraitAddTraitBoundToAssociatedType {
 
 
 
-// Add lifetime bound to associated type ------------------------------------------
+// Add lifetime bound to associated type
 #[cfg(cfail1)]
 trait TraitAddLifetimeBoundToAssociatedType<'a> {
     type Associated;
@@ -540,7 +540,7 @@ trait TraitAddLifetimeBoundToAssociatedType<'a> {
 
 
 
-// Add default to associated type -------------------------------------------------
+// Add default to associated type
 #[cfg(cfail1)]
 trait TraitAddDefaultToAssociatedType {
     type Associated;
@@ -561,7 +561,7 @@ trait TraitAddDefaultToAssociatedType {
 
 
 
-// Add associated constant --------------------------------------------------------
+// Add associated constant
 #[cfg(cfail1)]
 trait TraitAddAssociatedConstant {
     fn method();
@@ -578,7 +578,7 @@ trait TraitAddAssociatedConstant {
 
 
 
-// Add initializer to associated constant -----------------------------------------
+// Add initializer to associated constant
 #[cfg(cfail1)]
 trait TraitAddInitializerToAssociatedConstant {
     const Value: u32;
@@ -601,7 +601,7 @@ trait TraitAddInitializerToAssociatedConstant {
 
 
 
-// Change type of associated constant ---------------------------------------------
+// Change type of associated constant
 #[cfg(cfail1)]
 trait TraitChangeTypeOfAssociatedConstant {
     const Value: u32;
@@ -624,7 +624,7 @@ trait TraitChangeTypeOfAssociatedConstant {
 
 
 
-// Add super trait ----------------------------------------------------------------
+// Add super trait
 #[cfg(cfail1)]
 trait TraitAddSuperTrait { }
 
@@ -635,7 +635,7 @@ trait TraitAddSuperTrait : ReferencedTrait0 { }
 
 
 
-// Add builtin bound (Send or Copy) -----------------------------------------------
+// Add builtin bound (Send or Copy)
 #[cfg(cfail1)]
 trait TraitAddBuiltiBound { }
 
@@ -646,7 +646,7 @@ trait TraitAddBuiltiBound : Send { }
 
 
 
-// Add 'static lifetime bound to trait --------------------------------------------
+// Add 'static lifetime bound to trait
 #[cfg(cfail1)]
 trait TraitAddStaticLifetimeBound { }
 
@@ -657,7 +657,7 @@ trait TraitAddStaticLifetimeBound : 'static { }
 
 
 
-// Add super trait as second bound ------------------------------------------------
+// Add super trait as second bound
 #[cfg(cfail1)]
 trait TraitAddTraitAsSecondBound : ReferencedTrait0 { }
 
@@ -676,7 +676,7 @@ trait TraitAddTraitAsSecondBoundFromBuiltin : Send + ReferencedTrait0 { }
 
 
 
-// Add builtin bound as second bound ----------------------------------------------
+// Add builtin bound as second bound
 #[cfg(cfail1)]
 trait TraitAddBuiltinBoundAsSecondBound : ReferencedTrait0 { }
 
@@ -695,7 +695,7 @@ trait TraitAddBuiltinBoundAsSecondBoundFromBuiltin: Send + Copy { }
 
 
 
-// Add 'static bounds as second bound ---------------------------------------------
+// Add 'static bounds as second bound
 #[cfg(cfail1)]
 trait TraitAddStaticBoundAsSecondBound : ReferencedTrait0 { }
 
@@ -714,7 +714,7 @@ trait TraitAddStaticBoundAsSecondBoundFromBuiltin : Send + 'static { }
 
 
 
-// Add type parameter to trait ----------------------------------------------------
+// Add type parameter to trait
 #[cfg(cfail1)]
 trait TraitAddTypeParameterToTrait { }
 
@@ -725,7 +725,7 @@ trait TraitAddTypeParameterToTrait<T> { }
 
 
 
-// Add lifetime parameter to trait ------------------------------------------------
+// Add lifetime parameter to trait
 #[cfg(cfail1)]
 trait TraitAddLifetimeParameterToTrait { }
 
@@ -736,7 +736,7 @@ trait TraitAddLifetimeParameterToTrait<'a> { }
 
 
 
-// Add trait bound to type parameter of trait -------------------------------------
+// Add trait bound to type parameter of trait
 #[cfg(cfail1)]
 trait TraitAddTraitBoundToTypeParameterOfTrait<T> { }
 
@@ -747,7 +747,7 @@ trait TraitAddTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0> { }
 
 
 
-// Add lifetime bound to type parameter of trait ----------------------------------
+// Add lifetime bound to type parameter of trait
 #[cfg(cfail1)]
 trait TraitAddLifetimeBoundToTypeParameterOfTrait<'a, T> { }
 
@@ -758,7 +758,7 @@ trait TraitAddLifetimeBoundToTypeParameterOfTrait<'a, T: 'a> { }
 
 
 
-// Add lifetime bound to lifetime parameter of trait ------------------------------
+// Add lifetime bound to lifetime parameter of trait
 #[cfg(cfail1)]
 trait TraitAddLifetimeBoundToLifetimeParameterOfTrait<'a, 'b> { }
 
@@ -769,7 +769,7 @@ trait TraitAddLifetimeBoundToLifetimeParameterOfTrait<'a: 'b, 'b> { }
 
 
 
-// Add builtin bound to type parameter of trait -----------------------------------
+// Add builtin bound to type parameter of trait
 #[cfg(cfail1)]
 trait TraitAddBuiltinBoundToTypeParameterOfTrait<T> { }
 
@@ -780,7 +780,7 @@ trait TraitAddBuiltinBoundToTypeParameterOfTrait<T: Send> { }
 
 
 
-// Add second type parameter to trait ---------------------------------------------
+// Add second type parameter to trait
 #[cfg(cfail1)]
 trait TraitAddSecondTypeParameterToTrait<T> { }
 
@@ -791,7 +791,7 @@ trait TraitAddSecondTypeParameterToTrait<T, S> { }
 
 
 
-// Add second lifetime parameter to trait -----------------------------------------
+// Add second lifetime parameter to trait
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeParameterToTrait<'a> { }
 
@@ -802,7 +802,7 @@ trait TraitAddSecondLifetimeParameterToTrait<'a, 'b> { }
 
 
 
-// Add second trait bound to type parameter of trait ------------------------------
+// Add second trait bound to type parameter of trait
 #[cfg(cfail1)]
 trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0> { }
 
@@ -813,7 +813,7 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTrait<T: ReferencedTrait0 + Refer
 
 
 
-// Add second lifetime bound to type parameter of trait ---------------------------
+// Add second lifetime bound to type parameter of trait
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTrait<'a, 'b, T: 'a> { }
 
@@ -824,7 +824,7 @@ trait TraitAddSecondLifetimeBoundToTypeParameterOfTrait<'a, 'b, T: 'a + 'b> { }
 
 
 
-// Add second lifetime bound to lifetime parameter of trait------------------------
+// Add second lifetime bound to lifetime parameter of trait
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTrait<'a: 'b, 'b, 'c> { }
 
@@ -835,7 +835,7 @@ trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTrait<'a: 'b + 'c, 'b, 'c>
 
 
 
-// Add second builtin bound to type parameter of trait ----------------------------
+// Add second builtin bound to type parameter of trait
 #[cfg(cfail1)]
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTrait<T: Send> { }
 
@@ -846,13 +846,12 @@ trait TraitAddSecondBuiltinBoundToTypeParameterOfTrait<T: Send + Sync> { }
 
 
 
-// --------------------------------------------------------------------------------
 struct ReferenceType0 {}
 struct ReferenceType1 {}
 
 
 
-// Add trait bound to type parameter of trait in where clause----------------------
+// Add trait bound to type parameter of trait in where clause
 #[cfg(cfail1)]
 trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> { }
 
@@ -863,7 +862,7 @@ trait TraitAddTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0
 
 
 
-// Add lifetime bound to type parameter of trait in where clause-------------------
+// Add lifetime bound to type parameter of trait in where clause
 #[cfg(cfail1)]
 trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> { }
 
@@ -874,7 +873,7 @@ trait TraitAddLifetimeBoundToTypeParameterOfTraitWhere<'a, T> where T: 'a { }
 
 
 
-// Add lifetime bound to lifetime parameter of trait in where clause---------------
+// Add lifetime bound to lifetime parameter of trait in where clause
 #[cfg(cfail1)]
 trait TraitAddLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b> { }
 
@@ -885,7 +884,7 @@ trait TraitAddLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b> where 'a: 'b 
 
 
 
-// Add builtin bound to type parameter of trait in where clause--------------------
+// Add builtin bound to type parameter of trait in where clause
 #[cfg(cfail1)]
 trait TraitAddBuiltinBoundToTypeParameterOfTraitWhere<T> { }
 
@@ -896,7 +895,7 @@ trait TraitAddBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 
 
 
-// Add second trait bound to type parameter of trait in where clause---------------
+// Add second trait bound to type parameter of trait in where clause
 #[cfg(cfail1)]
 trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T> where T: ReferencedTrait0 { }
 
@@ -908,7 +907,7 @@ trait TraitAddSecondTraitBoundToTypeParameterOfTraitWhere<T>
 
 
 
-// Add second lifetime bound to type parameter of trait in where clause------------
+// Add second lifetime bound to type parameter of trait in where clause
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T: 'a { }
 
@@ -919,7 +918,7 @@ trait TraitAddSecondLifetimeBoundToTypeParameterOfTraitWhere<'a, 'b, T> where T:
 
 
 
-// Add second lifetime bound to lifetime parameter of trait in where clause--------
+// Add second lifetime bound to lifetime parameter of trait in where clause
 #[cfg(cfail1)]
 trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b, 'c> where 'a: 'b { }
 
@@ -930,7 +929,7 @@ trait TraitAddSecondLifetimeBoundToLifetimeParameterOfTraitWhere<'a, 'b, 'c> whe
 
 
 
-// Add second builtin bound to type parameter of trait in where clause-------------
+// Add second builtin bound to type parameter of trait in where clause
 #[cfg(cfail1)]
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 
@@ -940,7 +939,7 @@ trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send { }
 trait TraitAddSecondBuiltinBoundToTypeParameterOfTraitWhere<T> where T: Send + Sync { }
 
 
-// Change return type of method indirectly by modifying a use statement------------
+// Change return type of method indirectly by modifying a use statement
 mod change_return_type_of_method_indirectly_use {
     #[cfg(cfail1)]
     use super::ReferenceType0 as ReturnType;
@@ -958,7 +957,7 @@ mod change_return_type_of_method_indirectly_use {
 
 
 
-// Change type of method parameter indirectly by modifying a use statement---------
+// Change type of method parameter indirectly by modifying a use statement
 mod change_method_parameter_type_indirectly_by_use {
     #[cfg(cfail1)]
     use super::ReferenceType0 as ArgType;

@@ -2,9 +2,7 @@
 // edition:2018
 // run-pass
 
-#![allow(unused_variables)]
 #![deny(dead_code)]
-#![feature(async_await)]
 
 // Test that the drop order for locals in a fn and async fn matches up.
 extern crate arc_wake;
