@@ -174,6 +174,27 @@ trait Qualif: QualifIdx {
         Self::in_any_value_of_ty(cx, ty).unwrap_or(true)
     }
 
+    fn in_arg_initially(cx: &ConstCx<'_, 'tcx>, local: Local) -> bool {
+        Self::in_any_value_of_ty(cx, cx.body.local_decls[local].ty)
+            .expect("`in_arg_initially` is overridden if `in_any_value_of_ty` is `None`")
+    }
+
+    fn in_temp_initially(
+        _cx: &ConstCx<'_, 'tcx>,
+        _local: Local,
+        _promotion_state: &IndexVec<Local, TempState>,
+    ) -> bool {
+        false
+    }
+
+    fn in_user_variable_initially(_cx: &ConstCx<'_, 'tcx>, _local: Local) -> bool {
+        false
+    }
+
+    fn in_return_place_initially(_cx: &ConstCx<'_, 'tcx>, _local: Local) -> bool {
+        false
+    }
+
     fn in_local(cx: &ConstCx<'_, '_>, local: Local) -> bool {
         cx.per_local.0[Self::IDX].contains(local)
     }
@@ -428,6 +449,22 @@ impl Qualif for NeedsDrop {
 struct IsNotPromotable;
 
 impl Qualif for IsNotPromotable {
+    fn in_arg_initially(_cx: &ConstCx<'_, 'tcx>, _local: Local) -> bool {
+        true
+    }
+
+    fn in_temp_initially(
+        _cx: &ConstCx<'_, 'tcx>,
+        local: Local,
+        promotion_state: &IndexVec<Local, TempState>,
+    ) -> bool {
+        !promotion_state[local].is_promotable()
+    }
+
+    fn in_user_variable_initially(_cx: &ConstCx<'_, 'tcx>, _local: Local) -> bool {
+        true
+    }
+
     fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
         match static_.kind {
             StaticKind::Promoted(_, _) => unreachable!(),
@@ -578,6 +615,12 @@ impl Qualif for IsNotPromotable {
 struct IsNotImplicitlyPromotable;
 
 impl Qualif for IsNotImplicitlyPromotable {
+    /// Function parameters will still never be promoted because this same function returns `true`
+    /// for `IsNotPromotable`, and both are checked before promoting a `Local`.
+    fn in_arg_initially(_cx: &ConstCx<'_, 'tcx>, _local: Local) -> bool {
+        false
+    }
+
     fn in_call(
         cx: &ConstCx<'_, 'tcx>,
         callee: &Operand<'tcx>,
@@ -729,18 +772,30 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             per_local: PerQualif::new(BitSet::new_empty(body.local_decls.len())),
         };
 
-        for (local, decl) in body.local_decls.iter_enumerated() {
-            if let LocalKind::Arg = body.local_kind(local) {
-                let qualifs = cx.qualifs_in_any_value_of_ty(decl.ty);
-                for (per_local, qualif) in &mut cx.per_local.as_mut().zip(qualifs).0 {
-                    if *qualif {
-                        per_local.insert(local);
+        for (local, _) in body.local_decls.iter_enumerated() {
+            match cx.body.local_kind(local) {
+                LocalKind::Arg => for_each_qualif!(|q: Q| {
+                    if Q::in_arg_initially(&cx, local) {
+                        cx.per_local[q].insert(local);
                     }
-                }
-            }
-            if !temps[local].is_promotable() {
-                cx.per_local[IsNotPromotable].insert(local);
-            }
+                }),
+                LocalKind::Temp => for_each_qualif!(|q: Q| {
+                    if Q::in_temp_initially(&cx, local, &temps) {
+                        cx.per_local[q].insert(local);
+                    }
+                }),
+                LocalKind::Var => for_each_qualif!(|q: Q| {
+                    if Q::in_user_variable_initially(&cx, local) {
+                        cx.per_local[q].insert(local);
+                    }
+                }),
+                LocalKind::ReturnPointer => for_each_qualif!(|q: Q| {
+                    if Q::in_return_place_initially(&cx, local) {
+                        cx.per_local[q].insert(local);
+                    }
+                }),
+            };
+
             if let LocalKind::Var = body.local_kind(local) {
                 // Sanity check to prevent implicit and explicit promotion of
                 // named locals
