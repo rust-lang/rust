@@ -30,6 +30,7 @@ use std::fmt;
 use std::ops::{Deref, Index, IndexMut};
 use std::usize;
 
+use rustc::hir::HirId;
 use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
@@ -1596,27 +1597,12 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
         }
 
         let def_id = src.def_id();
-        let id = tcx.hir().as_local_hir_id(def_id).unwrap();
-        let mut const_promoted_temps = None;
-        let mode = match tcx.hir().body_owner_kind(id) {
-            hir::BodyOwnerKind::Closure => Mode::NonConstFn,
-            hir::BodyOwnerKind::Fn => {
-                if tcx.is_const_fn(def_id) {
-                    Mode::ConstFn
-                } else {
-                    Mode::NonConstFn
-                }
-            }
-            hir::BodyOwnerKind::Const => {
-                const_promoted_temps = Some(tcx.mir_const_qualif(def_id).1);
-                Mode::Const
-            }
-            hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
-            hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
-        };
+        let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+
+        let mode = determine_mode(tcx, hir_id, def_id);
 
         debug!("run_pass: mode={:?}", mode);
-        if mode == Mode::NonConstFn || mode == Mode::ConstFn {
+        if let Mode::NonConstFn | Mode::ConstFn = mode {
             // This is ugly because Checker holds onto mir,
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
@@ -1664,6 +1650,11 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                 promote_consts::promote_candidates(def_id, body, tcx, temps, candidates)
             );
         } else {
+            let const_promoted_temps = match mode {
+                Mode::Const => Some(tcx.mir_const_qualif(def_id).1),
+                _ => None,
+            };
+
             if !body.control_flow_destroyed.is_empty() {
                 let mut locals = body.vars_iter();
                 if let Some(local) = locals.next() {
@@ -1695,11 +1686,10 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                     error.emit();
                 }
             }
-            let promoted_temps = if mode == Mode::Const {
+            let promoted_temps = match mode {
                 // Already computed by `mir_const_qualif`.
-                const_promoted_temps.unwrap()
-            } else {
-                Checker::new(tcx, def_id, body, mode).check_const().1
+                Mode::Const => const_promoted_temps.unwrap(),
+                _ => Checker::new(tcx, def_id, body, mode).check_const().1,
             };
 
             // In `const` and `static` everything without `StorageDead`
@@ -1747,7 +1737,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
             let ty = body.return_ty();
             tcx.infer_ctxt().enter(|infcx| {
                 let param_env = ty::ParamEnv::empty();
-                let cause = traits::ObligationCause::new(body.span, id, traits::SharedStatic);
+                let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
                 fulfillment_cx.register_bound(&infcx,
                                               param_env,
@@ -1762,6 +1752,17 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                 }
             });
         }
+    }
+}
+
+fn determine_mode(tcx: TyCtxt<'_>, hir_id: HirId, def_id: DefId) -> Mode {
+    match tcx.hir().body_owner_kind(hir_id) {
+        hir::BodyOwnerKind::Closure => Mode::NonConstFn,
+        hir::BodyOwnerKind::Fn if tcx.is_const_fn(def_id) => Mode::ConstFn,
+        hir::BodyOwnerKind::Fn => Mode::NonConstFn,
+        hir::BodyOwnerKind::Const => Mode::Const,
+        hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
+        hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
     }
 }
 
