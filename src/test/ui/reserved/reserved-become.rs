@@ -1,4 +1,4 @@
 fn main() {
     let become = 0;
-    //~^ ERROR expected pattern, found reserved keyword `become`
+    //~^ ERROR expected identifier, found reserved keyword `become`
 }

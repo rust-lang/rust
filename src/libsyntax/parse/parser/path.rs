@@ -423,7 +423,7 @@ impl<'a> Parser<'a> {
                     // FIXME(const_generics): to distinguish between idents for types and consts,
                     // we should introduce a GenericArg::Ident in the AST and distinguish when
                     // lowering to the HIR. For now, idents for const args are not permitted.
-                    if self.token.is_keyword(kw::True) || self.token.is_keyword(kw::False) {
+                    if self.token.is_bool_lit() {
                         self.parse_literal_maybe_minus()?
                     } else {
                         return Err(

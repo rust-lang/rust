@@ -2385,13 +2385,13 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
+        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem, None);
         self.mk_generic_adt(def_id, ty)
     }
 
     #[inline]
     pub fn mk_maybe_uninit(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(lang_items::MaybeUninitLangItem);
+        let def_id = self.require_lang_item(lang_items::MaybeUninitLangItem, None);
         self.mk_generic_adt(def_id, ty)
     }
 

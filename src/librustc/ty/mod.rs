@@ -2588,12 +2588,12 @@ impl<'tcx> ClosureKind {
 
     pub fn trait_did(&self, tcx: TyCtxt<'tcx>) -> DefId {
         match *self {
-            ClosureKind::Fn => tcx.require_lang_item(FnTraitLangItem),
+            ClosureKind::Fn => tcx.require_lang_item(FnTraitLangItem, None),
             ClosureKind::FnMut => {
-                tcx.require_lang_item(FnMutTraitLangItem)
+                tcx.require_lang_item(FnMutTraitLangItem, None)
             }
             ClosureKind::FnOnce => {
-                tcx.require_lang_item(FnOnceTraitLangItem)
+                tcx.require_lang_item(FnOnceTraitLangItem, None)
             }
         }
     }

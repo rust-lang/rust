@@ -104,7 +104,7 @@ impl LitKind {
 
         Ok(match kind {
             token::Bool => {
-                assert!(symbol == kw::True || symbol == kw::False);
+                assert!(symbol.is_bool_lit());
                 LitKind::Bool(symbol == kw::True)
             }
             token::Byte => return unescape_byte(&symbol.as_str())
@@ -261,7 +261,7 @@ impl Lit {
     /// Converts arbitrary token into an AST literal.
     crate fn from_token(token: &Token) -> Result<Lit, LitError> {
         let lit = match token.kind {
-            token::Ident(name, false) if name == kw::True || name == kw::False =>
+            token::Ident(name, false) if name.is_bool_lit() =>
                 token::Lit::new(token::Bool, name, None),
             token::Literal(lit) =>
                 lit,

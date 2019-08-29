@@ -4,5 +4,6 @@ fn main() {
     let _ = 0;
     let mut b = 0;
     let mut _b = 0;
-    let mut _ = 0; //~ ERROR expected identifier, found reserved identifier `_`
+    let mut _ = 0;
+    //~^ ERROR `mut` must be followed by a named binding
 }

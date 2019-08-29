@@ -1037,7 +1037,7 @@ pub enum GenericBound {
 
 impl GenericBound {
     fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
-        let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem);
+        let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
             Some(did), false, vec![], empty);
