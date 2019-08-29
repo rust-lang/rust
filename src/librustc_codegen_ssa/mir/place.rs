@@ -45,14 +45,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         llval: V,
         layout: TyLayout<'tcx>,
-        align: Align,
     ) -> PlaceRef<'tcx, V> {
         assert!(!bx.cx().type_has_metadata(layout.ty));
         PlaceRef {
             llval,
             llextra: None,
             layout,
-            align
+            align: layout.align.abi
         }
     }
 
@@ -498,7 +497,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // with a static that is an extern_type.
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 let static_ = bx.get_static(*def_id);
-                PlaceRef::new_thin_place(bx, static_, layout, layout.align.abi)
+                PlaceRef::new_thin_place(bx, static_, layout)
             },
             mir::PlaceRef {
                 base,
