@@ -1083,6 +1083,11 @@ impl Symbol {
         self == kw::DollarCrate
     }
 
+    /// Returns `true` if the symbol is `true` or `false`.
+    pub fn is_bool_lit(self) -> bool {
+        self == kw::True || self == kw::False
+    }
+
     /// This symbol can be a raw identifier.
     pub fn can_be_raw(self) -> bool {
         self != kw::Invalid && self != kw::Underscore && !self.is_path_segment_keyword()

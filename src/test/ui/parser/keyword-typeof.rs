@@ -1,3 +1,3 @@
 fn main() {
-    let typeof = (); //~ ERROR expected pattern, found reserved keyword `typeof`
+    let typeof = (); //~ ERROR expected identifier, found reserved keyword `typeof`
 }

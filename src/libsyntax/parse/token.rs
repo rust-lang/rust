@@ -409,7 +409,7 @@ impl Token {
     crate fn expect_lit(&self) -> Lit {
         match self.kind {
             Literal(lit) => lit,
-            _=> panic!("`expect_lit` called on non-literal"),
+            _ => panic!("`expect_lit` called on non-literal"),
         }
     }
 
@@ -417,10 +417,8 @@ impl Token {
     /// for example a '-42', or one of the boolean idents).
     crate fn can_begin_literal_or_bool(&self) -> bool {
         match self.kind {
-            Literal(..)  => true,
-            BinOp(Minus) => true,
-            Ident(name, false) if name == kw::True => true,
-            Ident(name, false) if name == kw::False => true,
+            Literal(..) | BinOp(Minus) => true,
+            Ident(name, false) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match **nt {
                 NtLiteral(..) => true,
                 _             => false,
@@ -457,6 +455,7 @@ impl Token {
     pub fn is_ident(&self) -> bool {
         self.ident().is_some()
     }
+
     /// Returns `true` if the token is a lifetime.
     crate fn is_lifetime(&self) -> bool {
         self.lifetime().is_some()
@@ -508,45 +507,43 @@ impl Token {
 
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
-        self.ident().map(|(id, is_raw)| id.name == kw && !is_raw).unwrap_or(false)
+        self.is_non_raw_ident_where(|id| id.name == kw)
     }
 
     crate fn is_path_segment_keyword(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_path_segment_keyword(),
-            _ => false,
-        }
+        self.is_non_raw_ident_where(ast::Ident::is_path_segment_keyword)
     }
 
     // Returns true for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     crate fn is_special_ident(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_special(),
-            _ => false,
-        }
+        self.is_non_raw_ident_where(ast::Ident::is_special)
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     crate fn is_used_keyword(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_used_keyword(),
-            _ => false,
-        }
+        self.is_non_raw_ident_where(ast::Ident::is_used_keyword)
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     crate fn is_unused_keyword(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => id.is_unused_keyword(),
-            _ => false,
-        }
+        self.is_non_raw_ident_where(ast::Ident::is_unused_keyword)
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
+        self.is_non_raw_ident_where(ast::Ident::is_reserved)
+    }
+
+    /// Returns `true` if the token is the identifier `true` or `false`.
+    crate fn is_bool_lit(&self) -> bool {
+        self.is_non_raw_ident_where(|id| id.name.is_bool_lit())
+    }
+
+    /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
+    fn is_non_raw_ident_where(&self, pred: impl FnOnce(ast::Ident) -> bool) -> bool {
         match self.ident() {
-            Some((id, false)) => id.is_reserved(),
+            Some((id, false)) => pred(id),
             _ => false,
         }
     }
