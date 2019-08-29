@@ -243,6 +243,8 @@ declare_features! (
     (accepted, async_await, "1.39.0", Some(50547), None),
     /// Allows mixing bind-by-move in patterns and references to those identifiers in guards.
     (accepted, bind_by_move_pattern_guards, "1.39.0", Some(15287), None),
+    /// Allows attributes in formal function parameters.
+    (accepted, param_attrs, "1.39.0", Some(60406), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features

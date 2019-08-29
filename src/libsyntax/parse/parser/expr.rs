@@ -1176,7 +1176,7 @@ impl<'a> Parser<'a> {
     /// Parses a parameter in a closure header (e.g., `|arg, arg|`).
     fn parse_fn_block_param(&mut self) -> PResult<'a, Param> {
         let lo = self.token.span;
-        let attrs = self.parse_param_attributes()?;
+        let attrs = self.parse_outer_attributes()?;
         let pat = self.parse_pat(PARAM_EXPECTED)?;
         let t = if self.eat(&token::Colon) {
             self.parse_ty()?

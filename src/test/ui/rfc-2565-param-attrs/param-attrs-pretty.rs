@@ -2,7 +2,6 @@
 
 // check-pass
 
-#![feature(param_attrs)]
 #![feature(c_variadic)]
 
 extern crate param_attrs;
