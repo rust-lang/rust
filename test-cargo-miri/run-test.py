@@ -60,6 +60,10 @@ def test_cargo_miri_test():
         cargo_miri("test") + ["--", "--", "le1"],
         "test.stdout.ref2", "test.stderr.ref"
     )
+    test("cargo miri test (without isolation)",
+        cargo_miri("test") + ["--", "-Zmiri-disable-isolation", "--", "num_cpus"],
+        "test.stdout.ref3", "test.stderr.ref"
+    )
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 

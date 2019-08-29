@@ -17,8 +17,9 @@ impl EnvVars {
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         mut excluded_env_vars: Vec<String>,
     ) {
-        // Exclude TERM var to avoid calls to the file system
+        // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
         excluded_env_vars.push("TERM".to_owned());
+
         if ecx.machine.communicate {
             for (name, value) in std::env::vars() {
                 if !excluded_env_vars.contains(&name) {
