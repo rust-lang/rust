@@ -117,7 +117,7 @@
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]
 #![feature(rustc_const_unstable)]
-#![feature(const_vec_new)]
+#![cfg_attr(bootstrap, feature(const_vec_new))]
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit_extra, maybe_uninit_slice)]
 #![feature(alloc_layout_extra)]
