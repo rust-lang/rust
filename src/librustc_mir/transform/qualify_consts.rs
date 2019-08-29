@@ -1714,12 +1714,8 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                         },
                         target,
                         ..
-                    } => {
-                        if promoted_temps.contains(index) {
-                            terminator.kind = TerminatorKind::Goto {
-                                target,
-                            };
-                        }
+                    } if promoted_temps.contains(index) => {
+                        terminator.kind = TerminatorKind::Goto { target };
                     }
                     _ => {}
                 }
@@ -1727,7 +1723,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
         }
 
         // Statics must be Sync.
-        if mode == Mode::Static {
+        if let Mode::Static = mode {
             // `#[thread_local]` statics don't have to be `Sync`.
             for attr in &tcx.get_attrs(def_id)[..] {
                 if attr.check_name(sym::thread_local) {
