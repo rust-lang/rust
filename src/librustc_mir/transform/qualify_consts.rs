@@ -1655,37 +1655,8 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                 _ => None,
             };
 
-            if !body.control_flow_destroyed.is_empty() {
-                let mut locals = body.vars_iter();
-                if let Some(local) = locals.next() {
-                    let span = body.local_decls[local].source_info.span;
-                    let mut error = tcx.sess.struct_span_err(
-                        span,
-                        &format!(
-                            "new features like let bindings are not permitted in {}s \
-                            which also use short circuiting operators",
-                            mode,
-                        ),
-                    );
-                    for (span, kind) in body.control_flow_destroyed.iter() {
-                        error.span_note(
-                            *span,
-                            &format!("use of {} here does not actually short circuit due to \
-                            the const evaluator presently not being able to do control flow. \
-                            See https://github.com/rust-lang/rust/issues/49146 for more \
-                            information.", kind),
-                        );
-                    }
-                    for local in locals {
-                        let span = body.local_decls[local].source_info.span;
-                        error.span_note(
-                            span,
-                            "more locals defined here",
-                        );
-                    }
-                    error.emit();
-                }
-            }
+            check_short_circuiting_in_const_local(tcx, body, mode);
+
             let promoted_temps = match mode {
                 // Already computed by `mir_const_qualif`.
                 Mode::Const => const_promoted_temps.unwrap(),
@@ -1759,6 +1730,39 @@ fn determine_mode(tcx: TyCtxt<'_>, hir_id: HirId, def_id: DefId) -> Mode {
         hir::BodyOwnerKind::Const => Mode::Const,
         hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
         hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
+    }
+}
+
+fn check_short_circuiting_in_const_local(tcx: TyCtxt<'_>, body: &mut Body<'tcx>, mode: Mode) {
+    if body.control_flow_destroyed.is_empty() {
+        return;
+    }
+
+    let mut locals = body.vars_iter();
+    if let Some(local) = locals.next() {
+        let span = body.local_decls[local].source_info.span;
+        let mut error = tcx.sess.struct_span_err(
+            span,
+            &format!(
+                "new features like let bindings are not permitted in {}s \
+                which also use short circuiting operators",
+                mode,
+            ),
+        );
+        for (span, kind) in body.control_flow_destroyed.iter() {
+            error.span_note(
+                *span,
+                &format!("use of {} here does not actually short circuit due to \
+                the const evaluator presently not being able to do control flow. \
+                See https://github.com/rust-lang/rust/issues/49146 for more \
+                information.", kind),
+            );
+        }
+        for local in locals {
+            let span = body.local_decls[local].source_info.span;
+            error.span_note(span, "more locals defined here");
+        }
+        error.emit();
     }
 }
 
