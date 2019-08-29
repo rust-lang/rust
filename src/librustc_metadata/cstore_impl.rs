@@ -125,24 +125,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
-    optimized_mir => {
-        let mir = cdata.maybe_get_optimized_mir(tcx, def_id.index).unwrap_or_else(|| {
-            bug!("get_optimized_mir: missing MIR for `{:?}`", def_id)
-        });
-
-        let mir = tcx.arena.alloc(mir);
-
-        mir
-    }
-    promoted_mir => {
-        let promoted = cdata.maybe_get_promoted_mir(tcx, def_id.index).unwrap_or_else(|| {
-            bug!("get_promoted_mir: missing promoted MIR for `{:?}`", def_id)
-        });
-
-        let promoted = tcx.arena.alloc(promoted);
-
-        promoted
-    }
+    optimized_mir => { tcx.arena.alloc(cdata.get_optimized_mir(tcx, def_id.index)) }
+    promoted_mir => { tcx.arena.alloc(cdata.get_promoted_mir(tcx, def_id.index)) }
     mir_const_qualif => {
         (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
     }
