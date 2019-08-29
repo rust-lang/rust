@@ -93,19 +93,10 @@ struct BorrowedLocalsVisitor<'gk> {
 }
 
 fn find_local(place: &Place<'_>) -> Option<Local> {
-    place.iterate(|place_base, place_projection| {
-        for proj in place_projection {
-            if proj.elem == ProjectionElem::Deref {
-                return None;
-            }
-        }
-
-        if let PlaceBase::Local(local) = place_base {
-            Some(*local)
-        } else {
-            None
-        }
-    })
+    match place.base {
+        PlaceBase::Local(local) if !place.is_indirect() => Some(local),
+        _ => None,
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for BorrowedLocalsVisitor<'_> {
