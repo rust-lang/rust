@@ -1,10 +1,8 @@
-// run-pass
+// check-pass
 
 // Test several functions can be used for constants
 // 1. Vec::new()
 // 2. String::new()
-
-#![feature(const_string_new)]
 
 const MY_VEC: Vec<usize> = Vec::new();
 
