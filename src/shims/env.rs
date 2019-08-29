@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rustc::ty::layout::{Size, Align};
+use rustc::ty::layout::{Size};
 use rustc_mir::interpret::{Pointer, Memory};
 use crate::stacked_borrows::Tag;
 use crate::*;
@@ -36,24 +36,11 @@ fn alloc_env_var<'mir, 'tcx>(
     value: &[u8],
     memory: &mut Memory<'mir, 'tcx, Evaluator<'tcx>>,
 ) -> Pointer<Tag> {
-    let bytes = [name, b"=", value].concat();
-    let tcx = {memory.tcx.tcx};
-    let length = bytes.len() as u64;
-    // `+1` for the null terminator.
-    let ptr = memory.allocate(
-        Size::from_bytes(length + 1),
-        Align::from_bytes(1).unwrap(),
-        MiriMemoryKind::Env.into(),
-    );
-    // We just allocated these, so the write cannot fail.
-    let alloc = memory.get_mut(ptr.alloc_id).unwrap();
-    alloc.write_bytes(&tcx, ptr, &bytes).unwrap();
-    let trailing_zero_ptr = ptr.offset(
-        Size::from_bytes(length),
-        &tcx,
-    ).unwrap();
-    alloc.write_bytes(&tcx, trailing_zero_ptr, &[0]).unwrap();
-    ptr
+    let mut bytes = name.to_vec();
+    bytes.push(b'=');
+    bytes.extend_from_slice(value);
+    bytes.push(0);
+    memory.allocate_static_bytes(bytes.as_slice(), MiriMemoryKind::Env.into())
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
