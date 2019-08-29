@@ -277,7 +277,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                                                         line_span,
                                                         "if you just forgot a `!`, use",
                                                         sugg,
-                                                        Applicability::MachineApplicable,
+                                                        Applicability::MaybeIncorrect,
                                                     );
                                                 },
                                             );
