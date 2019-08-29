@@ -1,13 +1,13 @@
 use crate::{Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
 use crate::{Float, FloatConvert, ParseError, Round, Status, StatusAnd};
 
+use core::cmp::{self, Ordering};
+use core::convert::TryFrom;
+use core::fmt::{self, Write};
+use core::marker::PhantomData;
+use core::mem;
+use core::ops::Neg;
 use smallvec::{SmallVec, smallvec};
-use std::cmp::{self, Ordering};
-use std::convert::TryFrom;
-use std::fmt::{self, Write};
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::Neg;
 
 #[must_use]
 pub struct IeeeFloat<S> {
@@ -2287,8 +2287,8 @@ impl Loss {
 /// Implementation details of IeeeFloat significands, such as big integer arithmetic.
 /// As a rule of thumb, no functions in this module should dynamically allocate.
 mod sig {
-    use std::cmp::Ordering;
-    use std::mem;
+    use core::cmp::Ordering;
+    use core::mem;
     use super::{ExpInt, Limb, LIMB_BITS, limbs_for_bits, Loss};
 
     pub(super) fn is_all_zeros(limbs: &[Limb]) -> bool {
