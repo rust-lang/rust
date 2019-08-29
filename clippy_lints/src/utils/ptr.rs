@@ -13,7 +13,7 @@ pub fn get_spans(
     replacements: &[(&'static str, &'static str)],
 ) -> Option<Vec<(Span, Cow<'static, str>)>> {
     if let Some(body) = opt_body_id.map(|id| cx.tcx.hir().body(id)) {
-        get_binding_name(&body.arguments[idx]).map_or_else(
+        get_binding_name(&body.params[idx]).map_or_else(
             || Some(vec![]),
             |name| extract_clone_suggestions(cx, name, replacements, body),
         )
@@ -80,6 +80,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PtrCloneVisitor<'a, 'tcx> {
     }
 }
 
-fn get_binding_name(arg: &Arg) -> Option<Name> {
+fn get_binding_name(arg: &Param) -> Option<Name> {
     get_pat_name(&arg.pat)
 }

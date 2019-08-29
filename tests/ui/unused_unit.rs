@@ -10,6 +10,7 @@
 #![rustfmt::skip]
 
 #![deny(clippy::unused_unit)]
+#![allow(dead_code)]
 
 struct Unitter;
 impl Unitter {
@@ -42,4 +43,17 @@ fn main() {
         break();
     }
     return();
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/4076
+fn foo() {
+    macro_rules! foo {
+        (recv($r:expr) -> $res:pat => $body:expr) => {
+            $body
+        }
+    }
+
+    foo! {
+        recv(rx) -> _x => ()
+    }
 }

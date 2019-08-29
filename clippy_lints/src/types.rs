@@ -2056,7 +2056,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                             continue;
                         }
                         let generics_suggestion_span = generics.span.substitute_dummy({
-                            let pos = snippet_opt(cx, item.span.until(body.arguments[0].pat.span))
+                            let pos = snippet_opt(cx, item.span.until(body.params[0].pat.span))
                                 .and_then(|snip| {
                                     let i = snip.find("fn")?;
                                     Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))

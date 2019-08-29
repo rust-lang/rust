@@ -108,7 +108,7 @@ fn is_argument(map: &hir::map::Map<'_>, id: HirId) -> bool {
     }
 
     match map.find(map.get_parent_node(id)) {
-        Some(Node::Arg(_)) => true,
+        Some(Node::Param(_)) => true,
         _ => false,
     }
 }

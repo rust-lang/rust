@@ -31,6 +31,10 @@ declare_clippy_lint! {
     ///     true
     /// }
     /// ```
+    /// Could be written as
+    /// ```rust,ignore
+    /// !x
+    /// ```
     pub NEEDLESS_BOOL,
     complexity,
     "if-statements with plain booleans in the then- and else-clause, e.g., `if p { true } else { false }`"

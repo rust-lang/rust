@@ -302,6 +302,11 @@ declare_clippy_lint! {
     /// # let vec = vec![1];
     /// vec.iter().filter(|x| **x == 0).next();
     /// ```
+    /// Could be written as
+    /// ```rust
+    /// # let vec = vec![1];
+    /// vec.iter().find(|x| **x == 0);
+    /// ```
     pub FILTER_NEXT,
     complexity,
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
@@ -425,6 +430,11 @@ declare_clippy_lint! {
     /// # let vec = vec![1];
     /// vec.iter().find(|x| **x == 0).is_some();
     /// ```
+    /// Could be written as
+    /// ```rust
+    /// # let vec = vec![1];
+    /// vec.iter().any(|x| *x == 0);
+    /// ```
     pub SEARCH_IS_SOME,
     complexity,
     "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`"
@@ -442,7 +452,12 @@ declare_clippy_lint! {
     /// **Example:**
     /// ```rust
     /// let name = "foo";
-    /// name.chars().next() == Some('_');
+    /// if name.chars().next() == Some('_') {};
+    /// ```
+    /// Could be written as
+    /// ```rust
+    /// let name = "foo";
+    /// if name.starts_with('_') {};
     /// ```
     pub CHARS_NEXT_CMP,
     complexity,
@@ -888,6 +903,10 @@ declare_clippy_lint! {
     ///
     /// ```rust
     /// let _ = [1, 2, 3].into_iter().map(|x| *x).collect::<Vec<u32>>();
+    /// ```
+    /// Could be written as:
+    /// ```rust
+    /// let _ = [1, 2, 3].iter().map(|x| *x).collect::<Vec<u32>>();
     /// ```
     pub INTO_ITER_ON_ARRAY,
     correctness,
@@ -1713,8 +1732,8 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
             if bin_op.node == op;
 
             // Extract the names of the two arguments to the closure
-            if let Some(first_arg_ident) = get_arg_name(&closure_body.arguments[0].pat);
-            if let Some(second_arg_ident) = get_arg_name(&closure_body.arguments[1].pat);
+            if let Some(first_arg_ident) = get_arg_name(&closure_body.params[0].pat);
+            if let Some(second_arg_ident) = get_arg_name(&closure_body.params[1].pat);
 
             if match_var(&*left_expr, first_arg_ident);
             if replacement_has_args || match_var(&*right_expr, second_arg_ident);
@@ -2326,7 +2345,7 @@ fn lint_flat_map_identity<'a, 'tcx>(
             if let hir::ExprKind::Closure(_, _, body_id, _, _) = arg_node;
             let body = cx.tcx.hir().body(*body_id);
 
-            if let hir::PatKind::Binding(_, _, binding_ident, _) = body.arguments[0].pat.node;
+            if let hir::PatKind::Binding(_, _, binding_ident, _) = body.params[0].pat.node;
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = body.value.node;
 
             if path.segments.len() == 1;
@@ -2371,7 +2390,7 @@ fn lint_search_is_some<'a, 'tcx>(
                 if search_method == "find";
                 if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].node;
                 let closure_body = cx.tcx.hir().body(body_id);
-                if let Some(closure_arg) = closure_body.arguments.get(0);
+                if let Some(closure_arg) = closure_body.params.get(0);
                 if let hir::PatKind::Ref(..) = closure_arg.pat.node;
                 then {
                     Some(search_snippet.replacen('&', "", 1))
@@ -2781,7 +2800,10 @@ impl SelfKind {
                 hir::Mutability::MutMutable => &paths::ASMUT_TRAIT,
             };
 
-            let trait_def_id = get_trait_def_id(cx, trait_path).expect("trait def id not found");
+            let trait_def_id = match get_trait_def_id(cx, trait_path) {
+                Some(did) => did,
+                None => return false,
+            };
             implements_trait(cx, ty, trait_def_id, &[parent_ty.into()])
         }
 

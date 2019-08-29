@@ -277,7 +277,7 @@ impl EarlyLintPass for Return {
         if_chain! {
             if let Some(ref stmt) = block.stmts.last();
             if let ast::StmtKind::Expr(ref expr) = stmt.node;
-            if is_unit_expr(expr) && !expr.span.from_expansion();
+            if is_unit_expr(expr) && !stmt.span.from_expansion();
             then {
                 let sp = expr.span;
                 span_lint_and_then(cx, UNUSED_UNIT, sp, "unneeded unit expression", |db| {

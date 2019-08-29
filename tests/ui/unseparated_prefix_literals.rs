@@ -3,6 +3,12 @@
 #![warn(clippy::unseparated_literal_suffix)]
 #![allow(dead_code)]
 
+macro_rules! lit_from_macro {
+    () => {
+        42usize
+    };
+}
+
 fn main() {
     let _ok1 = 1234_i32;
     let _ok2 = 1234_isize;
@@ -17,4 +23,12 @@ fn main() {
     let _okf2 = 1_f32;
     let _failf1 = 1.5f32;
     let _failf2 = 1f32;
+
+    // Test for macro
+    let _ = lit_from_macro!();
+
+    // Counter example
+    let _ = line!();
+    // Because `assert!` contains `line!()` macro.
+    assert_eq!(4897u32, 32223);
 }
