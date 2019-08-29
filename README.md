@@ -160,6 +160,8 @@ Several `-Z` flags are relevant for Miri:
 * `-Zmiri-disable-isolation` disables host host isolation.  As a consequence,
   the program has access to host resources such as environment variables and
   randomness (and, eventually, file systems and more).
+* `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from 
+  the host. Can be used multiple times to exclude several variables.
 * `-Zmir-opt-level` controls how many MIR optimizations are performed.  Miri
   overrides the default to be `0`; be advised that using any higher level can
   make Miri miss bugs in your program because they got optimized away.

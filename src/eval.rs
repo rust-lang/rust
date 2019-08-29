@@ -22,6 +22,9 @@ pub struct MiriConfig {
     pub validate: bool,
     /// Determines if communication with the host environment is enabled.
     pub communicate: bool,
+    /// Environment variables that should always be isolated from the host.
+    pub excluded_env_vars: Vec<String>,
+    /// Command-line arguments passed to the interpreted program.
     pub args: Vec<String>,
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
@@ -40,7 +43,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate),
     );
     // Complete initialization.
-    EnvVars::init(&mut ecx);
+    EnvVars::init(&mut ecx, config.excluded_env_vars);
 
     // Setup first stack-frame
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);

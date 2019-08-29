@@ -15,11 +15,14 @@ pub struct EnvVars {
 impl EnvVars {
     pub(crate) fn init<'mir, 'tcx>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
+        excluded_env_vars: Vec<String>,
     ) {
         if ecx.machine.communicate {
             for (name, value) in std::env::vars() {
-                let var_ptr = alloc_env_var(name.as_bytes(), value.as_bytes(), ecx.memory_mut());
-                ecx.machine.env_vars.map.insert(name.into_bytes(), var_ptr);
+                if !excluded_env_vars.contains(&name) {
+                    let var_ptr = alloc_env_var(name.as_bytes(), value.as_bytes(), ecx.memory_mut());
+                    ecx.machine.env_vars.map.insert(name.into_bytes(), var_ptr);
+                }
             }
         }
     }
