@@ -15,6 +15,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0 / MIT",
     "MIT OR Apache-2.0",
     "Apache-2.0 OR MIT",
+    "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
     "MIT",
     "Unlicense/MIT",
     "Unlicense OR MIT",
