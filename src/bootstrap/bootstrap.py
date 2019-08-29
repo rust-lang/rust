@@ -631,6 +631,8 @@ class RustBuild(object):
         target_linker = self.get_toml("linker", build_section)
         if target_linker is not None:
             env["RUSTFLAGS"] += "-C linker=" + target_linker + " "
+        if self.get_toml("deny-warnings", "rust") != "false":
+            env["RUSTFLAGS"] += "-Dwarnings -Drust_2018_idioms -Dunused_lifetimes "
 
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]

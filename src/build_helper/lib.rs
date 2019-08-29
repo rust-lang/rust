@@ -1,6 +1,3 @@
-// NO-RUSTC-WRAPPER
-#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
-
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
