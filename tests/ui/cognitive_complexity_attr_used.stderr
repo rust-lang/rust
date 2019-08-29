@@ -1,4 +1,4 @@
-error: the function has a cognitive complexity of 3
+error: the function has a cognitive complexity of (3/0)
   --> $DIR/cognitive_complexity_attr_used.rs:9:1
    |
 LL | / fn kaboom() {

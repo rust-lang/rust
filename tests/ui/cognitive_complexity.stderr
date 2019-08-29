@@ -1,4 +1,4 @@
-error: the function has a cognitive complexity of 28
+error: the function has a cognitive complexity of (28/25)
   --> $DIR/cognitive_complexity.rs:6:1
    |
 LL | / fn main() {
@@ -13,7 +13,7 @@ LL | | }
    = note: `-D clippy::cognitive-complexity` implied by `-D warnings`
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 7
+error: the function has a cognitive complexity of (7/0)
   --> $DIR/cognitive_complexity.rs:91:1
    |
 LL | / fn kaboom() {
@@ -27,7 +27,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 1
+error: the function has a cognitive complexity of (1/0)
   --> $DIR/cognitive_complexity.rs:137:1
    |
 LL | / fn lots_of_short_circuits() -> bool {
@@ -37,7 +37,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 1
+error: the function has a cognitive complexity of (1/0)
   --> $DIR/cognitive_complexity.rs:142:1
    |
 LL | / fn lots_of_short_circuits2() -> bool {
@@ -47,7 +47,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 2
+error: the function has a cognitive complexity of (2/0)
   --> $DIR/cognitive_complexity.rs:147:1
    |
 LL | / fn baa() {
@@ -61,7 +61,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 2
+error: the function has a cognitive complexity of (2/0)
   --> $DIR/cognitive_complexity.rs:148:13
    |
 LL |       let x = || match 99 {
@@ -76,7 +76,7 @@ LL | |     };
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 2
+error: the function has a cognitive complexity of (2/0)
   --> $DIR/cognitive_complexity.rs:165:1
    |
 LL | / fn bar() {
@@ -89,7 +89,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 2
+error: the function has a cognitive complexity of (2/0)
   --> $DIR/cognitive_complexity.rs:184:1
    |
 LL | / fn barr() {
@@ -103,7 +103,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 3
+error: the function has a cognitive complexity of (3/0)
   --> $DIR/cognitive_complexity.rs:194:1
    |
 LL | / fn barr2() {
@@ -117,7 +117,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 2
+error: the function has a cognitive complexity of (2/0)
   --> $DIR/cognitive_complexity.rs:210:1
    |
 LL | / fn barrr() {
@@ -131,7 +131,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 3
+error: the function has a cognitive complexity of (3/0)
   --> $DIR/cognitive_complexity.rs:220:1
    |
 LL | / fn barrr2() {
@@ -145,7 +145,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 2
+error: the function has a cognitive complexity of (2/0)
   --> $DIR/cognitive_complexity.rs:236:1
    |
 LL | / fn barrrr() {
@@ -159,7 +159,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 3
+error: the function has a cognitive complexity of (3/0)
   --> $DIR/cognitive_complexity.rs:246:1
    |
 LL | / fn barrrr2() {
@@ -173,7 +173,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 2
+error: the function has a cognitive complexity of (2/0)
   --> $DIR/cognitive_complexity.rs:262:1
    |
 LL | / fn cake() {
@@ -187,7 +187,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 4
+error: the function has a cognitive complexity of (4/0)
   --> $DIR/cognitive_complexity.rs:272:1
    |
 LL | / pub fn read_file(input_path: &str) -> String {
@@ -201,7 +201,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 1
+error: the function has a cognitive complexity of (1/0)
   --> $DIR/cognitive_complexity.rs:303:1
    |
 LL | / fn void(void: Void) {
@@ -213,7 +213,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 1
+error: the function has a cognitive complexity of (1/0)
   --> $DIR/cognitive_complexity.rs:316:1
    |
 LL | / fn try_() -> Result<i32, &'static str> {
@@ -226,7 +226,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 1
+error: the function has a cognitive complexity of (1/0)
   --> $DIR/cognitive_complexity.rs:324:1
    |
 LL | / fn try_again() -> Result<i32, &'static str> {
@@ -240,7 +240,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 1
+error: the function has a cognitive complexity of (1/0)
   --> $DIR/cognitive_complexity.rs:340:1
    |
 LL | / fn early() -> Result<i32, &'static str> {
@@ -254,7 +254,7 @@ LL | | }
    |
    = help: you could split it up into multiple smaller functions
 
-error: the function has a cognitive complexity of 8
+error: the function has a cognitive complexity of (8/0)
   --> $DIR/cognitive_complexity.rs:354:1
    |
 LL | / fn early_ret() -> i32 {

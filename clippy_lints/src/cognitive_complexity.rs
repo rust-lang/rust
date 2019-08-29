@@ -100,7 +100,11 @@ impl CognitiveComplexity {
                     cx,
                     COGNITIVE_COMPLEXITY,
                     span,
-                    &format!("the function has a cognitive complexity of {}", rust_cc),
+                    &format!(
+                        "the function has a cognitive complexity of ({}/{})",
+                        rust_cc,
+                        self.limit.limit()
+                    ),
                     "you could split it up into multiple smaller functions",
                 );
             }
