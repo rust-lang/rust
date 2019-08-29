@@ -482,6 +482,9 @@ fn check_associated_type_defaults(
     /// substitution forces the trait to add a `B: Clone` bound to be accepted,
     /// which means that an `impl` can replace any default without breaking
     /// others.
+    ///
+    /// Note that this isn't needed for soundness: The defaults would still be
+    /// checked in any impl that doesn't override them.
     struct DefaultNormalizer<'tcx> {
         tcx: TyCtxt<'tcx>,
         map: FxHashMap<ty::ProjectionTy<'tcx>, Ty<'tcx>>,
