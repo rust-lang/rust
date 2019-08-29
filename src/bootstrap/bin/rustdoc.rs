@@ -2,9 +2,6 @@
 //!
 //! See comments in `src/bootstrap/rustc.rs` for more information.
 
-// NO-RUSTC-WRAPPER
-#![deny(warnings, rust_2018_idioms, unused_lifetimes)]
-
 use std::env;
 use std::process::Command;
 use std::path::PathBuf;
