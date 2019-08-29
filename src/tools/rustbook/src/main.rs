@@ -56,21 +56,22 @@ fn main() {
                 eprintln!("Error: {}", err);
 
                 // HACK: ignore timeouts
-                #[allow(unused_mut)]
-                let mut actually_broken = false;
-
-                #[cfg(feature = "linkcheck")]
-                {
-                    if let Ok(broken_links) = err.downcast::<BrokenLinks>() {
-                        for cause in broken_links.links().iter() {
-                            eprintln!("\tCaused By: {}", cause);
-
-                            if cause.contains("timed out") {
-                                actually_broken = true;
-                            }
-                        }
+                let actually_broken = {
+                    #[cfg(feature = "linkcheck")]
+                    {
+                        err.downcast::<BrokenLinks>()
+                            .unwrap_or(false)
+                            .links()
+                            .iter()
+                            .inspect(|cause| eprintln!("\tCaused By: {}", cause))
+                            .any(|cause| !cause.contains("timed out"));
                     }
-                }
+
+                    #[cfg(not(feature = "linkcheck"))]
+                    {
+                        false
+                    }
+                };
 
                 if actually_broken {
                     std::process::exit(101);
