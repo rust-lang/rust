@@ -33,6 +33,7 @@ use arena::SyncDroplessArena;
 use crate::session::DataTypeKind;
 
 use rustc_serialize::{self, Encodable, Encoder};
+use rustc_target::abi::Align;
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -2057,8 +2058,8 @@ impl_stable_hash_for!(struct ReprFlags {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
 pub struct ReprOptions {
     pub int: Option<attr::IntType>,
-    pub align: u32,
-    pub pack: u32,
+    pub align: Option<Align>,
+    pub pack: Option<Align>,
     pub flags: ReprFlags,
 }
 
@@ -2073,18 +2074,19 @@ impl ReprOptions {
     pub fn new(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
         let mut flags = ReprFlags::empty();
         let mut size = None;
-        let mut max_align = 0;
-        let mut min_pack = 0;
+        let mut max_align: Option<Align> = None;
+        let mut min_pack: Option<Align> = None;
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(&tcx.sess.parse_sess, attr) {
                 flags.insert(match r {
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
-                        min_pack = if min_pack > 0 {
-                            cmp::min(pack, min_pack)
+                        let pack = Align::from_bytes(pack as u64).unwrap();
+                        min_pack = Some(if let Some(min_pack) = min_pack {
+                            min_pack.min(pack)
                         } else {
                             pack
-                        };
+                        });
                         ReprFlags::empty()
                     },
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
@@ -2094,7 +2096,7 @@ impl ReprOptions {
                         ReprFlags::empty()
                     },
                     attr::ReprAlign(align) => {
-                        max_align = cmp::max(align, max_align);
+                        max_align = max_align.max(Some(Align::from_bytes(align as u64).unwrap()));
                         ReprFlags::empty()
                     },
                 });
@@ -2113,7 +2115,7 @@ impl ReprOptions {
     #[inline]
     pub fn c(&self) -> bool { self.flags.contains(ReprFlags::IS_C) }
     #[inline]
-    pub fn packed(&self) -> bool { self.pack > 0 }
+    pub fn packed(&self) -> bool { self.pack.is_some() }
     #[inline]
     pub fn transparent(&self) -> bool { self.flags.contains(ReprFlags::IS_TRANSPARENT) }
     #[inline]
@@ -2133,8 +2135,12 @@ impl ReprOptions {
     /// Returns `true` if this `#[repr()]` should inhibit struct field reordering
     /// optimizations, such as with `repr(C)`, `repr(packed(1))`, or `repr(<int>)`.
     pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
-        self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.pack == 1 ||
-            self.int.is_some()
+        if let Some(pack) = self.pack {
+            if pack.bytes() == 1 {
+                return true;
+            }
+        }
+        self.flags.intersects(ReprFlags::IS_UNOPTIMISABLE) || self.int.is_some()
     }
 
     /// Returns `true` if this `#[repr()]` should inhibit union ABI optimisations.

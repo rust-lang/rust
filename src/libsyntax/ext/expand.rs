@@ -4,7 +4,7 @@ use crate::attr::{self, HasAttrs};
 use crate::source_map::respan;
 use crate::config::StripUnconfigured;
 use crate::ext::base::*;
-use crate::ext::proc_macro::collect_derives;
+use crate::ext::proc_macro::{collect_derives, MarkAttrs};
 use crate::ext::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
 use crate::ext::tt::macro_rules::annotate_err_with_kind;
 use crate::ext::placeholders::{placeholder, PlaceholderExpander};
@@ -307,10 +307,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let eager_expansion_root =
                 if self.monotonic { invoc.expansion_data.id } else { orig_expansion_data.id };
-            let ext = match self.cx.resolver.resolve_macro_invocation(
+            let res = match self.cx.resolver.resolve_macro_invocation(
                 &invoc, eager_expansion_root, force
             ) {
-                Ok(ext) => ext,
+                Ok(res) => res,
                 Err(Indeterminate) => {
                     undetermined_invocations.push(invoc);
                     continue
@@ -322,54 +322,72 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.current_expansion = invoc.expansion_data.clone();
 
             // FIXME(jseyfried): Refactor out the following logic
-            let (expanded_fragment, new_invocations) = if let Some(ext) = ext {
-                let fragment = self.expand_invoc(invoc, &ext.kind);
-                self.collect_invocations(fragment, &[])
-            } else if let InvocationKind::DeriveContainer { derives: traits, item } = invoc.kind {
-                if !item.derive_allowed() {
-                    let attr = attr::find_by_name(item.attrs(), sym::derive)
-                        .expect("`derive` attribute should exist");
-                    let span = attr.span;
-                    let mut err = self.cx.mut_span_err(span,
-                                                        "`derive` may only be applied to \
-                                                        structs, enums and unions");
-                    if let ast::AttrStyle::Inner = attr.style {
-                        let trait_list = traits.iter()
-                            .map(|t| t.to_string()).collect::<Vec<_>>();
-                        let suggestion = format!("#[derive({})]", trait_list.join(", "));
-                        err.span_suggestion(
-                            span, "try an outer attribute", suggestion,
-                            // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
-                            Applicability::MaybeIncorrect
-                        );
+            let (expanded_fragment, new_invocations) = match res {
+                InvocationRes::Single(ext) => {
+                    let fragment = self.expand_invoc(invoc, &ext.kind);
+                    self.collect_invocations(fragment, &[])
+                }
+                InvocationRes::DeriveContainer(exts) => {
+                    let (derives, item) = match invoc.kind {
+                        InvocationKind::DeriveContainer { derives, item } => (derives, item),
+                        _ => unreachable!(),
+                    };
+                    if !item.derive_allowed() {
+                        let attr = attr::find_by_name(item.attrs(), sym::derive)
+                            .expect("`derive` attribute should exist");
+                        let span = attr.span;
+                        let mut err = self.cx.mut_span_err(span,
+                            "`derive` may only be applied to structs, enums and unions");
+                        if let ast::AttrStyle::Inner = attr.style {
+                            let trait_list = derives.iter()
+                                .map(|t| t.to_string()).collect::<Vec<_>>();
+                            let suggestion = format!("#[derive({})]", trait_list.join(", "));
+                            err.span_suggestion(
+                                span, "try an outer attribute", suggestion,
+                                // We don't 𝑘𝑛𝑜𝑤 that the following item is an ADT
+                                Applicability::MaybeIncorrect
+                            );
+                        }
+                        err.emit();
                     }
-                    err.emit();
-                }
 
-                let mut item = self.fully_configure(item);
-                item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
-                let derive_placeholders =
-                    all_derive_placeholders.entry(invoc.expansion_data.id).or_default();
+                    let mut item = self.fully_configure(item);
+                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
+                    let mut helper_attrs = Vec::new();
+                    let mut has_copy = false;
+                    for ext in exts {
+                        helper_attrs.extend(&ext.helper_attrs);
+                        has_copy |= ext.is_derive_copy;
+                    }
+                    // Mark derive helpers inside this item as known and used.
+                    // FIXME: This is a hack, derive helpers should be integrated with regular name
+                    // resolution instead. For example, helpers introduced by a derive container
+                    // can be in scope for all code produced by that container's expansion.
+                    item.visit_with(&mut MarkAttrs(&helper_attrs));
+                    if has_copy {
+                        self.cx.resolver.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
+                    }
 
-                derive_placeholders.reserve(traits.len());
-                invocations.reserve(traits.len());
-                for path in traits {
-                    let expn_id = ExpnId::fresh(None);
-                    derive_placeholders.push(NodeId::placeholder_from_expn_id(expn_id));
-                    invocations.push(Invocation {
-                        kind: InvocationKind::Derive { path, item: item.clone() },
-                        fragment_kind: invoc.fragment_kind,
-                        expansion_data: ExpansionData {
-                            id: expn_id,
-                            ..invoc.expansion_data.clone()
-                        },
-                    });
+                    let derive_placeholders =
+                        all_derive_placeholders.entry(invoc.expansion_data.id).or_default();
+                    derive_placeholders.reserve(derives.len());
+                    invocations.reserve(derives.len());
+                    for path in derives {
+                        let expn_id = ExpnId::fresh(None);
+                        derive_placeholders.push(NodeId::placeholder_from_expn_id(expn_id));
+                        invocations.push(Invocation {
+                            kind: InvocationKind::Derive { path, item: item.clone() },
+                            fragment_kind: invoc.fragment_kind,
+                            expansion_data: ExpansionData {
+                                id: expn_id,
+                                ..invoc.expansion_data.clone()
+                            },
+                        });
+                    }
+                    let fragment = invoc.fragment_kind
+                        .expect_from_annotatables(::std::iter::once(item));
+                    self.collect_invocations(fragment, derive_placeholders)
                 }
-                let fragment = invoc.fragment_kind
-                    .expect_from_annotatables(::std::iter::once(item));
-                self.collect_invocations(fragment, derive_placeholders)
-            } else {
-                unreachable!()
             };
 
             if expanded_fragments.len() < depth {

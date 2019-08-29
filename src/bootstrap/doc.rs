@@ -413,7 +413,7 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.all_krates("std").default_condition(builder.config.docs)
+        run.all_krates("test").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {

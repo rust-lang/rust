@@ -11,6 +11,7 @@ use crate::ptr::P;
 use crate::symbol::{kw, sym, Ident, Symbol};
 use crate::{ThinVec, MACRO_ARGUMENTS};
 use crate::tokenstream::{self, TokenStream, TokenTree};
+use crate::visit::Visitor;
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
@@ -69,6 +70,17 @@ impl Annotatable {
             Annotatable::ForeignItem(ref foreign_item) => foreign_item.span,
             Annotatable::Stmt(ref stmt) => stmt.span,
             Annotatable::Expr(ref expr) => expr.span,
+        }
+    }
+
+    pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
+        match self {
+            Annotatable::Item(item) => visitor.visit_item(item),
+            Annotatable::TraitItem(trait_item) => visitor.visit_trait_item(trait_item),
+            Annotatable::ImplItem(impl_item) => visitor.visit_impl_item(impl_item),
+            Annotatable::ForeignItem(foreign_item) => visitor.visit_foreign_item(foreign_item),
+            Annotatable::Stmt(stmt) => visitor.visit_stmt(stmt),
+            Annotatable::Expr(expr) => visitor.visit_expr(expr),
         }
     }
 
@@ -700,6 +712,12 @@ impl SyntaxExtension {
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
+/// Result of resolving a macro invocation.
+pub enum InvocationRes {
+    Single(Lrc<SyntaxExtension>),
+    DeriveContainer(Vec<Lrc<SyntaxExtension>>),
+}
+
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
@@ -727,7 +745,7 @@ pub trait Resolver {
 
     fn resolve_macro_invocation(
         &mut self, invoc: &Invocation, eager_expansion_root: ExpnId, force: bool
-    ) -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate>;
+    ) -> Result<InvocationRes, Indeterminate>;
 
     fn check_unused_macros(&self);
 

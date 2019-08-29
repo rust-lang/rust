@@ -11,7 +11,7 @@ use std::cmp::Ordering;
 #[no_mangle]
 pub fn cmp_signed(a: i64, b: i64) -> Ordering {
 // CHECK: icmp slt
-// CHECK: icmp sgt
+// CHECK: icmp ne
 // CHECK: zext i1
 // CHECK: select i1
     a.cmp(&b)
@@ -21,7 +21,7 @@ pub fn cmp_signed(a: i64, b: i64) -> Ordering {
 #[no_mangle]
 pub fn cmp_unsigned(a: u32, b: u32) -> Ordering {
 // CHECK: icmp ult
-// CHECK: icmp ugt
+// CHECK: icmp ne
 // CHECK: zext i1
 // CHECK: select i1
     a.cmp(&b)
