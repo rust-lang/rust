@@ -10,7 +10,7 @@ note: ...which requires const-evaluating `Tr::B`...
 LL |     const B: u8 = Self::A;
    |                   ^^^^^^^
    = note: ...which again requires const-evaluating `Tr::A`, completing the cycle
-note: cycle used when processing `main`
+note: cycle used when const-evaluating `main`
   --> $DIR/defaults-cyclic-fail.rs:16:16
    |
 LL |     assert_eq!(<() as Tr>::A, 0);

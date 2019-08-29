@@ -1,4 +1,4 @@
-// compile-pass
+// check-pass
 
 // Before RFC 2532, normalizing a defaulted assoc. type didn't work at all,
 // unless the impl in question overrides that type, which makes the default

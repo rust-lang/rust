@@ -6,7 +6,7 @@ LL |     const B: u8 = Self::A + 1;
    |                   |
    |                   attempt to add with overflow
    |
-   = note: #[deny(const_err)] on by default
+   = note: `#[deny(const_err)]` on by default
 
 error[E0080]: evaluation of constant expression failed
   --> $DIR/defaults-not-assumed-fail.rs:33:5
