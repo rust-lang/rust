@@ -669,6 +669,7 @@ Grammar(
             collections: [("use_trees", "UseTree")]
         ),
         "ExternCrateItem": (
+            traits: ["AttrsOwner"],
             options: ["NameRef", "Alias"],
         ),
         "ArgList": (

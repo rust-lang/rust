@@ -154,6 +154,7 @@ pub struct ImportData {
     pub(super) is_glob: bool,
     pub(super) is_prelude: bool,
     pub(super) is_extern_crate: bool,
+    pub(super) is_macro_use: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -293,8 +294,14 @@ impl RawItemsCollector {
         let is_prelude = use_item.has_atom_attr("prelude_import");
 
         Path::expand_use_item(&use_item, |path, use_tree, is_glob, alias| {
-            let import_data =
-                ImportData { path, alias, is_glob, is_prelude, is_extern_crate: false };
+            let import_data = ImportData {
+                path,
+                alias,
+                is_glob,
+                is_prelude,
+                is_extern_crate: false,
+                is_macro_use: false,
+            };
             self.push_import(current_module, import_data, Either::A(AstPtr::new(use_tree)));
         })
     }
@@ -307,12 +314,14 @@ impl RawItemsCollector {
         if let Some(name_ref) = extern_crate.name_ref() {
             let path = Path::from_name_ref(&name_ref);
             let alias = extern_crate.alias().and_then(|a| a.name()).map(|it| it.as_name());
+            let is_macro_use = extern_crate.has_atom_attr("macro_use");
             let import_data = ImportData {
                 path,
                 alias,
                 is_glob: false,
                 is_prelude: false,
                 is_extern_crate: true,
+                is_macro_use,
             };
             self.push_import(current_module, import_data, Either::B(AstPtr::new(&extern_crate)));
         }

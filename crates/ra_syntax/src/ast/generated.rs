@@ -934,6 +934,7 @@ impl AstNode for ExternCrateItem {
         &self.syntax
     }
 }
+impl ast::AttrsOwner for ExternCrateItem {}
 impl ExternCrateItem {
     pub fn name_ref(&self) -> Option<NameRef> {
         AstChildren::new(&self.syntax).next()

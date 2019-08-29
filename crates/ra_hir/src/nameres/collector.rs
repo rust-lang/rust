@@ -295,6 +295,23 @@ where
                         }
                     }
 
+                    // `#[macro_use] extern crate` glob import macros
+                    if import.is_extern_crate && import.is_macro_use {
+                        if let Some(ModuleDef::Module(m)) =
+                            def.a().and_then(|item| item.take_types())
+                        {
+                            let item_map = self.db.crate_def_map(m.krate);
+                            let scope = &item_map[m.module_id].scope;
+                            let macros = scope
+                                .macros
+                                .iter()
+                                .map(|(name, res)| (name.clone(), Either::B(*res)))
+                                .collect::<Vec<_>>();
+
+                            self.update(module_id, Some(import_id), &macros);
+                        }
+                    }
+
                     let resolution = match def {
                         Either::A(item) => {
                             Either::A(Resolution { def: item, import: Some(import_id) })
