@@ -430,10 +430,13 @@ impl<'a> Linker for GccLinker<'a> {
             // Write an LD version script
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
-                writeln!(f, "{{\n  global:")?;
-                for sym in self.info.exports[&crate_type].iter() {
-                    debug!("    {};", sym);
-                    writeln!(f, "    {};", sym)?;
+                writeln!(f, "{{")?;
+                if !self.info.exports[&crate_type].is_empty() {
+                    writeln!(f, "  global:")?;
+                    for sym in self.info.exports[&crate_type].iter() {
+                        debug!("    {};", sym);
+                        writeln!(f, "    {};", sym)?;
+                    }
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
             };
