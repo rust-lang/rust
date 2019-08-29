@@ -2170,6 +2170,7 @@ impl str {
     #[inline(always)]
     #[rustc_const_unstable(feature="const_str_as_bytes")]
     pub const fn as_bytes(&self) -> &[u8] {
+        #[repr(C)]
         union Slices<'a> {
             str: &'a str,
             slice: &'a [u8],
