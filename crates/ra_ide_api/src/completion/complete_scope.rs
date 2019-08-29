@@ -122,7 +122,7 @@ impl ImportResolver {
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn completes_bindings_from_let() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 fn quux(x: i32) {
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn completes_bindings_from_if_let() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 fn quux() {
@@ -215,7 +215,7 @@ mod tests {
 
     #[test]
     fn completes_bindings_from_for() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 fn quux() {
@@ -247,7 +247,7 @@ mod tests {
 
     #[test]
     fn completes_generic_params() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 fn quux<T>() {
@@ -277,7 +277,7 @@ mod tests {
 
     #[test]
     fn completes_generic_params_in_struct() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 struct X<T> {
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn completes_module_items() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_reference_completion(
             r"
                 struct Foo;
@@ -345,7 +345,7 @@ mod tests {
 
     #[test]
     fn completes_extern_prelude() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 //- /lib.rs
@@ -369,7 +369,7 @@ mod tests {
 
     #[test]
     fn completes_module_items_in_nested_modules() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 struct Foo;
@@ -401,7 +401,7 @@ mod tests {
 
     #[test]
     fn completes_return_type() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 struct Foo;
@@ -430,7 +430,7 @@ mod tests {
 
     #[test]
     fn dont_show_both_completions_for_shadowing() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 fn foo() {
@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn completes_self_in_methods() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(r"impl S { fn foo(&self) { <|> } }"),
             @r#"[
     CompletionItem {
@@ -489,7 +489,7 @@ mod tests {
 
     #[test]
     fn completes_prelude() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /main.rs

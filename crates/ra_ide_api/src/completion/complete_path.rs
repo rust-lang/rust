@@ -79,7 +79,7 @@ mod tests {
     use test_utils::covers;
 
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
@@ -120,7 +120,7 @@ mod tests {
 
     #[test]
     fn completes_mod_with_docs() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 use self::my<|>;
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn completes_use_item_starting_with_self() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 use self::m::<|>;
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn completes_use_item_starting_with_crate() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn completes_nested_use_tree() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn completes_deeply_nested_use_tree() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -263,7 +263,7 @@ mod tests {
 
     #[test]
     fn completes_enum_variant() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -306,7 +306,7 @@ mod tests {
 
     #[test]
     fn completes_enum_variant_with_details() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -363,7 +363,7 @@ mod tests {
 
     #[test]
     fn completes_struct_associated_method() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -396,7 +396,7 @@ mod tests {
 
     #[test]
     fn completes_struct_associated_const() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn completes_struct_associated_type() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -462,7 +462,7 @@ mod tests {
 
     #[test]
     fn completes_enum_associated_method() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -495,7 +495,7 @@ mod tests {
 
     #[test]
     fn completes_union_associated_method() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -528,7 +528,7 @@ mod tests {
 
     #[test]
     fn completes_use_paths_across_crates() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /main.rs
@@ -554,7 +554,7 @@ mod tests {
 
     #[test]
     fn completes_type_alias() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 struct S;

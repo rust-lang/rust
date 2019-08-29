@@ -200,7 +200,7 @@ mod tests {
         mock_analysis::analysis_and_position, mock_analysis::single_file_with_position, FileId,
         ReferenceSearchResult,
     };
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
     use test_utils::assert_eq_text;
 
     #[test]
@@ -341,7 +341,7 @@ mod tests {
         );
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot_matches!(&source_change,
+        assert_debug_snapshot!(&source_change,
 @r#"Some(
     SourceChange {
         label: "rename",
@@ -388,7 +388,7 @@ mod tests {
         );
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
-        assert_debug_snapshot_matches!(&source_change,
+        assert_debug_snapshot!(&source_change,
         @r###"Some(
     SourceChange {
         label: "rename",

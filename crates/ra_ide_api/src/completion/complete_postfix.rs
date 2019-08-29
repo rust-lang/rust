@@ -72,7 +72,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     fn do_postfix_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Postfix)
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn postfix_completion_works_for_trivial_path_expression() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_postfix_completion(
                 r#"
                 fn main() {
@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn some_postfix_completions_ignored() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_postfix_completion(
                 r#"
                 fn main() {

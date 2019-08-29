@@ -186,7 +186,7 @@ impl Completions {
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
     use test_utils::covers;
 
     fn do_reference_completion(code: &str) -> Vec<CompletionItem> {
@@ -196,7 +196,7 @@ mod tests {
     #[test]
     fn inserts_parens_for_function_calls() {
         covers!(inserts_parens_for_function_calls);
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 fn no_args() {}
@@ -222,7 +222,7 @@ mod tests {
     },
 ]"###
         );
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 fn with_args(x: i32, y: String) {}
@@ -248,7 +248,7 @@ mod tests {
     },
 ]"###
         );
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 r"
                 struct S {}
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn dont_render_function_parens_in_use_item() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn dont_render_function_parens_if_already_call() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs
@@ -327,7 +327,7 @@ mod tests {
     },
 ]"#
         );
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_reference_completion(
                 "
                 //- /lib.rs

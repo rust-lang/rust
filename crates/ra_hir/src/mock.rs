@@ -75,7 +75,7 @@ impl MockDatabase {
     }
 
     pub fn diagnostics(&self) -> String {
-        let mut buf = String::from("\n");
+        let mut buf = String::new();
         let mut files: Vec<FileId> = self.files.values().copied().collect();
         files.sort();
         for file in files {

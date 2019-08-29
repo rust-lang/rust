@@ -51,7 +51,7 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     fn do_magic_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Magic)
@@ -59,7 +59,7 @@ mod tests {
 
     #[test]
     fn test_param_completion_last_param() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_magic_completion(
                 r"
                 fn foo(file_id: FileId) {}
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_param_completion_nth_param() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_magic_completion(
                 r"
                 fn foo(file_id: FileId) {}
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_param_completion_trait_param() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_magic_completion(
                 r"
                 pub(crate) trait SourceRoot {

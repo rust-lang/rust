@@ -113,7 +113,7 @@ fn complete_return(
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     fn do_keyword_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Keyword)
@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn completes_keywords_in_use_stmt() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 use <|>
@@ -152,7 +152,7 @@ mod tests {
 ]"###
         );
 
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 use a::<|>
@@ -176,7 +176,7 @@ mod tests {
 ]"###
         );
 
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 use a::{b, <|>}
@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn completes_various_keywords_in_function() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() {
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn completes_else_after_if() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() {
@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn test_completion_return_value() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() -> i32 {
@@ -366,7 +366,7 @@ mod tests {
     },
 ]"###
         );
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() {
@@ -417,7 +417,7 @@ mod tests {
 
     #[test]
     fn dont_add_semi_after_return_if_not_a_statement() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() -> i32 {
@@ -469,7 +469,7 @@ mod tests {
 
     #[test]
     fn last_return_in_block_has_semi() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() -> i32 {
@@ -517,7 +517,7 @@ mod tests {
     },
 ]"###
         );
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() -> i32 {
@@ -571,7 +571,7 @@ mod tests {
 
     #[test]
     fn completes_break_and_continue_in_loops() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() -> i32 {
@@ -633,7 +633,7 @@ mod tests {
         );
 
         // No completion: lambda isolates control flow
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn quux() -> i32 {
@@ -683,7 +683,7 @@ mod tests {
 
     #[test]
     fn no_semi_after_break_continue_in_expr() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_keyword_completion(
                 r"
                 fn f() {

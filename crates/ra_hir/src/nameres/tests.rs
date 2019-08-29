@@ -6,7 +6,7 @@ mod mods;
 
 use std::sync::Arc;
 
-use insta::assert_snapshot_matches;
+use insta::assert_snapshot;
 use ra_db::SourceDatabase;
 use test_utils::covers;
 
@@ -97,7 +97,7 @@ fn crate_def_map_smoke_test() {
         enum E { V }
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮E: t
         ⋮S: t v
@@ -130,7 +130,7 @@ fn bogus_paths() {
 
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
    ⋮crate
    ⋮S: t v
    ⋮foo: t
@@ -153,7 +153,7 @@ fn use_as() {
         pub struct Baz;
         ",
     );
-    assert_snapshot_matches!(map,
+    assert_snapshot!(map,
         @r###"
    ⋮crate
    ⋮Foo: t v
@@ -182,7 +182,7 @@ fn use_trees() {
         pub enum Quux {};
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Baz: t v
         ⋮Quux: t
@@ -215,7 +215,7 @@ fn re_exports() {
         pub struct Baz;
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Baz: t v
         ⋮foo: t
@@ -250,7 +250,7 @@ fn std_prelude() {
             "test_crate": ("/lib.rs", []),
         },
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Bar: t v
         ⋮Baz: t v
@@ -267,7 +267,7 @@ fn can_import_enum_variant() {
         use self::E::V;
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮E: t
         ⋮V: t v
@@ -299,7 +299,7 @@ fn edition_2015_imports() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮bar: t
         ⋮foo: t
@@ -326,7 +326,7 @@ fn item_map_using_self() {
         pub struct Baz;
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Baz: t v
         ⋮foo: t
@@ -355,7 +355,7 @@ fn item_map_across_crates() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Baz: t v
     "###);
@@ -383,7 +383,7 @@ fn extern_crate_rename() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
    ⋮crate
    ⋮alloc_crate: t
    ⋮sync: t
@@ -415,7 +415,7 @@ fn extern_crate_rename_2015_edition() {
         },
     );
 
-    assert_snapshot_matches!(map,
+    assert_snapshot!(map,
         @r###"
    ⋮crate
    ⋮alloc_crate: t
@@ -449,7 +449,7 @@ fn import_across_source_roots() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮C: t v
     "###);
@@ -476,7 +476,7 @@ fn reexport_across_crates() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Baz: t v
     "###);
@@ -499,7 +499,7 @@ fn values_dont_shadow_extern_crates() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Bar: t v
         ⋮foo: v
