@@ -25,6 +25,7 @@ use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 use std::ops::{Deref, Index, IndexMut};
@@ -1607,26 +1608,14 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
             // which can't be mutated until its scope ends.
             let (temps, candidates) = {
                 let mut checker = Checker::new(tcx, def_id, body, mode);
-                if mode == Mode::ConstFn {
+                if let Mode::ConstFn = mode {
                     if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
                         checker.check_const();
                     } else if tcx.is_min_const_fn(def_id) {
-                        // enforce `min_const_fn` for stable const fns
+                        // Enforce `min_const_fn` for stable `const fn`s.
                         use super::qualify_min_const_fn::is_min_const_fn;
                         if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
-                            let mut diag = struct_span_err!(
-                                tcx.sess,
-                                span,
-                                E0723,
-                                "{}",
-                                err,
-                            );
-                            diag.note("for more information, see issue \
-                                       https://github.com/rust-lang/rust/issues/57563");
-                            diag.help(
-                                "add `#![feature(const_fn)]` to the crate attributes to enable",
-                            );
-                            diag.emit();
+                            error_min_const_fn_violation(tcx, span, err);
                         } else {
                             // this should not produce any errors, but better safe than sorry
                             // FIXME(#53819)
@@ -1675,6 +1664,13 @@ fn determine_mode(tcx: TyCtxt<'_>, hir_id: HirId, def_id: DefId) -> Mode {
         hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
         hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
     }
+}
+
+fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
+    struct_span_err!(tcx.sess, span, E0723, "{}", msg)
+        .note("for more information, see issue https://github.com/rust-lang/rust/issues/57563")
+        .help("add `#![feature(const_fn)]` to the crate attributes to enable")
+        .emit();
 }
 
 fn check_short_circuiting_in_const_local(tcx: TyCtxt<'_>, body: &mut Body<'tcx>, mode: Mode) {
