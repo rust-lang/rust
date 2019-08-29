@@ -4,4 +4,5 @@
 
 pub mod raw;
 pub mod fs;
+#[unstable(feature = "linux_syscall", issue = "63748")]
 pub mod syscall;

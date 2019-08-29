@@ -11,6 +11,9 @@
 #[cfg(target_arch = "aarch64")]
 #[path="aarch64"] mod platform;
 
+#[cfg(target_arch = "arm")]
+#[path="arm"] mod platform;
+
 /// Execute syscall with 0 arguments.
 #[unstable(feature = "linux_syscall", issue = "63748")]
 #[inline(always)]
@@ -64,4 +67,17 @@ pub unsafe fn syscall6(
     n: usize, a1: usize, a2: usize, a3: usize, a4: usize, a5: usize, a6: usize,
 ) -> usize {
     platform::syscall6(n, a1, a2, a3, a4, a5, a6)
+}
+
+/// Execute syscall with 7 arguments.
+///
+/// Available only on ARM targets.
+#[cfg(target_arch = "arm")]
+#[unstable(feature = "linux_syscall", issue = "63748")]
+#[inline(always)]
+pub unsafe fn syscall7(
+    n: usize, a1: usize, a2: usize, a3: usize, a4: usize,
+    a5: usize, a6: usize,  a7: usize,
+) -> usize {
+    platform::syscall7(n, a1, a2, a3, a4, a5, a6, a7)
 }
