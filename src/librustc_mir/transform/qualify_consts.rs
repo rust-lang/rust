@@ -598,51 +598,83 @@ impl Qualif for IsNotImplicitlyPromotable {
     }
 }
 
-// Ensure the `IDX` values are sequential (`0..QUALIF_COUNT`).
-macro_rules! define_qualif_indices {
+macro_rules! define_qualifs {
+    // Top-level, non-recursive mode
+
+    ( $( $Q:ident ),* $(,)? ) => {
+        /// Executes `body` once for each implementor of `Qualif`.
+        ///
+        /// This macro overloads closure syntax to put the type of each `Qualif` as well as
+        /// a value of that type into scope for `body`. For example, the following code would print
+        /// the result of `in_any_value_of_ty` for each `Qualif` (assuming `cx` and `ty` are
+        /// already in scope).
+        ///
+        /// ```
+        /// for_each_qualif!(|q: Q| dbg!(Q::in_any_value_of_ty(cx, ty)));
+        /// ```
+        ///
+        /// Note that the type annotation for the closure argument (the `Q` in `q: Q`) is
+        /// mandatory and must be a valid identifier (it is used as the name of a type alias within
+        /// the macro).
+        macro_rules! for_each_qualif {
+            ( |$q:ident : $ty:ident| $body:expr ) => {
+                {
+                    $(
+                        (|$q| {
+                            #[allow(unused)]
+                            type $ty = $Q;
+                            $body
+                        })($Q);
+                    )*
+                }
+            }
+        }
+
+        // Enter recursive mode to assign a numeric index to each `Qualif`
+        define_qualifs!(0 => $( $Q ),*);
+    };
+
+    // Recursive mode
+
     ($i:expr => $first:ident $(, $rest:ident)*) => {
         impl QualifIdx for $first {
             const IDX: usize = $i;
         }
 
-        define_qualif_indices!($i + 1 => $($rest),*);
+        define_qualifs!($i + 1 => $($rest),*);
     };
     ($i:expr =>) => {
         const QUALIF_COUNT: usize = $i;
     };
 }
 
-define_qualif_indices!(
-    0 => HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable
+define_qualifs!(
+    HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable
 );
 static_assert!(QUALIF_COUNT == 4);
 
 impl ConstCx<'_, 'tcx> {
     fn qualifs_in_any_value_of_ty(&self, ty: Ty<'tcx>) -> PerQualif<bool> {
         let mut qualifs = PerQualif::default();
-        qualifs[HasMutInterior] = HasMutInterior::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[NeedsDrop] = NeedsDrop::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotImplicitlyPromotable] =
-            IsNotImplicitlyPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
+        for_each_qualif!(|q: Q| {
+            qualifs[q] = Q::in_any_value_of_ty(self, ty).unwrap_or(false);
+        });
         qualifs
     }
 
     fn qualifs_in_local(&self, local: Local) -> PerQualif<bool> {
         let mut qualifs = PerQualif::default();
-        qualifs[HasMutInterior] = HasMutInterior::in_local(self, local);
-        qualifs[NeedsDrop] = NeedsDrop::in_local(self, local);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_local(self, local);
-        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_local(self, local);
+        for_each_qualif!(|q: Q| {
+            qualifs[q] = Q::in_local(self, local);
+        });
         qualifs
     }
 
     fn qualifs_in_value(&self, source: ValueSource<'_, 'tcx>) -> PerQualif<bool> {
         let mut qualifs = PerQualif::default();
-        qualifs[HasMutInterior] = HasMutInterior::in_value(self, source);
-        qualifs[NeedsDrop] = NeedsDrop::in_value(self, source);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_value(self, source);
-        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_value(self, source);
+        for_each_qualif!(|q: Q| {
+            qualifs[q] = Q::in_value(self, source);
+        });
         qualifs
     }
 }
