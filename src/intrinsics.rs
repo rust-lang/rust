@@ -565,14 +565,15 @@ pub fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_ref(addr, dst_layout))
         };
         init, () {
-            if ret.layout().abi == Abi::Uninhabited {
+            let layout = ret.layout();
+            if layout.abi == Abi::Uninhabited {
                 crate::trap::trap_panic(fx, "[panic] Called intrinsic::init for uninhabited type.");
                 return;
             }
 
-            match ret {
-                CPlace::NoPlace(_layout) => {}
-                CPlace::Var(var, layout) => {
+            match *ret.inner() {
+                CPlaceInner::NoPlace => {}
+                CPlaceInner::Var(var) => {
                     let clif_ty = fx.clif_type(layout.ty).unwrap();
                     let val = match clif_ty {
                         types::I8 | types::I16 | types::I32 | types::I64 => fx.bcx.ins().iconst(clif_ty, 0),
@@ -596,13 +597,14 @@ pub fn codegen_intrinsic_call<'tcx>(
             }
         };
         uninit, () {
-            if ret.layout().abi == Abi::Uninhabited {
+            let layout = ret.layout();
+            if layout.abi == Abi::Uninhabited {
                 crate::trap::trap_panic(fx, "[panic] Called intrinsic::uninit for uninhabited type.");
                 return;
             }
-            match ret {
-                CPlace::NoPlace(_layout) => {},
-                CPlace::Var(var, layout) => {
+            match *ret.inner() {
+                CPlaceInner::NoPlace => {},
+                CPlaceInner::Var(var) => {
                     let clif_ty = fx.clif_type(layout.ty).unwrap();
                     let val = match clif_ty {
                         types::I8 | types::I16 | types::I32 | types::I64 => fx.bcx.ins().iconst(clif_ty, 42),
@@ -618,7 +620,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                     };
                     fx.bcx.def_var(mir_var(var), val);
                 }
-                CPlace::Addr(_, _, _) | CPlace::Stack(_, _) => {
+                CPlaceInner::Addr(_, _) | CPlaceInner::Stack(_) => {
                     // Don't write to `ret`, as the destination memory is already uninitialized.
                 }
             }

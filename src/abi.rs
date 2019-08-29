@@ -399,8 +399,8 @@ fn local_place<'tcx>(
                 fields: _,
                 largest_niche: _,
             } = details;
-            match place {
-                CPlace::Stack(stack_slot, _) => fx.add_entity_comment(
+            match *place.inner() {
+                CPlaceInner::Stack(stack_slot) => fx.add_entity_comment(
                     stack_slot,
                     format!(
                         "{:?}: {:?} size={} align={},{}",
@@ -411,7 +411,7 @@ fn local_place<'tcx>(
                         align.pref.bytes(),
                     ),
                 ),
-                CPlace::NoPlace(_) => fx.add_global_comment(format!(
+                CPlaceInner::NoPlace => fx.add_global_comment(format!(
                     "zst    {:?}: {:?} size={} align={}, {}",
                     local,
                     ty,

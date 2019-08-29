@@ -163,25 +163,33 @@ impl<'tcx> CValue<'tcx> {
 
 /// A place where you can write a value to or read a value from
 #[derive(Debug, Copy, Clone)]
-pub enum CPlace<'tcx> {
-    Var(Local, TyLayout<'tcx>),
-    Addr(Value, Option<Value>, TyLayout<'tcx>),
-    Stack(StackSlot, TyLayout<'tcx>),
-    NoPlace(TyLayout<'tcx>),
+pub struct CPlace<'tcx> {
+    inner: CPlaceInner,
+    layout: TyLayout<'tcx>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum CPlaceInner {
+    Var(Local),
+    Addr(Value, Option<Value>),
+    Stack(StackSlot),
+    NoPlace,
 }
 
 impl<'tcx> CPlace<'tcx> {
     pub fn layout(&self) -> TyLayout<'tcx> {
-        match *self {
-            CPlace::Var(_, layout)
-            | CPlace::Addr(_, _, layout)
-            | CPlace::Stack(_, layout)
-            | CPlace::NoPlace(layout) => layout,
-        }
+        self.layout
+    }
+
+    pub fn inner(&self) -> &CPlaceInner {
+        &self.inner
     }
 
     pub fn no_place(layout: TyLayout<'tcx>) -> CPlace<'tcx> {
-        CPlace::NoPlace(layout)
+        CPlace{
+            inner: CPlaceInner::NoPlace,
+            layout
+        }
     }
 
     pub fn new_stack_slot(
@@ -191,7 +199,10 @@ impl<'tcx> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
         assert!(!layout.is_unsized());
         if layout.size.bytes() == 0 {
-            return CPlace::NoPlace(layout);
+            return CPlace {
+                inner: CPlaceInner::NoPlace,
+                layout,
+            };
         }
 
         let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
@@ -199,7 +210,10 @@ impl<'tcx> CPlace<'tcx> {
             size: layout.size.bytes() as u32,
             offset: None,
         });
-        CPlace::Stack(stack_slot, layout)
+        CPlace {
+            inner: CPlaceInner::Stack(stack_slot),
+            layout,
+        }
     }
 
     pub fn new_var(
@@ -209,29 +223,39 @@ impl<'tcx> CPlace<'tcx> {
     ) -> CPlace<'tcx> {
         fx.bcx
             .declare_var(mir_var(local), fx.clif_type(layout.ty).unwrap());
-        CPlace::Var(local, layout)
+        CPlace {
+            inner: CPlaceInner::Var(local),
+            layout,
+        }
     }
 
     pub fn for_addr(addr: Value, layout: TyLayout<'tcx>) -> CPlace<'tcx> {
-        CPlace::Addr(addr, None, layout)
+        CPlace {
+            inner: CPlaceInner::Addr(addr, None),
+            layout,
+        }
     }
 
     pub fn for_addr_with_extra(addr: Value, extra: Value, layout: TyLayout<'tcx>) -> CPlace<'tcx> {
-        CPlace::Addr(addr, Some(extra), layout)
+        CPlace {
+            inner: CPlaceInner::Addr(addr, Some(extra)),
+            layout,
+        }
     }
 
     pub fn to_cvalue(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> CValue<'tcx> {
-        match self {
-            CPlace::Var(var, layout) => CValue::by_val(fx.bcx.use_var(mir_var(var)), layout),
-            CPlace::Addr(addr, extra, layout) => {
+        let layout = self.layout();
+        match self.inner {
+            CPlaceInner::Var(var) => CValue::by_val(fx.bcx.use_var(mir_var(var)), layout),
+            CPlaceInner::Addr(addr, extra) => {
                 assert!(extra.is_none(), "unsized values are not yet supported");
                 CValue::by_ref(addr, layout)
             }
-            CPlace::Stack(stack_slot, layout) => CValue::by_ref(
+            CPlaceInner::Stack(stack_slot) => CValue::by_ref(
                 fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0),
                 layout,
             ),
-            CPlace::NoPlace(layout) => CValue::by_ref(
+            CPlaceInner::NoPlace => CValue::by_ref(
                 fx.bcx
                     .ins()
                     .iconst(fx.pointer_type, fx.pointer_type.bytes() as i64),
@@ -251,14 +275,14 @@ impl<'tcx> CPlace<'tcx> {
         self,
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     ) -> (Value, Option<Value>) {
-        match self {
-            CPlace::Addr(addr, extra, _layout) => (addr, extra),
-            CPlace::Stack(stack_slot, _layout) => (
+        match self.inner {
+            CPlaceInner::Addr(addr, extra) => (addr, extra),
+            CPlaceInner::Stack(stack_slot) => (
                 fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0),
                 None,
             ),
-            CPlace::NoPlace(_) => (fx.bcx.ins().iconst(fx.pointer_type, 45), None),
-            CPlace::Var(_, _) => bug!("Expected CPlace::Addr, found CPlace::Var"),
+            CPlaceInner::NoPlace => (fx.bcx.ins().iconst(fx.pointer_type, 45), None),
+            CPlaceInner::Var(_) => bug!("Expected CPlace::Addr, found CPlace::Var"),
         }
     }
 
@@ -327,24 +351,24 @@ impl<'tcx> CPlace<'tcx> {
 
         assert_assignable(fx, from_ty, to_ty);
 
-        let (addr, dst_layout) = match self {
-            CPlace::Var(var, _) => {
+        let dst_layout = self.layout();
+        let addr = match self.inner {
+            CPlaceInner::Var(var) => {
                 let data = from.load_scalar(fx);
                 fx.bcx.def_var(mir_var(var), data);
                 return;
             }
-            CPlace::Addr(addr, None, dst_layout) => (addr, dst_layout),
-            CPlace::Stack(stack_slot, dst_layout) => (
-                fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0),
-                dst_layout,
-            ),
-            CPlace::NoPlace(layout) => {
-                if layout.abi != Abi::Uninhabited {
-                    assert_eq!(layout.size.bytes(), 0, "{:?}", layout);
+            CPlaceInner::Addr(addr, None) => addr,
+            CPlaceInner::Stack(stack_slot) => {
+                fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0)
+            }
+            CPlaceInner::NoPlace => {
+                if dst_layout.abi != Abi::Uninhabited {
+                    assert_eq!(dst_layout.size.bytes(), 0, "{:?}", dst_layout);
                 }
                 return;
             }
-            CPlace::Addr(_, _, _) => bug!("Can't write value to unsized place {:?}", self),
+            CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
         };
 
         match from.0 {
@@ -395,13 +419,11 @@ impl<'tcx> CPlace<'tcx> {
         let (base, extra) = self.to_addr_maybe_unsized(fx);
 
         let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
-        let extra = if field_layout.is_unsized() {
-            assert!(extra.is_some());
-            extra
+        if field_layout.is_unsized() {
+            CPlace::for_addr_with_extra(field_ptr, extra.unwrap(), field_layout)
         } else {
-            None
-        };
-        CPlace::Addr(field_ptr, extra, field_layout)
+            CPlace::for_addr(field_ptr, field_layout)
+        }
     }
 
     pub fn place_index(
@@ -420,16 +442,16 @@ impl<'tcx> CPlace<'tcx> {
             .ins()
             .imul_imm(index, elem_layout.size.bytes() as i64);
 
-        CPlace::Addr(fx.bcx.ins().iadd(addr, offset), None, elem_layout)
+        CPlace::for_addr(fx.bcx.ins().iadd(addr, offset), elem_layout)
     }
 
     pub fn place_deref(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> CPlace<'tcx> {
         let inner_layout = fx.layout_of(self.layout().ty.builtin_deref(true).unwrap().ty);
         if !inner_layout.is_unsized() {
-            CPlace::Addr(self.to_cvalue(fx).load_scalar(fx), None, inner_layout)
+            CPlace::for_addr(self.to_cvalue(fx).load_scalar(fx), inner_layout)
         } else {
             let (addr, extra) = self.to_cvalue(fx).load_scalar_pair(fx);
-            CPlace::Addr(addr, Some(extra), inner_layout)
+            CPlace::for_addr_with_extra(addr, extra, inner_layout)
         }
     }
 
@@ -446,14 +468,15 @@ impl<'tcx> CPlace<'tcx> {
 
     pub fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {
         assert!(!self.layout().is_unsized());
-        match self {
-            CPlace::Var(var, _) => CPlace::Var(var, layout),
-            CPlace::Addr(addr, extra, _) => CPlace::Addr(addr, extra, layout),
-            CPlace::Stack(stack_slot, _) => CPlace::Stack(stack_slot, layout),
-            CPlace::NoPlace(_) => {
+        match self.inner {
+            CPlaceInner::NoPlace => {
                 assert!(layout.size.bytes() == 0);
-                CPlace::NoPlace(layout)
             }
+            _ => {}
+        }
+        CPlace {
+            inner: self.inner,
+            layout,
         }
     }
 
