@@ -1,6 +1,5 @@
 // aux-build:option_helpers.rs
 // compile-flags: --edition 2018
-// run-rustfix
 
 #![warn(clippy::all, clippy::pedantic, clippy::option_unwrap_used)]
 #![allow(
@@ -267,6 +266,7 @@ fn search_is_some() {
     let _ = v.iter().find(|&x| *x < 0).is_some();
     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
     let _ = (0..1).find(|x| *x == 0).is_some();
+    let _ = v.iter().find(|x| **x == 0).is_some();
 
     // Check `find().is_some()`, multi-line case.
     let _ = v.iter().find(|&x| {

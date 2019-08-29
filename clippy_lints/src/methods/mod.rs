@@ -1022,9 +1022,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0], method_spans[0]),
             ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
-            ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0]),
-            ["is_some", "position"] => lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0]),
-            ["is_some", "rposition"] => lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0]),
+            ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0], method_spans[1]),
+            ["is_some", "position"] => {
+                lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0], method_spans[1])
+            },
+            ["is_some", "rposition"] => {
+                lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
+            },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
             ["as_ptr", "unwrap"] | ["as_ptr", "expect"] => {
                 lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0])
@@ -2381,6 +2385,7 @@ fn lint_search_is_some<'a, 'tcx>(
     search_method: &str,
     search_args: &'tcx [hir::Expr],
     is_some_args: &'tcx [hir::Expr],
+    method_span: Span,
 ) {
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
@@ -2398,15 +2403,13 @@ fn lint_search_is_some<'a, 'tcx>(
                 if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].node;
                 let closure_body = cx.tcx.hir().body(body_id);
                 if let Some(closure_arg) = closure_body.params.get(0);
-                if let hir::PatKind::Ref(..) = closure_arg.pat.node;
                 then {
-                    match &closure_arg.pat.node {
-                        hir::PatKind::Ref(..) => Some(search_snippet.replacen('&', "", 1)),
-                        hir::PatKind::Binding(_, _, expr, _) => {
-                            let closure_arg_snip = snippet(cx, expr.span, "..");
-                            Some(search_snippet.replace(&format!("*{}", closure_arg_snip), &closure_arg_snip))
-                        }
-                        _ => None,
+                    if let hir::PatKind::Ref(..) = closure_arg.pat.node {
+                        Some(search_snippet.replacen('&', "", 1))
+                    } else if let Some(name) = get_arg_name(&closure_arg.pat) {
+                        Some(search_snippet.replace(&format!("*{}", name), &name.as_str()))
+                    } else {
+                        None
                     }
                 } else {
                     None
@@ -2416,14 +2419,12 @@ fn lint_search_is_some<'a, 'tcx>(
             span_lint_and_sugg(
                 cx,
                 SEARCH_IS_SOME,
-                expr.span,
+                method_span.with_hi(expr.span.hi()),
                 &msg,
                 "try this",
                 format!(
                     "any({})",
-                    any_search_snippet
-                        .as_ref()
-                        .map_or(&*search_snippet, String::as_str)
+                    any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
                 ),
                 Applicability::MachineApplicable,
             );

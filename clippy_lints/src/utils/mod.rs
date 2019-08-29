@@ -338,7 +338,7 @@ pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> Res {
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up
-/// `expr`.
+/// `expr`. method/span lists are sorted with the most recent call first.
 pub fn method_calls(expr: &Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&[Expr]>, Vec<Span>) {
     let mut method_names = Vec::with_capacity(max_depth);
     let mut arg_lists = Vec::with_capacity(max_depth);
