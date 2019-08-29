@@ -3,7 +3,7 @@
 
 // Local js definitions:
 /* global addClass, getCurrentValue, hasClass */
-/* global isHidden onEach, removeClass, updateLocalStorage */
+/* global isHidden, onEach, removeClass, updateLocalStorage */
 
 if (!String.prototype.startsWith) {
     String.prototype.startsWith = function(searchString, position) {
