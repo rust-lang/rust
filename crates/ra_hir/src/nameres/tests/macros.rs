@@ -99,14 +99,14 @@ fn macro_rules_from_other_crates_are_visible() {
 fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
     let map = def_map_with_crate_graph(
         "
-        //- /main.rs      
+        //- /main.rs
         macro_rules! baz {
             () => {
-                use foo::bar;                
+                use foo::bar;
             }
         }
-        
-        foo!();              
+
+        foo!();
         bar!();
         baz!();
 
@@ -114,7 +114,7 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
         #[macro_export]
         macro_rules! foo {
             () => {
-                struct Foo { field: u32 } 
+                struct Foo { field: u32 }
             }
         }
         #[macro_export]
@@ -135,5 +135,50 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
    ⋮bar: m
    ⋮baz: m
    ⋮foo: m
+    "###);
+}
+
+#[test]
+fn macro_rules_from_other_crates_are_visible_with_macro_use() {
+    let map = def_map_with_crate_graph(
+        "
+        //- /main.rs
+        #[macro_use]
+        extern crate foo;
+
+        structs!(Foo, Bar)
+
+        mod bar;
+
+        //- /bar.rs
+        use crate::*;
+
+        //- /lib.rs
+        #[macro_export]
+        macro_rules! structs {
+            ($($i:ident),*) => {
+                $(struct $i { field: u32 } )*
+            }
+        }
+        ",
+        crate_graph! {
+            "main": ("/main.rs", ["foo"]),
+            "foo": ("/lib.rs", []),
+        },
+    );
+    assert_snapshot!(map, @r###"
+   ⋮crate
+   ⋮Bar: t v
+   ⋮Foo: t v
+   ⋮bar: t
+   ⋮foo: t
+   ⋮structs: m
+   ⋮
+   ⋮crate::bar
+   ⋮Bar: t v
+   ⋮Foo: t v
+   ⋮bar: t
+   ⋮foo: t
+   ⋮structs: m
     "###);
 }
