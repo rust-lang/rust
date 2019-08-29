@@ -2,21 +2,16 @@
 
 #![feature(associated_type_defaults)]
 
+// Having a cycle in assoc. type defaults is okay, as long as there's no impl
+// that retains it.
 trait Tr {
-    type Item = u8;
-    type Container = Vec<Self::Item>;
+    type A = Self::B;
+    type B = Self::A;
 }
 
-impl Tr for () {}
-
-impl Tr for u16 {
-    type Item = u16;
+// An impl has to break the cycle to be accepted.
+impl Tr for u8 {
+    type A = u8;
 }
 
-fn main() {
-    let _container: <() as Tr>::Container = Vec::<u8>::new();
-    let _item: <() as Tr>::Item = 0u8;
-
-    let _container: <u16 as Tr>::Container = Vec::<u16>::new();
-    let _item: <u16 as Tr>::Item = 0u16;
-}
+fn main() {}

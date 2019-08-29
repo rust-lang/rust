@@ -3,6 +3,9 @@
 //! The old implementation of defaults did not check whether the provided
 //! default actually fulfills all bounds on the assoc. type, leading to
 //! unsoundness and ICEs, the latter being demonstrated here.
+//!
+//! Note that the underlying cause of this is still not yet fixed.
+//! See: https://github.com/rust-lang/rust/issues/33017
 
 // compile-fail
 

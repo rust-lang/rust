@@ -6,7 +6,8 @@ trait Tr {
     const B: u8 = Self::A;
 }
 
-// This impl is *allowed* unless its assoc. consts are used
+// This impl is *allowed* unless its assoc. consts are used, matching the
+// behavior without defaults.
 impl Tr for () {}
 
 // Overriding either constant breaks the cycle
