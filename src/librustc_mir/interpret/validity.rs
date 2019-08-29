@@ -11,7 +11,7 @@ use std::hash::Hash;
 
 use super::{
     GlobalAlloc, InterpResult,
-    OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
+    Scalar, OpTy, Machine, InterpCx, ValueVisitor, MPlaceTy,
 };
 
 macro_rules! throw_validation_failure {
@@ -250,6 +250,47 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
         self.path.truncate(path_len);
         Ok(())
     }
+
+    fn check_wide_ptr_meta(
+        &mut self,
+        meta: Option<Scalar<M::PointerTag>>,
+        pointee: TyLayout<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
+        match tail.sty {
+            ty::Dynamic(..) => {
+                let vtable = meta.unwrap();
+                try_validation!(
+                    self.ecx.memory.check_ptr_access(
+                        vtable,
+                        3*self.ecx.tcx.data_layout.pointer_size, // drop, size, align
+                        self.ecx.tcx.data_layout.pointer_align.abi,
+                    ),
+                    "dangling or unaligned vtable pointer in wide pointer or too small vtable",
+                    self.path
+                );
+                try_validation!(self.ecx.read_drop_type_from_vtable(vtable),
+                    "invalid drop fn in vtable", self.path);
+                try_validation!(self.ecx.read_size_and_align_from_vtable(vtable),
+                    "invalid size or align in vtable", self.path);
+                // FIXME: More checks for the vtable.
+            }
+            ty::Slice(..) | ty::Str => {
+                let _len = try_validation!(meta.unwrap().to_usize(self.ecx),
+                    "non-integer slice length in wide pointer", self.path);
+                // We do not check that `len * elem_size <= isize::MAX`:
+                // that is only required for references, and there it falls out of the
+                // "dereferencable" check performed by Stacked Borrows.
+            }
+            ty::Foreign(..) => {
+                // Unsized, but not wide.
+            }
+            _ =>
+                bug!("Unexpected unsized type tail: {:?}", tail),
+        }
+
+        Ok(())
+    }
 }
 
 impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
@@ -341,56 +382,34 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             ty::RawPtr(..) => {
+                // Check pointer part.
                 if self.ref_tracking_for_consts.is_some() {
                     // Integers/floats in CTFE: For consistency with integers, we do not
                     // accept undef.
                     let _ptr = try_validation!(value.to_scalar_ptr(),
                         "undefined address in raw pointer", self.path);
-                    let _meta = try_validation!(value.to_meta(),
-                        "uninitialized data in raw fat pointer metadata", self.path);
                 } else {
                     // Remain consistent with `usize`: Accept anything.
                 }
+
+                // Check metadata.
+                let meta = try_validation!(value.to_meta(),
+                    "uninitialized data in wide pointer metadata", self.path);
+                let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
+                if layout.is_unsized() {
+                    self.check_wide_ptr_meta(meta, layout)?;
+                }
             }
             _ if ty.is_box() || ty.is_region_ptr() => {
-                // Handle fat pointers.
+                // Handle wide pointers.
                 // Check metadata early, for better diagnostics
                 let ptr = try_validation!(value.to_scalar_ptr(),
                     "undefined address in pointer", self.path);
                 let meta = try_validation!(value.to_meta(),
-                    "uninitialized data in fat pointer metadata", self.path);
+                    "uninitialized data in wide pointer metadata", self.path);
                 let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
                 if layout.is_unsized() {
-                    let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(layout.ty,
-                                                                          self.ecx.param_env);
-                    match tail.sty {
-                        ty::Dynamic(..) => {
-                            let vtable = meta.unwrap();
-                            try_validation!(
-                                self.ecx.memory.check_ptr_access(
-                                    vtable,
-                                    3*self.ecx.tcx.data_layout.pointer_size, // drop, size, align
-                                    self.ecx.tcx.data_layout.pointer_align.abi,
-                                ),
-                                "dangling or unaligned vtable pointer or too small vtable",
-                                self.path
-                            );
-                            try_validation!(self.ecx.read_drop_type_from_vtable(vtable),
-                                "invalid drop fn in vtable", self.path);
-                            try_validation!(self.ecx.read_size_and_align_from_vtable(vtable),
-                                "invalid size or align in vtable", self.path);
-                            // FIXME: More checks for the vtable.
-                        }
-                        ty::Slice(..) | ty::Str => {
-                            try_validation!(meta.unwrap().to_usize(self.ecx),
-                                "non-integer slice length in fat pointer", self.path);
-                        }
-                        ty::Foreign(..) => {
-                            // Unsized, but not fat.
-                        }
-                        _ =>
-                            bug!("Unexpected unsized type tail: {:?}", tail),
-                    }
+                    self.check_wide_ptr_meta(meta, layout)?;
                 }
                 // Make sure this is dereferencable and all.
                 let (size, align) = self.ecx.size_and_align_of(meta, layout)?
