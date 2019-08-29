@@ -45,7 +45,7 @@ LL | enum T { E, F, G }
 error: `extern` block uses type `std::option::Option<std::ptr::Unique<u8>>` which is not FFI-safe: enum has no representation hint
   --> $DIR/lint-ctypes-enum.rs:48:18
    |
-LL |    fn unqique(x: Option<std::ptr::Unique<u8>>);
+LL |    fn unique(x: Option<std::ptr::Unique<u8>>);
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
