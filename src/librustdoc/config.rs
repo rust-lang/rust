@@ -39,12 +39,18 @@ pub struct Options {
     pub error_format: ErrorOutputType,
     /// Library search paths to hand to the compiler.
     pub libs: Vec<SearchPath>,
+    /// Library search paths strings to hand to the compiler.
+    pub lib_strs: Vec<String>,
     /// The list of external crates to link against.
     pub externs: Externs,
+    /// The list of external crates strings to link against.
+    pub extern_strs: Vec<String>,
     /// List of `cfg` flags to hand to the compiler. Always includes `rustdoc`.
     pub cfgs: Vec<String>,
     /// Codegen options to hand to the compiler.
     pub codegen_options: CodegenOptions,
+    /// Codegen options strings to hand to the compiler.
+    pub codegen_options_strs: Vec<String>,
     /// Debugging (`-Z`) options to pass to the compiler.
     pub debugging_options: DebuggingOptions,
     /// The target used to compile the crate against.
@@ -461,6 +467,9 @@ impl Options {
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
+        let codegen_options_strs = matches.opt_strs("C");
+        let lib_strs = matches.opt_strs("L");
+        let extern_strs = matches.opt_strs("extern");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -470,9 +479,12 @@ impl Options {
             proc_macro_crate,
             error_format,
             libs,
+            lib_strs,
             externs,
+            extern_strs,
             cfgs,
             codegen_options,
+            codegen_options_strs,
             debugging_options,
             target,
             edition,
