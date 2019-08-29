@@ -126,17 +126,18 @@ impl Compiler {
 
     pub fn crate_name(&self) -> Result<&Query<String>> {
         self.queries.crate_name.compute(|| {
-            let parse_result = self.parse()?;
-            let krate = parse_result.peek();
-            let result = match self.crate_name {
+            Ok(match self.crate_name {
                 Some(ref crate_name) => crate_name.clone(),
-                None => rustc_codegen_utils::link::find_crate_name(
-                    Some(self.session()),
-                    &krate.attrs,
-                    &self.input
-                ),
-            };
-            Ok(result)
+                None => {
+                    let parse_result = self.parse()?;
+                    let krate = parse_result.peek();
+                    rustc_codegen_utils::link::find_crate_name(
+                        Some(self.session()),
+                        &krate.attrs,
+                        &self.input
+                    )
+                }
+            })
         })
     }
 
