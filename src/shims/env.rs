@@ -15,8 +15,11 @@ pub struct EnvVars {
 impl EnvVars {
     pub(crate) fn init<'mir, 'tcx>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
-        excluded_env_vars: Vec<String>,
+        mut excluded_env_vars: Vec<String>,
     ) {
+        // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+        excluded_env_vars.push("TERM".to_owned());
+
         if ecx.machine.communicate {
             for (name, value) in std::env::vars() {
                 if !excluded_env_vars.contains(&name) {
