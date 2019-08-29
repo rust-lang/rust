@@ -237,9 +237,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
-                let diagnostic = error_to_const_error(&self.ecx, error);
                 use rustc::mir::interpret::InterpError::*;
-                match diagnostic.error {
+                match error.kind {
                     Exit(_) => bug!("the CTFE program cannot exit"),
                     Unsupported(_)
                     | UndefinedBehavior(_)
@@ -248,6 +247,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         // Ignore these errors.
                     }
                     Panic(_) => {
+                        let diagnostic = error_to_const_error(&self.ecx, error);
                         diagnostic.report_as_lint(
                             self.ecx.tcx,
                             "this expression will panic at runtime",
