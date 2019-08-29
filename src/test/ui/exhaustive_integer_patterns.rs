@@ -19,7 +19,7 @@ fn main() {
         0 ..= 32 => {}
         33 => {}
         34 .. 128 => {}
-        100 ..= 200 => {}
+        100 ..= 200 => {} //~ ERROR multiple patterns covering the same range
         200 => {} //~ ERROR unreachable pattern
         201 ..= 255 => {}
     }
@@ -41,7 +41,7 @@ fn main() {
     match x { //~ ERROR non-exhaustive patterns
         -7 => {}
         -5..=120 => {}
-        -2..=20 => {} //~ ERROR unreachable pattern
+        -2..=20 => {} //~ ERROR multiple patterns covering the same range
         125 => {}
     }
 
@@ -135,9 +135,9 @@ fn main() {
         (125 .. 128, false) => {}
     }
 
-    match 0u8 { // ok
+    match 0u8 {
         0 .. 2 => {}
-        1 ..= 2 => {}
+        1 ..= 2 => {} //~ ERROR multiple patterns covering the same range
         _ => {}
     }
 

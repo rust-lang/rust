@@ -23,11 +23,11 @@ fn main() {
 
     match 0isize { //~ ERROR non-exhaustive patterns
         1 ..= 8 => {}
-        -5 ..= 20 => {}
+        -5 ..= 20 => {} //~ ERROR multiple patterns covering the same range
     }
 
     match 0usize { //~ ERROR non-exhaustive patterns
         1 ..= 8 => {}
-        5 ..= 20 => {}
+        5 ..= 20 => {} //~ ERROR multiple patterns covering the same range
     }
 }

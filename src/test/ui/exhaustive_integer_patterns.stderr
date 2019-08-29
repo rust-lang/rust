@@ -1,14 +1,22 @@
-error: unreachable pattern
-  --> $DIR/exhaustive_integer_patterns.rs:23:9
+error: multiple patterns covering the same range
+  --> $DIR/exhaustive_integer_patterns.rs:22:9
    |
-LL |         200 => {}
-   |         ^^^
+LL |         34 .. 128 => {}
+   |         --------- this range overlaps on `100u8..=127u8`
+LL |         100 ..= 200 => {}
+   |         ^^^^^^^^^^^ overlapping patterns
    |
 note: lint level defined here
   --> $DIR/exhaustive_integer_patterns.rs:4:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/exhaustive_integer_patterns.rs:23:9
+   |
+LL |         200 => {}
+   |         ^^^
 
 error[E0004]: non-exhaustive patterns: `128u8..=std::u8::MAX` not covered
   --> $DIR/exhaustive_integer_patterns.rs:28:11
@@ -26,11 +34,13 @@ LL |     match x {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: unreachable pattern
+error: multiple patterns covering the same range
   --> $DIR/exhaustive_integer_patterns.rs:44:9
    |
+LL |         -5..=120 => {}
+   |         -------- this range overlaps on `-2i8..=20i8`
 LL |         -2..=20 => {}
-   |         ^^^^^^^
+   |         ^^^^^^^ overlapping patterns
 
 error[E0004]: non-exhaustive patterns: `std::i8::MIN..=-8i8`, `-6i8`, `121i8..=124i8` and 1 more not covered
   --> $DIR/exhaustive_integer_patterns.rs:41:11
@@ -80,6 +90,14 @@ LL |     match (0u8, true) {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
+error: multiple patterns covering the same range
+  --> $DIR/exhaustive_integer_patterns.rs:140:9
+   |
+LL |         0 .. 2 => {}
+   |         ------ this range overlaps on `1u8`
+LL |         1 ..= 2 => {}
+   |         ^^^^^^^ overlapping patterns
+
 error[E0004]: non-exhaustive patterns: `std::u128::MAX` not covered
   --> $DIR/exhaustive_integer_patterns.rs:145:11
    |
@@ -104,6 +122,6 @@ LL |     match 0u128 {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to 13 previous errors
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

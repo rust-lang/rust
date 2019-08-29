@@ -100,6 +100,8 @@ pub fn escape_default(c: u8) -> EscapeDefault {
         b'\\' => ([b'\\', b'\\', 0, 0], 2),
         b'\'' => ([b'\\', b'\'', 0, 0], 2),
         b'"' => ([b'\\', b'"', 0, 0], 2),
+        // The three arms above are in the following range
+        #[allow(unreachable_patterns)]
         b'\x20' ..= b'\x7e' => ([c, 0, 0, 0], 1),
         _ => ([b'\\', b'x', hexify(c >> 4), hexify(c & 0xf)], 4),
     };
