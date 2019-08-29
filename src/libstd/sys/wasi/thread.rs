@@ -47,7 +47,7 @@ impl Thread {
             u: wasi::raw::__wasi_subscription_u { clock: clock },
         }];
         let mut out: [wasi::Event; 1] = [unsafe { mem::zeroed() }];
-        let n = wasi::poll_oneoff(&in_, &mut out).unwrap();
+        let n = unsafe { wasi::poll_oneoff(&in_, &mut out).unwrap() };
         let wasi::Event { userdata, error, type_, .. } = out[0];
         match (n, userdata, error) {
             (1, CLOCK_ID, 0) if type_ == wasi::EVENTTYPE_CLOCK => {}

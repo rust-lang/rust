@@ -69,10 +69,17 @@ pub fn unsupported_err() -> std_io::Error {
 
 pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     use std_io::ErrorKind::*;
-    match errno as libc::c_int {
+    if errno > u16::max_value() as i32 || errno < 0 {
+        return Other;
+    }
+    let code = match wasi::Error::new(errno as u16) {
+        Some(code) => code,
+        None => return Other,
+    };
+    match code {
         wasi::ECONNREFUSED => ConnectionRefused,
         wasi::ECONNRESET => ConnectionReset,
-        wasi::EPERM | libc::EACCES => PermissionDenied,
+        wasi::EPERM | wasi::EACCES => PermissionDenied,
         wasi::EPIPE => BrokenPipe,
         wasi::ENOTCONN => NotConnected,
         wasi::ECONNABORTED => ConnectionAborted,
@@ -84,7 +91,7 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
         wasi::ETIMEDOUT => TimedOut,
         wasi::EEXIST => AlreadyExists,
         wasi::EAGAIN => WouldBlock,
-        _ => ErrorKind::Other,
+        _ => Other,
     }
 }
 
