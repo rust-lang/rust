@@ -1650,16 +1650,10 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                 promote_consts::promote_candidates(def_id, body, tcx, temps, candidates)
             );
         } else {
-            let const_promoted_temps = match mode {
-                Mode::Const => Some(tcx.mir_const_qualif(def_id).1),
-                _ => None,
-            };
-
             check_short_circuiting_in_const_local(tcx, body, mode);
 
             let promoted_temps = match mode {
-                // Already computed by `mir_const_qualif`.
-                Mode::Const => const_promoted_temps.unwrap(),
+                Mode::Const => tcx.mir_const_qualif(def_id).1,
                 _ => Checker::new(tcx, def_id, body, mode).check_const().1,
             };
 
