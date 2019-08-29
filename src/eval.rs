@@ -24,6 +24,7 @@ pub struct MiriConfig {
     pub communicate: bool,
     /// Environment variables that should always be isolated from the host.
     pub excluded_env_vars: Vec<String>,
+    /// Command-line arguments passed to the interpreted program.
     pub args: Vec<String>,
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
