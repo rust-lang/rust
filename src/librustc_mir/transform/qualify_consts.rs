@@ -1687,31 +1687,9 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
             }
         }
 
-        // Statics must be Sync.
         if let Mode::Static = mode {
-            // `#[thread_local]` statics don't have to be `Sync`.
-            for attr in &tcx.get_attrs(def_id)[..] {
-                if attr.check_name(sym::thread_local) {
-                    return;
-                }
-            }
-            let ty = body.return_ty();
-            tcx.infer_ctxt().enter(|infcx| {
-                let param_env = ty::ParamEnv::empty();
-                let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
-                let mut fulfillment_cx = traits::FulfillmentContext::new();
-                fulfillment_cx.register_bound(&infcx,
-                                              param_env,
-                                              ty,
-                                              tcx.require_lang_item(
-                                                  lang_items::SyncTraitLangItem,
-                                                  Some(body.span)
-                                              ),
-                                              cause);
-                if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                    infcx.report_fulfillment_errors(&err, None, false);
-                }
-            });
+            // `static`s (not `static mut`s) which are not `#[thread_local]` must be `Sync`.
+            check_non_thread_local_static_is_sync(tcx, body, def_id, hir_id);
         }
     }
 }
@@ -1758,6 +1736,29 @@ fn check_short_circuiting_in_const_local(tcx: TyCtxt<'_>, body: &mut Body<'tcx>,
         }
         error.emit();
     }
+}
+
+fn check_non_thread_local_static_is_sync(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    def_id: DefId,
+    hir_id: HirId,
+) {
+    // `#[thread_local]` statics don't have to be `Sync`.
+    if tcx.has_attr(def_id, sym::thread_local) {
+        return;
+    }
+
+    let ty = body.return_ty();
+    tcx.infer_ctxt().enter(|infcx| {
+        let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
+        let mut fulfillment_cx = traits::FulfillmentContext::new();
+        let sync_def_id = tcx.require_lang_item(lang_items::SyncTraitLangItem, Some(body.span));
+        fulfillment_cx.register_bound(&infcx, ty::ParamEnv::empty(), ty, sync_def_id, cause);
+        if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
+            infcx.report_fulfillment_errors(&err, None, false);
+        }
+    });
 }
 
 fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize>> {
