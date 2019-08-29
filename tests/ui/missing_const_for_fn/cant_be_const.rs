@@ -68,3 +68,25 @@ impl std::ops::Add for Point {
         Point(self.0 + other.0, self.1 + other.1)
     }
 }
+
+mod with_drop {
+    pub struct A;
+    pub struct B;
+    impl Drop for A {
+        fn drop(&mut self) {}
+    }
+
+    impl A {
+        // This can not be const because the type implements `Drop`.
+        pub fn a(self) -> B {
+            B
+        }
+    }
+
+    impl B {
+        // This can not be const because `a` implements `Drop`.
+        pub fn a(self, a: A) -> B {
+            B
+        }
+    }
+}

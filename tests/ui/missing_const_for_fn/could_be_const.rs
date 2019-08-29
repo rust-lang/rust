@@ -53,5 +53,20 @@ fn generic_arr<T: Copy>(t: [T; 1]) -> T {
     t[0]
 }
 
+mod with_drop {
+    pub struct A;
+    pub struct B;
+    impl Drop for A {
+        fn drop(&mut self) {}
+    }
+
+    impl B {
+        // This can be const, because `a` is passed by reference
+        pub fn b(self, a: &A) -> B {
+            B
+        }
+    }
+}
+
 // Should not be const
 fn main() {}

@@ -49,5 +49,13 @@ LL | |     t
 LL | | }
    | |_^
 
-error: aborting due to 6 previous errors
+error: this could be a const_fn
+  --> $DIR/could_be_const.rs:65:9
+   |
+LL | /         pub fn b(self, a: &A) -> B {
+LL | |             B
+LL | |         }
+   | |_________^
+
+error: aborting due to 7 previous errors
 
