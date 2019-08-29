@@ -34,7 +34,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("std")
+        run.all_krates("test")
     }
 
     fn make_run(run: RunConfig<'_>) {
