@@ -14,7 +14,7 @@ use rustc::traits::{self, TraitEngine};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
-use rustc::mir::*;
+use rustc::mir::{self, *};
 use rustc::mir::interpret::ConstValue;
 use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
@@ -26,12 +26,15 @@ use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::borrow::Cow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::fmt;
+use std::marker::PhantomData;
 use std::ops::{Deref, Index, IndexMut};
+use std::rc::Rc;
 use std::usize;
 
 use rustc::hir::HirId;
+use crate::dataflow::{self, do_dataflow, generic, HaveBeenBorrowedLocals};
 use crate::transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
 
@@ -72,7 +75,7 @@ impl fmt::Display for Mode {
 
 // FIXME(eddyb) once we can use const generics, replace this array with
 // something like `IndexVec` but for fixed-size arrays (`IndexArray`?).
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
 struct PerQualif<T>([T; QUALIF_COUNT]);
 
 impl<T: Clone> PerQualif<T> {
@@ -124,6 +127,7 @@ impl<Q: Qualif, T> IndexMut<Q> for PerQualif<T> {
     }
 }
 
+#[derive(Clone, Copy)]
 struct ConstCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -160,6 +164,10 @@ trait QualifIdx {
 ///
 /// The default implementations proceed structurally.
 trait Qualif: QualifIdx {
+    fn is_cleared_on_move() -> bool {
+        false
+    }
+
     /// Return the qualification that is (conservatively) correct for any value
     /// of the type, or `None` if the qualification is not value/type-based.
     fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> Option<bool> {
@@ -378,7 +386,7 @@ trait Qualif: QualifIdx {
 /// and at *any point* during the run-time would produce the same result. In particular,
 /// promotion of temporaries must not change program behavior; if the promoted could be
 /// written to, that would be a problem.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
@@ -442,10 +450,14 @@ impl Qualif for HasMutInterior {
 /// This must be ruled out (a) because we cannot run `Drop` during compile-time
 /// as that might not be a `const fn`, and (b) because implicit promotion would
 /// remove side-effects that occur as part of dropping that value.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
+    fn is_cleared_on_move() -> bool {
+        true
+    }
+
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<bool> {
         Some(ty.needs_drop(cx.tcx, cx.param_env))
     }
@@ -473,7 +485,7 @@ impl Qualif for NeedsDrop {
 /// constant rules (modulo interior mutability or `Drop` rules which are handled `HasMutInterior`
 /// and `NeedsDrop` respectively). Basically this duplicates the checks that the const-checking
 /// visitor enforces by emitting errors when working in const context.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct IsNotPromotable;
 
 impl Qualif for IsNotPromotable {
@@ -647,7 +659,7 @@ impl Qualif for IsNotPromotable {
 /// Implicit promotion has almost the same rules, except that disallows `const fn` except for
 /// those marked `#[rustc_promotable]`. This is to avoid changing a legitimate run-time operation
 /// into a failing compile-time operation e.g. due to addresses being compared inside the function.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct IsNotImplicitlyPromotable;
 
 impl Qualif for IsNotImplicitlyPromotable {
@@ -682,7 +694,23 @@ impl Qualif for IsNotImplicitlyPromotable {
 macro_rules! define_qualifs {
     // Top-level, non-recursive mode
 
-    ( $( $Q:ident ),* $(,)? ) => {
+    ( $( $Q:ident, $field:ident );* $(;)? ) => {
+        $(
+            impl Index<$Q> for Resolvers<'mir, 'tcx> {
+                type Output = FlowSensitiveResolver<'mir, 'tcx, $Q>;
+
+                fn index(&self, _: $Q) -> &Self::Output {
+                    &self.$field
+                }
+            }
+
+            impl IndexMut<$Q> for Resolvers<'mir, 'tcx> {
+                fn index_mut(&mut self, _: $Q) -> &mut Self::Output {
+                    &mut self.$field
+                }
+            }
+        )*
+
         /// Executes `body` once for each implementor of `Qualif`.
         ///
         /// This macro overloads closure syntax to put the type of each `Qualif` as well as
@@ -729,19 +757,430 @@ macro_rules! define_qualifs {
     };
 }
 
-define_qualifs!(
-    HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable
-);
+define_qualifs! {
+    HasMutInterior, has_mut_interior;
+    NeedsDrop, needs_drop;
+    IsNotPromotable, is_not_promotable;
+    IsNotImplicitlyPromotable, is_not_implicitly_promotable;
+}
 static_assert!(QUALIF_COUNT == 4);
 
 macro_rules! get_qualif {
     ($Q:ident :: $fn:ident ( $self:expr $(, $args:expr),* )) => {
         {
-            let qualifs = &$self.per_local[$Q];
-            $Q::$fn(&$self.cx, qualifs, $($args),*)
+            let args = vec![
+                $( format!("{:?}", $args) ),*
+            ];
+            trace!(
+                "{}::{}({})",
+                stringify!($Q),
+                stringify!($fn),
+                args.join(","),
+            );
+
+            $self.compare(
+                |this| {
+                    let qualifs = &this.per_local[$Q];
+                    $Q::$fn(&this.cx, qualifs, $($args),*)
+                },
+                |this| {
+                    let qualifs = &this.qualifs[$Q].get();
+                    $Q::$fn(&this.cx, qualifs, $($args),*)
+                }
+            )
         }
     }
 }
+
+impl fmt::Debug for PerQualif<bool> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(")?;
+
+        let mut first = true;
+        for_each_qualif!(|q: Q| {
+            if self.0[Q::IDX] {
+                if !first {
+                    let _ = write!(f, " | ");
+                }
+
+                let _ = write!(f, "{:?}", q);
+                first = false;
+            }
+        });
+
+        write!(f, ")")
+    }
+}
+
+/// Types that can compute the qualifs of each local at all locations in a `mir::Body`.
+///
+/// Code that wishes to use a `QualifResolver` must call `visit_{statement,terminator}` for each
+/// statement or terminator, processing blocks in reverse post-order beginning from the
+/// `START_BLOCK`. Calling code may optionally call `get` after visiting each statement or
+/// terminator to query the qualification state immediately after that statement or terminator.
+///
+/// These conditions are much more restrictive than woud be required by `FlowSensitiveResolver`
+/// alone. This is to allow a linear, on-demand `TempOnlyResolver` that can operate efficiently on
+/// simple CFGs.
+trait QualifResolver<'tcx, Q>: Visitor<'tcx> {
+    /// Get the qualifs of each local at the last location visited.
+    ///
+    /// This takes `&mut self` to allow qualifs to be computed lazily.
+    fn get(&mut self) -> &BitSet<Local>;
+
+    fn contains(&mut self, local: Local) -> bool {
+        self.get().contains(local)
+    }
+}
+
+/// This struct stores a resolver for each `Qualif` that must be computed when const-checking a
+/// `mir::Body`.
+///
+/// Resolvers can and should be accessed via the `Index` impl for the desired `Qualif` (e.g.
+/// `resolvers[NeedsDrop]`). This chicanery makes the use of macros like `for_each_qualif` more
+/// convenient.
+pub struct Resolvers<'mir, 'tcx> {
+    needs_drop: FlowSensitiveResolver<'mir, 'tcx, NeedsDrop>,
+    has_mut_interior: FlowSensitiveResolver<'mir, 'tcx, HasMutInterior>,
+    is_not_promotable: FlowSensitiveResolver<'mir, 'tcx, IsNotPromotable>,
+    is_not_implicitly_promotable: FlowSensitiveResolver<'mir, 'tcx, IsNotImplicitlyPromotable>,
+}
+
+impl Resolvers<'mir, 'tcx> {
+    fn new(
+        cx: &ConstCx<'mir, 'tcx>,
+        def_id: DefId,
+        temp_promotion_state: &IndexVec<Local, TempState>,
+    ) -> Self {
+        let dead_unwinds = BitSet::new_empty(cx.body.basic_blocks().len());
+
+        let borrowed_locals = do_dataflow(
+            cx.tcx,
+            cx.body,
+            def_id,
+            &[],
+            &dead_unwinds,
+            HaveBeenBorrowedLocals::new(cx.body),
+            |_, local| dataflow::DebugFormatted::new(&local),
+        );
+
+        let borrowed_locals = dataflow::DataflowResultsCursor::new(borrowed_locals, cx.body);
+        let borrowed_locals = Rc::new(RefCell::new(borrowed_locals));
+
+        let needs_drop = FlowSensitiveResolver::new(
+            NeedsDrop,
+            cx,
+            borrowed_locals.clone(),
+            temp_promotion_state,
+            &dead_unwinds,
+        );
+        let has_mut_interior = FlowSensitiveResolver::new(
+            HasMutInterior,
+            cx,
+            borrowed_locals.clone(),
+            temp_promotion_state,
+            &dead_unwinds,
+        );
+        let is_not_promotable = FlowSensitiveResolver::new(
+            IsNotPromotable,
+            cx,
+            borrowed_locals.clone(),
+            temp_promotion_state,
+            &dead_unwinds,
+        );
+        let is_not_implicitly_promotable = FlowSensitiveResolver::new(
+            IsNotImplicitlyPromotable,
+            cx,
+            borrowed_locals.clone(),
+            temp_promotion_state,
+            &dead_unwinds,
+        );
+
+        Resolvers {
+            needs_drop,
+            has_mut_interior,
+            is_not_promotable,
+            is_not_implicitly_promotable,
+        }
+    }
+}
+
+struct FlowSensitiveResolver<'mir, 'tcx, Q>
+where
+    Q: Qualif
+{
+    cursor: generic::ResultsCursor<'mir, 'tcx, FlowSensitiveAnalysis<'mir, 'tcx, Q>>,
+    location: Location,
+}
+
+impl<Q> FlowSensitiveResolver<'mir, 'tcx, Q>
+where
+    Q: Qualif,
+{
+    fn new(
+        _: Q,
+        cx: &ConstCx<'mir, 'tcx>,
+        borrowed_locals: BorrowedLocalsResults<'mir, 'tcx>,
+        temp_promotion_state: &IndexVec<Local, TempState>,
+        dead_unwinds: &BitSet<BasicBlock>,
+    ) -> Self {
+        let analysis = FlowSensitiveAnalysis {
+            cx: (*cx).clone(),
+            borrowed_locals,
+            temp_promotion_state: temp_promotion_state.clone(),
+            _qualif: PhantomData,
+        };
+        let results = generic::Engine::new(cx.body, dead_unwinds, analysis).iterate_to_fixpoint();
+        let cursor = generic::ResultsCursor::new(cx.body, results);
+
+        FlowSensitiveResolver {
+            cursor,
+            location: Location { block: START_BLOCK, statement_index: 0 },
+        }
+    }
+}
+
+impl<Q> Visitor<'tcx> for FlowSensitiveResolver<'_, 'tcx, Q>
+where
+    Q: Qualif
+{
+    fn visit_statement(&mut self, _: &Statement<'tcx>, location: Location) {
+        self.location = location;
+    }
+
+    fn visit_terminator(&mut self, _: &Terminator<'tcx>, location: Location) {
+        self.location = location;
+    }
+}
+
+impl<Q> QualifResolver<'tcx, Q> for FlowSensitiveResolver<'_, 'tcx, Q>
+where
+    Q: Qualif
+{
+    fn get(&mut self) -> &BitSet<Local> {
+        self.cursor.seek_after_assume_call_returns(self.location);
+        self.cursor.get()
+    }
+}
+
+type BorrowedLocalsResults<'mir, 'tcx> =
+    Rc<RefCell<dataflow::DataflowResultsCursor<'mir, 'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>>>;
+
+struct FlowSensitiveAnalysis<'mir, 'tcx, Q> {
+    cx: ConstCx<'mir, 'tcx>,
+    temp_promotion_state: IndexVec<Local, TempState>,
+    borrowed_locals: BorrowedLocalsResults<'mir, 'tcx>,
+    _qualif: PhantomData<Q>,
+}
+
+impl<Q> dataflow::BottomValue for FlowSensitiveAnalysis<'_, '_, Q> {
+    const BOTTOM_VALUE: bool = false;
+}
+
+impl<Q> generic::Analysis<'tcx> for FlowSensitiveAnalysis<'_, 'tcx, Q>
+where
+    Q: Qualif,
+{
+    type Idx = Local;
+
+    fn name() -> &'static str {
+        "qualifier"
+    }
+
+    fn bits_per_block(&self, body: &mir::Body<'tcx>) -> usize {
+        body.local_decls.len()
+    }
+
+    fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut BitSet<Self::Idx>) {
+        initialize_qualifs::<Q>(state, &self.cx, &self.temp_promotion_state);
+    }
+
+    fn apply_statement_effect(
+        &self,
+        state: &mut BitSet<Self::Idx>,
+        statement: &mir::Statement<'tcx>,
+        location: Location,
+    ) {
+        QualifPropagator::<Q>::new(&self.cx, state, &self.borrowed_locals)
+            .visit_statement(statement, location);
+    }
+
+    fn apply_terminator_effect(
+        &self,
+        state: &mut BitSet<Self::Idx>,
+        terminator: &mir::Terminator<'tcx>,
+        location: Location,
+    ) {
+        QualifPropagator::<Q>::new(&self.cx, state, &self.borrowed_locals)
+            .visit_terminator(terminator, location);
+    }
+
+    fn apply_call_return_effect(
+        &self,
+        state: &mut BitSet<Self::Idx>,
+        block: BasicBlock,
+        func: &mir::Operand<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        return_place: &mir::Place<'tcx>,
+    ) {
+        let location = self.cx.body.terminator_loc(block);
+        let return_ty = return_place.ty(self.cx.body, self.cx.tcx).ty;
+        let in_call = Q::in_call(&self.cx, state, func, args, return_ty);
+        QualifPropagator::<Q>::new(&self.cx, state, &self.borrowed_locals)
+            .assign_qualif(return_place, in_call, location);
+    }
+}
+
+/// Returns `true` for terminators that may manipulate `Local`s in their environment.
+fn terminator_may_mutate_environment(term: &mir::TerminatorKind<'_>) -> bool {
+    match term {
+        | TerminatorKind::Drop { .. }
+        | TerminatorKind::DropAndReplace { .. }
+        | TerminatorKind::Call { .. }
+        | TerminatorKind::GeneratorDrop  // ?
+        => true,
+
+        | TerminatorKind::Goto { .. }
+        | TerminatorKind::SwitchInt { .. }
+        | TerminatorKind::Resume
+        | TerminatorKind::Abort
+        | TerminatorKind::Return
+        | TerminatorKind::Unreachable
+        | TerminatorKind::Assert { .. }
+        | TerminatorKind::Yield { .. }
+        | TerminatorKind::FalseEdges { .. }
+        | TerminatorKind::FalseUnwind { .. }
+        => false,
+    }
+}
+
+/// This `Visitor` is responsible for updating the qualifications of each `Local` with the
+/// effects of a statement or terminator.
+///
+/// Although the term "transfer function" comes from dataflow analysis, this type is also used
+/// to propagate qualifs in the simplified, temp-only analysis.
+struct QualifPropagator<'a, 'mir, 'tcx, Q> {
+    cx: &'a ConstCx<'mir, 'tcx>,
+    qualifs_per_local: &'a mut BitSet<Local>,
+    borrowed_locals: &'a BorrowedLocalsResults<'mir, 'tcx>,
+    _qualif: PhantomData<Q>,
+}
+
+impl<Q> QualifPropagator<'a, 'mir, 'tcx, Q>
+where
+    Q: Qualif,
+{
+    fn new(
+        cx: &'a ConstCx<'mir, 'tcx>,
+        state: &'a mut BitSet<Local>,
+        borrowed_locals: &'a BorrowedLocalsResults<'mir, 'tcx>,
+    ) -> Self {
+        QualifPropagator {
+            cx,
+            qualifs_per_local: state,
+            borrowed_locals,
+            _qualif: PhantomData }
+    }
+
+    fn assign_qualif(&mut self, place: &Place<'tcx>, qualif: bool, location: Location) {
+        // trace!("QualifPropagator::assign_qualif({:?}, {})", place, qualif);
+
+        // For now, we do not clear the qualif if a local is overwritten in full by
+        // an unqualified rvalue (e.g. `y = rvalue`). This is to be consistent
+        // with aggregates where we overwrite all fields with assignments, which would not
+        // get this feature.
+        if !qualif {
+            if let Place { base: PlaceBase::Local(_local), projection: None } = place {
+                // self.qualifs_per_local.remove(local);
+            }
+
+            return;
+        }
+
+        debug_assert!(qualif);
+
+        // If we are assigning to the target of a pointer dereference (e.g. `*p = rvalue`), we
+        // need to treat any local whose address has been observed as a possible target of the
+        // assignment.
+        if place.is_indirect() {
+            self.assign_qualif_indirect(location);
+        } else if let PlaceBase::Local(local) = place.base {
+            self.qualifs_per_local.insert(local);
+        }
+    }
+
+    fn assign_qualif_indirect(&mut self, location: Location) {
+        // trace!("QualifPropagator::assign_qualif_indirect()");
+
+        let mut borrowed_locals = self.borrowed_locals.borrow_mut();
+        borrowed_locals.seek(location);
+
+        for local in borrowed_locals.get().iter() {
+            // FIXME: This is unsound. Mutable borrows can still mutate types that aren't `Freeze`.
+            let ty = self.cx.body.local_decls[local].ty;
+            if !ty.is_freeze(self.cx.tcx, self.cx.param_env, DUMMY_SP) {
+                self.qualifs_per_local.insert(local);
+            }
+        }
+    }
+}
+
+impl<Q> Visitor<'tcx> for QualifPropagator<'_, '_, 'tcx, Q>
+where
+    Q: Qualif,
+{
+    fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+        // trace!("QualifPropagator::visit_operand({:?})", operand);
+
+        self.super_operand(operand, location);
+
+        if !Q::is_cleared_on_move() {
+            return;
+        }
+
+        // If a local with no projections is moved from (e.g. `x` in `y = x`), record that
+        // it no longer needs to be dropped.
+        if let Operand::Move(Place { base: PlaceBase::Local(local), projection: None }) = *operand {
+            self.qualifs_per_local.remove(local);
+        }
+    }
+
+    fn visit_assign(
+        &mut self,
+        place: &Place<'tcx>,
+        rvalue: &Rvalue<'tcx>,
+        location: Location,
+    ) {
+        // trace!("QualifPropagator::visit_assign({:?}, {:?})", place, rvalue);
+
+        // We need to call `assign_qualif` before visiting `rvalue` since moving out of a local
+        // can clear `NeedsDrop` for that local.
+        self.assign_qualif(place, Q::in_rvalue(self.cx, self.qualifs_per_local, rvalue), location);
+
+        self.super_assign(place, rvalue, location);
+    }
+
+    fn visit_terminator_kind(&mut self, kind: &TerminatorKind<'tcx>, location: Location) {
+        // Function calls and custom drop impls could mutate our `Local`s via a pointer, causing
+        // them to become qualified.
+        if terminator_may_mutate_environment(kind) {
+            self.assign_qualif_indirect(location);
+        }
+
+        // We need to call `assign_qualif` before visiting `value` since moving out of a local
+        // can clear `NeedsDrop` for that local.
+        //
+        // Note that the effect of assignment to the return place in `TerminatorKind::Call` is not
+        // applied here. You need to explicitly call `apply_call_return_effect`.
+        if let TerminatorKind::DropAndReplace { value, location: dest, .. } = kind {
+            let qualif = Q::in_operand(self.cx, self.qualifs_per_local, value);
+            self.assign_qualif(dest, qualif, location);
+        }
+
+        self.super_terminator_kind(kind, location);
+    }
+}
+
 
 impl ConstCx<'_, 'tcx> {
     fn qualifs_in_any_value_of_ty(&self, ty: Ty<'tcx>) -> PerQualif<bool> {
@@ -761,6 +1200,8 @@ impl ConstCx<'_, 'tcx> {
 struct Checker<'a, 'tcx> {
     cx: ConstCx<'a, 'tcx>,
     per_local: PerQualif<BitSet<Local>>,
+    qualifs: Resolvers<'a, 'tcx>,
+    resolvers_location: Option<Location>,
 
     span: Span,
     def_id: DefId,
@@ -804,31 +1245,11 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         };
 
         let mut per_local = PerQualif::new(BitSet::new_empty(body.local_decls.len()));
+        for_each_qualif!(|q: Q| {
+            initialize_qualifs::<Q>(&mut per_local[q], &cx, &temps);
+        });
 
         for (local, _) in body.local_decls.iter_enumerated() {
-            match cx.body.local_kind(local) {
-                LocalKind::Arg => for_each_qualif!(|q: Q| {
-                    if Q::in_arg_initially(&cx, local) {
-                        per_local[q].insert(local);
-                    }
-                }),
-                LocalKind::Temp => for_each_qualif!(|q: Q| {
-                    if Q::in_temp_initially(&cx, local, &temps) {
-                        per_local[q].insert(local);
-                    }
-                }),
-                LocalKind::Var => for_each_qualif!(|q: Q| {
-                    if Q::in_user_variable_initially(&cx, local) {
-                        per_local[q].insert(local);
-                    }
-                }),
-                LocalKind::ReturnPointer => for_each_qualif!(|q: Q| {
-                    if Q::in_return_place_initially(&cx, local) {
-                        per_local[q].insert(local);
-                    }
-                }),
-            };
-
             if let LocalKind::Var = body.local_kind(local) {
                 // Sanity check to prevent implicit and explicit promotion of
                 // named locals
@@ -838,6 +1259,8 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         Checker {
             cx,
+            qualifs: Resolvers::new(&cx, def_id, &temps),
+            resolvers_location: None,
             per_local,
             span: body.span,
             def_id,
@@ -847,20 +1270,68 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
     }
 
-    fn qualifs_in_local(&self, local: Local) -> PerQualif<bool> {
-        let mut qualifs = PerQualif::default();
-        for_each_qualif!(|q: Q| {
-            qualifs[q] = self.per_local[q].contains(local);
-        });
-        qualifs
+    fn qualifs_in_local(&mut self, local: Local) -> PerQualif<bool> {
+        trace!("qualifs_in_local({:?})", local);
+        self.compare(
+            |this| {
+                let mut qualifs = PerQualif::default();
+                for_each_qualif!(|q: Q| {
+                    qualifs[q] = this.per_local[q].contains(local);
+                });
+                qualifs
+            },
+            |this| {
+                let mut qualifs = PerQualif::default();
+                for_each_qualif!(|q: Q| {
+                    qualifs[q] = IndexMut::<Q>::index_mut(&mut this.qualifs, q).contains(local);
+                });
+                qualifs
+            }
+        )
     }
 
-    fn qualifs_in_value(&self, source: ValueSource<'_, 'tcx>) -> PerQualif<bool> {
-        let mut qualifs = PerQualif::default();
-        for_each_qualif!(|q: Q| {
-            qualifs[q] = Q::in_value(self, &self.per_local[q], source);
-        });
-        qualifs
+    fn qualifs_in_value(&mut self, source: ValueSource<'_, 'tcx>) -> PerQualif<bool> {
+        trace!("qualifs_in_value({:?})", source);
+        self.compare(
+            |this| {
+                let mut qualifs = PerQualif::default();
+                for_each_qualif!(|q: Q| {
+                    qualifs[q] = Q::in_value(this, &this.per_local[q], source);
+                });
+                qualifs
+            },
+            |this| {
+                let mut qualifs = PerQualif::default();
+                for_each_qualif!(|q: Q| {
+                    let per_local = IndexMut::<Q>::index_mut(&mut this.qualifs, q).get().clone();
+                    qualifs[q] = Q::in_value(this, &per_local, source);
+                });
+                qualifs
+            }
+        )
+    }
+
+    /// Computes the same value two different ways, compares them for equality and logs the output,
+    /// then returns the value computed by `new`.
+    fn compare<T: fmt::Debug + Eq>(
+        &mut self,
+        old: impl FnOnce(&mut Self) -> T,
+        new: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let old = old(self);
+        let new = new(self);
+
+        if old != new {
+            warn!("new: {:?}", new);
+            warn!("old: {:?}", old);
+            if std::env::var("RUSTC_FAIL_FAST").is_ok() {
+                panic!("Differing qualifs");
+            }
+        } else {
+            debug!("val: {:?}", old);
+        }
+
+        new
     }
 
     // FIXME(eddyb) we could split the errors into meaningful
@@ -890,7 +1361,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn assign(&mut self, dest: &Place<'tcx>, source: ValueSource<'_, 'tcx>, location: Location) {
         trace!("assign: {:?} <- {:?}", dest, source);
 
-        let mut qualifs = self.qualifs_in_value(source);
+        let qualifs = self.qualifs_in_value(source);
 
         match source {
             ValueSource::Rvalue(&Rvalue::Ref(_, kind, ref place)) => {
@@ -901,8 +1372,9 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 // Then `HasMutInterior` is replaced with `IsNotPromotable`,
                 // to avoid duplicate errors (e.g. from reborrowing).
                 if qualifs[HasMutInterior] {
-                    qualifs[HasMutInterior] = false;
-                    qualifs[IsNotPromotable] = true;
+                    // FIXME: what are these doing?
+                    //qualifs[HasMutInterior] = false;
+                    //qualifs[IsNotPromotable] = true;
 
                     if self.mode.requires_const_checking() {
                         if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
@@ -1051,6 +1523,40 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             if !self.temp_promotion_state[index].is_promotable() {
                 assert!(self.per_local[IsNotPromotable].contains(index));
             }
+        }
+
+        // Compare qualifs in target of assignment.
+        self.update_resolvers(location);
+        let _ = self.qualifs_in_local(index);
+    }
+
+    /// Updates `self.qualifs` to hold data for a given location.
+    ///
+    /// To keep the semantics of the old code, we sometimes need to update `self.qualifs` in the
+    /// middle of const-checking a statement. This function is idempotent, so we can call it
+    /// whenever we need to update the qualifs (such as in `assign`), as well as after checking a
+    /// statement (in case it was never called during checking).
+    fn update_resolvers(&mut self, location: Location) {
+        if self.resolvers_location == Some(location) {
+            return;
+        }
+
+        trace!("Updating resolvers at {:?}", location);
+
+        self.resolvers_location = Some(location);
+        let block_data = &self.cx.body.basic_blocks()[location.block];
+        if block_data.statements.len() == location.statement_index {
+            let term = block_data.terminator();
+            for_each_qualif!(|q: Q| {
+                IndexMut::<Q>::index_mut(&mut self.qualifs, q)
+                    .visit_terminator(term, location)
+            });
+        } else {
+            let stmt = &block_data.statements[location.statement_index];
+            for_each_qualif!(|q: Q| {
+                IndexMut::<Q>::index_mut(&mut self.qualifs, q)
+                    .visit_statement(stmt, location)
+            });
         }
     }
 
@@ -1611,7 +2117,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     base: PlaceBase::Local(local),
                     projection: None,
                 } = *place {
-                    if self.per_local[NeedsDrop].contains(local) {
+                    trace!("NeedsDrop({:?})", local);
+                    let needs_drop = self.compare(
+                        |this| this.per_local[NeedsDrop].contains(local),
+                        |this| this.qualifs[NeedsDrop].contains(local),
+                    );
+
+                    if needs_drop {
                         Some(self.body.local_decls[local].source_info.span)
                     } else {
                         None
@@ -1680,6 +2192,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             StatementKind::AscribeUserType(..) |
             StatementKind::Nop => {}
         }
+        self.update_resolvers(location);
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        self.super_terminator(terminator, location);
+        self.update_resolvers(location);
     }
 }
 
@@ -1758,6 +2276,7 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                         checker.check_const();
                     }
                 } else {
+                    trace!("promotion-checking {:?}", checker.def_id);
                     while let Some((bb, data)) = checker.rpo.next() {
                         checker.visit_basic_block_data(bb, data);
                     }
@@ -1895,4 +2414,23 @@ fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize
         }
     }
     Some(ret)
+}
+
+fn initialize_qualifs<Q: Qualif>(
+    per_local: &mut BitSet<Local>,
+    cx: &ConstCx<'mir, 'tcx>,
+    temps: &IndexVec<Local, TempState>,
+) {
+    for (local, _) in cx.body.local_decls.iter_enumerated() {
+        let in_local_initially = match cx.body.local_kind(local) {
+            LocalKind::Arg => Q::in_arg_initially(cx, local),
+            LocalKind::Var => Q::in_user_variable_initially(cx, local),
+            LocalKind::ReturnPointer => Q::in_return_place_initially(cx, local),
+            LocalKind::Temp => Q::in_temp_initially(cx, local, temps),
+        };
+
+        if in_local_initially {
+            per_local.insert(local);
+        }
+    }
 }
