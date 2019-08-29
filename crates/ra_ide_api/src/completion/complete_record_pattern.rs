@@ -22,7 +22,7 @@ pub(super) fn complete_record_pattern(acc: &mut Completions, ctx: &CompletionCon
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     fn complete(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
@@ -41,7 +41,7 @@ mod tests {
             }
             ",
         );
-        assert_debug_snapshot_matches!(completions, @r###"
+        assert_debug_snapshot!(completions, @r###"
        ⋮[
        ⋮    CompletionItem {
        ⋮        label: "foo",
@@ -70,7 +70,7 @@ mod tests {
             }
             ",
         );
-        assert_debug_snapshot_matches!(completions, @r###"
+        assert_debug_snapshot!(completions, @r###"
        ⋮[
        ⋮    CompletionItem {
        ⋮        label: "bar",

@@ -169,7 +169,7 @@ fn get_node_displayable_type(
 #[cfg(test)]
 mod tests {
     use crate::mock_analysis::single_file;
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     #[test]
     fn let_statement() {
@@ -210,7 +210,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [193; 197),
         kind: TypeHint,
@@ -277,7 +277,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [21; 30),
         kind: TypeHint,
@@ -304,7 +304,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [21; 30),
         kind: TypeHint,
@@ -350,7 +350,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [166; 170),
         kind: TypeHint,
@@ -411,7 +411,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
        ⋮[
        ⋮    InlayHint {
        ⋮        range: [166; 170),
@@ -474,7 +474,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot_matches!(analysis.inlay_hints(file_id).unwrap(), @r#"[
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
     InlayHint {
         range: [311; 315),
         kind: TypeHint,

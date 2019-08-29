@@ -161,7 +161,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     #[test]
     fn test_file_structure() {
@@ -204,7 +204,7 @@ fn very_obsolete() {}
         .ok()
         .unwrap();
         let structure = file_structure(&file);
-        assert_debug_snapshot_matches!(structure,
+        assert_debug_snapshot!(structure,
         @r#"[
     StructureNode {
         parent: None,

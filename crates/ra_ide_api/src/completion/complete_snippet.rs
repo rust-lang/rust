@@ -40,7 +40,7 @@ fn ${1:feature}() {
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     fn do_snippet_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Snippet)
@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn completes_snippets_in_expressions() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
                     do_snippet_completion(r"fn foo(x: i32) { <|> }"),
         @r#"[
     CompletionItem {
@@ -71,11 +71,11 @@ mod tests {
 
     #[test]
     fn should_not_complete_snippets_in_path() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
                     do_snippet_completion(r"fn foo(x: i32) { ::foo<|> }"),
         @r#"[]"#
                 );
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
                     do_snippet_completion(r"fn foo(x: i32) { ::<|> }"),
         @r#"[]"#
                 );
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn completes_snippets_in_items() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_snippet_completion(
                 r"
                 #[cfg(test)]

@@ -12,7 +12,7 @@ fn primitive_reexport() {
         pub use i32 as int;
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
    ⋮crate
    ⋮foo: t
    ⋮int: t

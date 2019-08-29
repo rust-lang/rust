@@ -71,7 +71,7 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: ast::Module) -> Opti
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     use crate::mock_analysis::analysis_and_position;
 
@@ -92,7 +92,7 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!(&runnables,
+        assert_debug_snapshot!(&runnables,
         @r#"[
     Runnable {
         range: [1; 21),
@@ -127,7 +127,7 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!(&runnables,
+        assert_debug_snapshot!(&runnables,
         @r#"[
     Runnable {
         range: [1; 59),
@@ -160,7 +160,7 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!(&runnables,
+        assert_debug_snapshot!(&runnables,
         @r#"[
     Runnable {
         range: [23; 85),
@@ -195,7 +195,7 @@ mod tests {
         "#,
         );
         let runnables = analysis.runnables(pos.file_id).unwrap();
-        assert_debug_snapshot_matches!(&runnables,
+        assert_debug_snapshot!(&runnables,
         @r#"[
     Runnable {
         range: [41; 115),

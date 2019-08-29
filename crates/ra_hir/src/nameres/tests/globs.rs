@@ -17,7 +17,7 @@ fn glob_1() {
         pub struct Baz;
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
    ⋮crate
    ⋮Baz: t v
    ⋮Foo: t v
@@ -53,7 +53,7 @@ fn glob_2() {
         pub use super::*;
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
    ⋮crate
    ⋮Baz: t v
    ⋮Foo: t v
@@ -89,7 +89,7 @@ fn glob_across_crates() {
             "test_crate": ("/lib.rs", []),
         },
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
    ⋮crate
    ⋮Baz: t v
     "###
@@ -108,7 +108,7 @@ fn glob_enum() {
         use self::Foo::*;
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
    ⋮crate
    ⋮Bar: t v
    ⋮Baz: t v

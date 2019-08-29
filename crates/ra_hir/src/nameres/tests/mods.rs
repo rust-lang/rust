@@ -19,7 +19,7 @@ fn name_res_works_for_broken_modules() {
         pub struct Baz;
         ",
     );
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Baz: _
     "###);
@@ -41,7 +41,7 @@ fn module_resolution_works_for_non_standard_filenames() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Bar: t v
         ⋮foo: t
@@ -67,7 +67,7 @@ fn module_resolution_works_for_raw_modules() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Bar: t v
         ⋮async: t
@@ -94,7 +94,7 @@ fn module_resolution_decl_path() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Bar: t v
         ⋮foo: t
@@ -110,7 +110,7 @@ fn module_resolution_module_with_path_in_mod_rs() {
         r###"
         //- /main.rs
         mod foo;
-        
+
         //- /foo/mod.rs
         #[path = "baz.rs"]
         pub mod bar;
@@ -125,7 +125,7 @@ fn module_resolution_module_with_path_in_mod_rs() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -144,7 +144,7 @@ fn module_resolution_module_with_path_non_crate_root() {
         r###"
         //- /main.rs
         mod foo;
-        
+
         //- /foo.rs
         #[path = "baz.rs"]
         pub mod bar;
@@ -159,7 +159,7 @@ fn module_resolution_module_with_path_non_crate_root() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -189,7 +189,7 @@ fn module_resolution_module_decl_path_super() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Baz: t v
         ⋮foo: t
@@ -215,7 +215,7 @@ fn module_resolution_explicit_path_mod_rs() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -243,7 +243,7 @@ fn module_resolution_relative_path() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -274,7 +274,7 @@ fn module_resolution_relative_path_2() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -302,7 +302,7 @@ fn module_resolution_explicit_path_mod_rs_2() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -327,7 +327,7 @@ fn module_resolution_explicit_path_mod_rs_with_win_separator() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -354,7 +354,7 @@ fn module_resolution_decl_inside_inline_module_with_path_attribute() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -383,7 +383,7 @@ fn module_resolution_decl_inside_inline_module() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -413,7 +413,7 @@ fn module_resolution_decl_inside_inline_module_2_with_path_attribute() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -444,7 +444,7 @@ fn module_resolution_decl_inside_inline_module_3() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -475,7 +475,7 @@ fn module_resolution_decl_inside_inline_module_empty_path() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -503,7 +503,7 @@ fn module_resolution_decl_empty_path() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -530,7 +530,7 @@ fn module_resolution_decl_inside_inline_module_relative_path() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -561,7 +561,7 @@ fn module_resolution_decl_inside_inline_module_in_crate_root() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮Baz: t v
         ⋮foo: t
@@ -596,7 +596,7 @@ fn module_resolution_decl_inside_inline_module_in_mod_rs() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -634,7 +634,7 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -672,7 +672,7 @@ fn module_resolution_decl_inside_inline_module_in_non_crate_root_2() {
         },
     );
 
-    assert_snapshot_matches!(map, @r###"
+    assert_snapshot!(map, @r###"
         ⋮crate
         ⋮foo: t
         ⋮
@@ -701,8 +701,8 @@ fn unresolved_module_diagnostics() {
     )
     .diagnostics();
 
-    assert_snapshot_matches!(diagnostics, @r###"
-"mod bar;": unresolved module
-"###
+    assert_snapshot!(diagnostics, @r###"
+    "mod bar;": unresolved module
+    "###
     );
 }

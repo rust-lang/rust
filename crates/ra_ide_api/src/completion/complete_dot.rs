@@ -68,7 +68,7 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
 #[cfg(test)]
 mod tests {
     use crate::completion::{do_completion, CompletionItem, CompletionKind};
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
 
     fn do_ref_completion(code: &str) -> Vec<CompletionItem> {
         do_completion(code, CompletionKind::Reference)
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
                 r"
                 struct A { the_field: u32 }
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_self() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             struct A {
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_struct_field_completion_autoderef() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             struct A { the_field: (u32, i32) }
@@ -180,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_no_struct_field_completion_for_method_call() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             struct A { the_field: u32 }
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_method_completion() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             struct A {}
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn test_trait_method_completion() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_ref_completion(
                 r"
             struct A {}
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn test_trait_method_completion_deduplicated() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
             do_ref_completion(
                 r"
             struct A {}
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_no_non_self_method() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             struct A {}
@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_method_attr_filtering() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             struct A {}
@@ -331,7 +331,7 @@ mod tests {
 
     #[test]
     fn test_tuple_field_completion() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             fn foo() {
@@ -365,7 +365,7 @@ mod tests {
 
     #[test]
     fn test_tuple_field_inference() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             pub struct S;
@@ -400,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_completion_works_in_consts() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_ref_completion(
             r"
             struct A { the_field: u32 }
@@ -426,7 +426,7 @@ mod tests {
 
     #[test]
     fn test_completion_await_impls_future() {
-        assert_debug_snapshot_matches!(
+        assert_debug_snapshot!(
         do_completion(
             r###"
             //- /main.rs

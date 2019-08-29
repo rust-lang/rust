@@ -183,7 +183,7 @@ fn check_struct_shorthand_initialization(
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot_matches;
+    use insta::assert_debug_snapshot;
     use join_to_string::join;
     use ra_syntax::SourceFile;
     use test_utils::assert_eq_text;
@@ -519,7 +519,7 @@ mod tests {
     fn test_unresolved_module_diagnostic() {
         let (analysis, file_id) = single_file("mod foo;");
         let diagnostics = analysis.diagnostics(file_id).unwrap();
-        assert_debug_snapshot_matches!(diagnostics, @r###"
+        assert_debug_snapshot!(diagnostics, @r###"
        ⋮[
        ⋮    Diagnostic {
        ⋮        message: "unresolved module",
