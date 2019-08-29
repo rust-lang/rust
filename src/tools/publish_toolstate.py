@@ -22,7 +22,7 @@ except ImportError:
 # List of people to ping when the status of a tool or a book changed.
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
-    'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch @flip1995',
+    'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch @flip1995 @yaahc',
     'rls': '@Xanewok',
     'rustfmt': '@topecongiro',
     'book': '@carols10cents @steveklabnik',
