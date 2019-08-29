@@ -104,21 +104,16 @@ pub const fn identity<T>(x: T) -> T { x }
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
-/// `AsRef` has the same signature as [`Borrow`], but `Borrow` is different in few aspects:
+/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in few aspects:
 ///
-/// - Unlike `AsRef`, `Borrow` has a blanket impl for any `T`, and can be used to accept either
+/// - Unlike `AsRef`, [`Borrow`] has a blanket impl for any `T`, and can be used to accept either
 ///   a reference or a value.
-/// - `Borrow` also requires that `Hash`, `Eq` and `Ord` for borrowed value are
+/// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for borrowed value are
 ///   equivalent to those of the owned value. For this reason, if you want to
-///   borrow only a single field of a struct you can implement `AsRef`, but not `Borrow`.
-///
-/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
+///   borrow only a single field of a struct you can implement `AsRef`, but not [`Borrow`].
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
-///
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
 ///
 /// # Generic Implementations
 ///
@@ -132,9 +127,16 @@ pub const fn identity<T>(x: T) -> T { x }
 /// converted to the specified type `T`.
 ///
 /// For example: By creating a generic function that takes an `AsRef<str>` we express that we
-/// want to accept all references that can be converted to `&str` as an argument.
-/// Since both [`String`] and `&str` implement `AsRef<str>` we can accept both as input argument.
+/// want to accept all references that can be converted to [`&str`] as an argument.
+/// Since both [`String`] and [`&str`] implement `AsRef<str>` we can accept both as input argument.
 ///
+/// [`Option<T>`]: ../../std/option/enum.Option.html
+/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
+/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`Ord`]: ../../std/cmp/trait.Ord.html
+/// [`&str`]: ../../std/primitive.str.html
 /// [`String`]: ../../std/string/struct.String.html
 ///
 /// ```
