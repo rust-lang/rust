@@ -585,8 +585,9 @@ where
         use rustc::mir::StaticKind;
 
         Ok(match place_static.kind {
-            StaticKind::Promoted(promoted, _) => {
-                let instance = self.frame().instance;
+            StaticKind::Promoted(promoted, promoted_substs) => {
+                let substs = self.subst_from_frame_and_normalize_erasing_regions(promoted_substs);
+                let instance = ty::Instance::new(place_static.def_id, substs);
                 self.const_eval_raw(GlobalId {
                     instance,
                     promoted: Some(promoted),
