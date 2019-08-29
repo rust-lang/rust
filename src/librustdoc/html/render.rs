@@ -2405,13 +2405,14 @@ fn document(w: &mut fmt::Formatter<'_>, cx: &Context, item: &clean::Item) -> fmt
 }
 
 /// Render md_text as markdown.
-fn render_markdown(w: &mut fmt::Formatter<'_>,
-                   cx: &Context,
-                   md_text: &str,
-                   links: Vec<(String, String)>,
-                   prefix: &str,
-                   is_hidden: bool)
-                   -> fmt::Result {
+fn render_markdown(
+    w: &mut fmt::Formatter<'_>,
+    cx: &Context,
+    md_text: &str,
+    links: Vec<(String, String)>,
+    prefix: &str,
+    is_hidden: bool,
+) -> fmt::Result {
     let mut ids = cx.id_map.borrow_mut();
     write!(w, "<div class='docblock{}'>{}{}</div>",
            if is_hidden { " hidden" } else { "" },
@@ -2425,7 +2426,8 @@ fn document_short(
     cx: &Context,
     item: &clean::Item,
     link: AssocItemLink<'_>,
-    prefix: &str, is_hidden: bool
+    prefix: &str,
+    is_hidden: bool,
 ) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
@@ -4084,9 +4086,10 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
             RenderMode::ForDeref { mut_: deref_mut_ } => should_render_item(&item, deref_mut_),
         };
 
-        let (is_hidden, extra_class) = if trait_.is_none() ||
-                                          item.doc_value().is_some() ||
-                                          item.inner.is_associated() {
+        let (is_hidden, extra_class) = if (trait_.is_none() ||
+                                           item.doc_value().is_some() ||
+                                           item.inner.is_associated()) &&
+                                          !is_default_item {
             (false, "")
         } else {
             (true, " hidden")

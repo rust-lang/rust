@@ -320,7 +320,7 @@ class RustBuild(object):
     def __init__(self):
         self.cargo_channel = ''
         self.date = ''
-        self._download_url = 'https://static.rust-lang.org'
+        self._download_url = ''
         self.rustc_channel = ''
         self.build = ''
         self.build_dir = os.path.join(os.getcwd(), "build")
@@ -733,9 +733,19 @@ class RustBuild(object):
             self.update_submodule(module[0], module[1], recorded_submodules)
         print("Submodules updated in %.2f seconds" % (time() - start_time))
 
+    def set_normal_environment(self):
+        """Set download URL for normal environment"""
+        if 'RUSTUP_DIST_SERVER' in os.environ:
+            self._download_url = os.environ['RUSTUP_DIST_SERVER']
+        else:
+            self._download_url = 'https://static.rust-lang.org'
+
     def set_dev_environment(self):
         """Set download URL for development environment"""
-        self._download_url = 'https://dev-static.rust-lang.org'
+        if 'RUSTUP_DEV_DIST_SERVER' in os.environ:
+            self._download_url = os.environ['RUSTUP_DEV_DIST_SERVER']
+        else:
+            self._download_url = 'https://dev-static.rust-lang.org'
 
     def check_vendored_status(self):
         """Check that vendoring is configured properly"""
@@ -828,6 +838,8 @@ def bootstrap(help_triggered):
 
     if 'dev' in data:
         build.set_dev_environment()
+    else:
+        build.set_normal_environment()
 
     build.update_submodules()
 

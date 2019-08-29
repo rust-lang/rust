@@ -1811,16 +1811,6 @@ impl Step for Crate {
                     .expect("nodejs not configured"),
             );
         } else if target.starts_with("wasm32") {
-            // Warn about running tests without the `wasm_syscall` feature enabled.
-            // The javascript shim implements the syscall interface so that test
-            // output can be correctly reported.
-            if !builder.config.wasm_syscall {
-                builder.info(
-                    "Libstd was built without `wasm_syscall` feature enabled: \
-                     test output may not be visible."
-                );
-            }
-
             // On the wasm32-unknown-unknown target we're using LTO which is
             // incompatible with `-C prefer-dynamic`, so disable that here
             cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
