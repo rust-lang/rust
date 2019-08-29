@@ -527,9 +527,7 @@ impl<'a, 'tcx> CrateMetadata {
                     attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 (
                     trait_name,
-                    SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive {
-                        client, attrs: helper_attrs.clone()
-                    })),
+                    SyntaxExtensionKind::Derive(Box::new(ProcMacroDerive { client })),
                     helper_attrs,
                 )
             }
