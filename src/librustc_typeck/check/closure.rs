@@ -266,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
         let is_fn = tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_some();
-        let gen_trait = tcx.require_lang_item(lang_items::GeneratorTraitLangItem);
+        let gen_trait = tcx.require_lang_item(lang_items::GeneratorTraitLangItem, cause_span);
         let is_gen = gen_trait == trait_ref.def_id();
         if !is_fn && !is_gen {
             debug!("deduce_sig_from_projection: not fn or generator");
