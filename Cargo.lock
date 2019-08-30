@@ -3232,6 +3232,7 @@ dependencies = [
  "rustc_data_structures",
  "serialize",
  "syntax_pos",
+ "term_size",
  "termcolor",
  "unicode-width",
 ]
@@ -4105,6 +4106,17 @@ dependencies = [
  "byteorder",
  "dirs",
  "winapi 0.3.6",
+]
+
+[[package]]
+name = "term_size"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e5b9a66db815dcfd2da92db471106457082577c3c278d4138ab3e3b4e189327"
+dependencies = [
+ "kernel32-sys",
+ "libc",
+ "winapi 0.2.8",
 ]
 
 [[package]]

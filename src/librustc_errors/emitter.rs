@@ -24,7 +24,7 @@ use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
-use std::cmp::{min, Reverse};
+use std::cmp::{min, max, Reverse};
 use std::path::Path;
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter, Ansi};
 use termcolor::{WriteColor, Color, Buffer};
@@ -51,9 +51,127 @@ impl HumanReadableErrorType {
         dst: Box<dyn Write + Send>,
         source_map: Option<Lrc<SourceMapperDyn>>,
         teach: bool,
+        terminal_width: Option<usize>,
     ) -> EmitterWriter {
         let (short, color_config) = self.unzip();
-        EmitterWriter::new(dst, source_map, short, teach, color_config.suggests_using_colors())
+        let color = color_config.suggests_using_colors();
+        EmitterWriter::new(dst, source_map, short, teach, color, terminal_width)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Margin {
+    /// The available whitespace in the left that can be consumed when centering.
+    pub whitespace_left: usize,
+    /// The column of the beginning of left-most span.
+    pub span_left: usize,
+    /// The column of the end of right-most span.
+    pub span_right: usize,
+    /// The beginning of the line to be displayed.
+    pub computed_left: usize,
+    /// The end of the line to be displayed.
+    pub computed_right: usize,
+    /// The current width of the terminal. 140 by default and in tests.
+    pub column_width: usize,
+    /// The end column of a span label, including the span. Doesn't account for labels not in the
+    /// same line as the span.
+    pub label_right: usize,
+}
+
+impl Margin {
+    fn new(
+        whitespace_left: usize,
+        span_left: usize,
+        span_right: usize,
+        label_right: usize,
+        column_width: usize,
+        max_line_len: usize,
+    ) -> Self {
+        // The 6 is padding to give a bit of room for `...` when displaying:
+        // ```
+        // error: message
+        //   --> file.rs:16:58
+        //    |
+        // 16 | ... fn foo(self) -> Self::Bar {
+        //    |                     ^^^^^^^^^
+        // ```
+
+        let mut m = Margin {
+            whitespace_left: if whitespace_left >= 6 { whitespace_left - 6 } else { 0 },
+            span_left: if span_left >= 6 { span_left - 6 } else { 0 },
+            span_right: span_right + 6,
+            computed_left: 0,
+            computed_right: 0,
+            column_width,
+            label_right: label_right + 6,
+        };
+        m.compute(max_line_len);
+        m
+    }
+
+    fn was_cut_left(&self) -> bool {
+        self.computed_left > 0
+    }
+
+    fn was_cut_right(&self, line_len: usize) -> bool {
+        let right = if self.computed_right == self.span_right ||
+            self.computed_right == self.label_right
+        {
+            // Account for the "..." padding given above. Otherwise we end up with code lines that
+            // do fit but end in "..." as if they were trimmed.
+            self.computed_right - 6
+        } else {
+            self.computed_right
+        };
+        right < line_len && line_len > self.computed_left + self.column_width
+    }
+
+    fn compute(&mut self, max_line_len: usize) {
+        // When there's a lot of whitespace (>20), we want to trim it as it is useless.
+        self.computed_left = if self.whitespace_left > 20 {
+            self.whitespace_left - 16 // We want some padding.
+        } else {
+            0
+        };
+        // We want to show as much as possible, max_line_len is the right-most boundary for the
+        // relevant code.
+        self.computed_right = max(max_line_len, self.computed_left);
+
+        if self.computed_right - self.computed_left > self.column_width {
+            // Trimming only whitespace isn't enough, let's get craftier.
+            if self.label_right - self.whitespace_left <= self.column_width {
+                // Attempt to fit the code window only trimming whitespace.
+                self.computed_left = self.whitespace_left;
+                self.computed_right = self.computed_left + self.column_width;
+            } else if self.label_right - self.span_left <= self.column_width {
+                // Attempt to fit the code window considering only the spans and labels.
+                let padding_left = (self.column_width - (self.label_right - self.span_left)) / 2;
+                self.computed_left = self.span_left - padding_left;
+                self.computed_right = self.computed_left + self.column_width;
+            } else if self.span_right - self.span_left <= self.column_width {
+                // Attempt to fit the code window considering the spans and labels plus padding.
+                let padding_left = (self.column_width - (self.span_right - self.span_left)) / 5 * 2;
+                self.computed_left = self.span_left - padding_left;
+                self.computed_right = self.computed_left + self.column_width;
+            } else { // Mostly give up but still don't show the full line.
+                self.computed_left = self.span_left;
+                self.computed_right = self.span_right;
+            }
+        }
+    }
+
+    fn left(&self, line_len: usize) -> usize {
+        min(self.computed_left, line_len)
+    }
+
+    fn right(&self, line_len: usize) -> usize {
+        if max(line_len, self.computed_left) - self.computed_left <= self.column_width {
+            line_len
+        } else if self.computed_right > line_len {
+            line_len
+        } else {
+            self.computed_right
+        }
     }
 }
 
@@ -180,6 +298,7 @@ pub struct EmitterWriter {
     short_message: bool,
     teach: bool,
     ui_testing: bool,
+    terminal_width: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -190,11 +309,13 @@ pub struct FileWithAnnotatedLines {
 }
 
 impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig,
-                  source_map: Option<Lrc<SourceMapperDyn>>,
-                  short_message: bool,
-                  teach: bool)
-                  -> EmitterWriter {
+    pub fn stderr(
+        color_config: ColorConfig,
+        source_map: Option<Lrc<SourceMapperDyn>>,
+        short_message: bool,
+        teach: bool,
+        terminal_width: Option<usize>,
+    ) -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
             dst,
@@ -202,6 +323,7 @@ impl EmitterWriter {
             short_message,
             teach,
             ui_testing: false,
+            terminal_width,
         }
     }
 
@@ -211,6 +333,7 @@ impl EmitterWriter {
         short_message: bool,
         teach: bool,
         colored: bool,
+        terminal_width: Option<usize>,
     ) -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
@@ -218,6 +341,7 @@ impl EmitterWriter {
             short_message,
             teach,
             ui_testing: false,
+            terminal_width,
         }
     }
 
@@ -234,12 +358,70 @@ impl EmitterWriter {
         }
     }
 
-    fn render_source_line(&self,
-                          buffer: &mut StyledBuffer,
-                          file: Lrc<SourceFile>,
-                          line: &Line,
-                          width_offset: usize,
-                          code_offset: usize) -> Vec<(usize, Style)> {
+    fn draw_line(
+        &self,
+        buffer: &mut StyledBuffer,
+        source_string: &str,
+        line_index: usize,
+        line_offset: usize,
+        width_offset: usize,
+        code_offset: usize,
+        margin: Margin,
+    ) {
+        let line_len = source_string.len();
+        // Create the source line we will highlight.
+        let left = margin.left(line_len);
+        let right = margin.right(line_len);
+        // On long lines, we strip the source line, accounting for unicode.
+        let mut taken = 0;
+        let code: String = source_string.chars().skip(left).take_while(|ch| {
+            // Make sure that the trimming on the right will fall within the terminal width.
+            // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is.
+            // For now, just accept that sometimes the code line will be longer than desired.
+            let next = unicode_width::UnicodeWidthChar::width(*ch).unwrap_or(1);
+            if taken + next > right - left {
+                return false;
+            }
+            taken += next;
+            true
+        }).collect();
+        buffer.puts(line_offset, code_offset, &code, Style::Quotation);
+        if margin.was_cut_left() {
+            // We have stripped some code/whitespace from the beginning, make it clear.
+            buffer.puts(line_offset, code_offset, "...", Style::LineNumber);
+        }
+        if margin.was_cut_right(line_len) {
+            // We have stripped some code after the right-most span end, make it clear we did so.
+            buffer.puts(line_offset, code_offset + taken - 3, "...", Style::LineNumber);
+        }
+        buffer.puts(line_offset, 0, &self.maybe_anonymized(line_index), Style::LineNumber);
+
+        draw_col_separator(buffer, line_offset, width_offset - 2);
+    }
+
+    fn render_source_line(
+        &self,
+        buffer: &mut StyledBuffer,
+        file: Lrc<SourceFile>,
+        line: &Line,
+        width_offset: usize,
+        code_offset: usize,
+        margin: Margin,
+    ) -> Vec<(usize, Style)> {
+        // Draw:
+        //
+        //   LL | ... code ...
+        //      |     ^^-^ span label
+        //      |       |
+        //      |       secondary span label
+        //
+        //   ^^ ^ ^^^ ^^^^ ^^^ we don't care about code too far to the right of a span, we trim it
+        //   |  | |   |
+        //   |  | |   actual code found in your source code and the spans we use to mark it
+        //   |  | when there's too much wasted space to the left, trim it
+        //   |  vertical divider between the column number and the code
+        //   column number
+
         if line.line_index == 0 {
             return Vec::new();
         }
@@ -251,14 +433,21 @@ impl EmitterWriter {
 
         let line_offset = buffer.num_lines();
 
-        // First create the source line we will highlight.
-        buffer.puts(line_offset, code_offset, &source_string, Style::Quotation);
-        buffer.puts(line_offset,
-                    0,
-                    &self.maybe_anonymized(line.line_index),
-                    Style::LineNumber);
+        let left = margin.left(source_string.len()); // Left trim
+        // Account for unicode characters of width !=0 that were removed.
+        let left = source_string.chars().take(left).fold(0, |acc, ch| {
+            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1)
+        });
 
-        draw_col_separator(buffer, line_offset, width_offset - 2);
+        self.draw_line(
+            buffer,
+            &source_string,
+            line.line_index,
+            line_offset,
+            width_offset,
+            code_offset,
+            margin,
+        );
 
         // Special case when there's only one annotation involved, it is the start of a multiline
         // span and there's no text at the beginning of the code line. Instead of doing the whole
@@ -279,18 +468,13 @@ impl EmitterWriter {
         if line.annotations.len() == 1 {
             if let Some(ref ann) = line.annotations.get(0) {
                 if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
-                    if source_string.chars()
-                                    .take(ann.start_col)
-                                    .all(|c| c.is_whitespace()) {
+                    if source_string.chars().take(ann.start_col).all(|c| c.is_whitespace()) {
                         let style = if ann.is_primary {
                             Style::UnderlinePrimary
                         } else {
                             Style::UnderlineSecondary
                         };
-                        buffer.putc(line_offset,
-                                    width_offset + depth - 1,
-                                    '/',
-                                    style);
+                        buffer.putc(line_offset, width_offset + depth - 1, '/', style);
                         return vec![(depth, style)];
                     }
                 }
@@ -511,19 +695,23 @@ impl EmitterWriter {
             match annotation.annotation_type {
                 AnnotationType::MultilineStart(depth) |
                 AnnotationType::MultilineEnd(depth) => {
-                    draw_range(buffer,
-                               '_',
-                               line_offset + pos,
-                               width_offset + depth,
-                               code_offset + annotation.start_col,
-                               style);
+                    draw_range(
+                        buffer,
+                        '_',
+                        line_offset + pos,
+                        width_offset + depth,
+                        code_offset + annotation.start_col - left,
+                        style,
+                    );
                 }
                 _ if self.teach => {
-                    buffer.set_style_range(line_offset,
-                                           code_offset + annotation.start_col,
-                                           code_offset + annotation.end_col,
-                                           style,
-                                           annotation.is_primary);
+                    buffer.set_style_range(
+                        line_offset,
+                        code_offset + annotation.start_col - left,
+                        code_offset + annotation.end_col - left,
+                        style,
+                        annotation.is_primary,
+                    );
                 }
                 _ => {}
             }
@@ -551,7 +739,7 @@ impl EmitterWriter {
             if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
                 for p in line_offset + 1..=line_offset + pos {
                     buffer.putc(p,
-                                code_offset + annotation.start_col,
+                                code_offset + annotation.start_col - margin.computed_left,
                                 '|',
                                 style);
                 }
@@ -595,15 +783,20 @@ impl EmitterWriter {
                 Style::LabelSecondary
             };
             let (pos, col) = if pos == 0 {
-                (pos + 1, annotation.end_col + 1)
+                (pos + 1, if annotation.end_col + 1 > left {
+                    annotation.end_col + 1 - left
+                } else {
+                    0
+                })
             } else {
-                (pos + 2, annotation.start_col)
+                (pos + 2, if annotation.start_col > left {
+                    annotation.start_col - left
+                } else {
+                    0
+                })
             };
             if let Some(ref label) = annotation.label {
-                buffer.puts(line_offset + pos,
-                            code_offset + col,
-                            &label,
-                            style);
+                buffer.puts(line_offset + pos, code_offset + col, &label, style);
             }
         }
 
@@ -638,10 +831,16 @@ impl EmitterWriter {
                 ('-', Style::UnderlineSecondary)
             };
             for p in annotation.start_col..annotation.end_col {
-                buffer.putc(line_offset + 1,
-                            code_offset + p,
-                            underline,
-                            style);
+                buffer.putc(
+                    line_offset + 1,
+                    if code_offset + p > left {
+                        code_offset + p - left
+                    } else {
+                        0
+                    },
+                    underline,
+                    style,
+                );
             }
         }
         annotations_position.iter().filter_map(|&(_, annotation)| {
@@ -979,22 +1178,30 @@ impl EmitterWriter {
                     let buffer_msg_line_offset = buffer.num_lines();
 
                     buffer.prepend(buffer_msg_line_offset, "--> ", Style::LineNumber);
-                    buffer.append(buffer_msg_line_offset,
-                                  &format!("{}:{}:{}",
-                                           loc.file.name,
-                                           sm.doctest_offset_line(&loc.file.name, loc.line),
-                                           loc.col.0 + 1),
-                                  Style::LineAndColumn);
+                    buffer.append(
+                        buffer_msg_line_offset,
+                        &format!(
+                            "{}:{}:{}",
+                            loc.file.name,
+                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            loc.col.0 + 1,
+                        ),
+                        Style::LineAndColumn,
+                    );
                     for _ in 0..max_line_num_len {
                         buffer.prepend(buffer_msg_line_offset, " ", Style::NoStyle);
                     }
                 } else {
-                    buffer.prepend(0,
-                                   &format!("{}:{}:{}: ",
-                                            loc.file.name,
-                                            sm.doctest_offset_line(&loc.file.name, loc.line),
-                                            loc.col.0 + 1),
-                                   Style::LineAndColumn);
+                    buffer.prepend(
+                        0,
+                        &format!(
+                            "{}:{}:{}: ",
+                            loc.file.name,
+                            sm.doctest_offset_line(&loc.file.name, loc.line),
+                            loc.col.0 + 1,
+                        ),
+                        Style::LineAndColumn,
+                    );
                 }
             } else if !self.short_message {
                 // remember where we are in the output buffer for easy reference
@@ -1037,22 +1244,94 @@ impl EmitterWriter {
                 // Contains the vertical lines' positions for active multiline annotations
                 let mut multilines = FxHashMap::default();
 
+                // Get the left-side margin to remove it
+                let mut whitespace_margin = std::usize::MAX;
+                for line_idx in 0..annotated_file.lines.len() {
+                    let file = annotated_file.file.clone();
+                    let line = &annotated_file.lines[line_idx];
+                    if let Some(source_string) = file.get_line(line.line_index - 1) {
+                        let leading_whitespace = source_string
+                            .chars()
+                            .take_while(|c| c.is_whitespace())
+                            .count();
+                        if source_string.chars().any(|c| !c.is_whitespace()) {
+                            whitespace_margin = min(
+                                whitespace_margin,
+                                leading_whitespace,
+                            );
+                        }
+                    }
+                }
+                if whitespace_margin == std::usize::MAX {
+                    whitespace_margin = 0;
+                }
+
+                // Left-most column any visible span points at.
+                let mut span_left_margin = std::usize::MAX;
+                for line in &annotated_file.lines {
+                    for ann in &line.annotations {
+                        span_left_margin = min(span_left_margin, ann.start_col);
+                        span_left_margin = min(span_left_margin, ann.end_col);
+                    }
+                }
+                if span_left_margin == std::usize::MAX {
+                    span_left_margin = 0;
+                }
+
+                // Right-most column any visible span points at.
+                let mut span_right_margin = 0;
+                let mut label_right_margin = 0;
+                let mut max_line_len = 0;
+                for line in &annotated_file.lines {
+                    max_line_len = max(max_line_len, annotated_file.file
+                        .get_line(line.line_index - 1)
+                        .map(|s| s.len())
+                        .unwrap_or(0));
+                    for ann in &line.annotations {
+                        span_right_margin = max(span_right_margin, ann.start_col);
+                        span_right_margin = max(span_right_margin, ann.end_col);
+                        // FIXME: account for labels not in the same line
+                        let label_right = ann.label.as_ref().map(|l| l.len() + 1).unwrap_or(0);
+                        label_right_margin = max(label_right_margin, ann.end_col + label_right);
+                    }
+                }
+
+                let width_offset = 3 + max_line_num_len;
+                let code_offset = if annotated_file.multiline_depth == 0 {
+                    width_offset
+                } else {
+                    width_offset + annotated_file.multiline_depth + 1
+                };
+
+                let column_width = if let Some(width) = self.terminal_width {
+                    width
+                } else if self.ui_testing {
+                    140
+                } else {
+                    term_size::dimensions().map(|(w, _)| w - code_offset).unwrap_or(140)
+                };
+
+                let margin = Margin::new(
+                    whitespace_margin,
+                    span_left_margin,
+                    span_right_margin,
+                    label_right_margin,
+                    column_width,
+                    max_line_len,
+                );
+
                 // Next, output the annotate source for this file
                 for line_idx in 0..annotated_file.lines.len() {
                     let previous_buffer_line = buffer.num_lines();
 
-                    let width_offset = 3 + max_line_num_len;
-                    let code_offset = if annotated_file.multiline_depth == 0 {
-                        width_offset
-                    } else {
-                        width_offset + annotated_file.multiline_depth + 1
-                    };
-
-                    let depths = self.render_source_line(&mut buffer,
-                                                         annotated_file.file.clone(),
-                                                         &annotated_file.lines[line_idx],
-                                                         width_offset,
-                                                         code_offset);
+                    let depths = self.render_source_line(
+                        &mut buffer,
+                        annotated_file.file.clone(),
+                        &annotated_file.lines[line_idx],
+                        width_offset,
+                        code_offset,
+                        margin,
+                    );
 
                     let mut to_add = FxHashMap::default();
 
@@ -1099,25 +1378,24 @@ impl EmitterWriter {
 
                             let last_buffer_line_num = buffer.num_lines();
 
-                            buffer.puts(last_buffer_line_num,
-                                        0,
-                                        &self.maybe_anonymized(annotated_file.lines[line_idx + 1]
-                                                                             .line_index - 1),
-                                        Style::LineNumber);
-                            draw_col_separator(&mut buffer,
-                                               last_buffer_line_num,
-                                               1 + max_line_num_len);
-                            buffer.puts(last_buffer_line_num,
-                                        code_offset,
-                                        &unannotated_line,
-                                        Style::Quotation);
+                            self.draw_line(
+                                &mut buffer,
+                                &unannotated_line,
+                                annotated_file.lines[line_idx + 1].line_index - 1,
+                                last_buffer_line_num,
+                                width_offset,
+                                code_offset,
+                                margin,
+                            );
 
                             for (depth, style) in &multilines {
-                                draw_multiline_line(&mut buffer,
-                                                    last_buffer_line_num,
-                                                    width_offset,
-                                                    *depth,
-                                                    *style);
+                                draw_multiline_line(
+                                    &mut buffer,
+                                    last_buffer_line_num,
+                                    width_offset,
+                                    *depth,
+                                    *style,
+                                );
                             }
                         }
                     }
@@ -1207,7 +1485,7 @@ impl EmitterWriter {
                         // ...or trailing spaces. Account for substitutions containing unicode
                         // characters.
                         let sub_len = part.snippet.trim().chars().fold(0, |acc, ch| {
-                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0)
+                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1)
                         });
 
                         let underline_start = (span_start_pos + start) as isize + offset;
@@ -1230,7 +1508,7 @@ impl EmitterWriter {
 
                         // length of the code after substitution
                         let full_sub_len = part.snippet.chars().fold(0, |acc, ch| {
-                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(0) as isize
+                            acc + unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1) as isize
                         });
 
                         // length of the code to be substituted

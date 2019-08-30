@@ -1055,6 +1055,7 @@ fn default_emitter(
                         Some(source_map.clone()),
                         short,
                         sopts.debugging_opts.teach,
+                        sopts.debugging_opts.terminal_width,
                     ),
                     Some(dst) => EmitterWriter::new(
                         dst,
@@ -1062,6 +1063,7 @@ fn default_emitter(
                         short,
                         false, // no teach messages when writing to a buffer
                         false, // no colors when writing to a buffer
+                        None,  // no terminal width
                     ),
                 };
                 Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
@@ -1375,7 +1377,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, None, short, false))
+            Box::new(EmitterWriter::stderr(color_config, None, short, false, None))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } =>
             Box::new(JsonEmitter::basic(pretty, json_rendered)),
@@ -1389,7 +1391,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, None, short, false))
+            Box::new(EmitterWriter::stderr(color_config, None, short, false, None))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } =>
             Box::new(JsonEmitter::basic(pretty, json_rendered)),

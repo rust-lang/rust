@@ -1156,11 +1156,13 @@ pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, Erro
             // Thread panicked without emitting a fatal diagnostic
             eprintln!("");
 
-            let emitter =
-                Box::new(errors::emitter::EmitterWriter::stderr(errors::ColorConfig::Auto,
-                                                                None,
-                                                                false,
-                                                                false));
+            let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
+                errors::ColorConfig::Auto,
+                None,
+                false,
+                false,
+                None,
+            ));
             let handler = errors::Handler::with_emitter(true, None, emitter);
 
             // a .span_bug or .bug call has already printed what
