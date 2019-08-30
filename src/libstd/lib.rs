@@ -229,6 +229,7 @@
 // compiler details that will never be stable
 // NB: the following list is sorted to minimize merge conflicts.
 #![feature(alloc_error_handler)]
+#![feature(alloc_error)]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(allocator_internals)]
@@ -447,9 +448,6 @@ pub use core::hint;
 #[stable(feature = "core_array", since = "1.36.0")]
 pub use core::array;
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::error;
-
 pub mod f32;
 pub mod f64;
 
@@ -480,6 +478,14 @@ pub mod task {
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod future;
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod error {
+    //! Traits for working with Errors.
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use alloc_crate::error::*;
+}
 
 // Platform-abstraction modules
 #[macro_use]
