@@ -1,3 +1,4 @@
+use rustc::ty::layout::{FloatTy, Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift::codegen::ir::{Opcode, InstructionData, ValueDef};
@@ -14,6 +15,23 @@ pub fn pointer_ty(tcx: TyCtxt) -> types::Type {
         32 => types::I32,
         64 => types::I64,
         bits => bug!("ptr_sized_integer: unknown pointer bit size {}", bits),
+    }
+}
+
+pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
+    match scalar.value {
+        Primitive::Int(int, _sign) => match int {
+            Integer::I8 => types::I8,
+            Integer::I16 => types::I16,
+            Integer::I32 => types::I32,
+            Integer::I64 => types::I64,
+            Integer::I128 => types::I128,
+        },
+        Primitive::Float(flt) => match flt {
+            FloatTy::F32 => types::F32,
+            FloatTy::F64 => types::F64,
+        },
+        Primitive::Pointer => pointer_ty(tcx),
     }
 }
 
