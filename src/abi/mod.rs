@@ -1,7 +1,7 @@
+#[cfg(debug_assertions)]
+mod comments;
 mod returning;
 mod pass_mode;
-
-use std::borrow::Cow;
 
 use rustc_target::spec::abi::Abi;
 
@@ -193,47 +193,6 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 }
 
-#[cfg(debug_assertions)]
-fn add_arg_comment<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    msg: &str,
-    local: mir::Local,
-    local_field: Option<usize>,
-    params: EmptySinglePair<Value>,
-    pass_mode: PassMode,
-    ssa: crate::analyze::Flags,
-    ty: Ty<'tcx>,
-) {
-    let local_field = if let Some(local_field) = local_field {
-        Cow::Owned(format!(".{}", local_field))
-    } else {
-        Cow::Borrowed("")
-    };
-    let params = match params {
-        Empty => Cow::Borrowed("-"),
-        Single(param) => Cow::Owned(format!("= {:?}", param)),
-        Pair(param_a, param_b) => Cow::Owned(format!("= {:?}, {:?}", param_a, param_b)),
-    };
-    let pass_mode = format!("{:?}", pass_mode);
-    fx.add_global_comment(format!(
-        "{msg:5} {local:>3}{local_field:<5} {params:10} {pass_mode:36} {ssa:10} {ty:?}",
-        msg = msg,
-        local = format!("{:?}", local),
-        local_field = local_field,
-        params = params,
-        pass_mode = pass_mode,
-        ssa = format!("{:?}", ssa),
-        ty = ty,
-    ));
-}
-
-#[cfg(debug_assertions)]
-fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
-    fx.add_global_comment(format!(
-        "msg   loc.idx    param    pass mode                            ssa flags  ty"
-    ));
-}
-
 fn local_place<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     local: Local,
@@ -243,45 +202,11 @@ fn local_place<'tcx>(
     let place = if is_ssa {
         CPlace::new_var(fx, local, layout)
     } else {
-        let place = CPlace::new_stack_slot(fx, layout.ty);
-
-        #[cfg(debug_assertions)]
-        {
-            let TyLayout { ty, details } = layout;
-            let ty::layout::LayoutDetails {
-                size,
-                align,
-                abi: _,
-                variants: _,
-                fields: _,
-                largest_niche: _,
-            } = details;
-            match *place.inner() {
-                CPlaceInner::Stack(stack_slot) => fx.add_entity_comment(
-                    stack_slot,
-                    format!(
-                        "{:?}: {:?} size={} align={},{}",
-                        local,
-                        ty,
-                        size.bytes(),
-                        align.abi.bytes(),
-                        align.pref.bytes(),
-                    ),
-                ),
-                CPlaceInner::NoPlace => fx.add_global_comment(format!(
-                    "zst    {:?}: {:?} size={} align={}, {}",
-                    local,
-                    ty,
-                    size.bytes(),
-                    align.abi.bytes(),
-                    align.pref.bytes(),
-                )),
-                _ => unreachable!(),
-            }
-        }
-
-        place
+        CPlace::new_stack_slot(fx, layout.ty)
     };
+
+    #[cfg(debug_assertions)]
+    self::comments::add_local_place_comments(fx, place, local);
 
     let prev_place = fx.local_map.insert(local, place);
     debug_assert!(prev_place.is_none());
@@ -295,10 +220,7 @@ pub fn codegen_fn_prelude(
     let ssa_analyzed = crate::analyze::analyze(fx);
 
     #[cfg(debug_assertions)]
-    {
-        fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
-        add_local_header_comment(fx);
-    }
+    self::comments::add_local_header_comment(fx);
 
     self::returning::codegen_return_param(fx, &ssa_analyzed, start_ebb);
 

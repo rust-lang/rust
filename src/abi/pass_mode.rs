@@ -145,7 +145,7 @@ pub fn cvalue_for_param<'tcx>(
     let ebb_params = clif_types.map(|t| fx.bcx.append_ebb_param(start_ebb, t));
 
     #[cfg(debug_assertions)]
-    super::add_arg_comment(
+    crate::abi::comments::add_arg_comment(
         fx,
         "arg",
         local,

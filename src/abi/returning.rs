@@ -37,18 +37,16 @@ pub fn codegen_return_param(
     };
 
     #[cfg(debug_assertions)]
-    {
-        super::add_arg_comment(
-            fx,
-            "ret",
-            RETURN_PLACE,
-            None,
-            ret_param,
-            output_pass_mode,
-            ssa_analyzed[&RETURN_PLACE],
-            ret_layout.ty,
-        );
-    }
+    crate::abi::comments::add_arg_comment(
+        fx,
+        "ret",
+        RETURN_PLACE,
+        None,
+        ret_param,
+        output_pass_mode,
+        ssa_analyzed[&RETURN_PLACE],
+        ret_layout.ty,
+    );
 }
 
 pub fn codegen_with_call_return_arg<'tcx, B: Backend, T>(
