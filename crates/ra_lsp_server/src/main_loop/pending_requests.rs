@@ -1,17 +1,18 @@
 use std::time::{Duration, Instant};
 
+use lsp_server::RequestId;
 use rustc_hash::FxHashMap;
 
 #[derive(Debug)]
 pub struct CompletedRequest {
-    pub id: u64,
+    pub id: RequestId,
     pub method: String,
     pub duration: Duration,
 }
 
 #[derive(Debug)]
 pub(crate) struct PendingRequest {
-    pub(crate) id: u64,
+    pub(crate) id: RequestId,
     pub(crate) method: String,
     pub(crate) received: Instant,
 }
@@ -28,20 +29,20 @@ impl From<PendingRequest> for CompletedRequest {
 
 #[derive(Debug, Default)]
 pub(crate) struct PendingRequests {
-    map: FxHashMap<u64, PendingRequest>,
+    map: FxHashMap<RequestId, PendingRequest>,
 }
 
 impl PendingRequests {
     pub(crate) fn start(&mut self, request: PendingRequest) {
-        let id = request.id;
-        let prev = self.map.insert(id, request);
+        let id = request.id.clone();
+        let prev = self.map.insert(id.clone(), request);
         assert!(prev.is_none(), "duplicate request with id {}", id);
     }
-    pub(crate) fn cancel(&mut self, id: u64) -> bool {
-        self.map.remove(&id).is_some()
+    pub(crate) fn cancel(&mut self, id: &RequestId) -> bool {
+        self.map.remove(id).is_some()
     }
-    pub(crate) fn finish(&mut self, id: u64) -> Option<CompletedRequest> {
-        self.map.remove(&id).map(CompletedRequest::from)
+    pub(crate) fn finish(&mut self, id: &RequestId) -> Option<CompletedRequest> {
+        self.map.remove(id).map(CompletedRequest::from)
     }
 }
 

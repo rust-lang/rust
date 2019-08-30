@@ -1,5 +1,5 @@
 use flexi_logger::{Duplicate, Logger};
-use gen_lsp_server::{run_server, stdio_transport};
+use lsp_server::{run_server, stdio_transport, LspServerError};
 
 use ra_lsp_server::{show_message, Result, ServerConfig};
 use ra_prof;
@@ -29,9 +29,11 @@ fn main() -> Result<()> {
 }
 
 fn main_inner() -> Result<()> {
-    let (receiver, sender, threads) = stdio_transport();
+    let (sender, receiver, io_threads) = stdio_transport();
     let cwd = std::env::current_dir()?;
-    run_server(ra_lsp_server::server_capabilities(), receiver, sender, |params, r, s| {
+    let caps = serde_json::to_value(ra_lsp_server::server_capabilities()).unwrap();
+    run_server(caps, sender, receiver, |params, s, r| {
+        let params: lsp_types::InitializeParams = serde_json::from_value(params)?;
         let root = params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
 
         let workspace_roots = params
@@ -62,9 +64,13 @@ fn main_inner() -> Result<()> {
             .unwrap_or_default();
 
         ra_lsp_server::main_loop(workspace_roots, params.capabilities, server_config, r, s)
+    })
+    .map_err(|err| match err {
+        LspServerError::ProtocolError(err) => err.into(),
+        LspServerError::ServerError(err) => err,
     })?;
     log::info!("shutting down IO...");
-    threads.join()?;
+    io_threads.join()?;
     log::info!("... IO is down");
     Ok(())
 }

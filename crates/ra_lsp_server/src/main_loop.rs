@@ -5,9 +5,7 @@ pub(crate) mod pending_requests;
 use std::{error::Error, fmt, path::PathBuf, sync::Arc, time::Instant};
 
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
-use gen_lsp_server::{
-    handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
-};
+use lsp_server::{handle_shutdown, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{ClientCapabilities, NumberOrString};
 use ra_ide_api::{Canceled, FeatureFlags, FileId, LibraryData};
 use ra_prof::profile;
@@ -53,8 +51,8 @@ pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     client_caps: ClientCapabilities,
     config: ServerConfig,
-    msg_receiver: &Receiver<RawMessage>,
-    msg_sender: &Sender<RawMessage>,
+    msg_receiver: &Receiver<Message>,
+    msg_sender: &Sender<Message>,
 ) -> Result<()> {
     log::info!("server_config: {:#?}", config);
     // FIXME: support dynamic workspace loading.
@@ -146,12 +144,12 @@ pub fn main_loop(
 
 #[derive(Debug)]
 enum Task {
-    Respond(RawResponse),
-    Notify(RawNotification),
+    Respond(Response),
+    Notify(Notification),
 }
 
 enum Event {
-    Msg(RawMessage),
+    Msg(Message),
     Task(Task),
     Vfs(VfsTask),
     Lib(LibraryData),
@@ -159,24 +157,28 @@ enum Event {
 
 impl fmt::Debug for Event {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let debug_verbose_not = |not: &RawNotification, f: &mut fmt::Formatter| {
-            f.debug_struct("RawNotification").field("method", &not.method).finish()
+        let debug_verbose_not = |not: &Notification, f: &mut fmt::Formatter| {
+            f.debug_struct("Notification").field("method", &not.method).finish()
         };
 
         match self {
-            Event::Msg(RawMessage::Notification(not)) => {
-                if not.is::<req::DidOpenTextDocument>() || not.is::<req::DidChangeTextDocument>() {
+            Event::Msg(Message::Notification(not)) => {
+                if notification_is::<req::DidOpenTextDocument>(not)
+                    || notification_is::<req::DidChangeTextDocument>(not)
+                {
                     return debug_verbose_not(not, f);
                 }
             }
             Event::Task(Task::Notify(not)) => {
-                if not.is::<req::PublishDecorations>() || not.is::<req::PublishDiagnostics>() {
+                if notification_is::<req::PublishDecorations>(not)
+                    || notification_is::<req::PublishDiagnostics>(not)
+                {
                     return debug_verbose_not(not, f);
                 }
             }
             Event::Task(Task::Respond(resp)) => {
                 return f
-                    .debug_struct("RawResponse")
+                    .debug_struct("Response")
                     .field("id", &resp.id)
                     .field("error", &resp.error)
                     .finish();
@@ -194,8 +196,8 @@ impl fmt::Debug for Event {
 
 fn main_loop_inner(
     pool: &ThreadPool,
-    msg_sender: &Sender<RawMessage>,
-    msg_receiver: &Receiver<RawMessage>,
+    msg_sender: &Sender<Message>,
+    msg_receiver: &Receiver<Message>,
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
     state: &mut WorldState,
@@ -249,10 +251,9 @@ fn main_loop_inner(
                 in_flight_libraries -= 1;
             }
             Event::Msg(msg) => match msg {
-                RawMessage::Request(req) => {
-                    let req = match handle_shutdown(req, msg_sender) {
-                        Some(req) => req,
-                        None => return Ok(()),
+                Message::Request(req) => {
+                    if handle_shutdown(&req, msg_sender) {
+                        return Ok(());
                     };
                     on_request(
                         state,
@@ -264,11 +265,11 @@ fn main_loop_inner(
                         req,
                     )?
                 }
-                RawMessage::Notification(not) => {
+                Message::Notification(not) => {
                     on_notification(msg_sender, state, pending_requests, &mut subs, not)?;
                     state_changed = true;
                 }
-                RawMessage::Response(resp) => log::error!("unexpected response: {:?}", resp),
+                Message::Response(resp) => log::error!("unexpected response: {:?}", resp),
             },
         };
 
@@ -313,13 +314,13 @@ fn main_loop_inner(
 
 fn on_task(
     task: Task,
-    msg_sender: &Sender<RawMessage>,
+    msg_sender: &Sender<Message>,
     pending_requests: &mut PendingRequests,
     state: &mut WorldState,
 ) {
     match task {
         Task::Respond(response) => {
-            if let Some(completed) = pending_requests.finish(response.id) {
+            if let Some(completed) = pending_requests.finish(&response.id) {
                 log::info!("handled req#{} in {:?}", completed.id, completed.duration);
                 state.complete_request(completed);
                 msg_sender.send(response.into()).unwrap();
@@ -336,9 +337,9 @@ fn on_request(
     pending_requests: &mut PendingRequests,
     pool: &ThreadPool,
     sender: &Sender<Task>,
-    msg_sender: &Sender<RawMessage>,
+    msg_sender: &Sender<Message>,
     request_received: Instant,
-    req: RawRequest,
+    req: Request,
 ) -> Result<()> {
     let mut pool_dispatcher = PoolDispatcher {
         req: Some(req),
@@ -388,22 +389,20 @@ fn on_request(
 }
 
 fn on_notification(
-    msg_sender: &Sender<RawMessage>,
+    msg_sender: &Sender<Message>,
     state: &mut WorldState,
     pending_requests: &mut PendingRequests,
     subs: &mut Subscriptions,
-    not: RawNotification,
+    not: Notification,
 ) -> Result<()> {
-    let not = match not.cast::<req::Cancel>() {
+    let not = match notification_cast::<req::Cancel>(not) {
         Ok(params) => {
-            let id = match params.id {
-                NumberOrString::Number(id) => id,
-                NumberOrString::String(id) => {
-                    panic!("string id's not supported: {:?}", id);
-                }
+            let id: RequestId = match params.id {
+                NumberOrString::Number(id) => id.into(),
+                NumberOrString::String(id) => id.into(),
             };
-            if pending_requests.cancel(id) {
-                let response = RawResponse::err(
+            if pending_requests.cancel(&id) {
+                let response = Response::new_err(
                     id,
                     ErrorCode::RequestCanceled as i32,
                     "canceled by client".to_string(),
@@ -414,7 +413,7 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    let not = match not.cast::<req::DidOpenTextDocument>() {
+    let not = match notification_cast::<req::DidOpenTextDocument>(not) {
         Ok(params) => {
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
@@ -427,7 +426,7 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    let not = match not.cast::<req::DidChangeTextDocument>() {
+    let not = match notification_cast::<req::DidChangeTextDocument>(not) {
         Ok(mut params) => {
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
@@ -438,7 +437,7 @@ fn on_notification(
         }
         Err(not) => not,
     };
-    let not = match not.cast::<req::DidCloseTextDocument>() {
+    let not = match notification_cast::<req::DidCloseTextDocument>(not) {
         Ok(params) => {
             let uri = params.text_document.uri;
             let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
@@ -446,13 +445,13 @@ fn on_notification(
                 subs.remove_sub(FileId(file_id.0));
             }
             let params = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
-            let not = RawNotification::new::<req::PublishDiagnostics>(&params);
+            let not = notification_new::<req::PublishDiagnostics>(params);
             msg_sender.send(not.into()).unwrap();
             return Ok(());
         }
         Err(not) => not,
     };
-    let not = match not.cast::<req::DidChangeConfiguration>() {
+    let not = match notification_cast::<req::DidChangeConfiguration>(not) {
         Ok(_params) => {
             return Ok(());
         }
@@ -463,11 +462,11 @@ fn on_notification(
 }
 
 struct PoolDispatcher<'a> {
-    req: Option<RawRequest>,
+    req: Option<Request>,
     pool: &'a ThreadPool,
     world: &'a mut WorldState,
     pending_requests: &'a mut PendingRequests,
-    msg_sender: &'a Sender<RawMessage>,
+    msg_sender: &'a Sender<Message>,
     sender: &'a Sender<Task>,
     request_received: Instant,
 }
@@ -522,13 +521,13 @@ impl<'a> PoolDispatcher<'a> {
         Ok(self)
     }
 
-    fn parse<R>(&mut self) -> Option<(u64, R::Params)>
+    fn parse<R>(&mut self) -> Option<(RequestId, R::Params)>
     where
         R: req::Request + 'static,
         R::Params: DeserializeOwned + Send + 'static,
     {
         let req = self.req.take()?;
-        let (id, params) = match req.cast::<R>() {
+        let (id, params) = match req.extract::<R::Params>(R::METHOD) {
             Ok(it) => it,
             Err(req) => {
                 self.req = Some(req);
@@ -536,7 +535,7 @@ impl<'a> PoolDispatcher<'a> {
             }
         };
         self.pending_requests.start(PendingRequest {
-            id,
+            id: id.clone(),
             method: R::METHOD.to_string(),
             received: self.request_received,
         });
@@ -548,7 +547,7 @@ impl<'a> PoolDispatcher<'a> {
             None => (),
             Some(req) => {
                 log::error!("unknown request: {:?}", req);
-                let resp = RawResponse::err(
+                let resp = Response::new_err(
                     req.id,
                     ErrorCode::MethodNotFound as i32,
                     "unknown request".to_string(),
@@ -559,34 +558,30 @@ impl<'a> PoolDispatcher<'a> {
     }
 }
 
-fn result_to_task<R>(id: u64, result: Result<R::Result>) -> Task
+fn result_to_task<R>(id: RequestId, result: Result<R::Result>) -> Task
 where
     R: req::Request + 'static,
     R::Params: DeserializeOwned + Send + 'static,
     R::Result: Serialize + 'static,
 {
     let response = match result {
-        Ok(resp) => RawResponse::ok::<R>(id, &resp),
+        Ok(resp) => Response::new_ok(id, &resp),
         Err(e) => match e.downcast::<LspError>() {
-            Ok(lsp_error) => RawResponse::err(id, lsp_error.code, lsp_error.message),
+            Ok(lsp_error) => Response::new_err(id, lsp_error.code, lsp_error.message),
             Err(e) => {
                 if is_canceled(&e) {
                     // FIXME: When https://github.com/Microsoft/vscode-languageserver-node/issues/457
                     // gets fixed, we can return the proper response.
                     // This works around the issue where "content modified" error would continuously
                     // show an message pop-up in VsCode
-                    // RawResponse::err(
+                    // Response::err(
                     //     id,
                     //     ErrorCode::ContentModified as i32,
                     //     "content modified".to_string(),
                     // )
-                    RawResponse {
-                        id,
-                        result: Some(serde_json::to_value(&()).unwrap()),
-                        error: None,
-                    }
+                    Response::new_ok(id, ())
                 } else {
-                    RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string())
+                    Response::new_err(id, ErrorCode::InternalError as i32, e.to_string())
                 }
             }
         },
@@ -613,7 +608,7 @@ fn update_file_notifications_on_threadpool(
                         }
                     }
                     Ok(params) => {
-                        let not = RawNotification::new::<req::PublishDiagnostics>(&params);
+                        let not = notification_new::<req::PublishDiagnostics>(params);
                         sender.send(Task::Notify(not)).unwrap();
                     }
                 }
@@ -626,7 +621,7 @@ fn update_file_notifications_on_threadpool(
                         }
                     }
                     Ok(params) => {
-                        let not = RawNotification::new::<req::PublishDecorations>(&params);
+                        let not = notification_new::<req::PublishDecorations>(params);
                         sender.send(Task::Notify(not)).unwrap();
                     }
                 }
@@ -635,17 +630,33 @@ fn update_file_notifications_on_threadpool(
     });
 }
 
-pub fn show_message(
-    typ: req::MessageType,
-    message: impl Into<String>,
-    sender: &Sender<RawMessage>,
-) {
+pub fn show_message(typ: req::MessageType, message: impl Into<String>, sender: &Sender<Message>) {
     let message = message.into();
     let params = req::ShowMessageParams { typ, message };
-    let not = RawNotification::new::<req::ShowMessage>(&params);
+    let not = notification_new::<req::ShowMessage>(params);
     sender.send(not.into()).unwrap();
 }
 
 fn is_canceled(e: &Box<dyn std::error::Error + Send + Sync>) -> bool {
     e.downcast_ref::<Canceled>().is_some()
+}
+
+fn notification_is<N: lsp_types::notification::Notification>(notification: &Notification) -> bool {
+    notification.method == N::METHOD
+}
+
+fn notification_cast<N>(notification: Notification) -> std::result::Result<N::Params, Notification>
+where
+    N: lsp_types::notification::Notification,
+    N::Params: DeserializeOwned,
+{
+    notification.extract(N::METHOD)
+}
+
+fn notification_new<N>(params: N::Params) -> Notification
+where
+    N: lsp_types::notification::Notification,
+    N::Params: Serialize,
+{
+    Notification::new(N::METHOD.to_string(), params)
 }
