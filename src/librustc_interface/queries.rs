@@ -114,13 +114,21 @@ impl Compiler {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
 
-            passes::register_plugins(
-                self,
+            let result = passes::register_plugins(
                 self.session(),
                 self.cstore(),
                 krate,
                 &crate_name,
-            )
+            );
+
+            // Compute the dependency graph (in the background). We want to do
+            // this as early as possible, to give the DepGraph maximum time to
+            // load before dep_graph() is called, but it also can't happen
+            // until after rustc_incremental::prepare_session_directory() is
+            // called, which happens within passes::register_plugins().
+            self.dep_graph_future().ok();
+
+            result
         })
     }
 
