@@ -46,11 +46,18 @@ impl Thread {
             type_: wasi::EVENTTYPE_CLOCK,
             u: wasi::raw::__wasi_subscription_u { clock: clock },
         }];
-        let mut out: [wasi::Event; 1] = [unsafe { mem::zeroed() }];
-        let n = unsafe { wasi::poll_oneoff(&in_, &mut out).unwrap() };
-        let wasi::Event { userdata, error, type_, .. } = out[0];
-        match (n, userdata, error) {
-            (1, CLOCK_ID, 0) if type_ == wasi::EVENTTYPE_CLOCK => {}
+        let (res, event) = unsafe {
+            let mut out: [wasi::Event; 1] = mem::zeroed();
+            let res = wasi::poll_oneoff(&in_, &mut out);
+            (res, out[0])
+        };
+        match (res, event) {
+            (Ok(1), wasi::Event {
+                userdata: CLOCK_ID,
+                error: 0,
+                type_: wasi::EVENTTYPE_CLOCK,
+                ..
+            }) => {}
             _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
         }
     }
