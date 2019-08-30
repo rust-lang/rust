@@ -63,6 +63,13 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
+    pub fn try_to_addr(self) -> Option<Value> {
+        match self.0 {
+            CValueInner::ByRef(addr) => Some(addr),
+            CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => None,
+        }
+    }
+
     /// Load a value with layout.abi of scalar
     pub fn load_scalar<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> Value {
         let layout = self.1;
