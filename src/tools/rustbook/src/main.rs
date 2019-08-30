@@ -60,11 +60,14 @@ fn main() {
                     #[cfg(feature = "linkcheck")]
                     {
                         err.downcast::<BrokenLinks>()
+                            .map(|broken_links| {
+                                broken_links
+                                    .links()
+                                    .iter()
+                                    .inspect(|cause| eprintln!("\tCaused By: {}", cause))
+                                    .any(|cause| !format!("{}", cause).contains("timed out"))
+                            })
                             .unwrap_or(false)
-                            .links()
-                            .iter()
-                            .inspect(|cause| eprintln!("\tCaused By: {}", cause))
-                            .any(|cause| !cause.contains("timed out"));
                     }
 
                     #[cfg(not(feature = "linkcheck"))]
