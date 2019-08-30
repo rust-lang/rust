@@ -7,6 +7,7 @@
 // normalize-stderr-test "allocation \d+" -> "allocation N"
 // normalize-stderr-test "size \d+" -> "size N"
 
+#[repr(C)]
 union BoolTransmute {
   val: u8,
   bl: bool,
@@ -26,6 +27,7 @@ struct BadSliceRepr {
     len: &'static u8,
 }
 
+#[repr(C)]
 union SliceTransmute {
     repr: SliceRepr,
     bad: BadSliceRepr,
@@ -58,6 +60,7 @@ struct BadDynRepr {
     vtable: usize,
 }
 
+#[repr(C)]
 union DynTransmute {
     repr: DynRepr,
     repr2: DynRepr2,
@@ -91,10 +94,10 @@ const MY_STR_LENGTH_PTR: &MyStr = unsafe { SliceTransmute { bad: BadSliceRepr { 
 //~^ ERROR it is undefined behavior to use this value
 
 // invalid UTF-8
-const J1: &str = unsafe { SliceTransmute { slice: &[0xFF] }.str };
+const STR_NO_UTF8: &str = unsafe { SliceTransmute { slice: &[0xFF] }.str };
 //~^ ERROR it is undefined behavior to use this value
 // invalid UTF-8 in user-defined str-like
-const J2: &MyStr = unsafe { SliceTransmute { slice: &[0xFF] }.my_str };
+const MYSTR_NO_UTF8: &MyStr = unsafe { SliceTransmute { slice: &[0xFF] }.my_str };
 //~^ ERROR it is undefined behavior to use this value
 
 // # slice
@@ -111,16 +114,16 @@ const SLICE_LENGTH_PTR: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { pt
 //~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the slice
-const H: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
+const SLICE_CONTENT_INVALID: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
 //~^ ERROR it is undefined behavior to use this value
 
 // good MySliceBool
-const I1: &MySliceBool = &MySlice(true, [false]);
+const MYSLICE_GOOD: &MySliceBool = &MySlice(true, [false]);
 // bad: sized field is not okay
-const I2: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
+const MYSLICE_PREFIX_BAD: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
 //~^ ERROR it is undefined behavior to use this value
 // bad: unsized part is not okay
-const I3: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
+const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
 //~^ ERROR it is undefined behavior to use this value
 
 // # raw slice
@@ -132,17 +135,17 @@ const RAW_SLICE_LENGTH_UNINIT: *const [u8] = unsafe { SliceTransmute { addr: 42 
 
 // # trait object
 // bad trait object
-const D: &dyn Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
+const TRAIT_OBJ_SHORT_VTABLE_1: &dyn Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
-const E: &dyn Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
+const TRAIT_OBJ_SHORT_VTABLE_2: &dyn Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
 //~^ ERROR it is undefined behavior to use this value
 // bad trait object
-const F: &dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
+const TRAIT_OBJ_INT_VTABLE: &dyn Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
 //~^ ERROR it is undefined behavior to use this value
 
 // bad data *inside* the trait object
-const G: &dyn Trait = &unsafe { BoolTransmute { val: 3 }.bl };
+const TRAIT_OBJ_CONTENT_INVALID: &dyn Trait = &unsafe { BoolTransmute { val: 3 }.bl };
 //~^ ERROR it is undefined behavior to use this value
 
 // # raw trait object

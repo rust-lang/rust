@@ -1,5 +1,5 @@
 use rustc::ty::{self, Ty, Instance, TypeFoldable};
-use rustc::ty::layout::{Size, Align, LayoutOf};
+use rustc::ty::layout::{Size, Align, LayoutOf, HasDataLayout};
 use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic,};
 
 use super::{InterpCx, Machine, MemoryKind, FnVal};
@@ -151,6 +151,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             vtable.offset(pointer_size * 2, self)?,
         )?.not_undef()?;
         let align = self.force_bits(align, pointer_size)? as u64;
+
+        if size >= self.tcx.data_layout().obj_size_bound() {
+            throw_ub_format!("invalid vtable: \
+                size is bigger than largest supported object");
+        }
         Ok((Size::from_bytes(size), Align::from_bytes(align).unwrap()))
     }
 }
