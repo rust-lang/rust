@@ -1739,24 +1739,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                 let mut borders: Vec<_> = row_borders.chain(ctor_borders).collect();
                 borders.sort_unstable();
 
-                if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
-                    let mut err = tcx.struct_span_lint_hir(
-                        lint::builtin::OVERLAPPING_PATTERNS,
-                        hir_id,
-                        ctor_range.span,
-                        "multiple patterns covering the same range",
-                    );
-                    err.span_label(ctor_range.span, "overlapping patterns");
-                    for int_range in overlaps {
-                        // Use the real type for user display of the ranges:
-                        err.span_label(int_range.span, &format!(
-                            "this range overlaps on `{}`",
-                            IntRange::range_to_ctor(tcx, ty, int_range.range, DUMMY_SP)
-                                .display(tcx),
-                        ));
-                    }
-                    err.emit();
-                }
+                lint_unreachable_patterns(tcx, hir_id, ctor_range, ty, overlaps);
 
                 // We're going to iterate through every pair of borders, making sure that each
                 // represents an interval of nonnegative length, and convert each such interval
@@ -1785,6 +1768,32 @@ fn split_grouped_constructors<'p, 'tcx>(
     }
 
     split_ctors
+}
+
+fn lint_unreachable_patterns(
+    tcx: TyCtxt<'tcx>,
+    hir_id: Option<HirId>,
+    ctor_range: IntRange<'tcx>,
+    ty: Ty<'tcx>,
+    overlaps: Vec<IntRange<'tcx>>,
+) {
+    if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
+        let mut err = tcx.struct_span_lint_hir(
+            lint::builtin::OVERLAPPING_PATTERNS,
+            hir_id,
+            ctor_range.span,
+            "multiple patterns covering the same range",
+        );
+        err.span_label(ctor_range.span, "overlapping patterns");
+        for int_range in overlaps {
+            // Use the real type for user display of the ranges:
+            err.span_label(int_range.span, &format!(
+                "this range overlaps on `{}`",
+                IntRange::range_to_ctor(tcx, ty, int_range.range, DUMMY_SP).display(tcx),
+            ));
+        }
+        err.emit();
+    }
 }
 
 fn constructor_covered_by_range<'tcx>(
