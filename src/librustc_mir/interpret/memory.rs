@@ -808,32 +808,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // since we don't want to keep any relocations at the target.
         // (`get_bytes_with_undef_and_ptr` below checks that there are no
         // relocations overlapping the edges; those would not be handled correctly).
-        let relocations = {
-            let relocations = self.get(src.alloc_id)?.get_relocations(self, src, size);
-            if relocations.is_empty() {
-                // nothing to copy, ignore even the `length` loop
-                Vec::new()
-            } else {
-                let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
-                for i in 0..length {
-                    new_relocations.extend(
-                        relocations
-                        .iter()
-                        .map(|&(offset, reloc)| {
-                            // compute offset for current repetition
-                            let dest_offset = dest.offset + (i * size);
-                            (
-                                // shift offsets from source allocation to destination allocation
-                                offset + dest_offset - src.offset,
-                                reloc,
-                            )
-                        })
-                    );
-                }
-
-                new_relocations
-            }
-        };
+        let relocations = self.get(src.alloc_id)?
+            .prepare_relocation_copy(self, src, size, dest, length);
 
         let tcx = self.tcx.tcx;
 
@@ -880,7 +856,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // copy definedness to the destination
         self.copy_undef_mask(src, dest, size, length)?;
         // copy the relocations to the destination
-        self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
+        self.get_mut(dest.alloc_id)?.mark_relocation_range(relocations);
 
         Ok(())
     }

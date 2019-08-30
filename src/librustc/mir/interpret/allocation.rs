@@ -693,6 +693,56 @@ impl<Tag> DerefMut for Relocations<Tag> {
     }
 }
 
+/// A partial, owned list of relocations to transfer into another allocation.
+pub struct AllocationRelocations<Tag> {
+    relative_relocations: Vec<(Size, (Tag, AllocId))>,
+}
+
+impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
+    pub fn prepare_relocation_copy(
+        &self,
+        cx: &impl HasDataLayout,
+        src: Pointer<Tag>,
+        size: Size,
+        dest: Pointer<Tag>,
+        length: u64,
+    ) -> AllocationRelocations<Tag> {
+        let relocations = self.get_relocations(cx, src, size);
+        if relocations.is_empty() {
+            return AllocationRelocations { relative_relocations: Vec::new() };
+        }
+
+        let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
+
+        for i in 0..length {
+            new_relocations.extend(
+                relocations
+                .iter()
+                .map(|&(offset, reloc)| {
+                    // compute offset for current repetition
+                    let dest_offset = dest.offset + (i * size);
+                    (
+                        // shift offsets from source allocation to destination allocation
+                        offset + dest_offset - src.offset,
+                        reloc,
+                        )
+                })
+                );
+        }
+
+        AllocationRelocations {
+            relative_relocations: new_relocations,
+        }
+    }
+
+    pub fn mark_relocation_range(
+        &mut self,
+        relocations: AllocationRelocations<Tag>,
+    ) {
+        self.relocations.insert_presorted(relocations.relative_relocations);
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Undefined byte tracking
 ////////////////////////////////////////////////////////////////////////////////
