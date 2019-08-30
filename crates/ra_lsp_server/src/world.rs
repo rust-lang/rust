@@ -4,7 +4,7 @@ use std::{
 };
 
 use crossbeam_channel::{unbounded, Receiver};
-use gen_lsp_server::ErrorCode;
+use lsp_server::ErrorCode;
 use lsp_types::Url;
 use parking_lot::RwLock;
 use ra_ide_api::{

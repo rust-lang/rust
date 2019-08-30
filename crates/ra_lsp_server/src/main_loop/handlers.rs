@@ -1,6 +1,6 @@
 use std::{fmt::Write as _, io::Write as _};
 
-use gen_lsp_server::ErrorCode;
+use lsp_server::ErrorCode;
 use lsp_types::{
     CodeAction, CodeActionResponse, CodeLens, Command, CompletionItem, Diagnostic,
     DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange, FoldingRangeKind,
