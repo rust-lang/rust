@@ -7,6 +7,7 @@
 // normalize-stderr-test "allocation \d+" -> "allocation N"
 // normalize-stderr-test "size \d+" -> "size N"
 
+#[repr(C)]
 union BoolTransmute {
   val: u8,
   bl: bool,
@@ -26,6 +27,7 @@ struct BadSliceRepr {
     len: &'static u8,
 }
 
+#[repr(C)]
 union SliceTransmute {
     repr: SliceRepr,
     bad: BadSliceRepr,
@@ -58,6 +60,7 @@ struct BadDynRepr {
     vtable: usize,
 }
 
+#[repr(C)]
 union DynTransmute {
     repr: DynRepr,
     repr2: DynRepr2,
