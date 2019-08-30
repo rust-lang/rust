@@ -1,3 +1,4 @@
+mod returning;
 mod pass_mode;
 
 use std::borrow::Cow;
@@ -6,6 +7,8 @@ use rustc_target::spec::abi::Abi;
 
 use crate::prelude::*;
 use self::pass_mode::*;
+
+pub use self::returning::codegen_return;
 
 fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>, is_vtable_fn: bool) -> Signature {
     let abi = match sig.abi {
@@ -297,33 +300,13 @@ pub fn codegen_fn_prelude(
     let ssa_analyzed = crate::analyze::analyze(fx);
 
     #[cfg(debug_assertions)]
-    fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
-
-    let ret_layout = fx.return_layout();
-    let output_pass_mode = get_pass_mode(fx.tcx, fx.return_layout());
-    let ret_param = match output_pass_mode {
-        PassMode::NoPass | PassMode::ByVal(_) | PassMode::ByValPair(_, _) => None,
-        PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, fx.pointer_type)),
-    };
-
-    #[cfg(debug_assertions)]
     {
+        fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
         add_local_header_comment(fx);
-        let ret_param = match ret_param {
-            Some(param) => Single(param),
-            None => Empty,
-        };
-        add_arg_comment(
-            fx,
-            "ret",
-            RETURN_PLACE,
-            None,
-            ret_param,
-            output_pass_mode,
-            ssa_analyzed[&RETURN_PLACE],
-            ret_layout.ty,
-        );
     }
+
+    self::returning::codegen_return_param(fx, &ssa_analyzed, start_ebb);
+
 
     // None means pass_mode == NoPass
     enum ArgKind<'tcx> {
@@ -372,27 +355,6 @@ pub fn codegen_fn_prelude(
         .collect::<Vec<(Local, ArgKind, Ty)>>();
 
     fx.bcx.switch_to_block(start_ebb);
-
-    match output_pass_mode {
-        PassMode::NoPass => {
-            fx.local_map
-                .insert(RETURN_PLACE, CPlace::no_place(ret_layout));
-        }
-        PassMode::ByVal(_) | PassMode::ByValPair(_, _) => {
-            let is_ssa = !ssa_analyzed
-                .get(&RETURN_PLACE)
-                .unwrap()
-                .contains(crate::analyze::Flags::NOT_SSA);
-
-            local_place(fx, RETURN_PLACE, ret_layout, is_ssa);
-        }
-        PassMode::ByRef => {
-            fx.local_map.insert(
-                RETURN_PLACE,
-                CPlace::for_addr(ret_param.unwrap(), ret_layout),
-            );
-        }
-    }
 
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);
@@ -524,18 +486,6 @@ fn codegen_call_inner<'tcx>(
 ) {
     let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
-    let ret_layout = fx.layout_of(fn_sig.output());
-
-    let output_pass_mode = get_pass_mode(fx.tcx, fx.layout_of(fn_sig.output()));
-    let return_ptr = match output_pass_mode {
-        PassMode::NoPass => None,
-        PassMode::ByRef => match ret_place {
-            Some(ret_place) => Some(ret_place.to_addr(fx)),
-            None => Some(fx.bcx.ins().iconst(fx.pointer_type, 43)),
-        },
-        PassMode::ByVal(_) | PassMode::ByValPair(_, _) => None,
-    };
-
     let instance = match fn_ty.sty {
         ty::FnDef(def_id, substs) => {
             Some(Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap())
@@ -584,26 +534,30 @@ fn codegen_call_inner<'tcx>(
         }
     };
 
-    let call_args: Vec<Value> = return_ptr
-        .into_iter()
-        .chain(first_arg.into_iter())
-        .chain(
-            args.into_iter()
-                .skip(1)
-                .map(|arg| adjust_arg_for_abi(fx, arg).into_iter())
-                .flatten(),
-        )
-        .collect::<Vec<_>>();
+    let (call_inst, call_args) = self::returning::codegen_with_call_return_arg(fx, fn_sig, ret_place, |fx, return_ptr| {
+        let call_args: Vec<Value> = return_ptr
+            .into_iter()
+            .chain(first_arg.into_iter())
+            .chain(
+                args.into_iter()
+                    .skip(1)
+                    .map(|arg| adjust_arg_for_abi(fx, arg).into_iter())
+                    .flatten(),
+            )
+            .collect::<Vec<_>>();
 
-    let call_inst = if let Some(func_ref) = func_ref {
-        let sig = fx
-            .bcx
-            .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, is_virtual_call));
-        fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
-    } else {
-        let func_ref = fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
-        fx.bcx.ins().call(func_ref, &call_args)
-    };
+        let call_inst = if let Some(func_ref) = func_ref {
+            let sig = fx
+                .bcx
+                .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, is_virtual_call));
+            fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
+        } else {
+            let func_ref = fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
+            fx.bcx.ins().call(func_ref, &call_args)
+        };
+
+        (call_inst, call_args)
+    });
 
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
@@ -623,24 +577,6 @@ fn codegen_call_inner<'tcx>(
             })
             .collect::<Vec<AbiParam>>();
         fx.bcx.func.dfg.signatures[sig_ref].params = abi_params;
-    }
-
-    match output_pass_mode {
-        PassMode::NoPass => {}
-        PassMode::ByVal(_) => {
-            if let Some(ret_place) = ret_place {
-                let ret_val = fx.bcx.inst_results(call_inst)[0];
-                ret_place.write_cvalue(fx, CValue::by_val(ret_val, ret_layout));
-            }
-        }
-        PassMode::ByValPair(_, _) => {
-            if let Some(ret_place) = ret_place {
-                let ret_val_a = fx.bcx.inst_results(call_inst)[0];
-                let ret_val_b = fx.bcx.inst_results(call_inst)[1];
-                ret_place.write_cvalue(fx, CValue::by_val_pair(ret_val_a, ret_val_b, ret_layout));
-            }
-        }
-        PassMode::ByRef => {}
     }
 }
 
@@ -690,24 +626,6 @@ pub fn codegen_drop<'tcx>(
                     None,
                 );
             }
-        }
-    }
-}
-
-pub fn codegen_return(fx: &mut FunctionCx<impl Backend>) {
-    match get_pass_mode(fx.tcx, fx.return_layout()) {
-        PassMode::NoPass | PassMode::ByRef => {
-            fx.bcx.ins().return_(&[]);
-        }
-        PassMode::ByVal(_) => {
-            let place = fx.get_local_place(RETURN_PLACE);
-            let ret_val = place.to_cvalue(fx).load_scalar(fx);
-            fx.bcx.ins().return_(&[ret_val]);
-        }
-        PassMode::ByValPair(_, _) => {
-            let place = fx.get_local_place(RETURN_PLACE);
-            let (ret_val_a, ret_val_b) = place.to_cvalue(fx).load_scalar_pair(fx);
-            fx.bcx.ins().return_(&[ret_val_a, ret_val_b]);
         }
     }
 }
