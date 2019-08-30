@@ -120,7 +120,7 @@ pub struct fdio_spawn_action_t {
 extern {
     pub fn fdio_spawn_etc(job: zx_handle_t, flags: u32, path: *const c_char,
                           argv: *const *const c_char, envp: *const *const c_char,
-                          action_count: u64, actions: *const fdio_spawn_action_t,
+                          action_count: size_t, actions: *const fdio_spawn_action_t,
                           process: *mut zx_handle_t, err_msg: *mut c_char) -> zx_status_t;
 }
 

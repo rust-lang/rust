@@ -52,7 +52,7 @@ impl Command {
             None => ptr::null(),
         };
 
-        let transfer_or_clone = |opt_fd, target_fd| if let Some(local_fd) = opt_fd {
+        let make_action = |local_io: &ChildStdio, target_fd| if let Some(local_fd) = local_io.fd() {
             fdio_spawn_action_t {
                 action: FDIO_SPAWN_ACTION_TRANSFER_FD,
                 local_fd,
@@ -60,6 +60,10 @@ impl Command {
                 ..Default::default()
             }
         } else {
+            if let ChildStdio::Null = local_io {
+                // acts as no-op
+                return Default::default();
+            }
             fdio_spawn_action_t {
                 action: FDIO_SPAWN_ACTION_CLONE_FD,
                 local_fd: target_fd,
@@ -69,9 +73,9 @@ impl Command {
         };
 
         // Clone stdin, stdout, and stderr
-        let action1 = transfer_or_clone(stdio.stdin.fd(), 0);
-        let action2 = transfer_or_clone(stdio.stdout.fd(), 1);
-        let action3 = transfer_or_clone(stdio.stderr.fd(), 2);
+        let action1 = make_action(&stdio.stdin, 0);
+        let action2 = make_action(&stdio.stdout, 1);
+        let action3 = make_action(&stdio.stderr, 2);
         let actions = [action1, action2, action3];
 
         // We don't want FileDesc::drop to be called on any stdio. fdio_spawn_etc
@@ -86,7 +90,8 @@ impl Command {
         zx_cvt(fdio_spawn_etc(
             0,
             FDIO_SPAWN_CLONE_JOB | FDIO_SPAWN_CLONE_LDSVC | FDIO_SPAWN_CLONE_NAMESPACE,
-            self.get_argv()[0], self.get_argv().as_ptr(), envp, 3, actions.as_ptr(),
+            self.get_argv()[0], self.get_argv().as_ptr(), envp,
+            actions.len() as size_t, actions.as_ptr(),
             &mut process_handle,
             ptr::null_mut(),
         ))?;
