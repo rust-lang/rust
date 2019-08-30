@@ -275,6 +275,11 @@ impl Compiler {
         })
     }
 
+    // This method is different to all the other methods in `Compiler` because
+    // it lacks a `Queries` entry. It's also not currently used. It does serve
+    // as an example of how `Compiler` can be used, with additional steps added
+    // between some passes. And see `rustc_driver::run_compiler` for a more
+    // complex example.
     pub fn compile(&self) -> Result<()> {
         self.prepare_outputs()?;
 
@@ -286,12 +291,12 @@ impl Compiler {
 
         self.global_ctxt()?;
 
-        // Drop AST after creating GlobalCtxt to free memory
+        // Drop AST after creating GlobalCtxt to free memory.
         mem::drop(self.expansion()?.take());
 
         self.ongoing_codegen()?;
 
-        // Drop GlobalCtxt after starting codegen to free memory
+        // Drop GlobalCtxt after starting codegen to free memory.
         mem::drop(self.global_ctxt()?.take());
 
         self.link().map(|_| ())
