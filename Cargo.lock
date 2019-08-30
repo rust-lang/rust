@@ -1582,9 +1582,9 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 
 [[package]]
 name = "libc"
-version = "0.2.61"
+version = "0.2.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c665266eb592905e8503ba3403020f4b8794d26263f412ca33171600eca9a6fa"
+checksum = "34fcd2c08d2f832f376f4173a231990fa5aef4e99fb569867318a227ef4c06ba"
 dependencies = [
  "rustc-std-workspace-core",
 ]
