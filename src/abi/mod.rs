@@ -282,6 +282,34 @@ pub fn codegen_fn_prelude(
             .unwrap()
             .contains(crate::analyze::Flags::NOT_SSA);
 
+        match arg_kind {
+            ArgKind::Normal(Some(val)) => {
+                if let Some(addr) = val.try_to_addr() {
+                    let local_decl = &fx.mir.local_decls[local];
+                    //                             v this ! is important
+                    let internally_mutable = !val.layout().ty.is_freeze(
+                        fx.tcx,
+                        ParamEnv::reveal_all(),
+                        local_decl.source_info.span,
+                    );
+                    if local_decl.mutability == mir::Mutability::Not && internally_mutable {
+                        // We wont mutate this argument, so it is fine to borrow the backing storage
+                        // of this argument, to prevent a copy.
+
+                        let place = CPlace::for_addr(addr, val.layout());
+
+                        #[cfg(debug_assertions)]
+                        self::comments::add_local_place_comments(fx, place, local);
+
+                        let prev_place = fx.local_map.insert(local, place);
+                        debug_assert!(prev_place.is_none());
+                        continue;
+                    }
+                }
+            }
+            _ => {}
+        }
+
         let place = local_place(fx, local, layout, is_ssa);
 
         match arg_kind {

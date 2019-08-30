@@ -202,3 +202,7 @@ fn get_sized_field_ref_from_unsized_type(u: &Unsized) -> &u8 {
 fn get_unsized_field_ref_from_unsized_type(u: &Unsized) -> &str {
     &u.1
 }
+
+pub fn reuse_byref_argument_storage(a: (u8, u16, u32)) -> u8 {
+    a.0
+}
