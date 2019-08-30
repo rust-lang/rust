@@ -41,7 +41,9 @@ fn main() {
     match x { //~ ERROR non-exhaustive patterns
         -7 => {}
         -5..=120 => {}
-        -2..=20 => {} //~ ERROR multiple patterns covering the same range
+        -2..=20 => {}
+        //~^ ERROR unreachable pattern
+        //~| ERROR multiple patterns covering the same range
         125 => {}
     }
 

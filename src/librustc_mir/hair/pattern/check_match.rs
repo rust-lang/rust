@@ -429,10 +429,6 @@ fn check_arms<'tcx>(
 
                         hir::MatchSource::ForLoopDesugar |
                         hir::MatchSource::Normal => {
-                            if let box PatternKind::Range(..) = pat.kind {
-                                // Covered by `overlapping_patterns` with more context
-                                break;
-                            }
                             let mut err = cx.tcx.struct_span_lint_hir(
                                 lint::builtin::UNREACHABLE_PATTERNS,
                                 hir_pat.hir_id,

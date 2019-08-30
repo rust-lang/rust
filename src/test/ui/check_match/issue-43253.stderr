@@ -33,6 +33,12 @@ LL |         8..=9 => {},
    |         ^^^^^ overlapping patterns
 
 warning: unreachable pattern
+  --> $DIR/issue-43253.rs:35:9
+   |
+LL |         8..=9 => {},
+   |         ^^^^^
+
+warning: unreachable pattern
   --> $DIR/issue-43253.rs:41:9
    |
 LL |         6 => {},

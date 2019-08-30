@@ -3,25 +3,33 @@
 fn main() {
     match 5 {
       1 ..= 10 => { }
-      5 ..= 6 => { } //~ ERROR multiple patterns covering the same range
+      5 ..= 6 => { }
+      //~^ ERROR unreachable pattern
+      //~| ERROR multiple patterns covering the same range
       _ => {}
     };
 
     match 5 {
       3 ..= 6 => { }
-      4 ..= 6 => { } //~ ERROR multiple patterns covering the same range
+      4 ..= 6 => { }
+      //~^ ERROR unreachable pattern
+      //~| ERROR multiple patterns covering the same range
       _ => {}
     };
 
     match 5 {
       4 ..= 6 => { }
-      4 ..= 6 => { } //~ ERROR multiple patterns covering the same range
+      4 ..= 6 => { }
+      //~^ ERROR unreachable pattern
+      //~| ERROR multiple patterns covering the same range
       _ => {}
     };
 
     match 'c' {
       'A' ..= 'z' => {}
-      'a' ..= 'z' => {} //~ ERROR multiple patterns covering the same range
+      'a' ..= 'z' => {}
+      //~^ ERROR unreachable pattern
+      //~| ERROR multiple patterns covering the same range
       _ => {}
     };
 
