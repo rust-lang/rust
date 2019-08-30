@@ -26,7 +26,6 @@ pub struct Page<'a> {
 }
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
-    dst: &mut Buffer,
     layout: &Layout,
     page: &Page<'_>,
     sidebar: &S,
@@ -34,7 +33,8 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     css_file_extension: bool,
     themes: &[PathBuf],
     generate_search_filter: bool,
-) {
+) -> String {
+    let mut dst = Buffer::html();
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
     write!(dst,
 "<!DOCTYPE html>\
@@ -235,12 +235,13 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     } else {
         ""
     },
-    )
+    );
+    dst.into_inner()
 }
 
-pub fn redirect(dst: &mut Buffer, url: &str) {
+pub fn redirect(url: &str) -> String {
     // <script> triggers a redirect before refresh, so this is fine.
-    write!(dst,
+    format!(
 r##"<!DOCTYPE html>
 <html lang="en">
 <head>
