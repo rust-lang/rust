@@ -1,9 +1,9 @@
-use ra_syntax::ast;
+use ra_syntax::ast::{self, AstNode};
 
 use crate::{
     ids::AstItemDef, AstDatabase, Const, DefDatabase, Enum, EnumVariant, FieldSource, Function,
-    HirFileId, MacroDef, Module, ModuleSource, Static, Struct, StructField, Trait, TypeAlias,
-    Union,
+    HasBody, HirDatabase, HirFileId, MacroDef, Module, ModuleSource, Static, Struct, StructField,
+    Trait, TypeAlias, Union,
 };
 
 pub struct Source<T> {
@@ -107,4 +107,28 @@ impl HasSource for MacroDef {
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::MacroCall> {
         Source { file_id: self.id.0.file_id(), ast: self.id.0.to_node(db) }
     }
+}
+
+pub trait HasBodySource: HasBody + HasSource
+where
+    Self::Ast: AstNode,
+{
+    fn expr_source(
+        self,
+        db: &impl HirDatabase,
+        expr_id: crate::expr::ExprId,
+    ) -> Option<Source<ast::Expr>> {
+        let source_map = self.body_source_map(db);
+        let expr_syntax = source_map.expr_syntax(expr_id)?;
+        let source = self.source(db);
+        let node = expr_syntax.to_node(&source.ast.syntax());
+        ast::Expr::cast(node).map(|ast| Source { file_id: source.file_id, ast })
+    }
+}
+
+impl<T> HasBodySource for T
+where
+    T: HasBody + HasSource,
+    T::Ast: AstNode,
+{
 }

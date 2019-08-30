@@ -75,8 +75,8 @@ pub use self::{
 
 pub use self::code_model::{
     docs::{DocDef, Docs, Documentation},
-    src::{HasSource, Source},
+    src::{HasBodySource, HasSource, Source},
     BuiltinType, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
-    EnumVariant, FieldSource, FnData, Function, MacroDef, Module, ModuleDef, ModuleSource, Static,
-    Struct, StructField, Trait, TypeAlias, Union,
+    EnumVariant, FieldSource, FnData, Function, HasBody, MacroDef, Module, ModuleDef, ModuleSource,
+    Static, Struct, StructField, Trait, TypeAlias, Union,
 };

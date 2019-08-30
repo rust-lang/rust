@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use ra_db::SourceDatabase;
-use ra_hir::{Crate, HasSource, HirDisplay, ImplItem, ModuleDef, Ty};
+use ra_hir::{Crate, HasBodySource, HasSource, HirDisplay, ImplItem, ModuleDef, Ty};
 use ra_syntax::AstNode;
 
 use crate::Result;
@@ -104,35 +104,34 @@ pub fn run(verbose: bool, memory_usage: bool, path: &Path, only: Option<&str>) -
             if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                 num_type_mismatches += 1;
                 if verbose {
-                    let src = f.source(db);
-                    let original_file = src.file_id.original_file(db);
-                    let path = db.file_relative_path(original_file);
-                    let line_index = host.analysis().file_line_index(original_file).unwrap();
-                    let body_source_map = f.body_source_map(db);
-                    let syntax_node = body_source_map.expr_syntax(expr_id);
-                    let line_col = syntax_node.map(|syntax_node| {
-                        (
-                            line_index.line_col(syntax_node.range().start()),
-                            line_index.line_col(syntax_node.range().end()),
-                        )
-                    });
-                    let line_col = match line_col {
-                        Some((start, end)) => format!(
-                            "{}:{}-{}:{}",
+                    let src = f.expr_source(db, expr_id);
+                    if let Some(src) = src {
+                        // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
+                        let original_file = src.file_id.original_file(db);
+                        let path = db.file_relative_path(original_file);
+                        let line_index = host.analysis().file_line_index(original_file).unwrap();
+                        let (start, end) = (
+                            line_index.line_col(src.ast.syntax().text_range().start()),
+                            line_index.line_col(src.ast.syntax().text_range().end()),
+                        );
+                        bar.println(format!(
+                            "{} {}:{}-{}:{}: Expected {}, got {}",
+                            path.display(),
                             start.line + 1,
                             start.col_utf16,
                             end.line + 1,
-                            end.col_utf16
-                        ),
-                        None => "?:?".to_string(),
-                    };
-                    bar.println(format!(
-                        "{} {}: Expected {}, got {}",
-                        path.display(),
-                        line_col,
-                        mismatch.expected.display(db),
-                        mismatch.actual.display(db)
-                    ));
+                            end.col_utf16,
+                            mismatch.expected.display(db),
+                            mismatch.actual.display(db)
+                        ));
+                    } else {
+                        bar.println(format!(
+                            "{}: Expected {}, got {}",
+                            name,
+                            mismatch.expected.display(db),
+                            mismatch.actual.display(db)
+                        ));
+                    }
                 }
             }
         }
