@@ -1736,7 +1736,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                 let mut borders: Vec<_> = row_borders.chain(ctor_borders).collect();
                 borders.sort_unstable();
 
-                lint_unreachable_patterns(tcx, hir_id, ctor_range, ty, overlaps);
+                lint_overlapping_patterns(tcx, hir_id, ctor_range, ty, overlaps);
 
                 // We're going to iterate through every pair of borders, making sure that each
                 // represents an interval of nonnegative length, and convert each such interval
@@ -1767,7 +1767,7 @@ fn split_grouped_constructors<'p, 'tcx>(
     split_ctors
 }
 
-fn lint_unreachable_patterns(
+fn lint_overlapping_patterns(
     tcx: TyCtxt<'tcx>,
     hir_id: Option<HirId>,
     ctor_range: IntRange<'tcx>,
