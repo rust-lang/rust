@@ -1,5 +1,4 @@
 // run-pass
-#![feature(const_transmute)]
 
 const FOO: isize = 10;
 const BAR: isize = 3;

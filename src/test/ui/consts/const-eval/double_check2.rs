@@ -17,5 +17,7 @@ static FOO: (&Foo, &Bar) = unsafe {( //~ undefined behavior
     Union { u8: &BAR }.foo,
     Union { u8: &BAR }.bar,
 )};
+static FOO2: (&Foo, &Bar) = unsafe {(std::mem::transmute(&BAR), std::mem::transmute(&BAR))};
+//~^ undefined behavior
 
 fn main() {}

@@ -20,4 +20,6 @@ static FOO: (&Foo, &Bar) = unsafe {(
     Union { u8: &BAR }.bar,
 )};
 
+static FOO2: (&Foo, &Bar) = unsafe {(std::mem::transmute(&BAR), std::mem::transmute(&BAR))};
+
 fn main() {}

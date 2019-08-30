@@ -17,11 +17,6 @@ help: skipping check that does not even have a feature gate
    |
 LL |     my_fn();
    |     ^^^^^^^
-help: skipping check that does not even have a feature gate
-  --> $DIR/abi-mismatch.rs:16:40
-   |
-LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error; 1 warning emitted
 

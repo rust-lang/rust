@@ -30,7 +30,7 @@
 #![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)]
 #![feature(const_panic)]
-#![feature(const_transmute)]
+#![cfg_attr(not(bootstrap), feature(const_fn_transmute))]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
 #![feature(drain_filter)]

@@ -1,4 +1,4 @@
-#![feature(rustc_attrs, const_transmute)]
+#![feature(rustc_attrs)]
 #![allow(const_err, invalid_value)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
