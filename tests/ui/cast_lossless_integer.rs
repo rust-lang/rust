@@ -34,3 +34,14 @@ fn main() {
 const fn abc(input: u16) -> u32 {
     input as u32
 }
+
+// Same as the above issue. We can't suggest `::from` in const fns in impls
+mod cast_lossless_in_impl {
+    struct A;
+
+    impl A {
+        pub const fn convert(x: u32) -> u64 {
+            x as u64
+        }
+    }
+}
