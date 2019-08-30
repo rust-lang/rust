@@ -482,12 +482,9 @@ impl<'tcx> Constructor<'tcx> {
                 // Get the right sign on the output:
                 let ty = ty::ParamEnv::empty().and(*ty);
                 format!(
-                    "{}..{}{}",
+                    "{}{}{}",
                     ty::Const::from_bits(tcx, *lo, ty),
-                    match range_end {
-                        RangeEnd::Included => "=",
-                        RangeEnd::Excluded => "",
-                    },
+                    range_end,
                     ty::Const::from_bits(tcx, *hi, ty),
                 )
             }

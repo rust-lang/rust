@@ -989,6 +989,15 @@ pub enum RangeEnd {
     Excluded,
 }
 
+impl fmt::Display for RangeEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            RangeEnd::Included => "..=",
+            RangeEnd::Excluded => "..",
+        })
+    }
+}
+
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum PatKind {
     /// Represents a wildcard pattern (i.e., `_`).
