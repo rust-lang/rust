@@ -1,4 +1,4 @@
-#![feature(const_transmute, const_raw_ptr_deref)]
+#![feature(const_raw_ptr_deref)]
 
 use std::{mem, usize};
 

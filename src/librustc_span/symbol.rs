@@ -848,6 +848,7 @@ symbols! {
         track_caller,
         trait_alias,
         transmute,
+        const_fn_transmute,
         transparent,
         transparent_enums,
         transparent_unions,

@@ -10,7 +10,7 @@
 #![cfg_attr(bootstrap, feature(const_if_match))]
 #![feature(const_fn)] // For the `transmute` in `P::new`
 #![feature(const_panic)]
-#![feature(const_transmute)]
+#![cfg_attr(not(bootstrap), feature(const_fn_transmute))]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
 #![feature(nll)]
