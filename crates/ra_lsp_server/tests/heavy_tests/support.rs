@@ -8,16 +8,17 @@ use std::{
 
 use crossbeam_channel::{after, select, Receiver};
 use flexi_logger::Logger;
-use lsp_server::{Message, Notification, Request};
+use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{
-    request::Shutdown, ClientCapabilities, DidOpenTextDocumentParams, GotoCapability,
-    TextDocumentClientCapabilities, TextDocumentIdentifier, TextDocumentItem, Url,
+    notification::{DidOpenTextDocument, Exit},
+    request::Shutdown,
+    ClientCapabilities, DidOpenTextDocumentParams, GotoCapability, TextDocumentClientCapabilities,
+    TextDocumentIdentifier, TextDocumentItem, Url,
 };
 use serde::Serialize;
 use serde_json::{to_string_pretty, Value};
 use tempfile::TempDir;
 use test_utils::{find_mismatch, parse_fixture};
-use thread_worker::Worker;
 
 use ra_lsp_server::{main_loop, req, ServerConfig};
 
@@ -83,7 +84,8 @@ pub struct Server {
     req_id: Cell<u64>,
     messages: RefCell<Vec<Message>>,
     dir: TempDir,
-    worker: Worker<Message, Message>,
+    _thread: jod_thread::JoinHandle<()>,
+    client: Connection,
 }
 
 impl Server {
@@ -96,11 +98,11 @@ impl Server {
         let path = dir.path().to_path_buf();
 
         let roots = if roots.is_empty() { vec![path] } else { roots };
+        let (connection, client) = Connection::memory();
 
-        let worker = Worker::<Message, Message>::spawn(
-            "test server",
-            128,
-            move |msg_receiver, msg_sender| {
+        let _thread = jod_thread::Builder::new()
+            .name("test server".to_string())
+            .spawn(move || {
                 main_loop(
                     roots,
                     ClientCapabilities {
@@ -116,26 +118,24 @@ impl Server {
                         experimental: None,
                     },
                     ServerConfig { with_sysroot, ..ServerConfig::default() },
-                    &msg_receiver,
-                    &msg_sender,
+                    &connection,
                 )
                 .unwrap()
-            },
-        );
-        let res = Server { req_id: Cell::new(1), dir, messages: Default::default(), worker };
+            })
+            .expect("failed to spawn a thread");
+
+        let res =
+            Server { req_id: Cell::new(1), dir, messages: Default::default(), client, _thread };
 
         for (path, text) in files {
-            res.send_notification(Notification::new(
-                "textDocument/didOpen".to_string(),
-                &DidOpenTextDocumentParams {
-                    text_document: TextDocumentItem {
-                        uri: Url::from_file_path(path).unwrap(),
-                        language_id: "rust".to_string(),
-                        version: 0,
-                        text,
-                    },
+            res.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
+                text_document: TextDocumentItem {
+                    uri: Url::from_file_path(path).unwrap(),
+                    language_id: "rust".to_string(),
+                    version: 0,
+                    text,
                 },
-            ))
+            })
         }
         res
     }
@@ -184,7 +184,7 @@ impl Server {
     }
     fn send_request_(&self, r: Request) -> Value {
         let id = r.id.clone();
-        self.worker.sender().send(r.into()).unwrap();
+        self.client.sender.send(r.into()).unwrap();
         while let Some(msg) = self.recv() {
             match msg {
                 Message::Request(req) => panic!("unexpected request: {:?}", req),
@@ -225,13 +225,13 @@ impl Server {
         }
     }
     fn recv(&self) -> Option<Message> {
-        recv_timeout(&self.worker.receiver()).map(|msg| {
+        recv_timeout(&self.client.receiver).map(|msg| {
             self.messages.borrow_mut().push(msg.clone());
             msg
         })
     }
     fn send_notification(&self, not: Notification) {
-        self.worker.sender().send(Message::Notification(not)).unwrap();
+        self.client.sender.send(Message::Notification(not)).unwrap();
     }
 
     pub fn path(&self) -> &Path {
@@ -241,7 +241,8 @@ impl Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        self.send_request::<Shutdown>(());
+        self.request::<Shutdown>((), Value::Null);
+        self.notification::<Exit>(());
     }
 }
 

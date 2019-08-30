@@ -8,6 +8,7 @@ mod project_model;
 pub mod req;
 pub mod config;
 mod world;
+mod thread_worker;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 pub use crate::{
