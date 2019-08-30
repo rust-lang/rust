@@ -1,8 +1,8 @@
-error[E0658]: The use of std::mem::transmute() is gated in constants
-  --> $DIR/feature-gate-const_transmute.rs:6:38
+error[E0658]: The use of std::mem::transmute() is gated in const fns
+  --> $DIR/feature-gate-const_transmute.rs:10:43
    |
-LL | const TRANSMUTED_U32: u32 = unsafe { mem::transmute(Foo(3)) };
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^
+LL | const fn transmute_fn() -> u32 { unsafe { mem::transmute(Foo(3)) } }
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/53605
    = help: add `#![feature(const_transmute)]` to the crate attributes to enable

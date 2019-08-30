@@ -1321,14 +1321,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                 // special intrinsic that can be called diretly without an intrinsic
                                 // feature gate needs a language feature gate
                                 "transmute" => {
-                                    if self.mode.requires_const_checking() {
-                                        // const eval transmute calls only with the feature gate
+                                    if let Mode::ConstFn = self.mode {
+                                        // permit transmute calls in const fns only with the feature
+                                        // gate. Anywhere else they are fine
                                         if !self.tcx.features().const_transmute {
                                             emit_feature_err(
                                                 &self.tcx.sess.parse_sess, sym::const_transmute,
                                                 self.span, GateIssue::Language,
                                                 &format!("The use of std::mem::transmute() \
-                                                is gated in {}s", self.mode));
+                                                is gated in const fns"));
                                         }
                                     }
                                 }
