@@ -195,7 +195,6 @@ impl Compiler {
 
     pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
         self.queries.prepare_outputs.compute(|| {
-            self.lower_to_hir()?;
             let krate = self.expansion()?;
             let krate = krate.peek();
             let crate_name = self.crate_name()?;
