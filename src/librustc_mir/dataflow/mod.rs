@@ -453,6 +453,10 @@ where
     {
         self.flow_state.each_gen_bit(f)
     }
+
+    pub fn get(&self) -> &BitSet<BD::Idx> {
+        self.flow_state.as_dense()
+    }
 }
 
 pub fn state_for_location<'tcx, T: BitDenotation<'tcx>>(loc: Location,
