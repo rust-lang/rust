@@ -5,7 +5,7 @@ pub(crate) mod pending_requests;
 use std::{error::Error, fmt, path::PathBuf, sync::Arc, time::Instant};
 
 use crossbeam_channel::{select, unbounded, Receiver, RecvError, Sender};
-use lsp_server::{handle_shutdown, ErrorCode, Message, Notification, Request, RequestId, Response};
+use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{ClientCapabilities, NumberOrString};
 use ra_ide_api::{Canceled, FeatureFlags, FileId, LibraryData};
 use ra_prof::profile;
@@ -51,8 +51,7 @@ pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     client_caps: ClientCapabilities,
     config: ServerConfig,
-    msg_receiver: &Receiver<Message>,
-    msg_sender: &Sender<Message>,
+    connection: &Connection,
 ) -> Result<()> {
     log::info!("server_config: {:#?}", config);
     // FIXME: support dynamic workspace loading.
@@ -69,7 +68,7 @@ pub fn main_loop(
                     show_message(
                         req::MessageType::Error,
                         format!("rust-analyzer failed to load workspace: {}", e),
-                        msg_sender,
+                        &connection.sender,
                     );
                 }
             }
@@ -89,7 +88,7 @@ pub fn main_loop(
                 show_message(
                     req::MessageType::Error,
                     format!("unknown feature flag: {:?}", flag),
-                    msg_sender,
+                    &connection.sender,
                 );
             }
         }
@@ -119,8 +118,7 @@ pub fn main_loop(
     log::info!("server initialized, serving requests");
     let main_res = main_loop_inner(
         &pool,
-        msg_sender,
-        msg_receiver,
+        connection,
         task_sender,
         task_receiver.clone(),
         &mut state,
@@ -130,7 +128,7 @@ pub fn main_loop(
     log::info!("waiting for tasks to finish...");
     task_receiver
         .into_iter()
-        .for_each(|task| on_task(task, msg_sender, &mut pending_requests, &mut state));
+        .for_each(|task| on_task(task, &connection.sender, &mut pending_requests, &mut state));
     log::info!("...tasks have finished");
     log::info!("joining threadpool...");
     drop(pool);
@@ -196,8 +194,7 @@ impl fmt::Debug for Event {
 
 fn main_loop_inner(
     pool: &ThreadPool,
-    msg_sender: &Sender<Message>,
-    msg_receiver: &Receiver<Message>,
+    connection: &Connection,
     task_sender: Sender<Task>,
     task_receiver: Receiver<Task>,
     state: &mut WorldState,
@@ -214,7 +211,7 @@ fn main_loop_inner(
     loop {
         log::trace!("selecting");
         let event = select! {
-            recv(msg_receiver) -> msg => match msg {
+            recv(&connection.receiver) -> msg => match msg {
                 Ok(msg) => Event::Msg(msg),
                 Err(RecvError) => Err("client exited without shutdown")?,
             },
@@ -238,7 +235,7 @@ fn main_loop_inner(
         let mut state_changed = false;
         match event {
             Event::Task(task) => {
-                on_task(task, msg_sender, pending_requests, state);
+                on_task(task, &connection.sender, pending_requests, state);
                 state.maybe_collect_garbage();
             }
             Event::Vfs(task) => {
@@ -252,7 +249,7 @@ fn main_loop_inner(
             }
             Event::Msg(msg) => match msg {
                 Message::Request(req) => {
-                    if handle_shutdown(&req, msg_sender) {
+                    if connection.handle_shutdown(&req)? {
                         return Ok(());
                     };
                     on_request(
@@ -260,13 +257,13 @@ fn main_loop_inner(
                         pending_requests,
                         pool,
                         &task_sender,
-                        msg_sender,
+                        &connection.sender,
                         loop_start,
                         req,
                     )?
                 }
                 Message::Notification(not) => {
-                    on_notification(msg_sender, state, pending_requests, &mut subs, not)?;
+                    on_notification(&connection.sender, state, pending_requests, &mut subs, not)?;
                     state_changed = true;
                 }
                 Message::Response(resp) => log::error!("unexpected response: {:?}", resp),
@@ -294,7 +291,7 @@ fn main_loop_inner(
             let n_packages: usize = state.workspaces.iter().map(|it| it.n_packages()).sum();
             if state.feature_flags().get("notifications.workspace-loaded") {
                 let msg = format!("workspace loaded, {} rust packages", n_packages);
-                show_message(req::MessageType::Info, msg, msg_sender);
+                show_message(req::MessageType::Info, msg, &connection.sender);
             }
             // Only send the notification first time
             send_workspace_notification = false;

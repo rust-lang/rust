@@ -1,5 +1,5 @@
 use flexi_logger::{Duplicate, Logger};
-use lsp_server::{run_server, stdio_transport, LspServerError};
+use lsp_server::Connection;
 
 use ra_lsp_server::{show_message, Result, ServerConfig};
 use ra_prof;
@@ -29,46 +29,46 @@ fn main() -> Result<()> {
 }
 
 fn main_inner() -> Result<()> {
-    let (sender, receiver, io_threads) = stdio_transport();
     let cwd = std::env::current_dir()?;
-    let caps = serde_json::to_value(ra_lsp_server::server_capabilities()).unwrap();
-    run_server(caps, sender, receiver, |params, s, r| {
-        let params: lsp_types::InitializeParams = serde_json::from_value(params)?;
-        let root = params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
+    let (connection, io_threads) = Connection::stdio();
+    let server_capabilities = serde_json::to_value(ra_lsp_server::server_capabilities()).unwrap();
 
-        let workspace_roots = params
-            .workspace_folders
-            .map(|workspaces| {
-                workspaces
-                    .into_iter()
-                    .filter_map(|it| it.uri.to_file_path().ok())
-                    .collect::<Vec<_>>()
-            })
-            .filter(|workspaces| !workspaces.is_empty())
-            .unwrap_or_else(|| vec![root]);
+    let initialize_params = connection.initialize(server_capabilities)?;
+    let initialize_params: lsp_types::InitializeParams = serde_json::from_value(initialize_params)?;
 
-        let server_config: ServerConfig = params
-            .initialization_options
-            .and_then(|v| {
-                serde_json::from_value(v)
-                    .map_err(|e| {
-                        log::error!("failed to deserialize config: {}", e);
-                        show_message(
-                            lsp_types::MessageType::Error,
-                            format!("failed to deserialize config: {}", e),
-                            s,
-                        );
-                    })
-                    .ok()
-            })
-            .unwrap_or_default();
+    let root = initialize_params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
 
-        ra_lsp_server::main_loop(workspace_roots, params.capabilities, server_config, r, s)
-    })
-    .map_err(|err| match err {
-        LspServerError::ProtocolError(err) => err.into(),
-        LspServerError::ServerError(err) => err,
-    })?;
+    let workspace_roots = initialize_params
+        .workspace_folders
+        .map(|workspaces| {
+            workspaces.into_iter().filter_map(|it| it.uri.to_file_path().ok()).collect::<Vec<_>>()
+        })
+        .filter(|workspaces| !workspaces.is_empty())
+        .unwrap_or_else(|| vec![root]);
+
+    let server_config: ServerConfig = initialize_params
+        .initialization_options
+        .and_then(|v| {
+            serde_json::from_value(v)
+                .map_err(|e| {
+                    log::error!("failed to deserialize config: {}", e);
+                    show_message(
+                        lsp_types::MessageType::Error,
+                        format!("failed to deserialize config: {}", e),
+                        &connection.sender,
+                    );
+                })
+                .ok()
+        })
+        .unwrap_or_default();
+
+    ra_lsp_server::main_loop(
+        workspace_roots,
+        initialize_params.capabilities,
+        server_config,
+        &connection,
+    )?;
+
     log::info!("shutting down IO...");
     io_threads.join()?;
     log::info!("... IO is down");

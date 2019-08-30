@@ -21,12 +21,13 @@ thread_worker = { path = "../thread_worker" }
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_ide_api = { path = "../ra_ide_api" }
-lsp-server = "0.1.0"
+lsp-server = "0.2.0"
 ra_project_model = { path = "../ra_project_model" }
 ra_prof = { path = "../ra_prof" }
 ra_vfs_glob = { path = "../ra_vfs_glob" }
 
 [dev-dependencies]
+jod-thread = "0.1.0"
 tempfile = "3"
 test_utils = { path = "../test_utils" }
 
