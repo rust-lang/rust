@@ -76,6 +76,7 @@ pub trait Error: Debug + Display {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// use std::error::Error;
     /// use std::fmt;
     ///
