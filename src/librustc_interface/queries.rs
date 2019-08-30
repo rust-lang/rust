@@ -2,17 +2,17 @@ use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
 
 use rustc_incremental::DepGraphFuture;
-use rustc::session::config::{OutputFilenames, OutputType};
+use rustc::session::config::OutputFilenames;
 use rustc::util::common::{time, ErrorReported};
 use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::ty::steal::Steal;
 use rustc::dep_graph::DepGraph;
+use std::any::Any;
 use std::cell::{Ref, RefMut, RefCell};
+use std::mem;
 use std::rc::Rc;
 use std::sync::mpsc;
-use std::any::Any;
-use std::mem;
 use syntax::{self, ast};
 
 /// Represent the result of a query.
@@ -267,22 +267,5 @@ impl Compiler {
 
             Ok(())
         })
-    }
-
-    pub fn compile(&self) -> Result<()> {
-        self.prepare_outputs()?;
-
-        if self.session().opts.output_types.contains_key(&OutputType::DepInfo)
-            && self.session().opts.output_types.len() == 1
-        {
-            return Ok(())
-        }
-
-        self.global_ctxt()?;
-
-        // Drop AST after creating GlobalCtxt to free memory
-        mem::drop(self.expansion()?.take());
-
-        self.codegen_and_link().map(|_| ())
     }
 }

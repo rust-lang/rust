@@ -62,6 +62,6 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     };
 
     interface::run_compiler(config, |compiler| {
-        compiler.compile().ok();
+        compiler.codegen_and_link().ok();
     });
 }
