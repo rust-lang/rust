@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "backtrace"
-version = "0.3.34"
+version = "0.3.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "backtrace-sys 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -56,7 +56,7 @@ name = "c2-chacha"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ppv-lite86 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -207,7 +207,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "goblin 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
- "indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "string-interner 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -219,7 +219,7 @@ name = "failure"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "backtrace 0.3.34 (registry+https://github.com/rust-lang/crates.io-index)",
+ "backtrace 0.3.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -257,7 +257,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "getrandom"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cfg-if 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -268,12 +268,12 @@ dependencies = [
 [[package]]
 name = "gimli"
 version = "0.19.0"
-source = "git+https://github.com/gimli-rs/gimli.git#91e38653f2f4d615d7acc5da1df2fcbec0b50eb0"
+source = "git+https://github.com/gimli-rs/gimli.git#1f1a9eb23993d3787a4e3389eade28a104bd91d0"
 dependencies = [
  "arrayvec 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "fallible-iterator 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -309,7 +309,7 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "1.0.2"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -319,7 +319,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "lazy_static"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -423,7 +423,7 @@ name = "rand"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "getrandom 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getrandom 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_chacha 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -444,7 +444,7 @@ name = "rand_core"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "getrandom 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "getrandom 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -507,7 +507,7 @@ dependencies = [
  "cranelift-simplejit 0.36.0 (git+https://github.com/bjorn3/cretonne.git?branch=do_not_remove_cg_clif_i128)",
  "faerie 0.10.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gimli 0.19.0 (git+https://github.com/gimli-rs/gimli.git)",
- "indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "indexmap 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)",
  "libloading 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "object 0.12.0 (git+https://github.com/gimli-rs/object.git)",
@@ -670,7 +670,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum adler32 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "7e522997b529f05601e05166c07ed17789691f562762c7f3b987263d2dedee5c"
 "checksum ar 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6c1afd66a96a235fa8eeec0ee757ec0d2c0db7cb89b4e04ae159f37952b97bd5"
 "checksum arrayvec 0.4.11 (registry+https://github.com/rust-lang/crates.io-index)" = "b8d73f9beda665eaa98ab9e4f7442bd4e7de6652587de55b2525e52e29c1b0ba"
-"checksum backtrace 0.3.34 (registry+https://github.com/rust-lang/crates.io-index)" = "b5164d292487f037ece34ec0de2fcede2faa162f085dd96d2385ab81b12765ba"
+"checksum backtrace 0.3.35 (registry+https://github.com/rust-lang/crates.io-index)" = "1371048253fa3bac6704bfd6bbfc922ee9bdcee8881330d40f308b81cc5adc55"
 "checksum backtrace-sys 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)" = "82a830b4ef2d1124a711c71d263c5abdc710ef8e907bd508c88be475cebc422b"
 "checksum bitflags 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3d155346769a6855b86399e9bc3814ab343cd3d62c7e985113d46a0ec3c281fd"
 "checksum byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "a7c3dd8985a7111efc5c80b44e23ecdd8c007de8ade3b96595387e812b957cf5"
@@ -696,14 +696,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum fallible-iterator 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 "checksum flate2 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)" = "2adaffba6388640136149e18ed080b77a78611c1e1d6de75aedcdf78df5d4682"
 "checksum gcc 0.3.55 (registry+https://github.com/rust-lang/crates.io-index)" = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
-"checksum getrandom 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "6171a6cc63fbabbe27c2b5ee268e8b7fe5dc1eb0dd2dfad537c1dfed6f69117e"
+"checksum getrandom 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "fc344b02d3868feb131e8b5fe2b9b0a1cc42942679af493061fc13b853243872"
 "checksum gimli 0.19.0 (git+https://github.com/gimli-rs/gimli.git)" = "<none>"
 "checksum goblin 0.0.22 (git+https://github.com/m4b/goblin?rev=e57f2d4e3a089dca89c63bcfc0dbde3e6d647f83)" = "<none>"
 "checksum goblin 0.0.22 (registry+https://github.com/rust-lang/crates.io-index)" = "7f55d53401eb2fd30afd025c570b1946b6966344acf21b42e31286f3bf89e6a8"
 "checksum goblin 0.0.23 (registry+https://github.com/rust-lang/crates.io-index)" = "ac56b4753b6b8c2e052ca30717e5a09acf1b02a2c1681bf3d883bd660e5d22bd"
-"checksum indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7e81a7c05f79578dbc15793d8b619db9ba32b4577003ef3af1a91c416798c58d"
+"checksum indexmap 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a4d6d89e0948bf10c08b9ecc8ac5b83f07f857ebe2c0cbe38de15b4e4f510356"
 "checksum itoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "501266b7edd0174f8530248f87f99c88fbe60ca4ef3dd486835b8d8d53136f7f"
-"checksum lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bc5729f27f159ddd61f4df6228e827e86643d4d3e7c32183cb30a1c08f604a14"
+"checksum lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 "checksum libc 0.2.62 (registry+https://github.com/rust-lang/crates.io-index)" = "34fcd2c08d2f832f376f4173a231990fa5aef4e99fb569867318a227ef4c06ba"
 "checksum libloading 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f2b111a074963af1d37a139918ac6d49ad1d0d5e47f72fd55388619691a7d753"
 "checksum log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)" = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
