@@ -65,12 +65,12 @@ impl<T: std::fmt::Debug> EmptySinglePair<T> {
 pub use EmptySinglePair::*;
 
 impl PassMode {
-    pub fn get_param_ty(self, fx: &FunctionCx<impl Backend>) -> EmptySinglePair<Type> {
+    pub fn get_param_ty(self, tcx: TyCtxt<'_>) -> EmptySinglePair<Type> {
         match self {
             PassMode::NoPass => Empty,
             PassMode::ByVal(clif_type) => Single(clif_type),
             PassMode::ByValPair(a, b) => Pair(a, b),
-            PassMode::ByRef => Single(fx.pointer_type),
+            PassMode::ByRef => Single(pointer_ty(tcx)),
         }
     }
 }
@@ -141,7 +141,7 @@ pub fn cvalue_for_param<'tcx>(
         return None;
     }
 
-    let clif_types = pass_mode.get_param_ty(fx);
+    let clif_types = pass_mode.get_param_ty(fx.tcx);
     let ebb_params = clif_types.map(|t| fx.bcx.append_ebb_param(start_ebb, t));
 
     #[cfg(debug_assertions)]

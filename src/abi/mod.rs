@@ -49,12 +49,7 @@ fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>, is_vtable_fn:
                 // See https://github.com/rust-lang/rust/blob/37b6a5e5e82497caf5353d9d856e4eb5d14cbe06/src/librustc/ty/layout.rs#L2519-L2572 for more info
                 layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.mk_mut_ptr(tcx.mk_unit()))).unwrap();
             }
-            match get_pass_mode(tcx, layout) {
-                PassMode::NoPass => Empty,
-                PassMode::ByVal(clif_ty) => Single(clif_ty),
-                PassMode::ByValPair(clif_ty_a, clif_ty_b) => Pair(clif_ty_a, clif_ty_b),
-                PassMode::ByRef => Single(pointer_ty(tcx)),
-            }.into_iter()
+            get_pass_mode(tcx, layout).get_param_ty(tcx).into_iter()
         }).flatten();
 
     let (params, returns) = match get_pass_mode(tcx, tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap()) {
