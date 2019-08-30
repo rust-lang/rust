@@ -192,9 +192,6 @@ crate struct SharedContext {
     /// The base-URL of the issue tracker for when an item has been tagged with
     /// an issue number.
     pub issue_tracker_base_url: Option<String>,
-    /// The given user css file which allow to customize the generated
-    /// documentation theme.
-    pub css_file_extension: Option<PathBuf>,
     /// The directories that have already been created in this doc run. Used to reduce the number
     /// of spurious `create_dir_all` calls.
     pub created_dirs: RefCell<FxHashSet<PathBuf>>,
@@ -209,9 +206,6 @@ crate struct SharedContext {
     /// Optional path string to be used to load static files on output pages. If not set, uses
     /// combinations of `../` to reach the documentation root.
     pub static_root_path: Option<String>,
-    /// If false, the `select` element to have search filtering by crates on rendered docs
-    /// won't be generated.
-    pub generate_search_filter: bool,
     /// Option disabled by default to generate files used by RLS and some other tools.
     pub generate_redirect_pages: bool,
     /// The fs handle we are working with.
@@ -545,14 +539,14 @@ pub fn run(mut krate: clean::Crate,
             favicon: String::new(),
             external_html,
             krate: krate.name.clone(),
+            css_file_extension: extension_css,
+            generate_search_filter,
         },
-        css_file_extension: extension_css,
         created_dirs: Default::default(),
         sort_modules_alphabetically,
         themes,
         resource_suffix,
         static_root_path,
-        generate_search_filter,
         generate_redirect_pages,
         fs: DocFS::new(&errors),
     };
@@ -932,7 +926,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             options.enable_minification)?;
     }
 
-    if let Some(ref css) = cx.shared.css_file_extension {
+    if let Some(ref css) = cx.shared.layout.css_file_extension {
         let out = cx.dst.join(&format!("theme{}.css", cx.shared.resource_suffix));
         let buffer = try_err!(fs::read_to_string(css), css);
         if !options.enable_minification {
@@ -1187,9 +1181,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                     .collect::<String>());
             let v = layout::render(&cx.shared.layout,
                            &page, &(""), &content,
-                           cx.shared.css_file_extension.is_some(),
-                           &cx.shared.themes,
-                           cx.shared.generate_search_filter);
+                           &cx.shared.themes);
             cx.shared.fs.write(&dst, v.as_bytes())?;
         }
     }
@@ -1940,9 +1932,7 @@ impl Context {
         };
         let v = layout::render(&self.shared.layout,
                        &page, &sidebar, &all,
-                       self.shared.css_file_extension.is_some(),
-                       &self.shared.themes,
-                       self.shared.generate_search_filter);
+                       &self.shared.themes);
         self.shared.fs.write(&final_file, v.as_bytes())?;
 
         // Generating settings page.
@@ -1958,10 +1948,7 @@ impl Context {
         let v = layout::render(
             &self.shared.layout,
             &page, &sidebar, &settings,
-            self.shared.css_file_extension.is_some(),
-            &themes,
-            self.shared.generate_search_filter,
-        );
+            &themes);
         self.shared.fs.write(&settings_file, v.as_bytes())?;
 
         Ok(())
@@ -2019,9 +2006,7 @@ impl Context {
             layout::render(&self.shared.layout, &page,
                            &Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
-                           self.shared.css_file_extension.is_some(),
-                           &self.shared.themes,
-                           self.shared.generate_search_filter)
+                           &self.shared.themes)
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {

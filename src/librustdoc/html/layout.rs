@@ -11,6 +11,12 @@ pub struct Layout {
     pub favicon: String,
     pub external_html: ExternalHtml,
     pub krate: String,
+    /// The given user css file which allow to customize the generated
+    /// documentation theme.
+    pub css_file_extension: Option<PathBuf>,
+    /// If false, the `select` element to have search filtering by crates on rendered docs
+    /// won't be generated.
+    pub generate_search_filter: bool,
 }
 
 pub struct Page<'a> {
@@ -30,9 +36,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     page: &Page<'_>,
     sidebar: &S,
     t: &T,
-    css_file_extension: bool,
     themes: &[PathBuf],
-    generate_search_filter: bool,
 ) -> String {
     let mut dst = Buffer::html();
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
@@ -164,7 +168,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     <script defer src=\"{root_path}search-index{suffix}.js\"></script>\
 </body>\
 </html>",
-    css_extension = if css_file_extension {
+    css_extension = if layout.css_file_extension.is_some() {
         format!("<link rel=\"stylesheet\" \
                        type=\"text/css\" \
                        href=\"{static_root_path}theme{suffix}.css\">",
@@ -228,7 +232,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                 root_path=page.root_path,
                 extra_script=e)
     }).collect::<String>(),
-    filter_crates=if generate_search_filter {
+    filter_crates=if layout.generate_search_filter {
         "<select id=\"crate-search\">\
             <option value=\"All crates\">All crates</option>\
         </select>"
