@@ -1955,9 +1955,8 @@ impl Context {
         let mut themes = self.shared.themes.clone();
         let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
         themes.push(PathBuf::from("settings.css"));
-        let layout = self.shared.layout.clone();
         let v = layout::render(
-            &layout,
+            &self.shared.layout,
             &page, &sidebar, &settings,
             self.shared.css_file_extension.is_some(),
             &themes,
