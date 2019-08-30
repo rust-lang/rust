@@ -9,7 +9,7 @@ LL |         100 ..= 200 => {}
 note: lint level defined here
   --> $DIR/exhaustive_integer_patterns.rs:4:9
    |
-LL | #![deny(unreachable_patterns)]
+LL | #![deny(overlapping_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
@@ -17,6 +17,12 @@ error: unreachable pattern
    |
 LL |         200 => {}
    |         ^^^
+   |
+note: lint level defined here
+  --> $DIR/exhaustive_integer_patterns.rs:3:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `128u8..=std::u8::MAX` not covered
   --> $DIR/exhaustive_integer_patterns.rs:28:11

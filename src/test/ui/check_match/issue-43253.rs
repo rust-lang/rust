@@ -1,7 +1,7 @@
 // check-pass
-
 #![feature(exclusive_range_pattern)]
 #![warn(unreachable_patterns)]
+#![warn(overlapping_patterns)]
 
 fn main() {
     // These cases should generate no warning.

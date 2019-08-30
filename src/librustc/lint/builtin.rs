@@ -81,6 +81,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub OVERLAPPING_PATTERNS,
+    Warn,
+    "detects overlapping patterns"
+}
+
+declare_lint! {
     pub UNUSED_MACROS,
     Warn,
     "detects macros that were not used"
@@ -423,6 +429,7 @@ declare_lint_pass! {
         DEAD_CODE,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
+        OVERLAPPING_PATTERNS,
         UNUSED_MACROS,
         WARNINGS,
         UNUSED_FEATURES,

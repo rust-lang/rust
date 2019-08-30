@@ -1741,7 +1741,7 @@ fn split_grouped_constructors<'p, 'tcx>(
 
                 if let (true, Some(hir_id)) = (!overlaps.is_empty(), hir_id) {
                     let mut err = tcx.struct_span_lint_hir(
-                        lint::builtin::UNREACHABLE_PATTERNS,
+                        lint::builtin::OVERLAPPING_PATTERNS,
                         hir_id,
                         ctor_range.span,
                         "multiple patterns covering the same range",

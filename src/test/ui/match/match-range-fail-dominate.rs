@@ -1,4 +1,4 @@
-#![deny(unreachable_patterns)]
+#![deny(unreachable_patterns, overlapping_patterns)]
 
 fn main() {
     match 5 {

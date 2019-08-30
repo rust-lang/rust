@@ -7,10 +7,10 @@ LL |       5 ..= 6 => { }
    |       ^^^^^^^ overlapping patterns
    |
 note: lint level defined here
-  --> $DIR/match-range-fail-dominate.rs:1:9
+  --> $DIR/match-range-fail-dominate.rs:1:31
    |
-LL | #![deny(unreachable_patterns)]
-   |         ^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(unreachable_patterns, overlapping_patterns)]
+   |                               ^^^^^^^^^^^^^^^^^^^^
 
 error: multiple patterns covering the same range
   --> $DIR/match-range-fail-dominate.rs:12:7
@@ -69,6 +69,12 @@ error: unreachable pattern
    |
 LL |       0.02f64 => {}
    |       ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/match-range-fail-dominate.rs:1:9
+   |
+LL | #![deny(unreachable_patterns, overlapping_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
 
 warning: floating-point types cannot be used in patterns
   --> $DIR/match-range-fail-dominate.rs:29:7
