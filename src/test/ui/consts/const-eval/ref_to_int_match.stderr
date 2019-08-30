@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ref_to_int_match.rs:23:1
+  --> $DIR/ref_to_int_match.rs:24:1
    |
 LL | const BAR: Int = unsafe { Foo { r: &42 }.f };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain (non-pointer) bytes
