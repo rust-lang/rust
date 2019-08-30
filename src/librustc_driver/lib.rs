@@ -383,16 +383,11 @@ pub fn run_compiler(
             mem::drop(compiler.expansion()?.take());
         }
 
-        compiler.ongoing_codegen()?;
-
-        // Drop GlobalCtxt after starting codegen to free memory
-        mem::drop(compiler.global_ctxt()?.take());
+        compiler.codegen_and_link()?;
 
         if sess.opts.debugging_opts.print_type_sizes {
             sess.code_stats.borrow().print_type_sizes();
         }
-
-        compiler.link()?;
 
         if sess.opts.debugging_opts.perf_stats {
             sess.print_perf_stats();

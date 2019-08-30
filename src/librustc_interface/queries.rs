@@ -83,8 +83,7 @@ pub(crate) struct Queries {
     codegen_channel: Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
                             Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>,
     global_ctxt: Query<BoxedGlobalCtxt>,
-    ongoing_codegen: Query<Box<dyn Any>>,
-    link: Query<()>,
+    codegen_and_link: Query<()>,
 }
 
 impl Compiler {
@@ -230,14 +229,14 @@ impl Compiler {
         })
     }
 
-    pub fn ongoing_codegen(&self) -> Result<&Query<Box<dyn Any>>> {
-        self.queries.ongoing_codegen.compute(|| {
+    pub fn codegen_and_link(&self) -> Result<&Query<()>> {
+        self.queries.codegen_and_link.compute(|| {
             let rx = self.codegen_channel()?.peek().1.steal();
             let outputs = self.prepare_outputs()?;
-            self.global_ctxt()?.peek_mut().enter(|tcx| {
+            let ongoing_codegen = self.global_ctxt()?.peek_mut().enter(|tcx| {
                 tcx.analysis(LOCAL_CRATE).ok();
 
-                // Don't do code generation if there were any errors
+                // Don't do code generation if there were any errors.
                 self.session().compile_status()?;
 
                 Ok(passes::start_codegen(
@@ -246,21 +245,16 @@ impl Compiler {
                     rx,
                     &*outputs.peek()
                 ))
-            })
-        })
-    }
+            })?;
 
-    pub fn link(&self) -> Result<&Query<()>> {
-        self.queries.link.compute(|| {
-            let sess = self.session();
-
-            let ongoing_codegen = self.ongoing_codegen()?.take();
+            // Drop GlobalCtxt after starting codegen to free memory.
+            mem::drop(self.global_ctxt()?.take());
 
             self.codegen_backend().join_codegen_and_link(
                 ongoing_codegen,
-                sess,
+                self.session(),
                 &*self.dep_graph()?.peek(),
-                &*self.prepare_outputs()?.peek(),
+                &*outputs.peek(),
             ).map_err(|_| ErrorReported)?;
 
             Ok(())
@@ -281,11 +275,6 @@ impl Compiler {
         // Drop AST after creating GlobalCtxt to free memory
         mem::drop(self.expansion()?.take());
 
-        self.ongoing_codegen()?;
-
-        // Drop GlobalCtxt after starting codegen to free memory
-        mem::drop(self.global_ctxt()?.take());
-
-        self.link().map(|_| ())
+        self.codegen_and_link().map(|_| ())
     }
 }
