@@ -1,3 +1,9 @@
+//! Check the validity invariant of a given value, and tell the user
+//! where in the value it got violated.
+//! In const context, this goes even further and tries to approximate const safety.
+//! That's useful because it means other passes (e.g. promotion) can rely on `const`s
+//! to be const-safe.
+
 use std::fmt::Write;
 use std::ops::RangeInclusive;
 

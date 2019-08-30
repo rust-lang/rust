@@ -6,6 +6,7 @@ enum Bar {
     C = 42,
     D = 99,
 }
+#[repr(C)]
 union Union {
     foo: &'static Foo,
     bar: &'static Bar,
