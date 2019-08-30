@@ -65,7 +65,7 @@ use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
-use crate::html::format::{AsyncSpace, ConstnessSpace};
+use crate::html::format::{Buffer, AsyncSpace, ConstnessSpace};
 use crate::html::format::{GenericBounds, WhereClause, href, AbiSpace, DefaultSpace};
 use crate::html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
 use crate::html::format::fmt_impl_for_trait_page;
@@ -1185,13 +1185,13 @@ themePicker.onblur = handleThemeButtonsBlur;
                                                 SlashChecker(s), s)
                                     })
                                     .collect::<String>());
-            let mut v = Vec::new();
-            try_err!(layout::render(&mut v, &cx.shared.layout,
-                                    &page, &(""), &content,
-                                    cx.shared.css_file_extension.is_some(),
-                                    &cx.shared.themes,
-                                    cx.shared.generate_search_filter), &dst);
-            cx.shared.fs.write(&dst, &v)?;
+            let mut v = Buffer::html();
+            layout::render(&mut v, &cx.shared.layout,
+                           &page, &(""), &content,
+                           cx.shared.css_file_extension.is_some(),
+                           &cx.shared.themes,
+                           cx.shared.generate_search_filter);
+            cx.shared.fs.write(&dst, v.into_inner().as_bytes())?;
         }
     }
 
@@ -1939,14 +1939,13 @@ impl Context {
         } else {
             String::new()
         };
-        let mut v = Vec::new();
-        try_err!(layout::render(&mut v, &self.shared.layout,
-                                &page, &sidebar, &all,
-                                self.shared.css_file_extension.is_some(),
-                                &self.shared.themes,
-                                self.shared.generate_search_filter),
-                 &final_file);
-        self.shared.fs.write(&final_file, &v)?;
+        let mut v = Buffer::html();
+        layout::render(&mut v, &self.shared.layout,
+                       &page, &sidebar, &all,
+                       self.shared.css_file_extension.is_some(),
+                       &self.shared.themes,
+                       self.shared.generate_search_filter);
+        self.shared.fs.write(&final_file, v.into_inner().as_bytes())?;
 
         // Generating settings page.
         let settings = Settings::new(self.shared.static_root_path.as_deref().unwrap_or("./"),
@@ -1959,23 +1958,24 @@ impl Context {
         let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
         themes.push(PathBuf::from("settings.css"));
         let layout = self.shared.layout.clone();
-        let mut v = Vec::new();
-        try_err!(layout::render(&mut v, &layout,
-                                &page, &sidebar, &settings,
-                                self.shared.css_file_extension.is_some(),
-                                &themes,
-                                self.shared.generate_search_filter),
-                 &settings_file);
-        self.shared.fs.write(&settings_file, &v)?;
+        let mut v = Buffer::html();
+        layout::render(
+            &mut v,
+            &layout,
+            &page, &sidebar, &settings,
+            self.shared.css_file_extension.is_some(),
+            &themes,
+            self.shared.generate_search_filter,
+        );
+        self.shared.fs.write(&settings_file, v.into_inner().as_bytes())?;
 
         Ok(())
     }
 
     fn render_item(&self,
-                   writer: &mut dyn io::Write,
+                   writer: &mut Buffer,
                    it: &clean::Item,
-                   pushname: bool)
-                   -> io::Result<()> {
+                   pushname: bool) {
         // A little unfortunate that this is done like this, but it sure
         // does make formatting *a lot* nicer.
         CURRENT_DEPTH.with(|slot| {
@@ -2027,7 +2027,7 @@ impl Context {
                            &Item{ cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
                            &self.shared.themes,
-                           self.shared.generate_search_filter)?;
+                           self.shared.generate_search_filter);
         } else {
             let mut url = self.root_path();
             if let Some(&(ref names, ty)) = cache().paths.get(&it.def_id) {
@@ -2036,10 +2036,9 @@ impl Context {
                     url.push_str("/");
                 }
                 url.push_str(&item_path(ty, names.last().unwrap()));
-                layout::redirect(writer, &url)?;
+                layout::redirect(writer, &url);
             }
         }
-        Ok(())
     }
 
     /// Non-parallelized version of rendering an item. This will take the input
@@ -2075,13 +2074,13 @@ impl Context {
 
             info!("Recursing into {}", self.dst.display());
 
-            let mut buf = Vec::new();
-            self.render_item(&mut buf, &item, false).unwrap();
+            let mut buf = Buffer::html();
+            self.render_item(&mut buf, &item, false);
             // buf will be empty if the module is stripped and there is no redirect for it
             if !buf.is_empty() {
                 self.shared.ensure_dir(&self.dst)?;
                 let joint_dst = self.dst.join("index.html");
-                scx.fs.write(&joint_dst, buf)?;
+                scx.fs.write(&joint_dst, buf.into_inner().as_bytes())?;
             }
 
             let m = match item.inner {
@@ -2110,8 +2109,8 @@ impl Context {
             self.dst = prev;
             self.current.pop().unwrap();
         } else if item.name.is_some() {
-            let mut buf = Vec::new();
-            self.render_item(&mut buf, &item, true).unwrap();
+            let mut buf = Buffer::html();
+            self.render_item(&mut buf, &item, true);
             // buf will be empty if the item is stripped and there is no redirect for it
             if !buf.is_empty() {
                 let name = item.name.as_ref().unwrap();
@@ -2119,7 +2118,7 @@ impl Context {
                 let file_name = &item_path(item_type, name);
                 self.shared.ensure_dir(&self.dst)?;
                 let joint_dst = self.dst.join(file_name);
-                self.shared.fs.write(&joint_dst, buf)?;
+                self.shared.fs.write(&joint_dst, buf.into_inner().as_bytes())?;
 
                 if !self.render_redirect_pages {
                     all.append(full_path(self, &item), &item_type);
@@ -2129,18 +2128,18 @@ impl Context {
                     // URL for the page.
                     let redir_name = format!("{}.{}.html", name, item_type.name_space());
                     let redir_dst = self.dst.join(redir_name);
-                    let mut v = Vec::new();
-                    try_err!(layout::redirect(&mut v, file_name), &redir_dst);
-                    self.shared.fs.write(&redir_dst, &v)?;
+                    let mut v = Buffer::html();
+                    layout::redirect(&mut v, file_name);
+                    self.shared.fs.write(&redir_dst, v.into_inner().as_bytes())?;
                 }
                 // If the item is a macro, redirect from the old macro URL (with !)
                 // to the new one (without).
                 if item_type == ItemType::Macro {
                     let redir_name = format!("{}.{}!.html", item_type, name);
                     let redir_dst = self.dst.join(redir_name);
-                    let mut v = Vec::new();
-                    try_err!(layout::redirect(&mut v, file_name), &redir_dst);
-                    self.shared.fs.write(&redir_dst, &v)?;
+                    let mut v = Buffer::html();
+                    layout::redirect(&mut v, file_name);
+                    self.shared.fs.write(&redir_dst, v.into_inner().as_bytes())?;
                 }
             }
         }
