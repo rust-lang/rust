@@ -44,7 +44,6 @@ pub fn codegen_return_param(
         None,
         ret_param,
         output_pass_mode,
-        ssa_analyzed[&RETURN_PLACE],
         ret_layout.ty,
     );
 }

@@ -5,20 +5,19 @@ use rustc::mir;
 use crate::prelude::*;
 use crate::abi::pass_mode::*;
 
-pub fn add_local_header_comment(fx: &mut FunctionCx<impl Backend>) {
+pub fn add_args_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(format!(
-        "msg   loc.idx    param    pass mode                            ssa flags  ty"
+        "kind  loc.idx   param    pass mode                            ty"
     ));
 }
 
 pub fn add_arg_comment<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    msg: &str,
+    kind: &str,
     local: mir::Local,
     local_field: Option<usize>,
     params: EmptySinglePair<Value>,
     pass_mode: PassMode,
-    ssa: crate::analyze::Flags,
     ty: Ty<'tcx>,
 ) {
     let local_field = if let Some(local_field) = local_field {
@@ -33,14 +32,20 @@ pub fn add_arg_comment<'tcx>(
     };
     let pass_mode = format!("{:?}", pass_mode);
     fx.add_global_comment(format!(
-        "{msg:5}{local:>3}{local_field:<5} {params:10} {pass_mode:36} {ssa:10} {ty:?}",
-        msg = msg,
+        "{kind:5}{local:>3}{local_field:<5} {params:10} {pass_mode:36} {ty:?}",
+        kind = kind,
         local = format!("{:?}", local),
         local_field = local_field,
         params = params,
         pass_mode = pass_mode,
-        ssa = format!("{:?}", ssa),
         ty = ty,
+    ));
+}
+
+pub fn add_locals_header_comment(fx: &mut FunctionCx<impl Backend>) {
+    fx.add_global_comment(String::new());
+    fx.add_global_comment(format!(
+        "kind  local ty                   size  align (abi,pref)"
     ));
 }
 
@@ -62,9 +67,9 @@ pub fn add_local_place_comments<'tcx>(
         CPlaceInner::Var(var) => {
             assert_eq!(local, var);
             fx.add_global_comment(format!(
-                "ssa   {:?}: {:?} size={} align={}, {}",
-                local,
-                ty,
+                "ssa   {:5} {:20} {:4}b {}, {}",
+                format!("{:?}", local),
+                format!("{:?}", ty),
                 size.bytes(),
                 align.abi.bytes(),
                 align.pref.bytes(),
@@ -82,9 +87,9 @@ pub fn add_local_place_comments<'tcx>(
             ),
         ),
         CPlaceInner::NoPlace => fx.add_global_comment(format!(
-            "zst   {:?}: {:?} size={} align={}, {}",
-            local,
-            ty,
+            "zst   {:5} {:20} {:4}b {}, {}",
+            format!("{:?}", local),
+            format!("{:?}", ty),
             size.bytes(),
             align.abi.bytes(),
             align.pref.bytes(),

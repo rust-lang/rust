@@ -220,10 +220,9 @@ pub fn codegen_fn_prelude(
     let ssa_analyzed = crate::analyze::analyze(fx);
 
     #[cfg(debug_assertions)]
-    self::comments::add_local_header_comment(fx);
+    self::comments::add_args_header_comment(fx);
 
     self::returning::codegen_return_param(fx, &ssa_analyzed, start_ebb);
-
 
     // None means pass_mode == NoPass
     enum ArgKind<'tcx> {
@@ -257,7 +256,6 @@ pub fn codegen_fn_prelude(
                         local,
                         Some(i),
                         arg_ty,
-                        ssa_analyzed[&local],
                     );
                     params.push(param);
                 }
@@ -265,13 +263,16 @@ pub fn codegen_fn_prelude(
                 (local, ArgKind::Spread(params), arg_ty)
             } else {
                 let param =
-                    cvalue_for_param(fx, start_ebb, local, None, arg_ty, ssa_analyzed[&local]);
+                    cvalue_for_param(fx, start_ebb, local, None, arg_ty);
                 (local, ArgKind::Normal(param), arg_ty)
             }
         })
         .collect::<Vec<(Local, ArgKind, Ty)>>();
 
     fx.bcx.switch_to_block(start_ebb);
+
+    #[cfg(debug_assertions)]
+    self::comments::add_locals_header_comment(fx);
 
     for (local, arg_kind, ty) in func_params {
         let layout = fx.layout_of(ty);

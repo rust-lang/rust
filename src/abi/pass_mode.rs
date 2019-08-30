@@ -132,7 +132,6 @@ pub fn cvalue_for_param<'tcx>(
     local: mir::Local,
     local_field: Option<usize>,
     arg_ty: Ty<'tcx>,
-    ssa_flags: crate::analyze::Flags,
 ) -> Option<CValue<'tcx>> {
     let layout = fx.layout_of(arg_ty);
     let pass_mode = get_pass_mode(fx.tcx, fx.layout_of(arg_ty));
@@ -152,7 +151,6 @@ pub fn cvalue_for_param<'tcx>(
         local_field,
         ebb_params,
         pass_mode,
-        ssa_flags,
         arg_ty,
     );
 
