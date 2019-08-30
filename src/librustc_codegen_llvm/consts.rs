@@ -25,12 +25,12 @@ use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 use std::ffi::{CStr, CString};
 
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
-    let mut llvals = Vec::with_capacity(alloc.relocations.len() + 1);
+    let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
 
     let mut next_offset = 0;
-    for &(offset, ((), alloc_id)) in alloc.relocations.iter() {
+    for &(offset, ((), alloc_id)) in alloc.relocations().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
@@ -455,7 +455,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                 //
                 // We could remove this hack whenever we decide to drop macOS 10.10 support.
                 if self.tcx.sess.target.target.options.is_like_osx {
-                    assert_eq!(alloc.relocations.len(), 0);
+                    assert_eq!(alloc.relocations().len(), 0);
 
                     let is_zeroed = {
                         // Treats undefined bytes as if they were defined with the byte value that
@@ -490,7 +490,7 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
                         section.as_str().as_ptr() as *const _,
                         section.as_str().len() as c_uint,
                     );
-                    assert!(alloc.relocations.is_empty());
+                    assert!(alloc.relocations().is_empty());
 
                     // The `inspect` method is okay here because we checked relocations, and
                     // because we are doing this access to inspect the final interpreter state (not

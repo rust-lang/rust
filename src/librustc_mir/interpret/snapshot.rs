@@ -287,7 +287,6 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
         let Allocation {
-            relocations,
             size,
             align,
             mutability,
@@ -300,7 +299,9 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
         // influence interpreter exeuction, but only to detect the error of cycles in evalution
         // dependencies.
         let bytes = self.inspect_with_undef_and_ptr_outside_interpreter(all_bytes);
+
         let undef_mask = self.undef_mask();
+        let relocations = self.relocations();
 
         AllocationSnapshot {
             bytes,
