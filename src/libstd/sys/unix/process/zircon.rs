@@ -3,7 +3,7 @@
 use crate::convert::TryInto;
 use crate::io;
 use crate::os::raw::c_char;
-use crate::u64;
+use crate::i64;
 
 use libc::{c_int, c_void, size_t};
 
@@ -14,8 +14,8 @@ pub type zx_status_t = i32;
 
 pub const ZX_HANDLE_INVALID: zx_handle_t = 0;
 
-pub type zx_time_t = u64;
-pub const ZX_TIME_INFINITE : zx_time_t = u64::MAX;
+pub type zx_time_t = i64;
+pub const ZX_TIME_INFINITE : zx_time_t = i64::MAX;
 
 pub type zx_signals_t = u32;
 
