@@ -462,6 +462,17 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "language items are subject to change",
     ),
     (
+        sym::rustc_diagnostic_item,
+        Normal,
+        template!(NameValueStr: "name"),
+        Gated(
+            Stability::Unstable,
+            sym::rustc_attrs,
+            "diagnostic items compiler internal support for linting",
+            cfg_fn!(rustc_attrs),
+        ),
+    ),
+    (
         sym::no_debug, Whitelisted, template!(Word),
         Gated(
             Stability::Deprecated("https://github.com/rust-lang/rust/issues/29721", None),

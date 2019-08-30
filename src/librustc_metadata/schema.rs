@@ -176,6 +176,7 @@ pub struct CrateRoot<'tcx> {
     pub lib_features: Lazy<[(Symbol, Option<Symbol>)]>,
     pub lang_items: Lazy<[(DefIndex, usize)]>,
     pub lang_items_missing: Lazy<[lang_items::LangItem]>,
+    pub diagnostic_items: Lazy<[(Symbol, DefIndex)]>,
     pub native_libraries: Lazy<[NativeLibrary]>,
     pub foreign_modules: Lazy<[ForeignModule]>,
     pub source_map: Lazy<[syntax_pos::SourceFile]>,

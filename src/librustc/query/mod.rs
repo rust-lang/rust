@@ -804,7 +804,7 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        // Lifetime resolution. See `middle::resolve_lifetimes`.
+        /// Lifetime resolution. See `middle::resolve_lifetimes`.
         query resolve_lifetimes(_: CrateNum) -> &'tcx ResolveLifetimes {
             desc { "resolving lifetimes" }
         }
@@ -846,13 +846,30 @@ rustc_queries! {
             -> &'tcx [(Symbol, Option<Symbol>)] {
             desc { "calculating the lib features defined in a crate" }
         }
+        /// Returns the lang items defined in another crate by loading it from metadata.
+        // FIXME: It is illegal to pass a `CrateNum` other than `LOCAL_CRATE` here, just get rid
+        // of that argument?
         query get_lang_items(_: CrateNum) -> &'tcx LanguageItems {
             eval_always
             desc { "calculating the lang items map" }
         }
+
+        /// Returns all diagnostic items defined in all crates
+        query all_diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
+            eval_always
+            desc { "calculating the diagnostic items map" }
+        }
+
+        /// Returns the lang items defined in another crate by loading it from metadata.
         query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
             desc { "calculating the lang items defined in a crate" }
         }
+
+        /// Returns the diagnostic items defined in a crate
+        query diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
+            desc { "calculating the diagnostic items map in a crate" }
+        }
+
         query missing_lang_items(_: CrateNum) -> &'tcx [LangItem] {
             desc { "calculating the missing lang items in a crate" }
         }

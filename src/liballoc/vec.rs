@@ -291,6 +291,7 @@ use crate::raw_vec::RawVec;
 /// [`reserve`]: ../../std/vec/struct.Vec.html#method.reserve
 /// [owned slice]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(all(not(bootstrap), not(test)), rustc_diagnostic_item = "vec_type")]
 pub struct Vec<T> {
     buf: RawVec<T>,
     len: usize,

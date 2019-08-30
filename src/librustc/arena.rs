@@ -94,6 +94,10 @@ macro_rules! arena_types {
                         rustc::hir::def_id::CrateNum
                     >
                 >,
+            [few] diagnostic_items: rustc_data_structures::fx::FxHashMap<
+                syntax::symbol::Symbol,
+                rustc::hir::def_id::DefId,
+            >,
             [few] resolve_lifetimes: rustc::middle::resolve_lifetime::ResolveLifetimes,
             [decode] generic_predicates: rustc::ty::GenericPredicates<'tcx>,
             [few] lint_levels: rustc::lint::LintLevelMap,
