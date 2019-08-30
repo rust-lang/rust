@@ -15,9 +15,8 @@ log = "0.4.3"
 lsp-types = { version = "0.60.0", features = ["proposed"] }
 rustc-hash = "1.0"
 parking_lot = "0.9.0"
-
+jod-thread = "0.1.0"
 ra_vfs = "0.3.0"
-thread_worker = { path = "../thread_worker" }
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_ide_api = { path = "../ra_ide_api" }
@@ -27,7 +26,6 @@ ra_prof = { path = "../ra_prof" }
 ra_vfs_glob = { path = "../ra_vfs_glob" }
 
 [dev-dependencies]
-jod-thread = "0.1.0"
 tempfile = "3"
 test_utils = { path = "../test_utils" }
 

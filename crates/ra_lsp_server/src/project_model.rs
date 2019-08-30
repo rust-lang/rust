@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use thread_worker::Worker;
-
-use crate::Result;
+use crate::{thread_worker::Worker, Result};
 
 pub use ra_project_model::{
     CargoWorkspace, Package, ProjectWorkspace, Sysroot, Target, TargetKind,
