@@ -121,9 +121,7 @@ impl<'a> SourceCollector<'a> {
         };
         let v = layout::render(&self.scx.layout,
                        &page, &(""), &Source(contents),
-                       self.scx.css_file_extension.is_some(),
-                       &self.scx.themes,
-                       self.scx.generate_search_filter);
+                       &self.scx.themes);
         self.scx.fs.write(&cur, v.as_bytes())?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
