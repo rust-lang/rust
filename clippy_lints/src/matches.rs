@@ -624,6 +624,24 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
             } else {
                 "as_mut"
             };
+
+            let output_ty = cx.tables.expr_ty(expr);
+            let input_ty = cx.tables.expr_ty(ex);
+
+            let cast = if_chain! {
+                if let ty::Adt(_, substs) = input_ty.sty;
+                let input_ty = substs.type_at(0);
+                if let ty::Adt(_, substs) = output_ty.sty;
+                let output_ty = substs.type_at(0);
+                if let ty::Ref(_, output_ty, _) = output_ty.sty;
+                if input_ty != output_ty;
+                then {
+                    ".map(|x| x as _)"
+                } else {
+                    ""
+                }
+            };
+
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
@@ -632,9 +650,10 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
                 &format!("use {}() instead", suggestion),
                 "try this",
                 format!(
-                    "{}.{}()",
+                    "{}.{}(){}",
                     snippet_with_applicability(cx, ex.span, "_", &mut applicability),
-                    suggestion
+                    suggestion,
+                    cast,
                 ),
                 applicability,
             )
