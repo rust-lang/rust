@@ -4,7 +4,6 @@ use crate::fold::DocFolder;
 use crate::html::layout;
 use crate::html::render::{Error, SharedContext, BASIC_KEYWORDS};
 use crate::html::highlight;
-use crate::html::format::Buffer;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -106,7 +105,6 @@ impl<'a> SourceCollector<'a> {
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let mut v = Buffer::html();
         let title = format!("{} -- source", cur.file_name().expect("failed to get file name")
                                                .to_string_lossy());
         let desc = format!("Source to the Rust file `{}`.", filename);
@@ -121,12 +119,12 @@ impl<'a> SourceCollector<'a> {
             extra_scripts: &[&format!("source-files{}", self.scx.resource_suffix)],
             static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
-        layout::render(&mut v, &self.scx.layout,
+        let v = layout::render(&self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
                        &self.scx.themes,
                        self.scx.generate_search_filter);
-        self.scx.fs.write(&cur, v.into_inner().as_bytes())?;
+        self.scx.fs.write(&cur, v.as_bytes())?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
     }
