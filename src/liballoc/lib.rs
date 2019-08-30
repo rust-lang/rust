@@ -77,10 +77,12 @@
 #![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
+#![feature(array_error_internals)]
 #![feature(box_into_raw_non_null)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
+#![feature(char_error_internals)]
 #![feature(coerce_unsized)]
 #![feature(const_generic_impls_guard)]
 #![feature(const_generics)]
@@ -93,9 +95,11 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(fundamental)]
+#![feature(int_error_internals)]
 #![feature(internal_uninit_const)]
 #![feature(lang_items)]
 #![feature(libc)]
+#![feature(never_type)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
@@ -166,6 +170,8 @@ pub mod slice;
 pub mod str;
 pub mod string;
 pub mod vec;
+
+pub mod error;
 
 #[cfg(not(test))]
 mod std {

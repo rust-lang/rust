@@ -13,18 +13,19 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
+use core::any::TypeId;
 use core::array;
+use core::cell;
+use core::char;
+use core::fmt::{self, Debug, Display};
+use core::mem::transmute;
+use core::num;
+use core::str;
 
 use crate::alloc::{AllocErr, LayoutErr, CannotReallocInPlace};
-use crate::any::TypeId;
 use crate::borrow::Cow;
-use crate::cell;
-use crate::char;
-use crate::fmt::{self, Debug, Display};
-use crate::mem::transmute;
-use crate::num;
-use crate::str;
-use crate::string;
+use crate::boxed::Box;
+use crate::string::{self, String};
 
 /// `Error` is a trait representing the basic expectations for error values,
 /// i.e., values of type `E` in [`Result<T, E>`]. Errors must describe
@@ -38,9 +39,9 @@ use crate::string;
 /// provide its own errors while also revealing some of the implementation for
 /// debugging via [`source`] chains.
 ///
-/// [`Result<T, E>`]: ../result/enum.Result.html
-/// [`Display`]: ../fmt/trait.Display.html
-/// [`Debug`]: ../fmt/trait.Debug.html
+/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Display`]: ../../std/fmt/trait.Display.html
+/// [`Debug`]: ../../std/fmt/trait.Debug.html
 /// [`source`]: trait.Error.html#method.source
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
@@ -52,7 +53,7 @@ pub trait Error: Debug + Display {
     ///
     /// To obtain error description as a string, use `to_string()`.
     ///
-    /// [`Display`]: ../fmt/trait.Display.html
+    /// [`Display`]: ../../std/fmt/trait.Display.html
     ///
     /// # Examples
     ///
@@ -891,7 +892,7 @@ impl dyn Error + Send + Sync {
 #[cfg(test)]
 mod tests {
     use super::Error;
-    use crate::fmt;
+    use core::fmt;
 
     #[derive(Debug, PartialEq)]
     struct A;

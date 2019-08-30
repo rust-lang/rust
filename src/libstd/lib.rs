@@ -447,6 +447,9 @@ pub use core::hint;
 #[stable(feature = "core_array", since = "1.36.0")]
 pub use core::array;
 
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::error;
+
 pub mod f32;
 pub mod f64;
 
@@ -455,7 +458,6 @@ pub mod thread;
 pub mod ascii;
 pub mod collections;
 pub mod env;
-pub mod error;
 pub mod ffi;
 pub mod fs;
 pub mod io;
