@@ -1,9 +1,9 @@
 use std::fmt;
-use std::io;
 use std::path::PathBuf;
 
 use crate::externalfiles::ExternalHtml;
 use crate::html::render::SlashChecker;
+use crate::html::format::Buffer;
 
 #[derive(Clone)]
 pub struct Layout {
@@ -26,7 +26,7 @@ pub struct Page<'a> {
 }
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
-    dst: &mut dyn io::Write,
+    dst: &mut Buffer,
     layout: &Layout,
     page: &Page<'_>,
     sidebar: &S,
@@ -34,7 +34,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     css_file_extension: bool,
     themes: &[PathBuf],
     generate_search_filter: bool,
-) -> io::Result<()> {
+) {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
     write!(dst,
 "<!DOCTYPE html>\
@@ -238,7 +238,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     )
 }
 
-pub fn redirect(dst: &mut dyn io::Write, url: &str) -> io::Result<()> {
+pub fn redirect(dst: &mut Buffer, url: &str) {
     // <script> triggers a redirect before refresh, so this is fine.
     write!(dst,
 r##"<!DOCTYPE html>
