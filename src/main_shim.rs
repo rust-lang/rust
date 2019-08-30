@@ -72,7 +72,7 @@ pub fn maybe_create_entry_wrapper(
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
             let call_inst = if use_start_lang_item {
-                let start_def_id = tcx.require_lang_item(StartFnLangItem);
+                let start_def_id = tcx.require_lang_item(StartFnLangItem, None);
                 let start_instance = Instance::resolve(
                     tcx,
                     ParamEnv::reveal_all(),
