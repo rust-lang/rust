@@ -1,6 +1,6 @@
 //! Traits for working with Errors.
 
-#![unstable(feature = "alloc_error", reason = "Error trait in liballoc is unstable", issue="0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 // A note about crates and the facade:
 //
