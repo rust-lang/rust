@@ -61,6 +61,14 @@ $RUSTC example/mod_bench.rs --crate-type bin
 #echo "[BUILD] sysroot in release mode"
 #./build_sysroot/build_sysroot.sh --release
 
+pushd simple-raytracer
+echo "[BENCH] ebobby/simple-raytracer"
+cargo clean && ../cargo.sh build
+cp ./target/*/debug/main ./raytracer_cg_clif
+
+hyperfine --runs ${RUN_RUNS:-10} ./raytracer_cg_llvm ./raytracer_cg_clif
+popd
+
 pushd regex
 echo "[TEST] rust-lang/regex example shootout-regex-dna"
 ../cargo.sh clean
