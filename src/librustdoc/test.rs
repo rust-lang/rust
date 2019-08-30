@@ -263,6 +263,7 @@ fn run_test(
     for extern_str in &options.extern_strs {
         compiler.arg("--extern").arg(&extern_str);
     }
+    compiler.arg("-Ccodegen-units=1");
     for codegen_options_str in &options.codegen_options_strs {
         compiler.arg("-C").arg(&codegen_options_str);
     }
