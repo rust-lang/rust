@@ -11,13 +11,13 @@ use ra_ide_api::{
     Analysis, AnalysisChange, AnalysisHost, CrateGraph, FeatureFlags, FileId, LibraryData,
     SourceRootId,
 };
+use ra_project_model::ProjectWorkspace;
 use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask};
 use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
 
 use crate::{
     main_loop::pending_requests::{CompletedRequest, LatestRequests},
-    project_model::ProjectWorkspace,
     LspError, Result,
 };
 
@@ -35,6 +35,7 @@ pub struct Options {
 #[derive(Debug)]
 pub struct WorldState {
     pub options: Options,
+    //FIXME: this belongs to `LoopState` rather than to `WorldState`
     pub roots_to_scan: usize,
     pub roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
