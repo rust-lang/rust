@@ -3,7 +3,6 @@ use std::path::PathBuf;
 
 use crate::externalfiles::ExternalHtml;
 use crate::html::render::SlashChecker;
-use crate::html::format::Buffer;
 
 #[derive(Clone)]
 pub struct Layout {
@@ -38,10 +37,8 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     t: &T,
     themes: &[PathBuf],
 ) -> String {
-    let mut dst = Buffer::html();
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
-    write!(dst,
-"<!DOCTYPE html>\
+    format!("<!DOCTYPE html>\
 <html lang=\"en\">\
 <head>\
     <meta charset=\"utf-8\">\
@@ -239,8 +236,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     } else {
         ""
     },
-    );
-    dst.into_inner()
+    )
 }
 
 pub fn redirect(url: &str) -> String {
