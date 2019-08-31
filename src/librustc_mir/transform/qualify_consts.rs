@@ -1648,9 +1648,9 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
             remove_drop_and_storage_dead_on_promoted_locals(body, promoted_temps);
         }
 
-        if let Mode::Static = mode {
+        if mode == Mode::Static && !tcx.has_attr(def_id, sym::thread_local) {
             // `static`s (not `static mut`s) which are not `#[thread_local]` must be `Sync`.
-            check_non_thread_local_static_is_sync(tcx, body, def_id, hir_id);
+            check_static_is_sync(tcx, body, hir_id);
         }
     }
 }
@@ -1739,17 +1739,7 @@ fn remove_drop_and_storage_dead_on_promoted_locals(
     }
 }
 
-fn check_non_thread_local_static_is_sync(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    def_id: DefId,
-    hir_id: HirId,
-) {
-    // `#[thread_local]` statics don't have to be `Sync`.
-    if tcx.has_attr(def_id, sym::thread_local) {
-        return;
-    }
-
+fn check_static_is_sync(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, hir_id: HirId) {
     let ty = body.return_ty();
     tcx.infer_ctxt().enter(|infcx| {
         let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
