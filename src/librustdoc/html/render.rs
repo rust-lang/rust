@@ -1757,8 +1757,7 @@ impl AllTypes {
     }
 }
 
-fn print_entries(f: &mut fmt::Formatter<'_>, e: &FxHashSet<ItemEntry>, title: &str,
-                 class: &str) -> fmt::Result {
+fn print_entries(f: &mut Buffer, e: &FxHashSet<ItemEntry>, title: &str, class: &str) {
     if !e.is_empty() {
         let mut e: Vec<&ItemEntry> = e.iter().collect();
         e.sort();
@@ -1766,39 +1765,38 @@ fn print_entries(f: &mut fmt::Formatter<'_>, e: &FxHashSet<ItemEntry>, title: &s
                title,
                Escape(title),
                class,
-               e.iter().map(|s| format!("<li>{}</li>", s)).collect::<String>())?;
+               e.iter().map(|s| format!("<li>{}</li>", s)).collect::<String>());
     }
-    Ok(())
 }
 
-impl fmt::Display for AllTypes {
-fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f,
-"<h1 class='fqn'>\
-    <span class='out-of-band'>\
-        <span id='render-detail'>\
-            <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" title=\"collapse all docs\">\
-                [<span class='inner'>&#x2212;</span>]\
-            </a>\
+impl AllTypes {
+    fn print(self, f: &mut Buffer) {
+        write!(f,
+    "<h1 class='fqn'>\
+        <span class='out-of-band'>\
+            <span id='render-detail'>\
+                <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" title=\"collapse all docs\">\
+                    [<span class='inner'>&#x2212;</span>]\
+                </a>\
+            </span>
         </span>
-    </span>
-    <span class='in-band'>List of all items</span>\
-</h1>")?;
-    print_entries(f, &self.structs, "Structs", "structs")?;
-    print_entries(f, &self.enums, "Enums", "enums")?;
-    print_entries(f, &self.unions, "Unions", "unions")?;
-    print_entries(f, &self.primitives, "Primitives", "primitives")?;
-    print_entries(f, &self.traits, "Traits", "traits")?;
-    print_entries(f, &self.macros, "Macros", "macros")?;
-    print_entries(f, &self.attributes, "Attribute Macros", "attributes")?;
-    print_entries(f, &self.derives, "Derive Macros", "derives")?;
-    print_entries(f, &self.functions, "Functions", "functions")?;
-    print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
-    print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases")?;
-    print_entries(f, &self.opaque_tys, "Opaque Types", "opaque-types")?;
-    print_entries(f, &self.statics, "Statics", "statics")?;
-    print_entries(f, &self.constants, "Constants", "constants")
-}
+        <span class='in-band'>List of all items</span>\
+    </h1>");
+        print_entries(f, &self.structs, "Structs", "structs");
+        print_entries(f, &self.enums, "Enums", "enums");
+        print_entries(f, &self.unions, "Unions", "unions");
+        print_entries(f, &self.primitives, "Primitives", "primitives");
+        print_entries(f, &self.traits, "Traits", "traits");
+        print_entries(f, &self.macros, "Macros", "macros");
+        print_entries(f, &self.attributes, "Attribute Macros", "attributes");
+        print_entries(f, &self.derives, "Derive Macros", "derives");
+        print_entries(f, &self.functions, "Functions", "functions");
+        print_entries(f, &self.typedefs, "Typedefs", "typedefs");
+        print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases");
+        print_entries(f, &self.opaque_tys, "Opaque Types", "opaque-types");
+        print_entries(f, &self.statics, "Statics", "statics");
+        print_entries(f, &self.constants, "Constants", "constants")
+    }
 }
 
 fn settings(root_path: &str, suffix: &str) -> String {
@@ -1901,7 +1899,7 @@ impl Context {
             String::new()
         };
         let v = layout::render(&self.shared.layout,
-                       &page, sidebar, |buf: &mut Buffer| buf.from_display(all),
+                       &page, sidebar, |buf: &mut Buffer| all.print(buf),
                        &self.shared.themes);
         self.shared.fs.write(&final_file, v.as_bytes())?;
 
