@@ -65,7 +65,7 @@ use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
-use crate::html::format::{Buffer, AsyncSpace, ConstnessSpace};
+use crate::html::format::{Print, Buffer, AsyncSpace, ConstnessSpace};
 use crate::html::format::{GenericBounds, WhereClause, href, AbiSpace, DefaultSpace};
 use crate::html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
 use crate::html::format::fmt_impl_for_trait_page;
@@ -4266,15 +4266,15 @@ fn item_foreign_type(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item)
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-impl<'a> fmt::Display for Sidebar<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Print for Sidebar<'_> {
+    fn print(&self, buffer: &mut Buffer) {
         let cx = self.cx;
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
             || it.is_enum() || it.is_mod() || it.is_typedef() {
-            write!(fmt, "<p class='location'>{}{}</p>",
+            write!(buffer, "<p class='location'>{}{}</p>",
                 match it.inner {
                     clean::StructItem(..) => "Struct ",
                     clean::TraitItem(..) => "Trait ",
@@ -4290,33 +4290,33 @@ impl<'a> fmt::Display for Sidebar<'a> {
                     },
                     _ => "",
                 },
-                it.name.as_ref().unwrap())?;
+                it.name.as_ref().unwrap());
         }
 
         if it.is_crate() {
             if let Some(ref version) = cache().crate_version {
-                write!(fmt,
+                write!(buffer,
                        "<div class='block version'>\
                         <p>Version {}</p>\
                         </div>",
-                       version)?;
+                       version);
             }
         }
 
-        write!(fmt, "<div class=\"sidebar-elems\">")?;
+        write!(buffer, "<div class=\"sidebar-elems\">");
         if it.is_crate() {
-            write!(fmt, "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
-                   it.name.as_ref().expect("crates always have a name"))?;
+            write!(buffer, "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
+                   it.name.as_ref().expect("crates always have a name"));
         }
         match it.inner {
-            clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
-            clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
-            clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
-            clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
-            clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
-            clean::TypedefItem(ref t, _) => sidebar_typedef(fmt, it, t)?,
-            clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
-            clean::ForeignTypeItem => sidebar_foreign_type(fmt, it)?,
+            clean::StructItem(ref s) => sidebar_struct(buffer, it, s),
+            clean::TraitItem(ref t) => sidebar_trait(buffer, it, t),
+            clean::PrimitiveItem(ref p) => sidebar_primitive(buffer, it, p),
+            clean::UnionItem(ref u) => sidebar_union(buffer, it, u),
+            clean::EnumItem(ref e) => sidebar_enum(buffer, it, e),
+            clean::TypedefItem(ref t, _) => sidebar_typedef(buffer, it, t),
+            clean::ModuleItem(ref m) => sidebar_module(buffer, it, &m.items),
+            clean::ForeignTypeItem => sidebar_foreign_type(buffer, it),
             _ => (),
         }
 
@@ -4328,20 +4328,20 @@ impl<'a> fmt::Display for Sidebar<'a> {
         // as much HTML as possible in order to allow non-JS-enabled browsers
         // to navigate the documentation (though slightly inefficiently).
 
-        write!(fmt, "<p class='location'>")?;
+        write!(buffer, "<p class='location'>");
         for (i, name) in cx.current.iter().take(parentlen).enumerate() {
             if i > 0 {
-                write!(fmt, "::<wbr>")?;
+                write!(buffer, "::<wbr>");
             }
-            write!(fmt, "<a href='{}index.html'>{}</a>",
+            write!(buffer, "<a href='{}index.html'>{}</a>",
                    &cx.root_path()[..(cx.current.len() - i - 1) * 3],
-                   *name)?;
+                   *name);
         }
-        write!(fmt, "</p>")?;
+        write!(buffer, "</p>");
 
         // Sidebar refers to the enclosing module, not this module.
         let relpath = if it.is_mod() { "../" } else { "" };
-        write!(fmt,
+        write!(buffer,
                "<script>window.sidebarCurrent = {{\
                    name: '{name}', \
                    ty: '{ty}', \
@@ -4349,18 +4349,16 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 }};</script>",
                name = it.name.as_ref().map(|x| &x[..]).unwrap_or(""),
                ty = it.type_().css_class(),
-               path = relpath)?;
+               path = relpath);
         if parentlen == 0 {
             // There is no sidebar-items.js beyond the crate root path
             // FIXME maybe dynamic crate loading can be merged here
         } else {
-            write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
-                   path = relpath)?;
+            write!(buffer, "<script defer src=\"{path}sidebar-items.js\"></script>",
+                   path = relpath);
         }
         // Closes sidebar-elems div.
-        write!(fmt, "</div>")?;
-
-        Ok(())
+        write!(buffer, "</div>");
     }
 }
 
@@ -4534,8 +4532,7 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
     out
 }
 
-fn sidebar_struct(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
-                  s: &clean::Struct) -> fmt::Result {
+fn sidebar_struct(buf: &mut Buffer, it: &clean::Item, s: &clean::Struct) {
     let mut sidebar = String::new();
     let fields = get_struct_fields_name(&s.fields);
 
@@ -4549,9 +4546,8 @@ fn sidebar_struct(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
     sidebar.push_str(&sidebar_assoc_items(it));
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
+        write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
-    Ok(())
 }
 
 fn get_id_for_impl_on_foreign_type(for_: &clean::Type, trait_: &clean::Type) -> String {
@@ -4575,8 +4571,7 @@ fn is_negative_impl(i: &clean::Impl) -> bool {
     i.polarity == Some(clean::ImplPolarity::Negative)
 }
 
-fn sidebar_trait(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
-                 t: &clean::Trait) -> fmt::Result {
+fn sidebar_trait(buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
     let mut sidebar = String::new();
 
     let types = t.items
@@ -4684,27 +4679,23 @@ fn sidebar_trait(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
 
     sidebar.push_str(&sidebar_assoc_items(it));
 
-    write!(fmt, "<div class=\"block items\">{}</div>", sidebar)
+    write!(buf, "<div class=\"block items\">{}</div>", sidebar)
 }
 
-fn sidebar_primitive(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
-                     _p: &clean::PrimitiveType) -> fmt::Result {
+fn sidebar_primitive(buf: &mut Buffer, it: &clean::Item, _p: &clean::PrimitiveType) {
     let sidebar = sidebar_assoc_items(it);
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
+        write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
-    Ok(())
 }
 
-fn sidebar_typedef(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
-                   _t: &clean::Typedef) -> fmt::Result {
+fn sidebar_typedef(buf: &mut Buffer, it: &clean::Item, _t: &clean::Typedef) {
     let sidebar = sidebar_assoc_items(it);
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
+        write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
-    Ok(())
 }
 
 fn get_struct_fields_name(fields: &[clean::Item]) -> String {
@@ -4722,8 +4713,7 @@ fn get_struct_fields_name(fields: &[clean::Item]) -> String {
           .collect()
 }
 
-fn sidebar_union(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
-                 u: &clean::Union) -> fmt::Result {
+fn sidebar_union(buf: &mut Buffer, it: &clean::Item, u: &clean::Union) {
     let mut sidebar = String::new();
     let fields = get_struct_fields_name(&u.fields);
 
@@ -4735,13 +4725,11 @@ fn sidebar_union(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
     sidebar.push_str(&sidebar_assoc_items(it));
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
+        write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
-    Ok(())
 }
 
-fn sidebar_enum(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
-                e: &clean::Enum) -> fmt::Result {
+fn sidebar_enum(buf: &mut Buffer, it: &clean::Item, e: &clean::Enum) {
     let mut sidebar = String::new();
 
     let variants = e.variants.iter()
@@ -4759,9 +4747,8 @@ fn sidebar_enum(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
     sidebar.push_str(&sidebar_assoc_items(it));
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
+        write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
-    Ok(())
 }
 
 fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
@@ -4795,8 +4782,7 @@ fn item_ty_to_strs(ty: &ItemType) -> (&'static str, &'static str) {
     }
 }
 
-fn sidebar_module(fmt: &mut fmt::Formatter<'_>, _it: &clean::Item,
-                  items: &[clean::Item]) -> fmt::Result {
+fn sidebar_module(buf: &mut Buffer, _it: &clean::Item, items: &[clean::Item]) {
     let mut sidebar = String::new();
 
     if items.iter().any(|it| it.type_() == ItemType::ExternCrate ||
@@ -4823,17 +4809,15 @@ fn sidebar_module(fmt: &mut fmt::Formatter<'_>, _it: &clean::Item,
     }
 
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+        write!(buf, "<div class=\"block items\"><ul>{}</ul></div>", sidebar);
     }
-    Ok(())
 }
 
-fn sidebar_foreign_type(fmt: &mut fmt::Formatter<'_>, it: &clean::Item) -> fmt::Result {
+fn sidebar_foreign_type(buf: &mut Buffer, it: &clean::Item) {
     let sidebar = sidebar_assoc_items(it);
     if !sidebar.is_empty() {
-        write!(fmt, "<div class=\"block items\">{}</div>", sidebar)?;
+        write!(buf, "<div class=\"block items\">{}</div>", sidebar);
     }
-    Ok(())
 }
 
 fn item_macro(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,

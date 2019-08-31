@@ -22,6 +22,24 @@ pub trait Print {
     fn print(&self, buffer: &mut Buffer);
 }
 
+impl<T: ?Sized + Print> Print for &'_ T {
+    fn print(&self, buffer: &mut Buffer) {
+        (&**self).print(buffer)
+    }
+}
+
+impl Print for String {
+    fn print(&self, buffer: &mut Buffer) {
+        buffer.write_str(self);
+    }
+}
+
+impl Print for str {
+    fn print(&self, buffer: &mut Buffer) {
+        buffer.write_str(self);
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Buffer {
     for_html: bool,
@@ -72,6 +90,11 @@ impl Buffer {
     crate fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
         use fmt::Write;
         self.buffer.write_fmt(v).unwrap();
+    }
+
+    crate fn to_display<T: ?Sized + Print>(mut self, t: &T) -> String {
+        t.print(&mut self);
+        self.into_inner()
     }
 
     crate fn display<T: fmt::Display>(&mut self, t: T) {
