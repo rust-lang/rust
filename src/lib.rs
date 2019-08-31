@@ -71,8 +71,8 @@ mod prelude {
     };
     pub use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout, VariantIdx};
     pub use rustc::ty::{
-        self, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
-        TypeAndMut, TypeFoldable,
+        self, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt, TypeAndMut,
+        TypeFoldable,
     };
     pub use rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
@@ -102,7 +102,7 @@ mod prelude {
     pub use crate::debuginfo::{DebugContext, FunctionDebugContext};
     pub use crate::trap::*;
     pub use crate::unimpl::{unimpl, with_unimpl_span};
-    pub use crate::value_and_place::{CValue, CPlace, CPlaceInner};
+    pub use crate::value_and_place::{CPlace, CPlaceInner, CValue};
     pub use crate::{Caches, CodegenCx};
 
     pub struct PrintOnPanic<F: Fn() -> String>(pub F);
@@ -175,14 +175,18 @@ impl CodegenBackend for CraneliftCodegenBackend {
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
-                 tcx.arena.alloc(target_features_whitelist::all_known_features()
-                    .map(|(a, b)| (a.to_string(), b))
-                    .collect())
+                tcx.arena.alloc(
+                    target_features_whitelist::all_known_features()
+                        .map(|(a, b)| (a.to_string(), b))
+                        .collect(),
+                )
             } else {
-                tcx.arena.alloc(target_features_whitelist::target_feature_whitelist(tcx.sess)
-                    .iter()
-                    .map(|&(a, b)| (a.to_string(), b))
-                    .collect())
+                tcx.arena.alloc(
+                    target_features_whitelist::target_feature_whitelist(tcx.sess)
+                        .iter()
+                        .map(|&(a, b)| (a.to_string(), b))
+                        .collect(),
+                )
             }
         };
     }
@@ -252,11 +256,16 @@ fn build_isa(sess: &Session, enable_pic: bool) -> Box<dyn isa::TargetIsa + 'stat
         flags_builder.set("is_pic", "false").unwrap();
     }
     flags_builder.set("probestack_enabled", "false").unwrap(); // __cranelift_probestack is not provided
-        flags_builder.set("enable_verifier", if cfg!(debug_assertions) {
-        "true"
-    } else {
-        "false"
-    }).unwrap();
+    flags_builder
+        .set(
+            "enable_verifier",
+            if cfg!(debug_assertions) {
+                "true"
+            } else {
+                "false"
+            },
+        )
+        .unwrap();
 
     // FIXME(CraneStation/cranelift#732) fix LICM in presence of jump tables
     //flags_builder.set("opt_level", "best").unwrap();

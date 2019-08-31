@@ -109,7 +109,9 @@ fn load_imported_symbols_for_jit(tcx: TyCtxt<'_>) -> Vec<(String, *const u8)> {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
                 let name = tcx.crate_name(cnum);
-                let mut err = tcx.sess.struct_err(&format!("Can't load static lib {}", name.as_str()));
+                let mut err = tcx
+                    .sess
+                    .struct_err(&format!("Can't load static lib {}", name.as_str()));
                 err.note("rustc_codegen_cranelift can only load dylibs in JIT mode.");
                 err.emit();
             }
@@ -222,8 +224,10 @@ fn run_aot(
             .as_str()
             .to_string();
 
-        let mut metadata_artifact =
-            faerie::Artifact::new(crate::build_isa(tcx.sess, true).triple().clone(), metadata_cgu_name.clone());
+        let mut metadata_artifact = faerie::Artifact::new(
+            crate::build_isa(tcx.sess, true).triple().clone(),
+            metadata_cgu_name.clone(),
+        );
         crate::metadata::write_metadata(tcx, &mut metadata_artifact);
 
         let tmp_file = tcx

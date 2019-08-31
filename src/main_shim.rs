@@ -2,10 +2,7 @@ use crate::prelude::*;
 
 /// Create the `main` function which will initialize the rust runtime and call
 /// users main function.
-pub fn maybe_create_entry_wrapper(
-    tcx: TyCtxt<'_>,
-    module: &mut Module<impl Backend + 'static>,
-) {
+pub fn maybe_create_entry_wrapper(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) {
     use rustc::middle::lang_items::StartFnLangItem;
     use rustc::session::config::EntryFnType;
 

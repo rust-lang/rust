@@ -4,11 +4,7 @@ use std::fmt;
 
 use cranelift::codegen::{
     entity::SecondaryMap,
-    ir::{
-        self,
-        entities::AnyEntity,
-        function::DisplayFunctionAnnotations,
-    },
+    ir::{self, entities::AnyEntity, function::DisplayFunctionAnnotations},
     write::{FuncWriter, PlainWriter},
     ValueLabelsRanges,
 };
@@ -82,7 +78,13 @@ impl CommentWriter {
             global_comments: vec![
                 format!("symbol {}", tcx.symbol_name(instance).as_str()),
                 format!("instance {:?}", instance),
-                format!("sig {:?}", tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &instance.fn_sig(tcx))),
+                format!(
+                    "sig {:?}",
+                    tcx.normalize_erasing_late_bound_regions(
+                        ParamEnv::reveal_all(),
+                        &instance.fn_sig(tcx)
+                    )
+                ),
                 String::new(),
             ],
             entity_comments: HashMap::new(),
@@ -218,7 +220,9 @@ pub fn write_clif_file<'tcx>(
         &mut clif,
         &func,
         &DisplayFunctionAnnotations {
-            isa: Some(&*crate::build_isa(tcx.sess, true /* PIC doesn't matter here */)),
+            isa: Some(&*crate::build_isa(
+                tcx.sess, true, /* PIC doesn't matter here */
+            )),
             value_ranges,
         },
     )

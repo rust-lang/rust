@@ -5,11 +5,35 @@ pub fn bin_op_to_intcc(bin_op: BinOp, signed: bool) -> Option<IntCC> {
     use IntCC::*;
     Some(match bin_op {
         Eq => Equal,
-        Lt => if signed { SignedLessThan } else { UnsignedLessThan},
-        Le => if signed { SignedLessThanOrEqual } else { UnsignedLessThanOrEqual},
+        Lt => {
+            if signed {
+                SignedLessThan
+            } else {
+                UnsignedLessThan
+            }
+        }
+        Le => {
+            if signed {
+                SignedLessThanOrEqual
+            } else {
+                UnsignedLessThanOrEqual
+            }
+        }
         Ne => NotEqual,
-        Ge => if signed { SignedGreaterThanOrEqual } else { UnsignedGreaterThanOrEqual },
-        Gt => if signed { SignedGreaterThan } else { UnsignedGreaterThan },
+        Ge => {
+            if signed {
+                SignedGreaterThanOrEqual
+            } else {
+                UnsignedGreaterThanOrEqual
+            }
+        }
+        Gt => {
+            if signed {
+                SignedGreaterThan
+            } else {
+                UnsignedGreaterThan
+            }
+        }
         _ => return None,
     })
 }
@@ -41,9 +65,9 @@ pub fn codegen_binop<'tcx>(
                     let lhs = in_lhs.load_scalar(fx);
                     let rhs = in_rhs.load_scalar(fx);
 
-                    let (lhs, rhs) = if
-                        (bin_op == BinOp::Eq || bin_op == BinOp::Ne)
-                        && (in_lhs.layout().ty.sty == fx.tcx.types.i8.sty || in_lhs.layout().ty.sty == fx.tcx.types.i16.sty)
+                    let (lhs, rhs) = if (bin_op == BinOp::Eq || bin_op == BinOp::Ne)
+                        && (in_lhs.layout().ty.sty == fx.tcx.types.i8.sty
+                            || in_lhs.layout().ty.sty == fx.tcx.types.i16.sty)
                     {
                         // FIXME(CraneStation/cranelift#896) icmp_imm.i8/i16 with eq/ne for signed ints is implemented wrong.
                         (
@@ -64,14 +88,15 @@ pub fn codegen_binop<'tcx>(
 
     match in_lhs.layout().ty.sty {
         ty::Bool => crate::num::trans_bool_binop(fx, bin_op, in_lhs, in_rhs),
-        ty::Uint(_) | ty::Int(_)=> {
-            crate::num::trans_int_binop(fx, bin_op, in_lhs, in_rhs)
-        }
+        ty::Uint(_) | ty::Int(_) => crate::num::trans_int_binop(fx, bin_op, in_lhs, in_rhs),
         ty::Float(_) => crate::num::trans_float_binop(fx, bin_op, in_lhs, in_rhs),
-        ty::RawPtr(..) | ty::FnPtr(..) => {
-            crate::num::trans_ptr_binop(fx, bin_op, in_lhs, in_rhs)
-        }
-        _ => unimplemented!("{:?}({:?}, {:?})", bin_op, in_lhs.layout().ty, in_rhs.layout().ty),
+        ty::RawPtr(..) | ty::FnPtr(..) => crate::num::trans_ptr_binop(fx, bin_op, in_lhs, in_rhs),
+        _ => unimplemented!(
+            "{:?}({:?}, {:?})",
+            bin_op,
+            in_lhs.layout().ty,
+            in_rhs.layout().ty
+        ),
     }
 }
 
@@ -124,8 +149,20 @@ pub fn trans_int_binop<'tcx>(
         BinOp::Add => b.iadd(lhs, rhs),
         BinOp::Sub => b.isub(lhs, rhs),
         BinOp::Mul => b.imul(lhs, rhs),
-        BinOp::Div => if signed { b.sdiv(lhs, rhs) } else { b.udiv(lhs, rhs) },
-        BinOp::Rem => if signed { b.srem(lhs, rhs) } else { b.urem(lhs, rhs) },
+        BinOp::Div => {
+            if signed {
+                b.sdiv(lhs, rhs)
+            } else {
+                b.udiv(lhs, rhs)
+            }
+        }
+        BinOp::Rem => {
+            if signed {
+                b.srem(lhs, rhs)
+            } else {
+                b.urem(lhs, rhs)
+            }
+        }
         BinOp::BitXor => b.bxor(lhs, rhs),
         BinOp::BitAnd => b.band(lhs, rhs),
         BinOp::BitOr => b.bor(lhs, rhs),
@@ -144,7 +181,12 @@ pub fn trans_int_binop<'tcx>(
             }
         }
         // Compare binops handles by `codegen_binop`.
-        _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs.layout().ty, in_rhs.layout().ty),
+        _ => unreachable!(
+            "{:?}({:?}, {:?})",
+            bin_op,
+            in_lhs.layout().ty,
+            in_rhs.layout().ty
+        ),
     };
 
     CValue::by_val(val, in_lhs.layout())
@@ -239,7 +281,11 @@ pub fn trans_checked_int_binop<'tcx>(
     };
 
     let has_overflow = fx.bcx.ins().bint(types::I8, has_overflow);
-    let out_place = CPlace::new_stack_slot(fx, fx.tcx.mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter()));
+    let out_place = CPlace::new_stack_slot(
+        fx,
+        fx.tcx
+            .mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter()),
+    );
     let out_layout = out_place.layout();
     out_place.write_cvalue(fx, CValue::by_val_pair(res, has_overflow, out_layout));
 
@@ -341,14 +387,24 @@ pub fn trans_ptr_binop<'tcx>(
             BinOp::Lt | BinOp::Le | BinOp::Ge | BinOp::Gt => {
                 let ptr_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_ptr, rhs_ptr);
 
-                let ptr_cmp = fx.bcx.ins().icmp(bin_op_to_intcc(bin_op, false).unwrap(), lhs_ptr, rhs_ptr);
-                let extra_cmp = fx.bcx.ins().icmp(bin_op_to_intcc(bin_op, false).unwrap(), lhs_extra, rhs_extra);
+                let ptr_cmp =
+                    fx.bcx
+                        .ins()
+                        .icmp(bin_op_to_intcc(bin_op, false).unwrap(), lhs_ptr, rhs_ptr);
+                let extra_cmp = fx.bcx.ins().icmp(
+                    bin_op_to_intcc(bin_op, false).unwrap(),
+                    lhs_extra,
+                    rhs_extra,
+                );
 
                 fx.bcx.ins().select(ptr_eq, extra_cmp, ptr_cmp)
             }
             _ => panic!("bin_op {:?} on ptr", bin_op),
         };
 
-        CValue::by_val(fx.bcx.ins().bint(types::I8, res), fx.layout_of(fx.tcx.types.bool))
+        CValue::by_val(
+            fx.bcx.ins().bint(types::I8, res),
+            fx.layout_of(fx.tcx.types.bool),
+        )
     }
 }

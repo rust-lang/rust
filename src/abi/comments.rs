@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use rustc::mir;
 
-use crate::prelude::*;
 use crate::abi::pass_mode::*;
+use crate::prelude::*;
 
 pub fn add_args_header_comment(fx: &mut FunctionCx<impl Backend>) {
     fx.add_global_comment(format!(

@@ -1,12 +1,11 @@
 use std::borrow::Cow;
 
 use rustc::mir::interpret::{
-    read_target_uint, AllocId, GlobalAlloc, Allocation, ConstValue, InterpResult, GlobalId, Scalar,
+    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, GlobalId, InterpResult, Scalar,
 };
-use rustc::ty::{Const, layout::Align};
+use rustc::ty::{layout::Align, Const};
 use rustc_mir::interpret::{
-    InterpCx, ImmTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
-    StackPopCleanup,
+    ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer, StackPopCleanup,
 };
 
 use cranelift_module::*;
@@ -26,11 +25,7 @@ enum TodoItem {
 }
 
 impl ConstantCx {
-    pub fn finalize(
-        mut self,
-        tcx: TyCtxt<'_>,
-        module: &mut Module<impl Backend>,
-    ) {
+    pub fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut Module<impl Backend>) {
         //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
         //println!("done {:?}", self.done);
@@ -58,25 +53,20 @@ pub fn trans_promoted<'tcx>(
     promoted: Promoted,
     dest_ty: Ty<'tcx>,
 ) -> CPlace<'tcx> {
-    match fx
-        .tcx
-        .const_eval(ParamEnv::reveal_all().and(GlobalId {
-            instance,
-            promoted: Some(promoted),
-        }))
-    {
+    match fx.tcx.const_eval(ParamEnv::reveal_all().and(GlobalId {
+        instance,
+        promoted: Some(promoted),
+    })) {
         Ok(const_) => {
             let cplace = trans_const_place(fx, const_);
             debug_assert_eq!(cplace.layout(), fx.layout_of(dest_ty));
             cplace
         }
-        Err(_) => {
-            crate::trap::trap_unreachable_ret_place(
-                fx,
-                fx.layout_of(dest_ty),
-                "[panic] Tried to get value of promoted value with errored during const eval.",
-            )
-        }
+        Err(_) => crate::trap::trap_unreachable_ret_place(
+            fx,
+            fx.layout_of(dest_ty),
+            "[panic] Tried to get value of promoted value with errored during const eval.",
+        ),
     }
 }
 
@@ -120,13 +110,23 @@ pub fn trans_const_value<'tcx>(
         }
         ty::Int(_) => {
             let bits = const_.val.try_to_bits(layout.size).unwrap();
-            CValue::const_val(fx, ty, rustc::mir::interpret::sign_extend(bits, layout.size))
+            CValue::const_val(
+                fx,
+                ty,
+                rustc::mir::interpret::sign_extend(bits, layout.size),
+            )
         }
         ty::Float(fty) => {
             let bits = const_.val.try_to_bits(layout.size).unwrap();
             let val = match fty {
-                FloatTy::F32 => fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(bits).unwrap())),
-                FloatTy::F64 => fx.bcx.ins().f64const(Ieee64::with_bits(u64::try_from(bits).unwrap())),
+                FloatTy::F32 => fx
+                    .bcx
+                    .ins()
+                    .f32const(Ieee32::with_bits(u32::try_from(bits).unwrap())),
+                FloatTy::F64 => fx
+                    .bcx
+                    .ins()
+                    .f64const(Ieee64::with_bits(u64::try_from(bits).unwrap())),
             };
             CValue::by_val(val, layout)
         }
@@ -170,7 +170,9 @@ fn trans_const_place<'tcx>(
         )?;
         let ptr = ecx.allocate(op.layout, MemoryKind::Stack);
         ecx.copy_op(op, ptr.into())?;
-        let alloc = ecx.memory().get(ptr.to_ref().to_scalar()?.to_ptr()?.alloc_id)?;
+        let alloc = ecx
+            .memory()
+            .get(ptr.to_ref().to_scalar()?.to_ptr()?.alloc_id)?;
         Ok(fx.tcx.intern_const_alloc(alloc.clone()))
     };
     let alloc = result().expect("unable to convert ConstValue to Allocation");
@@ -182,9 +184,18 @@ fn trans_const_place<'tcx>(
     cplace_for_dataid(fx, const_.ty, data_id)
 }
 
-fn data_id_for_alloc_id<B: Backend>(module: &mut Module<B>, alloc_id: AllocId, align: Align) -> DataId {
+fn data_id_for_alloc_id<B: Backend>(
+    module: &mut Module<B>,
+    alloc_id: AllocId,
+    align: Align,
+) -> DataId {
     module
-        .declare_data(&format!("__alloc_{}", alloc_id.0), Linkage::Local, false, Some(align.bytes() as u8))
+        .declare_data(
+            &format!("__alloc_{}", alloc_id.0),
+            Linkage::Local,
+            false,
+            Some(align.bytes() as u8),
+        )
         .unwrap()
 }
 
@@ -202,16 +213,29 @@ fn data_id_for_static(
     } else {
         !ty.is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
     };
-    let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
+    let align = tcx
+        .layout_of(ParamEnv::reveal_all().and(ty))
+        .unwrap()
+        .align
+        .pref
+        .bytes();
 
     let data_id = module
-        .declare_data(&*symbol_name, linkage, is_mutable, Some(align.try_into().unwrap()))
+        .declare_data(
+            &*symbol_name,
+            linkage,
+            is_mutable,
+            Some(align.try_into().unwrap()),
+        )
         .unwrap();
 
     if linkage == Linkage::Preemptible {
         if let ty::RawPtr(_) = ty.sty {
         } else {
-            tcx.sess.span_fatal(tcx.def_span(def_id), "must have type `*const T` or `*mut T` due to `#[linkage]` attribute")
+            tcx.sess.span_fatal(
+                tcx.def_span(def_id),
+                "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
+            )
         }
 
         let mut data_ctx = DataContext::new();
@@ -243,11 +267,7 @@ fn cplace_for_dataid<'tcx>(
     CPlace::for_addr(global_ptr, layout)
 }
 
-fn define_all_allocs(
-    tcx: TyCtxt<'_>,
-    module: &mut Module<impl Backend>,
-    cx: &mut ConstantCx,
-) {
+fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mut ConstantCx) {
     let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP), ());
 
     while let Some(todo_item) = pop_set(&mut cx.todo) {
@@ -277,11 +297,16 @@ fn define_all_allocs(
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
-                let data_id = data_id_for_static(tcx, module, def_id, if tcx.is_reachable_non_generic(def_id) {
-                    Linkage::Export
-                } else {
-                    Linkage::Local
-                });
+                let data_id = data_id_for_static(
+                    tcx,
+                    module,
+                    def_id,
+                    if tcx.is_reachable_non_generic(def_id) {
+                        Linkage::Export
+                    } else {
+                        Linkage::Local
+                    },
+                );
                 (data_id, alloc)
             }
         };
@@ -395,10 +420,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn find_foreign_static(
-        _: TyCtxt<'tcx>,
-        _: DefId,
-    ) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
+    fn find_foreign_static(_: TyCtxt<'tcx>, _: DefId) -> InterpResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
     }
 
@@ -411,10 +433,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn ptr_to_int(
-        _: &Memory<'mir, 'tcx, Self>,
-        _: Pointer<()>,
-    ) -> InterpResult<'tcx, u64> {
+    fn ptr_to_int(_: &Memory<'mir, 'tcx, Self>, _: Pointer<()>) -> InterpResult<'tcx, u64> {
         panic!();
     }
 
@@ -473,10 +492,12 @@ pub fn mir_operand_get_const_val<'tcx>(
         StaticKind::Static => unimplemented!(),
         StaticKind::Promoted(promoted, substs) => {
             let instance = Instance::new(static_.def_id, fx.monomorphize(substs));
-            fx.tcx.const_eval(ParamEnv::reveal_all().and(GlobalId {
-                instance,
-                promoted: Some(*promoted),
-            })).unwrap()
+            fx.tcx
+                .const_eval(ParamEnv::reveal_all().and(GlobalId {
+                    instance,
+                    promoted: Some(*promoted),
+                }))
+                .unwrap()
         }
     })
 }

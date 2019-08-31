@@ -50,14 +50,14 @@ impl<T: std::fmt::Debug> EmptySinglePair<T> {
     pub fn assert_single(self) -> T {
         match self {
             Single(v) => v,
-            _ => panic!("Called assert_single on {:?}", self)
+            _ => panic!("Called assert_single on {:?}", self),
         }
     }
 
     pub fn assert_pair(self) -> (T, T) {
         match self {
             Pair(a, b) => (a, b),
-            _ => panic!("Called assert_pair on {:?}", self)
+            _ => panic!("Called assert_pair on {:?}", self),
         }
     }
 }
@@ -75,10 +75,7 @@ impl PassMode {
     }
 }
 
-pub fn get_pass_mode<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    layout: TyLayout<'tcx>,
-) -> PassMode {
+pub fn get_pass_mode<'tcx>(tcx: TyCtxt<'tcx>, layout: TyLayout<'tcx>) -> PassMode {
     assert!(!layout.is_unsized());
 
     if layout.is_zst() {

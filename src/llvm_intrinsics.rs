@@ -1,5 +1,5 @@
-use crate::prelude::*;
 use crate::intrinsics::*;
+use crate::prelude::*;
 
 use rustc::ty::subst::SubstsRef;
 

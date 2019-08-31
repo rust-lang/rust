@@ -19,7 +19,10 @@ fn codegen_field<'tcx>(
 }
 
 fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: &Scalar, b_scalar: &Scalar) -> i32 {
-    let b_offset = a_scalar.value.size(&tcx).align_to(b_scalar.value.align(&tcx).abi);
+    let b_offset = a_scalar
+        .value
+        .size(&tcx)
+        .align_to(b_scalar.value.align(&tcx).abi);
     b_offset.bytes().try_into().unwrap()
 }
 
@@ -88,7 +91,10 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// Load a value pair with layout.abi of scalar pair
-    pub fn load_scalar_pair<'a>(self, fx: &mut FunctionCx<'_, 'tcx, impl Backend>) -> (Value, Value) {
+    pub fn load_scalar_pair<'a>(
+        self,
+        fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
+    ) -> (Value, Value) {
         let layout = self.1;
         match self.0 {
             CValueInner::ByRef(addr) => {
@@ -100,12 +106,7 @@ impl<'tcx> CValue<'tcx> {
                 let clif_ty1 = scalar_to_clif_type(fx.tcx, a_scalar.clone());
                 let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar.clone());
                 let val1 = fx.bcx.ins().load(clif_ty1, MemFlags::new(), addr, 0);
-                let val2 = fx.bcx.ins().load(
-                    clif_ty2,
-                    MemFlags::new(),
-                    addr,
-                    b_offset,
-                );
+                let val2 = fx.bcx.ins().load(clif_ty2, MemFlags::new(), addr, b_offset);
                 (val1, val2)
             }
             CValueInner::ByVal(_) => bug!("Please use load_scalar for ByVal"),
@@ -144,20 +145,29 @@ impl<'tcx> CValue<'tcx> {
         let val = match ty.sty {
             ty::TyKind::Uint(UintTy::U128) | ty::TyKind::Int(IntTy::I128) => {
                 let lsb = fx.bcx.ins().iconst(types::I64, const_val as u64 as i64);
-                let msb = fx.bcx.ins().iconst(types::I64, (const_val >> 64) as u64 as i64);
+                let msb = fx
+                    .bcx
+                    .ins()
+                    .iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
             }
             ty::TyKind::Bool => {
-                assert!(const_val == 0 || const_val == 1, "Invalid bool 0x{:032X}", const_val);
+                assert!(
+                    const_val == 0 || const_val == 1,
+                    "Invalid bool 0x{:032X}",
+                    const_val
+                );
                 fx.bcx.ins().iconst(types::I8, const_val as i64)
             }
-            ty::TyKind::Uint(_) | ty::TyKind::Ref(..) | ty::TyKind::RawPtr(.. )=> {
-                fx.bcx.ins().iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64)
-            }
-            ty::TyKind::Int(_) => {
-                fx.bcx.ins().iconst(clif_ty, const_val as i128 as i64)
-            }
-            _ => panic!("CValue::const_val for non bool/integer/pointer type {:?} is not allowed", ty),
+            ty::TyKind::Uint(_) | ty::TyKind::Ref(..) | ty::TyKind::RawPtr(..) => fx
+                .bcx
+                .ins()
+                .iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64),
+            ty::TyKind::Int(_) => fx.bcx.ins().iconst(clif_ty, const_val as i128 as i64),
+            _ => panic!(
+                "CValue::const_val for non bool/integer/pointer type {:?} is not allowed",
+                ty
+            ),
         };
 
         CValue::by_val(val, layout)
@@ -193,9 +203,9 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub fn no_place(layout: TyLayout<'tcx>) -> CPlace<'tcx> {
-        CPlace{
+        CPlace {
             inner: CPlaceInner::NoPlace,
-            layout
+            layout,
         }
     }
 
@@ -299,7 +309,11 @@ impl<'tcx> CPlace<'tcx> {
         let from_ty = from.layout().ty;
         let to_ty = self.layout().ty;
 
-        fn assert_assignable<'tcx>(fx: &FunctionCx<'_, 'tcx, impl Backend>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) {
+        fn assert_assignable<'tcx>(
+            fx: &FunctionCx<'_, 'tcx, impl Backend>,
+            from_ty: Ty<'tcx>,
+            to_ty: Ty<'tcx>,
+        ) {
             match (&from_ty.sty, &to_ty.sty) {
                 (ty::Ref(_, t, MutImmutable), ty::Ref(_, u, MutImmutable))
                 | (ty::Ref(_, t, MutMutable), ty::Ref(_, u, MutImmutable))
@@ -308,9 +322,10 @@ impl<'tcx> CPlace<'tcx> {
                     // &mut T -> &T is allowed
                     // &'a T -> &'b T is allowed
                 }
-                (ty::Ref(_, _, MutImmutable), ty::Ref(_, _, MutMutable)) => {
-                    panic!("Cant assign value of type {} to place of type {}", from_ty, to_ty)
-                }
+                (ty::Ref(_, _, MutImmutable), ty::Ref(_, _, MutMutable)) => panic!(
+                    "Cant assign value of type {} to place of type {}",
+                    from_ty, to_ty
+                ),
                 (ty::FnPtr(_), ty::FnPtr(_)) => {
                     let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
                         ParamEnv::reveal_all(),
@@ -328,14 +343,12 @@ impl<'tcx> CPlace<'tcx> {
                     // fn(&T) -> for<'l> fn(&'l T) is allowed
                 }
                 (ty::Dynamic(from_traits, _), ty::Dynamic(to_traits, _)) => {
-                    let from_traits = fx.tcx.normalize_erasing_late_bound_regions(
-                        ParamEnv::reveal_all(),
-                        from_traits,
-                    );
-                    let to_traits = fx.tcx.normalize_erasing_late_bound_regions(
-                        ParamEnv::reveal_all(),
-                        to_traits,
-                    );
+                    let from_traits = fx
+                        .tcx
+                        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from_traits);
+                    let to_traits = fx
+                        .tcx
+                        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), to_traits);
                     assert_eq!(
                         from_traits, to_traits,
                         "Can't write trait object of incompatible traits {:?} to place with traits {:?}\n\n{:#?}",
@@ -382,24 +395,17 @@ impl<'tcx> CPlace<'tcx> {
             CValueInner::ByVal(val) => {
                 fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
             }
-            CValueInner::ByValPair(value, extra) => {
-                match dst_layout.abi {
-                    Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
-                        let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
-                        fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
-                        fx.bcx.ins().store(
-                            MemFlags::new(),
-                            extra,
-                            addr,
-                            b_offset,
-                        );
-                    }
-                    _ => bug!(
-                        "Non ScalarPair abi {:?} for ByValPair CValue",
-                        dst_layout.abi
-                    ),
+            CValueInner::ByValPair(value, extra) => match dst_layout.abi {
+                Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
+                    let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                    fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
+                    fx.bcx.ins().store(MemFlags::new(), extra, addr, b_offset);
                 }
-            }
+                _ => bug!(
+                    "Non ScalarPair abi {:?} for ByValPair CValue",
+                    dst_layout.abi
+                ),
+            },
             CValueInner::ByRef(from_addr) => {
                 let src_layout = from.1;
                 let size = dst_layout.size.bytes();
@@ -468,7 +474,11 @@ impl<'tcx> CPlace<'tcx> {
             dest.write_cvalue(fx, ptr);
         } else {
             let (value, extra) = self.to_addr_maybe_unsized(fx);
-            let ptr = CValue::by_val_pair(value, extra.expect("unsized type without metadata"), dest.layout());
+            let ptr = CValue::by_val_pair(
+                value,
+                extra.expect("unsized type without metadata"),
+                dest.layout(),
+            );
             dest.write_cvalue(fx, ptr);
         }
     }
