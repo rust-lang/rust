@@ -64,7 +64,10 @@ mod bit;
 mod cache;
 
 cfg_if! {
-    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+    if #[cfg(miri)] {
+        #[path = "os/other.rs"]
+        mod os;
+    } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
         // On x86/x86_64 no OS specific functionality is required.
         #[path = "os/x86.rs"]
         mod os;
