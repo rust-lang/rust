@@ -99,7 +99,11 @@ impl Buffer {
         self.into_inner()
     }
 
-    crate fn display<T: fmt::Display>(&mut self, t: T) {
+    crate fn with_formatter<T: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result>(&mut self, t: T) {
+        self.from_display(display_fn(move |f| (t)(f)));
+    }
+
+    crate fn from_display<T: std::fmt::Display>(&mut self, t: T) {
         if self.for_html {
             write!(self, "{}", t);
         } else {

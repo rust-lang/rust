@@ -65,7 +65,7 @@ use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
-use crate::html::format::{Print, Buffer, AsyncSpace, ConstnessSpace};
+use crate::html::format::{Buffer, AsyncSpace, ConstnessSpace};
 use crate::html::format::{GenericBounds, WhereClause, href, AbiSpace, DefaultSpace};
 use crate::html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
 use crate::html::format::fmt_impl_for_trait_page;
@@ -1172,7 +1172,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                     })
                                     .collect::<String>());
             let v = layout::render(&cx.shared.layout,
-                           &page, "", &content,
+                           &page, "", content,
                            &cx.shared.themes);
             cx.shared.fs.write(&dst, v.as_bytes())?;
         }
@@ -1919,7 +1919,7 @@ impl Context {
             String::new()
         };
         let v = layout::render(&self.shared.layout,
-                       &page, sidebar, &all,
+                       &page, sidebar, |buf: &mut Buffer| buf.from_display(all),
                        &self.shared.themes);
         self.shared.fs.write(&final_file, v.as_bytes())?;
 
@@ -1935,7 +1935,7 @@ impl Context {
         themes.push(PathBuf::from("settings.css"));
         let v = layout::render(
             &self.shared.layout,
-            &page, sidebar, &settings,
+            &page, sidebar, |buf: &mut Buffer| buf.from_display(settings),
             &themes);
         self.shared.fs.write(&settings_file, v.as_bytes())?;
 
@@ -1993,7 +1993,7 @@ impl Context {
         if !self.render_redirect_pages {
             layout::render(&self.shared.layout, &page,
                            |buf: &mut _| print_sidebar(self, it, buf),
-                           &Item{ cx: self, item: it },
+                           |buf: &mut Buffer| buf.from_display(Item { cx: self, item: it }),
                            &self.shared.themes)
         } else {
             let mut url = self.root_path();
