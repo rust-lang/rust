@@ -9,7 +9,7 @@ use syntax::source_map::Span;
 use syntax::symbol::kw;
 
 use crate::reexport::*;
-use crate::utils::{last_path_segment, span_lint};
+use crate::utils::{last_path_segment, span_lint, trait_ref_of_method};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for lifetime annotations which can be removed by
@@ -66,7 +66,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, id) = item.node {
-            check_fn_inner(cx, &sig.decl, Some(id), &item.generics, item.span);
+            if trait_ref_of_method(cx, item.hir_id).is_none() {
+                check_fn_inner(cx, &sig.decl, Some(id), &item.generics, item.span);
+            }
         }
     }
 

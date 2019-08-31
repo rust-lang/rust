@@ -61,4 +61,23 @@ impl X {
     fn explicit_self_with_lifetime<'a>(self: &'a Self) {}
 }
 
+// Methods implementing traits must have matching lifetimes
+mod issue4291 {
+    #[derive(Debug)]
+    pub struct Foo<'a>(&'a std::marker::PhantomData<u8>);
+
+    #[derive(Debug)]
+    pub struct Bar<'a: 'b, 'b>(Foo<'a>, &'b std::marker::PhantomData<u8>);
+
+    trait LT {
+        fn test<'a: 'b, 'b>(foo: &Foo<'a>, bar: &Bar<'a, 'b>);
+    }
+
+    pub struct Baz;
+
+    impl LT for Baz {
+        fn test<'a: 'b, 'b>(_foo: &Foo, _bar: &Bar) {}
+    }
+}
+
 fn main() {}
