@@ -64,3 +64,13 @@ pub fn blargh() {}
 /// \_
 #[doc = "```"]
 pub fn crazy_attrs() {}
+
+/// ```rust
+/// ```
+pub fn empty_rust() {}
+
+/// ```
+///
+///
+/// ```
+pub fn empty_rust_with_whitespace() {}
