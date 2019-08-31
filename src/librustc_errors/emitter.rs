@@ -1304,11 +1304,11 @@ impl EmitterWriter {
                 };
 
                 let column_width = if let Some(width) = self.terminal_width {
-                    width
+                    max(width, code_offset) - code_offset
                 } else if self.ui_testing {
                     140
                 } else {
-                    term_size::dimensions().map(|(w, _)| w - code_offset).unwrap_or(140)
+                    term_size::dimensions().map(|(w, _)| w - code_offset).unwrap_or(std::usize::MAX)
                 };
 
                 let margin = Margin::new(
