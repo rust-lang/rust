@@ -1,7 +1,7 @@
 use rustc::ty::layout::{FloatTy, Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
-use cranelift::codegen::ir::{Opcode, InstructionData, ValueDef};
+use cranelift::codegen::ir::{InstructionData, Opcode, ValueDef};
 
 use crate::prelude::*;
 
@@ -35,10 +35,7 @@ pub fn scalar_to_clif_type(tcx: TyCtxt, scalar: Scalar) -> Type {
     }
 }
 
-pub fn clif_type_from_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-) -> Option<types::Type> {
+pub fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Type> {
     Some(match ty.sty {
         ty::Bool => types::I8,
         ty::Uint(size) => match size {
@@ -184,7 +181,8 @@ fn resolve_normal_value_imm(func: &Function, val: Value) -> Option<i64> {
         if let InstructionData::UnaryImm {
             opcode: Opcode::Iconst,
             imm,
-        } = func.dfg[inst] {
+        } = func.dfg[inst]
+        {
             Some(imm.into())
         } else {
             None
@@ -199,7 +197,8 @@ fn resolve_128bit_value_imm(func: &Function, val: Value) -> Option<u128> {
         if let InstructionData::Binary {
             opcode: Opcode::Iconcat,
             args: [lsb, msb],
-        } = func.dfg[inst] {
+        } = func.dfg[inst]
+        {
             (lsb, msb)
         } else {
             return None;
@@ -225,10 +224,9 @@ pub fn resolve_value_imm(func: &Function, val: Value) -> Option<u128> {
 pub fn type_min_max_value(ty: Type, signed: bool) -> (i64, i64) {
     assert!(ty.is_int());
     let min = match (ty, signed) {
-        (types::I8 , false)
-        | (types::I16, false)
-        | (types::I32, false)
-        | (types::I64, false) => 0i64,
+        (types::I8, false) | (types::I16, false) | (types::I32, false) | (types::I64, false) => {
+            0i64
+        }
         (types::I8, true) => i8::min_value() as i64,
         (types::I16, true) => i16::min_value() as i64,
         (types::I32, true) => i32::min_value() as i64,
@@ -287,11 +285,14 @@ impl<'tcx, B: Backend> LayoutOf for FunctionCx<'_, 'tcx, B> {
 
     fn layout_of(&self, ty: Ty<'tcx>) -> TyLayout<'tcx> {
         let ty = self.monomorphize(&ty);
-        self.tcx.layout_of(ParamEnv::reveal_all().and(&ty))
-            .unwrap_or_else(|e| if let layout::LayoutError::SizeOverflow(_) = e {
-                self.tcx.sess.fatal(&e.to_string())
-            } else {
-                bug!("failed to get layout for `{}`: {}", ty, e)
+        self.tcx
+            .layout_of(ParamEnv::reveal_all().and(&ty))
+            .unwrap_or_else(|e| {
+                if let layout::LayoutError::SizeOverflow(_) = e {
+                    self.tcx.sess.fatal(&e.to_string())
+                } else {
+                    bug!("failed to get layout for `{}`: {}", ty, e)
+                }
             })
     }
 }

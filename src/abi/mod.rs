@@ -1,16 +1,20 @@
 #[cfg(debug_assertions)]
 mod comments;
-mod returning;
 mod pass_mode;
+mod returning;
 
 use rustc_target::spec::abi::Abi;
 
-use crate::prelude::*;
 use self::pass_mode::*;
+use crate::prelude::*;
 
 pub use self::returning::codegen_return;
 
-fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>, is_vtable_fn: bool) -> Signature {
+fn clif_sig_from_fn_sig<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sig: FnSig<'tcx>,
+    is_vtable_fn: bool,
+) -> Signature {
     let abi = match sig.abi {
         Abi::System => {
             if tcx.sess.target.target.options.is_like_windows {
@@ -47,12 +51,18 @@ fn clif_sig_from_fn_sig<'tcx>(tcx: TyCtxt<'tcx>, sig: FnSig<'tcx>, is_vtable_fn:
             if i == 0 && is_vtable_fn {
                 // Virtual calls turn their self param into a thin pointer.
                 // See https://github.com/rust-lang/rust/blob/37b6a5e5e82497caf5353d9d856e4eb5d14cbe06/src/librustc/ty/layout.rs#L2519-L2572 for more info
-                layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.mk_mut_ptr(tcx.mk_unit()))).unwrap();
+                layout = tcx
+                    .layout_of(ParamEnv::reveal_all().and(tcx.mk_mut_ptr(tcx.mk_unit())))
+                    .unwrap();
             }
             get_pass_mode(tcx, layout).get_param_ty(tcx).into_iter()
-        }).flatten();
+        })
+        .flatten();
 
-    let (params, returns) = match get_pass_mode(tcx, tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap()) {
+    let (params, returns) = match get_pass_mode(
+        tcx,
+        tcx.layout_of(ParamEnv::reveal_all().and(output)).unwrap(),
+    ) {
         PassMode::NoPass => (inputs.map(AbiParam::new).collect(), vec![]),
         PassMode::ByVal(ret_ty) => (
             inputs.map(AbiParam::new).collect(),
@@ -87,7 +97,8 @@ pub fn get_function_name_and_sig<'tcx>(
     support_vararg: bool,
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
-    let fn_sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &inst.fn_sig(tcx));
+    let fn_sig =
+        tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &inst.fn_sig(tcx));
     if fn_sig.c_variadic && !support_vararg {
         unimpl!("Variadic function definitions are not yet supported");
     }
@@ -141,7 +152,8 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
             .module
             .declare_func_in_func(func_id, &mut self.bcx.func);
         let call_inst = self.bcx.ins().call(func_ref, args);
-        #[cfg(debug_assertions)] {
+        #[cfg(debug_assertions)]
+        {
             self.add_comment(call_inst, format!("easy_call {}", name));
         }
         let results = self.bcx.inst_results(call_inst);
@@ -185,7 +197,10 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     }
 
     fn self_sig(&self) -> FnSig<'tcx> {
-        self.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &self.instance.fn_sig(self.tcx))
+        self.tcx.normalize_erasing_late_bound_regions(
+            ParamEnv::reveal_all(),
+            &self.instance.fn_sig(self.tcx),
+        )
     }
 
     fn return_layout(&self) -> TyLayout<'tcx> {
@@ -213,10 +228,7 @@ fn local_place<'tcx>(
     fx.local_map[&local]
 }
 
-pub fn codegen_fn_prelude(
-    fx: &mut FunctionCx<'_, '_, impl Backend>,
-    start_ebb: Ebb,
-) {
+pub fn codegen_fn_prelude(fx: &mut FunctionCx<'_, '_, impl Backend>, start_ebb: Ebb) {
     let ssa_analyzed = crate::analyze::analyze(fx);
 
     #[cfg(debug_assertions)]
@@ -250,20 +262,13 @@ pub fn codegen_fn_prelude(
 
                 let mut params = Vec::new();
                 for (i, arg_ty) in tupled_arg_tys.types().enumerate() {
-                    let param = cvalue_for_param(
-                        fx,
-                        start_ebb,
-                        local,
-                        Some(i),
-                        arg_ty,
-                    );
+                    let param = cvalue_for_param(fx, start_ebb, local, Some(i), arg_ty);
                     params.push(param);
                 }
 
                 (local, ArgKind::Spread(params), arg_ty)
             } else {
-                let param =
-                    cvalue_for_param(fx, start_ebb, local, None, arg_ty);
+                let param = cvalue_for_param(fx, start_ebb, local, None, arg_ty);
                 (local, ArgKind::Normal(param), arg_ty)
             }
         })
@@ -354,7 +359,9 @@ pub fn codegen_terminator_call<'tcx>(
     destination: &Option<(Place<'tcx>, BasicBlock)>,
 ) {
     let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
-    let sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
+    let sig = fx
+        .tcx
+        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
     let destination = destination
         .as_ref()
@@ -365,7 +372,13 @@ pub fn codegen_terminator_call<'tcx>(
             ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
 
         if fx.tcx.symbol_name(instance).as_str().starts_with("llvm.") {
-            crate::llvm_intrinsics::codegen_llvm_intrinsic_call(fx, &fx.tcx.symbol_name(instance).as_str(), substs, args, destination);
+            crate::llvm_intrinsics::codegen_llvm_intrinsic_call(
+                fx,
+                &fx.tcx.symbol_name(instance).as_str(),
+                substs,
+                args,
+                destination,
+            );
             return;
         }
 
@@ -430,7 +443,9 @@ fn codegen_call_inner<'tcx>(
     args: Vec<CValue<'tcx>>,
     ret_place: Option<CPlace<'tcx>>,
 ) {
-    let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
+    let fn_sig = fx
+        .tcx
+        .normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_ty.fn_sig(fx.tcx));
 
     let instance = match fn_ty.sty {
         ty::FnDef(def_id, substs) => {
@@ -453,7 +468,10 @@ fn codegen_call_inner<'tcx>(
                 let nop_inst = fx.bcx.ins().nop();
                 fx.add_comment(
                     nop_inst,
-                    format!("virtual call; self arg pass mode: {:?}", get_pass_mode(fx.tcx, args[0].layout())),
+                    format!(
+                        "virtual call; self arg pass mode: {:?}",
+                        get_pass_mode(fx.tcx, args[0].layout())
+                    ),
                 );
             }
             let (ptr, method) = crate::vtable::get_ptr_and_method_ref(fx, args[0], idx);
@@ -461,7 +479,13 @@ fn codegen_call_inner<'tcx>(
         }
 
         // Normal call
-        Some(_) => (None, args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg)).unwrap_or(Empty), false),
+        Some(_) => (
+            None,
+            args.get(0)
+                .map(|arg| adjust_arg_for_abi(fx, *arg))
+                .unwrap_or(Empty),
+            false,
+        ),
 
         // Indirect call
         None => {
@@ -474,36 +498,40 @@ fn codegen_call_inner<'tcx>(
                 .load_scalar(fx);
             (
                 Some(func),
-                args.get(0).map(|arg| adjust_arg_for_abi(fx, *arg)).unwrap_or(Empty),
+                args.get(0)
+                    .map(|arg| adjust_arg_for_abi(fx, *arg))
+                    .unwrap_or(Empty),
                 false,
             )
         }
     };
 
-    let (call_inst, call_args) = self::returning::codegen_with_call_return_arg(fx, fn_sig, ret_place, |fx, return_ptr| {
-        let call_args: Vec<Value> = return_ptr
-            .into_iter()
-            .chain(first_arg.into_iter())
-            .chain(
-                args.into_iter()
-                    .skip(1)
-                    .map(|arg| adjust_arg_for_abi(fx, arg).into_iter())
-                    .flatten(),
-            )
-            .collect::<Vec<_>>();
+    let (call_inst, call_args) =
+        self::returning::codegen_with_call_return_arg(fx, fn_sig, ret_place, |fx, return_ptr| {
+            let call_args: Vec<Value> = return_ptr
+                .into_iter()
+                .chain(first_arg.into_iter())
+                .chain(
+                    args.into_iter()
+                        .skip(1)
+                        .map(|arg| adjust_arg_for_abi(fx, arg).into_iter())
+                        .flatten(),
+                )
+                .collect::<Vec<_>>();
 
-        let call_inst = if let Some(func_ref) = func_ref {
-            let sig = fx
-                .bcx
-                .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, is_virtual_call));
-            fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
-        } else {
-            let func_ref = fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
-            fx.bcx.ins().call(func_ref, &call_args)
-        };
+            let call_inst = if let Some(func_ref) = func_ref {
+                let sig =
+                    fx.bcx
+                        .import_signature(clif_sig_from_fn_sig(fx.tcx, fn_sig, is_virtual_call));
+                fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
+            } else {
+                let func_ref =
+                    fx.get_function_ref(instance.expect("non-indirect call on non-FnDef type"));
+                fx.bcx.ins().call(func_ref, &call_args)
+            };
 
-        (call_inst, call_args)
-    });
+            (call_inst, call_args)
+        });
 
     // FIXME find a cleaner way to support varargs
     if fn_sig.c_variadic {
@@ -526,10 +554,7 @@ fn codegen_call_inner<'tcx>(
     }
 }
 
-pub fn codegen_drop<'tcx>(
-    fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
-    drop_place: CPlace<'tcx>,
-) {
+pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_place: CPlace<'tcx>) {
     let ty = drop_place.layout().ty;
     let drop_fn = Instance::resolve_drop_in_place(fx.tcx, ty);
 
@@ -542,7 +567,10 @@ pub fn codegen_drop<'tcx>(
                 let (ptr, vtable) = drop_place.to_addr_maybe_unsized(fx);
                 let drop_fn = crate::vtable::drop_fn_of_obj(fx, vtable.unwrap());
 
-                let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &drop_fn_ty.fn_sig(fx.tcx));
+                let fn_sig = fx.tcx.normalize_erasing_late_bound_regions(
+                    ParamEnv::reveal_all(),
+                    &drop_fn_ty.fn_sig(fx.tcx),
+                );
 
                 assert_eq!(fn_sig.output(), fx.tcx.mk_unit());
 
@@ -564,13 +592,7 @@ pub fn codegen_drop<'tcx>(
                 );
                 drop_place.write_place_ref(fx, arg_place);
                 let arg_value = arg_place.to_cvalue(fx);
-                codegen_call_inner(
-                    fx,
-                    None,
-                    drop_fn_ty,
-                    vec![arg_value],
-                    None,
-                );
+                codegen_call_inner(fx, None, drop_fn_ty, vec![arg_value], None);
             }
         }
     }

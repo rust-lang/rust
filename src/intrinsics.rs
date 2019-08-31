@@ -138,7 +138,10 @@ pub fn lane_type_and_count<'tcx>(
     assert!(layout.ty.is_simd());
     let lane_count = match layout.fields {
         layout::FieldPlacement::Array { stride: _, count } => u32::try_from(count).unwrap(),
-        _ => panic!("Non vector type {:?} passed to or returned from simd_* intrinsic {}", layout.ty, intrinsic),
+        _ => panic!(
+            "Non vector type {:?} passed to or returned from simd_* intrinsic {}",
+            layout.ty, intrinsic
+        ),
     };
     let lane_layout = layout.field(fx, 0);
     (lane_layout, lane_count)
@@ -150,7 +153,13 @@ pub fn simd_for_each_lane<'tcx, B: Backend>(
     x: CValue<'tcx>,
     y: CValue<'tcx>,
     ret: CPlace<'tcx>,
-    f: impl Fn(&mut FunctionCx<'_, 'tcx, B>, TyLayout<'tcx>, TyLayout<'tcx>, Value, Value) -> CValue<'tcx>,
+    f: impl Fn(
+        &mut FunctionCx<'_, 'tcx, B>,
+        TyLayout<'tcx>,
+        TyLayout<'tcx>,
+        Value,
+        Value,
+    ) -> CValue<'tcx>,
 ) {
     assert_eq!(x.layout(), y.layout());
     let layout = x.layout();
@@ -184,7 +193,10 @@ pub fn bool_to_zero_or_max_uint<'tcx>(
     };
 
     let zero = fx.bcx.ins().iconst(int_ty, 0);
-    let max = fx.bcx.ins().iconst(int_ty, (u64::max_value() >> (64 - int_ty.bits())) as i64);
+    let max = fx
+        .bcx
+        .ins()
+        .iconst(int_ty, (u64::max_value() >> (64 - int_ty.bits())) as i64);
     let mut res = crate::common::codegen_select(&mut fx.bcx, val, max, zero);
 
     if ty.is_float() {
@@ -196,83 +208,131 @@ pub fn bool_to_zero_or_max_uint<'tcx>(
 
 macro_rules! simd_cmp {
     ($fx:expr, $intrinsic:expr, $cc:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.sty {
-                ty::Uint(_) | ty::Int(_) => codegen_icmp(fx, IntCC::$cc, x_lane, y_lane),
-                _ => unreachable!("{:?}", lane_layout.ty),
-            };
-            bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
-        });
+        simd_for_each_lane(
+            $fx,
+            $intrinsic,
+            $x,
+            $y,
+            $ret,
+            |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.sty {
+                    ty::Uint(_) | ty::Int(_) => codegen_icmp(fx, IntCC::$cc, x_lane, y_lane),
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+            },
+        );
     };
     ($fx:expr, $intrinsic:expr, $cc_u:ident|$cc_s:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.sty {
-                ty::Uint(_) => codegen_icmp(fx, IntCC::$cc_u, x_lane, y_lane),
-                ty::Int(_) => codegen_icmp(fx, IntCC::$cc_s, x_lane, y_lane),
-                _ => unreachable!("{:?}", lane_layout.ty),
-            };
-            bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
-        });
+        simd_for_each_lane(
+            $fx,
+            $intrinsic,
+            $x,
+            $y,
+            $ret,
+            |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.sty {
+                    ty::Uint(_) => codegen_icmp(fx, IntCC::$cc_u, x_lane, y_lane),
+                    ty::Int(_) => codegen_icmp(fx, IntCC::$cc_s, x_lane, y_lane),
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+            },
+        );
     };
-
 }
 
 macro_rules! simd_int_binop {
     ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.sty {
-                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
-                _ => unreachable!("{:?}", lane_layout.ty),
-            };
-            CValue::by_val(res_lane, ret_lane_layout)
-        });
+        simd_for_each_lane(
+            $fx,
+            $intrinsic,
+            $x,
+            $y,
+            $ret,
+            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.sty {
+                    ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                CValue::by_val(res_lane, ret_lane_layout)
+            },
+        );
     };
     ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.sty {
-                ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
-                ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
-                _ => unreachable!("{:?}", lane_layout.ty),
-            };
-            CValue::by_val(res_lane, ret_lane_layout)
-        });
+        simd_for_each_lane(
+            $fx,
+            $intrinsic,
+            $x,
+            $y,
+            $ret,
+            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.sty {
+                    ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
+                    ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                CValue::by_val(res_lane, ret_lane_layout)
+            },
+        );
     };
 }
 
 macro_rules! simd_int_flt_binop {
     ($fx:expr, $intrinsic:expr, $op:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.sty {
-                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
-                ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
-                _ => unreachable!("{:?}", lane_layout.ty),
-            };
-            CValue::by_val(res_lane, ret_lane_layout)
-        });
+        simd_for_each_lane(
+            $fx,
+            $intrinsic,
+            $x,
+            $y,
+            $ret,
+            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.sty {
+                    ty::Uint(_) | ty::Int(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                    ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                CValue::by_val(res_lane, ret_lane_layout)
+            },
+        );
     };
     ($fx:expr, $intrinsic:expr, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.sty {
-                ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
-                ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
-                ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
-                _ => unreachable!("{:?}", lane_layout.ty),
-            };
-            CValue::by_val(res_lane, ret_lane_layout)
-        });
+        simd_for_each_lane(
+            $fx,
+            $intrinsic,
+            $x,
+            $y,
+            $ret,
+            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.sty {
+                    ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
+                    ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
+                    ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                CValue::by_val(res_lane, ret_lane_layout)
+            },
+        );
     };
 }
 
 macro_rules! simd_flt_binop {
     ($fx:expr, $intrinsic:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) => {
-        simd_for_each_lane($fx, $intrinsic, $x, $y, $ret, |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
-            let res_lane = match lane_layout.ty.sty {
-                ty::Float(_) => fx.bcx.ins().$op(x_lane, y_lane),
-                _ => unreachable!("{:?}", lane_layout.ty),
-            };
-            CValue::by_val(res_lane, ret_lane_layout)
-        });
-    }
+        simd_for_each_lane(
+            $fx,
+            $intrinsic,
+            $x,
+            $y,
+            $ret,
+            |fx, lane_layout, ret_lane_layout, x_lane, y_lane| {
+                let res_lane = match lane_layout.ty.sty {
+                    ty::Float(_) => fx.bcx.ins().$op(x_lane, y_lane),
+                    _ => unreachable!("{:?}", lane_layout.ty),
+                };
+                CValue::by_val(res_lane, ret_lane_layout)
+            },
+        );
+    };
 }
 
 pub fn codegen_intrinsic_call<'tcx>(
@@ -297,7 +357,10 @@ pub fn codegen_intrinsic_call<'tcx>(
                     trap_unreachable(fx, "[corruption] Called intrinsic::unreachable.");
                 }
                 "transmute" => {
-                    trap_unreachable(fx, "[corruption] Called intrinsic::transmute with uninhabited argument.");
+                    trap_unreachable(
+                        fx,
+                        "[corruption] Called intrinsic::transmute with uninhabited argument.",
+                    );
                 }
                 _ => unimplemented!("unsupported instrinsic {}", intrinsic),
             }

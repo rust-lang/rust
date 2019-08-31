@@ -30,7 +30,7 @@ pub fn maybe_codegen<'tcx>(
                 fx.easy_call("__rust_i128_addo", &[lhs, rhs], out_ty)
             } else {
                 fx.easy_call("__rust_u128_addo", &[lhs, rhs], out_ty)
-            })
+            });
         }
         BinOp::Sub => {
             let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
@@ -38,7 +38,7 @@ pub fn maybe_codegen<'tcx>(
                 fx.easy_call("__rust_i128_subo", &[lhs, rhs], out_ty)
             } else {
                 fx.easy_call("__rust_u128_subo", &[lhs, rhs], out_ty)
-            })
+            });
         }
         BinOp::Offset => unreachable!("offset should only be used on pointers, not 128bit ints"),
         BinOp::Mul => {
@@ -50,7 +50,11 @@ pub fn maybe_codegen<'tcx>(
                     fx.easy_call("__rust_u128_mulo", &[lhs, rhs], out_ty)
                 }
             } else {
-                let val_ty = if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
+                let val_ty = if is_signed {
+                    fx.tcx.types.i128
+                } else {
+                    fx.tcx.types.u128
+                };
                 fx.easy_call("__multi3", &[lhs, rhs], val_ty)
             };
             return Some(res);
@@ -111,17 +115,21 @@ pub fn maybe_codegen<'tcx>(
                         Some(CValue::by_val(val, fx.layout_of(fx.tcx.types.i128)))
                     }
                     (BinOp::Shl, _) => {
-                        let val_ty = if is_signed { fx.tcx.types.i128 } else { fx.tcx.types.u128 };
+                        let val_ty = if is_signed {
+                            fx.tcx.types.i128
+                        } else {
+                            fx.tcx.types.u128
+                        };
                         let val = fx.bcx.ins().iconcat(all_zeros, lhs_lsb);
                         Some(CValue::by_val(val, fx.layout_of(val_ty)))
                     }
-                    _ => None
+                    _ => None,
                 };
                 if let Some(val) = val {
                     if let Some(is_overflow) = is_overflow {
                         let out_ty = fx.tcx.mk_tup([lhs.layout().ty, fx.tcx.types.bool].iter());
                         let val = val.load_scalar(fx);
-                        return Some(CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty)))
+                        return Some(CValue::by_val_pair(val, is_overflow, fx.layout_of(out_ty)));
                     } else {
                         return Some(val);
                     }

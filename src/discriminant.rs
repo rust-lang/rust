@@ -33,11 +33,12 @@ pub fn codegen_set_discriminant<'tcx>(
         layout::Variants::Multiple {
             discr: _,
             discr_index,
-            discr_kind: layout::DiscriminantKind::Niche {
-                dataful_variant,
-                ref niche_variants,
-                niche_start,
-            },
+            discr_kind:
+                layout::DiscriminantKind::Niche {
+                    dataful_variant,
+                    ref niche_variants,
+                    niche_start,
+                },
             variants: _,
         } => {
             if variant_index != dataful_variant {
@@ -59,7 +60,11 @@ pub fn codegen_get_discriminant<'tcx>(
     let layout = value.layout();
 
     if layout.abi == layout::Abi::Uninhabited {
-        return trap_unreachable_ret_value(fx, dest_layout, "[panic] Tried to get discriminant for uninhabited type.");
+        return trap_unreachable_ret_value(
+            fx,
+            dest_layout,
+            "[panic] Tried to get discriminant for uninhabited type.",
+        );
     }
 
     let (discr_scalar, discr_index, discr_kind) = match &layout.variants {
@@ -70,9 +75,12 @@ pub fn codegen_get_discriminant<'tcx>(
                 .map_or(u128::from(index.as_u32()), |discr| discr.val);
             return CValue::const_val(fx, dest_layout.ty, discr_val);
         }
-        layout::Variants::Multiple { discr, discr_index, discr_kind, variants: _ } => {
-            (discr, *discr_index, discr_kind)
-        }
+        layout::Variants::Multiple {
+            discr,
+            discr_index,
+            discr_kind,
+            variants: _,
+        } => (discr, *discr_index, discr_kind),
     };
 
     let cast_to = fx.clif_type(dest_layout.ty).unwrap();
@@ -86,7 +94,7 @@ pub fn codegen_get_discriminant<'tcx>(
         layout::DiscriminantKind::Tag => {
             let signed = match discr_scalar.value {
                 layout::Int(_, signed) => signed,
-                _ => false
+                _ => false,
             };
             let val = clif_intcast(fx, encoded_discr, cast_to, signed);
             return CValue::by_val(val, dest_layout);
@@ -112,11 +120,18 @@ pub fn codegen_get_discriminant<'tcx>(
                 encoded_discr
             } else {
                 // FIXME handle niche_start > i64::max_value()
-                fx.bcx.ins().iadd_imm(encoded_discr, -i64::try_from(niche_start).unwrap())
+                fx.bcx
+                    .ins()
+                    .iadd_imm(encoded_discr, -i64::try_from(niche_start).unwrap())
             };
             let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
             let is_niche = {
-                codegen_icmp_imm(fx, IntCC::UnsignedLessThanOrEqual, relative_discr, i128::from(relative_max))
+                codegen_icmp_imm(
+                    fx,
+                    IntCC::UnsignedLessThanOrEqual,
+                    relative_discr,
+                    i128::from(relative_max),
+                )
             };
 
             // NOTE(eddyb) this addition needs to be performed on the final
@@ -135,18 +150,16 @@ pub fn codegen_get_discriminant<'tcx>(
                 } else {
                     clif_intcast(fx, relative_discr, cast_to, false)
                 };
-                fx.bcx.ins().iadd_imm(
-                    relative_discr,
-                    i64::from(niche_variants.start().as_u32()),
-                )
+                fx.bcx
+                    .ins()
+                    .iadd_imm(relative_discr, i64::from(niche_variants.start().as_u32()))
             };
 
-            let dataful_variant = fx.bcx.ins().iconst(cast_to, i64::from(dataful_variant.as_u32()));
-            let discr = fx.bcx.ins().select(
-                is_niche,
-                niche_discr,
-                dataful_variant,
-            );
+            let dataful_variant = fx
+                .bcx
+                .ins()
+                .iconst(cast_to, i64::from(dataful_variant.as_u32()));
+            let discr = fx.bcx.ins().select(is_niche, niche_discr, dataful_variant);
             CValue::by_val(discr, dest_layout)
         }
     }

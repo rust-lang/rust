@@ -30,11 +30,7 @@ fn line_program_add_file(
         FileName::Real(path) => {
             let dir_name = path.parent().unwrap().to_str().unwrap().as_bytes();
             let dir_id = if !dir_name.is_empty() {
-                let dir_name = LineString::new(
-                    dir_name,
-                    line_program.encoding(),
-                    line_strings,
-                );
+                let dir_name = LineString::new(dir_name, line_program.encoding(), line_strings);
                 line_program.add_directory(dir_name)
             } else {
                 line_program.default_directory()
@@ -196,7 +192,11 @@ impl<'tcx> DebugContext<'tcx> {
         let _: Result<()> = sections.for_each_mut(|id, section| {
             if !section.writer.slice().is_empty() {
                 artifact
-                    .declare_with(id.name(), Decl::section(SectionKind::Debug), section.writer.take())
+                    .declare_with(
+                        id.name(),
+                        Decl::section(SectionKind::Debug),
+                        section.writer.take(),
+                    )
                     .unwrap();
             }
             Ok(())

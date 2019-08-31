@@ -72,15 +72,22 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     // Define function
     let context = &mut cx.caches.context;
     context.func = func;
-    cx.module
-        .define_function(func_id, context)
-        .unwrap();
+    cx.module.define_function(func_id, context).unwrap();
 
-    let value_ranges = context.build_value_labels_ranges(cx.module.isa()).expect("value location ranges");
+    let value_ranges = context
+        .build_value_labels_ranges(cx.module.isa())
+        .expect("value location ranges");
 
     // Write optimized function to file for debugging
     #[cfg(debug_assertions)]
-    crate::pretty_clif::write_clif_file(cx.tcx, "opt", instance, &context.func, &clif_comments, Some(&value_ranges));
+    crate::pretty_clif::write_clif_file(
+        cx.tcx,
+        "opt",
+        instance,
+        &context.func,
+        &clif_comments,
+        Some(&value_ranges),
+    );
 
     // Define debuginfo for function
     let isa = cx.module.isa();
@@ -164,7 +171,14 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, impl Backend>) {
                 } else {
                     fx.bcx.ins().brz(cond, target, &[]);
                 };
-                trap_panic(fx, format!("[panic] Assert {:?} at {:?} failed.", msg, bb_data.terminator().source_info.span));
+                trap_panic(
+                    fx,
+                    format!(
+                        "[panic] Assert {:?} at {:?} failed.",
+                        msg,
+                        bb_data.terminator().source_info.span
+                    ),
+                );
             }
 
             TerminatorKind::SwitchInt {
@@ -272,7 +286,8 @@ fn trans_stmt<'tcx>(
                     let rhs = trans_operand(fx, rhs);
 
                     let res = if !fx.tcx.sess.overflow_checks() {
-                        let val = crate::num::trans_int_binop(fx, *bin_op, lhs, rhs).load_scalar(fx);
+                        let val =
+                            crate::num::trans_int_binop(fx, *bin_op, lhs, rhs).load_scalar(fx);
                         let is_overflow = fx.bcx.ins().iconst(types::I8, 0);
                         CValue::by_val_pair(val, is_overflow, lval.layout())
                     } else {
@@ -293,9 +308,7 @@ fn trans_stmt<'tcx>(
                                     let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
                                     fx.bcx.ins().bint(types::I8, res)
                                 }
-                                ty::Uint(_) | ty::Int(_) => {
-                                    fx.bcx.ins().bnot(val)
-                                }
+                                ty::Uint(_) | ty::Int(_) => fx.bcx.ins().bnot(val),
                                 _ => unimplemented!("un op Not for {:?}", layout.ty),
                             }
                         }
@@ -304,7 +317,12 @@ fn trans_stmt<'tcx>(
                                 let clif_ty = fx.clif_type(layout.ty).unwrap();
                                 if clif_ty == types::I128 {
                                     // FIXME implement it
-                                    crate::trap::trap_unreachable_ret_value(fx, layout, "i128 neg is not yet supported").load_scalar(fx)
+                                    crate::trap::trap_unreachable_ret_value(
+                                        fx,
+                                        layout,
+                                        "i128 neg is not yet supported",
+                                    )
+                                    .load_scalar(fx)
                                 } else {
                                     let zero = fx.bcx.ins().iconst(clif_ty, 0);
                                     fx.bcx.ins().isub(zero, val)
@@ -343,10 +361,19 @@ fn trans_stmt<'tcx>(
                     let operand = trans_operand(fx, operand);
                     let from_ty = operand.layout().ty;
 
-                    fn is_fat_ptr<'tcx>(fx: &FunctionCx<'_, 'tcx, impl Backend>, ty: Ty<'tcx>) -> bool {
-                        ty
-                            .builtin_deref(true)
-                            .map(|ty::TypeAndMut {ty: pointee_ty, mutbl: _ }| fx.layout_of(pointee_ty).is_unsized())
+                    fn is_fat_ptr<'tcx>(
+                        fx: &FunctionCx<'_, 'tcx, impl Backend>,
+                        ty: Ty<'tcx>,
+                    ) -> bool {
+                        ty.builtin_deref(true)
+                            .map(
+                                |ty::TypeAndMut {
+                                     ty: pointee_ty,
+                                     mutbl: _,
+                                 }| {
+                                    fx.layout_of(pointee_ty).is_unsized()
+                                },
+                            )
                             .unwrap_or(false)
                     }
 
@@ -363,17 +390,27 @@ fn trans_stmt<'tcx>(
                         // enum -> discriminant value
                         assert!(adt_def.is_enum());
                         match to_ty.sty {
-                            ty::Uint(_) | ty::Int(_) => {},
+                            ty::Uint(_) | ty::Int(_) => {}
                             _ => unreachable!("cast adt {} -> {}", from_ty, to_ty),
                         }
 
-                        let discr = crate::discriminant::codegen_get_discriminant(fx, operand, fx.layout_of(to_ty));
+                        let discr = crate::discriminant::codegen_get_discriminant(
+                            fx,
+                            operand,
+                            fx.layout_of(to_ty),
+                        );
                         lval.write_cvalue(fx, discr);
                     } else {
                         let to_clif_ty = fx.clif_type(to_ty).unwrap();
                         let from = operand.load_scalar(fx);
 
-                        let res = clif_int_or_float_cast(fx, from, type_sign(from_ty), to_clif_ty, type_sign(to_ty));
+                        let res = clif_int_or_float_cast(
+                            fx,
+                            from,
+                            type_sign(from_ty),
+                            to_clif_ty,
+                            type_sign(to_ty),
+                        );
                         lval.write_cvalue(fx, CValue::by_val(res, dest_layout));
                     }
                 }
@@ -391,9 +428,7 @@ fn trans_stmt<'tcx>(
                             let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
                             lval.write_cvalue(fx, CValue::by_val(func_addr, lval.layout()));
                         }
-                        _ => {
-                            bug!("{} cannot be cast to a fn ptr", operand.layout().ty)
-                        }
+                        _ => bug!("{} cannot be cast to a fn ptr", operand.layout().ty),
                     }
                 }
                 Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, _ty) => {
@@ -403,7 +438,8 @@ fn trans_stmt<'tcx>(
                 Rvalue::Discriminant(place) => {
                     let place = trans_place(fx, place);
                     let value = place.to_cvalue(fx);
-                    let discr = crate::discriminant::codegen_get_discriminant(fx, value, dest_layout);
+                    let discr =
+                        crate::discriminant::codegen_get_discriminant(fx, value, dest_layout);
                     lval.write_cvalue(fx, discr);
                 }
                 Rvalue::Repeat(operand, times) => {
@@ -478,15 +514,19 @@ fn trans_stmt<'tcx>(
 
         StatementKind::InlineAsm(asm) => {
             use syntax::ast::Name;
-            let InlineAsm { asm, outputs: _, inputs: _ } = &**asm;
+            let InlineAsm {
+                asm,
+                outputs: _,
+                inputs: _,
+            } = &**asm;
             let rustc::hir::InlineAsm {
                 asm: asm_code, // Name
-                outputs, // Vec<Name>
-                inputs, // Vec<Name>
-                clobbers, // Vec<Name>
-                volatile, // bool
-                alignstack, // bool
-                dialect: _, // syntax::ast::AsmDialect
+                outputs,       // Vec<Name>
+                inputs,        // Vec<Name>
+                clobbers,      // Vec<Name>
+                volatile,      // bool
+                alignstack,    // bool
+                dialect: _,    // syntax::ast::AsmDialect
                 asm_str_style: _,
             } = asm;
             match &*asm_code.as_str() {
@@ -494,7 +534,10 @@ fn trans_stmt<'tcx>(
                     assert_eq!(inputs, &[Name::intern("{eax}"), Name::intern("{ecx}")]);
 
                     assert_eq!(outputs.len(), 4);
-                    for (i, c) in (&["={eax}", "={ebx}", "={ecx}", "={edx}"]).iter().enumerate() {
+                    for (i, c) in (&["={eax}", "={ebx}", "={ecx}", "={edx}"])
+                        .iter()
+                        .enumerate()
+                    {
                         assert_eq!(&outputs[i].constraint.as_str(), c);
                         assert!(!outputs[i].is_rw);
                         assert!(!outputs[i].is_indirect);
@@ -505,7 +548,10 @@ fn trans_stmt<'tcx>(
                     assert!(!volatile);
                     assert!(!alignstack);
 
-                    crate::trap::trap_unimplemented(fx, "__cpuid_count arch intrinsic is not supported");
+                    crate::trap::trap_unimplemented(
+                        fx,
+                        "__cpuid_count arch intrinsic is not supported",
+                    );
                 }
                 "xgetbv" => {
                     assert_eq!(inputs, &[Name::intern("{ecx}")]);
@@ -565,7 +611,7 @@ pub fn trans_place<'tcx>(
                 let instance = Instance::new(static_.def_id, fx.monomorphize(&substs));
                 crate::constant::trans_promoted(fx, instance, promoted, static_.ty)
             }
-        }
+        },
     };
 
     trans_place_projection(fx, base, &place.projection)
@@ -615,7 +661,9 @@ pub fn trans_place_projection<'tcx>(
                     let len = crate::constant::force_eval_const(fx, len)
                         .eval_usize(fx.tcx, ParamEnv::reveal_all());
                     CPlace::for_addr(
-                        fx.bcx.ins().iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
+                        fx.bcx
+                            .ins()
+                            .iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
                         fx.layout_of(fx.tcx.mk_array(elem_ty, len - from as u64 - to as u64)),
                     )
                 }
@@ -624,7 +672,9 @@ pub fn trans_place_projection<'tcx>(
                     let (ptr, len) = base.to_addr_maybe_unsized(fx);
                     let len = len.unwrap();
                     CPlace::for_addr_with_extra(
-                        fx.bcx.ins().iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
+                        fx.bcx
+                            .ins()
+                            .iadd_imm(ptr, elem_layout.size.bytes() as i64 * from as i64),
                         fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64)),
                         base.layout(),
                     )

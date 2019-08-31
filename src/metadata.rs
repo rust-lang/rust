@@ -1,9 +1,9 @@
 use std::fs::File;
 use std::path::Path;
 
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::session::config;
 use rustc::ty::TyCtxt;
-use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_data_structures::owning_ref::{self, OwningRef};
 use rustc_data_structures::rustc_erase_owner;
@@ -41,40 +41,44 @@ impl MetadataLoader for CraneliftMetadataLoader {
         use object::Object;
         let file = std::fs::read(path).map_err(|e| format!("read:{:?}", e))?;
         let file = object::File::parse(&file).map_err(|e| format!("parse: {:?}", e))?;
-        let buf = file.section_data_by_name(".rustc").ok_or("no .rustc section")?.into_owned();
+        let buf = file
+            .section_data_by_name(".rustc")
+            .ok_or("no .rustc section")?
+            .into_owned();
         let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();
         Ok(rustc_erase_owner!(buf.map_owner_box()))
     }
 }
 
 // Adapted from https://github.com/rust-lang/rust/blob/da573206f87b5510de4b0ee1a9c044127e409bd3/src/librustc_codegen_llvm/base.rs#L47-L112
-pub fn write_metadata(
-    tcx: TyCtxt<'_>,
-    artifact: &mut faerie::Artifact
-) -> EncodedMetadata {
-    use std::io::Write;
-    use flate2::Compression;
+pub fn write_metadata(tcx: TyCtxt<'_>, artifact: &mut faerie::Artifact) -> EncodedMetadata {
     use flate2::write::DeflateEncoder;
+    use flate2::Compression;
+    use std::io::Write;
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
         None,
         Uncompressed,
-        Compressed
+        Compressed,
     }
 
-    let kind = tcx.sess.crate_types.borrow().iter().map(|ty| {
-        match *ty {
-            config::CrateType::Executable |
-            config::CrateType::Staticlib |
-            config::CrateType::Cdylib => MetadataKind::None,
+    let kind = tcx
+        .sess
+        .crate_types
+        .borrow()
+        .iter()
+        .map(|ty| match *ty {
+            config::CrateType::Executable
+            | config::CrateType::Staticlib
+            | config::CrateType::Cdylib => MetadataKind::None,
 
             config::CrateType::Rlib => MetadataKind::Uncompressed,
 
-            config::CrateType::Dylib |
-            config::CrateType::ProcMacro => MetadataKind::Compressed,
-        }
-    }).max().unwrap_or(MetadataKind::None);
+            config::CrateType::Dylib | config::CrateType::ProcMacro => MetadataKind::Compressed,
+        })
+        .max()
+        .unwrap_or(MetadataKind::None);
 
     if kind == MetadataKind::None {
         return EncodedMetadata::new();
@@ -88,19 +92,27 @@ pub fn write_metadata(
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
     DeflateEncoder::new(&mut compressed, Compression::fast())
-        .write_all(&metadata.raw_data).unwrap();
+        .write_all(&metadata.raw_data)
+        .unwrap();
 
-    artifact.declare(".rustc", faerie::Decl::section(faerie::SectionKind::Data)).unwrap();
-    artifact.define_with_symbols(".rustc", compressed, {
-        let mut map = std::collections::BTreeMap::new();
-        // FIXME implement faerie elf backend section custom symbols
-        // For MachO this is necessary to prevent the linker from throwing away the .rustc section,
-        // but for ELF it isn't.
-        if tcx.sess.target.target.options.is_like_osx {
-            map.insert(rustc::middle::exported_symbols::metadata_symbol_name(tcx), 0);
-        }
-        map
-    }).unwrap();
+    artifact
+        .declare(".rustc", faerie::Decl::section(faerie::SectionKind::Data))
+        .unwrap();
+    artifact
+        .define_with_symbols(".rustc", compressed, {
+            let mut map = std::collections::BTreeMap::new();
+            // FIXME implement faerie elf backend section custom symbols
+            // For MachO this is necessary to prevent the linker from throwing away the .rustc section,
+            // but for ELF it isn't.
+            if tcx.sess.target.target.options.is_like_osx {
+                map.insert(
+                    rustc::middle::exported_symbols::metadata_symbol_name(tcx),
+                    0,
+                );
+            }
+            map
+        })
+        .unwrap();
 
     metadata
 }

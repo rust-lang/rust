@@ -6,10 +6,7 @@ const DROP_FN_INDEX: usize = 0;
 const SIZE_INDEX: usize = 1;
 const ALIGN_INDEX: usize = 2;
 
-pub fn drop_fn_of_obj(
-    fx: &mut FunctionCx<'_, '_, impl Backend>,
-    vtable: Value,
-) -> Value {
+pub fn drop_fn_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -19,10 +16,7 @@ pub fn drop_fn_of_obj(
     )
 }
 
-pub fn size_of_obj(
-    fx: &mut FunctionCx<'_, '_, impl Backend>,
-    vtable: Value,
-) -> Value {
+pub fn size_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -32,10 +26,7 @@ pub fn size_of_obj(
     )
 }
 
-pub fn min_align_of_obj(
-    fx: &mut FunctionCx<'_, '_, impl Backend>,
-    vtable: Value,
-) -> Value {
+pub fn min_align_of_obj(fx: &mut FunctionCx<'_, '_, impl Backend>, vtable: Value) -> Value {
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
     fx.bcx.ins().load(
         pointer_ty(fx.tcx),
@@ -86,11 +77,8 @@ fn build_vtable<'tcx>(
     let tcx = fx.tcx;
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
 
-    let drop_in_place_fn = import_function(
-        tcx,
-        fx.module,
-        Instance::resolve_drop_in_place(tcx, ty),
-    );
+    let drop_in_place_fn =
+        import_function(tcx, fx.module, Instance::resolve_drop_in_place(tcx, ty));
 
     let mut components: Vec<_> = vec![Some(drop_in_place_fn), None, None];
 
@@ -136,7 +124,15 @@ fn build_vtable<'tcx>(
             &format!("vtable.{:?}.for.{:?}", trait_ref, ty),
             Linkage::Local,
             false,
-            Some(fx.tcx.data_layout.pointer_align.pref.bytes().try_into().unwrap())
+            Some(
+                fx.tcx
+                    .data_layout
+                    .pointer_align
+                    .pref
+                    .bytes()
+                    .try_into()
+                    .unwrap(),
+            ),
         )
         .unwrap();
 

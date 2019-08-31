@@ -40,9 +40,7 @@ pub fn clif_intcast(
                 fx.bcx.ins().ireduce(to, lsb)
             }
         }
-        (_, _) => {
-            fx.bcx.ins().ireduce(to, val)
-        }
+        (_, _) => fx.bcx.ins().ireduce(to, val),
     }
 }
 
@@ -71,13 +69,10 @@ pub fn clif_int_or_float_cast(
             // __floatuntisf: u128 -> f32
             // __floatuntidf: u128 -> f64
 
-            let name = format!("__float{sign}ti{flt}f",
-                sign=if from_signed {
-                    ""
-                } else {
-                    "un"
-                },
-                flt=match to_ty {
+            let name = format!(
+                "__float{sign}ti{flt}f",
+                sign = if from_signed { "" } else { "un" },
+                flt = match to_ty {
                     types::F32 => "s",
                     types::F64 => "d",
                     _ => unreachable!("{:?}", to_ty),
@@ -96,11 +91,13 @@ pub fn clif_int_or_float_cast(
                 _ => unreachable!(),
             };
 
-            return fx.easy_call(
-                &name,
-                &[CValue::by_val(from, fx.layout_of(from_rust_ty))],
-                to_rust_ty,
-            ).load_scalar(fx);
+            return fx
+                .easy_call(
+                    &name,
+                    &[CValue::by_val(from, fx.layout_of(from_rust_ty))],
+                    to_rust_ty,
+                )
+                .load_scalar(fx);
         }
 
         // int-like -> float
@@ -117,13 +114,10 @@ pub fn clif_int_or_float_cast(
             // __fixunssfti: f32 -> u128
             // __fixunsdfti: f64 -> u128
 
-            let name = format!("__fix{sign}{flt}fti",
-                sign=if to_signed {
-                    ""
-                } else {
-                    "uns"
-                },
-                flt=match from_ty {
+            let name = format!(
+                "__fix{sign}{flt}fti",
+                sign = if to_signed { "" } else { "uns" },
+                flt = match from_ty {
                     types::F32 => "s",
                     types::F64 => "d",
                     _ => unreachable!("{:?}", to_ty),
@@ -142,11 +136,13 @@ pub fn clif_int_or_float_cast(
                 fx.tcx.types.u128
             };
 
-            return fx.easy_call(
-                &name,
-                &[CValue::by_val(from, fx.layout_of(from_rust_ty))],
-                to_rust_ty,
-            ).load_scalar(fx);
+            return fx
+                .easy_call(
+                    &name,
+                    &[CValue::by_val(from, fx.layout_of(from_rust_ty))],
+                    to_rust_ty,
+                )
+                .load_scalar(fx);
         }
 
         // float -> int-like
@@ -162,24 +158,12 @@ pub fn clif_int_or_float_cast(
             let max_val = fx.bcx.ins().iconst(types::I32, max);
 
             let val = if to_signed {
-                let has_underflow = fx.bcx.ins().icmp_imm(
-                    IntCC::SignedLessThan,
-                    val,
-                    min,
-                );
-                let has_overflow = fx.bcx.ins().icmp_imm(
-                    IntCC::SignedGreaterThan,
-                    val,
-                    max,
-                );
+                let has_underflow = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, val, min);
+                let has_overflow = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThan, val, max);
                 let bottom_capped = fx.bcx.ins().select(has_underflow, min_val, val);
                 fx.bcx.ins().select(has_overflow, max_val, bottom_capped)
             } else {
-                let has_overflow = fx.bcx.ins().icmp_imm(
-                    IntCC::UnsignedGreaterThan,
-                    val,
-                    max,
-                );
+                let has_overflow = fx.bcx.ins().icmp_imm(IntCC::UnsignedGreaterThan, val, max);
                 fx.bcx.ins().select(has_overflow, max_val, val)
             };
             fx.bcx.ins().ireduce(to_ty, val)
@@ -193,12 +177,8 @@ pub fn clif_int_or_float_cast(
     } else if from_ty.is_float() && to_ty.is_float() {
         // float -> float
         match (from_ty, to_ty) {
-            (types::F32, types::F64) => {
-                fx.bcx.ins().fpromote(types::F64, from)
-            }
-            (types::F64, types::F32) => {
-                fx.bcx.ins().fdemote(types::F32, from)
-            }
+            (types::F32, types::F64) => fx.bcx.ins().fpromote(types::F64, from),
+            (types::F64, types::F32) => fx.bcx.ins().fdemote(types::F32, from),
             _ => from,
         }
     } else {
