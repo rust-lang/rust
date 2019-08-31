@@ -146,12 +146,12 @@ impl Margin {
             } else if self.label_right - self.span_left <= self.column_width {
                 // Attempt to fit the code window considering only the spans and labels.
                 let padding_left = (self.column_width - (self.label_right - self.span_left)) / 2;
-                self.computed_left = self.span_left - padding_left;
+                self.computed_left = max(self.span_left, padding_left) - padding_left;
                 self.computed_right = self.computed_left + self.column_width;
             } else if self.span_right - self.span_left <= self.column_width {
                 // Attempt to fit the code window considering the spans and labels plus padding.
                 let padding_left = (self.column_width - (self.span_right - self.span_left)) / 5 * 2;
-                self.computed_left = self.span_left - padding_left;
+                self.computed_left = max(self.span_left, padding_left) - padding_left;
                 self.computed_right = self.computed_left + self.column_width;
             } else { // Mostly give up but still don't show the full line.
                 self.computed_left = self.span_left;
