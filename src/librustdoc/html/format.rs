@@ -19,23 +19,25 @@ use crate::html::item_type::ItemType;
 use crate::html::render::{self, cache, CURRENT_DEPTH};
 
 pub trait Print {
-    fn print(&self, buffer: &mut Buffer);
+    fn print(self, buffer: &mut Buffer);
 }
 
-impl<T: ?Sized + Print> Print for &'_ T {
-    fn print(&self, buffer: &mut Buffer) {
-        (&**self).print(buffer)
+impl<F> Print for F
+    where F: FnOnce(&mut Buffer),
+{
+    fn print(self, buffer: &mut Buffer) {
+        (self)(buffer)
     }
 }
 
 impl Print for String {
-    fn print(&self, buffer: &mut Buffer) {
-        buffer.write_str(self);
+    fn print(self, buffer: &mut Buffer) {
+        buffer.write_str(&self);
     }
 }
 
-impl Print for str {
-    fn print(&self, buffer: &mut Buffer) {
+impl Print for &'_ str {
+    fn print(self, buffer: &mut Buffer) {
         buffer.write_str(self);
     }
 }
@@ -92,7 +94,7 @@ impl Buffer {
         self.buffer.write_fmt(v).unwrap();
     }
 
-    crate fn to_display<T: ?Sized + Print>(mut self, t: &T) -> String {
+    crate fn to_display<T: Print>(mut self, t: T) -> String {
         t.print(&mut self);
         self.into_inner()
     }

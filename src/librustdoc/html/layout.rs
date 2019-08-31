@@ -34,7 +34,7 @@ pub struct Page<'a> {
 pub fn render<T: fmt::Display, S: Print>(
     layout: &Layout,
     page: &Page<'_>,
-    sidebar: &S,
+    sidebar: S,
     t: &T,
     themes: &[PathBuf],
 ) -> String {

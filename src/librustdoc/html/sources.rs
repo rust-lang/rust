@@ -120,7 +120,7 @@ impl<'a> SourceCollector<'a> {
             static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
         let v = layout::render(&self.scx.layout,
-                       &page, &(""), &Source(contents),
+                       &page, "", &Source(contents),
                        &self.scx.themes);
         self.scx.fs.write(&cur, v.as_bytes())?;
         self.scx.local_sources.insert(p.clone(), href);
