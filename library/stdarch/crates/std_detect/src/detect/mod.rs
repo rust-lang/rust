@@ -65,6 +65,11 @@ mod cache;
 
 cfg_if! {
     if #[cfg(miri)] {
+        // When running under miri all target-features that are not enabled at
+        // compile-time are reported as disabled at run-time.
+        //
+        // For features for which `cfg(target_feature)` returns true,
+        // this run-time detection logic is never called.
         #[path = "os/other.rs"]
         mod os;
     } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
