@@ -3579,7 +3579,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "annotate-snippets",
  "atty",
