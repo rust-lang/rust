@@ -65,7 +65,7 @@ use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::fold::DocFolder;
 use crate::html::escape::Escape;
-use crate::html::format::{AsyncSpace, ConstnessSpace};
+use crate::html::format::{Buffer, AsyncSpace, ConstnessSpace};
 use crate::html::format::{GenericBounds, WhereClause, href, AbiSpace, DefaultSpace};
 use crate::html::format::{VisSpace, Function, UnsafetySpace, MutableSpace};
 use crate::html::format::fmt_impl_for_trait_page;
@@ -1025,12 +1025,12 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
         all_aliases.push(format!("ALIASES[\"{}\"] = {{{}}};", krate.name, output));
         all_aliases.sort();
-        let mut v = Vec::new();
-        try_err!(writeln!(&mut v, "var ALIASES = {{}};"), &dst);
+        let mut v = Buffer::html();
+        writeln!(&mut v, "var ALIASES = {{}};");
         for aliases in &all_aliases {
-            try_err!(writeln!(&mut v, "{}", aliases), &dst);
+            writeln!(&mut v, "{}", aliases);
         }
-        cx.shared.fs.write(&dst, &v)?;
+        cx.shared.fs.write(&dst, v.into_inner().into_bytes())?;
     }
 
     use std::ffi::OsString;
@@ -1114,12 +1114,9 @@ themePicker.onblur = handleThemeButtonsBlur;
                                  &krate.name,
                                  hierarchy.to_json_string()));
         all_sources.sort();
-        let mut v = Vec::new();
-        try_err!(writeln!(&mut v,
-                          "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();",
-                          all_sources.join("\n")),
-                 &dst);
-        cx.shared.fs.write(&dst, &v)?;
+        let v = format!("var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
+                          all_sources.join("\n"));
+        cx.shared.fs.write(&dst, v.as_bytes())?;
     }
 
     // Update the search index
@@ -1134,14 +1131,11 @@ themePicker.onblur = handleThemeButtonsBlur;
     // with rustdoc running in parallel.
     all_indexes.sort();
     {
-        let mut v = Vec::new();
-        try_err!(writeln!(&mut v, "var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={{}};"), &dst);
-        try_err!(write_minify_replacer(
-            &mut v,
+        let mut v = String::from("var N=null,E=\"\",T=\"t\",U=\"u\",searchIndex={{}};\n");
+        v.push_str(&minify_replacer(
             &format!("{}\n{}", variables.join(""), all_indexes.join("\n")),
-            options.enable_minification),
-            &dst);
-        try_err!(write!(&mut v, "initSearch(searchIndex);addSearchOptions(searchIndex);"), &dst);
+            options.enable_minification));
+        v.push_str("initSearch(searchIndex);addSearchOptions(searchIndex);");
         cx.shared.fs.write(&dst, &v)?;
     }
     if options.enable_index_page {
@@ -1247,19 +1241,18 @@ themePicker.onblur = handleThemeButtonsBlur;
         // identically even with rustdoc running in parallel.
         all_implementors.sort();
 
-        let mut v = Vec::new();
-        try_err!(writeln!(&mut v, "(function() {{var implementors = {{}};"), &mydst);
+        let mut v = String::from("(function() {var implementors = {}};\n");
         for implementor in &all_implementors {
-            try_err!(writeln!(&mut v, "{}", *implementor), &mydst);
+            v.push_str(&format!("{}", *implementor));
         }
-        try_err!(writeln!(&mut v, "{}", r"
+        v.push_str(r"
             if (window.register_implementors) {
                 window.register_implementors(implementors);
             } else {
                 window.pending_implementors = implementors;
             }
-        "), &mydst);
-        try_err!(writeln!(&mut v, r"}})()"), &mydst);
+        \n");
+        v.push_str("})()");
         cx.shared.fs.write(&mydst, &v)?;
     }
     Ok(())
@@ -1279,68 +1272,65 @@ fn write_minify(fs:&DocFS, dst: PathBuf, contents: &str, enable_minification: bo
     }
 }
 
-fn write_minify_replacer<W: Write>(
-    dst: &mut W,
+fn minify_replacer(
     contents: &str,
     enable_minification: bool,
-) -> io::Result<()> {
+) -> String {
     use minifier::js::{simple_minify, Keyword, ReservedChar, Token, Tokens};
 
     if enable_minification {
-        writeln!(dst, "{}",
-                 {
-                    let tokens: Tokens<'_> = simple_minify(contents)
-                        .into_iter()
-                        .filter(|(f, next)| {
-                            // We keep backlines.
-                            minifier::js::clean_token_except(f, next, &|c: &Token<'_>| {
-                                c.get_char() != Some(ReservedChar::Backline)
-                            })
-                        })
-                        .map(|(f, _)| {
-                            minifier::js::replace_token_with(f, &|t: &Token<'_>| {
-                                match *t {
-                                    Token::Keyword(Keyword::Null) => Some(Token::Other("N")),
-                                    Token::String(s) => {
-                                        let s = &s[1..s.len() -1]; // The quotes are included
-                                        if s.is_empty() {
-                                            Some(Token::Other("E"))
-                                        } else if s == "t" {
-                                            Some(Token::Other("T"))
-                                        } else if s == "u" {
-                                            Some(Token::Other("U"))
-                                        } else {
-                                            None
-                                        }
-                                    }
-                                    _ => None,
-                                }
-                            })
-                        })
-                        .collect::<Vec<_>>()
-                        .into();
-                    tokens.apply(|f| {
-                        // We add a backline after the newly created variables.
-                        minifier::js::aggregate_strings_into_array_with_separation_filter(
-                            f,
-                            "R",
-                            Token::Char(ReservedChar::Backline),
-                            // This closure prevents crates' names from being aggregated.
-                            //
-                            // The point here is to check if the string is preceded by '[' and
-                            // "searchIndex". If so, it means this is a crate name and that it
-                            // shouldn't be aggregated.
-                            |tokens, pos| {
-                                pos < 2 ||
-                                !tokens[pos - 1].eq_char(ReservedChar::OpenBracket) ||
-                                tokens[pos - 2].get_other() != Some("searchIndex")
-                            }
-                        )
-                    })
-                    .to_string()
+        let tokens: Tokens<'_> = simple_minify(contents)
+            .into_iter()
+            .filter(|(f, next)| {
+                // We keep backlines.
+                minifier::js::clean_token_except(f, next, &|c: &Token<'_>| {
+                    c.get_char() != Some(ReservedChar::Backline)
                 })
+            })
+            .map(|(f, _)| {
+                minifier::js::replace_token_with(f, &|t: &Token<'_>| {
+                    match *t {
+                        Token::Keyword(Keyword::Null) => Some(Token::Other("N")),
+                        Token::String(s) => {
+                            let s = &s[1..s.len() -1]; // The quotes are included
+                            if s.is_empty() {
+                                Some(Token::Other("E"))
+                            } else if s == "t" {
+                                Some(Token::Other("T"))
+                            } else if s == "u" {
+                                Some(Token::Other("U"))
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    }
+                })
+            })
+            .collect::<Vec<_>>()
+            .into();
+        let o = tokens.apply(|f| {
+            // We add a backline after the newly created variables.
+            minifier::js::aggregate_strings_into_array_with_separation_filter(
+                f,
+                "R",
+                Token::Char(ReservedChar::Backline),
+                // This closure prevents crates' names from being aggregated.
+                //
+                // The point here is to check if the string is preceded by '[' and
+                // "searchIndex". If so, it means this is a crate name and that it
+                // shouldn't be aggregated.
+                |tokens, pos| {
+                    pos < 2 ||
+                    !tokens[pos - 1].eq_char(ReservedChar::OpenBracket) ||
+                    tokens[pos - 2].get_other() != Some("searchIndex")
+                }
+            )
+        })
+        .to_string();
+        format!("{}\n", o)
     } else {
-        writeln!(dst, "{}", contents)
+        format!("{}\n", contents)
     }
 }
 
@@ -2073,9 +2063,7 @@ impl Context {
             if !self.render_redirect_pages {
                 let items = self.build_sidebar_items(&m);
                 let js_dst = self.dst.join("sidebar-items.js");
-                let mut v = Vec::new();
-                try_err!(write!(&mut v, "initSidebarItems({});",
-                                as_json(&items)), &js_dst);
+                let v = format!("initSidebarItems({});", as_json(&items));
                 scx.fs.write(&js_dst, &v)?;
             }
 
