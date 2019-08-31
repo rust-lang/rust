@@ -8,7 +8,6 @@ use crate::html::format::Buffer;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::fmt;
 use syntax::source_map::FileName;
 
 crate fn render(dst: &Path, scx: &mut SharedContext,
@@ -121,7 +120,7 @@ impl<'a> SourceCollector<'a> {
             static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
         let v = layout::render(&self.scx.layout,
-                       &page, "", |buf: &mut Buffer| buf.from_display(Source(&contents)),
+                       &page, "", |buf: &mut _| print_src(buf, &contents),
                        &self.scx.themes);
         self.scx.fs.write(&cur, v.as_bytes())?;
         self.scx.local_sources.insert(p.clone(), href);
@@ -158,11 +157,7 @@ where
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-struct Source<'a>(&'a str);
-
-impl<'a> fmt::Display for Source<'a> {
-fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    let Source(s) = *self;
+fn print_src(buf: &mut Buffer, s: &str) {
     let lines = s.lines().count();
     let mut cols = 0;
     let mut tmp = lines;
@@ -170,13 +165,11 @@ fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         cols += 1;
         tmp /= 10;
     }
-    write!(fmt, "<pre class=\"line-numbers\">")?;
+    write!(buf, "<pre class=\"line-numbers\">");
     for i in 1..=lines {
-        write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
+        write!(buf, "<span id=\"{0}\">{0:1$}</span>\n", i, cols);
     }
-    write!(fmt, "</pre>")?;
-    write!(fmt, "{}",
-            highlight::render_with_highlighting(s, None, None, None))?;
-    Ok(())
-}
+    write!(buf, "</pre>");
+    write!(buf, "{}",
+            highlight::render_with_highlighting(s, None, None, None));
 }
