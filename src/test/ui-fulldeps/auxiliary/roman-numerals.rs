@@ -15,12 +15,12 @@ extern crate rustc;
 extern crate rustc_driver;
 
 use syntax::parse::token::{self, Token};
-use syntax::tokenstream::TokenTree;
+use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax_pos::Span;
 use rustc_driver::plugin::Registry;
 
-fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
+fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: TokenStream)
         -> Box<dyn MacResult + 'static> {
 
     static NUMERALS: &'static [(&'static str, usize)] = &[
@@ -36,7 +36,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         return DummyResult::any(sp);
     }
 
-    let text = match args[0] {
+    let text = match args.into_trees().next().unwrap() {
         TokenTree::Token(Token { kind: token::Ident(s, _), .. }) => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");

@@ -356,11 +356,7 @@ pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
     to_string(|s| s.print_tt(tt, false))
 }
 
-pub fn tts_to_string(tts: &[tokenstream::TokenTree]) -> String {
-    tokens_to_string(tts.iter().cloned().collect())
-}
-
-pub fn tokens_to_string(tokens: TokenStream) -> String {
+pub fn tts_to_string(tokens: TokenStream) -> String {
     to_string(|s| s.print_tts(tokens, false))
 }
 

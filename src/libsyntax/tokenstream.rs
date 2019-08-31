@@ -506,7 +506,7 @@ impl Cursor {
 
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&pprust::tokens_to_string(self.clone()))
+        f.write_str(&pprust::tts_to_string(self.clone()))
     }
 }
 
