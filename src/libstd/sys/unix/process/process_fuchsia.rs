@@ -48,8 +48,10 @@ impl Command {
         use crate::sys::process::zircon::*;
 
         let envp = match maybe_envp {
-            Some(envp) => envp.as_ptr(),
+            // None means to clone the current environment, which is done in the
+            // flags below.
             None => ptr::null(),
+            Some(envp) => envp.as_ptr(),
         };
 
         let make_action = |local_io: &ChildStdio, target_fd| -> io::Result<fdio_spawn_action_t> {
@@ -104,7 +106,8 @@ impl Command {
         let mut process_handle: zx_handle_t = 0;
         zx_cvt(fdio_spawn_etc(
             ZX_HANDLE_INVALID,
-            FDIO_SPAWN_CLONE_JOB | FDIO_SPAWN_CLONE_LDSVC | FDIO_SPAWN_CLONE_NAMESPACE,
+            FDIO_SPAWN_CLONE_JOB | FDIO_SPAWN_CLONE_LDSVC | FDIO_SPAWN_CLONE_NAMESPACE
+            | FDIO_SPAWN_CLONE_ENVIRON,  // this is ignored when envp is non-null
             self.get_argv()[0], self.get_argv().as_ptr(), envp,
             actions.len() as size_t, actions.as_ptr(),
             &mut process_handle,
