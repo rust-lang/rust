@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::externalfiles::ExternalHtml;
 use crate::html::render::SlashChecker;
+use crate::html::format::{Buffer, Print};
 
 #[derive(Clone)]
 pub struct Layout {
@@ -30,7 +31,7 @@ pub struct Page<'a> {
     pub static_extra_scripts: &'a [&'a str],
 }
 
-pub fn render<T: fmt::Display, S: fmt::Display>(
+pub fn render<T: fmt::Display, S: Print>(
     layout: &Layout,
     page: &Page<'_>,
     sidebar: &S,
@@ -208,7 +209,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     in_header = layout.external_html.in_header,
     before_content = layout.external_html.before_content,
     after_content = layout.external_html.after_content,
-    sidebar   = *sidebar,
+    sidebar   = Buffer::html().to_display(sidebar),
     krate     = layout.krate,
     themes = themes.iter()
                    .filter_map(|t| t.file_stem())
