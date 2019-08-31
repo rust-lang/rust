@@ -1174,7 +1174,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                                     })
                                     .collect::<String>());
             let v = layout::render(&cx.shared.layout,
-                           &page, &(""), &content,
+                           &page, "", &content,
                            &cx.shared.themes);
             cx.shared.fs.write(&dst, v.as_bytes())?;
         }
@@ -1921,7 +1921,7 @@ impl Context {
             String::new()
         };
         let v = layout::render(&self.shared.layout,
-                       &page, &sidebar, &all,
+                       &page, sidebar, &all,
                        &self.shared.themes);
         self.shared.fs.write(&final_file, v.as_bytes())?;
 
@@ -1937,7 +1937,7 @@ impl Context {
         themes.push(PathBuf::from("settings.css"));
         let v = layout::render(
             &self.shared.layout,
-            &page, &sidebar, &settings,
+            &page, sidebar, &settings,
             &themes);
         self.shared.fs.write(&settings_file, v.as_bytes())?;
 
@@ -1994,7 +1994,7 @@ impl Context {
 
         if !self.render_redirect_pages {
             layout::render(&self.shared.layout, &page,
-                           &Sidebar{ cx: self, item: it },
+                           Sidebar{ cx: self, item: it },
                            &Item{ cx: self, item: it },
                            &self.shared.themes)
         } else {
@@ -4267,7 +4267,7 @@ fn item_foreign_type(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item)
 }
 
 impl Print for Sidebar<'_> {
-    fn print(&self, buffer: &mut Buffer) {
+    fn print(self, buffer: &mut Buffer) {
         let cx = self.cx;
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
