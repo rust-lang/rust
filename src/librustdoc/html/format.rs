@@ -872,9 +872,9 @@ impl fmt::Display for clean::Impl {
 
 // The difference from above is that trait is not hyperlinked.
 pub fn fmt_impl_for_trait_page(i: &clean::Impl,
-                               f: &mut fmt::Formatter<'_>,
-                               use_absolute: bool) -> fmt::Result {
-    fmt_impl(i, f, false, use_absolute)
+                               f: &mut Buffer,
+                               use_absolute: bool) {
+    f.with_formatter(|f| fmt_impl(i, f, false, use_absolute))
 }
 
 impl fmt::Display for clean::Arguments {
