@@ -581,10 +581,11 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 /// Run-length encoding of the undef mask.
 /// Used to copy parts of a mask multiple times to another allocation.
 pub struct AllocationDefinedness {
-    /// The lengths of ranges that are run-length encoded.
-    ranges: smallvec::SmallVec::<[u64; 1]>,
     /// The definedness of the first range.
     initial: bool,
+    /// The lengths of ranges that are run-length encoded.
+    /// The definedness of the ranges alternate starting with `initial`.
+    ranges: smallvec::SmallVec::<[u64; 1]>,
 }
 
 /// Transferring the definedness mask to other allocations.
