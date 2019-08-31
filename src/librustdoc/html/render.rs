@@ -387,8 +387,6 @@ struct Item<'a> {
     item: &'a clean::Item,
 }
 
-struct Sidebar<'a> { cx: &'a Context, item: &'a clean::Item, }
-
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
 #[derive(Debug)]
@@ -1994,7 +1992,7 @@ impl Context {
 
         if !self.render_redirect_pages {
             layout::render(&self.shared.layout, &page,
-                           Sidebar{ cx: self, item: it },
+                           |buf: &mut _| print_sidebar(self, it, buf),
                            &Item{ cx: self, item: it },
                            &self.shared.themes)
         } else {
@@ -4266,10 +4264,7 @@ fn item_foreign_type(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item)
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-impl Print for Sidebar<'_> {
-    fn print(self, buffer: &mut Buffer) {
-        let cx = self.cx;
-        let it = self.item;
+    fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
@@ -4360,7 +4355,6 @@ impl Print for Sidebar<'_> {
         // Closes sidebar-elems div.
         write!(buffer, "</div>");
     }
-}
 
 fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
     if used_links.insert(url.clone()) {
