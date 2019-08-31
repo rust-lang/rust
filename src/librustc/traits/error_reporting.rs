@@ -995,7 +995,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 "it looks like you forgot to use parentheses to \
                                  call the function: `{}({})`",
                                 ident,
-                                body.arguments.iter()
+                                body.params.iter()
                                     .map(|arg| match &arg.pat.node {
                                         hir::PatKind::Binding(_, _, ident, None)
                                         if ident.name != kw::SelfLower => ident.to_string(),
