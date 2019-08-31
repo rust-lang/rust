@@ -1801,42 +1801,25 @@ fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 }
 }
 
-#[derive(Debug)]
-struct Settings<'a> {
+fn settings(root_path: &str, suffix: &str) -> String {
     // (id, explanation, default value)
-    settings: Vec<(&'static str, &'static str, bool)>,
-    root_path: &'a str,
-    suffix: &'a str,
-}
-
-impl<'a> Settings<'a> {
-    pub fn new(root_path: &'a str, suffix: &'a str) -> Settings<'a> {
-        Settings {
-            settings: vec![
-                ("item-declarations", "Auto-hide item declarations.", true),
-                ("item-attributes", "Auto-hide item attributes.", true),
-                ("trait-implementations", "Auto-hide trait implementations documentation",
-                 true),
-                ("method-docs", "Auto-hide item methods' documentation", false),
-                ("go-to-only-result", "Directly go to item in search if there is only one result",
-                 false),
-                ("line-numbers", "Show line numbers on code examples", false),
-            ],
-            root_path,
-            suffix,
-        }
-    }
-}
-
-impl<'a> fmt::Display for Settings<'a> {
-fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f,
+    let settings = [
+        ("item-declarations", "Auto-hide item declarations.", true),
+        ("item-attributes", "Auto-hide item attributes.", true),
+        ("trait-implementations", "Auto-hide trait implementations documentation",
+            true),
+        ("method-docs", "Auto-hide item methods' documentation", false),
+        ("go-to-only-result", "Directly go to item in search if there is only one result",
+            false),
+        ("line-numbers", "Show line numbers on code examples", false),
+    ];
+    format!(
 "<h1 class='fqn'>\
     <span class='in-band'>Rustdoc settings</span>\
 </h1>\
 <div class='settings'>{}</div>\
 <script src='{}settings{}.js'></script>",
-            self.settings.iter()
+            settings.iter()
                         .map(|(id, text, enabled)| {
                             format!("<div class='setting-line'>\
                                             <label class='toggle'>\
@@ -1847,9 +1830,8 @@ fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                                         </div>", id, if *enabled { " checked" } else { "" }, text)
                         })
                         .collect::<String>(),
-            self.root_path,
-            self.suffix)
-}
+            root_path,
+            suffix)
 }
 
 impl Context {
@@ -1924,8 +1906,6 @@ impl Context {
         self.shared.fs.write(&final_file, v.as_bytes())?;
 
         // Generating settings page.
-        let settings = Settings::new(self.shared.static_root_path.as_deref().unwrap_or("./"),
-                                     &self.shared.resource_suffix);
         page.title = "Rustdoc settings";
         page.description = "Settings of Rustdoc";
         page.root_path = "./";
@@ -1935,7 +1915,10 @@ impl Context {
         themes.push(PathBuf::from("settings.css"));
         let v = layout::render(
             &self.shared.layout,
-            &page, sidebar, |buf: &mut Buffer| buf.from_display(settings),
+            &page, sidebar, settings(
+                self.shared.static_root_path.as_deref().unwrap_or("./"),
+                &self.shared.resource_suffix
+            ),
             &themes);
         self.shared.fs.write(&settings_file, v.as_bytes())?;
 
