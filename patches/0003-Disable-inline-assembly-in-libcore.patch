@@ -1,0 +1,49 @@
+From 50ce3e454d5721cb534a9e9bb73c82246b930bab Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Sat, 19 Jan 2019 11:46:43 +0100
+Subject: [PATCH] Disable inline assembly in libcore
+
+---
+ src/libcore/hint.rs | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/libcore/hint.rs b/src/libcore/hint.rs
+index ad5a207..04712b8 100644
+--- a/src/libcore/hint.rs
++++ b/src/libcore/hint.rs
+@@ -62,6 +62,7 @@ pub unsafe fn unreachable_unchecked() -> ! {
+ #[inline]
+ #[unstable(feature = "renamed_spin_loop", issue = "55002")]
+ pub fn spin_loop() {
++    /*
+     #[cfg(
+         all(
+             any(target_arch = "x86", target_arch = "x86_64"),
+@@ -71,4 +72,5 @@ pub fn spin_loop() {
+             unsafe { crate::arch::arm::__yield() };
+         }
+     }
++    */
+ }
+diff --git a/src/libcore/hint.rs b/src/libcore/hint.rs
+index ce35181..7d3f6a5 100644
+--- a/src/libcore/hint.rs
++++ b/src/libcore/hint.rs
+@@ -128,6 +128,7 @@ pub fn black_box<T>(dummy: T) -> T {
+     // this. LLVM's intepretation of inline assembly is that it's, well, a black
+     // box. This isn't the greatest implementation since it probably deoptimizes
+     // more than we want, but it's so far good enough.
++/*
+     #[cfg(not(any(
+         target_arch = "asmjs",
+         all(
+@@ -139,6 +140,7 @@ pub fn black_box<T>(dummy: T) -> T {
+         asm!("" : : "r"(&dummy));
+         return dummy;
+     }
++*/
+ 
+     // Not all platforms support inline assembly so try to do something without
+     // inline assembly which in theory still hinders at least some optimizations
+-- 
+2.17.2 (Apple Git-113)
