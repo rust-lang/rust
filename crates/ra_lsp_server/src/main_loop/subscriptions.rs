@@ -1,7 +1,7 @@
 use ra_ide_api::FileId;
 use rustc_hash::FxHashSet;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(crate) struct Subscriptions {
     subs: FxHashSet<FileId>,
 }
