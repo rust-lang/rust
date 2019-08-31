@@ -56,7 +56,7 @@
 #![feature(test)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
-#![feature(proc_macro_hygiene)]
+#![cfg_attr(bootstrap, feature(proc_macro_hygiene))]
 #![feature(log_syntax)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
