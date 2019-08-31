@@ -581,8 +581,10 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 /// Run-length encoding of the undef mask.
 /// Used to copy parts of a mask multiple times to another allocation.
 pub struct AllocationDefinedness {
+    /// The lengths of ranges that are run-length encoded.
     ranges: smallvec::SmallVec::<[u64; 1]>,
-    first: bool,
+    /// The definedness of the first range.
+    initial: bool,
 }
 
 /// Transferring the definedness mask to other allocations.
@@ -606,9 +608,9 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         // where each element toggles the state
 
         let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
-        let first = self.undef_mask.get(src.offset);
+        let initial = self.undef_mask.get(src.offset);
         let mut cur_len = 1;
-        let mut cur = first;
+        let mut cur = initial;
 
         for i in 1..size.bytes() {
             // FIXME: optimize to bitshift the current undef block's bits and read the top bit
@@ -623,7 +625,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
 
         ranges.push(cur_len);
 
-        AllocationDefinedness { ranges, first, }
+        AllocationDefinedness { ranges, initial, }
     }
 
     /// Apply multiple instances of the run-length encoding to the undef_mask.
@@ -640,7 +642,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
             self.undef_mask.set_range_inbounds(
                 dest.offset,
                 dest.offset + size * repeat,
-                defined.first,
+                defined.initial,
             );
             return;
         }
@@ -648,7 +650,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
         for mut j in 0..repeat {
             j *= size.bytes();
             j += dest.offset.bytes();
-            let mut cur = defined.first;
+            let mut cur = defined.initial;
             for range in &defined.ranges {
                 let old_j = j;
                 j += range;
@@ -725,9 +727,9 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
                         // shift offsets from source allocation to destination allocation
                         offset + dest_offset - src.offset,
                         reloc,
-                        )
+                    )
                 })
-                );
+            );
         }
 
         AllocationRelocations {
@@ -735,6 +737,9 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         }
     }
 
+    /// Apply a relocation copy.
+    /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
+    /// to be clear of relocations.
     pub fn mark_relocation_range(
         &mut self,
         relocations: AllocationRelocations<Tag>,
