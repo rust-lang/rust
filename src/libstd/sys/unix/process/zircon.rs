@@ -2,8 +2,9 @@
 
 use crate::convert::TryInto;
 use crate::io;
-use crate::os::raw::c_char;
 use crate::i64;
+use crate::mem::MaybeUninit;
+use crate::os::raw::c_char;
 
 use libc::{c_int, c_void, size_t};
 
@@ -122,6 +123,9 @@ extern {
                           argv: *const *const c_char, envp: *const *const c_char,
                           action_count: size_t, actions: *const fdio_spawn_action_t,
                           process: *mut zx_handle_t, err_msg: *mut c_char) -> zx_status_t;
+
+    pub fn fdio_fd_clone(fd: c_int, out_handle: *mut zx_handle_t) -> zx_status_t;
+    pub fn fdio_fd_create(handle: zx_handle_t, fd: *mut c_int) -> zx_status_t;
 }
 
 // fdio_spawn_etc flags
