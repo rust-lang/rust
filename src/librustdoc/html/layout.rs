@@ -1,4 +1,3 @@
-use std::fmt;
 use std::path::PathBuf;
 
 use crate::externalfiles::ExternalHtml;
@@ -31,11 +30,11 @@ pub struct Page<'a> {
     pub static_extra_scripts: &'a [&'a str],
 }
 
-pub fn render<T: fmt::Display, S: Print>(
+pub fn render<T: Print, S: Print>(
     layout: &Layout,
     page: &Page<'_>,
     sidebar: S,
-    t: &T,
+    t: T,
     themes: &[PathBuf],
 ) -> String {
     let static_root_path = page.static_root_path.unwrap_or(page.root_path);
@@ -175,7 +174,7 @@ pub fn render<T: fmt::Display, S: Print>(
     } else {
         String::new()
     },
-    content   = *t,
+    content   = Buffer::html().to_display(t),
     static_root_path = static_root_path,
     root_path = page.root_path,
     css_class = page.css_class,
