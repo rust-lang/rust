@@ -1772,33 +1772,33 @@ fn print_entries(f: &mut fmt::Formatter<'_>, e: &FxHashSet<ItemEntry>, title: &s
 }
 
 impl fmt::Display for AllTypes {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,
+fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f,
 "<h1 class='fqn'>\
-     <span class='out-of-band'>\
-         <span id='render-detail'>\
-             <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" title=\"collapse all docs\">\
-                 [<span class='inner'>&#x2212;</span>]\
-             </a>\
-         </span>
-     </span>
-     <span class='in-band'>List of all items</span>\
+    <span class='out-of-band'>\
+        <span id='render-detail'>\
+            <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" title=\"collapse all docs\">\
+                [<span class='inner'>&#x2212;</span>]\
+            </a>\
+        </span>
+    </span>
+    <span class='in-band'>List of all items</span>\
 </h1>")?;
-        print_entries(f, &self.structs, "Structs", "structs")?;
-        print_entries(f, &self.enums, "Enums", "enums")?;
-        print_entries(f, &self.unions, "Unions", "unions")?;
-        print_entries(f, &self.primitives, "Primitives", "primitives")?;
-        print_entries(f, &self.traits, "Traits", "traits")?;
-        print_entries(f, &self.macros, "Macros", "macros")?;
-        print_entries(f, &self.attributes, "Attribute Macros", "attributes")?;
-        print_entries(f, &self.derives, "Derive Macros", "derives")?;
-        print_entries(f, &self.functions, "Functions", "functions")?;
-        print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
-        print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases")?;
-        print_entries(f, &self.opaque_tys, "Opaque Types", "opaque-types")?;
-        print_entries(f, &self.statics, "Statics", "statics")?;
-        print_entries(f, &self.constants, "Constants", "constants")
-    }
+    print_entries(f, &self.structs, "Structs", "structs")?;
+    print_entries(f, &self.enums, "Enums", "enums")?;
+    print_entries(f, &self.unions, "Unions", "unions")?;
+    print_entries(f, &self.primitives, "Primitives", "primitives")?;
+    print_entries(f, &self.traits, "Traits", "traits")?;
+    print_entries(f, &self.macros, "Macros", "macros")?;
+    print_entries(f, &self.attributes, "Attribute Macros", "attributes")?;
+    print_entries(f, &self.derives, "Derive Macros", "derives")?;
+    print_entries(f, &self.functions, "Functions", "functions")?;
+    print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
+    print_entries(f, &self.trait_aliases, "Trait Aliases", "trait-aliases")?;
+    print_entries(f, &self.opaque_tys, "Opaque Types", "opaque-types")?;
+    print_entries(f, &self.statics, "Statics", "statics")?;
+    print_entries(f, &self.constants, "Constants", "constants")
+}
 }
 
 #[derive(Debug)]
@@ -1829,27 +1829,27 @@ impl<'a> Settings<'a> {
 }
 
 impl<'a> fmt::Display for Settings<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f,
+fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f,
 "<h1 class='fqn'>\
-     <span class='in-band'>Rustdoc settings</span>\
+    <span class='in-band'>Rustdoc settings</span>\
 </h1>\
 <div class='settings'>{}</div>\
 <script src='{}settings{}.js'></script>",
-               self.settings.iter()
-                            .map(|(id, text, enabled)| {
-                                format!("<div class='setting-line'>\
-                                             <label class='toggle'>\
-                                                <input type='checkbox' id='{}' {}>\
-                                                <span class='slider'></span>\
-                                             </label>\
-                                             <div>{}</div>\
-                                         </div>", id, if *enabled { " checked" } else { "" }, text)
-                            })
-                            .collect::<String>(),
-               self.root_path,
-               self.suffix)
-    }
+            self.settings.iter()
+                        .map(|(id, text, enabled)| {
+                            format!("<div class='setting-line'>\
+                                            <label class='toggle'>\
+                                            <input type='checkbox' id='{}' {}>\
+                                            <span class='slider'></span>\
+                                            </label>\
+                                            <div>{}</div>\
+                                        </div>", id, if *enabled { " checked" } else { "" }, text)
+                        })
+                        .collect::<String>(),
+            self.root_path,
+            self.suffix)
+}
 }
 
 impl Context {
@@ -2205,107 +2205,107 @@ where F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result {
 }
 
 impl<'a> fmt::Display for Item<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        debug_assert!(!self.item.is_stripped());
-        // Write the breadcrumb trail header for the top
-        write!(fmt, "<h1 class='fqn'><span class='out-of-band'>")?;
-        if let Some(version) = self.item.stable_since() {
-            write!(fmt, "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
-                   version)?;
-        }
-        write!(fmt,
-               "<span id='render-detail'>\
-                   <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
-                      title=\"collapse all docs\">\
-                       [<span class='inner'>&#x2212;</span>]\
-                   </a>\
-               </span>")?;
+fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    debug_assert!(!self.item.is_stripped());
+    // Write the breadcrumb trail header for the top
+    write!(fmt, "<h1 class='fqn'><span class='out-of-band'>")?;
+    if let Some(version) = self.item.stable_since() {
+        write!(fmt, "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
+                version)?;
+    }
+    write!(fmt,
+            "<span id='render-detail'>\
+                <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
+                    title=\"collapse all docs\">\
+                    [<span class='inner'>&#x2212;</span>]\
+                </a>\
+            </span>")?;
 
-        // Write `src` tag
-        //
-        // When this item is part of a `pub use` in a downstream crate, the
-        // [src] link in the downstream documentation will actually come back to
-        // this page, and this link will be auto-clicked. The `id` attribute is
-        // used to find the link to auto-click.
-        if self.cx.shared.include_sources && !self.item.is_primitive() {
-            if let Some(l) = self.src_href() {
-                write!(fmt, "<a class='srclink' href='{}' title='{}'>[src]</a>",
-                       l, "goto source code")?;
-            }
-        }
-
-        write!(fmt, "</span>")?; // out-of-band
-        write!(fmt, "<span class='in-band'>")?;
-        match self.item.inner {
-            clean::ModuleItem(ref m) => if m.is_crate {
-                    write!(fmt, "Crate ")?;
-                } else {
-                    write!(fmt, "Module ")?;
-                },
-            clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => write!(fmt, "Function ")?,
-            clean::TraitItem(..) => write!(fmt, "Trait ")?,
-            clean::StructItem(..) => write!(fmt, "Struct ")?,
-            clean::UnionItem(..) => write!(fmt, "Union ")?,
-            clean::EnumItem(..) => write!(fmt, "Enum ")?,
-            clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
-            clean::MacroItem(..) => write!(fmt, "Macro ")?,
-            clean::ProcMacroItem(ref mac) => match mac.kind {
-                MacroKind::Bang => write!(fmt, "Macro ")?,
-                MacroKind::Attr => write!(fmt, "Attribute Macro ")?,
-                MacroKind::Derive => write!(fmt, "Derive Macro ")?,
-            }
-            clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
-            clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
-            clean::ConstantItem(..) => write!(fmt, "Constant ")?,
-            clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
-            clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
-            clean::OpaqueTyItem(..) => write!(fmt, "Opaque Type ")?,
-            clean::TraitAliasItem(..) => write!(fmt, "Trait Alias ")?,
-            _ => {
-                // We don't generate pages for any other type.
-                unreachable!();
-            }
-        }
-        if !self.item.is_primitive() && !self.item.is_keyword() {
-            let cur = &self.cx.current;
-            let amt = if self.item.is_mod() { cur.len() - 1 } else { cur.len() };
-            for (i, component) in cur.iter().enumerate().take(amt) {
-                write!(fmt, "<a href='{}index.html'>{}</a>::<wbr>",
-                       "../".repeat(cur.len() - i - 1),
-                       component)?;
-            }
-        }
-        write!(fmt, "<a class=\"{}\" href=''>{}</a>",
-               self.item.type_(), self.item.name.as_ref().unwrap())?;
-
-        write!(fmt, "</span></h1>")?; // in-band
-
-        match self.item.inner {
-            clean::ModuleItem(ref m) =>
-                item_module(fmt, self.cx, self.item, &m.items),
-            clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
-                item_function(fmt, self.cx, self.item, f),
-            clean::TraitItem(ref t) => item_trait(fmt, self.cx, self.item, t),
-            clean::StructItem(ref s) => item_struct(fmt, self.cx, self.item, s),
-            clean::UnionItem(ref s) => item_union(fmt, self.cx, self.item, s),
-            clean::EnumItem(ref e) => item_enum(fmt, self.cx, self.item, e),
-            clean::TypedefItem(ref t, _) => item_typedef(fmt, self.cx, self.item, t),
-            clean::MacroItem(ref m) => item_macro(fmt, self.cx, self.item, m),
-            clean::ProcMacroItem(ref m) => item_proc_macro(fmt, self.cx, self.item, m),
-            clean::PrimitiveItem(ref p) => item_primitive(fmt, self.cx, self.item, p),
-            clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
-                item_static(fmt, self.cx, self.item, i),
-            clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
-            clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
-            clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
-            clean::OpaqueTyItem(ref e, _) => item_opaque_ty(fmt, self.cx, self.item, e),
-            clean::TraitAliasItem(ref ta) => item_trait_alias(fmt, self.cx, self.item, ta),
-            _ => {
-                // We don't generate pages for any other type.
-                unreachable!();
-            }
+    // Write `src` tag
+    //
+    // When this item is part of a `pub use` in a downstream crate, the
+    // [src] link in the downstream documentation will actually come back to
+    // this page, and this link will be auto-clicked. The `id` attribute is
+    // used to find the link to auto-click.
+    if self.cx.shared.include_sources && !self.item.is_primitive() {
+        if let Some(l) = self.src_href() {
+            write!(fmt, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                    l, "goto source code")?;
         }
     }
+
+    write!(fmt, "</span>")?; // out-of-band
+    write!(fmt, "<span class='in-band'>")?;
+    match self.item.inner {
+        clean::ModuleItem(ref m) => if m.is_crate {
+                write!(fmt, "Crate ")?;
+            } else {
+                write!(fmt, "Module ")?;
+            },
+        clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => write!(fmt, "Function ")?,
+        clean::TraitItem(..) => write!(fmt, "Trait ")?,
+        clean::StructItem(..) => write!(fmt, "Struct ")?,
+        clean::UnionItem(..) => write!(fmt, "Union ")?,
+        clean::EnumItem(..) => write!(fmt, "Enum ")?,
+        clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
+        clean::MacroItem(..) => write!(fmt, "Macro ")?,
+        clean::ProcMacroItem(ref mac) => match mac.kind {
+            MacroKind::Bang => write!(fmt, "Macro ")?,
+            MacroKind::Attr => write!(fmt, "Attribute Macro ")?,
+            MacroKind::Derive => write!(fmt, "Derive Macro ")?,
+        }
+        clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
+        clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
+        clean::ConstantItem(..) => write!(fmt, "Constant ")?,
+        clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
+        clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
+        clean::OpaqueTyItem(..) => write!(fmt, "Opaque Type ")?,
+        clean::TraitAliasItem(..) => write!(fmt, "Trait Alias ")?,
+        _ => {
+            // We don't generate pages for any other type.
+            unreachable!();
+        }
+    }
+    if !self.item.is_primitive() && !self.item.is_keyword() {
+        let cur = &self.cx.current;
+        let amt = if self.item.is_mod() { cur.len() - 1 } else { cur.len() };
+        for (i, component) in cur.iter().enumerate().take(amt) {
+            write!(fmt, "<a href='{}index.html'>{}</a>::<wbr>",
+                    "../".repeat(cur.len() - i - 1),
+                    component)?;
+        }
+    }
+    write!(fmt, "<a class=\"{}\" href=''>{}</a>",
+            self.item.type_(), self.item.name.as_ref().unwrap())?;
+
+    write!(fmt, "</span></h1>")?; // in-band
+
+    match self.item.inner {
+        clean::ModuleItem(ref m) =>
+            item_module(fmt, self.cx, self.item, &m.items),
+        clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
+            item_function(fmt, self.cx, self.item, f),
+        clean::TraitItem(ref t) => item_trait(fmt, self.cx, self.item, t),
+        clean::StructItem(ref s) => item_struct(fmt, self.cx, self.item, s),
+        clean::UnionItem(ref s) => item_union(fmt, self.cx, self.item, s),
+        clean::EnumItem(ref e) => item_enum(fmt, self.cx, self.item, e),
+        clean::TypedefItem(ref t, _) => item_typedef(fmt, self.cx, self.item, t),
+        clean::MacroItem(ref m) => item_macro(fmt, self.cx, self.item, m),
+        clean::ProcMacroItem(ref m) => item_proc_macro(fmt, self.cx, self.item, m),
+        clean::PrimitiveItem(ref p) => item_primitive(fmt, self.cx, self.item, p),
+        clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
+            item_static(fmt, self.cx, self.item, i),
+        clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
+        clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
+        clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
+        clean::OpaqueTyItem(ref e, _) => item_opaque_ty(fmt, self.cx, self.item, e),
+        clean::TraitAliasItem(ref ta) => item_trait_alias(fmt, self.cx, self.item, ta),
+        _ => {
+            // We don't generate pages for any other type.
+            unreachable!();
+        }
+    }
+}
 }
 
 fn item_path(ty: ItemType, name: &str) -> String {
@@ -3834,9 +3834,9 @@ fn render_assoc_items(w: &mut fmt::Formatter<'_>,
         struct RendererStruct<'a, 'b, 'c>(&'a Context, Vec<&'b &'b Impl>, &'c clean::Item);
 
         impl<'a, 'b, 'c> fmt::Display for RendererStruct<'a, 'b, 'c> {
-            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-                render_impls(self.0, fmt, &self.1, self.2)
-            }
+        fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+            render_impls(self.0, fmt, &self.1, self.2)
+        }
         }
 
         let impls = RendererStruct(cx, concrete, containing_item).to_string();
@@ -4264,97 +4264,97 @@ fn item_foreign_type(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item)
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-    fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
-        let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
+fn print_sidebar(cx: &Context, it: &clean::Item, buffer: &mut Buffer) {
+    let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
-        if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
-            || it.is_enum() || it.is_mod() || it.is_typedef() {
-            write!(buffer, "<p class='location'>{}{}</p>",
-                match it.inner {
-                    clean::StructItem(..) => "Struct ",
-                    clean::TraitItem(..) => "Trait ",
-                    clean::PrimitiveItem(..) => "Primitive Type ",
-                    clean::UnionItem(..) => "Union ",
-                    clean::EnumItem(..) => "Enum ",
-                    clean::TypedefItem(..) => "Type Definition ",
-                    clean::ForeignTypeItem => "Foreign Type ",
-                    clean::ModuleItem(..) => if it.is_crate() {
-                        "Crate "
-                    } else {
-                        "Module "
-                    },
-                    _ => "",
+    if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
+        || it.is_enum() || it.is_mod() || it.is_typedef() {
+        write!(buffer, "<p class='location'>{}{}</p>",
+            match it.inner {
+                clean::StructItem(..) => "Struct ",
+                clean::TraitItem(..) => "Trait ",
+                clean::PrimitiveItem(..) => "Primitive Type ",
+                clean::UnionItem(..) => "Union ",
+                clean::EnumItem(..) => "Enum ",
+                clean::TypedefItem(..) => "Type Definition ",
+                clean::ForeignTypeItem => "Foreign Type ",
+                clean::ModuleItem(..) => if it.is_crate() {
+                    "Crate "
+                } else {
+                    "Module "
                 },
-                it.name.as_ref().unwrap());
-        }
-
-        if it.is_crate() {
-            if let Some(ref version) = cache().crate_version {
-                write!(buffer,
-                       "<div class='block version'>\
-                        <p>Version {}</p>\
-                        </div>",
-                       version);
-            }
-        }
-
-        write!(buffer, "<div class=\"sidebar-elems\">");
-        if it.is_crate() {
-            write!(buffer, "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
-                   it.name.as_ref().expect("crates always have a name"));
-        }
-        match it.inner {
-            clean::StructItem(ref s) => sidebar_struct(buffer, it, s),
-            clean::TraitItem(ref t) => sidebar_trait(buffer, it, t),
-            clean::PrimitiveItem(ref p) => sidebar_primitive(buffer, it, p),
-            clean::UnionItem(ref u) => sidebar_union(buffer, it, u),
-            clean::EnumItem(ref e) => sidebar_enum(buffer, it, e),
-            clean::TypedefItem(ref t, _) => sidebar_typedef(buffer, it, t),
-            clean::ModuleItem(ref m) => sidebar_module(buffer, it, &m.items),
-            clean::ForeignTypeItem => sidebar_foreign_type(buffer, it),
-            _ => (),
-        }
-
-        // The sidebar is designed to display sibling functions, modules and
-        // other miscellaneous information. since there are lots of sibling
-        // items (and that causes quadratic growth in large modules),
-        // we refactor common parts into a shared JavaScript file per module.
-        // still, we don't move everything into JS because we want to preserve
-        // as much HTML as possible in order to allow non-JS-enabled browsers
-        // to navigate the documentation (though slightly inefficiently).
-
-        write!(buffer, "<p class='location'>");
-        for (i, name) in cx.current.iter().take(parentlen).enumerate() {
-            if i > 0 {
-                write!(buffer, "::<wbr>");
-            }
-            write!(buffer, "<a href='{}index.html'>{}</a>",
-                   &cx.root_path()[..(cx.current.len() - i - 1) * 3],
-                   *name);
-        }
-        write!(buffer, "</p>");
-
-        // Sidebar refers to the enclosing module, not this module.
-        let relpath = if it.is_mod() { "../" } else { "" };
-        write!(buffer,
-               "<script>window.sidebarCurrent = {{\
-                   name: '{name}', \
-                   ty: '{ty}', \
-                   relpath: '{path}'\
-                }};</script>",
-               name = it.name.as_ref().map(|x| &x[..]).unwrap_or(""),
-               ty = it.type_().css_class(),
-               path = relpath);
-        if parentlen == 0 {
-            // There is no sidebar-items.js beyond the crate root path
-            // FIXME maybe dynamic crate loading can be merged here
-        } else {
-            write!(buffer, "<script defer src=\"{path}sidebar-items.js\"></script>",
-                   path = relpath);
-        }
-        // Closes sidebar-elems div.
-        write!(buffer, "</div>");
+                _ => "",
+            },
+            it.name.as_ref().unwrap());
     }
+
+    if it.is_crate() {
+        if let Some(ref version) = cache().crate_version {
+            write!(buffer,
+                    "<div class='block version'>\
+                    <p>Version {}</p>\
+                    </div>",
+                    version);
+        }
+    }
+
+    write!(buffer, "<div class=\"sidebar-elems\">");
+    if it.is_crate() {
+        write!(buffer, "<a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
+                it.name.as_ref().expect("crates always have a name"));
+    }
+    match it.inner {
+        clean::StructItem(ref s) => sidebar_struct(buffer, it, s),
+        clean::TraitItem(ref t) => sidebar_trait(buffer, it, t),
+        clean::PrimitiveItem(ref p) => sidebar_primitive(buffer, it, p),
+        clean::UnionItem(ref u) => sidebar_union(buffer, it, u),
+        clean::EnumItem(ref e) => sidebar_enum(buffer, it, e),
+        clean::TypedefItem(ref t, _) => sidebar_typedef(buffer, it, t),
+        clean::ModuleItem(ref m) => sidebar_module(buffer, it, &m.items),
+        clean::ForeignTypeItem => sidebar_foreign_type(buffer, it),
+        _ => (),
+    }
+
+    // The sidebar is designed to display sibling functions, modules and
+    // other miscellaneous information. since there are lots of sibling
+    // items (and that causes quadratic growth in large modules),
+    // we refactor common parts into a shared JavaScript file per module.
+    // still, we don't move everything into JS because we want to preserve
+    // as much HTML as possible in order to allow non-JS-enabled browsers
+    // to navigate the documentation (though slightly inefficiently).
+
+    write!(buffer, "<p class='location'>");
+    for (i, name) in cx.current.iter().take(parentlen).enumerate() {
+        if i > 0 {
+            write!(buffer, "::<wbr>");
+        }
+        write!(buffer, "<a href='{}index.html'>{}</a>",
+                &cx.root_path()[..(cx.current.len() - i - 1) * 3],
+                *name);
+    }
+    write!(buffer, "</p>");
+
+    // Sidebar refers to the enclosing module, not this module.
+    let relpath = if it.is_mod() { "../" } else { "" };
+    write!(buffer,
+            "<script>window.sidebarCurrent = {{\
+                name: '{name}', \
+                ty: '{ty}', \
+                relpath: '{path}'\
+            }};</script>",
+            name = it.name.as_ref().map(|x| &x[..]).unwrap_or(""),
+            ty = it.type_().css_class(),
+            path = relpath);
+    if parentlen == 0 {
+        // There is no sidebar-items.js beyond the crate root path
+        // FIXME maybe dynamic crate loading can be merged here
+    } else {
+        write!(buffer, "<script defer src=\"{path}sidebar-items.js\"></script>",
+                path = relpath);
+    }
+    // Closes sidebar-elems div.
+    write!(buffer, "</div>");
+}
 
 fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
     if used_links.insert(url.clone()) {

@@ -160,22 +160,22 @@ where
 struct Source<'a>(&'a str);
 
 impl<'a> fmt::Display for Source<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Source(s) = *self;
-        let lines = s.lines().count();
-        let mut cols = 0;
-        let mut tmp = lines;
-        while tmp > 0 {
-            cols += 1;
-            tmp /= 10;
-        }
-        write!(fmt, "<pre class=\"line-numbers\">")?;
-        for i in 1..=lines {
-            write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
-        }
-        write!(fmt, "</pre>")?;
-        write!(fmt, "{}",
-               highlight::render_with_highlighting(s, None, None, None))?;
-        Ok(())
+fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    let Source(s) = *self;
+    let lines = s.lines().count();
+    let mut cols = 0;
+    let mut tmp = lines;
+    while tmp > 0 {
+        cols += 1;
+        tmp /= 10;
     }
+    write!(fmt, "<pre class=\"line-numbers\">")?;
+    for i in 1..=lines {
+        write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
+    }
+    write!(fmt, "</pre>")?;
+    write!(fmt, "{}",
+            highlight::render_with_highlighting(s, None, None, None))?;
+    Ok(())
+}
 }

@@ -290,11 +290,11 @@ impl<'a> fmt::Display for WhereClause<'a> {
                 }
                 &clean::WherePredicate::RegionPredicate { ref lifetime, ref bounds } => {
                     clause.push_str(&format!("{}: {}",
-                                             lifetime,
-                                             bounds.iter()
-                                                   .map(|b| b.to_string())
-                                                   .collect::<Vec<_>>()
-                                                   .join(" + ")));
+                                                lifetime,
+                                                bounds.iter()
+                                                    .map(|b| b.to_string())
+                                                    .collect::<Vec<_>>()
+                                                    .join(" + ")));
                 }
                 &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
                     if f.alternate() {
