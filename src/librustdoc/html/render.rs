@@ -381,12 +381,6 @@ pub struct RenderInfo {
 // Helper structs for rendering items/sidebars and carrying along contextual
 // information
 
-#[derive(Copy, Clone)]
-struct Item<'a> {
-    cx: &'a Context,
-    item: &'a clean::Item,
-}
-
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
 #[derive(Debug)]
@@ -1974,7 +1968,7 @@ impl Context {
         if !self.render_redirect_pages {
             layout::render(&self.shared.layout, &page,
                            |buf: &mut _| print_sidebar(self, it, buf),
-                           |buf: &mut Buffer| buf.from_display(Item { cx: self, item: it }),
+                           |buf: &mut _| print_item(self, it, buf),
                            &self.shared.themes)
         } else {
             let mut url = self.root_path();
@@ -2115,7 +2109,7 @@ impl Context {
     }
 }
 
-impl<'a> Item<'a> {
+impl Context {
     /// Generates a url appropriate for an `href` attribute back to the source of
     /// this item.
     ///
@@ -2125,26 +2119,26 @@ impl<'a> Item<'a> {
     /// If `None` is returned, then a source link couldn't be generated. This
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
-    fn src_href(&self) -> Option<String> {
-        let mut root = self.cx.root_path();
+    fn src_href(&self, item: &clean::Item) -> Option<String> {
+        let mut root = self.root_path();
 
         let cache = cache();
         let mut path = String::new();
 
         // We can safely ignore macros from other libraries
-        let file = match self.item.source.filename {
+        let file = match item.source.filename {
             FileName::Real(ref path) => path,
             _ => return None,
         };
 
-        let (krate, path) = if self.item.def_id.is_local() {
-            if let Some(path) = self.cx.shared.local_sources.get(file) {
-                (&self.cx.shared.layout.krate, path)
+        let (krate, path) = if item.def_id.is_local() {
+            if let Some(path) = self.shared.local_sources.get(file) {
+                (&self.shared.layout.krate, path)
             } else {
                 return None;
             }
         } else {
-            let (krate, src_root) = match *cache.extern_locations.get(&self.item.def_id.krate)? {
+            let (krate, src_root) = match *cache.extern_locations.get(&item.def_id.krate)? {
                 (ref name, ref src, Local) => (name, src),
                 (ref name, ref src, Remote(ref s)) => {
                     root = s.to_string();
@@ -2164,10 +2158,10 @@ impl<'a> Item<'a> {
             (krate, &path)
         };
 
-        let lines = if self.item.source.loline == self.item.source.hiline {
-            self.item.source.loline.to_string()
+        let lines = if item.source.loline == item.source.hiline {
+            item.source.loline.to_string()
         } else {
-            format!("{}-{}", self.item.source.loline, self.item.source.hiline)
+            format!("{}-{}", item.source.loline, item.source.hiline)
         };
         Some(format!("{root}src/{krate}/{path}#{lines}",
                      root = Escape(&root),
@@ -2185,22 +2179,21 @@ where F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result {
     write!(w, "</div>")
 }
 
-impl<'a> fmt::Display for Item<'a> {
-fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-    debug_assert!(!self.item.is_stripped());
+fn print_item(cx: &Context, item: &clean::Item, buf: &mut Buffer) {
+    debug_assert!(!item.is_stripped());
     // Write the breadcrumb trail header for the top
-    write!(fmt, "<h1 class='fqn'><span class='out-of-band'>")?;
-    if let Some(version) = self.item.stable_since() {
-        write!(fmt, "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
-                version)?;
+    write!(buf, "<h1 class='fqn'><span class='out-of-band'>");
+    if let Some(version) = item.stable_since() {
+        write!(buf, "<span class='since' title='Stable since Rust version {0}'>{0}</span>",
+                version);
     }
-    write!(fmt,
+    write!(buf,
             "<span id='render-detail'>\
                 <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
                     title=\"collapse all docs\">\
                     [<span class='inner'>&#x2212;</span>]\
                 </a>\
-            </span>")?;
+            </span>");
 
     // Write `src` tag
     //
@@ -2208,85 +2201,87 @@ fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     // [src] link in the downstream documentation will actually come back to
     // this page, and this link will be auto-clicked. The `id` attribute is
     // used to find the link to auto-click.
-    if self.cx.shared.include_sources && !self.item.is_primitive() {
-        if let Some(l) = self.src_href() {
-            write!(fmt, "<a class='srclink' href='{}' title='{}'>[src]</a>",
-                    l, "goto source code")?;
+    if cx.shared.include_sources && !item.is_primitive() {
+        if let Some(l) = cx.src_href(item) {
+            write!(buf, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                    l, "goto source code");
         }
     }
 
-    write!(fmt, "</span>")?; // out-of-band
-    write!(fmt, "<span class='in-band'>")?;
-    match self.item.inner {
+    write!(buf, "</span>"); // out-of-band
+    write!(buf, "<span class='in-band'>");
+    let name = match item.inner {
         clean::ModuleItem(ref m) => if m.is_crate {
-                write!(fmt, "Crate ")?;
+                "Crate "
             } else {
-                write!(fmt, "Module ")?;
+                "Module "
             },
-        clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => write!(fmt, "Function ")?,
-        clean::TraitItem(..) => write!(fmt, "Trait ")?,
-        clean::StructItem(..) => write!(fmt, "Struct ")?,
-        clean::UnionItem(..) => write!(fmt, "Union ")?,
-        clean::EnumItem(..) => write!(fmt, "Enum ")?,
-        clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
-        clean::MacroItem(..) => write!(fmt, "Macro ")?,
+        clean::FunctionItem(..) | clean::ForeignFunctionItem(..) => "Function ",
+        clean::TraitItem(..) => "Trait ",
+        clean::StructItem(..) => "Struct ",
+        clean::UnionItem(..) => "Union ",
+        clean::EnumItem(..) => "Enum ",
+        clean::TypedefItem(..) => "Type Definition ",
+        clean::MacroItem(..) => "Macro ",
         clean::ProcMacroItem(ref mac) => match mac.kind {
-            MacroKind::Bang => write!(fmt, "Macro ")?,
-            MacroKind::Attr => write!(fmt, "Attribute Macro ")?,
-            MacroKind::Derive => write!(fmt, "Derive Macro ")?,
+            MacroKind::Bang => "Macro ",
+            MacroKind::Attr => "Attribute Macro ",
+            MacroKind::Derive => "Derive Macro ",
         }
-        clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
-        clean::StaticItem(..) | clean::ForeignStaticItem(..) => write!(fmt, "Static ")?,
-        clean::ConstantItem(..) => write!(fmt, "Constant ")?,
-        clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
-        clean::KeywordItem(..) => write!(fmt, "Keyword ")?,
-        clean::OpaqueTyItem(..) => write!(fmt, "Opaque Type ")?,
-        clean::TraitAliasItem(..) => write!(fmt, "Trait Alias ")?,
+        clean::PrimitiveItem(..) => "Primitive Type ",
+        clean::StaticItem(..) | clean::ForeignStaticItem(..) => "Static ",
+        clean::ConstantItem(..) => "Constant ",
+        clean::ForeignTypeItem => "Foreign Type ",
+        clean::KeywordItem(..) => "Keyword ",
+        clean::OpaqueTyItem(..) => "Opaque Type ",
+        clean::TraitAliasItem(..) => "Trait Alias ",
         _ => {
             // We don't generate pages for any other type.
             unreachable!();
         }
-    }
-    if !self.item.is_primitive() && !self.item.is_keyword() {
-        let cur = &self.cx.current;
-        let amt = if self.item.is_mod() { cur.len() - 1 } else { cur.len() };
+    };
+    buf.write_str(name);
+    if !item.is_primitive() && !item.is_keyword() {
+        let cur = &cx.current;
+        let amt = if item.is_mod() { cur.len() - 1 } else { cur.len() };
         for (i, component) in cur.iter().enumerate().take(amt) {
-            write!(fmt, "<a href='{}index.html'>{}</a>::<wbr>",
+            write!(buf, "<a href='{}index.html'>{}</a>::<wbr>",
                     "../".repeat(cur.len() - i - 1),
-                    component)?;
+                    component);
         }
     }
-    write!(fmt, "<a class=\"{}\" href=''>{}</a>",
-            self.item.type_(), self.item.name.as_ref().unwrap())?;
+    write!(buf, "<a class=\"{}\" href=''>{}</a>",
+            item.type_(), item.name.as_ref().unwrap());
 
-    write!(fmt, "</span></h1>")?; // in-band
+    write!(buf, "</span></h1>"); // in-band
 
-    match self.item.inner {
+    buf.with_formatter(|fmt| {
+    match item.inner {
         clean::ModuleItem(ref m) =>
-            item_module(fmt, self.cx, self.item, &m.items),
+            item_module(fmt, cx, item, &m.items),
         clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
-            item_function(fmt, self.cx, self.item, f),
-        clean::TraitItem(ref t) => item_trait(fmt, self.cx, self.item, t),
-        clean::StructItem(ref s) => item_struct(fmt, self.cx, self.item, s),
-        clean::UnionItem(ref s) => item_union(fmt, self.cx, self.item, s),
-        clean::EnumItem(ref e) => item_enum(fmt, self.cx, self.item, e),
-        clean::TypedefItem(ref t, _) => item_typedef(fmt, self.cx, self.item, t),
-        clean::MacroItem(ref m) => item_macro(fmt, self.cx, self.item, m),
-        clean::ProcMacroItem(ref m) => item_proc_macro(fmt, self.cx, self.item, m),
-        clean::PrimitiveItem(ref p) => item_primitive(fmt, self.cx, self.item, p),
+            item_function(fmt, cx, item, f),
+        clean::TraitItem(ref t) => item_trait(fmt, cx, item, t),
+        clean::StructItem(ref s) => item_struct(fmt, cx, item, s),
+        clean::UnionItem(ref s) => item_union(fmt, cx, item, s),
+        clean::EnumItem(ref e) => item_enum(fmt, cx, item, e),
+        clean::TypedefItem(ref t, _) => item_typedef(fmt, cx, item, t),
+        clean::MacroItem(ref m) => item_macro(fmt, cx, item, m),
+        clean::ProcMacroItem(ref m) => item_proc_macro(fmt, cx, item, m),
+        clean::PrimitiveItem(ref p) => item_primitive(fmt, cx, item, p),
         clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
-            item_static(fmt, self.cx, self.item, i),
-        clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
-        clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
-        clean::KeywordItem(ref k) => item_keyword(fmt, self.cx, self.item, k),
-        clean::OpaqueTyItem(ref e, _) => item_opaque_ty(fmt, self.cx, self.item, e),
-        clean::TraitAliasItem(ref ta) => item_trait_alias(fmt, self.cx, self.item, ta),
+            item_static(fmt, cx, item, i),
+        clean::ConstantItem(ref c) => item_constant(fmt, cx, item, c),
+        clean::ForeignTypeItem => item_foreign_type(fmt, cx, item),
+        clean::KeywordItem(ref k) => item_keyword(fmt, cx, item, k),
+        clean::OpaqueTyItem(ref e, _) => item_opaque_ty(fmt, cx, item, e),
+        clean::TraitAliasItem(ref ta) => item_trait_alias(fmt, cx, item, ta),
         _ => {
             // We don't generate pages for any other type.
             unreachable!();
         }
     }
-}
+    })
 }
 
 fn item_path(ty: ItemType, name: &str) -> String {
@@ -4004,7 +3999,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
         write!(w, "<a href='#{}' class='anchor'></a>", id)?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
         render_stability_since_raw(w, since, outer_version)?;
-        if let Some(l) = (Item { item: &i.impl_item, cx: cx }).src_href() {
+        if let Some(l) = cx.src_href(&i.impl_item) {
             write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
                    l, "goto source code")?;
         }
@@ -4050,7 +4045,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
                     write!(w, "</code>")?;
                     render_stability_since_raw(w, item.stable_since(), outer_version)?;
-                    if let Some(l) = (Item { cx, item }).src_href() {
+                    if let Some(l) = cx.src_href(item) {
                         write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
                                l, "goto source code")?;
                     }
@@ -4073,7 +4068,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "")?;
                 write!(w, "</code>")?;
                 render_stability_since_raw(w, item.stable_since(), outer_version)?;
-                if let Some(l) = (Item { cx, item }).src_href() {
+                if let Some(l) = cx.src_href(item) {
                     write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
                             l, "goto source code")?;
                 }
