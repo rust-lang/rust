@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 311] = [
+pub const ALL_LINTS: [Lint; 312] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1889,6 +1889,13 @@ pub const ALL_LINTS: [Lint; 311] = [
         desc: "`unimplemented!` should not be present in production code",
         deprecation: None,
         module: "panic_unimplemented",
+    },
+    Lint {
+        name: "uninit_assumed_init",
+        group: "correctness",
+        desc: "`MaybeUninit::uninit().assume_init()`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "unit_arg",

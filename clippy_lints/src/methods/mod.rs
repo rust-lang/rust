@@ -951,6 +951,38 @@ declare_clippy_lint! {
     "suspicious usage of map"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for `MaybeUninit::uninit().assume_init()`.
+    ///
+    /// **Why is this bad?** For most types, this is undefined behavior.
+    ///
+    /// **Known problems:** For now, we accept empty tuples and tuples / arrays
+    /// of `MaybeUninit`. There may be other types that allow uninitialized
+    /// data, but those are not yet rigorously defined.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// // Beware the UB
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let _: usize = unsafe { MaybeUninit::uninit().assume_init() };
+    /// ```
+    ///
+    /// Note that the following is OK:
+    ///
+    /// ```rust
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let _: [MaybeUninit<bool>; 5] = unsafe {
+    ///     MaybeUninit::uninit().assume_init()
+    /// };
+    /// ```
+    pub UNINIT_ASSUMED_INIT,
+    correctness,
+    "`MaybeUninit::uninit().assume_init()`"
+}
+
 declare_lint_pass!(Methods => [
     OPTION_UNWRAP_USED,
     RESULT_UNWRAP_USED,
@@ -991,6 +1023,7 @@ declare_lint_pass!(Methods => [
     INTO_ITER_ON_ARRAY,
     INTO_ITER_ON_REF,
     SUSPICIOUS_MAP,
+    UNINIT_ASSUMED_INIT,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
@@ -1038,6 +1071,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0]),
             ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
             ["count", "map"] => lint_suspicious_map(cx, expr),
+            ["assume_init"] => lint_maybe_uninit(cx, &arg_lists[0][0], expr),
             _ => {},
         }
 
@@ -2659,6 +2693,37 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: Ty<'_
             method_name.to_string(),
             Applicability::MachineApplicable,
         );
+    }
+}
+
+/// lint for `MaybeUninit::uninit().assume_init()` (we already have the latter)
+fn lint_maybe_uninit(cx: &LateContext<'_, '_>, expr: &hir::Expr, outer: &hir::Expr) {
+    if_chain! {
+        if let hir::ExprKind::Call(ref callee, ref args) = expr.node;
+        if args.is_empty();
+        if let hir::ExprKind::Path(ref path) = callee.node;
+        if match_qpath(path, &paths::MEM_MAYBEUNINIT_UNINIT);
+        if !is_maybe_uninit_ty_valid(cx, cx.tables.expr_ty_adjusted(outer));
+        then {
+            span_lint(
+                cx,
+                UNINIT_ASSUMED_INIT,
+                outer.span,
+                "this call for this type may be undefined behavior"
+            );
+        }
+    }
+}
+
+fn is_maybe_uninit_ty_valid(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
+    match ty.sty {
+        ty::Array(ref component, _) => is_maybe_uninit_ty_valid(cx, component),
+        ty::Tuple(ref types) => types.types().all(|ty| is_maybe_uninit_ty_valid(cx, ty)),
+        ty::Adt(ref adt, _) => {
+            // needs to be a MaybeUninit
+            match_def_path(cx, adt.did, &paths::MEM_MAYBEUNINIT)
+        },
+        _ => false,
     }
 }
 
