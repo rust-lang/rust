@@ -118,5 +118,17 @@ LL | |     unimplemented!()
 LL | | }
    | |_^
 
-error: aborting due to 15 previous errors
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+  --> $DIR/needless_lifetimes.rs:254:9
+   |
+LL |         fn needless_lt<'a>(x: &'a u8) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+  --> $DIR/needless_lifetimes.rs:258:9
+   |
+LL |         fn needless_lt<'a>(_x: &'a u8) {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
 
