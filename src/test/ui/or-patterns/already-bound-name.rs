@@ -38,6 +38,7 @@ fn main() {
     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
     //~^ ERROR identifier `a` is bound more than once in the same pattern
     //~| ERROR identifier `a` is bound more than once in the same pattern
+    //~| ERROR variable `a` is not bound in all patterns
 
     let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
     //~^ ERROR identifier `a` is bound more than once in the same pattern

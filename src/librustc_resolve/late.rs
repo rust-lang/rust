@@ -1112,6 +1112,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut bindings = smallvec![(false, <_>::default())];
         for Param { pat, ty, .. } in params {
             self.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+            self.check_consistent_bindings_top(pat);
             self.visit_ty(ty);
             debug!("(resolving function / closure) recorded parameter");
         }
@@ -1128,69 +1129,90 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         self.resolve_pattern_top(&local.pat, PatternSource::Let);
     }
 
-    // build a map from pattern identifiers to binding-info's.
-    // this is done hygienically. This could arise for a macro
-    // that expands into an or-pattern where one 'x' was from the
-    // user and one 'x' came from the macro.
+    /// build a map from pattern identifiers to binding-info's.
+    /// this is done hygienically. This could arise for a macro
+    /// that expands into an or-pattern where one 'x' was from the
+    /// user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut binding_map = FxHashMap::default();
 
         pat.walk(&mut |pat| {
-            if let PatKind::Ident(binding_mode, ident, ref sub_pat) = pat.node {
-                if sub_pat.is_some() || match self.r.partial_res_map.get(&pat.id)
-                                                                  .map(|res| res.base_res()) {
-                    Some(Res::Local(..)) => true,
-                    _ => false,
-                } {
-                    let binding_info = BindingInfo { span: ident.span, binding_mode: binding_mode };
-                    binding_map.insert(ident, binding_info);
+            match pat.node {
+                PatKind::Ident(binding_mode, ident, ref sub_pat)
+                    if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
+                {
+                    binding_map.insert(ident, BindingInfo { span: ident.span, binding_mode });
                 }
+                PatKind::Or(ref ps) => {
+                    // Check the consistency of this or-pattern and
+                    // then add all bindings to the larger map.
+                    for bm in self.check_consistent_bindings(ps) {
+                        binding_map.extend(bm);
+                    }
+                    return false;
+                }
+                _ => {}
             }
+
             true
         });
 
         binding_map
     }
 
-    // Checks that all of the arms in an or-pattern have exactly the
-    // same set of bindings, with the same binding modes for each.
-    fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) {
+    fn is_base_res_local(&self, nid: NodeId) -> bool {
+        match self.r.partial_res_map.get(&nid).map(|res| res.base_res()) {
+            Some(Res::Local(..)) => true,
+            _ => false,
+        }
+    }
+
+    /// Checks that all of the arms in an or-pattern have exactly the
+    /// same set of bindings, with the same binding modes for each.
+    fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) -> Vec<BindingMap> {
         let mut missing_vars = FxHashMap::default();
         let mut inconsistent_vars = FxHashMap::default();
 
-        for pat_outer in pats.iter() {
-            let map_outer = self.binding_mode_map(&pat_outer);
+        // 1) Compute the binding maps of all arms.
+        let maps = pats.iter()
+            .map(|pat| self.binding_mode_map(pat))
+            .collect::<Vec<_>>();
 
-            for pat_inner in pats.iter().filter(|pat| pat.id != pat_outer.id) {
-                let map_inner = self.binding_mode_map(&pat_inner);
+        // 2) Record any missing bindings or binding mode inconsistencies.
+        for (map_outer, pat_outer) in pats.iter().enumerate().map(|(idx, pat)| (&maps[idx], pat)) {
+            // Check against all arms except for the same pattern which is always self-consistent.
+            let inners = pats.iter().enumerate()
+                .filter(|(_, pat)| pat.id != pat_outer.id)
+                .flat_map(|(idx, _)| maps[idx].iter())
+                .map(|(key, binding)| (key.name, map_outer.get(&key), binding));
 
-                for (&key_inner, &binding_inner) in map_inner.iter() {
-                    match map_outer.get(&key_inner) {
-                        None => {  // missing binding
-                            let binding_error = missing_vars
-                                .entry(key_inner.name)
-                                .or_insert(BindingError {
-                                    name: key_inner.name,
-                                    origin: BTreeSet::new(),
-                                    target: BTreeSet::new(),
-                                    could_be_path:
-                                        key_inner.name.as_str().starts_with(char::is_uppercase)
-                                });
-                            binding_error.origin.insert(binding_inner.span);
-                            binding_error.target.insert(pat_outer.span);
-                        }
-                        Some(binding_outer) => {  // check consistent binding
-                            if binding_outer.binding_mode != binding_inner.binding_mode {
-                                inconsistent_vars
-                                    .entry(key_inner.name)
-                                    .or_insert((binding_inner.span, binding_outer.span));
-                            }
+            for (name, info, &binding_inner) in inners {
+                match info {
+                    None => { // The inner binding is missing in the outer.
+                        let binding_error = missing_vars
+                            .entry(name)
+                            .or_insert_with(|| BindingError {
+                                name,
+                                origin: BTreeSet::new(),
+                                target: BTreeSet::new(),
+                                could_be_path: name.as_str().starts_with(char::is_uppercase),
+                            });
+                        binding_error.origin.insert(binding_inner.span);
+                        binding_error.target.insert(pat_outer.span);
+                    }
+                    Some(binding_outer) => {
+                        if binding_outer.binding_mode != binding_inner.binding_mode {
+                            // The binding modes in the outer and inner bindings differ.
+                            inconsistent_vars
+                                .entry(name)
+                                .or_insert((binding_inner.span, binding_outer.span));
                         }
                     }
                 }
             }
         }
 
+        // 3) Report all missing variables we found.
         let mut missing_vars = missing_vars.iter_mut().collect::<Vec<_>>();
         missing_vars.sort();
         for (name, mut v) in missing_vars {
@@ -1202,11 +1224,26 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 ResolutionError::VariableNotBoundInPattern(v));
         }
 
+        // 4) Report all inconsistencies in binding modes we found.
         let mut inconsistent_vars = inconsistent_vars.iter().collect::<Vec<_>>();
         inconsistent_vars.sort();
         for (name, v) in inconsistent_vars {
             self.r.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(*name, v.1));
         }
+
+        // 5) Finally bubble up all the binding maps.
+        maps
+    }
+
+    /// Check the consistency of the outermost or-patterns.
+    fn check_consistent_bindings_top(&mut self, pat: &Pat) {
+        pat.walk(&mut |pat| match pat.node {
+            PatKind::Or(ref ps) => {
+                self.check_consistent_bindings(ps);
+                false
+            },
+            _ => true,
+        })
     }
 
     fn resolve_arm(&mut self, arm: &Arm) {
@@ -1227,13 +1264,13 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             bindings.last_mut().unwrap().1.extend(collected);
         }
         // This has to happen *after* we determine which pat_idents are variants
-        if pats.len() > 1 {
-            self.check_consistent_bindings(pats);
-        }
+        self.check_consistent_bindings(pats);
     }
 
     fn resolve_pattern_top(&mut self, pat: &Pat, pat_src: PatternSource) {
         self.resolve_pattern(pat, pat_src, &mut smallvec![(false, <_>::default())]);
+        // This has to happen *after* we determine which pat_idents are variants:
+        self.check_consistent_bindings_top(pat);
     }
 
     fn resolve_pattern(

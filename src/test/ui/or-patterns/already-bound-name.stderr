@@ -64,14 +64,20 @@ error[E0416]: identifier `a` is bound more than once in the same pattern
 LL |     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |                                              ^ used in a pattern more than once
 
+error[E0408]: variable `a` is not bound in all patterns
+  --> $DIR/already-bound-name.rs:38:9
+   |
+LL |     let B(_) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
+   |         ^^^^ pattern doesn't bind `a`        - variable not in all patterns
+
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:42:49
+  --> $DIR/already-bound-name.rs:43:49
    |
 LL |     let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |                                                 ^ used in a pattern more than once
 
 error[E0416]: identifier `a` is bound more than once in the same pattern
-  --> $DIR/already-bound-name.rs:42:59
+  --> $DIR/already-bound-name.rs:43:59
    |
 LL |     let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |                                                           ^ used in a pattern more than once
@@ -85,7 +91,7 @@ LL |     let B(A(a, _) | B(a)) | A(a, A(a, _) | B(a)) = B(B(1));
    = note: expected type `{integer}`
               found type `E<{integer}>`
 
-error: aborting due to 14 previous errors
+error: aborting due to 15 previous errors
 
-Some errors have detailed explanations: E0308, E0416.
+Some errors have detailed explanations: E0308, E0408, E0416.
 For more information about an error, try `rustc --explain E0308`.
