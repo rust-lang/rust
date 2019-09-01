@@ -298,26 +298,25 @@ declare_clippy_lint! {
     /// **What it does:** Checks `for` loops over slices with an explicit counter
     /// and suggests the use of `.enumerate()`.
     ///
-    /// **Why is it bad?** Not only is the version using `.enumerate()` more
-    /// readable, the compiler is able to remove bounds checks which can lead to
-    /// faster code in some instances.
+    /// **Why is it bad?** Using `.enumerate()` makes the intent more clear,
+    /// declutters the code and may be faster in some instances.
     ///
     /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust
     /// # let v = vec![1];
-    /// # fn foo(bar: usize) {}
     /// # fn bar(bar: usize, baz: usize) {}
-    /// for i in 0..v.len() { foo(v[i]); }
-    /// for i in 0..v.len() { bar(i, v[i]); }
+    /// let mut i = 0;
+    /// for item in &v {
+    ///     bar(i, *item);
+    ///     i += 1;
+    /// }
     /// ```
     /// Could be written as
     /// ```rust
     /// # let v = vec![1];
-    /// # fn foo(bar: usize) {}
     /// # fn bar(bar: usize, baz: usize) {}
-    /// for item in &v { foo(*item); }
     /// for (i, item) in v.iter().enumerate() { bar(i, *item); }
     /// ```
     pub EXPLICIT_COUNTER_LOOP,
