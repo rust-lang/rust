@@ -992,8 +992,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         })) = self.tcx.hir().get_if_local(def_id) {
                             let body = self.tcx.hir().body(*body_id);
                             err.help(&format!(
-                                "it looks like you forgot to use parentheses to \
-                                 call the function: `{}({})`",
+                                "use parentheses to call the function: `{}({})`",
                                 ident,
                                 body.params.iter()
                                     .map(|arg| match &arg.pat.node {
