@@ -1,8 +1,4 @@
-{
-  "message": "cannot find type `Iter` in this scope",
-  "code": {
-    "code": "E0412",
-    "explanation": "
+{"message":"cannot find type `Iter` in this scope","code":{"code":"E0412","explanation":"
 The type name used is not in scope.
 
 Erroneous code examples:
@@ -67,320 +63,31 @@ mod foo {
 }
 # fn main() {} // don't insert it for us; that'll break imports
 ```
-"
-  },
-  "level": "error",
-  "spans": [
-    {
-      "file_name": "$DIR/use_suggestion_json.rs",
-      "byte_start": 471,
-      "byte_end": 475,
-      "line_start": 12,
-      "line_end": 12,
-      "column_start": 12,
-      "column_end": 16,
-      "is_primary": true,
-      "text": [
-        {
-          "text": "    let x: Iter;",
-          "highlight_start": 12,
-          "highlight_end": 16
-        }
-      ],
-      "label": "not found in this scope",
-      "suggested_replacement": null,
-      "suggestion_applicability": null,
-      "expansion": null
-    }
-  ],
-  "children": [
-    {
-      "message": "possible candidates are found in other modules, you can import them into scope",
-      "code": null,
-      "level": "help",
-      "spans": [
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::collections::binary_heap::Iter;
+"},"level":"error","spans":[{"file_name":"$DIR/use_suggestion_json.rs","byte_start":464,"byte_end":468,"line_start":12,"line_end":12,"column_start":12,"column_end":16,"is_primary":true,"text":[{"text":"    let x: Iter;","highlight_start":12,"highlight_end":16}],"label":"not found in this scope","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"possible candidates are found in other modules, you can import them into scope","code":null,"level":"help","spans":[{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::collections::binary_heap::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::collections::btree_map::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::collections::btree_map::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::collections::btree_set::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::collections::btree_set::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::collections::hash_map::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::collections::hash_map::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::collections::hash_set::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::collections::hash_set::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::collections::linked_list::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::collections::linked_list::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::collections::vec_deque::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::collections::vec_deque::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::option::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::option::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::path::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::path::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::result::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::result::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::slice::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::slice::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        },
-        {
-          "file_name": "$DIR/use_suggestion_json.rs",
-          "byte_start": 448,
-          "byte_end": 448,
-          "line_start": 11,
-          "line_end": 11,
-          "column_start": 1,
-          "column_end": 1,
-          "is_primary": true,
-          "text": [
-            {
-              "text": "fn main() {",
-              "highlight_start": 1,
-              "highlight_end": 1
-            }
-          ],
-          "label": null,
-          "suggested_replacement": "use std::sync::mpsc::Iter;
+","suggestion_applicability":"Unspecified","expansion":null},{"file_name":"$DIR/use_suggestion_json.rs","byte_start":441,"byte_end":441,"line_start":11,"line_end":11,"column_start":1,"column_end":1,"is_primary":true,"text":[{"text":"fn main() {","highlight_start":1,"highlight_end":1}],"label":null,"suggested_replacement":"use std::sync::mpsc::Iter;
 
-",
-          "suggestion_applicability": "Unspecified",
-          "expansion": null
-        }
-      ],
-      "children": [],
-      "rendered": null
-    }
-  ],
-  "rendered": "\u001b[0m\u001b[1m\u001b[38;5;9merror[E0412]\u001b[0m\u001b[0m\u001b[1m: cannot find type `Iter` in this scope\u001b[0m
+","suggestion_applicability":"Unspecified","expansion":null}],"children":[],"rendered":null}],"rendered":"\u001b[0m\u001b[1m\u001b[38;5;9merror[E0412]\u001b[0m\u001b[0m\u001b[1m: cannot find type `Iter` in this scope\u001b[0m
 \u001b[0m  \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m--> \u001b[0m\u001b[0m$DIR/use_suggestion_json.rs:12:12\u001b[0m
 \u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
 \u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m| \u001b[0m\u001b[0m    let x: Iter;\u001b[0m
@@ -397,24 +104,9 @@ mod foo {
 \u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
 \u001b[0mand 8 other candidates\u001b[0m
 
-"
-}
-{
-  "message": "aborting due to previous error",
-  "code": null,
-  "level": "error",
-  "spans": [],
-  "children": [],
-  "rendered": "\u001b[0m\u001b[1m\u001b[38;5;9merror\u001b[0m\u001b[0m\u001b[1m: aborting due to previous error\u001b[0m
+"}
+{"message":"aborting due to previous error","code":null,"level":"error","spans":[],"children":[],"rendered":"\u001b[0m\u001b[1m\u001b[38;5;9merror\u001b[0m\u001b[0m\u001b[1m: aborting due to previous error\u001b[0m
 
-"
-}
-{
-  "message": "For more information about this error, try `rustc --explain E0412`.",
-  "code": null,
-  "level": "failure-note",
-  "spans": [],
-  "children": [],
-  "rendered": "\u001b[0m\u001b[1mFor more information about this error, try `rustc --explain E0412`.\u001b[0m
-"
-}
+"}
+{"message":"For more information about this error, try `rustc --explain E0412`.","code":null,"level":"","spans":[],"children":[],"rendered":"\u001b[0m\u001b[1mFor more information about this error, try `rustc --explain E0412`.\u001b[0m
+"}
