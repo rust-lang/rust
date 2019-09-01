@@ -3,7 +3,7 @@
 // The `Self::HASH_LEN` here expands to a "self-type" where `T` is not
 // known. This unbound inference variable was causing an ICE.
 //
-// run-pass
+// check-pass
 
 pub struct Foo<T>(T);
 
