@@ -6,7 +6,7 @@ authors = ["rust-analyzer developers"]
 
 [dependencies]
 format-buf = "1.0.0"
-once_cell = "0.2.0"
+once_cell = "1.0.1"
 join_to_string = "0.1.3"
 itertools = "0.8.0"
 arrayvec = "0.4.10"

@@ -800,11 +800,8 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "0.2.7"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "ordermap"
@@ -950,7 +947,7 @@ dependencies = [
  "format-buf 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "join_to_string 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "once_cell 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "once_cell 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_db 0.1.0",
  "ra_fmt 0.1.0",
  "ra_hir 0.1.0",
@@ -1020,7 +1017,7 @@ dependencies = [
  "insta 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lalrpop-intern 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "once_cell 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "once_cell 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",
  "ra_db 0.1.0",
@@ -1115,7 +1112,7 @@ dependencies = [
  "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jemalloc-ctl 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "jemallocator 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "once_cell 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "once_cell 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1934,7 +1931,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num-traits 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "6ba9a427cfca2be13aa6f6403b0b7e7368fe982bfa16fccc450ce74c46cd9b32"
 "checksum num_cpus 1.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "bcef43580c035376c0705c42792c294b66974abbfd2789b511784023f71f3273"
 "checksum number_prefix 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "dbf9993e59c894e3c08aa1c2712914e9e6bf1fcbfc6bef283e2183df345a4fee"
-"checksum once_cell 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "1d1a13503127ae8c93c0e2c817d74895b0af4df9132ec9be3ea42dd1656cd6e9"
+"checksum once_cell 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c9192c5a4c3b5488dae8d3886ef9df6b5eb246d36323dc7a5078595a154e7771"
 "checksum ordermap 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "a86ed3f5f244b372d6b1a00b72ef7f8876d0bc6a78a4c9985c53614041512063"
 "checksum parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f842b1982eb6c2fe34036a4fbfb06dd185a3f5c8edfaacdf7d1ea10b07de6252"
 "checksum parking_lot_core 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b876b1b9e7ac6e1a74a6da34d25c42e17e8862aa409cbbbdcfc8d86c6f3bc62b"
