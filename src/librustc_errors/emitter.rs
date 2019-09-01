@@ -146,12 +146,12 @@ impl Margin {
             } else if self.label_right - self.span_left <= self.column_width {
                 // Attempt to fit the code window considering only the spans and labels.
                 let padding_left = (self.column_width - (self.label_right - self.span_left)) / 2;
-                self.computed_left = self.span_left - padding_left;
+                self.computed_left = self.span_left.saturating_sub(padding_left);
                 self.computed_right = self.computed_left + self.column_width;
             } else if self.span_right - self.span_left <= self.column_width {
                 // Attempt to fit the code window considering the spans and labels plus padding.
                 let padding_left = (self.column_width - (self.span_right - self.span_left)) / 5 * 2;
-                self.computed_left = self.span_left - padding_left;
+                self.computed_left = self.span_left.saturating_sub(padding_left);
                 self.computed_right = self.computed_left + self.column_width;
             } else { // Mostly give up but still don't show the full line.
                 self.computed_left = self.span_left;
@@ -1304,11 +1304,13 @@ impl EmitterWriter {
                 };
 
                 let column_width = if let Some(width) = self.terminal_width {
-                    width
+                    width.saturating_sub(code_offset)
                 } else if self.ui_testing {
                     140
                 } else {
-                    term_size::dimensions().map(|(w, _)| w - code_offset).unwrap_or(140)
+                    term_size::dimensions()
+                        .map(|(w, _)| w.saturating_sub(code_offset))
+                        .unwrap_or(std::usize::MAX)
                 };
 
                 let margin = Margin::new(
