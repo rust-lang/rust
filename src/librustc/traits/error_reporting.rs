@@ -1,20 +1,21 @@
 use super::{
+    ConstEvalFailure,
+    EvaluationResult,
     FulfillmentError,
     FulfillmentErrorCode,
     MismatchedProjectionTypes,
+    ObjectSafetyViolation,
     Obligation,
     ObligationCause,
     ObligationCauseCode,
     OnUnimplementedDirective,
     OnUnimplementedNote,
     OutputTypeParameterMismatch,
-    TraitNotObjectSafe,
-    ConstEvalFailure,
+    Overflow,
     PredicateObligation,
     SelectionContext,
     SelectionError,
-    ObjectSafetyViolation,
-    Overflow,
+    TraitNotObjectSafe,
 };
 
 use crate::hir;
@@ -35,7 +36,7 @@ use crate::util::nodemap::{FxHashMap, FxHashSet};
 use errors::{Applicability, DiagnosticBuilder};
 use std::fmt;
 use syntax::ast;
-use syntax::symbol::sym;
+use syntax::symbol::{sym, kw};
 use syntax_pos::{DUMMY_SP, Span, ExpnKind};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
@@ -657,19 +658,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             span,
                             E0277,
                             "{}",
-                            message.unwrap_or_else(||
-                                format!("the trait bound `{}` is not satisfied{}",
-                                        trait_ref.to_predicate(), post_message)
-                            ));
+                            message.unwrap_or_else(|| format!(
+                                "the trait bound `{}` is not satisfied{}",
+                                trait_ref.to_predicate(),
+                                post_message,
+                            )));
 
                         let explanation =
                             if obligation.cause.code == ObligationCauseCode::MainFunctionType {
                                 "consider using `()`, or a `Result`".to_owned()
                             } else {
-                                format!("{}the trait `{}` is not implemented for `{}`",
-                                        pre_message,
-                                        trait_ref,
-                                        trait_ref.self_ty())
+                                format!(
+                                    "{}the trait `{}` is not implemented for `{}`",
+                                    pre_message,
+                                    trait_ref,
+                                    trait_ref.self_ty(),
+                                )
                             };
 
                         if let Some(ref s) = label {
@@ -686,6 +690,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
 
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
+                        self.suggest_fn_call(&obligation, &mut err, &trait_ref);
                         self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
                         self.suggest_semicolon_removal(&obligation, &mut err, span, &trait_ref);
 
@@ -950,6 +955,57 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    fn suggest_fn_call(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+    ) {
+        let self_ty = trait_ref.self_ty();
+        match self_ty.sty {
+            ty::FnDef(def_id, _) => {
+                // We tried to apply the bound to an `fn`. Check whether calling it would evaluate
+                // to a type that *would* satisfy the trait binding. If it would, suggest calling
+                // it: `bar(foo)` -> `bar(foo)`. This case is *very* likely to be hit if `foo` is
+                // `async`.
+                let output_ty = self_ty.fn_sig(self.tcx).output();
+                let new_trait_ref = ty::TraitRef {
+                    def_id: trait_ref.def_id(),
+                    substs: self.tcx.mk_substs_trait(output_ty.skip_binder(), &[]),
+                };
+                let obligation = Obligation::new(
+                    obligation.cause.clone(),
+                    obligation.param_env,
+                    new_trait_ref.to_predicate(),
+                );
+                match self.evaluate_obligation(&obligation) {
+                    Ok(EvaluationResult::EvaluatedToOk) |
+                    Ok(EvaluationResult::EvaluatedToOkModuloRegions) |
+                    Ok(EvaluationResult::EvaluatedToAmbig) => {
+                        if let Some(hir::Node::Item(hir::Item {
+                            ident,
+                            node: hir::ItemKind::Fn(.., body_id),
+                            ..
+                        })) = self.tcx.hir().get_if_local(def_id) {
+                            let body = self.tcx.hir().body(*body_id);
+                            err.help(&format!(
+                                "use parentheses to call the function: `{}({})`",
+                                ident,
+                                body.params.iter()
+                                    .map(|arg| match &arg.pat.node {
+                                        hir::PatKind::Binding(_, _, ident, None)
+                                        if ident.name != kw::SelfLower => ident.to_string(),
+                                        _ => "_".to_string(),
+                                    }).collect::<Vec<_>>().join(", ")));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
         }
     }
 
@@ -1535,17 +1591,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 err.note("only the last element of a tuple may have a dynamically sized type");
             }
             ObligationCauseCode::ProjectionWf(data) => {
-                err.note(&format!("required so that the projection `{}` is well-formed",
-                                  data));
+                err.note(&format!(
+                    "required so that the projection `{}` is well-formed",
+                    data,
+                ));
             }
             ObligationCauseCode::ReferenceOutlivesReferent(ref_ty) => {
-                err.note(&format!("required so that reference `{}` does not outlive its referent",
-                                  ref_ty));
+                err.note(&format!(
+                    "required so that reference `{}` does not outlive its referent",
+                    ref_ty,
+                ));
             }
             ObligationCauseCode::ObjectTypeBound(object_ty, region) => {
-                err.note(&format!("required so that the lifetime bound of `{}` for `{}` \
-                                   is satisfied",
-                                  region, object_ty));
+                err.note(&format!(
+                    "required so that the lifetime bound of `{}` for `{}` is satisfied",
+                    region,
+                    object_ty,
+                ));
             }
             ObligationCauseCode::ItemObligation(item_def_id) => {
                 let item_name = tcx.def_path_str(item_def_id);
@@ -1553,7 +1615,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                 if let Some(sp) = tcx.hir().span_if_local(item_def_id) {
                     let sp = tcx.sess.source_map().def_span(sp);
-                    err.span_note(sp, &msg);
+                    err.span_label(sp, &msg);
                 } else {
                     err.note(&msg);
                 }

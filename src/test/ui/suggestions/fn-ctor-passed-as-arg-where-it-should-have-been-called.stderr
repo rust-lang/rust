@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `fn() -> impl T {foo}: T` is not satisfied
+  --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:17:5
+   |
+LL | fn bar(f: impl T<O=()>) {}
+   | ----------------------- required by `bar`
+...
+LL |     bar(foo);
+   |     ^^^ the trait `T` is not implemented for `fn() -> impl T {foo}`
+   |
+   = help: use parentheses to call the function: `foo()`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

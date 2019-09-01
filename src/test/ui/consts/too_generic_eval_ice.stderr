@@ -14,32 +14,28 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
 error[E0277]: the size for values of type `A` cannot be known at compilation time
   --> $DIR/too_generic_eval_ice.rs:7:13
    |
+LL | pub struct Foo<A, B>(A, B);
+   | --------------------------- required by `Foo`
+...
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `A`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where A: std::marker::Sized` bound
-note: required by `Foo`
-  --> $DIR/too_generic_eval_ice.rs:1:1
-   |
-LL | pub struct Foo<A, B>(A, B);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `B` cannot be known at compilation time
   --> $DIR/too_generic_eval_ice.rs:7:13
    |
+LL | pub struct Foo<A, B>(A, B);
+   | --------------------------- required by `Foo`
+...
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `B`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where B: std::marker::Sized` bound
-note: required by `Foo`
-  --> $DIR/too_generic_eval_ice.rs:1:1
-   |
-LL | pub struct Foo<A, B>(A, B);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
