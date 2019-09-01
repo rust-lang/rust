@@ -18,7 +18,7 @@ target-lexicon = "0.4.0"
 faerie = "0.10.2"
 
 #goblin = "0.0.17"
-ar = "0.7.0"
+ar = "0.8.0"
 bitflags = "1.1.0"
 byteorder = "1.2.7"
 libc = "0.2.53"

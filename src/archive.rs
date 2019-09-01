@@ -39,7 +39,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             sess,
             dst: output.to_path_buf(),
             lib_search_paths: archive_search_paths(sess),
-            use_native_ar: true, // FIXME fix rust-ar to not emit corrupted archive files.
+            use_native_ar: false,
             // FIXME test for linux and System V derivatives instead
             use_gnu_style_archive: !sess.target.target.options.is_like_osx,
         };
