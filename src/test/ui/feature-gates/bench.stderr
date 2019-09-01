@@ -1,0 +1,10 @@
+error: use of unstable library feature 'test': `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/bench.rs:1:3
+   |
+LL | #[bench]
+   |   ^^^^^
+   |
+   = note: `#[deny(soft_unstable)]` on by default
+
+error: aborting due to previous error
+
