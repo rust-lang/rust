@@ -1112,7 +1112,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let mut bindings = smallvec![(false, <_>::default())];
         for Param { pat, ty, .. } in params {
             self.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
-            self.check_consistent_bindings_top(pat);
             self.visit_ty(ty);
             debug!("(resolving function / closure) recorded parameter");
         }
@@ -1248,29 +1247,15 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn resolve_arm(&mut self, arm: &Arm) {
         self.with_rib(ValueNS, NormalRibKind, |this| {
-            this.resolve_pats(&arm.pats, PatternSource::Match);
+            this.resolve_pattern_top(&arm.pat, PatternSource::Match);
             walk_list!(this, visit_expr, &arm.guard);
             this.visit_expr(&arm.body);
         });
     }
 
-    /// Arising from `source`, resolve a sequence of patterns (top level or-patterns).
-    fn resolve_pats(&mut self, pats: &[P<Pat>], source: PatternSource) {
-        let mut bindings = smallvec![(true, <_>::default())];
-        for pat in pats {
-            bindings.push((false, <_>::default()));
-            self.resolve_pattern(pat, source, &mut bindings);
-            let collected = bindings.pop().unwrap().1;
-            bindings.last_mut().unwrap().1.extend(collected);
-        }
-        // This has to happen *after* we determine which pat_idents are variants
-        self.check_consistent_bindings(pats);
-    }
-
+    /// Arising from `source`, resolve a top level pattern.
     fn resolve_pattern_top(&mut self, pat: &Pat, pat_src: PatternSource) {
         self.resolve_pattern(pat, pat_src, &mut smallvec![(false, <_>::default())]);
-        // This has to happen *after* we determine which pat_idents are variants:
-        self.check_consistent_bindings_top(pat);
     }
 
     fn resolve_pattern(
@@ -1280,6 +1265,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         bindings: &mut SmallVec<[(bool, FxHashSet<Ident>); 1]>,
     ) {
         self.resolve_pattern_inner(pat, pat_src, bindings);
+        // This has to happen *after* we determine which pat_idents are variants:
+        self.check_consistent_bindings_top(pat);
         visit::walk_pat(self, pat);
     }
 
@@ -1866,9 +1853,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::Let(ref pats, ref scrutinee) => {
+            ExprKind::Let(ref pat, ref scrutinee) => {
                 self.visit_expr(scrutinee);
-                self.resolve_pats(pats, PatternSource::Let);
+                self.resolve_pattern_top(pat, PatternSource::Let);
             }
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {
