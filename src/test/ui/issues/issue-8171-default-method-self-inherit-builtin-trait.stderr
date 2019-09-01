@@ -1,6 +1,0 @@
-error: failed to remove $TEST_BUILD_DIR/issues/issue-8171-default-method-self-inherit-builtin-trait/issue-8171-default-method-self-inherit-builtin-trait.issue_8171_default_method_self_inherit_builtin_trait.7rcbfp3g-cgu.0.rcgu.o: 指定されたパスが見つかりません。 (os error 3)
-
-error: failed to remove $TEST_BUILD_DIR/issues/issue-8171-default-method-self-inherit-builtin-trait/issue-8171-default-method-self-inherit-builtin-trait.issue_8171_default_method_self_inherit_builtin_trait.7rcbfp3g-cgu.1.rcgu.o: 指定されたパスが見つかりません。 (os error 3)
-
-error: aborting due to 2 previous errors
-
