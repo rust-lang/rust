@@ -1,0 +1,10 @@
+error: this expression will panic at runtime
+  --> $DIR/issue-64059.rs:2:13
+   |
+LL |     let _ = -(-0.0);
+   |             ^^^^^^^ attempt to negate with overflow
+   |
+   = note: `#[deny(const_err)]` on by default
+
+error: aborting due to previous error
+

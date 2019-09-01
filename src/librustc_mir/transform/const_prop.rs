@@ -405,14 +405,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 }
 
                 let arg = self.eval_operand(arg, source_info)?;
-                let is_release_mode = self.tcx.sess.overflow_checks();
+                let oflo_check = self.tcx.sess.overflow_checks();
                 let val = self.use_ecx(source_info, |this| {
                     let prim = this.ecx.read_immediate(arg)?;
                     match op {
                         UnOp::Neg => {
-                            // We don't have to check overflow here when we already
-                            // check it in release mode.
-                            if is_release_mode
+                            // We check overflow in debug mode already
+                            // so should only check in release mode.
+                            if !oflo_check
                             && prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
                                 throw_panic!(OverflowNeg)
                             }
@@ -487,9 +487,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         Scalar::from_bool(overflow).into(),
                     )
                 } else {
-                    // We don't have to check overflow here when we already
-                    // check it in release mode.
-                    if self.tcx.sess.overflow_checks() && overflow {
+                    // We check overflow in debug mode already
+                    // so should only check in release mode.
+                    if !self.tcx.sess.overflow_checks() && overflow {
                         let err = err_panic!(Overflow(op)).into();
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
