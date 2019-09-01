@@ -1,3 +1,4 @@
+// compile-flags: -C overflow-checks=on -O
 // run-pass
 
 fn main() {
