@@ -10,6 +10,30 @@ error[E0432]: unresolved import `qux::bar2`
 LL | use qux::bar2;
    |     ^^^^^^^^^ no `bar2` in `qux`
 
+error[E0432]: unresolved import `foo`
+  --> $DIR/unresolved-imports-used.rs:11:5
+   |
+LL | use foo::bar;
+   |     ^^^ maybe a missing crate `foo`?
+
+error[E0432]: unresolved import `baz`
+  --> $DIR/unresolved-imports-used.rs:12:5
+   |
+LL | use baz::*;
+   |     ^^^ maybe a missing crate `baz`?
+
+error[E0432]: unresolved import `foo2`
+  --> $DIR/unresolved-imports-used.rs:14:5
+   |
+LL | use foo2::bar2;
+   |     ^^^^ maybe a missing crate `foo2`?
+
+error[E0432]: unresolved import `baz2`
+  --> $DIR/unresolved-imports-used.rs:15:5
+   |
+LL | use baz2::*;
+   |     ^^^^ maybe a missing crate `baz2`?
+
 error[E0603]: function `quz` is private
   --> $DIR/unresolved-imports-used.rs:9:10
    |
@@ -28,7 +52,7 @@ note: lint level defined here
 LL | #![deny(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0432, E0603.
 For more information about an error, try `rustc --explain E0432`.
