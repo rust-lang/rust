@@ -1,7 +1,7 @@
 // Regression test for #48132. This was failing due to problems around
 // the projection caching and dropck type enumeration.
 
-// run-pass
+// check-pass
 
 pub struct Container<T: Iterator> {
     value: Option<T::Item>,
