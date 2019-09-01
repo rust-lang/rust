@@ -1,5 +1,3 @@
-// no-prefer-dynamic
-
 // This would previously leak the Box<Trait> because we wouldn't
 // schedule cleanups when auto borrowing trait objects.
 // This program should be valgrind clean.
