@@ -774,10 +774,10 @@ impl<'a> Resolver<'a> {
     fn check_stability_and_deprecation(&self, ext: &SyntaxExtension, path: &ast::Path) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue } = stability.level {
+            if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
                 let feature = stability.feature;
                 if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
-                    stability::report_unstable(self.session, feature, reason, issue, span);
+                    stability::report_unstable(self.session, feature, reason, issue, is_soft, span);
                 }
             }
             if let Some(depr) = &stability.rustc_depr {

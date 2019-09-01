@@ -626,6 +626,7 @@ symbols! {
         size,
         slice_patterns,
         slicing_syntax,
+        soft,
         Some,
         specialization,
         speed,

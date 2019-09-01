@@ -115,9 +115,10 @@ for ::syntax::attr::StabilityLevel {
                                           hasher: &mut StableHasher<W>) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {
-            ::syntax::attr::StabilityLevel::Unstable { ref reason, ref issue } => {
+            ::syntax::attr::StabilityLevel::Unstable { ref reason, ref issue, ref is_soft } => {
                 reason.hash_stable(hcx, hasher);
                 issue.hash_stable(hcx, hasher);
+                is_soft.hash_stable(hcx, hasher);
             }
             ::syntax::attr::StabilityLevel::Stable { ref since } => {
                 since.hash_stable(hcx, hasher);
