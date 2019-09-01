@@ -1771,19 +1771,3 @@ pub fn cs_fold1<F, B>(use_foldl: bool,
         }
     }
 }
-
-/// Returns `true` if the type has no value fields
-/// (for an enum, no variant has any fields)
-pub fn is_type_without_fields(item: &Annotatable) -> bool {
-    if let Annotatable::Item(ref item) = *item {
-        match item.node {
-            ast::ItemKind::Enum(ref enum_def, _) => {
-                enum_def.variants.iter().all(|v| v.data.fields().is_empty())
-            }
-            ast::ItemKind::Struct(ref variant_data, _) => variant_data.fields().is_empty(),
-            _ => false,
-        }
-    } else {
-        false
-    }
-}

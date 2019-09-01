@@ -1,13 +1,11 @@
-pub use OrderingOp::*;
-
-use crate::deriving::{path_local, pathvec_std, path_std};
+use crate::deriving::{pathvec_std, path_std};
 use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
-use syntax::ast::{self, BinOpKind, Expr, MetaItem};
+use syntax::ast::{self, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ptr::P;
-use syntax::symbol::{sym, Symbol};
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt<'_>,
@@ -15,26 +13,6 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt<'_>,
                                    mitem: &MetaItem,
                                    item: &Annotatable,
                                    push: &mut dyn FnMut(Annotatable)) {
-    macro_rules! md {
-        ($name:expr, $op:expr, $equal:expr) => { {
-            let inline = cx.meta_word(span, sym::inline);
-            let attrs = vec![cx.attribute(inline)];
-            MethodDef {
-                name: $name,
-                generics: LifetimeBounds::empty(),
-                explicit_self: borrowed_explicit_self(),
-                args: vec![(borrowed_self(), "other")],
-                ret_ty: Literal(path_local!(bool)),
-                attributes: attrs,
-                is_unsafe: false,
-                unify_fieldless_variants: true,
-                combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
-                    cs_op($op, $equal, cx, span, substr)
-                }))
-            }
-        } }
-    }
-
     let ordering_ty = Literal(path_std!(cx, cmp::Ordering));
     let ret_ty = Literal(Path::new_(pathvec_std!(cx, option::Option),
                                     None,
@@ -58,18 +36,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt<'_>,
         })),
     };
 
-    // avoid defining extra methods if we can
-    // c-like enums, enums without any fields and structs without fields
-    // can safely define only `partial_cmp`.
-    let methods = if is_type_without_fields(item) {
-        vec![partial_cmp_def]
-    } else {
-        vec![partial_cmp_def,
-             md!("lt", true, false),
-             md!("le", true, true),
-             md!("gt", false, false),
-             md!("ge", false, true)]
-    };
+    let methods = vec![partial_cmp_def];
 
     let trait_def = TraitDef {
         span,
@@ -85,31 +52,14 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt<'_>,
     trait_def.expand(cx, mitem, item, push)
 }
 
-#[derive(Copy, Clone)]
-pub enum OrderingOp {
-    PartialCmpOp,
-    LtOp,
-    LeOp,
-    GtOp,
-    GeOp,
-}
-
 pub fn some_ordering_collapsed(
     cx: &mut ExtCtxt<'_>,
     span: Span,
-    op: OrderingOp,
     self_arg_tags: &[ast::Ident],
 ) -> P<ast::Expr> {
     let lft = cx.expr_ident(span, self_arg_tags[0]);
     let rgt = cx.expr_addr_of(span, cx.expr_ident(span, self_arg_tags[1]));
-    let op_str = match op {
-        PartialCmpOp => "partial_cmp",
-        LtOp => "lt",
-        LeOp => "le",
-        GtOp => "gt",
-        GeOp => "ge",
-    };
-    cx.expr_method_call(span, lft, ast::Ident::from_str_and_span(op_str, span), vec![rgt])
+    cx.expr_method_call(span, lft, ast::Ident::from_str_and_span("partial_cmp", span), vec![rgt])
 }
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
@@ -173,129 +123,10 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
         if self_args.len() != 2 {
             cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
         } else {
-            some_ordering_collapsed(cx, span, PartialCmpOp, tag_tuple)
+            some_ordering_collapsed(cx, span, tag_tuple)
         }
     }),
             cx,
             span,
             substr)
-}
-
-/// Strict inequality.
-fn cs_op(less: bool,
-         inclusive: bool,
-         cx: &mut ExtCtxt<'_>,
-         span: Span,
-         substr: &Substructure<'_>) -> P<Expr> {
-    let ordering_path = |cx: &mut ExtCtxt<'_>, name: &str| {
-        cx.expr_path(cx.path_global(
-            span, cx.std_path(&[sym::cmp, sym::Ordering, Symbol::intern(name)])))
-    };
-
-    let par_cmp = |cx: &mut ExtCtxt<'_>, span, self_f: P<Expr>, other_fs: &[P<Expr>], default| {
-        let other_f = match other_fs {
-            [o_f] => o_f,
-            _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
-        };
-
-        // `PartialOrd::partial_cmp(self.fi, other.fi)`
-        let cmp_path = cx.expr_path(cx.path_global(span, cx.std_path(&[sym::cmp,
-                                                                       sym::PartialOrd,
-                                                                       sym::partial_cmp])));
-        let cmp = cx.expr_call(span,
-                               cmp_path,
-                               vec![cx.expr_addr_of(span, self_f),
-                                    cx.expr_addr_of(span, other_f.clone())]);
-
-        let default = ordering_path(cx, default);
-        // `Option::unwrap_or(_, Ordering::Equal)`
-        let unwrap_path = cx.expr_path(cx.path_global(span, cx.std_path(&[sym::option,
-                                                                          sym::Option,
-                                                                          sym::unwrap_or])));
-        cx.expr_call(span, unwrap_path, vec![cmp, default])
-    };
-
-    let fold = cs_fold1(false, // need foldr
-        |cx, span, subexpr, self_f, other_fs| {
-            // build up a series of `partial_cmp`s from the inside
-            // out (hence foldr) to get lexical ordering, i.e., for op ==
-            // `ast::lt`
-            //
-            // ```
-            // Ordering::then_with(
-            //    Option::unwrap_or(
-            //        PartialOrd::partial_cmp(self.f1, other.f1), Ordering::Equal)
-            //    ),
-            //    Option::unwrap_or(
-            //        PartialOrd::partial_cmp(self.f2, other.f2), Ordering::Greater)
-            //    )
-            // )
-            // == Ordering::Less
-            // ```
-            //
-            // and for op ==
-            // `ast::le`
-            //
-            // ```
-            // Ordering::then_with(
-            //    Option::unwrap_or(
-            //        PartialOrd::partial_cmp(self.f1, other.f1), Ordering::Equal)
-            //    ),
-            //    Option::unwrap_or(
-            //        PartialOrd::partial_cmp(self.f2, other.f2), Ordering::Greater)
-            //    )
-            // )
-            // != Ordering::Greater
-            // ```
-            //
-            // The optimiser should remove the redundancy. We explicitly
-            // get use the binops to avoid auto-deref dereferencing too many
-            // layers of pointers, if the type includes pointers.
-
-            // `Option::unwrap_or(PartialOrd::partial_cmp(self.fi, other.fi), Ordering::Equal)`
-            let par_cmp = par_cmp(cx, span, self_f, other_fs, "Equal");
-
-            // `Ordering::then_with(Option::unwrap_or(..), ..)`
-            let then_with_path = cx.expr_path(cx.path_global(span,
-                                                             cx.std_path(&[sym::cmp,
-                                                                           sym::Ordering,
-                                                                           sym::then_with])));
-            cx.expr_call(span, then_with_path, vec![par_cmp, cx.lambda0(span, subexpr)])
-        },
-        |cx, args| {
-            match args {
-                Some((span, self_f, other_fs)) => {
-                    let opposite = if less { "Greater" } else { "Less" };
-                    par_cmp(cx, span, self_f, other_fs, opposite)
-                },
-                None => cx.expr_bool(span, inclusive)
-            }
-        },
-        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
-            if self_args.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
-            } else {
-                let op = match (less, inclusive) {
-                    (false, false) => GtOp,
-                    (false, true) => GeOp,
-                    (true, false) => LtOp,
-                    (true, true) => LeOp,
-                };
-                some_ordering_collapsed(cx, span, op, tag_tuple)
-            }
-        }),
-        cx,
-        span,
-        substr);
-
-    match *substr.fields {
-        EnumMatching(.., ref all_fields) |
-        Struct(.., ref all_fields) if !all_fields.is_empty() => {
-            let ordering = ordering_path(cx, if less ^ inclusive { "Less" } else { "Greater" });
-            let comp_op = if inclusive { BinOpKind::Ne } else { BinOpKind::Eq };
-
-            cx.expr_binary(span, comp_op, fold, ordering)
-        }
-        _ => fold
-    }
 }

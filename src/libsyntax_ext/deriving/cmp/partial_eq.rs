@@ -57,9 +57,6 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
     fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
         cs_op(cx, span, substr, BinOpKind::Eq, BinOpKind::And, true)
     }
-    fn cs_ne(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<Expr> {
-        cs_op(cx, span, substr, BinOpKind::Ne, BinOpKind::Or, false)
-    }
 
     macro_rules! md {
         ($name:expr, $f:ident) => { {
@@ -81,13 +78,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt<'_>,
         } }
     }
 
-    // avoid defining `ne` if we can
-    // c-like enums, enums without any fields and structs without fields
-    // can safely define only `eq`.
-    let mut methods = vec![md!("eq", cs_eq)];
-    if !is_type_without_fields(item) {
-        methods.push(md!("ne", cs_ne));
-    }
+    let methods = vec![md!("eq", cs_eq)];
 
     let trait_def = TraitDef {
         span,
