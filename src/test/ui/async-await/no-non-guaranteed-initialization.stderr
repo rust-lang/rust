@@ -1,8 +1,8 @@
-error[E0381]: use of possibly uninitialized variable: `y`
+error[E0381]: use of possibly-uninitialized variable: `y`
   --> $DIR/no-non-guaranteed-initialization.rs:10:5
    |
 LL |     y
-   |     ^ use of possibly uninitialized `y`
+   |     ^ use of possibly-uninitialized `y`
 
 error: aborting due to previous error
 

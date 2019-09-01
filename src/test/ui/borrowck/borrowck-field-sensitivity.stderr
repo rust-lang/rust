@@ -108,23 +108,23 @@ LL |     let _z = A { a: 4, .. x };
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
-error[E0381]: assign to part of possibly uninitialized variable: `x`
+error[E0381]: assign to part of possibly-uninitialized variable: `x`
   --> $DIR/borrowck-field-sensitivity.rs:81:5
    |
 LL |     x.a = 1;
-   |     ^^^^^^^ use of possibly uninitialized `x`
+   |     ^^^^^^^ use of possibly-uninitialized `x`
 
-error[E0381]: assign to part of possibly uninitialized variable: `x`
+error[E0381]: assign to part of possibly-uninitialized variable: `x`
   --> $DIR/borrowck-field-sensitivity.rs:87:5
    |
 LL |     x.a = 1;
-   |     ^^^^^^^ use of possibly uninitialized `x`
+   |     ^^^^^^^ use of possibly-uninitialized `x`
 
-error[E0381]: assign to part of possibly uninitialized variable: `x`
+error[E0381]: assign to part of possibly-uninitialized variable: `x`
   --> $DIR/borrowck-field-sensitivity.rs:94:5
    |
 LL |     x.b = box 1;
-   |     ^^^ use of possibly uninitialized `x`
+   |     ^^^ use of possibly-uninitialized `x`
 
 error: aborting due to 14 previous errors
 

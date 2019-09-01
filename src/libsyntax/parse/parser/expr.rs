@@ -982,7 +982,7 @@ impl<'a> Parser<'a> {
                 }
                 if self.is_do_catch_block() {
                     let mut db = self.fatal("found removed `do catch` syntax");
-                    db.help("Following RFC #2388, the new non-placeholder syntax is `try`");
+                    db.help("following RFC #2388, the new non-placeholder syntax is `try`");
                     return Err(db);
                 }
                 if self.is_try_block() {

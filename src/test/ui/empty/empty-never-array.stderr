@@ -11,11 +11,11 @@ LL | | }
 LL |       let Helper::U(u) = Helper::T(t, []);
    |           ^^^^^^^^^^^^ pattern `T(_, _)` not covered
 
-error[E0381]: use of possibly uninitialized variable: `u`
+error[E0381]: use of possibly-uninitialized variable: `u`
   --> $DIR/empty-never-array.rs:12:5
    |
 LL |     u
-   |     ^ use of possibly uninitialized `u`
+   |     ^ use of possibly-uninitialized `u`
 
 error: aborting due to 2 previous errors
 
