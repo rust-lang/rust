@@ -311,19 +311,6 @@ When `rustdoc` receives this flag, it will print an extra "Version (version)" in
 the crate root's docs. You can use this flag to differentiate between different versions of your
 library's documentation.
 
-### `--linker`: control the linker used for documentation tests
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc --test src/lib.rs -Z unstable-options --linker foo
-$ rustdoc --test README.md -Z unstable-options --linker foo
-```
-
-When `rustdoc` runs your documentation tests, it needs to compile and link the tests as executables
-before running them. This flag can be used to change the linker used on these executables. It's
-equivalent to passing `-C linker=foo` to `rustc`.
-
 ### `--sort-modules-by-appearance`: control how items on module pages are sorted
 
 Using this flag looks like this:
