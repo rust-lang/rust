@@ -1,8 +1,8 @@
-error: expected token: `,`
+error: expected one of `!`, `,`, or `::`, found `(`
   --> $DIR/issue-54516.rs:4:58
    |
 LL |     println!("{}", std::mem:size_of::<BTreeMap<u32, u32>>());
-   |                            -                             ^ expected `,`
+   |                            -                             ^ expected one of `!`, `,`, or `::` here
    |                            |
    |                            help: maybe write a path separator here: `::`
    |
