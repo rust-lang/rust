@@ -6,7 +6,7 @@ use std::cell::Cell;
 use rustc::hir::def::DefKind;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
-    Local, NullOp, StatementKind, Statement, LocalKind, Static, StaticKind,
+    Local, NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp, ProjectionElem,
     SourceScope, SourceScopeLocalData, LocalDecl,
 };
@@ -405,8 +405,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 }
 
                 let arg = self.eval_operand(arg, source_info)?;
+                let is_release_mode = self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2;
                 let val = self.use_ecx(source_info, |this| {
                     let prim = this.ecx.read_immediate(arg)?;
+                    match op {
+                        UnOp::Neg => {
+                            if is_release_mode
+                            && prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
+                                throw_panic!(OverflowNeg)
+                            }
+                        }
+                        UnOp::Not => {
+                            // Cannot overflow
+                        }
+                    }
                     // Now run the actual operation.
                     this.ecx.unary_op(op, prim)
                 })?;
@@ -473,7 +485,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         Scalar::from_bool(overflow).into(),
                     )
                 } else {
-                    if overflow {
+                    if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 && overflow {
                         let err = err_panic!(Overflow(op)).into();
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
