@@ -6,7 +6,7 @@ use std::cell::Cell;
 use rustc::hir::def::DefKind;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
-    Local, NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
+    Local, NullOp, StatementKind, Statement, LocalKind, Static, StaticKind,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp, ProjectionElem,
     SourceScope, SourceScopeLocalData, LocalDecl,
 };
@@ -407,18 +407,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let arg = self.eval_operand(arg, source_info)?;
                 let val = self.use_ecx(source_info, |this| {
                     let prim = this.ecx.read_immediate(arg)?;
-                    match op {
-                        UnOp::Neg => {
-                            // Need to do overflow check here: For actual CTFE, MIR
-                            // generation emits code that does this before calling the op.
-                            if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
-                                throw_panic!(OverflowNeg)
-                            }
-                        }
-                        UnOp::Not => {
-                            // Cannot overflow
-                        }
-                    }
                     // Now run the actual operation.
                     this.ecx.unary_op(op, prim)
                 })?;
