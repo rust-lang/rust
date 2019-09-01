@@ -5,6 +5,8 @@
 
 #![feature(rustc_attrs)]
 #![allow(exceeding_bitshifts)]
+// compile-flags: -C overflow-checks=on -O
+
 #![deny(const_err)]
 
 fn black_box<T>(_: T) {

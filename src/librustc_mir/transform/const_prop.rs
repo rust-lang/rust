@@ -413,6 +413,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             // We check overflow in debug mode already
                             // so should only check in release mode.
                             if !oflo_check
+                            && prim.layout.ty.is_signed()
                             && prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
                                 throw_panic!(OverflowNeg)
                             }
