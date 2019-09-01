@@ -112,36 +112,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             self.diverges.set(pats_diverge);
-            let arm_ty = if source_if {
+            let arm_ty = if source_if && if_no_else && i != 0 && self.if_fallback_coercion(
+                expr.span,
+                &arms[0].body,
+                &mut coercion,
+            ) {
+                    tcx.types.err
+            } else {
+                // Only call this if this is not an `if` expr with an expected type and no `else`
+                // clause to avoid duplicated type errors. (#60254)
+                let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
+                all_arms_diverge &= self.diverges.get();
+                arm_ty
+            };
+            if source_if {
                 let then_expr = &arms[0].body;
                 match (i, if_no_else) {
-                    (0, _) => {
-                        let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
-                        all_arms_diverge &= self.diverges.get();
-                        coercion.coerce(self, &self.misc(expr.span), &arm.body, arm_ty);
-                        arm_ty
-                    }
-                    (_, true) => {
-                        if self.if_fallback_coercion(expr.span, then_expr, &mut coercion) {
-                            tcx.types.err
-                        } else {
-                            let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
-                            all_arms_diverge &= self.diverges.get();
-                            arm_ty
-                        }
-                    }
+                    (0, _) => coercion.coerce(self, &self.misc(expr.span), &arm.body, arm_ty),
+                    (_, true) => {} // Handled above to avoid duplicated type errors (#60254).
                     (_, _) => {
-                        let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
-                        all_arms_diverge &= self.diverges.get();
                         let then_ty = prior_arm_ty.unwrap();
                         let cause = self.if_cause(expr.span, then_expr, &arm.body, then_ty, arm_ty);
                         coercion.coerce(self, &cause, &arm.body, arm_ty);
-                        arm_ty
                     }
                 }
             } else {
-                let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
-                all_arms_diverge &= self.diverges.get();
                 let arm_span = if let hir::ExprKind::Block(blk, _) = &arm.body.node {
                     // Point at the block expr instead of the entire block
                     blk.expr.as_ref().map(|e| e.span).unwrap_or(arm.body.span)
@@ -166,8 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if other_arms.len() > 5 {
                     other_arms.remove(0);
                 }
-                arm_ty
-            };
+            }
             prior_arm_ty = Some(arm_ty);
         }
 
