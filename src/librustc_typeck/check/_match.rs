@@ -117,14 +117,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &arms[0].body,
                 &mut coercion,
             ) {
-                    tcx.types.err
+                tcx.types.err
             } else {
                 // Only call this if this is not an `if` expr with an expected type and no `else`
                 // clause to avoid duplicated type errors. (#60254)
-                let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
-                all_arms_diverge &= self.diverges.get();
-                arm_ty
+                self.check_expr_with_expectation(&arm.body, expected)
             };
+            all_arms_diverge &= self.diverges.get();
             if source_if {
                 let then_expr = &arms[0].body;
                 match (i, if_no_else) {
@@ -188,6 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Handle the fallback arm of a desugared if(-let) like a missing else.
+    ///
+    /// Returns `true` if there was an error forcing the coercion to the `()` type.
     fn if_fallback_coercion(
         &self,
         span: Span,
