@@ -63,20 +63,12 @@ impl X {
 
 // Methods implementing traits must have matching lifetimes
 mod issue4291 {
-    #[derive(Debug)]
-    pub struct Foo<'a>(&'a std::marker::PhantomData<u8>);
-
-    #[derive(Debug)]
-    pub struct Bar<'a: 'b, 'b>(Foo<'a>, &'b std::marker::PhantomData<u8>);
-
-    trait LT {
-        fn test<'a: 'b, 'b>(foo: &Foo<'a>, bar: &Bar<'a, 'b>);
+    trait BadTrait {
+        fn unused_lt<'a>(x: u8) {}
     }
 
-    pub struct Baz;
-
-    impl LT for Baz {
-        fn test<'a: 'b, 'b>(_foo: &Foo, _bar: &Bar) {}
+    impl BadTrait for () {
+        fn unused_lt<'a>(_x: u8) {}
     }
 }
 
