@@ -191,16 +191,25 @@ pub trait Emitter {
     fn should_show_explain(&self) -> bool {
         true
     }
-}
 
-impl Emitter for EmitterWriter {
-    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
+    /// Formats the substitutions of the primary_span
+    ///
+    /// The are a lot of conditions to this method, but in short:
+    ///
+    /// * If the current `Diagnostic` has only one visible `CodeSuggestion`,
+    ///   we format the `help` suggestion depending on the content of the
+    ///   substitutions. In that case, we return the modified span only.
+    ///
+    /// * If the current `Diagnostic` has multiple suggestions,
+    ///   we return the original `primary_span` and the original suggestions.
+    fn primary_span_formatted<'a>(
+        &mut self,
+        db: &'a DiagnosticBuilder<'_>
+    ) -> (MultiSpan, &'a [CodeSuggestion]) {
         let mut primary_span = db.span.clone();
-        let mut children = db.children.clone();
-        let mut suggestions: &[_] = &[];
-
         if let Some((sugg, rest)) = db.suggestions.split_first() {
             if rest.is_empty() &&
+               // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
                sugg.substitutions.len() == 1 &&
                // don't display multipart suggestions as labels
@@ -216,21 +225,34 @@ impl Emitter for EmitterWriter {
             {
                 let substitution = &sugg.substitutions[0].parts[0].snippet.trim();
                 let msg = if substitution.len() == 0 || sugg.style.hide_inline() {
-                    // This substitution is only removal or we explicitly don't want to show the
-                    // code inline, don't show it
+                    // This substitution is only removal OR we explicitly don't want to show the
+                    // code inline (`hide_inline`). Therefore, we don't show the substitution.
                     format!("help: {}", sugg.msg)
                 } else {
+                    // Show the default suggestion text with the substitution
                     format!("help: {}: `{}`", sugg.msg, substitution)
                 };
                 primary_span.push_span_label(sugg.substitutions[0].parts[0].span, msg);
+
+                // We return only the modified primary_span
+                (primary_span, &[])
             } else {
                 // if there are multiple suggestions, print them all in full
                 // to be consistent. We could try to figure out if we can
                 // make one (or the first one) inline, but that would give
                 // undue importance to a semi-random suggestion
-                suggestions = &db.suggestions;
+                (primary_span, &db.suggestions)
             }
+        } else {
+            (primary_span, &db.suggestions)
         }
+    }
+}
+
+impl Emitter for EmitterWriter {
+    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
+        let mut children = db.children.clone();
+        let (mut primary_span, suggestions) = self.primary_span_formatted(&db);
 
         self.fix_multispans_in_std_macros(&mut primary_span,
                                           &mut children,
