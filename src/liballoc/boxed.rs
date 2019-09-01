@@ -151,6 +151,43 @@ impl<T> Box<T> {
         Box(ptr.cast().into())
     }
 
+    /// Allocates memory on the heap *then* constructs `T` in-place.
+    ///
+    /// If the allocation fails, the initialization closure won't be called; because the allocation
+    /// can fail, the optimizer often couldn't construct `T` in-place even in theory because having
+    /// the allocation happen first is an observable change if the code that creates the value has
+    /// side-effects such as being able to panic.
+    ///
+    /// FIXME: This is intended to work via return-value-optimization, but due to compiler
+    /// limitations can't reliably do that yet.
+    #[inline(always)]
+    fn new_in_place(f: impl FnOnce() -> T) -> Box<T> {
+        let mut r: Box<mem::MaybeUninit<T>> = Box::new_uninit();
+        let uninit: &mut mem::MaybeUninit<T> = &mut *r;
+
+        unsafe {
+            // So why aren't we using ptr::write() here?
+            //
+            // For return-value-optimization to work, the compiler would have to call f with the
+            // pointer as the return value. But a pointer isn't guaranteed to actually point to
+            // valid memory: if the pointer was invalid, eg. due to being null, eliding the copy
+            // would change where the invalid memory access would occur, changing the behavior in
+            // an observable way.
+            //
+            // An invalid reference OTOH is undefined behavior, so the compiler is free to assume
+            // it is valid.
+            //
+            // Unfortunately, this optimization isn't actually implemented yet. Though if
+            // enough of f() can be inlined the compiler can generally elide the copy anyway.
+            //
+            // Finally, this is leak free because MaybeUninit::new() can't panic: either f()
+            // succesfully creates the value, and assume_init() is called, or f() panics, frees its
+            // resources, and r is deallocated as a Box<MaybeUninit<T>>
+            *uninit = mem::MaybeUninit::new(f());
+            r.assume_init()
+        }
+    }
+
     /// Constructs a new `Pin<Box<T>>`. If `T` does not implement `Unpin`, then
     /// `x` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -480,7 +517,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Box<T> {
 impl<T: Default> Default for Box<T> {
     /// Creates a `Box<T>`, with the `Default` value for T.
     fn default() -> Box<T> {
-        box Default::default()
+        Box::new_in_place(T::default)
     }
 }
 
