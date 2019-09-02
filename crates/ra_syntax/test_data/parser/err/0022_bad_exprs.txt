@@ -8,38 +8,39 @@ SOURCE_FILE@[0; 112)
       L_PAREN@[4; 5) "("
       R_PAREN@[5; 6) ")"
     WHITESPACE@[6; 7) " "
-    BLOCK@[7; 33)
-      L_CURLY@[7; 8) "{"
-      WHITESPACE@[8; 9) " "
-      EXPR_STMT@[9; 15)
-        ARRAY_EXPR@[9; 15)
-          L_BRACK@[9; 10) "["
-          LITERAL@[10; 11)
-            INT_NUMBER@[10; 11) "1"
-          COMMA@[11; 12) ","
-          WHITESPACE@[12; 13) " "
-          LITERAL@[13; 14)
-            INT_NUMBER@[13; 14) "2"
-          COMMA@[14; 15) ","
-      WHITESPACE@[15; 16) " "
-      EXPR_STMT@[16; 17)
-        ERROR@[16; 17)
-          AT@[16; 17) "@"
-      EXPR_STMT@[17; 18)
-        ERROR@[17; 18)
-          COMMA@[17; 18) ","
-      WHITESPACE@[18; 19) " "
-      STRUCT_DEF@[19; 26)
-        STRUCT_KW@[19; 25) "struct"
-        ERROR@[25; 26)
-          COMMA@[25; 26) ","
-      WHITESPACE@[26; 27) " "
-      LET_STMT@[27; 31)
-        LET_KW@[27; 30) "let"
-        ERROR@[30; 31)
-          R_BRACK@[30; 31) "]"
-      WHITESPACE@[31; 32) " "
-      R_CURLY@[32; 33) "}"
+    BLOCK_EXPR@[7; 33)
+      BLOCK@[7; 33)
+        L_CURLY@[7; 8) "{"
+        WHITESPACE@[8; 9) " "
+        EXPR_STMT@[9; 15)
+          ARRAY_EXPR@[9; 15)
+            L_BRACK@[9; 10) "["
+            LITERAL@[10; 11)
+              INT_NUMBER@[10; 11) "1"
+            COMMA@[11; 12) ","
+            WHITESPACE@[12; 13) " "
+            LITERAL@[13; 14)
+              INT_NUMBER@[13; 14) "2"
+            COMMA@[14; 15) ","
+        WHITESPACE@[15; 16) " "
+        EXPR_STMT@[16; 17)
+          ERROR@[16; 17)
+            AT@[16; 17) "@"
+        EXPR_STMT@[17; 18)
+          ERROR@[17; 18)
+            COMMA@[17; 18) ","
+        WHITESPACE@[18; 19) " "
+        STRUCT_DEF@[19; 26)
+          STRUCT_KW@[19; 25) "struct"
+          ERROR@[25; 26)
+            COMMA@[25; 26) ","
+        WHITESPACE@[26; 27) " "
+        LET_STMT@[27; 31)
+          LET_KW@[27; 30) "let"
+          ERROR@[30; 31)
+            R_BRACK@[30; 31) "]"
+        WHITESPACE@[31; 32) " "
+        R_CURLY@[32; 33) "}"
   WHITESPACE@[33; 34) "\n"
   FN_DEF@[34; 68)
     FN_KW@[34; 36) "fn"
@@ -50,45 +51,46 @@ SOURCE_FILE@[0; 112)
       L_PAREN@[38; 39) "("
       R_PAREN@[39; 40) ")"
     WHITESPACE@[40; 41) " "
-    BLOCK@[41; 68)
-      L_CURLY@[41; 42) "{"
-      WHITESPACE@[42; 43) " "
-      EXPR_STMT@[43; 52)
-        CALL_EXPR@[43; 52)
-          PATH_EXPR@[43; 46)
-            PATH@[43; 46)
-              PATH_SEGMENT@[43; 46)
-                NAME_REF@[43; 46)
-                  IDENT@[43; 46) "foo"
-          ARG_LIST@[46; 52)
-            L_PAREN@[46; 47) "("
-            LITERAL@[47; 48)
-              INT_NUMBER@[47; 48) "1"
-            COMMA@[48; 49) ","
-            WHITESPACE@[49; 50) " "
-            LITERAL@[50; 51)
-              INT_NUMBER@[50; 51) "2"
-            COMMA@[51; 52) ","
-      WHITESPACE@[52; 53) " "
-      EXPR_STMT@[53; 54)
-        ERROR@[53; 54)
-          AT@[53; 54) "@"
-      EXPR_STMT@[54; 55)
-        ERROR@[54; 55)
-          COMMA@[54; 55) ","
-      WHITESPACE@[55; 56) " "
-      IMPL_BLOCK@[56; 60)
-        IMPL_KW@[56; 60) "impl"
-      EXPR_STMT@[60; 61)
-        ERROR@[60; 61)
-          COMMA@[60; 61) ","
-      WHITESPACE@[61; 62) " "
-      LET_STMT@[62; 65)
-        LET_KW@[62; 65) "let"
-      ERROR@[65; 66)
-        R_PAREN@[65; 66) ")"
-      WHITESPACE@[66; 67) " "
-      R_CURLY@[67; 68) "}"
+    BLOCK_EXPR@[41; 68)
+      BLOCK@[41; 68)
+        L_CURLY@[41; 42) "{"
+        WHITESPACE@[42; 43) " "
+        EXPR_STMT@[43; 52)
+          CALL_EXPR@[43; 52)
+            PATH_EXPR@[43; 46)
+              PATH@[43; 46)
+                PATH_SEGMENT@[43; 46)
+                  NAME_REF@[43; 46)
+                    IDENT@[43; 46) "foo"
+            ARG_LIST@[46; 52)
+              L_PAREN@[46; 47) "("
+              LITERAL@[47; 48)
+                INT_NUMBER@[47; 48) "1"
+              COMMA@[48; 49) ","
+              WHITESPACE@[49; 50) " "
+              LITERAL@[50; 51)
+                INT_NUMBER@[50; 51) "2"
+              COMMA@[51; 52) ","
+        WHITESPACE@[52; 53) " "
+        EXPR_STMT@[53; 54)
+          ERROR@[53; 54)
+            AT@[53; 54) "@"
+        EXPR_STMT@[54; 55)
+          ERROR@[54; 55)
+            COMMA@[54; 55) ","
+        WHITESPACE@[55; 56) " "
+        IMPL_BLOCK@[56; 60)
+          IMPL_KW@[56; 60) "impl"
+        EXPR_STMT@[60; 61)
+          ERROR@[60; 61)
+            COMMA@[60; 61) ","
+        WHITESPACE@[61; 62) " "
+        LET_STMT@[62; 65)
+          LET_KW@[62; 65) "let"
+        ERROR@[65; 66)
+          R_PAREN@[65; 66) ")"
+        WHITESPACE@[66; 67) " "
+        R_CURLY@[67; 68) "}"
   WHITESPACE@[68; 69) "\n"
   FN_DEF@[69; 111)
     FN_KW@[69; 71) "fn"
@@ -99,54 +101,55 @@ SOURCE_FILE@[0; 112)
       L_PAREN@[73; 74) "("
       R_PAREN@[74; 75) ")"
     WHITESPACE@[75; 76) " "
-    BLOCK@[76; 111)
-      L_CURLY@[76; 77) "{"
-      WHITESPACE@[77; 78) " "
-      EXPR_STMT@[78; 91)
-        METHOD_CALL_EXPR@[78; 91)
-          PATH_EXPR@[78; 81)
-            PATH@[78; 81)
-              PATH_SEGMENT@[78; 81)
-                NAME_REF@[78; 81)
-                  IDENT@[78; 81) "foo"
-          DOT@[81; 82) "."
-          NAME_REF@[82; 85)
-            IDENT@[82; 85) "bar"
-          ARG_LIST@[85; 91)
-            L_PAREN@[85; 86) "("
-            LITERAL@[86; 87)
-              INT_NUMBER@[86; 87) "1"
-            COMMA@[87; 88) ","
-            WHITESPACE@[88; 89) " "
-            LITERAL@[89; 90)
-              INT_NUMBER@[89; 90) "2"
-            COMMA@[90; 91) ","
-      WHITESPACE@[91; 92) " "
-      EXPR_STMT@[92; 93)
-        ERROR@[92; 93)
-          AT@[92; 93) "@"
-      EXPR_STMT@[93; 94)
-        ERROR@[93; 94)
-          COMMA@[93; 94) ","
-      WHITESPACE@[94; 95) " "
-      EXPR_STMT@[95; 96)
-        ERROR@[95; 96)
-          R_BRACK@[95; 96) "]"
-      EXPR_STMT@[96; 97)
-        ERROR@[96; 97)
-          COMMA@[96; 97) ","
-      WHITESPACE@[97; 98) " "
-      TRAIT_DEF@[98; 104)
-        TRAIT_KW@[98; 103) "trait"
-        ERROR@[103; 104)
-          COMMA@[103; 104) ","
-      WHITESPACE@[104; 105) " "
-      LET_STMT@[105; 108)
-        LET_KW@[105; 108) "let"
-      ERROR@[108; 109)
-        R_PAREN@[108; 109) ")"
-      WHITESPACE@[109; 110) " "
-      R_CURLY@[110; 111) "}"
+    BLOCK_EXPR@[76; 111)
+      BLOCK@[76; 111)
+        L_CURLY@[76; 77) "{"
+        WHITESPACE@[77; 78) " "
+        EXPR_STMT@[78; 91)
+          METHOD_CALL_EXPR@[78; 91)
+            PATH_EXPR@[78; 81)
+              PATH@[78; 81)
+                PATH_SEGMENT@[78; 81)
+                  NAME_REF@[78; 81)
+                    IDENT@[78; 81) "foo"
+            DOT@[81; 82) "."
+            NAME_REF@[82; 85)
+              IDENT@[82; 85) "bar"
+            ARG_LIST@[85; 91)
+              L_PAREN@[85; 86) "("
+              LITERAL@[86; 87)
+                INT_NUMBER@[86; 87) "1"
+              COMMA@[87; 88) ","
+              WHITESPACE@[88; 89) " "
+              LITERAL@[89; 90)
+                INT_NUMBER@[89; 90) "2"
+              COMMA@[90; 91) ","
+        WHITESPACE@[91; 92) " "
+        EXPR_STMT@[92; 93)
+          ERROR@[92; 93)
+            AT@[92; 93) "@"
+        EXPR_STMT@[93; 94)
+          ERROR@[93; 94)
+            COMMA@[93; 94) ","
+        WHITESPACE@[94; 95) " "
+        EXPR_STMT@[95; 96)
+          ERROR@[95; 96)
+            R_BRACK@[95; 96) "]"
+        EXPR_STMT@[96; 97)
+          ERROR@[96; 97)
+            COMMA@[96; 97) ","
+        WHITESPACE@[97; 98) " "
+        TRAIT_DEF@[98; 104)
+          TRAIT_KW@[98; 103) "trait"
+          ERROR@[103; 104)
+            COMMA@[103; 104) ","
+        WHITESPACE@[104; 105) " "
+        LET_STMT@[105; 108)
+          LET_KW@[105; 108) "let"
+        ERROR@[108; 109)
+          R_PAREN@[108; 109) ")"
+        WHITESPACE@[109; 110) " "
+        R_CURLY@[110; 111) "}"
   WHITESPACE@[111; 112) "\n"
 error 15: expected expression
 error 15: expected R_BRACK

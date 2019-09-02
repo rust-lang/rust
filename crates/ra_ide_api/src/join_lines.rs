@@ -123,7 +123,7 @@ fn has_comma_after(node: &SyntaxNode) -> bool {
 fn join_single_expr_block(edit: &mut TextEditBuilder, token: &SyntaxToken) -> Option<()> {
     let block = ast::Block::cast(token.parent())?;
     let block_expr = ast::BlockExpr::cast(block.syntax().parent()?)?;
-    let expr = extract_trivial_expression(&block)?;
+    let expr = extract_trivial_expression(&block_expr)?;
 
     let block_range = block_expr.syntax().text_range();
     let mut buf = expr.syntax().text().to_string();

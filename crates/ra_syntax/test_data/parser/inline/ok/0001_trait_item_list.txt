@@ -50,9 +50,10 @@ SOURCE_FILE@[0; 83)
           L_PAREN@[56; 57) "("
           R_PAREN@[57; 58) ")"
         WHITESPACE@[58; 59) " "
-        BLOCK@[59; 61)
-          L_CURLY@[59; 60) "{"
-          R_CURLY@[60; 61) "}"
+        BLOCK_EXPR@[59; 61)
+          BLOCK@[59; 61)
+            L_CURLY@[59; 60) "{"
+            R_CURLY@[60; 61) "}"
       WHITESPACE@[61; 66) "\n    "
       FN_DEF@[66; 80)
         FN_KW@[66; 68) "fn"

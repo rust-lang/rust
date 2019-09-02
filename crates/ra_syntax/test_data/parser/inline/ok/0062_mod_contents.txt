@@ -8,9 +8,10 @@ SOURCE_FILE@[0; 70)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 11)
-      L_CURLY@[9; 10) "{"
-      R_CURLY@[10; 11) "}"
+    BLOCK_EXPR@[9; 11)
+      BLOCK@[9; 11)
+        L_CURLY@[9; 10) "{"
+        R_CURLY@[10; 11) "}"
   WHITESPACE@[11; 12) "\n"
   MACRO_CALL@[12; 31)
     PATH@[12; 23)

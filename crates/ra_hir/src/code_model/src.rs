@@ -119,10 +119,10 @@ where
         expr_id: crate::expr::ExprId,
     ) -> Option<Source<ast::Expr>> {
         let source_map = self.body_source_map(db);
-        let expr_syntax = source_map.expr_syntax(expr_id)?;
+        let expr_syntax = source_map.expr_syntax(expr_id)?.a()?;
         let source = self.source(db);
-        let node = expr_syntax.to_node(&source.ast.syntax());
-        ast::Expr::cast(node).map(|ast| Source { file_id: source.file_id, ast })
+        let ast = expr_syntax.to_node(&source.ast.syntax());
+        Some(Source { file_id: source.file_id, ast })
     }
 }
 

@@ -8,34 +8,36 @@ SOURCE_FILE@[0; 53)
       L_PAREN@[7; 8) "("
       R_PAREN@[8; 9) ")"
     WHITESPACE@[9; 10) " "
-    BLOCK@[10; 52)
-      L_CURLY@[10; 11) "{"
-      WHITESPACE@[11; 16) "\n    "
-      FN_DEF@[16; 32)
-        UNSAFE_KW@[16; 22) "unsafe"
-        WHITESPACE@[22; 23) " "
-        FN_KW@[23; 25) "fn"
-        WHITESPACE@[25; 26) " "
-        NAME@[26; 27)
-          IDENT@[26; 27) "f"
-        PARAM_LIST@[27; 29)
-          L_PAREN@[27; 28) "("
-          R_PAREN@[28; 29) ")"
-        WHITESPACE@[29; 30) " "
-        BLOCK@[30; 32)
-          L_CURLY@[30; 31) "{"
-          R_CURLY@[31; 32) "}"
-      WHITESPACE@[32; 37) "\n    "
-      BLOCK_EXPR@[37; 50)
-        UNSAFE_KW@[37; 43) "unsafe"
-        WHITESPACE@[43; 44) " "
-        BLOCK@[44; 50)
-          L_CURLY@[44; 45) "{"
-          WHITESPACE@[45; 46) " "
-          LITERAL@[46; 48)
-            INT_NUMBER@[46; 48) "92"
-          WHITESPACE@[48; 49) " "
-          R_CURLY@[49; 50) "}"
-      WHITESPACE@[50; 51) "\n"
-      R_CURLY@[51; 52) "}"
+    BLOCK_EXPR@[10; 52)
+      BLOCK@[10; 52)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        FN_DEF@[16; 32)
+          UNSAFE_KW@[16; 22) "unsafe"
+          WHITESPACE@[22; 23) " "
+          FN_KW@[23; 25) "fn"
+          WHITESPACE@[25; 26) " "
+          NAME@[26; 27)
+            IDENT@[26; 27) "f"
+          PARAM_LIST@[27; 29)
+            L_PAREN@[27; 28) "("
+            R_PAREN@[28; 29) ")"
+          WHITESPACE@[29; 30) " "
+          BLOCK_EXPR@[30; 32)
+            BLOCK@[30; 32)
+              L_CURLY@[30; 31) "{"
+              R_CURLY@[31; 32) "}"
+        WHITESPACE@[32; 37) "\n    "
+        BLOCK_EXPR@[37; 50)
+          UNSAFE_KW@[37; 43) "unsafe"
+          WHITESPACE@[43; 44) " "
+          BLOCK@[44; 50)
+            L_CURLY@[44; 45) "{"
+            WHITESPACE@[45; 46) " "
+            LITERAL@[46; 48)
+              INT_NUMBER@[46; 48) "92"
+            WHITESPACE@[48; 49) " "
+            R_CURLY@[49; 50) "}"
+        WHITESPACE@[50; 51) "\n"
+        R_CURLY@[51; 52) "}"
   WHITESPACE@[52; 53) "\n"

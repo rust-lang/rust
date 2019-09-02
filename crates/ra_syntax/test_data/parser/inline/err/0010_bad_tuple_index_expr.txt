@@ -8,45 +8,46 @@ SOURCE_FILE@[0; 47)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 46)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 20)
-        FIELD_EXPR@[15; 19)
-          PATH_EXPR@[15; 16)
-            PATH@[15; 16)
-              PATH_SEGMENT@[15; 16)
-                NAME_REF@[15; 16)
-                  IDENT@[15; 16) "x"
-          DOT@[16; 17) "."
-          FLOAT_NUMBER@[17; 19) "0."
-        SEMI@[19; 20) ";"
-      WHITESPACE@[20; 25) "\n    "
-      EXPR_STMT@[25; 32)
-        FIELD_EXPR@[25; 31)
-          PATH_EXPR@[25; 26)
-            PATH@[25; 26)
-              PATH_SEGMENT@[25; 26)
-                NAME_REF@[25; 26)
-                  IDENT@[25; 26) "x"
-          DOT@[26; 27) "."
-          NAME_REF@[27; 31)
-            INT_NUMBER@[27; 31) "1i32"
-        SEMI@[31; 32) ";"
-      WHITESPACE@[32; 37) "\n    "
-      EXPR_STMT@[37; 44)
-        FIELD_EXPR@[37; 43)
-          PATH_EXPR@[37; 38)
-            PATH@[37; 38)
-              PATH_SEGMENT@[37; 38)
-                NAME_REF@[37; 38)
-                  IDENT@[37; 38) "x"
-          DOT@[38; 39) "."
-          NAME_REF@[39; 43)
-            INT_NUMBER@[39; 43) "0x01"
-        SEMI@[43; 44) ";"
-      WHITESPACE@[44; 45) "\n"
-      R_CURLY@[45; 46) "}"
+    BLOCK_EXPR@[9; 46)
+      BLOCK@[9; 46)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 20)
+          FIELD_EXPR@[15; 19)
+            PATH_EXPR@[15; 16)
+              PATH@[15; 16)
+                PATH_SEGMENT@[15; 16)
+                  NAME_REF@[15; 16)
+                    IDENT@[15; 16) "x"
+            DOT@[16; 17) "."
+            FLOAT_NUMBER@[17; 19) "0."
+          SEMI@[19; 20) ";"
+        WHITESPACE@[20; 25) "\n    "
+        EXPR_STMT@[25; 32)
+          FIELD_EXPR@[25; 31)
+            PATH_EXPR@[25; 26)
+              PATH@[25; 26)
+                PATH_SEGMENT@[25; 26)
+                  NAME_REF@[25; 26)
+                    IDENT@[25; 26) "x"
+            DOT@[26; 27) "."
+            NAME_REF@[27; 31)
+              INT_NUMBER@[27; 31) "1i32"
+          SEMI@[31; 32) ";"
+        WHITESPACE@[32; 37) "\n    "
+        EXPR_STMT@[37; 44)
+          FIELD_EXPR@[37; 43)
+            PATH_EXPR@[37; 38)
+              PATH@[37; 38)
+                PATH_SEGMENT@[37; 38)
+                  NAME_REF@[37; 38)
+                    IDENT@[37; 38) "x"
+            DOT@[38; 39) "."
+            NAME_REF@[39; 43)
+              INT_NUMBER@[39; 43) "0x01"
+          SEMI@[43; 44) ";"
+        WHITESPACE@[44; 45) "\n"
+        R_CURLY@[45; 46) "}"
   WHITESPACE@[46; 47) "\n"
 error [27; 31): Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix
 error [39; 43): Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix

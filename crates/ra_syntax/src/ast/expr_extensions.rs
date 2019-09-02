@@ -9,12 +9,12 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElseBranch {
-    Block(ast::Block),
+    Block(ast::BlockExpr),
     IfExpr(ast::IfExpr),
 }
 
 impl ast::IfExpr {
-    pub fn then_branch(&self) -> Option<ast::Block> {
+    pub fn then_branch(&self) -> Option<ast::BlockExpr> {
         self.blocks().nth(0)
     }
     pub fn else_branch(&self) -> Option<ElseBranch> {
@@ -28,7 +28,7 @@ impl ast::IfExpr {
         Some(res)
     }
 
-    fn blocks(&self) -> AstChildren<ast::Block> {
+    fn blocks(&self) -> AstChildren<ast::BlockExpr> {
         children(self)
     }
 }
@@ -285,6 +285,26 @@ impl ast::Literal {
             CHAR => LiteralKind::Char,
             BYTE => LiteralKind::Byte,
             _ => unreachable!(),
+        }
+    }
+}
+
+impl ast::BlockExpr {
+    /// false if the block is an intrinsic part of the syntax and can't be
+    /// replaced with arbitrary expression.
+    ///
+    /// ```not_rust
+    /// fn foo() { not_stand_alone }
+    /// const FOO: () = { stand_alone };
+    /// ```
+    pub fn is_standalone(&self) -> bool {
+        let kind = match self.syntax().parent() {
+            None => return true,
+            Some(it) => it.kind(),
+        };
+        match kind {
+            FN_DEF | MATCH_ARM | IF_EXPR | WHILE_EXPR | LOOP_EXPR | TRY_BLOCK_EXPR => false,
+            _ => true,
         }
     }
 }

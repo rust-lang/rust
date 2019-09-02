@@ -8,21 +8,22 @@ SOURCE_FILE@[0; 21)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 20)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 11) " "
-      EXPR_STMT@[11; 18)
-        INDEX_EXPR@[11; 17)
-          PATH_EXPR@[11; 13)
-            PATH@[11; 13)
-              PATH_SEGMENT@[11; 13)
-                NAME_REF@[11; 13)
-                  IDENT@[11; 13) "xs"
-          L_BRACK@[13; 14) "["
-          RANGE_EXPR@[14; 16)
-            DOTDOT@[14; 16) ".."
-          R_BRACK@[16; 17) "]"
-        SEMI@[17; 18) ";"
-      WHITESPACE@[18; 19) " "
-      R_CURLY@[19; 20) "}"
+    BLOCK_EXPR@[9; 20)
+      BLOCK@[9; 20)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 11) " "
+        EXPR_STMT@[11; 18)
+          INDEX_EXPR@[11; 17)
+            PATH_EXPR@[11; 13)
+              PATH@[11; 13)
+                PATH_SEGMENT@[11; 13)
+                  NAME_REF@[11; 13)
+                    IDENT@[11; 13) "xs"
+            L_BRACK@[13; 14) "["
+            RANGE_EXPR@[14; 16)
+              DOTDOT@[14; 16) ".."
+            R_BRACK@[16; 17) "]"
+          SEMI@[17; 18) ";"
+        WHITESPACE@[18; 19) " "
+        R_CURLY@[19; 20) "}"
   WHITESPACE@[20; 21) "\n"

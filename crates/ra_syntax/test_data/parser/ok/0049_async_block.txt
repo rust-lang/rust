@@ -8,28 +8,29 @@ SOURCE_FILE@[0; 47)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 45)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 24)
-        BLOCK_EXPR@[15; 23)
-          ASYNC_KW@[15; 20) "async"
-          WHITESPACE@[20; 21) " "
-          BLOCK@[21; 23)
-            L_CURLY@[21; 22) "{"
-            R_CURLY@[22; 23) "}"
-        SEMI@[23; 24) ";"
-      WHITESPACE@[24; 29) "\n    "
-      EXPR_STMT@[29; 43)
-        BLOCK_EXPR@[29; 42)
-          ASYNC_KW@[29; 34) "async"
-          WHITESPACE@[34; 35) " "
-          MOVE_KW@[35; 39) "move"
-          WHITESPACE@[39; 40) " "
-          BLOCK@[40; 42)
-            L_CURLY@[40; 41) "{"
-            R_CURLY@[41; 42) "}"
-        SEMI@[42; 43) ";"
-      WHITESPACE@[43; 44) "\n"
-      R_CURLY@[44; 45) "}"
+    BLOCK_EXPR@[9; 45)
+      BLOCK@[9; 45)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 24)
+          BLOCK_EXPR@[15; 23)
+            ASYNC_KW@[15; 20) "async"
+            WHITESPACE@[20; 21) " "
+            BLOCK@[21; 23)
+              L_CURLY@[21; 22) "{"
+              R_CURLY@[22; 23) "}"
+          SEMI@[23; 24) ";"
+        WHITESPACE@[24; 29) "\n    "
+        EXPR_STMT@[29; 43)
+          BLOCK_EXPR@[29; 42)
+            ASYNC_KW@[29; 34) "async"
+            WHITESPACE@[34; 35) " "
+            MOVE_KW@[35; 39) "move"
+            WHITESPACE@[39; 40) " "
+            BLOCK@[40; 42)
+              L_CURLY@[40; 41) "{"
+              R_CURLY@[41; 42) "}"
+          SEMI@[42; 43) ";"
+        WHITESPACE@[43; 44) "\n"
+        R_CURLY@[44; 45) "}"
   WHITESPACE@[45; 47) "\n\n"

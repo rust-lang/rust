@@ -8,69 +8,70 @@ SOURCE_FILE@[0; 113)
       L_PAREN@[7; 8) "("
       R_PAREN@[8; 9) ")"
     WHITESPACE@[9; 10) " "
-    BLOCK@[10; 112)
-      L_CURLY@[10; 11) "{"
-      WHITESPACE@[11; 16) "\n    "
-      MATCH_EXPR@[16; 110)
-        MATCH_KW@[16; 21) "match"
-        WHITESPACE@[21; 22) " "
-        TUPLE_EXPR@[22; 24)
-          L_PAREN@[22; 23) "("
-          R_PAREN@[23; 24) ")"
-        WHITESPACE@[24; 25) " "
-        MATCH_ARM_LIST@[25; 110)
-          L_CURLY@[25; 26) "{"
-          WHITESPACE@[26; 35) "\n        "
-          MATCH_ARM@[35; 43)
-            LITERAL_PAT@[35; 37)
-              MINUS@[35; 36) "-"
-              LITERAL@[36; 37)
-                INT_NUMBER@[36; 37) "1"
-            WHITESPACE@[37; 38) " "
-            FAT_ARROW@[38; 40) "=>"
-            WHITESPACE@[40; 41) " "
-            TUPLE_EXPR@[41; 43)
-              L_PAREN@[41; 42) "("
-              R_PAREN@[42; 43) ")"
-          COMMA@[43; 44) ","
-          WHITESPACE@[44; 53) "\n        "
-          MATCH_ARM@[53; 61)
-            LITERAL_PAT@[53; 55)
-              LITERAL@[53; 55)
-                INT_NUMBER@[53; 55) "92"
-            WHITESPACE@[55; 56) " "
-            FAT_ARROW@[56; 58) "=>"
-            WHITESPACE@[58; 59) " "
-            TUPLE_EXPR@[59; 61)
-              L_PAREN@[59; 60) "("
-              R_PAREN@[60; 61) ")"
-          COMMA@[61; 62) ","
-          WHITESPACE@[62; 71) "\n        "
-          MATCH_ARM@[71; 80)
-            LITERAL_PAT@[71; 74)
-              LITERAL@[71; 74)
-                CHAR@[71; 74) "\'c\'"
-            WHITESPACE@[74; 75) " "
-            FAT_ARROW@[75; 77) "=>"
-            WHITESPACE@[77; 78) " "
-            TUPLE_EXPR@[78; 80)
-              L_PAREN@[78; 79) "("
-              R_PAREN@[79; 80) ")"
-          COMMA@[80; 81) ","
-          WHITESPACE@[81; 90) "\n        "
-          MATCH_ARM@[90; 103)
-            LITERAL_PAT@[90; 97)
-              LITERAL@[90; 97)
-                STRING@[90; 97) "\"hello\""
-            WHITESPACE@[97; 98) " "
-            FAT_ARROW@[98; 100) "=>"
-            WHITESPACE@[100; 101) " "
-            TUPLE_EXPR@[101; 103)
-              L_PAREN@[101; 102) "("
-              R_PAREN@[102; 103) ")"
-          COMMA@[103; 104) ","
-          WHITESPACE@[104; 109) "\n    "
-          R_CURLY@[109; 110) "}"
-      WHITESPACE@[110; 111) "\n"
-      R_CURLY@[111; 112) "}"
+    BLOCK_EXPR@[10; 112)
+      BLOCK@[10; 112)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        MATCH_EXPR@[16; 110)
+          MATCH_KW@[16; 21) "match"
+          WHITESPACE@[21; 22) " "
+          TUPLE_EXPR@[22; 24)
+            L_PAREN@[22; 23) "("
+            R_PAREN@[23; 24) ")"
+          WHITESPACE@[24; 25) " "
+          MATCH_ARM_LIST@[25; 110)
+            L_CURLY@[25; 26) "{"
+            WHITESPACE@[26; 35) "\n        "
+            MATCH_ARM@[35; 43)
+              LITERAL_PAT@[35; 37)
+                MINUS@[35; 36) "-"
+                LITERAL@[36; 37)
+                  INT_NUMBER@[36; 37) "1"
+              WHITESPACE@[37; 38) " "
+              FAT_ARROW@[38; 40) "=>"
+              WHITESPACE@[40; 41) " "
+              TUPLE_EXPR@[41; 43)
+                L_PAREN@[41; 42) "("
+                R_PAREN@[42; 43) ")"
+            COMMA@[43; 44) ","
+            WHITESPACE@[44; 53) "\n        "
+            MATCH_ARM@[53; 61)
+              LITERAL_PAT@[53; 55)
+                LITERAL@[53; 55)
+                  INT_NUMBER@[53; 55) "92"
+              WHITESPACE@[55; 56) " "
+              FAT_ARROW@[56; 58) "=>"
+              WHITESPACE@[58; 59) " "
+              TUPLE_EXPR@[59; 61)
+                L_PAREN@[59; 60) "("
+                R_PAREN@[60; 61) ")"
+            COMMA@[61; 62) ","
+            WHITESPACE@[62; 71) "\n        "
+            MATCH_ARM@[71; 80)
+              LITERAL_PAT@[71; 74)
+                LITERAL@[71; 74)
+                  CHAR@[71; 74) "\'c\'"
+              WHITESPACE@[74; 75) " "
+              FAT_ARROW@[75; 77) "=>"
+              WHITESPACE@[77; 78) " "
+              TUPLE_EXPR@[78; 80)
+                L_PAREN@[78; 79) "("
+                R_PAREN@[79; 80) ")"
+            COMMA@[80; 81) ","
+            WHITESPACE@[81; 90) "\n        "
+            MATCH_ARM@[90; 103)
+              LITERAL_PAT@[90; 97)
+                LITERAL@[90; 97)
+                  STRING@[90; 97) "\"hello\""
+              WHITESPACE@[97; 98) " "
+              FAT_ARROW@[98; 100) "=>"
+              WHITESPACE@[100; 101) " "
+              TUPLE_EXPR@[101; 103)
+                L_PAREN@[101; 102) "("
+                R_PAREN@[102; 103) ")"
+            COMMA@[103; 104) ","
+            WHITESPACE@[104; 109) "\n    "
+            R_CURLY@[109; 110) "}"
+        WHITESPACE@[110; 111) "\n"
+        R_CURLY@[111; 112) "}"
   WHITESPACE@[112; 113) "\n"

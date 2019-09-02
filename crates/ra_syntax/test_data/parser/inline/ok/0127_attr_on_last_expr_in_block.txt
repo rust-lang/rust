@@ -8,47 +8,48 @@ SOURCE_FILE@[0; 47)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 46)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 31)
-        BLOCK_EXPR@[15; 31)
-          BLOCK@[15; 31)
-            L_CURLY@[15; 16) "{"
-            WHITESPACE@[16; 17) " "
-            TRY_EXPR@[17; 29)
-              ATTR@[17; 21)
-                POUND@[17; 18) "#"
-                TOKEN_TREE@[18; 21)
-                  L_BRACK@[18; 19) "["
-                  IDENT@[19; 20) "A"
-                  R_BRACK@[20; 21) "]"
-              WHITESPACE@[21; 22) " "
-              MACRO_CALL@[22; 28)
-                PATH@[22; 25)
-                  PATH_SEGMENT@[22; 25)
-                    NAME_REF@[22; 25)
-                      IDENT@[22; 25) "bar"
-                EXCL@[25; 26) "!"
-                TOKEN_TREE@[26; 28)
-                  L_PAREN@[26; 27) "("
-                  R_PAREN@[27; 28) ")"
-              QUESTION@[28; 29) "?"
-            WHITESPACE@[29; 30) " "
-            R_CURLY@[30; 31) "}"
-      WHITESPACE@[31; 36) "\n    "
-      REF_EXPR@[36; 44)
-        ATTR@[36; 40)
-          POUND@[36; 37) "#"
-          TOKEN_TREE@[37; 40)
-            L_BRACK@[37; 38) "["
-            IDENT@[38; 39) "B"
-            R_BRACK@[39; 40) "]"
-        WHITESPACE@[40; 41) " "
-        AMP@[41; 42) "&"
-        TUPLE_EXPR@[42; 44)
-          L_PAREN@[42; 43) "("
-          R_PAREN@[43; 44) ")"
-      WHITESPACE@[44; 45) "\n"
-      R_CURLY@[45; 46) "}"
+    BLOCK_EXPR@[9; 46)
+      BLOCK@[9; 46)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 31)
+          BLOCK_EXPR@[15; 31)
+            BLOCK@[15; 31)
+              L_CURLY@[15; 16) "{"
+              WHITESPACE@[16; 17) " "
+              TRY_EXPR@[17; 29)
+                ATTR@[17; 21)
+                  POUND@[17; 18) "#"
+                  TOKEN_TREE@[18; 21)
+                    L_BRACK@[18; 19) "["
+                    IDENT@[19; 20) "A"
+                    R_BRACK@[20; 21) "]"
+                WHITESPACE@[21; 22) " "
+                MACRO_CALL@[22; 28)
+                  PATH@[22; 25)
+                    PATH_SEGMENT@[22; 25)
+                      NAME_REF@[22; 25)
+                        IDENT@[22; 25) "bar"
+                  EXCL@[25; 26) "!"
+                  TOKEN_TREE@[26; 28)
+                    L_PAREN@[26; 27) "("
+                    R_PAREN@[27; 28) ")"
+                QUESTION@[28; 29) "?"
+              WHITESPACE@[29; 30) " "
+              R_CURLY@[30; 31) "}"
+        WHITESPACE@[31; 36) "\n    "
+        REF_EXPR@[36; 44)
+          ATTR@[36; 40)
+            POUND@[36; 37) "#"
+            TOKEN_TREE@[37; 40)
+              L_BRACK@[37; 38) "["
+              IDENT@[38; 39) "B"
+              R_BRACK@[39; 40) "]"
+          WHITESPACE@[40; 41) " "
+          AMP@[41; 42) "&"
+          TUPLE_EXPR@[42; 44)
+            L_PAREN@[42; 43) "("
+            R_PAREN@[43; 44) ")"
+        WHITESPACE@[44; 45) "\n"
+        R_CURLY@[45; 46) "}"
   WHITESPACE@[46; 47) "\n"

@@ -1003,7 +1003,7 @@ impl FnDef {
     pub fn param_list(&self) -> Option<ParamList> {
         AstChildren::new(&self.syntax).next()
     }
-    pub fn body(&self) -> Option<Block> {
+    pub fn body(&self) -> Option<BlockExpr> {
         AstChildren::new(&self.syntax).next()
     }
     pub fn ret_type(&self) -> Option<RetType> {
@@ -3135,7 +3135,7 @@ impl AstNode for TryBlockExpr {
     }
 }
 impl TryBlockExpr {
-    pub fn block(&self) -> Option<Block> {
+    pub fn body(&self) -> Option<BlockExpr> {
         AstChildren::new(&self.syntax).next()
     }
 }

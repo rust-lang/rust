@@ -8,47 +8,48 @@ SOURCE_FILE@[0; 55)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 54)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 18)
-        ARRAY_EXPR@[15; 17)
-          L_BRACK@[15; 16) "["
-          R_BRACK@[16; 17) "]"
-        SEMI@[17; 18) ";"
-      WHITESPACE@[18; 23) "\n    "
-      EXPR_STMT@[23; 27)
-        ARRAY_EXPR@[23; 26)
-          L_BRACK@[23; 24) "["
-          LITERAL@[24; 25)
-            INT_NUMBER@[24; 25) "1"
-          R_BRACK@[25; 26) "]"
-        SEMI@[26; 27) ";"
-      WHITESPACE@[27; 32) "\n    "
-      EXPR_STMT@[32; 40)
-        ARRAY_EXPR@[32; 39)
-          L_BRACK@[32; 33) "["
-          LITERAL@[33; 34)
-            INT_NUMBER@[33; 34) "1"
-          COMMA@[34; 35) ","
-          WHITESPACE@[35; 36) " "
-          LITERAL@[36; 37)
-            INT_NUMBER@[36; 37) "2"
-          COMMA@[37; 38) ","
-          R_BRACK@[38; 39) "]"
-        SEMI@[39; 40) ";"
-      WHITESPACE@[40; 45) "\n    "
-      EXPR_STMT@[45; 52)
-        ARRAY_EXPR@[45; 51)
-          L_BRACK@[45; 46) "["
-          LITERAL@[46; 47)
-            INT_NUMBER@[46; 47) "1"
-          SEMI@[47; 48) ";"
-          WHITESPACE@[48; 49) " "
-          LITERAL@[49; 50)
-            INT_NUMBER@[49; 50) "2"
-          R_BRACK@[50; 51) "]"
-        SEMI@[51; 52) ";"
-      WHITESPACE@[52; 53) "\n"
-      R_CURLY@[53; 54) "}"
+    BLOCK_EXPR@[9; 54)
+      BLOCK@[9; 54)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 18)
+          ARRAY_EXPR@[15; 17)
+            L_BRACK@[15; 16) "["
+            R_BRACK@[16; 17) "]"
+          SEMI@[17; 18) ";"
+        WHITESPACE@[18; 23) "\n    "
+        EXPR_STMT@[23; 27)
+          ARRAY_EXPR@[23; 26)
+            L_BRACK@[23; 24) "["
+            LITERAL@[24; 25)
+              INT_NUMBER@[24; 25) "1"
+            R_BRACK@[25; 26) "]"
+          SEMI@[26; 27) ";"
+        WHITESPACE@[27; 32) "\n    "
+        EXPR_STMT@[32; 40)
+          ARRAY_EXPR@[32; 39)
+            L_BRACK@[32; 33) "["
+            LITERAL@[33; 34)
+              INT_NUMBER@[33; 34) "1"
+            COMMA@[34; 35) ","
+            WHITESPACE@[35; 36) " "
+            LITERAL@[36; 37)
+              INT_NUMBER@[36; 37) "2"
+            COMMA@[37; 38) ","
+            R_BRACK@[38; 39) "]"
+          SEMI@[39; 40) ";"
+        WHITESPACE@[40; 45) "\n    "
+        EXPR_STMT@[45; 52)
+          ARRAY_EXPR@[45; 51)
+            L_BRACK@[45; 46) "["
+            LITERAL@[46; 47)
+              INT_NUMBER@[46; 47) "1"
+            SEMI@[47; 48) ";"
+            WHITESPACE@[48; 49) " "
+            LITERAL@[49; 50)
+              INT_NUMBER@[49; 50) "2"
+            R_BRACK@[50; 51) "]"
+          SEMI@[51; 52) ";"
+        WHITESPACE@[52; 53) "\n"
+        R_CURLY@[53; 54) "}"
   WHITESPACE@[54; 55) "\n"

@@ -35,10 +35,11 @@ SOURCE_FILE@[0; 118)
           L_PAREN@[37; 38) "("
           R_PAREN@[38; 39) ")"
         WHITESPACE@[39; 40) " "
-        BLOCK@[40; 47)
-          L_CURLY@[40; 41) "{"
-          WHITESPACE@[41; 46) "\n    "
-          R_CURLY@[46; 47) "}"
+        BLOCK_EXPR@[40; 47)
+          BLOCK@[40; 47)
+            L_CURLY@[40; 41) "{"
+            WHITESPACE@[41; 46) "\n    "
+            R_CURLY@[46; 47) "}"
       WHITESPACE@[47; 52) "\n    "
       STRUCT_DEF@[52; 63)
         STRUCT_KW@[52; 58) "struct"

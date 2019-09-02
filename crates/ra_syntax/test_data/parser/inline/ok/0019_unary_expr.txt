@@ -8,37 +8,38 @@ SOURCE_FILE@[0; 44)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 43)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 20)
-        PREFIX_EXPR@[15; 19)
-          STAR@[15; 16) "*"
-          PREFIX_EXPR@[16; 19)
-            STAR@[16; 17) "*"
-            REF_EXPR@[17; 19)
-              AMP@[17; 18) "&"
-              LITERAL@[18; 19)
-                INT_NUMBER@[18; 19) "1"
-        SEMI@[19; 20) ";"
-      WHITESPACE@[20; 25) "\n    "
-      EXPR_STMT@[25; 32)
-        PREFIX_EXPR@[25; 31)
-          EXCL@[25; 26) "!"
-          PREFIX_EXPR@[26; 31)
-            EXCL@[26; 27) "!"
-            LITERAL@[27; 31)
-              TRUE_KW@[27; 31) "true"
-        SEMI@[31; 32) ";"
-      WHITESPACE@[32; 37) "\n    "
-      EXPR_STMT@[37; 41)
-        PREFIX_EXPR@[37; 40)
-          MINUS@[37; 38) "-"
-          PREFIX_EXPR@[38; 40)
-            MINUS@[38; 39) "-"
-            LITERAL@[39; 40)
-              INT_NUMBER@[39; 40) "1"
-        SEMI@[40; 41) ";"
-      WHITESPACE@[41; 42) "\n"
-      R_CURLY@[42; 43) "}"
+    BLOCK_EXPR@[9; 43)
+      BLOCK@[9; 43)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 20)
+          PREFIX_EXPR@[15; 19)
+            STAR@[15; 16) "*"
+            PREFIX_EXPR@[16; 19)
+              STAR@[16; 17) "*"
+              REF_EXPR@[17; 19)
+                AMP@[17; 18) "&"
+                LITERAL@[18; 19)
+                  INT_NUMBER@[18; 19) "1"
+          SEMI@[19; 20) ";"
+        WHITESPACE@[20; 25) "\n    "
+        EXPR_STMT@[25; 32)
+          PREFIX_EXPR@[25; 31)
+            EXCL@[25; 26) "!"
+            PREFIX_EXPR@[26; 31)
+              EXCL@[26; 27) "!"
+              LITERAL@[27; 31)
+                TRUE_KW@[27; 31) "true"
+          SEMI@[31; 32) ";"
+        WHITESPACE@[32; 37) "\n    "
+        EXPR_STMT@[37; 41)
+          PREFIX_EXPR@[37; 40)
+            MINUS@[37; 38) "-"
+            PREFIX_EXPR@[38; 40)
+              MINUS@[38; 39) "-"
+              LITERAL@[39; 40)
+                INT_NUMBER@[39; 40) "1"
+          SEMI@[40; 41) ";"
+        WHITESPACE@[41; 42) "\n"
+        R_CURLY@[42; 43) "}"
   WHITESPACE@[43; 44) "\n"

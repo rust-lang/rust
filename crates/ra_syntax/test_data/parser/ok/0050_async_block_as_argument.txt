@@ -48,9 +48,10 @@ SOURCE_FILE@[0; 95)
                       R_ANGLE@[47; 48) ">"
       R_PAREN@[48; 49) ")"
     WHITESPACE@[49; 50) " "
-    BLOCK@[50; 52)
-      L_CURLY@[50; 51) "{"
-      R_CURLY@[51; 52) "}"
+    BLOCK_EXPR@[50; 52)
+      BLOCK@[50; 52)
+        L_CURLY@[50; 51) "{"
+        R_CURLY@[51; 52) "}"
   WHITESPACE@[52; 54) "\n\n"
   FN_DEF@[54; 94)
     FN_KW@[54; 56) "fn"
@@ -61,30 +62,31 @@ SOURCE_FILE@[0; 95)
       L_PAREN@[61; 62) "("
       R_PAREN@[62; 63) ")"
     WHITESPACE@[63; 64) " "
-    BLOCK@[64; 94)
-      L_CURLY@[64; 65) "{"
-      WHITESPACE@[65; 70) "\n    "
-      CALL_EXPR@[70; 92)
-        PATH_EXPR@[70; 73)
-          PATH@[70; 73)
-            PATH_SEGMENT@[70; 73)
-              NAME_REF@[70; 73)
-                IDENT@[70; 73) "foo"
-        ARG_LIST@[73; 92)
-          L_PAREN@[73; 74) "("
-          BLOCK_EXPR@[74; 91)
-            ASYNC_KW@[74; 79) "async"
-            WHITESPACE@[79; 80) " "
-            MOVE_KW@[80; 84) "move"
-            WHITESPACE@[84; 85) " "
-            BLOCK@[85; 91)
-              L_CURLY@[85; 86) "{"
-              WHITESPACE@[86; 87) " "
-              LITERAL@[87; 89)
-                INT_NUMBER@[87; 89) "12"
-              WHITESPACE@[89; 90) " "
-              R_CURLY@[90; 91) "}"
-          R_PAREN@[91; 92) ")"
-      WHITESPACE@[92; 93) "\n"
-      R_CURLY@[93; 94) "}"
+    BLOCK_EXPR@[64; 94)
+      BLOCK@[64; 94)
+        L_CURLY@[64; 65) "{"
+        WHITESPACE@[65; 70) "\n    "
+        CALL_EXPR@[70; 92)
+          PATH_EXPR@[70; 73)
+            PATH@[70; 73)
+              PATH_SEGMENT@[70; 73)
+                NAME_REF@[70; 73)
+                  IDENT@[70; 73) "foo"
+          ARG_LIST@[73; 92)
+            L_PAREN@[73; 74) "("
+            BLOCK_EXPR@[74; 91)
+              ASYNC_KW@[74; 79) "async"
+              WHITESPACE@[79; 80) " "
+              MOVE_KW@[80; 84) "move"
+              WHITESPACE@[84; 85) " "
+              BLOCK@[85; 91)
+                L_CURLY@[85; 86) "{"
+                WHITESPACE@[86; 87) " "
+                LITERAL@[87; 89)
+                  INT_NUMBER@[87; 89) "12"
+                WHITESPACE@[89; 90) " "
+                R_CURLY@[90; 91) "}"
+            R_PAREN@[91; 92) ")"
+        WHITESPACE@[92; 93) "\n"
+        R_CURLY@[93; 94) "}"
   WHITESPACE@[94; 95) "\n"

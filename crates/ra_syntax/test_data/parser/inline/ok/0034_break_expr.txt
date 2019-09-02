@@ -8,46 +8,48 @@ SOURCE_FILE@[0; 102)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 101)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      LOOP_EXPR@[15; 99)
-        LOOP_KW@[15; 19) "loop"
-        WHITESPACE@[19; 20) " "
-        BLOCK@[20; 99)
-          L_CURLY@[20; 21) "{"
-          WHITESPACE@[21; 30) "\n        "
-          EXPR_STMT@[30; 36)
-            BREAK_EXPR@[30; 35)
-              BREAK_KW@[30; 35) "break"
-            SEMI@[35; 36) ";"
-          WHITESPACE@[36; 45) "\n        "
-          EXPR_STMT@[45; 54)
-            BREAK_EXPR@[45; 53)
-              BREAK_KW@[45; 50) "break"
-              WHITESPACE@[50; 51) " "
-              LIFETIME@[51; 53) "\'l"
-            SEMI@[53; 54) ";"
-          WHITESPACE@[54; 63) "\n        "
-          EXPR_STMT@[63; 72)
-            BREAK_EXPR@[63; 71)
-              BREAK_KW@[63; 68) "break"
-              WHITESPACE@[68; 69) " "
-              LITERAL@[69; 71)
-                INT_NUMBER@[69; 71) "92"
-            SEMI@[71; 72) ";"
-          WHITESPACE@[72; 81) "\n        "
-          EXPR_STMT@[81; 93)
-            BREAK_EXPR@[81; 92)
-              BREAK_KW@[81; 86) "break"
-              WHITESPACE@[86; 87) " "
-              LIFETIME@[87; 89) "\'l"
-              WHITESPACE@[89; 90) " "
-              LITERAL@[90; 92)
-                INT_NUMBER@[90; 92) "92"
-            SEMI@[92; 93) ";"
-          WHITESPACE@[93; 98) "\n    "
-          R_CURLY@[98; 99) "}"
-      WHITESPACE@[99; 100) "\n"
-      R_CURLY@[100; 101) "}"
+    BLOCK_EXPR@[9; 101)
+      BLOCK@[9; 101)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        LOOP_EXPR@[15; 99)
+          LOOP_KW@[15; 19) "loop"
+          WHITESPACE@[19; 20) " "
+          BLOCK_EXPR@[20; 99)
+            BLOCK@[20; 99)
+              L_CURLY@[20; 21) "{"
+              WHITESPACE@[21; 30) "\n        "
+              EXPR_STMT@[30; 36)
+                BREAK_EXPR@[30; 35)
+                  BREAK_KW@[30; 35) "break"
+                SEMI@[35; 36) ";"
+              WHITESPACE@[36; 45) "\n        "
+              EXPR_STMT@[45; 54)
+                BREAK_EXPR@[45; 53)
+                  BREAK_KW@[45; 50) "break"
+                  WHITESPACE@[50; 51) " "
+                  LIFETIME@[51; 53) "\'l"
+                SEMI@[53; 54) ";"
+              WHITESPACE@[54; 63) "\n        "
+              EXPR_STMT@[63; 72)
+                BREAK_EXPR@[63; 71)
+                  BREAK_KW@[63; 68) "break"
+                  WHITESPACE@[68; 69) " "
+                  LITERAL@[69; 71)
+                    INT_NUMBER@[69; 71) "92"
+                SEMI@[71; 72) ";"
+              WHITESPACE@[72; 81) "\n        "
+              EXPR_STMT@[81; 93)
+                BREAK_EXPR@[81; 92)
+                  BREAK_KW@[81; 86) "break"
+                  WHITESPACE@[86; 87) " "
+                  LIFETIME@[87; 89) "\'l"
+                  WHITESPACE@[89; 90) " "
+                  LITERAL@[90; 92)
+                    INT_NUMBER@[90; 92) "92"
+                SEMI@[92; 93) ";"
+              WHITESPACE@[93; 98) "\n    "
+              R_CURLY@[98; 99) "}"
+        WHITESPACE@[99; 100) "\n"
+        R_CURLY@[100; 101) "}"
   WHITESPACE@[101; 102) "\n"

@@ -7,9 +7,10 @@ SOURCE_FILE@[0; 33)
     PARAM_LIST@[6; 8)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
-    BLOCK@[8; 10)
-      L_CURLY@[8; 9) "{"
-      R_CURLY@[9; 10) "}"
+    BLOCK_EXPR@[8; 10)
+      BLOCK@[8; 10)
+        L_CURLY@[8; 9) "{"
+        R_CURLY@[9; 10) "}"
   WHITESPACE@[10; 11) " "
   ERROR@[11; 17)
     UNSAFE_KW@[11; 17) "unsafe"
@@ -27,9 +28,10 @@ SOURCE_FILE@[0; 33)
     PARAM_LIST@[28; 30)
       L_PAREN@[28; 29) "("
       R_PAREN@[29; 30) ")"
-    BLOCK@[30; 32)
-      L_CURLY@[30; 31) "{"
-      R_CURLY@[31; 32) "}"
+    BLOCK_EXPR@[30; 32)
+      BLOCK@[30; 32)
+        L_CURLY@[30; 31) "{"
+        R_CURLY@[31; 32) "}"
   WHITESPACE@[32; 33) "\n"
 error 11: expected an item
 error 18: expected an item

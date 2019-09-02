@@ -33,9 +33,10 @@ SOURCE_FILE@[0; 519)
                 IDENT@[29; 33) "Type"
       R_PAREN@[33; 34) ")"
     WHITESPACE@[34; 35) " "
-    BLOCK@[35; 37)
-      L_CURLY@[35; 36) "{"
-      R_CURLY@[36; 37) "}"
+    BLOCK_EXPR@[35; 37)
+      BLOCK@[35; 37)
+        L_CURLY@[35; 36) "{"
+        R_CURLY@[36; 37) "}"
   WHITESPACE@[37; 38) "\n"
   FN_DEF@[38; 62)
     FN_KW@[38; 40) "fn"
@@ -64,9 +65,10 @@ SOURCE_FILE@[0; 519)
                 IDENT@[56; 58) "u8"
       R_PAREN@[58; 59) ")"
     WHITESPACE@[59; 60) " "
-    BLOCK@[60; 62)
-      L_CURLY@[60; 61) "{"
-      R_CURLY@[61; 62) "}"
+    BLOCK_EXPR@[60; 62)
+      BLOCK@[60; 62)
+        L_CURLY@[60; 61) "{"
+        R_CURLY@[61; 62) "}"
   WHITESPACE@[62; 64) "\n\n"
   EXTERN_BLOCK@[64; 128)
     ABI@[64; 74)
@@ -171,9 +173,10 @@ SOURCE_FILE@[0; 519)
     PARAM_LIST@[168; 170)
       L_PAREN@[168; 169) "("
       R_PAREN@[169; 170) ")"
-    BLOCK@[170; 172)
-      L_CURLY@[170; 171) "{"
-      R_CURLY@[171; 172) "}"
+    BLOCK_EXPR@[170; 172)
+      BLOCK@[170; 172)
+        L_CURLY@[170; 171) "{"
+        R_CURLY@[171; 172) "}"
   WHITESPACE@[172; 174) "\n\n"
   TRAIT_DEF@[174; 236)
     TRAIT_KW@[174; 179) "trait"
@@ -266,9 +269,10 @@ SOURCE_FILE@[0; 519)
             SELF_KW@[269; 273) "self"
           R_PAREN@[273; 274) ")"
         WHITESPACE@[274; 275) " "
-        BLOCK@[275; 277)
-          L_CURLY@[275; 276) "{"
-          R_CURLY@[276; 277) "}"
+        BLOCK_EXPR@[275; 277)
+          BLOCK@[275; 277)
+            L_CURLY@[275; 276) "{"
+            R_CURLY@[276; 277) "}"
       WHITESPACE@[277; 283) "\n     "
       FN_DEF@[283; 305)
         FN_KW@[283; 285) "fn"
@@ -288,9 +292,10 @@ SOURCE_FILE@[0; 519)
             SELF_KW@[297; 301) "self"
           R_PAREN@[301; 302) ")"
         WHITESPACE@[302; 303) " "
-        BLOCK@[303; 305)
-          L_CURLY@[303; 304) "{"
-          R_CURLY@[304; 305) "}"
+        BLOCK_EXPR@[303; 305)
+          BLOCK@[303; 305)
+            L_CURLY@[303; 304) "{"
+            R_CURLY@[304; 305) "}"
       WHITESPACE@[305; 311) "\n     "
       FN_DEF@[311; 334)
         FN_KW@[311; 313) "fn"
@@ -311,9 +316,10 @@ SOURCE_FILE@[0; 519)
             SELF_KW@[326; 330) "self"
           R_PAREN@[330; 331) ")"
         WHITESPACE@[331; 332) " "
-        BLOCK@[332; 334)
-          L_CURLY@[332; 333) "{"
-          R_CURLY@[333; 334) "}"
+        BLOCK_EXPR@[332; 334)
+          BLOCK@[332; 334)
+            L_CURLY@[332; 333) "{"
+            R_CURLY@[333; 334) "}"
       WHITESPACE@[334; 340) "\n     "
       FN_DEF@[340; 371)
         FN_KW@[340; 342) "fn"
@@ -341,9 +347,10 @@ SOURCE_FILE@[0; 519)
             SELF_KW@[363; 367) "self"
           R_PAREN@[367; 368) ")"
         WHITESPACE@[368; 369) " "
-        BLOCK@[369; 371)
-          L_CURLY@[369; 370) "{"
-          R_CURLY@[370; 371) "}"
+        BLOCK_EXPR@[369; 371)
+          BLOCK@[369; 371)
+            L_CURLY@[369; 370) "{"
+            R_CURLY@[370; 371) "}"
       WHITESPACE@[371; 377) "\n     "
       FN_DEF@[377; 407)
         FN_KW@[377; 379) "fn"
@@ -371,9 +378,10 @@ SOURCE_FILE@[0; 519)
             SELF_KW@[399; 403) "self"
           R_PAREN@[403; 404) ")"
         WHITESPACE@[404; 405) " "
-        BLOCK@[405; 407)
-          L_CURLY@[405; 406) "{"
-          R_CURLY@[406; 407) "}"
+        BLOCK_EXPR@[405; 407)
+          BLOCK@[405; 407)
+            L_CURLY@[405; 406) "{"
+            R_CURLY@[406; 407) "}"
       WHITESPACE@[407; 413) "\n     "
       FN_DEF@[413; 447)
         FN_KW@[413; 415) "fn"
@@ -403,9 +411,10 @@ SOURCE_FILE@[0; 519)
             SELF_KW@[439; 443) "self"
           R_PAREN@[443; 444) ")"
         WHITESPACE@[444; 445) " "
-        BLOCK@[445; 447)
-          L_CURLY@[445; 446) "{"
-          R_CURLY@[446; 447) "}"
+        BLOCK_EXPR@[445; 447)
+          BLOCK@[445; 447)
+            L_CURLY@[445; 446) "{"
+            R_CURLY@[446; 447) "}"
       WHITESPACE@[447; 453) "\n     "
       FN_DEF@[453; 480)
         FN_KW@[453; 455) "fn"
@@ -432,9 +441,10 @@ SOURCE_FILE@[0; 519)
                     IDENT@[472; 476) "Self"
           R_PAREN@[476; 477) ")"
         WHITESPACE@[477; 478) " "
-        BLOCK@[478; 480)
-          L_CURLY@[478; 479) "{"
-          R_CURLY@[479; 480) "}"
+        BLOCK_EXPR@[478; 480)
+          BLOCK@[478; 480)
+            L_CURLY@[478; 479) "{"
+            R_CURLY@[479; 480) "}"
       WHITESPACE@[480; 486) "\n     "
       FN_DEF@[486; 517)
         FN_KW@[486; 488) "fn"
@@ -470,8 +480,9 @@ SOURCE_FILE@[0; 519)
                     R_ANGLE@[512; 513) ">"
           R_PAREN@[513; 514) ")"
         WHITESPACE@[514; 515) " "
-        BLOCK@[515; 517)
-          L_CURLY@[515; 516) "{"
-          R_CURLY@[516; 517) "}"
+        BLOCK_EXPR@[515; 517)
+          BLOCK@[515; 517)
+            L_CURLY@[515; 516) "{"
+            R_CURLY@[516; 517) "}"
       WHITESPACE@[517; 518) "\n"
       R_CURLY@[518; 519) "}"

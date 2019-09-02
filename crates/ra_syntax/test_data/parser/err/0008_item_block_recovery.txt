@@ -8,10 +8,11 @@ SOURCE_FILE@[0; 95)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 12)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 11) "\n"
-      R_CURLY@[11; 12) "}"
+    BLOCK_EXPR@[9; 12)
+      BLOCK@[9; 12)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 11) "\n"
+        R_CURLY@[11; 12) "}"
   WHITESPACE@[12; 14) "\n\n"
   MACRO_CALL@[14; 19)
     PATH@[14; 17)
@@ -32,29 +33,31 @@ SOURCE_FILE@[0; 95)
         LITERAL@[29; 33)
           TRUE_KW@[29; 33) "true"
       WHITESPACE@[33; 34) " "
-      BLOCK@[34; 51)
-        L_CURLY@[34; 35) "{"
-        WHITESPACE@[35; 44) "\n        "
-        LITERAL@[44; 45)
-          INT_NUMBER@[44; 45) "1"
-        WHITESPACE@[45; 50) "\n    "
-        R_CURLY@[50; 51) "}"
+      BLOCK_EXPR@[34; 51)
+        BLOCK@[34; 51)
+          L_CURLY@[34; 35) "{"
+          WHITESPACE@[35; 44) "\n        "
+          LITERAL@[44; 45)
+            INT_NUMBER@[44; 45) "1"
+          WHITESPACE@[45; 50) "\n    "
+          R_CURLY@[50; 51) "}"
       WHITESPACE@[51; 52) " "
       ELSE_KW@[52; 56) "else"
       WHITESPACE@[56; 57) " "
-      BLOCK@[57; 78)
-        L_CURLY@[57; 58) "{"
-        WHITESPACE@[58; 67) "\n        "
-        BIN_EXPR@[67; 72)
-          LITERAL@[67; 68)
-            INT_NUMBER@[67; 68) "2"
-          WHITESPACE@[68; 69) " "
-          PLUS@[69; 70) "+"
-          WHITESPACE@[70; 71) " "
-          LITERAL@[71; 72)
-            INT_NUMBER@[71; 72) "3"
-        WHITESPACE@[72; 77) "\n    "
-        R_CURLY@[77; 78) "}"
+      BLOCK_EXPR@[57; 78)
+        BLOCK@[57; 78)
+          L_CURLY@[57; 58) "{"
+          WHITESPACE@[58; 67) "\n        "
+          BIN_EXPR@[67; 72)
+            LITERAL@[67; 68)
+              INT_NUMBER@[67; 68) "2"
+            WHITESPACE@[68; 69) " "
+            PLUS@[69; 70) "+"
+            WHITESPACE@[70; 71) " "
+            LITERAL@[71; 72)
+              INT_NUMBER@[71; 72) "3"
+          WHITESPACE@[72; 77) "\n    "
+          R_CURLY@[77; 78) "}"
     WHITESPACE@[78; 79) "\n"
     R_CURLY@[79; 80) "}"
   WHITESPACE@[80; 82) "\n\n"
@@ -67,10 +70,11 @@ SOURCE_FILE@[0; 95)
       L_PAREN@[88; 89) "("
       R_PAREN@[89; 90) ")"
     WHITESPACE@[90; 91) " "
-    BLOCK@[91; 94)
-      L_CURLY@[91; 92) "{"
-      WHITESPACE@[92; 93) "\n"
-      R_CURLY@[93; 94) "}"
+    BLOCK_EXPR@[91; 94)
+      BLOCK@[91; 94)
+        L_CURLY@[91; 92) "{"
+        WHITESPACE@[92; 93) "\n"
+        R_CURLY@[93; 94) "}"
   WHITESPACE@[94; 95) "\n"
 error 17: expected EXCL
 error 19: expected SEMI

@@ -8,9 +8,10 @@ SOURCE_FILE@[0; 98)
       L_PAREN@[4; 5) "("
       R_PAREN@[5; 6) ")"
     WHITESPACE@[6; 7) " "
-    BLOCK@[7; 9)
-      L_CURLY@[7; 8) "{"
-      R_CURLY@[8; 9) "}"
+    BLOCK_EXPR@[7; 9)
+      BLOCK@[7; 9)
+        L_CURLY@[7; 8) "{"
+        R_CURLY@[8; 9) "}"
   WHITESPACE@[9; 10) "\n"
   FN_DEF@[10; 23)
     VISIBILITY@[10; 13)
@@ -24,9 +25,10 @@ SOURCE_FILE@[0; 98)
       L_PAREN@[18; 19) "("
       R_PAREN@[19; 20) ")"
     WHITESPACE@[20; 21) " "
-    BLOCK@[21; 23)
-      L_CURLY@[21; 22) "{"
-      R_CURLY@[22; 23) "}"
+    BLOCK_EXPR@[21; 23)
+      BLOCK@[21; 23)
+        L_CURLY@[21; 22) "{"
+        R_CURLY@[22; 23) "}"
   WHITESPACE@[23; 24) "\n"
   FN_DEF@[24; 44)
     VISIBILITY@[24; 34)
@@ -43,9 +45,10 @@ SOURCE_FILE@[0; 98)
       L_PAREN@[39; 40) "("
       R_PAREN@[40; 41) ")"
     WHITESPACE@[41; 42) " "
-    BLOCK@[42; 44)
-      L_CURLY@[42; 43) "{"
-      R_CURLY@[43; 44) "}"
+    BLOCK_EXPR@[42; 44)
+      BLOCK@[42; 44)
+        L_CURLY@[42; 43) "{"
+        R_CURLY@[43; 44) "}"
   WHITESPACE@[44; 45) "\n"
   FN_DEF@[45; 65)
     VISIBILITY@[45; 55)
@@ -62,9 +65,10 @@ SOURCE_FILE@[0; 98)
       L_PAREN@[60; 61) "("
       R_PAREN@[61; 62) ")"
     WHITESPACE@[62; 63) " "
-    BLOCK@[63; 65)
-      L_CURLY@[63; 64) "{"
-      R_CURLY@[64; 65) "}"
+    BLOCK_EXPR@[63; 65)
+      BLOCK@[63; 65)
+        L_CURLY@[63; 64) "{"
+        R_CURLY@[64; 65) "}"
   WHITESPACE@[65; 66) "\n"
   FN_DEF@[66; 97)
     VISIBILITY@[66; 87)
@@ -96,7 +100,8 @@ SOURCE_FILE@[0; 98)
       L_PAREN@[92; 93) "("
       R_PAREN@[93; 94) ")"
     WHITESPACE@[94; 95) " "
-    BLOCK@[95; 97)
-      L_CURLY@[95; 96) "{"
-      R_CURLY@[96; 97) "}"
+    BLOCK_EXPR@[95; 97)
+      BLOCK@[95; 97)
+        L_CURLY@[95; 96) "{"
+        R_CURLY@[96; 97) "}"
   WHITESPACE@[97; 98) "\n"

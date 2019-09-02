@@ -34,9 +34,10 @@ SOURCE_FILE@[0; 58)
                       LIFETIME@[20; 22) "\'f"
               R_ANGLE@[22; 23) ">"
     WHITESPACE@[23; 24) " "
-    BLOCK@[24; 26)
-      L_CURLY@[24; 25) "{"
-      R_CURLY@[25; 26) "}"
+    BLOCK_EXPR@[24; 26)
+      BLOCK@[24; 26)
+        L_CURLY@[24; 25) "{"
+        R_CURLY@[25; 26) "}"
   WHITESPACE@[26; 27) "\n"
   FN_DEF@[27; 57)
     FN_KW@[27; 29) "fn"
@@ -75,7 +76,8 @@ SOURCE_FILE@[0; 58)
                       LIFETIME@[51; 53) "\'f"
               R_ANGLE@[53; 54) ">"
     WHITESPACE@[54; 55) " "
-    BLOCK@[55; 57)
-      L_CURLY@[55; 56) "{"
-      R_CURLY@[56; 57) "}"
+    BLOCK_EXPR@[55; 57)
+      BLOCK@[55; 57)
+        L_CURLY@[55; 56) "{"
+        R_CURLY@[56; 57) "}"
   WHITESPACE@[57; 58) "\n"

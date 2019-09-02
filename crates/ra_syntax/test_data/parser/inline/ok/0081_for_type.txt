@@ -88,9 +88,10 @@ SOURCE_FILE@[0; 200)
                   NAME_REF@[68; 76)
                     IDENT@[68; 76) "Iterator"
     WHITESPACE@[76; 77) " "
-    BLOCK@[77; 79)
-      L_CURLY@[77; 78) "{"
-      R_CURLY@[78; 79) "}"
+    BLOCK_EXPR@[77; 79)
+      BLOCK@[77; 79)
+        L_CURLY@[77; 78) "{"
+        R_CURLY@[78; 79) "}"
   WHITESPACE@[79; 80) "\n"
   FN_DEF@[80; 134)
     FN_KW@[80; 82) "fn"
@@ -153,9 +154,10 @@ SOURCE_FILE@[0; 200)
                   NAME_REF@[123; 131)
                     IDENT@[123; 131) "Iterator"
     WHITESPACE@[131; 132) " "
-    BLOCK@[132; 134)
-      L_CURLY@[132; 133) "{"
-      R_CURLY@[133; 134) "}"
+    BLOCK_EXPR@[132; 134)
+      BLOCK@[132; 134)
+        L_CURLY@[132; 133) "{"
+        R_CURLY@[133; 134) "}"
   WHITESPACE@[134; 135) "\n"
   FN_DEF@[135; 199)
     FN_KW@[135; 137) "fn"
@@ -234,7 +236,8 @@ SOURCE_FILE@[0; 200)
                   NAME_REF@[188; 196)
                     IDENT@[188; 196) "Iterator"
     WHITESPACE@[196; 197) " "
-    BLOCK@[197; 199)
-      L_CURLY@[197; 198) "{"
-      R_CURLY@[198; 199) "}"
+    BLOCK_EXPR@[197; 199)
+      BLOCK@[197; 199)
+        L_CURLY@[197; 198) "{"
+        R_CURLY@[198; 199) "}"
   WHITESPACE@[199; 200) "\n"

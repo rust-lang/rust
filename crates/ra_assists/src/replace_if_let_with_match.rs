@@ -1,3 +1,4 @@
+use format_buf::format;
 use hir::db::HirDatabase;
 use ra_fmt::extract_trivial_expression;
 use ra_syntax::{ast, AstNode};
@@ -25,16 +26,21 @@ pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) ->
     ctx.build()
 }
 
-fn build_match_expr(expr: ast::Expr, pat1: ast::Pat, arm1: ast::Block, arm2: ast::Block) -> String {
+fn build_match_expr(
+    expr: ast::Expr,
+    pat1: ast::Pat,
+    arm1: ast::BlockExpr,
+    arm2: ast::BlockExpr,
+) -> String {
     let mut buf = String::new();
-    buf.push_str(&format!("match {} {{\n", expr.syntax().text()));
-    buf.push_str(&format!("    {} => {}\n", pat1.syntax().text(), format_arm(&arm1)));
-    buf.push_str(&format!("    _ => {}\n", format_arm(&arm2)));
+    format!(buf, "match {} {{\n", expr.syntax().text());
+    format!(buf, "    {} => {}\n", pat1.syntax().text(), format_arm(&arm1));
+    format!(buf, "    _ => {}\n", format_arm(&arm2));
     buf.push_str("}");
     buf
 }
 
-fn format_arm(block: &ast::Block) -> String {
+fn format_arm(block: &ast::BlockExpr) -> String {
     match extract_trivial_expression(block) {
         None => block.syntax().text().to_string(),
         Some(e) => format!("{},", e.syntax().text()),

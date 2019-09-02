@@ -8,55 +8,57 @@ SOURCE_FILE@[0; 111)
       L_PAREN@[18; 19) "("
       R_PAREN@[19; 20) ")"
     WHITESPACE@[20; 21) " "
-    BLOCK@[21; 110)
-      L_CURLY@[21; 22) "{"
-      WHITESPACE@[22; 27) "\n    "
-      ENUM_DEF@[27; 75)
-        ENUM_KW@[27; 31) "enum"
-        WHITESPACE@[31; 32) " "
-        NAME@[32; 41)
-          IDENT@[32; 41) "LocalEnum"
-        WHITESPACE@[41; 42) " "
-        ENUM_VARIANT_LIST@[42; 75)
-          L_CURLY@[42; 43) "{"
-          WHITESPACE@[43; 52) "\n        "
-          ENUM_VARIANT@[52; 55)
-            NAME@[52; 55)
-              IDENT@[52; 55) "One"
-          COMMA@[55; 56) ","
-          WHITESPACE@[56; 65) "\n        "
-          ENUM_VARIANT@[65; 68)
-            NAME@[65; 68)
-              IDENT@[65; 68) "Two"
-          COMMA@[68; 69) ","
-          WHITESPACE@[69; 74) "\n    "
-          R_CURLY@[74; 75) "}"
-      SEMI@[75; 76) ";"
-      WHITESPACE@[76; 81) "\n    "
-      FN_DEF@[81; 90)
-        FN_KW@[81; 83) "fn"
-        WHITESPACE@[83; 84) " "
-        NAME@[84; 85)
-          IDENT@[84; 85) "f"
-        PARAM_LIST@[85; 87)
-          L_PAREN@[85; 86) "("
-          R_PAREN@[86; 87) ")"
-        WHITESPACE@[87; 88) " "
-        BLOCK@[88; 90)
-          L_CURLY@[88; 89) "{"
-          R_CURLY@[89; 90) "}"
-      SEMI@[90; 91) ";"
-      WHITESPACE@[91; 96) "\n    "
-      STRUCT_DEF@[96; 107)
-        STRUCT_KW@[96; 102) "struct"
-        WHITESPACE@[102; 103) " "
-        NAME@[103; 104)
-          IDENT@[103; 104) "S"
-        WHITESPACE@[104; 105) " "
-        RECORD_FIELD_DEF_LIST@[105; 107)
-          L_CURLY@[105; 106) "{"
-          R_CURLY@[106; 107) "}"
-      SEMI@[107; 108) ";"
-      WHITESPACE@[108; 109) "\n"
-      R_CURLY@[109; 110) "}"
+    BLOCK_EXPR@[21; 110)
+      BLOCK@[21; 110)
+        L_CURLY@[21; 22) "{"
+        WHITESPACE@[22; 27) "\n    "
+        ENUM_DEF@[27; 75)
+          ENUM_KW@[27; 31) "enum"
+          WHITESPACE@[31; 32) " "
+          NAME@[32; 41)
+            IDENT@[32; 41) "LocalEnum"
+          WHITESPACE@[41; 42) " "
+          ENUM_VARIANT_LIST@[42; 75)
+            L_CURLY@[42; 43) "{"
+            WHITESPACE@[43; 52) "\n        "
+            ENUM_VARIANT@[52; 55)
+              NAME@[52; 55)
+                IDENT@[52; 55) "One"
+            COMMA@[55; 56) ","
+            WHITESPACE@[56; 65) "\n        "
+            ENUM_VARIANT@[65; 68)
+              NAME@[65; 68)
+                IDENT@[65; 68) "Two"
+            COMMA@[68; 69) ","
+            WHITESPACE@[69; 74) "\n    "
+            R_CURLY@[74; 75) "}"
+        SEMI@[75; 76) ";"
+        WHITESPACE@[76; 81) "\n    "
+        FN_DEF@[81; 90)
+          FN_KW@[81; 83) "fn"
+          WHITESPACE@[83; 84) " "
+          NAME@[84; 85)
+            IDENT@[84; 85) "f"
+          PARAM_LIST@[85; 87)
+            L_PAREN@[85; 86) "("
+            R_PAREN@[86; 87) ")"
+          WHITESPACE@[87; 88) " "
+          BLOCK_EXPR@[88; 90)
+            BLOCK@[88; 90)
+              L_CURLY@[88; 89) "{"
+              R_CURLY@[89; 90) "}"
+        SEMI@[90; 91) ";"
+        WHITESPACE@[91; 96) "\n    "
+        STRUCT_DEF@[96; 107)
+          STRUCT_KW@[96; 102) "struct"
+          WHITESPACE@[102; 103) " "
+          NAME@[103; 104)
+            IDENT@[103; 104) "S"
+          WHITESPACE@[104; 105) " "
+          RECORD_FIELD_DEF_LIST@[105; 107)
+            L_CURLY@[105; 106) "{"
+            R_CURLY@[106; 107) "}"
+        SEMI@[107; 108) ";"
+        WHITESPACE@[108; 109) "\n"
+        R_CURLY@[109; 110) "}"
   WHITESPACE@[110; 111) "\n"

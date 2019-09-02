@@ -40,6 +40,11 @@ pub(crate) fn block(p: &mut Parser) {
         p.error("expected a block");
         return;
     }
+    atom::block_expr(p, None);
+}
+
+pub(crate) fn naked_block(p: &mut Parser) {
+    assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
     expr_block_contents(p);

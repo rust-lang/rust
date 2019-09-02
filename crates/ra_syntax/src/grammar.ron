@@ -275,7 +275,7 @@ Grammar(
                 "AttrsOwner",
                 "DocCommentsOwner"
             ],
-            options: [ "ParamList", ["body", "Block"], "RetType" ],
+            options: [ "ParamList", ["body", "BlockExpr"], "RetType" ],
         ),
         "RetType": (options: ["TypeRef"]),
         "StructDef": (
@@ -426,7 +426,7 @@ Grammar(
             traits: ["LoopBodyOwner"],
         ),
         "TryBlockExpr": (
-            options: ["Block"],
+            options: [["body", "BlockExpr"]],
         ),
         "ForExpr": (
             traits: ["LoopBodyOwner"],

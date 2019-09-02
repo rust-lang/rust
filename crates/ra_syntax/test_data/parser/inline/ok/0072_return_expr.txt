@@ -8,21 +8,22 @@ SOURCE_FILE@[0; 40)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 39)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 22)
-        RETURN_EXPR@[15; 21)
-          RETURN_KW@[15; 21) "return"
-        SEMI@[21; 22) ";"
-      WHITESPACE@[22; 27) "\n    "
-      EXPR_STMT@[27; 37)
-        RETURN_EXPR@[27; 36)
-          RETURN_KW@[27; 33) "return"
-          WHITESPACE@[33; 34) " "
-          LITERAL@[34; 36)
-            INT_NUMBER@[34; 36) "92"
-        SEMI@[36; 37) ";"
-      WHITESPACE@[37; 38) "\n"
-      R_CURLY@[38; 39) "}"
+    BLOCK_EXPR@[9; 39)
+      BLOCK@[9; 39)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 22)
+          RETURN_EXPR@[15; 21)
+            RETURN_KW@[15; 21) "return"
+          SEMI@[21; 22) ";"
+        WHITESPACE@[22; 27) "\n    "
+        EXPR_STMT@[27; 37)
+          RETURN_EXPR@[27; 36)
+            RETURN_KW@[27; 33) "return"
+            WHITESPACE@[33; 34) " "
+            LITERAL@[34; 36)
+              INT_NUMBER@[34; 36) "92"
+          SEMI@[36; 37) ";"
+        WHITESPACE@[37; 38) "\n"
+        R_CURLY@[38; 39) "}"
   WHITESPACE@[39; 40) "\n"

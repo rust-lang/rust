@@ -12,9 +12,10 @@ SOURCE_FILE@[0; 50)
       L_PAREN@[19; 20) "("
       R_PAREN@[20; 21) ")"
     WHITESPACE@[21; 22) " "
-    BLOCK@[22; 24)
-      L_CURLY@[22; 23) "{"
-      R_CURLY@[23; 24) "}"
+    BLOCK_EXPR@[22; 24)
+      BLOCK@[22; 24)
+        L_CURLY@[22; 23) "{"
+        R_CURLY@[23; 24) "}"
   WHITESPACE@[24; 25) "\n"
   FN_DEF@[25; 49)
     CONST_KW@[25; 30) "const"
@@ -29,7 +30,8 @@ SOURCE_FILE@[0; 50)
       L_PAREN@[44; 45) "("
       R_PAREN@[45; 46) ")"
     WHITESPACE@[46; 47) " "
-    BLOCK@[47; 49)
-      L_CURLY@[47; 48) "{"
-      R_CURLY@[48; 49) "}"
+    BLOCK_EXPR@[47; 49)
+      BLOCK@[47; 49)
+        L_CURLY@[47; 48) "{"
+        R_CURLY@[48; 49) "}"
   WHITESPACE@[49; 50) "\n"

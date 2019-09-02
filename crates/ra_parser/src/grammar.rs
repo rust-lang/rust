@@ -144,7 +144,7 @@ pub(crate) fn reparser(
     parent: Option<SyntaxKind>,
 ) -> Option<fn(&mut Parser)> {
     let res = match node {
-        BLOCK => expressions::block,
+        BLOCK => expressions::naked_block,
         RECORD_FIELD_DEF_LIST => items::record_field_def_list,
         RECORD_FIELD_LIST => items::record_field_list,
         ENUM_VARIANT_LIST => items::enum_variant_list,

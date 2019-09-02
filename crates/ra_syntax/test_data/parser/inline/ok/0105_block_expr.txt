@@ -8,35 +8,36 @@ SOURCE_FILE@[0; 52)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 51)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 18)
-        BLOCK_EXPR@[15; 17)
-          BLOCK@[15; 17)
-            L_CURLY@[15; 16) "{"
-            R_CURLY@[16; 17) "}"
-        SEMI@[17; 18) ";"
-      WHITESPACE@[18; 23) "\n    "
-      EXPR_STMT@[23; 33)
-        BLOCK_EXPR@[23; 32)
-          UNSAFE_KW@[23; 29) "unsafe"
-          WHITESPACE@[29; 30) " "
-          BLOCK@[30; 32)
-            L_CURLY@[30; 31) "{"
-            R_CURLY@[31; 32) "}"
-        SEMI@[32; 33) ";"
-      WHITESPACE@[33; 38) "\n    "
-      EXPR_STMT@[38; 49)
-        BLOCK_EXPR@[38; 48)
-          LABEL@[38; 45)
-            LIFETIME@[38; 44) "\'label"
-            COLON@[44; 45) ":"
-          WHITESPACE@[45; 46) " "
-          BLOCK@[46; 48)
-            L_CURLY@[46; 47) "{"
-            R_CURLY@[47; 48) "}"
-        SEMI@[48; 49) ";"
-      WHITESPACE@[49; 50) "\n"
-      R_CURLY@[50; 51) "}"
+    BLOCK_EXPR@[9; 51)
+      BLOCK@[9; 51)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 18)
+          BLOCK_EXPR@[15; 17)
+            BLOCK@[15; 17)
+              L_CURLY@[15; 16) "{"
+              R_CURLY@[16; 17) "}"
+          SEMI@[17; 18) ";"
+        WHITESPACE@[18; 23) "\n    "
+        EXPR_STMT@[23; 33)
+          BLOCK_EXPR@[23; 32)
+            UNSAFE_KW@[23; 29) "unsafe"
+            WHITESPACE@[29; 30) " "
+            BLOCK@[30; 32)
+              L_CURLY@[30; 31) "{"
+              R_CURLY@[31; 32) "}"
+          SEMI@[32; 33) ";"
+        WHITESPACE@[33; 38) "\n    "
+        EXPR_STMT@[38; 49)
+          BLOCK_EXPR@[38; 48)
+            LABEL@[38; 45)
+              LIFETIME@[38; 44) "\'label"
+              COLON@[44; 45) ":"
+            WHITESPACE@[45; 46) " "
+            BLOCK@[46; 48)
+              L_CURLY@[46; 47) "{"
+              R_CURLY@[47; 48) "}"
+          SEMI@[48; 49) ";"
+        WHITESPACE@[49; 50) "\n"
+        R_CURLY@[50; 51) "}"
   WHITESPACE@[51; 52) "\n"

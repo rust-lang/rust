@@ -274,7 +274,7 @@ impl AstBuilder<ast::Block> {
 
 impl AstBuilder<ast::Expr> {
     fn from_text(text: &str) -> ast::Expr {
-        ast_node_from_file_text(&format!("fn f() {{ {}; }}", text))
+        ast_node_from_file_text(&format!("const C: () = {};", text))
     }
 
     pub fn unit() -> ast::Expr {

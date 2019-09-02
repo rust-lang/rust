@@ -49,7 +49,8 @@ SOURCE_FILE@[0; 59)
                 IDENT@[53; 54) "T"
       R_PAREN@[54; 55) ")"
     WHITESPACE@[55; 56) " "
-    BLOCK@[56; 58)
-      L_CURLY@[56; 57) "{"
-      R_CURLY@[57; 58) "}"
+    BLOCK_EXPR@[56; 58)
+      BLOCK@[56; 58)
+        L_CURLY@[56; 57) "{"
+        R_CURLY@[57; 58) "}"
   WHITESPACE@[58; 59) "\n"

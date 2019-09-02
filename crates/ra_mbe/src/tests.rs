@@ -678,21 +678,22 @@ fn test_expr_order() {
     PARAM_LIST@[5; 7)
       L_PAREN@[5; 6) "("
       R_PAREN@[6; 7) ")"
-    BLOCK@[7; 15)
-      L_CURLY@[7; 8) "{"
-      EXPR_STMT@[8; 14)
-        BIN_EXPR@[8; 13)
-          BIN_EXPR@[8; 11)
-            LITERAL@[8; 9)
-              INT_NUMBER@[8; 9) "1"
-            PLUS@[9; 10) "+"
-            LITERAL@[10; 11)
-              INT_NUMBER@[10; 11) "1"
-          STAR@[11; 12) "*"
-          LITERAL@[12; 13)
-            INT_NUMBER@[12; 13) "2"
-        SEMI@[13; 14) ";"
-      R_CURLY@[14; 15) "}""#,
+    BLOCK_EXPR@[7; 15)
+      BLOCK@[7; 15)
+        L_CURLY@[7; 8) "{"
+        EXPR_STMT@[8; 14)
+          BIN_EXPR@[8; 13)
+            BIN_EXPR@[8; 11)
+              LITERAL@[8; 9)
+                INT_NUMBER@[8; 9) "1"
+              PLUS@[9; 10) "+"
+              LITERAL@[10; 11)
+                INT_NUMBER@[10; 11) "1"
+            STAR@[11; 12) "*"
+            LITERAL@[12; 13)
+              INT_NUMBER@[12; 13) "2"
+          SEMI@[13; 14) ";"
+        R_CURLY@[14; 15) "}""#,
     );
 }
 

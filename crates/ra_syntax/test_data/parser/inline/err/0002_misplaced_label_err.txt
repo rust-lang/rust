@@ -8,19 +8,20 @@ SOURCE_FILE@[0; 30)
       L_PAREN@[7; 8) "("
       R_PAREN@[8; 9) ")"
     WHITESPACE@[9; 10) " "
-    BLOCK@[10; 29)
-      L_CURLY@[10; 11) "{"
-      WHITESPACE@[11; 16) "\n    "
-      EXPR_STMT@[16; 22)
-        ERROR@[16; 22)
-          LABEL@[16; 22)
-            LIFETIME@[16; 21) "\'loop"
-            COLON@[21; 22) ":"
-      WHITESPACE@[22; 23) " "
-      IMPL_BLOCK@[23; 27)
-        IMPL_KW@[23; 27) "impl"
-      WHITESPACE@[27; 28) "\n"
-      R_CURLY@[28; 29) "}"
+    BLOCK_EXPR@[10; 29)
+      BLOCK@[10; 29)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        EXPR_STMT@[16; 22)
+          ERROR@[16; 22)
+            LABEL@[16; 22)
+              LIFETIME@[16; 21) "\'loop"
+              COLON@[21; 22) ":"
+        WHITESPACE@[22; 23) " "
+        IMPL_BLOCK@[23; 27)
+          IMPL_KW@[23; 27) "impl"
+        WHITESPACE@[27; 28) "\n"
+        R_CURLY@[28; 29) "}"
   WHITESPACE@[29; 30) "\n"
 error 22: expected a loop
 error 22: expected SEMI

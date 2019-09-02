@@ -65,9 +65,9 @@ pub(crate) fn move_arm_cond_to_match_guard(mut ctx: AssistCtx<impl HirDatabase>)
         "move condition to match guard",
         |edit| {
             edit.target(if_expr.syntax().text_range());
-            let then_only_expr = then_block.statements().next().is_none();
+            let then_only_expr = then_block.block().and_then(|it| it.statements().next()).is_none();
 
-            match &then_block.expr() {
+            match &then_block.block().and_then(|it| it.expr()) {
                 Some(then_expr) if then_only_expr => {
                     edit.replace(if_expr.syntax().text_range(), then_expr.syntax().text())
                 }

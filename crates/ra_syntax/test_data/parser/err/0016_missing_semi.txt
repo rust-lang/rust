@@ -8,36 +8,37 @@ SOURCE_FILE@[0; 56)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 55)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 38)
-        CALL_EXPR@[15; 38)
-          PATH_EXPR@[15; 18)
-            PATH@[15; 18)
-              PATH_SEGMENT@[15; 18)
-                NAME_REF@[15; 18)
-                  IDENT@[15; 18) "foo"
-          ARG_LIST@[18; 38)
-            L_PAREN@[18; 19) "("
-            WHITESPACE@[19; 28) "\n        "
-            LITERAL@[28; 29)
-              INT_NUMBER@[28; 29) "1"
-            COMMA@[29; 30) ","
-            WHITESPACE@[30; 31) " "
-            LITERAL@[31; 32)
-              INT_NUMBER@[31; 32) "2"
-            WHITESPACE@[32; 37) "\n    "
-            R_PAREN@[37; 38) ")"
-      WHITESPACE@[38; 43) "\n    "
-      EXPR_STMT@[43; 53)
-        RETURN_EXPR@[43; 52)
-          RETURN_KW@[43; 49) "return"
-          WHITESPACE@[49; 50) " "
-          LITERAL@[50; 52)
-            INT_NUMBER@[50; 52) "92"
-        SEMI@[52; 53) ";"
-      WHITESPACE@[53; 54) "\n"
-      R_CURLY@[54; 55) "}"
+    BLOCK_EXPR@[9; 55)
+      BLOCK@[9; 55)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 38)
+          CALL_EXPR@[15; 38)
+            PATH_EXPR@[15; 18)
+              PATH@[15; 18)
+                PATH_SEGMENT@[15; 18)
+                  NAME_REF@[15; 18)
+                    IDENT@[15; 18) "foo"
+            ARG_LIST@[18; 38)
+              L_PAREN@[18; 19) "("
+              WHITESPACE@[19; 28) "\n        "
+              LITERAL@[28; 29)
+                INT_NUMBER@[28; 29) "1"
+              COMMA@[29; 30) ","
+              WHITESPACE@[30; 31) " "
+              LITERAL@[31; 32)
+                INT_NUMBER@[31; 32) "2"
+              WHITESPACE@[32; 37) "\n    "
+              R_PAREN@[37; 38) ")"
+        WHITESPACE@[38; 43) "\n    "
+        EXPR_STMT@[43; 53)
+          RETURN_EXPR@[43; 52)
+            RETURN_KW@[43; 49) "return"
+            WHITESPACE@[49; 50) " "
+            LITERAL@[50; 52)
+              INT_NUMBER@[50; 52) "92"
+          SEMI@[52; 53) ";"
+        WHITESPACE@[53; 54) "\n"
+        R_CURLY@[54; 55) "}"
   WHITESPACE@[55; 56) "\n"
 error 38: expected SEMI

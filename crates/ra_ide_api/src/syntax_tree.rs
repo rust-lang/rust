@@ -116,9 +116,10 @@ SOURCE_FILE@[0; 11)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 11)
-      L_CURLY@[9; 10) "{"
-      R_CURLY@[10; 11) "}"
+    BLOCK_EXPR@[9; 11)
+      BLOCK@[9; 11)
+        L_CURLY@[9; 10) "{"
+        R_CURLY@[10; 11) "}"
 "#
             .trim()
         );
@@ -148,26 +149,27 @@ SOURCE_FILE@[0; 60)
       L_PAREN@[7; 8) "("
       R_PAREN@[8; 9) ")"
     WHITESPACE@[9; 10) " "
-    BLOCK@[10; 60)
-      L_CURLY@[10; 11) "{"
-      WHITESPACE@[11; 16) "\n    "
-      EXPR_STMT@[16; 58)
-        MACRO_CALL@[16; 57)
-          PATH@[16; 22)
-            PATH_SEGMENT@[16; 22)
-              NAME_REF@[16; 22)
-                IDENT@[16; 22) "assert"
-          EXCL@[22; 23) "!"
-          TOKEN_TREE@[23; 57)
-            L_PAREN@[23; 24) "("
-            STRING@[24; 52) "\"\n    fn foo() {\n     ..."
-            COMMA@[52; 53) ","
-            WHITESPACE@[53; 54) " "
-            STRING@[54; 56) "\"\""
-            R_PAREN@[56; 57) ")"
-        SEMI@[57; 58) ";"
-      WHITESPACE@[58; 59) "\n"
-      R_CURLY@[59; 60) "}"
+    BLOCK_EXPR@[10; 60)
+      BLOCK@[10; 60)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        EXPR_STMT@[16; 58)
+          MACRO_CALL@[16; 57)
+            PATH@[16; 22)
+              PATH_SEGMENT@[16; 22)
+                NAME_REF@[16; 22)
+                  IDENT@[16; 22) "assert"
+            EXCL@[22; 23) "!"
+            TOKEN_TREE@[23; 57)
+              L_PAREN@[23; 24) "("
+              STRING@[24; 52) "\"\n    fn foo() {\n     ..."
+              COMMA@[52; 53) ","
+              WHITESPACE@[53; 54) " "
+              STRING@[54; 56) "\"\""
+              R_PAREN@[56; 57) ")"
+          SEMI@[57; 58) ";"
+        WHITESPACE@[58; 59) "\n"
+        R_CURLY@[59; 60) "}"
 "#
             .trim()
         );
@@ -190,9 +192,10 @@ FN_DEF@[0; 11)
     L_PAREN@[6; 7) "("
     R_PAREN@[7; 8) ")"
   WHITESPACE@[8; 9) " "
-  BLOCK@[9; 11)
-    L_CURLY@[9; 10) "{"
-    R_CURLY@[10; 11) "}"
+  BLOCK_EXPR@[9; 11)
+    BLOCK@[9; 11)
+      L_CURLY@[9; 10) "{"
+      R_CURLY@[10; 11) "}"
 "#
             .trim()
         );
@@ -258,10 +261,11 @@ SOURCE_FILE@[0; 12)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 12)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 11) "\n"
-      R_CURLY@[11; 12) "}"
+    BLOCK_EXPR@[9; 12)
+      BLOCK@[9; 12)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 11) "\n"
+        R_CURLY@[11; 12) "}"
 "#
             .trim()
         );
@@ -292,10 +296,11 @@ SOURCE_FILE@[0; 12)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 12)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 11) "\n"
-      R_CURLY@[11; 12) "}"
+    BLOCK_EXPR@[9; 12)
+      BLOCK@[9; 12)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 11) "\n"
+        R_CURLY@[11; 12) "}"
 "#
             .trim()
         );
@@ -325,10 +330,11 @@ SOURCE_FILE@[0; 25)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 12)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 11) "\n"
-      R_CURLY@[11; 12) "}"
+    BLOCK_EXPR@[9; 12)
+      BLOCK@[9; 12)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 11) "\n"
+        R_CURLY@[11; 12) "}"
   WHITESPACE@[12; 13) "\n"
   FN_DEF@[13; 25)
     FN_KW@[13; 15) "fn"
@@ -339,10 +345,11 @@ SOURCE_FILE@[0; 25)
       L_PAREN@[19; 20) "("
       R_PAREN@[20; 21) ")"
     WHITESPACE@[21; 22) " "
-    BLOCK@[22; 25)
-      L_CURLY@[22; 23) "{"
-      WHITESPACE@[23; 24) "\n"
-      R_CURLY@[24; 25) "}"
+    BLOCK_EXPR@[22; 25)
+      BLOCK@[22; 25)
+        L_CURLY@[22; 23) "{"
+        WHITESPACE@[23; 24) "\n"
+        R_CURLY@[24; 25) "}"
 "#
             .trim()
         );
