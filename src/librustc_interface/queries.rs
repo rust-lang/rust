@@ -6,6 +6,7 @@ use rustc::session::config::OutputFilenames;
 use rustc::util::common::{time, ErrorReported};
 use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::middle::cstore;
 use rustc::ty::steal::Steal;
 use rustc::dep_graph::DepGraph;
 use std::any::Any;
@@ -83,6 +84,7 @@ pub(crate) struct Queries {
     codegen_channel: Query<(Steal<mpsc::Sender<Box<dyn Any + Send>>>,
                             Steal<mpsc::Receiver<Box<dyn Any + Send>>>)>,
     global_ctxt: Query<BoxedGlobalCtxt>,
+    do_metadata: Query<(cstore::EncodedMetadata, bool)>,
     codegen_and_link: Query<()>,
 }
 
@@ -237,10 +239,23 @@ impl Compiler {
         })
     }
 
+    pub fn do_metadata(&self, abort_if_errors: bool)
+                       -> Result<&Query<(cstore::EncodedMetadata, bool)>> {
+        self.queries.do_metadata.compute(|| {
+            let outputs = self.prepare_outputs()?;
+            Ok(self.global_ctxt()?.peek_mut().enter(|tcx| {
+                passes::do_metadata(tcx, &*outputs.peek(), abort_if_errors)
+            }))
+        })
+    }
+
     pub fn codegen_and_link(&self) -> Result<&Query<()>> {
         self.queries.codegen_and_link.compute(|| {
             let rx = self.codegen_channel()?.peek().1.steal();
             let outputs = self.prepare_outputs()?;
+            let (metadata, need_metadata_module) =
+                self.do_metadata(/* abort_if_errors */ true)?.take();
+
             let ongoing_codegen = self.global_ctxt()?.peek_mut().enter(|tcx| {
                 tcx.analysis(LOCAL_CRATE).ok();
 
@@ -251,6 +266,8 @@ impl Compiler {
                     &***self.codegen_backend(),
                     tcx,
                     rx,
+                    metadata,
+                    need_metadata_module,
                     &*outputs.peek()
                 ))
             })?;

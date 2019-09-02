@@ -347,6 +347,11 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
+        // We want metadata generation to be as early as possible, i.e. before
+        // the analysis phases, to maximize pipelining opportunities. But wait
+        // until after the analysis phases to abort if there are errors.
+        compiler.do_metadata(/* abort_if_errors */ false)?;
+
         if sess.opts.debugging_opts.save_analysis {
             let expanded_crate = &compiler.expansion()?.peek().0;
             let crate_name = compiler.crate_name()?.peek().clone();
@@ -374,6 +379,8 @@ pub fn run_compiler(
         }
 
         compiler.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
+
+        sess.abort_if_errors();
 
         if callbacks.after_analysis(compiler) == Compilation::Stop {
             return sess.compile_status();

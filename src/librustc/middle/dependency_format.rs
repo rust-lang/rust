@@ -81,14 +81,16 @@ pub enum Linkage {
     Dynamic,
 }
 
-pub fn calculate(tcx: TyCtxt<'_>) {
+pub fn calculate(tcx: TyCtxt<'_>, abort_if_errors: bool) {
     let sess = &tcx.sess;
     let fmts = sess.crate_types.borrow().iter().map(|&ty| {
         let linkage = calculate_type(tcx, ty);
         verify_ok(tcx, &linkage);
         (ty, linkage)
     }).collect::<FxHashMap<_, _>>();
-    sess.abort_if_errors();
+    if abort_if_errors {
+        sess.abort_if_errors();
+    }
     sess.dependency_formats.set(fmts);
 }
 

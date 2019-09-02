@@ -1077,26 +1077,35 @@ fn encode_and_write_metadata(
     (metadata, need_metadata_module)
 }
 
+/// Do metadata generation.
+pub fn do_metadata<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    outputs: &OutputFilenames,
+    abort_if_errors: bool,
+) -> (middle::cstore::EncodedMetadata, bool) {
+    time(tcx.sess, "resolving dependency formats", || {
+        middle::dependency_format::calculate(tcx, abort_if_errors)
+    });
+
+    time(tcx.sess, "metadata encoding and writing", || {
+        encode_and_write_metadata(tcx, outputs)
+    })
+}
+
 /// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>,
+    metadata: middle::cstore::EncodedMetadata,
+    need_metadata_module: bool,
     outputs: &OutputFilenames,
 ) -> Box<dyn Any> {
     if log_enabled!(::log::Level::Info) {
         println!("Pre-codegen");
         tcx.print_debug_stats();
     }
-
-    time(tcx.sess, "resolving dependency formats", || {
-        middle::dependency_format::calculate(tcx)
-    });
-
-    let (metadata, need_metadata_module) = time(tcx.sess, "metadata encoding and writing", || {
-        encode_and_write_metadata(tcx, outputs)
-    });
 
     tcx.sess.profiler(|p| p.start_activity("codegen crate"));
     let codegen = time(tcx.sess, "codegen", move || {
