@@ -157,6 +157,10 @@ where
         // crate root, even if the parent modules is **not** visible.
         if export {
             self.update(self.def_map.root, None, &[(name.clone(), def.clone())]);
+
+            // Exported macros are collected in crate level ready for
+            // glob import with `#[macro_use]`.
+            self.def_map.exported_macros.insert(name.clone(), macro_id);
         }
         self.update(module_id, None, &[(name.clone(), def)]);
         self.global_macro_scope.insert(name, macro_id);
@@ -295,20 +299,18 @@ where
                         }
                     }
 
-                    // `#[macro_use] extern crate` glob import macros
+                    // `#[macro_use] extern crate` glob imports all macros exported,
+                    // ignoring their scopes
                     if import.is_extern_crate && import.is_macro_use {
                         if let Some(ModuleDef::Module(m)) =
                             def.a().and_then(|item| item.take_types())
                         {
-                            let item_map = self.db.crate_def_map(m.krate);
-                            let scope = &item_map[m.module_id].scope;
-                            let macros = scope
-                                .macros
-                                .iter()
-                                .map(|(name, res)| (name.clone(), Either::B(*res)))
-                                .collect::<Vec<_>>();
+                            tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
 
-                            self.update(module_id, Some(import_id), &macros);
+                            let item_map = self.db.crate_def_map(m.krate);
+                            for (name, &macro_id) in &item_map.exported_macros {
+                                self.define_macro(module_id, name.clone(), macro_id, false);
+                            }
                         }
                     }
 
@@ -877,6 +879,7 @@ mod tests {
                 root,
                 modules,
                 poison_macros: FxHashSet::default(),
+                exported_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };

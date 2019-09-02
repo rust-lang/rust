@@ -101,6 +101,8 @@ pub struct CrateDefMap {
     /// However, do we want to put it as a global variable?
     poison_macros: FxHashSet<MacroDefId>,
 
+    exported_macros: FxHashMap<Name, MacroDefId>,
+
     diagnostics: Vec<DefDiagnostic>,
 }
 
@@ -245,6 +247,7 @@ impl CrateDefMap {
                 root,
                 modules,
                 poison_macros: FxHashSet::default(),
+                exported_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };
