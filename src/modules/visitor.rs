@@ -43,9 +43,27 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CfgIfVisitor<'a> {
 
 impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
     fn visit_mac_inner(&mut self, mac: &'ast ast::Mac) -> Result<(), &'static str> {
-        if mac.node.path != Symbol::intern("cfg_if") {
-            return Err("Expected cfg_if");
-        }
+        // Support both:
+        // ```
+        // extern crate cfg_if;
+        // cfg_if::cfg_if! {..}
+        // ```
+        // And:
+        // ```
+        // #[macro_use]
+        // extern crate cfg_if;
+        // cfg_if! {..}
+        // ```
+        match mac.node.path.segments.first() {
+            Some(first_segment) => {
+                if first_segment.ident.name != Symbol::intern("cfg_if") {
+                    return Err("Expected cfg_if");
+                }
+            }
+            None => {
+                return Err("Expected cfg_if");
+            }
+        };
 
         let mut parser = stream_to_parser_with_base_dir(
             self.parse_sess,

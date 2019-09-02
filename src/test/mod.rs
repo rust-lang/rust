@@ -30,6 +30,9 @@ const SKIP_FILE_WHITE_LIST: &[&str] = &[
     // These files and directory are a part of modules defined inside `cfg_if!`.
     "cfg_if/mod.rs",
     "cfg_if/detect",
+    "issue-3253/foo.rs",
+    "issue-3253/bar.rs",
+    "issue-3253/paths",
     // These files and directory are a part of modules defined inside `cfg_attr(..)`.
     "cfg_mod/dir",
     "cfg_mod/bar.rs",
