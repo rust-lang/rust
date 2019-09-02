@@ -1,5 +1,5 @@
 [workspace]
-members = [ "crates/*" ]
+members = [ "crates/*", "website/website-gen" ]
 
 [profile.release]
 incremental = true

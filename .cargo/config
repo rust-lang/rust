@@ -5,6 +5,8 @@ gen-syntax   = "run --package ra_tools --bin ra_tools -- gen-syntax"
 # Extracts the tests from
 gen-tests    = "run --package ra_tools --bin ra_tools -- gen-tests"
 
+build-website = "run --package website-gen"
+
 # Installs the visual studio code extension
 install-ra   = "run --package ra_tools --bin ra_tools -- install-ra"
 install-code = "run --package ra_tools --bin ra_tools -- install-ra" # just an alias
