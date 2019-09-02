@@ -61,11 +61,8 @@ pub(crate) mod fragments {
         let _ = expressions::expr(p);
     }
 
-    pub(crate) fn stmt(p: &mut Parser, with_semi: bool) {
-        let with_semi =
-            if with_semi { expressions::StmtWithSemi::Yes } else { expressions::StmtWithSemi::No };
-
-        expressions::stmt(p, with_semi)
+    pub(crate) fn stmt(p: &mut Parser) {
+        expressions::stmt(p, expressions::StmtWithSemi::No)
     }
 
     pub(crate) fn opt_visibility(p: &mut Parser) {

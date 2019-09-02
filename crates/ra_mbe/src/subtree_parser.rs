@@ -1,6 +1,6 @@
 use crate::subtree_source::SubtreeTokenSource;
 
-use ra_parser::{TokenSource, TreeSink};
+use ra_parser::{FragmentKind, TokenSource, TreeSink};
 use ra_syntax::SyntaxKind;
 use tt::buffer::{Cursor, TokenBuffer};
 
@@ -52,40 +52,10 @@ impl<'a> Parser<'a> {
         Parser { cur_pos, subtree }
     }
 
-    pub fn parse_path(self) -> Option<tt::TokenTree> {
-        self.parse(ra_parser::parse_path)
-    }
-
-    pub fn parse_expr(self) -> Option<tt::TokenTree> {
-        self.parse(ra_parser::parse_expr)
-    }
-
-    pub fn parse_ty(self) -> Option<tt::TokenTree> {
-        self.parse(ra_parser::parse_ty)
-    }
-
-    pub fn parse_pat(self) -> Option<tt::TokenTree> {
-        self.parse(ra_parser::parse_pat)
-    }
-
-    pub fn parse_stmt(self) -> Option<tt::TokenTree> {
-        self.parse(|src, sink| ra_parser::parse_stmt(src, sink, false))
-    }
-
-    pub fn parse_block(self) -> Option<tt::TokenTree> {
-        self.parse(ra_parser::parse_block)
-    }
-
-    pub fn parse_meta(self) -> Option<tt::TokenTree> {
-        self.parse(ra_parser::parse_meta)
-    }
-
-    pub fn parse_item(self) -> Option<tt::TokenTree> {
-        self.parse(ra_parser::parse_item)
-    }
-
-    pub fn parse_vis(self) -> Option<tt::TokenTree> {
-        self.parse(ra_parser::parse_vis)
+    pub fn parse_fragment(self, fragment_kind: FragmentKind) -> Option<tt::TokenTree> {
+        self.parse(|token_source, tree_skink| {
+            ra_parser::parse_fragment(token_source, tree_skink, fragment_kind)
+        })
     }
 
     fn parse<F>(self, f: F) -> Option<tt::TokenTree>

@@ -1,4 +1,7 @@
-use ra_parser::{ParseError, TreeSink};
+use ra_parser::{
+    FragmentKind::{self, *},
+    ParseError, TreeSink,
+};
 use ra_syntax::{
     ast, AstNode, AstToken, NodeOrToken, Parse, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxNode,
     SyntaxTreeBuilder, TextRange, TextUnit, T,
@@ -63,33 +66,50 @@ where
     Ok(parse)
 }
 
+fn fragment_to_syntax_node(
+    tt: &tt::Subtree,
+    fragment_kind: FragmentKind,
+) -> Result<Parse<SyntaxNode>, ExpandError> {
+    let tokens = [tt.clone().into()];
+    let buffer = TokenBuffer::new(&tokens);
+    let mut token_source = SubtreeTokenSource::new(&buffer);
+    let mut tree_sink = TtTreeSink::new(buffer.begin());
+    ra_parser::parse_fragment(&mut token_source, &mut tree_sink, fragment_kind);
+    if tree_sink.roots.len() != 1 {
+        return Err(ExpandError::ConversionError);
+    }
+    //FIXME: would be cool to report errors
+    let parse = tree_sink.inner.finish();
+    Ok(parse)
+}
+
 /// Parses the token tree (result of macro expansion) to an expression
 pub fn token_tree_to_expr(tt: &tt::Subtree) -> Result<Parse<ast::Expr>, ExpandError> {
-    let parse = token_tree_to_syntax_node(tt, ra_parser::parse_expr)?;
+    let parse = fragment_to_syntax_node(tt, Expr)?;
     parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
 }
 
 /// Parses the token tree (result of macro expansion) to a Pattern
 pub fn token_tree_to_pat(tt: &tt::Subtree) -> Result<Parse<ast::Pat>, ExpandError> {
-    let parse = token_tree_to_syntax_node(tt, ra_parser::parse_pat)?;
+    let parse = fragment_to_syntax_node(tt, Pattern)?;
     parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
 }
 
 /// Parses the token tree (result of macro expansion) to a Type
 pub fn token_tree_to_ty(tt: &tt::Subtree) -> Result<Parse<ast::TypeRef>, ExpandError> {
-    let parse = token_tree_to_syntax_node(tt, ra_parser::parse_ty)?;
+    let parse = fragment_to_syntax_node(tt, Type)?;
     parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
 }
 
 /// Parses the token tree (result of macro expansion) as a sequence of stmts
 pub fn token_tree_to_macro_stmts(tt: &tt::Subtree) -> Result<Parse<ast::MacroStmts>, ExpandError> {
-    let parse = token_tree_to_syntax_node(tt, ra_parser::parse_macro_stmts)?;
+    let parse = fragment_to_syntax_node(tt, Statements)?;
     parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
 }
 
 /// Parses the token tree (result of macro expansion) as a sequence of items
 pub fn token_tree_to_macro_items(tt: &tt::Subtree) -> Result<Parse<ast::MacroItems>, ExpandError> {
-    let parse = token_tree_to_syntax_node(tt, ra_parser::parse_macro_items)?;
+    let parse = fragment_to_syntax_node(tt, Items)?;
     parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
 }
 
