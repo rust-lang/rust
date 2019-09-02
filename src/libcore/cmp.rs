@@ -638,6 +638,22 @@ impl PartialOrd for Ordering {
     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
         (*self as i32).partial_cmp(&(*other as i32))
     }
+    #[inline]
+    fn lt(&self, other: &Ordering) -> bool {
+        (*self as i32).lt(&(*other as i32))
+    }
+    #[inline]
+    fn le(&self, other: &Ordering) -> bool {
+        (*self as i32).le(&(*other as i32))
+    }
+    #[inline]
+    fn gt(&self, other: &Ordering) -> bool {
+        (*self as i32).gt(&(*other as i32))
+    }
+    #[inline]
+    fn ge(&self, other: &Ordering) -> bool {
+        (*self as i32).ge(&(*other as i32))
+    }
 }
 
 /// Trait for values that can be compared for a sort-order.
@@ -1012,11 +1028,14 @@ mod impls {
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
-                    // The order here is important to generate more optimal assembly.
-                    // See <https://github.com/rust-lang/rust/issues/63758> for more info.
-                    if *self < *other { Less }
-                    else if *self == *other { Equal }
-                    else { Greater }
+                    // Like in `signum`, this approach allows the result to be
+                    // computed with a simpler subtraction instead of needing a
+                    // conditional move (which, as of 2018 x86 hardware, are never
+                    // predicted), for a small cycles & code size improvement.
+                    // See <https://github.com/rust-lang/rust/pull/64082> for more info.
+                    let diff = (*self > *other) as i8 - (*self < *other) as i8;
+                    // Sound because Ordering's three variants are {-1, 0, 1}.
+                    unsafe { crate::mem::transmute(diff) }
                 }
             }
         )*)
