@@ -8,48 +8,50 @@ SOURCE_FILE@[0; 48)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 47)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 14) "\n   "
-      EXPR_STMT@[14; 25)
-        ATTR@[14; 18)
-          POUND@[14; 15) "#"
-          TOKEN_TREE@[15; 18)
-            L_BRACK@[15; 16) "["
-            IDENT@[16; 17) "A"
-            R_BRACK@[17; 18) "]"
-        WHITESPACE@[18; 19) " "
-        BIN_EXPR@[19; 24)
-          LITERAL@[19; 20)
-            INT_NUMBER@[19; 20) "1"
-          WHITESPACE@[20; 21) " "
-          PLUS@[21; 22) "+"
-          WHITESPACE@[22; 23) " "
-          LITERAL@[23; 24)
-            INT_NUMBER@[23; 24) "2"
-        SEMI@[24; 25) ";"
-      WHITESPACE@[25; 29) "\n   "
-      EXPR_STMT@[29; 45)
-        ATTR@[29; 33)
-          POUND@[29; 30) "#"
-          TOKEN_TREE@[30; 33)
-            L_BRACK@[30; 31) "["
-            IDENT@[31; 32) "B"
-            R_BRACK@[32; 33) "]"
-        WHITESPACE@[33; 34) " "
-        IF_EXPR@[34; 44)
-          IF_KW@[34; 36) "if"
-          WHITESPACE@[36; 37) " "
-          CONDITION@[37; 41)
-            LITERAL@[37; 41)
-              TRUE_KW@[37; 41) "true"
-          WHITESPACE@[41; 42) " "
-          BLOCK@[42; 44)
-            L_CURLY@[42; 43) "{"
-            R_CURLY@[43; 44) "}"
-        SEMI@[44; 45) ";"
-      WHITESPACE@[45; 46) "\n"
-      R_CURLY@[46; 47) "}"
+    BLOCK_EXPR@[9; 47)
+      BLOCK@[9; 47)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 14) "\n   "
+        EXPR_STMT@[14; 25)
+          ATTR@[14; 18)
+            POUND@[14; 15) "#"
+            TOKEN_TREE@[15; 18)
+              L_BRACK@[15; 16) "["
+              IDENT@[16; 17) "A"
+              R_BRACK@[17; 18) "]"
+          WHITESPACE@[18; 19) " "
+          BIN_EXPR@[19; 24)
+            LITERAL@[19; 20)
+              INT_NUMBER@[19; 20) "1"
+            WHITESPACE@[20; 21) " "
+            PLUS@[21; 22) "+"
+            WHITESPACE@[22; 23) " "
+            LITERAL@[23; 24)
+              INT_NUMBER@[23; 24) "2"
+          SEMI@[24; 25) ";"
+        WHITESPACE@[25; 29) "\n   "
+        EXPR_STMT@[29; 45)
+          ATTR@[29; 33)
+            POUND@[29; 30) "#"
+            TOKEN_TREE@[30; 33)
+              L_BRACK@[30; 31) "["
+              IDENT@[31; 32) "B"
+              R_BRACK@[32; 33) "]"
+          WHITESPACE@[33; 34) " "
+          IF_EXPR@[34; 44)
+            IF_KW@[34; 36) "if"
+            WHITESPACE@[36; 37) " "
+            CONDITION@[37; 41)
+              LITERAL@[37; 41)
+                TRUE_KW@[37; 41) "true"
+            WHITESPACE@[41; 42) " "
+            BLOCK_EXPR@[42; 44)
+              BLOCK@[42; 44)
+                L_CURLY@[42; 43) "{"
+                R_CURLY@[43; 44) "}"
+          SEMI@[44; 45) ";"
+        WHITESPACE@[45; 46) "\n"
+        R_CURLY@[46; 47) "}"
   WHITESPACE@[47; 48) "\n"
 error 24: attributes are not allowed on BIN_EXPR
 error 44: attributes are not allowed on IF_EXPR

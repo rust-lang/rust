@@ -8,82 +8,83 @@ SOURCE_FILE@[0; 89)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 88)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 25)
-        CAST_EXPR@[15; 24)
-          LITERAL@[15; 17)
-            INT_NUMBER@[15; 17) "82"
-          WHITESPACE@[17; 18) " "
-          AS_KW@[18; 20) "as"
-          WHITESPACE@[20; 21) " "
-          PATH_TYPE@[21; 24)
-            PATH@[21; 24)
-              PATH_SEGMENT@[21; 24)
-                NAME_REF@[21; 24)
-                  IDENT@[21; 24) "i32"
-        SEMI@[24; 25) ";"
-      WHITESPACE@[25; 30) "\n    "
-      EXPR_STMT@[30; 43)
-        BIN_EXPR@[30; 42)
-          CAST_EXPR@[30; 38)
-            LITERAL@[30; 32)
-              INT_NUMBER@[30; 32) "81"
-            WHITESPACE@[32; 33) " "
-            AS_KW@[33; 35) "as"
-            WHITESPACE@[35; 36) " "
-            PATH_TYPE@[36; 38)
-              PATH@[36; 38)
-                PATH_SEGMENT@[36; 38)
-                  NAME_REF@[36; 38)
-                    IDENT@[36; 38) "i8"
-          WHITESPACE@[38; 39) " "
-          PLUS@[39; 40) "+"
-          WHITESPACE@[40; 41) " "
-          LITERAL@[41; 42)
-            INT_NUMBER@[41; 42) "1"
-        SEMI@[42; 43) ";"
-      WHITESPACE@[43; 48) "\n    "
-      EXPR_STMT@[48; 62)
-        BIN_EXPR@[48; 61)
-          CAST_EXPR@[48; 57)
-            LITERAL@[48; 50)
-              INT_NUMBER@[48; 50) "79"
-            WHITESPACE@[50; 51) " "
-            AS_KW@[51; 53) "as"
-            WHITESPACE@[53; 54) " "
-            PATH_TYPE@[54; 57)
-              PATH@[54; 57)
-                PATH_SEGMENT@[54; 57)
-                  NAME_REF@[54; 57)
-                    IDENT@[54; 57) "i16"
-          WHITESPACE@[57; 58) " "
-          MINUS@[58; 59) "-"
-          WHITESPACE@[59; 60) " "
-          LITERAL@[60; 61)
-            INT_NUMBER@[60; 61) "1"
-        SEMI@[61; 62) ";"
-      WHITESPACE@[62; 67) "\n    "
-      EXPR_STMT@[67; 86)
-        BIN_EXPR@[67; 85)
-          CAST_EXPR@[67; 77)
-            LITERAL@[67; 71)
-              INT_NUMBER@[67; 71) "0x36"
-            WHITESPACE@[71; 72) " "
-            AS_KW@[72; 74) "as"
-            WHITESPACE@[74; 75) " "
-            PATH_TYPE@[75; 77)
-              PATH@[75; 77)
-                PATH_SEGMENT@[75; 77)
-                  NAME_REF@[75; 77)
-                    IDENT@[75; 77) "u8"
-          WHITESPACE@[77; 78) " "
-          LTEQ@[78; 80) "<="
-          WHITESPACE@[80; 81) " "
-          LITERAL@[81; 85)
-            INT_NUMBER@[81; 85) "0x37"
-        SEMI@[85; 86) ";"
-      WHITESPACE@[86; 87) "\n"
-      R_CURLY@[87; 88) "}"
+    BLOCK_EXPR@[9; 88)
+      BLOCK@[9; 88)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 25)
+          CAST_EXPR@[15; 24)
+            LITERAL@[15; 17)
+              INT_NUMBER@[15; 17) "82"
+            WHITESPACE@[17; 18) " "
+            AS_KW@[18; 20) "as"
+            WHITESPACE@[20; 21) " "
+            PATH_TYPE@[21; 24)
+              PATH@[21; 24)
+                PATH_SEGMENT@[21; 24)
+                  NAME_REF@[21; 24)
+                    IDENT@[21; 24) "i32"
+          SEMI@[24; 25) ";"
+        WHITESPACE@[25; 30) "\n    "
+        EXPR_STMT@[30; 43)
+          BIN_EXPR@[30; 42)
+            CAST_EXPR@[30; 38)
+              LITERAL@[30; 32)
+                INT_NUMBER@[30; 32) "81"
+              WHITESPACE@[32; 33) " "
+              AS_KW@[33; 35) "as"
+              WHITESPACE@[35; 36) " "
+              PATH_TYPE@[36; 38)
+                PATH@[36; 38)
+                  PATH_SEGMENT@[36; 38)
+                    NAME_REF@[36; 38)
+                      IDENT@[36; 38) "i8"
+            WHITESPACE@[38; 39) " "
+            PLUS@[39; 40) "+"
+            WHITESPACE@[40; 41) " "
+            LITERAL@[41; 42)
+              INT_NUMBER@[41; 42) "1"
+          SEMI@[42; 43) ";"
+        WHITESPACE@[43; 48) "\n    "
+        EXPR_STMT@[48; 62)
+          BIN_EXPR@[48; 61)
+            CAST_EXPR@[48; 57)
+              LITERAL@[48; 50)
+                INT_NUMBER@[48; 50) "79"
+              WHITESPACE@[50; 51) " "
+              AS_KW@[51; 53) "as"
+              WHITESPACE@[53; 54) " "
+              PATH_TYPE@[54; 57)
+                PATH@[54; 57)
+                  PATH_SEGMENT@[54; 57)
+                    NAME_REF@[54; 57)
+                      IDENT@[54; 57) "i16"
+            WHITESPACE@[57; 58) " "
+            MINUS@[58; 59) "-"
+            WHITESPACE@[59; 60) " "
+            LITERAL@[60; 61)
+              INT_NUMBER@[60; 61) "1"
+          SEMI@[61; 62) ";"
+        WHITESPACE@[62; 67) "\n    "
+        EXPR_STMT@[67; 86)
+          BIN_EXPR@[67; 85)
+            CAST_EXPR@[67; 77)
+              LITERAL@[67; 71)
+                INT_NUMBER@[67; 71) "0x36"
+              WHITESPACE@[71; 72) " "
+              AS_KW@[72; 74) "as"
+              WHITESPACE@[74; 75) " "
+              PATH_TYPE@[75; 77)
+                PATH@[75; 77)
+                  PATH_SEGMENT@[75; 77)
+                    NAME_REF@[75; 77)
+                      IDENT@[75; 77) "u8"
+            WHITESPACE@[77; 78) " "
+            LTEQ@[78; 80) "<="
+            WHITESPACE@[80; 81) " "
+            LITERAL@[81; 85)
+              INT_NUMBER@[81; 85) "0x37"
+          SEMI@[85; 86) ";"
+        WHITESPACE@[86; 87) "\n"
+        R_CURLY@[87; 88) "}"
   WHITESPACE@[88; 89) "\n"

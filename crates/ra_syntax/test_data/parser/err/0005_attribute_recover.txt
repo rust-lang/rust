@@ -25,10 +25,11 @@ SOURCE_FILE@[0; 54)
       L_PAREN@[25; 26) "("
       R_PAREN@[26; 27) ")"
     WHITESPACE@[27; 28) " "
-    BLOCK@[28; 31)
-      L_CURLY@[28; 29) "{"
-      WHITESPACE@[29; 30) "\n"
-      R_CURLY@[30; 31) "}"
+    BLOCK_EXPR@[28; 31)
+      BLOCK@[28; 31)
+        L_CURLY@[28; 29) "{"
+        WHITESPACE@[29; 30) "\n"
+        R_CURLY@[30; 31) "}"
   WHITESPACE@[31; 34) "\n\n\n"
   ATTR@[34; 53)
     POUND@[34; 35) "#"

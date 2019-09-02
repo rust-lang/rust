@@ -8,9 +8,10 @@ SOURCE_FILE@[0; 30)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 11)
-      L_CURLY@[9; 10) "{"
-      R_CURLY@[10; 11) "}"
+    BLOCK_EXPR@[9; 11)
+      BLOCK@[9; 11)
+        L_CURLY@[9; 10) "{"
+        R_CURLY@[10; 11) "}"
   WHITESPACE@[11; 12) "\n"
   FN_DEF@[12; 29)
     FN_KW@[12; 14) "fn"
@@ -28,7 +29,8 @@ SOURCE_FILE@[0; 30)
         L_PAREN@[24; 25) "("
         R_PAREN@[25; 26) ")"
     WHITESPACE@[26; 27) " "
-    BLOCK@[27; 29)
-      L_CURLY@[27; 28) "{"
-      R_CURLY@[28; 29) "}"
+    BLOCK_EXPR@[27; 29)
+      BLOCK@[27; 29)
+        L_CURLY@[27; 28) "{"
+        R_CURLY@[28; 29) "}"
   WHITESPACE@[29; 30) "\n"

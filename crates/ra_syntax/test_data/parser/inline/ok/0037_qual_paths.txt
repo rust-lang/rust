@@ -41,38 +41,39 @@ SOURCE_FILE@[0; 71)
       L_PAREN@[33; 34) "("
       R_PAREN@[34; 35) ")"
     WHITESPACE@[35; 36) " "
-    BLOCK@[36; 70)
-      L_CURLY@[36; 37) "{"
-      WHITESPACE@[37; 38) " "
-      EXPR_STMT@[38; 68)
-        CALL_EXPR@[38; 67)
-          PATH_EXPR@[38; 65)
-            PATH@[38; 65)
-              PATH@[38; 56)
-                PATH_SEGMENT@[38; 56)
-                  L_ANGLE@[38; 39) "<"
-                  PATH_TYPE@[39; 44)
-                    PATH@[39; 44)
-                      PATH_SEGMENT@[39; 44)
-                        NAME_REF@[39; 44)
-                          IDENT@[39; 44) "usize"
-                  WHITESPACE@[44; 45) " "
-                  AS_KW@[45; 47) "as"
-                  WHITESPACE@[47; 48) " "
-                  PATH_TYPE@[48; 55)
-                    PATH@[48; 55)
-                      PATH_SEGMENT@[48; 55)
-                        NAME_REF@[48; 55)
-                          IDENT@[48; 55) "Default"
-                  R_ANGLE@[55; 56) ">"
-              COLONCOLON@[56; 58) "::"
-              PATH_SEGMENT@[58; 65)
-                NAME_REF@[58; 65)
-                  IDENT@[58; 65) "default"
-          ARG_LIST@[65; 67)
-            L_PAREN@[65; 66) "("
-            R_PAREN@[66; 67) ")"
-        SEMI@[67; 68) ";"
-      WHITESPACE@[68; 69) " "
-      R_CURLY@[69; 70) "}"
+    BLOCK_EXPR@[36; 70)
+      BLOCK@[36; 70)
+        L_CURLY@[36; 37) "{"
+        WHITESPACE@[37; 38) " "
+        EXPR_STMT@[38; 68)
+          CALL_EXPR@[38; 67)
+            PATH_EXPR@[38; 65)
+              PATH@[38; 65)
+                PATH@[38; 56)
+                  PATH_SEGMENT@[38; 56)
+                    L_ANGLE@[38; 39) "<"
+                    PATH_TYPE@[39; 44)
+                      PATH@[39; 44)
+                        PATH_SEGMENT@[39; 44)
+                          NAME_REF@[39; 44)
+                            IDENT@[39; 44) "usize"
+                    WHITESPACE@[44; 45) " "
+                    AS_KW@[45; 47) "as"
+                    WHITESPACE@[47; 48) " "
+                    PATH_TYPE@[48; 55)
+                      PATH@[48; 55)
+                        PATH_SEGMENT@[48; 55)
+                          NAME_REF@[48; 55)
+                            IDENT@[48; 55) "Default"
+                    R_ANGLE@[55; 56) ">"
+                COLONCOLON@[56; 58) "::"
+                PATH_SEGMENT@[58; 65)
+                  NAME_REF@[58; 65)
+                    IDENT@[58; 65) "default"
+            ARG_LIST@[65; 67)
+              L_PAREN@[65; 66) "("
+              R_PAREN@[66; 67) ")"
+          SEMI@[67; 68) ";"
+        WHITESPACE@[68; 69) " "
+        R_CURLY@[69; 70) "}"
   WHITESPACE@[70; 71) "\n"

@@ -8,28 +8,30 @@ SOURCE_FILE@[0; 69)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 68)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      LOOP_EXPR@[15; 66)
-        LOOP_KW@[15; 19) "loop"
-        WHITESPACE@[19; 20) " "
-        BLOCK@[20; 66)
-          L_CURLY@[20; 21) "{"
-          WHITESPACE@[21; 30) "\n        "
-          EXPR_STMT@[30; 39)
-            CONTINUE_EXPR@[30; 38)
-              CONTINUE_KW@[30; 38) "continue"
-            SEMI@[38; 39) ";"
-          WHITESPACE@[39; 48) "\n        "
-          EXPR_STMT@[48; 60)
-            CONTINUE_EXPR@[48; 59)
-              CONTINUE_KW@[48; 56) "continue"
-              WHITESPACE@[56; 57) " "
-              LIFETIME@[57; 59) "\'l"
-            SEMI@[59; 60) ";"
-          WHITESPACE@[60; 65) "\n    "
-          R_CURLY@[65; 66) "}"
-      WHITESPACE@[66; 67) "\n"
-      R_CURLY@[67; 68) "}"
+    BLOCK_EXPR@[9; 68)
+      BLOCK@[9; 68)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        LOOP_EXPR@[15; 66)
+          LOOP_KW@[15; 19) "loop"
+          WHITESPACE@[19; 20) " "
+          BLOCK_EXPR@[20; 66)
+            BLOCK@[20; 66)
+              L_CURLY@[20; 21) "{"
+              WHITESPACE@[21; 30) "\n        "
+              EXPR_STMT@[30; 39)
+                CONTINUE_EXPR@[30; 38)
+                  CONTINUE_KW@[30; 38) "continue"
+                SEMI@[38; 39) ";"
+              WHITESPACE@[39; 48) "\n        "
+              EXPR_STMT@[48; 60)
+                CONTINUE_EXPR@[48; 59)
+                  CONTINUE_KW@[48; 56) "continue"
+                  WHITESPACE@[56; 57) " "
+                  LIFETIME@[57; 59) "\'l"
+                SEMI@[59; 60) ";"
+              WHITESPACE@[60; 65) "\n    "
+              R_CURLY@[65; 66) "}"
+        WHITESPACE@[66; 67) "\n"
+        R_CURLY@[67; 68) "}"
   WHITESPACE@[68; 69) "\n"

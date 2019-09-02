@@ -8,52 +8,53 @@ SOURCE_FILE@[0; 48)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 47)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 21)
-        FIELD_EXPR@[15; 20)
-          PATH_EXPR@[15; 16)
-            PATH@[15; 16)
-              PATH_SEGMENT@[15; 16)
-                NAME_REF@[15; 16)
-                  IDENT@[15; 16) "x"
-          DOT@[16; 17) "."
-          NAME_REF@[17; 20)
-            IDENT@[17; 20) "foo"
-        SEMI@[20; 21) ";"
-      WHITESPACE@[21; 26) "\n    "
-      EXPR_STMT@[26; 34)
-        FIELD_EXPR@[26; 33)
-          FIELD_EXPR@[26; 29)
-            PATH_EXPR@[26; 27)
-              PATH@[26; 27)
-                PATH_SEGMENT@[26; 27)
-                  NAME_REF@[26; 27)
-                    IDENT@[26; 27) "x"
-            DOT@[27; 28) "."
-            NAME_REF@[28; 29)
-              INT_NUMBER@[28; 29) "0"
-          DOT@[29; 30) "."
-          NAME_REF@[30; 33)
-            IDENT@[30; 33) "bar"
-        SEMI@[33; 34) ";"
-      WHITESPACE@[34; 39) "\n    "
-      EXPR_STMT@[39; 45)
-        CALL_EXPR@[39; 44)
-          FIELD_EXPR@[39; 42)
-            PATH_EXPR@[39; 40)
-              PATH@[39; 40)
-                PATH_SEGMENT@[39; 40)
-                  NAME_REF@[39; 40)
-                    IDENT@[39; 40) "x"
-            DOT@[40; 41) "."
-            NAME_REF@[41; 42)
-              INT_NUMBER@[41; 42) "0"
-          ARG_LIST@[42; 44)
-            L_PAREN@[42; 43) "("
-            R_PAREN@[43; 44) ")"
-        SEMI@[44; 45) ";"
-      WHITESPACE@[45; 46) "\n"
-      R_CURLY@[46; 47) "}"
+    BLOCK_EXPR@[9; 47)
+      BLOCK@[9; 47)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 21)
+          FIELD_EXPR@[15; 20)
+            PATH_EXPR@[15; 16)
+              PATH@[15; 16)
+                PATH_SEGMENT@[15; 16)
+                  NAME_REF@[15; 16)
+                    IDENT@[15; 16) "x"
+            DOT@[16; 17) "."
+            NAME_REF@[17; 20)
+              IDENT@[17; 20) "foo"
+          SEMI@[20; 21) ";"
+        WHITESPACE@[21; 26) "\n    "
+        EXPR_STMT@[26; 34)
+          FIELD_EXPR@[26; 33)
+            FIELD_EXPR@[26; 29)
+              PATH_EXPR@[26; 27)
+                PATH@[26; 27)
+                  PATH_SEGMENT@[26; 27)
+                    NAME_REF@[26; 27)
+                      IDENT@[26; 27) "x"
+              DOT@[27; 28) "."
+              NAME_REF@[28; 29)
+                INT_NUMBER@[28; 29) "0"
+            DOT@[29; 30) "."
+            NAME_REF@[30; 33)
+              IDENT@[30; 33) "bar"
+          SEMI@[33; 34) ";"
+        WHITESPACE@[34; 39) "\n    "
+        EXPR_STMT@[39; 45)
+          CALL_EXPR@[39; 44)
+            FIELD_EXPR@[39; 42)
+              PATH_EXPR@[39; 40)
+                PATH@[39; 40)
+                  PATH_SEGMENT@[39; 40)
+                    NAME_REF@[39; 40)
+                      IDENT@[39; 40) "x"
+              DOT@[40; 41) "."
+              NAME_REF@[41; 42)
+                INT_NUMBER@[41; 42) "0"
+            ARG_LIST@[42; 44)
+              L_PAREN@[42; 43) "("
+              R_PAREN@[43; 44) ")"
+          SEMI@[44; 45) ";"
+        WHITESPACE@[45; 46) "\n"
+        R_CURLY@[46; 47) "}"
   WHITESPACE@[47; 48) "\n"

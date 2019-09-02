@@ -7,50 +7,51 @@ SOURCE_FILE@[0; 50)
     PARAM_LIST@[6; 8)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
-    BLOCK@[8; 49)
-      L_CURLY@[8; 9) "{"
-      WHITESPACE@[9; 14) "\n    "
-      SEMI@[14; 15) ";"
-      SEMI@[15; 16) ";"
-      SEMI@[16; 17) ";"
-      EXPR_STMT@[17; 29)
-        CALL_EXPR@[17; 28)
-          PATH_EXPR@[17; 26)
-            PATH@[17; 26)
-              PATH_SEGMENT@[17; 26)
-                NAME_REF@[17; 26)
-                  IDENT@[17; 26) "some_expr"
-          ARG_LIST@[26; 28)
-            L_PAREN@[26; 27) "("
-            R_PAREN@[27; 28) ")"
-        SEMI@[28; 29) ";"
-      SEMI@[29; 30) ";"
-      SEMI@[30; 31) ";"
-      SEMI@[31; 32) ";"
-      EXPR_STMT@[32; 38)
-        BLOCK_EXPR@[32; 37)
-          BLOCK@[32; 37)
-            L_CURLY@[32; 33) "{"
-            SEMI@[33; 34) ";"
-            SEMI@[34; 35) ";"
-            SEMI@[35; 36) ";"
-            R_CURLY@[36; 37) "}"
-        SEMI@[37; 38) ";"
-      SEMI@[38; 39) ";"
-      SEMI@[39; 40) ";"
-      SEMI@[40; 41) ";"
-      CALL_EXPR@[41; 47)
-        PATH_EXPR@[41; 43)
-          PATH@[41; 43)
-            PATH_SEGMENT@[41; 43)
-              NAME_REF@[41; 43)
-                IDENT@[41; 43) "Ok"
-        ARG_LIST@[43; 47)
-          L_PAREN@[43; 44) "("
-          TUPLE_EXPR@[44; 46)
-            L_PAREN@[44; 45) "("
-            R_PAREN@[45; 46) ")"
-          R_PAREN@[46; 47) ")"
-      WHITESPACE@[47; 48) "\n"
-      R_CURLY@[48; 49) "}"
+    BLOCK_EXPR@[8; 49)
+      BLOCK@[8; 49)
+        L_CURLY@[8; 9) "{"
+        WHITESPACE@[9; 14) "\n    "
+        SEMI@[14; 15) ";"
+        SEMI@[15; 16) ";"
+        SEMI@[16; 17) ";"
+        EXPR_STMT@[17; 29)
+          CALL_EXPR@[17; 28)
+            PATH_EXPR@[17; 26)
+              PATH@[17; 26)
+                PATH_SEGMENT@[17; 26)
+                  NAME_REF@[17; 26)
+                    IDENT@[17; 26) "some_expr"
+            ARG_LIST@[26; 28)
+              L_PAREN@[26; 27) "("
+              R_PAREN@[27; 28) ")"
+          SEMI@[28; 29) ";"
+        SEMI@[29; 30) ";"
+        SEMI@[30; 31) ";"
+        SEMI@[31; 32) ";"
+        EXPR_STMT@[32; 38)
+          BLOCK_EXPR@[32; 37)
+            BLOCK@[32; 37)
+              L_CURLY@[32; 33) "{"
+              SEMI@[33; 34) ";"
+              SEMI@[34; 35) ";"
+              SEMI@[35; 36) ";"
+              R_CURLY@[36; 37) "}"
+          SEMI@[37; 38) ";"
+        SEMI@[38; 39) ";"
+        SEMI@[39; 40) ";"
+        SEMI@[40; 41) ";"
+        CALL_EXPR@[41; 47)
+          PATH_EXPR@[41; 43)
+            PATH@[41; 43)
+              PATH_SEGMENT@[41; 43)
+                NAME_REF@[41; 43)
+                  IDENT@[41; 43) "Ok"
+          ARG_LIST@[43; 47)
+            L_PAREN@[43; 44) "("
+            TUPLE_EXPR@[44; 46)
+              L_PAREN@[44; 45) "("
+              R_PAREN@[45; 46) ")"
+            R_PAREN@[46; 47) ")"
+        WHITESPACE@[47; 48) "\n"
+        R_CURLY@[48; 49) "}"
   WHITESPACE@[49; 50) "\n"

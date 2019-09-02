@@ -39,71 +39,72 @@ SOURCE_FILE@[0; 160)
       L_PAREN@[98; 99) "("
       R_PAREN@[99; 100) ")"
     WHITESPACE@[100; 101) " "
-    BLOCK@[101; 159)
-      L_CURLY@[101; 102) "{"
-      WHITESPACE@[102; 107) "\n    "
-      EXPR_STMT@[107; 136)
-        BIN_EXPR@[107; 135)
-          INDEX_EXPR@[107; 131)
-            FIELD_EXPR@[107; 128)
-              RECORD_LIT@[107; 124)
-                PATH@[107; 111)
-                  PATH_SEGMENT@[107; 111)
-                    NAME_REF@[107; 111)
-                      IDENT@[107; 111) "Repr"
-                WHITESPACE@[111; 112) " "
-                RECORD_FIELD_LIST@[112; 124)
-                  L_CURLY@[112; 113) "{"
-                  WHITESPACE@[113; 114) " "
-                  RECORD_FIELD@[114; 122)
-                    NAME_REF@[114; 117)
-                      IDENT@[114; 117) "raw"
-                    COLON@[117; 118) ":"
-                    WHITESPACE@[118; 119) " "
-                    ARRAY_EXPR@[119; 122)
-                      L_BRACK@[119; 120) "["
-                      LITERAL@[120; 121)
-                        INT_NUMBER@[120; 121) "0"
-                      R_BRACK@[121; 122) "]"
-                  WHITESPACE@[122; 123) " "
-                  R_CURLY@[123; 124) "}"
-              DOT@[124; 125) "."
-              NAME_REF@[125; 128)
-                IDENT@[125; 128) "raw"
-            L_BRACK@[128; 129) "["
-            LITERAL@[129; 130)
-              INT_NUMBER@[129; 130) "0"
-            R_BRACK@[130; 131) "]"
-          WHITESPACE@[131; 132) " "
-          EQ@[132; 133) "="
-          WHITESPACE@[133; 134) " "
-          LITERAL@[134; 135)
-            INT_NUMBER@[134; 135) "0"
-        SEMI@[135; 136) ";"
-      WHITESPACE@[136; 141) "\n    "
-      EXPR_STMT@[141; 157)
-        CALL_EXPR@[141; 156)
-          RECORD_LIT@[141; 154)
-            PATH@[141; 145)
-              PATH_SEGMENT@[141; 145)
-                NAME_REF@[141; 145)
-                  IDENT@[141; 145) "Repr"
-            RECORD_FIELD_LIST@[145; 154)
-              L_CURLY@[145; 146) "{"
-              RECORD_FIELD@[146; 153)
-                NAME_REF@[146; 149)
-                  IDENT@[146; 149) "raw"
-                COLON@[149; 150) ":"
-                ARRAY_EXPR@[150; 153)
-                  L_BRACK@[150; 151) "["
-                  LITERAL@[151; 152)
-                    INT_NUMBER@[151; 152) "0"
-                  R_BRACK@[152; 153) "]"
-              R_CURLY@[153; 154) "}"
-          ARG_LIST@[154; 156)
-            L_PAREN@[154; 155) "("
-            R_PAREN@[155; 156) ")"
-        SEMI@[156; 157) ";"
-      WHITESPACE@[157; 158) "\n"
-      R_CURLY@[158; 159) "}"
+    BLOCK_EXPR@[101; 159)
+      BLOCK@[101; 159)
+        L_CURLY@[101; 102) "{"
+        WHITESPACE@[102; 107) "\n    "
+        EXPR_STMT@[107; 136)
+          BIN_EXPR@[107; 135)
+            INDEX_EXPR@[107; 131)
+              FIELD_EXPR@[107; 128)
+                RECORD_LIT@[107; 124)
+                  PATH@[107; 111)
+                    PATH_SEGMENT@[107; 111)
+                      NAME_REF@[107; 111)
+                        IDENT@[107; 111) "Repr"
+                  WHITESPACE@[111; 112) " "
+                  RECORD_FIELD_LIST@[112; 124)
+                    L_CURLY@[112; 113) "{"
+                    WHITESPACE@[113; 114) " "
+                    RECORD_FIELD@[114; 122)
+                      NAME_REF@[114; 117)
+                        IDENT@[114; 117) "raw"
+                      COLON@[117; 118) ":"
+                      WHITESPACE@[118; 119) " "
+                      ARRAY_EXPR@[119; 122)
+                        L_BRACK@[119; 120) "["
+                        LITERAL@[120; 121)
+                          INT_NUMBER@[120; 121) "0"
+                        R_BRACK@[121; 122) "]"
+                    WHITESPACE@[122; 123) " "
+                    R_CURLY@[123; 124) "}"
+                DOT@[124; 125) "."
+                NAME_REF@[125; 128)
+                  IDENT@[125; 128) "raw"
+              L_BRACK@[128; 129) "["
+              LITERAL@[129; 130)
+                INT_NUMBER@[129; 130) "0"
+              R_BRACK@[130; 131) "]"
+            WHITESPACE@[131; 132) " "
+            EQ@[132; 133) "="
+            WHITESPACE@[133; 134) " "
+            LITERAL@[134; 135)
+              INT_NUMBER@[134; 135) "0"
+          SEMI@[135; 136) ";"
+        WHITESPACE@[136; 141) "\n    "
+        EXPR_STMT@[141; 157)
+          CALL_EXPR@[141; 156)
+            RECORD_LIT@[141; 154)
+              PATH@[141; 145)
+                PATH_SEGMENT@[141; 145)
+                  NAME_REF@[141; 145)
+                    IDENT@[141; 145) "Repr"
+              RECORD_FIELD_LIST@[145; 154)
+                L_CURLY@[145; 146) "{"
+                RECORD_FIELD@[146; 153)
+                  NAME_REF@[146; 149)
+                    IDENT@[146; 149) "raw"
+                  COLON@[149; 150) ":"
+                  ARRAY_EXPR@[150; 153)
+                    L_BRACK@[150; 151) "["
+                    LITERAL@[151; 152)
+                      INT_NUMBER@[151; 152) "0"
+                    R_BRACK@[152; 153) "]"
+                R_CURLY@[153; 154) "}"
+            ARG_LIST@[154; 156)
+              L_PAREN@[154; 155) "("
+              R_PAREN@[155; 156) ")"
+          SEMI@[156; 157) ";"
+        WHITESPACE@[157; 158) "\n"
+        R_CURLY@[158; 159) "}"
   WHITESPACE@[159; 160) "\n"

@@ -8,35 +8,36 @@ SOURCE_FILE@[0; 42)
       L_PAREN@[7; 8) "("
       R_PAREN@[8; 9) ")"
     WHITESPACE@[9; 10) " "
-    BLOCK@[10; 41)
-      L_CURLY@[10; 11) "{"
-      WHITESPACE@[11; 16) "\n    "
-      EXPR_STMT@[16; 39)
-        LAMBDA_EXPR@[16; 38)
-          PARAM_LIST@[16; 18)
-            PIPE@[16; 17) "|"
-            PIPE@[17; 18) "|"
-          WHITESPACE@[18; 19) " "
-          RET_TYPE@[19; 24)
-            THIN_ARROW@[19; 21) "->"
-            WHITESPACE@[21; 22) " "
-            TUPLE_TYPE@[22; 24)
-              L_PAREN@[22; 23) "("
-              R_PAREN@[23; 24) ")"
-          WHITESPACE@[24; 25) " "
-          BLOCK_EXPR@[25; 38)
-            UNSAFE_KW@[25; 31) "unsafe"
-            WHITESPACE@[31; 32) " "
-            BLOCK@[32; 38)
-              L_CURLY@[32; 33) "{"
-              WHITESPACE@[33; 34) " "
-              TUPLE_EXPR@[34; 36)
-                L_PAREN@[34; 35) "("
-                R_PAREN@[35; 36) ")"
-              WHITESPACE@[36; 37) " "
-              R_CURLY@[37; 38) "}"
-        SEMI@[38; 39) ";"
-      WHITESPACE@[39; 40) "\n"
-      R_CURLY@[40; 41) "}"
+    BLOCK_EXPR@[10; 41)
+      BLOCK@[10; 41)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        EXPR_STMT@[16; 39)
+          LAMBDA_EXPR@[16; 38)
+            PARAM_LIST@[16; 18)
+              PIPE@[16; 17) "|"
+              PIPE@[17; 18) "|"
+            WHITESPACE@[18; 19) " "
+            RET_TYPE@[19; 24)
+              THIN_ARROW@[19; 21) "->"
+              WHITESPACE@[21; 22) " "
+              TUPLE_TYPE@[22; 24)
+                L_PAREN@[22; 23) "("
+                R_PAREN@[23; 24) ")"
+            WHITESPACE@[24; 25) " "
+            BLOCK_EXPR@[25; 38)
+              UNSAFE_KW@[25; 31) "unsafe"
+              WHITESPACE@[31; 32) " "
+              BLOCK@[32; 38)
+                L_CURLY@[32; 33) "{"
+                WHITESPACE@[33; 34) " "
+                TUPLE_EXPR@[34; 36)
+                  L_PAREN@[34; 35) "("
+                  R_PAREN@[35; 36) ")"
+                WHITESPACE@[36; 37) " "
+                R_CURLY@[37; 38) "}"
+          SEMI@[38; 39) ";"
+        WHITESPACE@[39; 40) "\n"
+        R_CURLY@[40; 41) "}"
   WHITESPACE@[41; 42) "\n"
 error 24: expected `{`

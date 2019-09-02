@@ -8,62 +8,63 @@ SOURCE_FILE@[0; 67)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 66)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 23)
-        AWAIT_EXPR@[15; 22)
-          PATH_EXPR@[15; 16)
-            PATH@[15; 16)
-              PATH_SEGMENT@[15; 16)
-                NAME_REF@[15; 16)
-                  IDENT@[15; 16) "x"
-          DOT@[16; 17) "."
-          AWAIT_KW@[17; 22) "await"
-        SEMI@[22; 23) ";"
-      WHITESPACE@[23; 28) "\n    "
-      EXPR_STMT@[28; 38)
-        AWAIT_EXPR@[28; 37)
-          FIELD_EXPR@[28; 31)
-            PATH_EXPR@[28; 29)
-              PATH@[28; 29)
-                PATH_SEGMENT@[28; 29)
-                  NAME_REF@[28; 29)
-                    IDENT@[28; 29) "x"
-            DOT@[29; 30) "."
-            NAME_REF@[30; 31)
-              INT_NUMBER@[30; 31) "0"
-          DOT@[31; 32) "."
-          AWAIT_KW@[32; 37) "await"
-        SEMI@[37; 38) ";"
-      WHITESPACE@[38; 43) "\n    "
-      EXPR_STMT@[43; 64)
-        METHOD_CALL_EXPR@[43; 63)
-          TRY_EXPR@[43; 55)
-            AWAIT_EXPR@[43; 54)
-              CALL_EXPR@[43; 48)
-                FIELD_EXPR@[43; 46)
-                  PATH_EXPR@[43; 44)
-                    PATH@[43; 44)
-                      PATH_SEGMENT@[43; 44)
-                        NAME_REF@[43; 44)
-                          IDENT@[43; 44) "x"
-                  DOT@[44; 45) "."
-                  NAME_REF@[45; 46)
-                    INT_NUMBER@[45; 46) "0"
-                ARG_LIST@[46; 48)
-                  L_PAREN@[46; 47) "("
-                  R_PAREN@[47; 48) ")"
-              DOT@[48; 49) "."
-              AWAIT_KW@[49; 54) "await"
-            QUESTION@[54; 55) "?"
-          DOT@[55; 56) "."
-          NAME_REF@[56; 61)
-            IDENT@[56; 61) "hello"
-          ARG_LIST@[61; 63)
-            L_PAREN@[61; 62) "("
-            R_PAREN@[62; 63) ")"
-        SEMI@[63; 64) ";"
-      WHITESPACE@[64; 65) "\n"
-      R_CURLY@[65; 66) "}"
+    BLOCK_EXPR@[9; 66)
+      BLOCK@[9; 66)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 23)
+          AWAIT_EXPR@[15; 22)
+            PATH_EXPR@[15; 16)
+              PATH@[15; 16)
+                PATH_SEGMENT@[15; 16)
+                  NAME_REF@[15; 16)
+                    IDENT@[15; 16) "x"
+            DOT@[16; 17) "."
+            AWAIT_KW@[17; 22) "await"
+          SEMI@[22; 23) ";"
+        WHITESPACE@[23; 28) "\n    "
+        EXPR_STMT@[28; 38)
+          AWAIT_EXPR@[28; 37)
+            FIELD_EXPR@[28; 31)
+              PATH_EXPR@[28; 29)
+                PATH@[28; 29)
+                  PATH_SEGMENT@[28; 29)
+                    NAME_REF@[28; 29)
+                      IDENT@[28; 29) "x"
+              DOT@[29; 30) "."
+              NAME_REF@[30; 31)
+                INT_NUMBER@[30; 31) "0"
+            DOT@[31; 32) "."
+            AWAIT_KW@[32; 37) "await"
+          SEMI@[37; 38) ";"
+        WHITESPACE@[38; 43) "\n    "
+        EXPR_STMT@[43; 64)
+          METHOD_CALL_EXPR@[43; 63)
+            TRY_EXPR@[43; 55)
+              AWAIT_EXPR@[43; 54)
+                CALL_EXPR@[43; 48)
+                  FIELD_EXPR@[43; 46)
+                    PATH_EXPR@[43; 44)
+                      PATH@[43; 44)
+                        PATH_SEGMENT@[43; 44)
+                          NAME_REF@[43; 44)
+                            IDENT@[43; 44) "x"
+                    DOT@[44; 45) "."
+                    NAME_REF@[45; 46)
+                      INT_NUMBER@[45; 46) "0"
+                  ARG_LIST@[46; 48)
+                    L_PAREN@[46; 47) "("
+                    R_PAREN@[47; 48) ")"
+                DOT@[48; 49) "."
+                AWAIT_KW@[49; 54) "await"
+              QUESTION@[54; 55) "?"
+            DOT@[55; 56) "."
+            NAME_REF@[56; 61)
+              IDENT@[56; 61) "hello"
+            ARG_LIST@[61; 63)
+              L_PAREN@[61; 62) "("
+              R_PAREN@[62; 63) ")"
+          SEMI@[63; 64) ";"
+        WHITESPACE@[64; 65) "\n"
+        R_CURLY@[65; 66) "}"
   WHITESPACE@[66; 67) "\n"

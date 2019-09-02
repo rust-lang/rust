@@ -104,7 +104,8 @@ SOURCE_FILE@[0; 116)
           TYPE_BOUND@[110; 112)
             LIFETIME@[110; 112) "\'a"
     WHITESPACE@[112; 113) "\n"
-    BLOCK@[113; 115)
-      L_CURLY@[113; 114) "{"
-      R_CURLY@[114; 115) "}"
+    BLOCK_EXPR@[113; 115)
+      BLOCK@[113; 115)
+        L_CURLY@[113; 114) "{"
+        R_CURLY@[114; 115) "}"
   WHITESPACE@[115; 116) "\n"

@@ -8,31 +8,32 @@ SOURCE_FILE@[0; 40)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 39)
-      L_CURLY@[9; 10) "{"
-      WHITESPACE@[10; 15) "\n    "
-      EXPR_STMT@[15; 18)
-        TUPLE_EXPR@[15; 17)
-          L_PAREN@[15; 16) "("
-          R_PAREN@[16; 17) ")"
-        SEMI@[17; 18) ";"
-      WHITESPACE@[18; 23) "\n    "
-      EXPR_STMT@[23; 27)
-        PAREN_EXPR@[23; 26)
-          L_PAREN@[23; 24) "("
-          LITERAL@[24; 25)
-            INT_NUMBER@[24; 25) "1"
-          R_PAREN@[25; 26) ")"
-        SEMI@[26; 27) ";"
-      WHITESPACE@[27; 32) "\n    "
-      EXPR_STMT@[32; 37)
-        TUPLE_EXPR@[32; 36)
-          L_PAREN@[32; 33) "("
-          LITERAL@[33; 34)
-            INT_NUMBER@[33; 34) "1"
-          COMMA@[34; 35) ","
-          R_PAREN@[35; 36) ")"
-        SEMI@[36; 37) ";"
-      WHITESPACE@[37; 38) "\n"
-      R_CURLY@[38; 39) "}"
+    BLOCK_EXPR@[9; 39)
+      BLOCK@[9; 39)
+        L_CURLY@[9; 10) "{"
+        WHITESPACE@[10; 15) "\n    "
+        EXPR_STMT@[15; 18)
+          TUPLE_EXPR@[15; 17)
+            L_PAREN@[15; 16) "("
+            R_PAREN@[16; 17) ")"
+          SEMI@[17; 18) ";"
+        WHITESPACE@[18; 23) "\n    "
+        EXPR_STMT@[23; 27)
+          PAREN_EXPR@[23; 26)
+            L_PAREN@[23; 24) "("
+            LITERAL@[24; 25)
+              INT_NUMBER@[24; 25) "1"
+            R_PAREN@[25; 26) ")"
+          SEMI@[26; 27) ";"
+        WHITESPACE@[27; 32) "\n    "
+        EXPR_STMT@[32; 37)
+          TUPLE_EXPR@[32; 36)
+            L_PAREN@[32; 33) "("
+            LITERAL@[33; 34)
+              INT_NUMBER@[33; 34) "1"
+            COMMA@[34; 35) ","
+            R_PAREN@[35; 36) ")"
+          SEMI@[36; 37) ";"
+        WHITESPACE@[37; 38) "\n"
+        R_CURLY@[38; 39) "}"
   WHITESPACE@[39; 40) "\n"

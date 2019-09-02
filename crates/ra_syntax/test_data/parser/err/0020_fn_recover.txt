@@ -11,9 +11,10 @@ SOURCE_FILE@[0; 16)
       L_PAREN@[10; 11) "("
       R_PAREN@[11; 12) ")"
     WHITESPACE@[12; 13) " "
-    BLOCK@[13; 15)
-      L_CURLY@[13; 14) "{"
-      R_CURLY@[14; 15) "}"
+    BLOCK_EXPR@[13; 15)
+      BLOCK@[13; 15)
+        L_CURLY@[13; 14) "{"
+        R_CURLY@[14; 15) "}"
   WHITESPACE@[15; 16) "\n"
 error 2: expected a name
 error 2: expected function arguments

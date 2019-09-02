@@ -8,31 +8,32 @@ SOURCE_FILE@[0; 94)
       L_PAREN@[7; 8) "("
       R_PAREN@[8; 9) ")"
     WHITESPACE@[9; 10) " "
-    BLOCK@[10; 55)
-      L_CURLY@[10; 11) "{"
-      WHITESPACE@[11; 16) "\n    "
-      MACRO_CALL@[16; 49)
-        PATH@[16; 19)
-          PATH_SEGMENT@[16; 19)
-            NAME_REF@[16; 19)
-              IDENT@[16; 19) "foo"
-        EXCL@[19; 20) "!"
-        WHITESPACE@[20; 21) " "
-        TOKEN_TREE@[21; 49)
-          L_PAREN@[21; 22) "("
-          WHITESPACE@[22; 31) "\n        "
-          IDENT@[31; 34) "bar"
-          COMMA@[34; 35) ","
-          WHITESPACE@[35; 36) " "
-          STRING@[36; 41) "\"baz\""
-          COMMA@[41; 42) ","
-          WHITESPACE@[42; 43) " "
-          INT_NUMBER@[43; 44) "1"
-          COMMA@[44; 45) ","
-          WHITESPACE@[45; 46) " "
-          FLOAT_NUMBER@[46; 49) "2.0"
-      WHITESPACE@[49; 54) "\n    "
-      R_CURLY@[54; 55) "}"
+    BLOCK_EXPR@[10; 55)
+      BLOCK@[10; 55)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        MACRO_CALL@[16; 49)
+          PATH@[16; 19)
+            PATH_SEGMENT@[16; 19)
+              NAME_REF@[16; 19)
+                IDENT@[16; 19) "foo"
+          EXCL@[19; 20) "!"
+          WHITESPACE@[20; 21) " "
+          TOKEN_TREE@[21; 49)
+            L_PAREN@[21; 22) "("
+            WHITESPACE@[22; 31) "\n        "
+            IDENT@[31; 34) "bar"
+            COMMA@[34; 35) ","
+            WHITESPACE@[35; 36) " "
+            STRING@[36; 41) "\"baz\""
+            COMMA@[41; 42) ","
+            WHITESPACE@[42; 43) " "
+            INT_NUMBER@[43; 44) "1"
+            COMMA@[44; 45) ","
+            WHITESPACE@[45; 46) " "
+            FLOAT_NUMBER@[46; 49) "2.0"
+        WHITESPACE@[49; 54) "\n    "
+        R_CURLY@[54; 55) "}"
   WHITESPACE@[55; 56) " "
   COMMENT@[56; 91) "//~ ERROR incorrect c ..."
   WHITESPACE@[91; 92) "\n"

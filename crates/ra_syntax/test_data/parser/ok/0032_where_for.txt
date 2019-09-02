@@ -84,7 +84,8 @@ SOURCE_FILE@[0; 116)
                     IDENT@[106; 111) "Debug"
       COMMA@[111; 112) ","
     WHITESPACE@[112; 113) "\n"
-    BLOCK@[113; 115)
-      L_CURLY@[113; 114) "{"
-      R_CURLY@[114; 115) "}"
+    BLOCK_EXPR@[113; 115)
+      BLOCK@[113; 115)
+        L_CURLY@[113; 114) "{"
+        R_CURLY@[114; 115) "}"
   WHITESPACE@[115; 116) "\n"

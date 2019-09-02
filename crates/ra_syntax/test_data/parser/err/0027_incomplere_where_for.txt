@@ -20,9 +20,10 @@ SOURCE_FILE@[0; 30)
               LIFETIME@[23; 25) "\'a"
             R_ANGLE@[25; 26) ">"
     WHITESPACE@[26; 27) "\n"
-    BLOCK@[27; 29)
-      L_CURLY@[27; 28) "{"
-      R_CURLY@[28; 29) "}"
+    BLOCK_EXPR@[27; 29)
+      BLOCK@[27; 29)
+        L_CURLY@[27; 28) "{"
+        R_CURLY@[28; 29) "}"
   WHITESPACE@[29; 30) "\n"
 error 26: expected a path
 error 26: expected colon

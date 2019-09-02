@@ -37,6 +37,7 @@ SOURCE_FILE@[0; 34)
                   NAME_REF@[28; 31)
                     IDENT@[28; 31) "Foo"
     WHITESPACE@[31; 32) " "
-    BLOCK@[32; 34)
-      L_CURLY@[32; 33) "{"
-      R_CURLY@[33; 34) "}"
+    BLOCK_EXPR@[32; 34)
+      BLOCK@[32; 34)
+        L_CURLY@[32; 33) "{"
+        R_CURLY@[33; 34) "}"

@@ -38,20 +38,21 @@ SOURCE_FILE@[0; 199)
                 NAME_REF@[102; 106)
                   IDENT@[102; 106) "bool"
         WHITESPACE@[106; 107) " "
-        BLOCK@[107; 139)
-          L_CURLY@[107; 108) "{"
-          WHITESPACE@[108; 117) "\n        "
-          MACRO_CALL@[117; 133)
-            PATH@[117; 130)
-              PATH_SEGMENT@[117; 130)
-                NAME_REF@[117; 130)
-                  IDENT@[117; 130) "unimplemented"
-            EXCL@[130; 131) "!"
-            TOKEN_TREE@[131; 133)
-              L_PAREN@[131; 132) "("
-              R_PAREN@[132; 133) ")"
-          WHITESPACE@[133; 138) "\n    "
-          R_CURLY@[138; 139) "}"
+        BLOCK_EXPR@[107; 139)
+          BLOCK@[107; 139)
+            L_CURLY@[107; 108) "{"
+            WHITESPACE@[108; 117) "\n        "
+            MACRO_CALL@[117; 133)
+              PATH@[117; 130)
+                PATH_SEGMENT@[117; 130)
+                  NAME_REF@[117; 130)
+                    IDENT@[117; 130) "unimplemented"
+              EXCL@[130; 131) "!"
+              TOKEN_TREE@[131; 133)
+                L_PAREN@[131; 132) "("
+                R_PAREN@[132; 133) ")"
+            WHITESPACE@[133; 138) "\n    "
+            R_CURLY@[138; 139) "}"
       WHITESPACE@[139; 140) "\n"
       R_CURLY@[140; 141) "}"
   WHITESPACE@[141; 143) "\n\n"
@@ -74,9 +75,10 @@ SOURCE_FILE@[0; 199)
                 IDENT@[153; 157) "bool"
       R_PAREN@[157; 158) ")"
     WHITESPACE@[158; 159) " "
-    BLOCK@[159; 161)
-      L_CURLY@[159; 160) "{"
-      R_CURLY@[160; 161) "}"
+    BLOCK_EXPR@[159; 161)
+      BLOCK@[159; 161)
+        L_CURLY@[159; 160) "{"
+        R_CURLY@[160; 161) "}"
   WHITESPACE@[161; 163) "\n\n"
   FN_DEF@[163; 198)
     FN_KW@[163; 165) "fn"
@@ -87,37 +89,38 @@ SOURCE_FILE@[0; 199)
       L_PAREN@[170; 171) "("
       R_PAREN@[171; 172) ")"
     WHITESPACE@[172; 173) " "
-    BLOCK@[173; 198)
-      L_CURLY@[173; 174) "{"
-      WHITESPACE@[174; 179) "\n    "
-      CALL_EXPR@[179; 196)
-        PATH_EXPR@[179; 182)
-          PATH@[179; 182)
-            PATH_SEGMENT@[179; 182)
-              NAME_REF@[179; 182)
-                IDENT@[179; 182) "baz"
-        ARG_LIST@[182; 196)
-          L_PAREN@[182; 183) "("
-          CALL_EXPR@[183; 195)
-            PATH_EXPR@[183; 193)
-              PATH@[183; 193)
-                PATH@[183; 188)
-                  PATH_SEGMENT@[183; 188)
-                    L_ANGLE@[183; 184) "<"
-                    PATH_TYPE@[184; 187)
-                      PATH@[184; 187)
-                        PATH_SEGMENT@[184; 187)
-                          NAME_REF@[184; 187)
-                            IDENT@[184; 187) "Foo"
-                    R_ANGLE@[187; 188) ">"
-                COLONCOLON@[188; 190) "::"
-                PATH_SEGMENT@[190; 193)
-                  NAME_REF@[190; 193)
-                    IDENT@[190; 193) "bar"
-            ARG_LIST@[193; 195)
-              L_PAREN@[193; 194) "("
-              R_PAREN@[194; 195) ")"
-          R_PAREN@[195; 196) ")"
-      WHITESPACE@[196; 197) "\n"
-      R_CURLY@[197; 198) "}"
+    BLOCK_EXPR@[173; 198)
+      BLOCK@[173; 198)
+        L_CURLY@[173; 174) "{"
+        WHITESPACE@[174; 179) "\n    "
+        CALL_EXPR@[179; 196)
+          PATH_EXPR@[179; 182)
+            PATH@[179; 182)
+              PATH_SEGMENT@[179; 182)
+                NAME_REF@[179; 182)
+                  IDENT@[179; 182) "baz"
+          ARG_LIST@[182; 196)
+            L_PAREN@[182; 183) "("
+            CALL_EXPR@[183; 195)
+              PATH_EXPR@[183; 193)
+                PATH@[183; 193)
+                  PATH@[183; 188)
+                    PATH_SEGMENT@[183; 188)
+                      L_ANGLE@[183; 184) "<"
+                      PATH_TYPE@[184; 187)
+                        PATH@[184; 187)
+                          PATH_SEGMENT@[184; 187)
+                            NAME_REF@[184; 187)
+                              IDENT@[184; 187) "Foo"
+                      R_ANGLE@[187; 188) ">"
+                  COLONCOLON@[188; 190) "::"
+                  PATH_SEGMENT@[190; 193)
+                    NAME_REF@[190; 193)
+                      IDENT@[190; 193) "bar"
+              ARG_LIST@[193; 195)
+                L_PAREN@[193; 194) "("
+                R_PAREN@[194; 195) ")"
+            R_PAREN@[195; 196) ")"
+        WHITESPACE@[196; 197) "\n"
+        R_CURLY@[197; 198) "}"
   WHITESPACE@[198; 199) "\n"

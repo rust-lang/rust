@@ -75,18 +75,19 @@ SOURCE_FILE@[0; 157)
                     IDENT@[131; 133) "Eq"
       COMMA@[133; 134) ","
     WHITESPACE@[134; 135) "\n"
-    BLOCK@[135; 156)
-      L_CURLY@[135; 136) "{"
-      WHITESPACE@[136; 141) "\n    "
-      METHOD_CALL_EXPR@[141; 154)
-        LITERAL@[141; 143)
-          STRING@[141; 143) "\"\""
-        DOT@[143; 144) "."
-        NAME_REF@[144; 152)
-          IDENT@[144; 152) "to_owned"
-        ARG_LIST@[152; 154)
-          L_PAREN@[152; 153) "("
-          R_PAREN@[153; 154) ")"
-      WHITESPACE@[154; 155) "\n"
-      R_CURLY@[155; 156) "}"
+    BLOCK_EXPR@[135; 156)
+      BLOCK@[135; 156)
+        L_CURLY@[135; 136) "{"
+        WHITESPACE@[136; 141) "\n    "
+        METHOD_CALL_EXPR@[141; 154)
+          LITERAL@[141; 143)
+            STRING@[141; 143) "\"\""
+          DOT@[143; 144) "."
+          NAME_REF@[144; 152)
+            IDENT@[144; 152) "to_owned"
+          ARG_LIST@[152; 154)
+            L_PAREN@[152; 153) "("
+            R_PAREN@[153; 154) ")"
+        WHITESPACE@[154; 155) "\n"
+        R_CURLY@[155; 156) "}"
   WHITESPACE@[156; 157) "\n"

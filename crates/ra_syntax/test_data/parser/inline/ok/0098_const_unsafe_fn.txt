@@ -12,7 +12,8 @@ SOURCE_FILE@[0; 25)
       L_PAREN@[19; 20) "("
       R_PAREN@[20; 21) ")"
     WHITESPACE@[21; 22) " "
-    BLOCK@[22; 24)
-      L_CURLY@[22; 23) "{"
-      R_CURLY@[23; 24) "}"
+    BLOCK_EXPR@[22; 24)
+      BLOCK@[22; 24)
+        L_CURLY@[22; 23) "{"
+        R_CURLY@[23; 24) "}"
   WHITESPACE@[24; 25) "\n"

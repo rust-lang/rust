@@ -20,9 +20,10 @@ SOURCE_FILE@[0; 31)
     PARAM_LIST@[23; 25)
       L_PAREN@[23; 24) "("
       R_PAREN@[24; 25) ")"
-    BLOCK@[25; 27)
-      L_CURLY@[25; 26) "{"
-      R_CURLY@[26; 27) "}"
+    BLOCK_EXPR@[25; 27)
+      BLOCK@[25; 27)
+        L_CURLY@[25; 26) "{"
+        R_CURLY@[26; 27) "}"
   WHITESPACE@[27; 29) "\n\n"
   ERROR@[29; 30)
     R_CURLY@[29; 30) "}"

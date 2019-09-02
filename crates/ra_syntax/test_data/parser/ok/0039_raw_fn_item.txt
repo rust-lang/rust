@@ -8,8 +8,9 @@ SOURCE_FILE@[0; 15)
       L_PAREN@[8; 9) "("
       R_PAREN@[9; 10) ")"
     WHITESPACE@[10; 11) " "
-    BLOCK@[11; 14)
-      L_CURLY@[11; 12) "{"
-      WHITESPACE@[12; 13) "\n"
-      R_CURLY@[13; 14) "}"
+    BLOCK_EXPR@[11; 14)
+      BLOCK@[11; 14)
+        L_CURLY@[11; 12) "{"
+        WHITESPACE@[12; 13) "\n"
+        R_CURLY@[13; 14) "}"
   WHITESPACE@[14; 15) "\n"
