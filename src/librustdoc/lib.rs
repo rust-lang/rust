@@ -242,9 +242,6 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("crate-version", |o| {
             o.optopt("", "crate-version", "crate version to print into documentation", "VERSION")
         }),
-        unstable("linker", |o| {
-            o.optopt("", "linker", "linker used for building executable test code", "PATH")
-        }),
         unstable("sort-modules-by-appearance", |o| {
             o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
                                                          program, rather than alphabetically")

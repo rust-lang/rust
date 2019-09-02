@@ -60,8 +60,6 @@ pub struct Options {
     pub edition: Edition,
     /// The path to the sysroot. Used during the compilation process.
     pub maybe_sysroot: Option<PathBuf>,
-    /// Linker to use when building doctests.
-    pub linker: Option<PathBuf>,
     /// Lint information passed over the command-line.
     pub lint_opts: Vec<(String, Level)>,
     /// Whether to ask rustc to describe the lints it knows. Practically speaking, this will not be
@@ -130,7 +128,6 @@ impl fmt::Debug for Options {
             .field("target", &self.target)
             .field("edition", &self.edition)
             .field("maybe_sysroot", &self.maybe_sysroot)
-            .field("linker", &self.linker)
             .field("lint_opts", &self.lint_opts)
             .field("describe_lints", &self.describe_lints)
             .field("lint_cap", &self.lint_cap)
@@ -454,7 +451,6 @@ impl Options {
         let playground_url = matches.opt_str("playground-url");
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
         let display_warnings = matches.opt_present("display-warnings");
-        let linker = matches.opt_str("linker").map(PathBuf::from);
         let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
         let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
         let enable_minification = !matches.opt_present("disable-minification");
@@ -489,7 +485,6 @@ impl Options {
             target,
             edition,
             maybe_sysroot,
-            linker,
             lint_opts,
             describe_lints,
             lint_cap,

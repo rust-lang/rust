@@ -267,9 +267,6 @@ fn run_test(
     for codegen_options_str in &options.codegen_options_strs {
         compiler.arg("-C").arg(&codegen_options_str);
     }
-    if let Some(linker) = options.linker {
-        compiler.arg(&format!("-C linker={:?}", linker));
-    }
     if no_run {
         compiler.arg("--emit=metadata");
     }
