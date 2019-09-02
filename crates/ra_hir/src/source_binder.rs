@@ -462,8 +462,8 @@ fn scope_for(
     node: &SyntaxNode,
 ) -> Option<ScopeId> {
     node.ancestors()
-        .map(|it| SyntaxNodePtr::new(&it))
-        .filter_map(|ptr| source_map.syntax_expr(ptr))
+        .filter_map(ast::Expr::cast)
+        .filter_map(|it| source_map.node_expr(&it))
         .find_map(|it| scopes.scope_for(it))
 }
 
@@ -475,7 +475,10 @@ fn scope_for_offset(
     scopes
         .scope_by_expr()
         .iter()
-        .filter_map(|(id, scope)| Some((source_map.expr_syntax(*id)?, scope)))
+        .filter_map(|(id, scope)| {
+            let ast_ptr = source_map.expr_syntax(*id)?.a()?;
+            Some((ast_ptr.syntax_node_ptr(), scope))
+        })
         // find containing scope
         .min_by_key(|(ptr, _scope)| {
             (!(ptr.range().start() <= offset && offset <= ptr.range().end()), ptr.range().len())
@@ -495,7 +498,10 @@ fn adjust(
     let child_scopes = scopes
         .scope_by_expr()
         .iter()
-        .filter_map(|(id, scope)| Some((source_map.expr_syntax(*id)?, scope)))
+        .filter_map(|(id, scope)| {
+            let ast_ptr = source_map.expr_syntax(*id)?.a()?;
+            Some((ast_ptr.syntax_node_ptr(), scope))
+        })
         .map(|(ptr, scope)| (ptr.range(), scope))
         .filter(|(range, _)| range.start() <= offset && range.is_subrange(&r) && *range != r);
 

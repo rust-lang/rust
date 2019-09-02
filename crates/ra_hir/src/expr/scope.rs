@@ -172,7 +172,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
 #[cfg(test)]
 mod tests {
     use ra_db::SourceDatabase;
-    use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SyntaxNodePtr};
+    use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
     use test_utils::{assert_eq_text, extract_offset};
 
     use crate::{mock::MockDatabase, source_binder::SourceAnalyzer};
@@ -194,8 +194,7 @@ mod tests {
         let analyzer = SourceAnalyzer::new(&db, file_id, marker.syntax(), None);
 
         let scopes = analyzer.scopes();
-        let expr_id =
-            analyzer.body_source_map().syntax_expr(SyntaxNodePtr::new(marker.syntax())).unwrap();
+        let expr_id = analyzer.body_source_map().node_expr(&marker.into()).unwrap();
         let scope = scopes.scope_for(expr_id);
 
         let actual = scopes

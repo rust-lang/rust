@@ -9,7 +9,7 @@ use ra_syntax::{
         self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner,
         TypeAscriptionOwner,
     },
-    AstNode, AstPtr, SyntaxNodePtr,
+    AstNode, AstPtr,
 };
 use test_utils::tested_by;
 
@@ -56,13 +56,14 @@ pub struct Body {
 /// file, so that we don't recompute types whenever some whitespace is typed.
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
-    expr_map: FxHashMap<SyntaxNodePtr, ExprId>,
-    expr_map_back: ArenaMap<ExprId, SyntaxNodePtr>,
+    expr_map: FxHashMap<ExprPtr, ExprId>,
+    expr_map_back: ArenaMap<ExprId, ExprPtr>,
     pat_map: FxHashMap<PatPtr, PatId>,
     pat_map_back: ArenaMap<PatId, PatPtr>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::RecordField>>,
 }
 
+type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;
 type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
 
 impl Body {
@@ -128,16 +129,12 @@ impl Index<PatId> for Body {
 }
 
 impl BodySourceMap {
-    pub(crate) fn expr_syntax(&self, expr: ExprId) -> Option<SyntaxNodePtr> {
+    pub(crate) fn expr_syntax(&self, expr: ExprId) -> Option<ExprPtr> {
         self.expr_map_back.get(expr).cloned()
     }
 
-    pub(crate) fn syntax_expr(&self, ptr: SyntaxNodePtr) -> Option<ExprId> {
-        self.expr_map.get(&ptr).cloned()
-    }
-
     pub(crate) fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
-        self.expr_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
+        self.expr_map.get(&Either::A(AstPtr::new(node))).cloned()
     }
 
     pub(crate) fn pat_syntax(&self, pat: PatId) -> Option<PatPtr> {
@@ -575,11 +572,12 @@ where
             current_file_id: file_id,
         }
     }
-    fn alloc_expr(&mut self, expr: Expr, syntax_ptr: SyntaxNodePtr) -> ExprId {
+    fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
+        let ptr = Either::A(ptr);
         let id = self.exprs.alloc(expr);
         if self.current_file_id == self.original_file_id {
-            self.source_map.expr_map.insert(syntax_ptr, id);
-            self.source_map.expr_map_back.insert(id, syntax_ptr);
+            self.source_map.expr_map.insert(ptr, id);
+            self.source_map.expr_map_back.insert(id, ptr);
         }
         id
     }
@@ -601,7 +599,7 @@ where
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
-        let syntax_ptr = SyntaxNodePtr::new(expr.syntax());
+        let syntax_ptr = AstPtr::new(&expr);
         match expr {
             ast::Expr::IfExpr(e) => {
                 let then_branch = self.collect_block_opt(e.then_branch());
@@ -640,10 +638,10 @@ where
                 self.alloc_expr(Expr::If { condition, then_branch, else_branch }, syntax_ptr)
             }
             ast::Expr::TryBlockExpr(e) => {
-                let body = self.collect_block_opt(e.block());
+                let body = self.collect_block_opt(e.body());
                 self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
             }
-            ast::Expr::BlockExpr(e) => self.collect_block_opt(e.block()),
+            ast::Expr::BlockExpr(e) => self.collect_block(e),
             ast::Expr::LoopExpr(e) => {
                 let body = self.collect_block_opt(e.loop_body());
                 self.alloc_expr(Expr::Loop { body }, syntax_ptr)
@@ -739,7 +737,7 @@ where
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                self.source_map.expr_map.insert(syntax_ptr, inner);
+                self.source_map.expr_map.insert(Either::A(syntax_ptr), inner);
                 inner
             }
             ast::Expr::ReturnExpr(e) => {
@@ -763,12 +761,9 @@ where
                             } else if let Some(nr) = field.name_ref() {
                                 // field shorthand
                                 let id = self.exprs.alloc(Expr::Path(Path::from_name_ref(&nr)));
-                                self.source_map
-                                    .expr_map
-                                    .insert(SyntaxNodePtr::new(nr.syntax()), id);
-                                self.source_map
-                                    .expr_map_back
-                                    .insert(id, SyntaxNodePtr::new(nr.syntax()));
+                                let ptr = Either::B(AstPtr::new(&field));
+                                self.source_map.expr_map.insert(ptr, id);
+                                self.source_map.expr_map_back.insert(id, ptr);
                                 id
                             } else {
                                 self.exprs.alloc(Expr::Missing)
@@ -942,7 +937,12 @@ where
         }
     }
 
-    fn collect_block(&mut self, block: ast::Block) -> ExprId {
+    fn collect_block(&mut self, expr: ast::BlockExpr) -> ExprId {
+        let syntax_node_ptr = AstPtr::new(&expr.clone().into());
+        let block = match expr.block() {
+            Some(block) => block,
+            None => return self.alloc_expr(Expr::Missing, syntax_node_ptr),
+        };
         let statements = block
             .statements()
             .map(|s| match s {
@@ -956,11 +956,11 @@ where
             })
             .collect();
         let tail = block.expr().map(|e| self.collect_expr(e));
-        self.alloc_expr(Expr::Block { statements, tail }, SyntaxNodePtr::new(block.syntax()))
+        self.alloc_expr(Expr::Block { statements, tail }, syntax_node_ptr)
     }
 
-    fn collect_block_opt(&mut self, block: Option<ast::Block>) -> ExprId {
-        if let Some(block) = block {
+    fn collect_block_opt(&mut self, expr: Option<ast::BlockExpr>) -> ExprId {
+        if let Some(block) = expr {
             self.collect_block(block)
         } else {
             self.exprs.alloc(Expr::Missing)

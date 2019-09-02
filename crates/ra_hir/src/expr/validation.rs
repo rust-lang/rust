@@ -1,7 +1,7 @@
-use rustc_hash::FxHashSet;
 use std::sync::Arc;
 
-use ra_syntax::ast::{AstNode, RecordLit};
+use ra_syntax::ast::{self, AstNode};
+use rustc_hash::FxHashSet;
 
 use super::{Expr, ExprId, RecordLitField};
 use crate::{
@@ -13,7 +13,6 @@ use crate::{
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
     Function, HasSource, HirDatabase, ModuleDef, Name, Path, PerNs, Resolution,
 };
-use ra_syntax::ast;
 
 pub(crate) struct ExprValidator<'a, 'b: 'a> {
     func: Function,
@@ -84,8 +83,12 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let source_file = parse.tree();
         if let Some(field_list_node) = source_map
             .expr_syntax(id)
+            .and_then(|ptr| ptr.a())
             .map(|ptr| ptr.to_node(source_file.syntax()))
-            .and_then(RecordLit::cast)
+            .and_then(|expr| match expr {
+                ast::Expr::RecordLit(it) => Some(it),
+                _ => None,
+            })
             .and_then(|lit| lit.record_field_list())
         {
             let field_list_ptr = AstPtr::new(&field_list_node);
@@ -135,7 +138,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             let source_map = self.func.body_source_map(db);
             let file_id = self.func.source(db).file_id;
 
-            if let Some(expr) = source_map.expr_syntax(id).and_then(|n| n.cast::<ast::Expr>()) {
+            if let Some(expr) = source_map.expr_syntax(id).and_then(|n| n.a()) {
                 self.sink.push(MissingOkInTailExpr { file: file_id, expr });
             }
         }

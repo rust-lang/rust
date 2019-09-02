@@ -28,7 +28,7 @@ pub trait VisibilityOwner: AstNode {
 }
 
 pub trait LoopBodyOwner: AstNode {
-    fn loop_body(&self) -> Option<ast::Block> {
+    fn loop_body(&self) -> Option<ast::BlockExpr> {
         child_opt(self)
     }
 }

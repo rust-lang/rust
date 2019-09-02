@@ -3135,7 +3135,7 @@ impl AstNode for TryBlockExpr {
     }
 }
 impl TryBlockExpr {
-    pub fn block(&self) -> Option<Block> {
+    pub fn body(&self) -> Option<BlockExpr> {
         AstChildren::new(&self.syntax).next()
     }
 }
