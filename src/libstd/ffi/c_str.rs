@@ -123,79 +123,82 @@ pub struct CString {
     inner: Box<[u8]>,
 }
 
-extern {
-    /// Representation of a borrowed C string.
-    ///
-    /// This type represents a borrowed reference to a nul-terminated
-    /// array of bytes. It can be constructed safely from a `&[`[`u8`]`]`
-    /// slice, or unsafely from a raw `*const c_char`. It can then be
-    /// converted to a Rust [`&str`] by performing UTF-8 validation, or
-    /// into an owned [`CString`].
-    ///
-    /// `&CStr` is to [`CString`] as [`&str`] is to [`String`]: the former
-    /// in each pair are borrowed references; the latter are owned
-    /// strings.
-    ///
-    /// Note that this structure is `repr(C)` and is can be
-    /// placed in the signatures of FFI functions. A `&CStr` is equivalent to `*const c_char`,
-    /// but offers a much richer API
-    ///
-    /// # Examples
-    ///
-    /// Inspecting a foreign C string:
-    ///
-    /// ```ignore (extern-declaration)
-    /// use std::ffi::CStr;
-    /// use std::os::raw::c_char;
-    ///
-    /// extern { fn my_string() -> *const c_char; }
-    ///
-    /// unsafe {
-    ///     let slice = CStr::from_ptr(my_string());
-    ///     println!("string buffer size without nul terminator: {}", slice.to_bytes().len());
-    /// }
-    /// ```
-    ///
-    /// Passing a Rust-originating C string:
-    ///
-    /// ```ignore (extern-declaration)
-    /// use std::ffi::{CString, CStr};
-    /// use std::os::raw::c_char;
-    ///
-    /// fn work(data: &CStr) {
-    ///     extern { fn work_with(data: *const c_char); }
-    ///
-    ///     unsafe { work_with(data.as_ptr()) }
-    /// }
-    ///
-    /// let s = CString::new("data data data data").expect("CString::new failed");
-    /// work(&s);
-    /// ```
-    ///
-    /// Converting a foreign C string into a Rust [`String`]:
-    ///
-    /// ```ignore (extern-declaration)
-    /// use std::ffi::CStr;
-    /// use std::os::raw::c_char;
-    ///
-    /// extern { fn my_string() -> *const c_char; }
-    ///
-    /// fn my_string_safe() -> String {
-    ///     unsafe {
-    ///         CStr::from_ptr(my_string()).to_string_lossy().into_owned()
-    ///     }
-    /// }
-    ///
-    /// println!("string: {}", my_string_safe());
-    /// ```
-    ///
-    /// [`u8`]: ../primitive.u8.html
-    /// [`&str`]: ../primitive.str.html
-    /// [`String`]: ../string/struct.String.html
-    /// [`CString`]: struct.CString.html
-    /// [`from_ptr`]: #method.from_ptr
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub type CStr;
+/// Representation of a borrowed C string.
+///
+/// This type represents a borrowed reference to a nul-terminated
+/// array of bytes. It can be constructed safely from a `&[`[`u8`]`]`
+/// slice, or unsafely from a raw `*const c_char`. It can then be
+/// converted to a Rust [`&str`] by performing UTF-8 validation, or
+/// into an owned [`CString`].
+///
+/// `&CStr` is to [`CString`] as [`&str`] is to [`String`]: the former
+/// in each pair are borrowed references; the latter are owned
+/// strings.
+///
+/// Note that this structure is `repr(C)` and is can be
+/// placed in the signatures of FFI functions. A `&CStr` is equivalent to `*const c_char`,
+/// but offers a much richer API
+///
+/// # Examples
+///
+/// Inspecting a foreign C string:
+///
+/// ```ignore (extern-declaration)
+/// use std::ffi::CStr;
+/// use std::os::raw::c_char;
+///
+/// extern { fn my_string() -> *const c_char; }
+///
+/// unsafe {
+///     let slice = CStr::from_ptr(my_string());
+///     println!("string buffer size without nul terminator: {}", slice.to_bytes().len());
+/// }
+/// ```
+///
+/// Passing a Rust-originating C string:
+///
+/// ```ignore (extern-declaration)
+/// use std::ffi::{CString, CStr};
+/// use std::os::raw::c_char;
+///
+/// fn work(data: &CStr) {
+///     extern { fn work_with(data: *const c_char); }
+///
+///     unsafe { work_with(data.as_ptr()) }
+/// }
+///
+/// let s = CString::new("data data data data").expect("CString::new failed");
+/// work(&s);
+/// ```
+///
+/// Converting a foreign C string into a Rust [`String`]:
+///
+/// ```ignore (extern-declaration)
+/// use std::ffi::CStr;
+/// use std::os::raw::c_char;
+///
+/// extern { fn my_string() -> *const c_char; }
+///
+/// fn my_string_safe() -> String {
+///     unsafe {
+///         CStr::from_ptr(my_string()).to_string_lossy().into_owned()
+///     }
+/// }
+///
+/// println!("string: {}", my_string_safe());
+/// ```
+///
+/// [`u8`]: ../primitive.u8.html
+/// [`&str`]: ../primitive.str.html
+/// [`String`]: ../string/struct.String.html
+/// [`CString`]: struct.CString.html
+/// [`from_ptr`]: #method.from_ptr
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct CStr(CStrExtern);
+
+extern "C" {
+    // HACK: workaround for https://github.com/rust-lang/rust/issues/46665
+    type CStrExtern;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
