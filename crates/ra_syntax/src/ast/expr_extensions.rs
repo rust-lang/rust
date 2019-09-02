@@ -289,6 +289,26 @@ impl ast::Literal {
     }
 }
 
+impl ast::BlockExpr {
+    /// false if the block is an intrinsic part of the syntax and can't be
+    /// replaced with arbitrary expression.
+    ///
+    /// ```not_rust
+    /// fn foo() { not_stand_alone }
+    /// const FOO: () = { stand_alone };
+    /// ```
+    pub fn is_standalone(&self) -> bool {
+        let kind = match self.syntax().parent() {
+            None => return true,
+            Some(it) => it.kind(),
+        };
+        match kind {
+            FN_DEF | MATCH_ARM | IF_EXPR | WHILE_EXPR | LOOP_EXPR | TRY_BLOCK_EXPR => false,
+            _ => true,
+        }
+    }
+}
+
 #[test]
 fn test_literal_with_attr() {
     let parse = ast::SourceFile::parse(r#"const _: &str = { #[attr] "Hello" };"#);

@@ -3,7 +3,8 @@ use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::{
-        BREAK_EXPR, COMMENT, LAMBDA_EXPR, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR, WHITESPACE,
+        BLOCK_EXPR, BREAK_EXPR, COMMENT, LAMBDA_EXPR, LOOP_EXPR, MATCH_ARM, PATH_EXPR, RETURN_EXPR,
+        WHITESPACE,
     },
     SyntaxNode, TextUnit,
 };
@@ -80,10 +81,12 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
 /// In general that's true for any expression, but in some cases that would produce invalid code.
 fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
     match node.kind() {
-        PATH_EXPR => None,
+        PATH_EXPR | LOOP_EXPR => None,
         BREAK_EXPR => ast::BreakExpr::cast(node).and_then(|e| e.expr()),
         RETURN_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
-        LOOP_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
+        BLOCK_EXPR => {
+            ast::BlockExpr::cast(node).filter(|it| it.is_standalone()).map(ast::Expr::from)
+        }
         _ => ast::Expr::cast(node),
     }
 }
