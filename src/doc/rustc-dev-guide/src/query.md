@@ -35,9 +35,9 @@ will in turn demand information about that crate, starting from the
 However, that vision is not fully realized. Still, big chunks of the
 compiler (for example, generating MIR) work exactly like this.
 
-### The Query Evaluation Model in Detail
+### Incremental Compilation in Detail
 
-The [Query Evaluation Model in Detail][query-model] chapter gives a more
+The [Incremental Compilation in Detail][query-model] chapter gives a more
 in-depth description of what queries are and how they work.
 If you intend to write a query of your own, this is a good read.
 
@@ -277,4 +277,4 @@ rustc_queries! {
 
 `rustc_queries` macro will generate an appropriate `impl` automatically.
 
-[query-model]: queries/query-evaluation-model-in-detail.html
+[query-model]: queries/incremental-compilation-in-detail.md
