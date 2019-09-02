@@ -426,7 +426,7 @@ Grammar(
             traits: ["LoopBodyOwner"],
         ),
         "TryBlockExpr": (
-            traits: ["TryBlockBodyOwner"],
+            options: ["Block"],
         ),
         "ForExpr": (
             traits: ["LoopBodyOwner"],

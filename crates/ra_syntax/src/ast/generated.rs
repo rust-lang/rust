@@ -3134,8 +3134,11 @@ impl AstNode for TryBlockExpr {
         &self.syntax
     }
 }
-impl ast::TryBlockBodyOwner for TryBlockExpr {}
-impl TryBlockExpr {}
+impl TryBlockExpr {
+    pub fn block(&self) -> Option<Block> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
