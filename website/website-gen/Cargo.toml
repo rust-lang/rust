@@ -1,0 +1,9 @@
+[package]
+name = "website-gen"
+version = "0.0.0"
+authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+walkdir = "2.2.0"

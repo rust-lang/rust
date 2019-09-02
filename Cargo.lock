@@ -1777,6 +1777,13 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "website-gen"
+version = "0.0.0"
+dependencies = [
+ "walkdir 2.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "winapi"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"

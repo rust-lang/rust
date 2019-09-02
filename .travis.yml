@@ -28,7 +28,7 @@ matrix:
           language: rust
           rust: stable
           script:
-              - cargo doc --all --no-deps
+              - cargo build-website
           env:
               - RUSTFLAGS="-D warnings", CARGO_INCREMENTAL=0
 
@@ -59,7 +59,7 @@ deploy:
     skip-cleanup: true
     github-token: $DOCS_TOKEN  # Set in the settings page of your repository, as a secure variable
     keep-history: true
-    local-dir: target/doc
+    local-dir: target/website/
     on:
         branch: master
         condition: $DEPLOY_DOCS = 1
