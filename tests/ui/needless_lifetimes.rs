@@ -248,4 +248,15 @@ fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
     unimplemented!()
 }
 
+// Make sure we still warn on implementations
+mod issue4291 {
+    trait BadTrait {
+        fn needless_lt<'a>(x: &'a u8) {}
+    }
+
+    impl BadTrait for () {
+        fn needless_lt<'a>(_x: &'a u8) {}
+    }
+}
+
 fn main() {}

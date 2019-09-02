@@ -61,4 +61,15 @@ impl X {
     fn explicit_self_with_lifetime<'a>(self: &'a Self) {}
 }
 
+// Methods implementing traits must have matching lifetimes
+mod issue4291 {
+    trait BadTrait {
+        fn unused_lt<'a>(x: u8) {}
+    }
+
+    impl BadTrait for () {
+        fn unused_lt<'a>(_x: u8) {}
+    }
+}
+
 fn main() {}

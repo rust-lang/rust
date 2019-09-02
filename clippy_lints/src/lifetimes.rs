@@ -9,7 +9,7 @@ use syntax::source_map::Span;
 use syntax::symbol::kw;
 
 use crate::reexport::*;
-use crate::utils::{last_path_segment, span_lint};
+use crate::utils::{last_path_segment, span_lint, trait_ref_of_method};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for lifetime annotations which can be removed by
@@ -60,13 +60,21 @@ declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Fn(ref decl, _, ref generics, id) = item.node {
-            check_fn_inner(cx, decl, Some(id), generics, item.span);
+            check_fn_inner(cx, decl, Some(id), generics, item.span, true);
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
         if let ImplItemKind::Method(ref sig, id) = item.node {
-            check_fn_inner(cx, &sig.decl, Some(id), &item.generics, item.span);
+            let report_extra_lifetimes = trait_ref_of_method(cx, item.hir_id).is_none();
+            check_fn_inner(
+                cx,
+                &sig.decl,
+                Some(id),
+                &item.generics,
+                item.span,
+                report_extra_lifetimes,
+            );
         }
     }
 
@@ -76,7 +84,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
                 TraitMethod::Required(_) => None,
                 TraitMethod::Provided(id) => Some(id),
             };
-            check_fn_inner(cx, &sig.decl, body, &item.generics, item.span);
+            check_fn_inner(cx, &sig.decl, body, &item.generics, item.span, true);
         }
     }
 }
@@ -95,6 +103,7 @@ fn check_fn_inner<'a, 'tcx>(
     body: Option<BodyId>,
     generics: &'tcx Generics,
     span: Span,
+    report_extra_lifetimes: bool,
 ) {
     if in_external_macro(cx.sess(), span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
@@ -144,7 +153,9 @@ fn check_fn_inner<'a, 'tcx>(
              (or replaced with `'_` if needed by type declaration)",
         );
     }
-    report_extra_lifetimes(cx, decl, generics);
+    if report_extra_lifetimes {
+        self::report_extra_lifetimes(cx, decl, generics);
+    }
 }
 
 fn could_use_elision<'a, 'tcx>(
