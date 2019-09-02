@@ -1552,7 +1552,7 @@ pub const ALL_LINTS: [Lint; 313] = [
         group: "style",
         desc: "using `name @ _` in a pattern",
         deprecation: None,
-        module: "misc",
+        module: "misc_early",
     },
     Lint {
         name: "redundant_pattern_matching",
