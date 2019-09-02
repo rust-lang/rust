@@ -13,18 +13,33 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;
 use std::borrow::Cow;
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+// NOTE: When adding new fields, make sure to adjust the Snapshot impl in
+// `src/librustc_mir/interpret/snapshot.rs`.
+#[derive(
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Hash,
+    RustcEncodable,
+    RustcDecodable,
+    HashStable,
+)]
 pub struct Allocation<Tag=(),Extra=()> {
     /// The actual bytes of the allocation.
-    /// Note that the bytes of a pointer represent the offset of the pointer
-    pub bytes: Vec<u8>,
+    /// Note that the bytes of a pointer represent the offset of the pointer.
+    bytes: Vec<u8>,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
     /// at the given offset.
-    pub relocations: Relocations<Tag>,
-    /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
-    pub undef_mask: UndefMask,
+    relocations: Relocations<Tag>,
+    /// Denotes which part of this allocation is initialized.
+    undef_mask: UndefMask,
+    /// The size of the allocation. Currently, must always equal `bytes.len()`.
+    pub size: Size,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: Align,
     /// Whether the allocation is mutable.
@@ -85,11 +100,12 @@ impl<Tag> Allocation<Tag> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes<'a>(slice: impl Into<Cow<'a, [u8]>>, align: Align) -> Self {
         let bytes = slice.into().into_owned();
-        let undef_mask = UndefMask::new(Size::from_bytes(bytes.len() as u64), true);
+        let size = Size::from_bytes(bytes.len() as u64);
         Self {
             bytes,
             relocations: Relocations::new(),
-            undef_mask,
+            undef_mask: UndefMask::new(size, true),
+            size,
             align,
             mutability: Mutability::Immutable,
             extra: (),
@@ -106,10 +122,36 @@ impl<Tag> Allocation<Tag> {
             bytes: vec![0; size.bytes() as usize],
             relocations: Relocations::new(),
             undef_mask: UndefMask::new(size, false),
+            size,
             align,
             mutability: Mutability::Mutable,
             extra: (),
         }
+    }
+}
+
+/// Raw accessors. Provide access to otherwise private bytes.
+impl<Tag, Extra> Allocation<Tag, Extra> {
+    pub fn len(&self) -> usize {
+        self.size.bytes() as usize
+    }
+
+    /// Looks at a slice which may describe undefined bytes or describe a relocation. This differs
+    /// from `get_bytes_with_undef_and_ptr` in that it does no relocation checks (even on the
+    /// edges) at all. It further ignores `AllocationExtra` callbacks.
+    /// This must not be used for reads affecting the interpreter execution.
+    pub fn inspect_with_undef_and_ptr_outside_interpreter(&self, range: Range<usize>) -> &[u8] {
+        &self.bytes[range]
+    }
+
+    /// Returns the undef mask.
+    pub fn undef_mask(&self) -> &UndefMask {
+        &self.undef_mask
+    }
+
+    /// Returns the relocation list.
+    pub fn relocations(&self) -> &Relocations<Tag> {
+        &self.relocations
     }
 }
 
@@ -132,9 +174,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         );
         let end = end.bytes() as usize;
         assert!(
-            end <= self.bytes.len(),
+            end <= self.len(),
             "Out-of-bounds access at offset {}, size {} in allocation of size {}",
-            offset.bytes(), size.bytes(), self.bytes.len()
+            offset.bytes(), size.bytes(), self.len()
         );
         (offset.bytes() as usize)..end
     }
@@ -422,7 +464,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 /// Relocations
 impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Returns all relocations overlapping with the given ptr-offset pair.
-    pub fn relocations(
+    pub fn get_relocations(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
@@ -443,7 +485,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> InterpResult<'tcx> {
-        if self.relocations(cx, ptr, size).is_empty() {
+        if self.get_relocations(cx, ptr, size).is_empty() {
             Ok(())
         } else {
             throw_unsup!(ReadPointerAsBytes)
@@ -465,7 +507,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
-            let relocations = self.relocations(cx, ptr, size);
+            let relocations = self.get_relocations(cx, ptr, size);
             if relocations.is_empty() {
                 return Ok(());
             }
@@ -536,6 +578,94 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     }
 }
 
+/// Run-length encoding of the undef mask.
+/// Used to copy parts of a mask multiple times to another allocation.
+pub struct AllocationDefinedness {
+    /// The definedness of the first range.
+    initial: bool,
+    /// The lengths of ranges that are run-length encoded.
+    /// The definedness of the ranges alternate starting with `initial`.
+    ranges: smallvec::SmallVec::<[u64; 1]>,
+}
+
+/// Transferring the definedness mask to other allocations.
+impl<Tag, Extra> Allocation<Tag, Extra> {
+    /// Creates a run-length encoding of the undef_mask.
+    pub fn compress_undef_range(
+        &self,
+        src: Pointer<Tag>,
+        size: Size,
+    ) -> AllocationDefinedness {
+        // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
+        // a naive undef mask copying algorithm would repeatedly have to read the undef mask from
+        // the source and write it to the destination. Even if we optimized the memory accesses,
+        // we'd be doing all of this `repeat` times.
+        // Therefor we precompute a compressed version of the undef mask of the source value and
+        // then write it back `repeat` times without computing any more information from the source.
+
+        // a precomputed cache for ranges of defined/undefined bits
+        // 0000010010001110 will become
+        // [5, 1, 2, 1, 3, 3, 1]
+        // where each element toggles the state
+
+        let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
+        let initial = self.undef_mask.get(src.offset);
+        let mut cur_len = 1;
+        let mut cur = initial;
+
+        for i in 1..size.bytes() {
+            // FIXME: optimize to bitshift the current undef block's bits and read the top bit
+            if self.undef_mask.get(src.offset + Size::from_bytes(i)) == cur {
+                cur_len += 1;
+            } else {
+                ranges.push(cur_len);
+                cur_len = 1;
+                cur = !cur;
+            }
+        }
+
+        ranges.push(cur_len);
+
+        AllocationDefinedness { ranges, initial, }
+    }
+
+    /// Apply multiple instances of the run-length encoding to the undef_mask.
+    pub fn mark_compressed_undef_range(
+        &mut self,
+        defined: &AllocationDefinedness,
+        dest: Pointer<Tag>,
+        size: Size,
+        repeat: u64,
+    ) {
+        // an optimization where we can just overwrite an entire range of definedness bits if
+        // they are going to be uniformly `1` or `0`.
+        if defined.ranges.len() <= 1 {
+            self.undef_mask.set_range_inbounds(
+                dest.offset,
+                dest.offset + size * repeat,
+                defined.initial,
+            );
+            return;
+        }
+
+        for mut j in 0..repeat {
+            j *= size.bytes();
+            j += dest.offset.bytes();
+            let mut cur = defined.initial;
+            for range in &defined.ranges {
+                let old_j = j;
+                j += range;
+                self.undef_mask.set_range_inbounds(
+                    Size::from_bytes(old_j),
+                    Size::from_bytes(j),
+                    cur,
+                );
+                cur = !cur;
+            }
+        }
+    }
+}
+
 /// Relocations
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Relocations<Tag=(), Id=AllocId>(SortedMap<Size, (Tag, Id)>);
@@ -563,6 +693,59 @@ impl<Tag> Deref for Relocations<Tag> {
 impl<Tag> DerefMut for Relocations<Tag> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+/// A partial, owned list of relocations to transfer into another allocation.
+pub struct AllocationRelocations<Tag> {
+    relative_relocations: Vec<(Size, (Tag, AllocId))>,
+}
+
+impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
+    pub fn prepare_relocation_copy(
+        &self,
+        cx: &impl HasDataLayout,
+        src: Pointer<Tag>,
+        size: Size,
+        dest: Pointer<Tag>,
+        length: u64,
+    ) -> AllocationRelocations<Tag> {
+        let relocations = self.get_relocations(cx, src, size);
+        if relocations.is_empty() {
+            return AllocationRelocations { relative_relocations: Vec::new() };
+        }
+
+        let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
+
+        for i in 0..length {
+            new_relocations.extend(
+                relocations
+                .iter()
+                .map(|&(offset, reloc)| {
+                    // compute offset for current repetition
+                    let dest_offset = dest.offset + (i * size);
+                    (
+                        // shift offsets from source allocation to destination allocation
+                        offset + dest_offset - src.offset,
+                        reloc,
+                    )
+                })
+            );
+        }
+
+        AllocationRelocations {
+            relative_relocations: new_relocations,
+        }
+    }
+
+    /// Apply a relocation copy.
+    /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
+    /// to be clear of relocations.
+    pub fn mark_relocation_range(
+        &mut self,
+        relocations: AllocationRelocations<Tag>,
+    ) {
+        self.relocations.insert_presorted(relocations.relative_relocations);
     }
 }
 

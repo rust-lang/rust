@@ -1218,7 +1218,7 @@ fn collect_miri<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut Vec<Mon
         }
         Some(GlobalAlloc::Memory(alloc)) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            for &((), inner) in alloc.relocations.values() {
+            for &((), inner) in alloc.relocations().values() {
                 collect_miri(tcx, inner, output);
             }
         },
@@ -1269,7 +1269,7 @@ fn collect_const<'tcx>(
             collect_miri(tcx, ptr.alloc_id, output),
         ConstValue::Slice { data: alloc, start: _, end: _ } |
         ConstValue::ByRef { alloc, .. } => {
-            for &((), id) in alloc.relocations.values() {
+            for &((), id) in alloc.relocations().values() {
                 collect_miri(tcx, id, output);
             }
         }

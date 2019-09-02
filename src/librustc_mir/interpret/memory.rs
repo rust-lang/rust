@@ -210,7 +210,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let new_ptr = self.allocate(new_size, new_align, kind);
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
-            None => Size::from_bytes(self.get(ptr.alloc_id)?.bytes.len() as u64),
+            None => self.get(ptr.alloc_id)?.size,
         };
         self.copy(
             ptr,
@@ -271,20 +271,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             ))
         }
         if let Some((size, align)) = old_size_and_align {
-            if size.bytes() != alloc.bytes.len() as u64 || align != alloc.align {
-                let bytes = Size::from_bytes(alloc.bytes.len() as u64);
+            if size != alloc.size || align != alloc.align {
+                let bytes = alloc.size;
                 throw_unsup!(IncorrectAllocationInformation(size, bytes, align, alloc.align))
             }
         }
 
         // Let the machine take some extra action
-        let size = Size::from_bytes(alloc.bytes.len() as u64);
+        let size = alloc.size;
         AllocationExtra::memory_deallocated(&mut alloc, ptr, size)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
             ptr.alloc_id,
-            (Size::from_bytes(alloc.bytes.len() as u64), alloc.align)
+            (alloc.size, alloc.align)
         );
         if old.is_some() {
             bug!("Nothing can be deallocated twice");
@@ -555,7 +555,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a static's allocation in miri
         if let Some((_, alloc)) = self.alloc_map.get(id) {
-            return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
+            return Ok((alloc.size, alloc.align));
         }
 
         // # Function pointers
@@ -583,7 +583,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Memory(alloc)) =>
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
-                Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align)),
+                Ok((alloc.size, alloc.align)),
             Some(GlobalAlloc::Function(_)) =>
                 bug!("We already checked function pointers above"),
             // The rest must be dead.
@@ -645,17 +645,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let prefix_len = msg.len();
         let mut relocations = vec![];
 
-        for i in 0..(alloc.bytes.len() as u64) {
+        for i in 0..alloc.size.bytes() {
             let i = Size::from_bytes(i);
-            if let Some(&(_, target_id)) = alloc.relocations.get(&i) {
+            if let Some(&(_, target_id)) = alloc.relocations().get(&i) {
                 if allocs_seen.insert(target_id) {
                     allocs_to_print.push_back(target_id);
                 }
                 relocations.push((i, target_id));
             }
-            if alloc.undef_mask.is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
+            if alloc.undef_mask().is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
                 // this `as usize` is fine, since `i` came from a `usize`
-                write!(msg, "{:02x} ", alloc.bytes[i.bytes() as usize]).unwrap();
+                let i = i.bytes() as usize;
+
+                // Checked definedness (and thus range) and relocations. This access also doesn't
+                // influence interpreter execution but is only for debugging.
+                let bytes = alloc.inspect_with_undef_and_ptr_outside_interpreter(i..i+1);
+                write!(msg, "{:02x} ", bytes[0]).unwrap();
             } else {
                 msg.push_str("__ ");
             }
@@ -664,7 +669,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         trace!(
             "{}({} bytes, alignment {}){}",
             msg,
-            alloc.bytes.len(),
+            alloc.size.bytes(),
             alloc.align.bytes(),
             extra
         );
@@ -803,32 +808,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // since we don't want to keep any relocations at the target.
         // (`get_bytes_with_undef_and_ptr` below checks that there are no
         // relocations overlapping the edges; those would not be handled correctly).
-        let relocations = {
-            let relocations = self.get(src.alloc_id)?.relocations(self, src, size);
-            if relocations.is_empty() {
-                // nothing to copy, ignore even the `length` loop
-                Vec::new()
-            } else {
-                let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
-                for i in 0..length {
-                    new_relocations.extend(
-                        relocations
-                        .iter()
-                        .map(|&(offset, reloc)| {
-                            // compute offset for current repetition
-                            let dest_offset = dest.offset + (i * size);
-                            (
-                                // shift offsets from source allocation to destination allocation
-                                offset + dest_offset - src.offset,
-                                reloc,
-                            )
-                        })
-                    );
-                }
-
-                new_relocations
-            }
-        };
+        let relocations = self.get(src.alloc_id)?
+            .prepare_relocation_copy(self, src, size, dest, length);
 
         let tcx = self.tcx.tcx;
 
@@ -875,7 +856,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // copy definedness to the destination
         self.copy_undef_mask(src, dest, size, length)?;
         // copy the relocations to the destination
-        self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
+        self.get_mut(dest.alloc_id)?.mark_relocation_range(relocations);
 
         Ok(())
     }
@@ -894,65 +875,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size.bytes() as usize as u64, size.bytes());
 
-        let undef_mask = &self.get(src.alloc_id)?.undef_mask;
-
-        // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
-        // a naive undef mask copying algorithm would repeatedly have to read the undef mask from
-        // the source and write it to the destination. Even if we optimized the memory accesses,
-        // we'd be doing all of this `repeat` times.
-        // Therefor we precompute a compressed version of the undef mask of the source value and
-        // then write it back `repeat` times without computing any more information from the source.
-
-        // a precomputed cache for ranges of defined/undefined bits
-        // 0000010010001110 will become
-        // [5, 1, 2, 1, 3, 3, 1]
-        // where each element toggles the state
-        let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
-        let first = undef_mask.get(src.offset);
-        let mut cur_len = 1;
-        let mut cur = first;
-        for i in 1..size.bytes() {
-            // FIXME: optimize to bitshift the current undef block's bits and read the top bit
-            if undef_mask.get(src.offset + Size::from_bytes(i)) == cur {
-                cur_len += 1;
-            } else {
-                ranges.push(cur_len);
-                cur_len = 1;
-                cur = !cur;
-            }
-        }
+        let src_alloc = self.get(src.alloc_id)?;
+        let compressed = src_alloc.compress_undef_range(src, size);
 
         // now fill in all the data
         let dest_allocation = self.get_mut(dest.alloc_id)?;
-        // an optimization where we can just overwrite an entire range of definedness bits if
-        // they are going to be uniformly `1` or `0`.
-        if ranges.is_empty() {
-            dest_allocation.undef_mask.set_range_inbounds(
-                dest.offset,
-                dest.offset + size * repeat,
-                first,
-            );
-            return Ok(())
-        }
+        dest_allocation.mark_compressed_undef_range(&compressed, dest, size, repeat);
 
-        // remember to fill in the trailing bits
-        ranges.push(cur_len);
-
-        for mut j in 0..repeat {
-            j *= size.bytes();
-            j += dest.offset.bytes();
-            let mut cur = first;
-            for range in &ranges {
-                let old_j = j;
-                j += range;
-                dest_allocation.undef_mask.set_range_inbounds(
-                    Size::from_bytes(old_j),
-                    Size::from_bytes(j),
-                    cur,
-                );
-                cur = !cur;
-            }
-        }
         Ok(())
     }
 
