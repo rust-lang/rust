@@ -203,7 +203,8 @@ fn api_walkthrough() {
     assert_eq!(name.text(), "foo");
 
     // Let's get the `1 + 1` expression!
-    let block: ast::Block = func.body().unwrap();
+    let body: ast::BlockExpr = func.body().unwrap();
+    let block = body.block().unwrap();
     let expr: ast::Expr = block.expr().unwrap();
 
     // Enums are used to group related ast nodes together, and can be used for

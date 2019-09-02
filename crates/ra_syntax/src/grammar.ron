@@ -275,7 +275,7 @@ Grammar(
                 "AttrsOwner",
                 "DocCommentsOwner"
             ],
-            options: [ "ParamList", ["body", "Block"], "RetType" ],
+            options: [ "ParamList", ["body", "BlockExpr"], "RetType" ],
         ),
         "RetType": (options: ["TypeRef"]),
         "StructDef": (
