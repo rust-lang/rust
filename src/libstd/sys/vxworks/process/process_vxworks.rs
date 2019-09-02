@@ -1,3 +1,5 @@
+// Copyright (c) 2019 Wind River Systems, Inc.
+
 use crate::io::{self, Error, ErrorKind};
 use libc::{self, c_int, c_char};
 use libc::{RTP_ID};
@@ -5,6 +7,7 @@ use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::rtp;
 use crate::sys::process::process_common::*;
+use crate::sys_common::thread;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -57,8 +60,7 @@ impl Command {
                 self.get_argv().as_ptr() as *const _, // argv
                 *sys::os::environ() as *const *const c_char,
                 100 as c_int,                         // initial priority
-                0x16000,                                    // initial stack size. 0 defaults
-                                                      // to 0x4000 in 32 bit and 0x8000 in 64 bit
+                thread::min_stack(),                  // initial stack size.
                 0,                                    // options
                 0                                     // task options
             );
