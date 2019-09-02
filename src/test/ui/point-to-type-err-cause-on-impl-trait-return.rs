@@ -17,10 +17,10 @@ fn bar() -> impl std::fmt::Display {
 
 fn baz() -> impl std::fmt::Display {
     if false {
-    //~^ ERROR mismatched types
         return 0i32;
     } else {
         1u32
+        //~^ ERROR mismatched types
     }
 }
 
