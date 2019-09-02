@@ -3688,7 +3688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// If `expr` is a `match` expression that has only one non-`!` arm, use that arm's tail
-    /// expression's `Span`, otherwise return `expr.span`. This is done to give bettern errors
+    /// expression's `Span`, otherwise return `expr.span`. This is done to give better errors
     /// when given code like the following:
     /// ```text
     /// if false { return 0i32; } else { 1u32 }
