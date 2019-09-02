@@ -7,7 +7,7 @@ use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{
         self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner,
-        TryBlockBodyOwner, TypeAscriptionOwner,
+        TypeAscriptionOwner,
     },
     AstNode, AstPtr, SyntaxNodePtr,
 };
@@ -640,7 +640,7 @@ where
                 self.alloc_expr(Expr::If { condition, then_branch, else_branch }, syntax_ptr)
             }
             ast::Expr::TryBlockExpr(e) => {
-                let body = self.collect_block_opt(e.try_body());
+                let body = self.collect_block_opt(e.block());
                 self.alloc_expr(Expr::TryBlock { body }, syntax_ptr)
             }
             ast::Expr::BlockExpr(e) => self.collect_block_opt(e.block()),

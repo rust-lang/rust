@@ -33,12 +33,6 @@ pub trait LoopBodyOwner: AstNode {
     }
 }
 
-pub trait TryBlockBodyOwner: AstNode {
-    fn try_body(&self) -> Option<ast::Block> {
-        child_opt(self)
-    }
-}
-
 pub trait ArgListOwner: AstNode {
     fn arg_list(&self) -> Option<ast::ArgList> {
         child_opt(self)
