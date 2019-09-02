@@ -463,10 +463,10 @@ fn match_guard(p: &mut Parser) -> CompletedMarker {
 //     unsafe {};
 //     'label: {};
 // }
-fn block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
+pub(super) fn block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T!['{']));
     let m = m.unwrap_or_else(|| p.start());
-    block(p);
+    naked_block(p);
     m.complete(p, BLOCK_EXPR)
 }
 

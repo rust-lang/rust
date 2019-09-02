@@ -97,7 +97,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
     for node in root.descendants() {
         let _ = visitor_ctx(&mut errors)
             .visit::<ast::Literal, _>(validate_literal)
-            .visit::<ast::Block, _>(block::validate_block_node)
+            .visit::<ast::BlockExpr, _>(block::validate_block_expr)
             .visit::<ast::FieldExpr, _>(|it, errors| validate_numeric_name(it.name_ref(), errors))
             .visit::<ast::RecordField, _>(|it, errors| validate_numeric_name(it.name_ref(), errors))
             .accept(&node);
