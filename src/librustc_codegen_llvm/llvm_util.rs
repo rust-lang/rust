@@ -59,9 +59,6 @@ unsafe fn configure_llvm(sess: &Session) {
         add("rustc"); // fake program name
         if sess.time_llvm_passes() { add("-time-passes"); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
-        if sess.opts.debugging_opts.disable_instrumentation_preinliner {
-            add("-disable-preinline");
-        }
         if get_major_version() >= 8 {
             match sess.opts.debugging_opts.merge_functions
                   .unwrap_or(sess.target.target.options.merge_functions) {
@@ -71,6 +68,18 @@ unsafe fn configure_llvm(sess: &Session) {
                     add("-mergefunc-use-aliases");
                 }
             }
+        }
+
+        // Rust code seems to profit from disabling LLVM PGO's pre-inlining
+        // pass, so we do that (unless the user has explicitly specified a
+        // setting for it).
+        if (sess.opts.cg.profile_generate.enabled() ||
+            sess.opts.cg.profile_use.is_some()) &&
+            !sess.opts.cg.llvm_args.iter().any(|arg| {
+                arg.to_lowercase().contains("disable-preinline")
+            })
+        {
+            add("-disable-preinline");
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes
