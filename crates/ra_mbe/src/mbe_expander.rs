@@ -1,7 +1,9 @@
+//! This module takes a (parsed) definition of `macro_rules` invocation, a
+//! `tt::TokenTree` representing an argument of macro invocation, and produces a
+//! `tt::TokenTree` for the result of the expansion.
+
+use ra_parser::FragmentKind::*;
 use ra_syntax::SmolStr;
-/// This module takes a (parsed) definition of `macro_rules` invocation, a
-/// `tt::TokenTree` representing an argument of macro invocation, and produces a
-/// `tt::TokenTree` for the result of the expansion.
 use rustc_hash::FxHashMap;
 use tt::TokenId;
 
@@ -192,81 +194,11 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
             crate::TokenTree::Leaf(leaf) => match leaf {
                 crate::Leaf::Var(crate::Var { text, kind }) => {
                     let kind = kind.clone().ok_or(ExpandError::UnexpectedToken)?;
-                    match kind.as_str() {
-                        "ident" => {
-                            let ident =
-                                input.eat_ident().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(
-                                text.clone(),
-                                Binding::Simple(tt::Leaf::from(ident).into()),
-                            );
+                    match match_meta_var(kind.as_str(), input)? {
+                        Some(tt) => {
+                            res.inner.insert(text.clone(), Binding::Simple(tt));
                         }
-                        "path" => {
-                            let path =
-                                input.eat_path().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(path));
-                        }
-                        "expr" => {
-                            let expr =
-                                input.eat_expr().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(expr));
-                        }
-                        "ty" => {
-                            let ty = input.eat_ty().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(ty));
-                        }
-                        "pat" => {
-                            let pat = input.eat_pat().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(pat));
-                        }
-                        "stmt" => {
-                            let pat = input.eat_stmt().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(pat));
-                        }
-                        "block" => {
-                            let block =
-                                input.eat_block().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(block));
-                        }
-                        "meta" => {
-                            let meta =
-                                input.eat_meta().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(meta));
-                        }
-                        "tt" => {
-                            let token = input.eat().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(token));
-                        }
-                        "item" => {
-                            let item =
-                                input.eat_item().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(item));
-                        }
-                        "lifetime" => {
-                            let lifetime =
-                                input.eat_lifetime().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(lifetime));
-                        }
-                        "literal" => {
-                            let literal =
-                                input.eat_literal().ok_or(ExpandError::UnexpectedToken)?.clone();
-
-                            res.inner.insert(
-                                text.clone(),
-                                Binding::Simple(tt::Leaf::from(literal).into()),
-                            );
-                        }
-                        "vis" => {
-                            // `vis` is optional
-                            if let Some(vis) = input.try_eat_vis() {
-                                let vis = vis.clone();
-                                res.inner.insert(text.clone(), Binding::Simple(vis));
-                            } else {
-                                res.push_optional(&text);
-                            }
-                        }
-
-                        _ => return Err(ExpandError::UnexpectedToken),
+                        None => res.push_optional(text),
                     }
                 }
                 crate::Leaf::Punct(punct) => {
@@ -358,6 +290,42 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
         }
     }
     Ok(res)
+}
+
+fn match_meta_var(kind: &str, input: &mut TtCursor) -> Result<Option<tt::TokenTree>, ExpandError> {
+    let fragment = match kind {
+        "path" => Path,
+        "expr" => Expr,
+        "ty" => Type,
+        "pat" => Pattern,
+        "stmt" => Statement,
+        "block" => Block,
+        "meta" => MetaItem,
+        "item" => Item,
+        _ => {
+            let binding = match kind {
+                "ident" => {
+                    let ident = input.eat_ident().ok_or(ExpandError::UnexpectedToken)?.clone();
+                    tt::Leaf::from(ident).into()
+                }
+                "tt" => input.eat().ok_or(ExpandError::UnexpectedToken)?.clone(),
+                "lifetime" => input.eat_lifetime().ok_or(ExpandError::UnexpectedToken)?.clone(),
+                "literal" => {
+                    let literal = input.eat_literal().ok_or(ExpandError::UnexpectedToken)?.clone();
+                    tt::Leaf::from(literal).into()
+                }
+                // `vis` is optional
+                "vis" => match input.try_eat_vis() {
+                    Some(vis) => vis,
+                    None => return Ok(None),
+                },
+                _ => return Err(ExpandError::UnexpectedToken),
+            };
+            return Ok(Some(binding));
+        }
+    };
+    let binding = input.eat_fragment(fragment).ok_or(ExpandError::UnexpectedToken)?;
+    Ok(Some(binding))
 }
 
 #[derive(Debug)]

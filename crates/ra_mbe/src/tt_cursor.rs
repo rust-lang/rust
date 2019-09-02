@@ -1,5 +1,6 @@
-use crate::subtree_parser::Parser;
-use crate::ParseError;
+use crate::{subtree_parser::Parser, ParseError};
+
+use ra_parser::FragmentKind;
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug, Clone)]
@@ -98,44 +99,9 @@ impl<'a> TtCursor<'a> {
         })
     }
 
-    pub(crate) fn eat_path(&mut self) -> Option<tt::TokenTree> {
+    pub(crate) fn eat_fragment(&mut self, fragment_kind: FragmentKind) -> Option<tt::TokenTree> {
         let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_path()
-    }
-
-    pub(crate) fn eat_expr(&mut self) -> Option<tt::TokenTree> {
-        let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_expr()
-    }
-
-    pub(crate) fn eat_ty(&mut self) -> Option<tt::TokenTree> {
-        let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_ty()
-    }
-
-    pub(crate) fn eat_pat(&mut self) -> Option<tt::TokenTree> {
-        let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_pat()
-    }
-
-    pub(crate) fn eat_stmt(&mut self) -> Option<tt::TokenTree> {
-        let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_stmt()
-    }
-
-    pub(crate) fn eat_block(&mut self) -> Option<tt::TokenTree> {
-        let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_block()
-    }
-
-    pub(crate) fn eat_meta(&mut self) -> Option<tt::TokenTree> {
-        let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_meta()
-    }
-
-    pub(crate) fn eat_item(&mut self) -> Option<tt::TokenTree> {
-        let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_item()
+        parser.parse_fragment(fragment_kind)
     }
 
     pub(crate) fn eat_lifetime(&mut self) -> Option<tt::TokenTree> {
@@ -154,7 +120,7 @@ impl<'a> TtCursor<'a> {
         let old_pos = self.pos;
         let parser = Parser::new(&mut self.pos, self.subtree);
 
-        let res = parser.parse_vis();
+        let res = parser.parse_fragment(FragmentKind::Visibility);
         if res.is_none() {
             self.pos = old_pos;
         }

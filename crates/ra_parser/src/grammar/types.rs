@@ -7,7 +7,7 @@ pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(token_set![
 
 const TYPE_RECOVERY_SET: TokenSet = token_set![R_PAREN, COMMA];
 
-pub(super) fn type_(p: &mut Parser) {
+pub(crate) fn type_(p: &mut Parser) {
     type_with_bounds_cond(p, true);
 }
 
