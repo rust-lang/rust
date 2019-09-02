@@ -1,4 +1,4 @@
-use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{in_macro, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -38,6 +38,7 @@ impl EarlyLintPass for DerefAddrOf {
         if_chain! {
             if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.node;
             if let ExprKind::AddrOf(_, ref addrof_target) = without_parens(deref_target).node;
+            if !in_macro(addrof_target.span);
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_sugg(
