@@ -1,4 +1,4 @@
-error[E0658]: `#[alloc_error_handler]` is an unstable feature
+error[E0658]: the `#[alloc_error_handler]` attribute is an experimental feature
   --> $DIR/feature-gate-alloc-error-handler.rs:8:1
    |
 LL | #[alloc_error_handler]

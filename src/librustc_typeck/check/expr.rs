@@ -1392,12 +1392,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_did: DefId,
     ) {
         let struct_path = self.tcx().def_path_str(base_did);
+        let kind_name = match self.tcx().def_kind(base_did) {
+            Some(def_kind) => def_kind.descr(base_did),
+            _ => " ",
+        };
         let mut err = struct_span_err!(
             self.tcx().sess,
             expr.span,
             E0616,
-            "field `{}` of struct `{}` is private",
+            "field `{}` of {} `{}` is private",
             field,
+            kind_name,
             struct_path
         );
         // Also check if an accessible method exists, which is often what is meant.

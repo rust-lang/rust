@@ -1,8 +1,12 @@
-error: expected pattern, found keyword `match`
+error: expected identifier, found keyword `match`
   --> $DIR/keyword-match-as-identifier.rs:4:9
    |
 LL |     let match = "foo";
-   |         ^^^^^ expected pattern
+   |         ^^^^^ expected identifier, found keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#match = "foo";
+   |         ^^^^^^^
 
 error: aborting due to previous error
 

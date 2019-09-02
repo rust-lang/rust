@@ -1,8 +1,12 @@
-error: expected pattern, found reserved keyword `final`
+error: expected identifier, found reserved keyword `final`
   --> $DIR/keyword-final.rs:2:9
    |
 LL |     let final = ();
-   |         ^^^^^ expected pattern
+   |         ^^^^^ expected identifier, found reserved keyword
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#final = ();
+   |         ^^^^^^^
 
 error: aborting due to previous error
 

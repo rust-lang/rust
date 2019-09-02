@@ -186,8 +186,8 @@ fn build_local_id_to_index(body: Option<&hir::Body>,
             index: &'a mut FxHashMap<hir::ItemLocalId, Vec<CFGIndex>>,
         }
         let mut formals = Formals { entry: entry, index: index };
-        for arg in &body.arguments {
-            formals.visit_pat(&arg.pat);
+        for param in &body.params {
+            formals.visit_pat(&param.pat);
         }
         impl<'a, 'v> Visitor<'v> for Formals<'a> {
             fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'v> {

@@ -110,7 +110,11 @@ rustc_queries! {
             no_hash
         }
 
-        query mir_validated(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_validated(_: DefId) ->
+            (
+                &'tcx Steal<mir::Body<'tcx>>,
+                &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
+            ) {
             no_hash
         }
 
@@ -125,7 +129,17 @@ rustc_queries! {
             }
         }
 
-        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> { }
+        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
+            cache_on_disk_if { key.is_local() }
+            load_cached(tcx, id) {
+                let promoted: Option<
+                    rustc_data_structures::indexed_vec::IndexVec<
+                        crate::mir::Promoted,
+                        crate::mir::Body<'tcx>
+                    >> = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
+                promoted.map(|p| &*tcx.arena.alloc(p))
+            }
+        }
     }
 
     TypeChecking {
@@ -790,7 +804,7 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        // Lifetime resolution. See `middle::resolve_lifetimes`.
+        /// Lifetime resolution. See `middle::resolve_lifetimes`.
         query resolve_lifetimes(_: CrateNum) -> &'tcx ResolveLifetimes {
             desc { "resolving lifetimes" }
         }
@@ -832,13 +846,30 @@ rustc_queries! {
             -> &'tcx [(Symbol, Option<Symbol>)] {
             desc { "calculating the lib features defined in a crate" }
         }
+        /// Returns the lang items defined in another crate by loading it from metadata.
+        // FIXME: It is illegal to pass a `CrateNum` other than `LOCAL_CRATE` here, just get rid
+        // of that argument?
         query get_lang_items(_: CrateNum) -> &'tcx LanguageItems {
             eval_always
             desc { "calculating the lang items map" }
         }
+
+        /// Returns all diagnostic items defined in all crates
+        query all_diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
+            eval_always
+            desc { "calculating the diagnostic items map" }
+        }
+
+        /// Returns the lang items defined in another crate by loading it from metadata.
         query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
             desc { "calculating the lang items defined in a crate" }
         }
+
+        /// Returns the diagnostic items defined in a crate
+        query diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
+            desc { "calculating the diagnostic items map in a crate" }
+        }
+
         query missing_lang_items(_: CrateNum) -> &'tcx [LangItem] {
             desc { "calculating the missing lang items in a crate" }
         }

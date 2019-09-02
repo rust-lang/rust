@@ -4,7 +4,6 @@
 use syntax::ast;
 use syntax::attr::{self, check_builtin_macro_attribute};
 use syntax::ext::base::*;
-use syntax::ext::hygiene::SyntaxContext;
 use syntax::print::pprust;
 use syntax::source_map::respan;
 use syntax::symbol::{Symbol, sym};
@@ -29,7 +28,7 @@ pub fn expand_test_case(
 
     if !ecx.ecfg.should_test { return vec![]; }
 
-    let sp = attr_sp.with_ctxt(SyntaxContext::root().apply_mark(ecx.current_expansion.id));
+    let sp = ecx.with_legacy_ctxt(attr_sp);
     let mut item = anno_item.expect_item();
     item = item.map(|mut item| {
         item.vis = respan(item.vis.span, ast::VisibilityKind::Public);
@@ -93,8 +92,7 @@ pub fn expand_test_or_bench(
         return vec![Annotatable::Item(item)];
     }
 
-    let ctxt = SyntaxContext::root().apply_mark(cx.current_expansion.id);
-    let (sp, attr_sp) = (item.span.with_ctxt(ctxt), attr_sp.with_ctxt(ctxt));
+    let (sp, attr_sp) = (cx.with_legacy_ctxt(item.span), cx.with_legacy_ctxt(attr_sp));
 
     // Gensym "test" so we can extern crate without conflicting with any local names
     let test_id = cx.ident_of("test").gensym();

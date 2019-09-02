@@ -1,5 +1,5 @@
 use crate::ast::{
-    self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
+    self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
 use crate::feature_gate::{feature_err, UnstableFeatures};
@@ -18,7 +18,7 @@ use log::{debug, trace};
 use std::mem;
 
 /// Creates a placeholder argument.
-crate fn dummy_arg(ident: Ident) -> Arg {
+crate fn dummy_arg(ident: Ident) -> Param {
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
         node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
@@ -29,7 +29,7 @@ crate fn dummy_arg(ident: Ident) -> Arg {
         span: ident.span,
         id: ast::DUMMY_NODE_ID
     };
-    Arg { attrs: ThinVec::default(), id: ast::DUMMY_NODE_ID, pat, span: ident.span, ty: P(ty) }
+    Param { attrs: ThinVec::default(), id: ast::DUMMY_NODE_ID, pat, span: ident.span, ty: P(ty) }
 }
 
 pub enum Error {
@@ -1183,7 +1183,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    crate fn eat_incorrect_doc_comment_for_arg_type(&mut self) {
+    crate fn eat_incorrect_doc_comment_for_param_type(&mut self) {
         if let token::DocComment(_) = self.token.kind {
             self.struct_span_err(
                 self.token.span,
@@ -1211,7 +1211,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    crate fn argument_without_type(
+    crate fn parameter_without_type(
         &mut self,
         err: &mut DiagnosticBuilder<'_>,
         pat: P<ast::Pat>,
@@ -1286,13 +1286,13 @@ impl<'a> Parser<'a> {
         Ok((pat, ty))
     }
 
-    crate fn recover_bad_self_arg(
+    crate fn recover_bad_self_param(
         &mut self,
-        mut arg: ast::Arg,
+        mut param: ast::Param,
         is_trait_item: bool,
-    ) -> PResult<'a, ast::Arg> {
-        let sp = arg.pat.span;
-        arg.ty.node = TyKind::Err;
+    ) -> PResult<'a, ast::Param> {
+        let sp = param.pat.span;
+        param.ty.node = TyKind::Err;
         let mut err = self.struct_span_err(sp, "unexpected `self` parameter in function");
         if is_trait_item {
             err.span_label(sp, "must be the first associated function parameter");
@@ -1301,7 +1301,7 @@ impl<'a> Parser<'a> {
             err.note("`self` is only valid as the first parameter of an associated function");
         }
         err.emit();
-        Ok(arg)
+        Ok(param)
     }
 
     crate fn consume_block(&mut self, delim: token::DelimToken) {
@@ -1344,15 +1344,15 @@ impl<'a> Parser<'a> {
         err
     }
 
-    /// Replace duplicated recovered arguments with `_` pattern to avoid unecessary errors.
+    /// Replace duplicated recovered parameters with `_` pattern to avoid unecessary errors.
     ///
     /// This is necessary because at this point we don't know whether we parsed a function with
-    /// anonymous arguments or a function with names but no types. In order to minimize
-    /// unecessary errors, we assume the arguments are in the shape of `fn foo(a, b, c)` where
-    /// the arguments are *names* (so we don't emit errors about not being able to find `b` in
+    /// anonymous parameters or a function with names but no types. In order to minimize
+    /// unecessary errors, we assume the parameters are in the shape of `fn foo(a, b, c)` where
+    /// the parameters are *names* (so we don't emit errors about not being able to find `b` in
     /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
-    /// we deduplicate them to not complain about duplicated argument names.
-    crate fn deduplicate_recovered_arg_names(&self, fn_inputs: &mut Vec<Arg>) {
+    /// we deduplicate them to not complain about duplicated parameter names.
+    crate fn deduplicate_recovered_params_names(&self, fn_inputs: &mut Vec<Param>) {
         let mut seen_inputs = FxHashSet::default();
         for input in fn_inputs.iter_mut() {
             let opt_ident = if let (PatKind::Ident(_, ident, _), TyKind::Err) = (

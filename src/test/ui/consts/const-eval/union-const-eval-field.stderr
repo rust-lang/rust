@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-const-eval-field.rs:27:5
+  --> $DIR/union-const-eval-field.rs:28:5
    |
 LL |     const FIELD3: Field3 = unsafe { UNION.field3 };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected initialized plain (non-pointer) bytes

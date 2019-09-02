@@ -4,6 +4,11 @@ error[E0391]: cycle detected when const-evaluating + checking `Foo::bytes::{{con
 LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
    |                 ^^^^^^
    |
+note: ...which requires const-evaluating + checking `Foo::bytes::{{constant}}#0`...
+  --> $DIR/issue-44415.rs:6:17
+   |
+LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
+   |                 ^^^^^^
 note: ...which requires const-evaluating `Foo::bytes::{{constant}}#0`...
   --> $DIR/issue-44415.rs:6:26
    |
@@ -11,11 +16,6 @@ LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires computing layout of `Foo`...
    = note: ...which requires normalizing `ParamEnvAnd { param_env: ParamEnv { caller_bounds: [], reveal: All, def_id: None }, value: [u8; _] }`...
-note: ...which requires const-evaluating + checking `Foo::bytes::{{constant}}#0`...
-  --> $DIR/issue-44415.rs:6:17
-   |
-LL |     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
-   |                 ^^^^^^
    = note: ...which again requires const-evaluating + checking `Foo::bytes::{{constant}}#0`, completing the cycle
 note: cycle used when processing `Foo`
   --> $DIR/issue-44415.rs:5:1

@@ -720,7 +720,7 @@ impl LoweringContext<'_> {
                             (
                                 // Disallow impl Trait in foreign items
                                 this.lower_fn_decl(fdec, None, false, None),
-                                this.lower_fn_args_to_names(fdec),
+                                this.lower_fn_params_to_names(fdec),
                             )
                         },
                     );
@@ -827,7 +827,7 @@ impl LoweringContext<'_> {
                 ),
             ),
             TraitItemKind::Method(ref sig, None) => {
-                let names = self.lower_fn_args_to_names(&sig.decl);
+                let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
                     sig,
@@ -1028,10 +1028,10 @@ impl LoweringContext<'_> {
         }
     }
 
-    fn record_body(&mut self, arguments: HirVec<hir::Arg>, value: hir::Expr) -> hir::BodyId {
+    fn record_body(&mut self, params: HirVec<hir::Param>, value: hir::Expr) -> hir::BodyId {
         let body = hir::Body {
             generator_kind: self.generator_kind,
-            arguments,
+            params,
             value,
         };
         let id = body.id();
@@ -1041,21 +1041,21 @@ impl LoweringContext<'_> {
 
     fn lower_body(
         &mut self,
-        f: impl FnOnce(&mut LoweringContext<'_>) -> (HirVec<hir::Arg>, hir::Expr),
+        f: impl FnOnce(&mut LoweringContext<'_>) -> (HirVec<hir::Param>, hir::Expr),
     ) -> hir::BodyId {
         let prev_gen_kind = self.generator_kind.take();
-        let (arguments, result) = f(self);
-        let body_id = self.record_body(arguments, result);
+        let (parameters, result) = f(self);
+        let body_id = self.record_body(parameters, result);
         self.generator_kind = prev_gen_kind;
         body_id
     }
 
-    fn lower_arg(&mut self, arg: &Arg) -> hir::Arg {
-        hir::Arg {
-            attrs: self.lower_attrs(&arg.attrs),
-            hir_id: self.lower_node_id(arg.id),
-            pat: self.lower_pat(&arg.pat),
-            span: arg.span,
+    fn lower_param(&mut self, param: &Param) -> hir::Param {
+        hir::Param {
+            attrs: self.lower_attrs(&param.attrs),
+            hir_id: self.lower_node_id(param.id),
+            pat: self.lower_pat(&param.pat),
+            span: param.span,
         }
     }
 
@@ -1065,7 +1065,7 @@ impl LoweringContext<'_> {
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::BodyId {
         self.lower_body(|this| (
-            decl.inputs.iter().map(|x| this.lower_arg(x)).collect(),
+            decl.inputs.iter().map(|x| this.lower_param(x)).collect(),
             body(this),
         ))
     }
@@ -1093,10 +1093,10 @@ impl LoweringContext<'_> {
         };
 
         self.lower_body(|this| {
-            let mut arguments: Vec<hir::Arg> = Vec::new();
+            let mut parameters: Vec<hir::Param> = Vec::new();
             let mut statements: Vec<hir::Stmt> = Vec::new();
 
-            // Async function arguments are lowered into the closure body so that they are
+            // Async function parameters are lowered into the closure body so that they are
             // captured and so that the drop order matches the equivalent non-async functions.
             //
             // from:
@@ -1121,13 +1121,13 @@ impl LoweringContext<'_> {
             //
             // If `<pattern>` is a simple ident, then it is lowered to a single
             // `let <pattern> = <pattern>;` statement as an optimization.
-            for (index, argument) in decl.inputs.iter().enumerate() {
-                let argument = this.lower_arg(argument);
-                let span = argument.pat.span;
+            for (index, parameter) in decl.inputs.iter().enumerate() {
+                let parameter = this.lower_param(parameter);
+                let span = parameter.pat.span;
 
                 // Check if this is a binding pattern, if so, we can optimize and avoid adding a
-                // `let <pat> = __argN;` statement. In this case, we do not rename the argument.
-                let (ident, is_simple_argument) = match argument.pat.node {
+                // `let <pat> = __argN;` statement. In this case, we do not rename the parameter.
+                let (ident, is_simple_parameter) = match parameter.pat.node {
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ident, _) =>
                         (ident, true),
                     _ => {
@@ -1142,32 +1142,32 @@ impl LoweringContext<'_> {
                 let desugared_span =
                     this.mark_span_with_reason(DesugaringKind::Async, span, None);
 
-                // Construct an argument representing `__argN: <ty>` to replace the argument of the
+                // Construct a parameter representing `__argN: <ty>` to replace the parameter of the
                 // async function.
                 //
-                // If this is the simple case, this argument will end up being the same as the
-                // original argument, but with a different pattern id.
+                // If this is the simple case, this parameter will end up being the same as the
+                // original parameter, but with a different pattern id.
                 let mut stmt_attrs = ThinVec::new();
-                stmt_attrs.extend(argument.attrs.iter().cloned());
-                let (new_argument_pat, new_argument_id) = this.pat_ident(desugared_span, ident);
-                let new_argument = hir::Arg {
-                    attrs: argument.attrs,
-                    hir_id: argument.hir_id,
-                    pat: new_argument_pat,
-                    span: argument.span,
+                stmt_attrs.extend(parameter.attrs.iter().cloned());
+                let (new_parameter_pat, new_parameter_id) = this.pat_ident(desugared_span, ident);
+                let new_parameter = hir::Param {
+                    attrs: parameter.attrs,
+                    hir_id: parameter.hir_id,
+                    pat: new_parameter_pat,
+                    span: parameter.span,
                 };
 
 
-                if is_simple_argument {
+                if is_simple_parameter {
                     // If this is the simple case, then we only insert one statement that is
                     // `let <pat> = <pat>;`. We re-use the original argument's pattern so that
                     // `HirId`s are densely assigned.
-                    let expr = this.expr_ident(desugared_span, ident, new_argument_id);
+                    let expr = this.expr_ident(desugared_span, ident, new_parameter_id);
                     let stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
                         Some(P(expr)),
-                        argument.pat,
+                        parameter.pat,
                         hir::LocalSource::AsyncFn
                     );
                     statements.push(stmt);
@@ -1179,7 +1179,7 @@ impl LoweringContext<'_> {
                     // let <pat> = __argN;
                     // ```
                     //
-                    // The first statement moves the argument into the closure and thus ensures
+                    // The first statement moves the parameter into the closure and thus ensures
                     // that the drop order is correct.
                     //
                     // The second statement creates the bindings that the user wrote.
@@ -1189,7 +1189,7 @@ impl LoweringContext<'_> {
                     // statement.
                     let (move_pat, move_id) = this.pat_ident_binding_mode(
                         desugared_span, ident, hir::BindingAnnotation::Mutable);
-                    let move_expr = this.expr_ident(desugared_span, ident, new_argument_id);
+                    let move_expr = this.expr_ident(desugared_span, ident, new_parameter_id);
                     let move_stmt = this.stmt_let_pat(
                         ThinVec::new(),
                         desugared_span,
@@ -1199,13 +1199,13 @@ impl LoweringContext<'_> {
                     );
 
                     // Construct the `let <pat> = __argN;` statement. We re-use the original
-                    // argument's pattern so that `HirId`s are densely assigned.
+                    // parameter's pattern so that `HirId`s are densely assigned.
                     let pattern_expr = this.expr_ident(desugared_span, ident, move_id);
                     let pattern_stmt = this.stmt_let_pat(
                         stmt_attrs,
                         desugared_span,
                         Some(P(pattern_expr)),
-                        argument.pat,
+                        parameter.pat,
                         hir::LocalSource::AsyncFn
                     );
 
@@ -1213,7 +1213,7 @@ impl LoweringContext<'_> {
                     statements.push(pattern_stmt);
                 };
 
-                arguments.push(new_argument);
+                parameters.push(new_parameter);
             }
 
             let async_expr = this.make_async_expr(
@@ -1222,7 +1222,7 @@ impl LoweringContext<'_> {
                     let body = this.lower_block_with_stmts(body, false, statements);
                     this.expr_block(body, ThinVec::new())
                 });
-            (HirVec::from(arguments), this.expr(body.span, async_expr, ThinVec::new()))
+            (HirVec::from(parameters), this.expr(body.span, async_expr, ThinVec::new()))
         })
     }
 

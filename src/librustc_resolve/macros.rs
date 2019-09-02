@@ -13,7 +13,7 @@ use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
-use syntax::ext::base::{self, Indeterminate, SpecialDerives};
+use syntax::ext::base::{self, InvocationRes, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
@@ -140,9 +140,23 @@ impl<'a> base::Resolver for Resolver<'a> {
         ImportResolver { r: self }.resolve_imports()
     }
 
-    fn resolve_macro_invocation(&mut self, invoc: &Invocation, invoc_id: ExpnId, force: bool)
-                                -> Result<Option<Lrc<SyntaxExtension>>, Indeterminate> {
-        let parent_scope = self.invocation_parent_scopes[&invoc_id];
+    fn resolve_macro_invocation(
+        &mut self, invoc: &Invocation, eager_expansion_root: ExpnId, force: bool
+    ) -> Result<InvocationRes, Indeterminate> {
+        let invoc_id = invoc.expansion_data.id;
+        let parent_scope = match self.invocation_parent_scopes.get(&invoc_id) {
+            Some(parent_scope) => *parent_scope,
+            None => {
+                // If there's no entry in the table, then we are resolving an eagerly expanded
+                // macro, which should inherit its parent scope from its eager expansion root -
+                // the macro that requested this eager expansion.
+                let parent_scope = *self.invocation_parent_scopes.get(&eager_expansion_root)
+                    .expect("non-eager expansion without a parent scope");
+                self.invocation_parent_scopes.insert(invoc_id, parent_scope);
+                parent_scope
+            }
+        };
+
         let (path, kind, derives, after_derive) = match invoc.kind {
             InvocationKind::Attr { ref attr, ref derives, after_derive, .. } =>
                 (&attr.path, MacroKind::Attr, self.arenas.alloc_ast_paths(derives), after_derive),
@@ -151,25 +165,24 @@ impl<'a> base::Resolver for Resolver<'a> {
             InvocationKind::Derive { ref path, .. } =>
                 (path, MacroKind::Derive, &[][..], false),
             InvocationKind::DeriveContainer { ref derives, .. } => {
-                // Block expansion of derives in the container until we know whether one of them
-                // is a built-in `Copy`. Skip the resolution if there's only one derive - either
-                // it's not a `Copy` and we don't need to do anything, or it's a `Copy` and it
-                // will automatically knows about itself.
-                let mut result = Ok(None);
-                if derives.len() > 1 {
-                    for path in derives {
-                        match self.resolve_macro_path(path, Some(MacroKind::Derive),
-                                                      &parent_scope, true, force) {
-                            Ok((Some(ref ext), _)) if ext.is_derive_copy => {
-                                self.add_derives(invoc.expansion_data.id, SpecialDerives::COPY);
-                                return Ok(None);
-                            }
-                            Err(Determinacy::Undetermined) => result = Err(Indeterminate),
-                            _ => {}
-                        }
-                    }
+                // Block expansion of the container until we resolve all derives in it.
+                // This is required for two reasons:
+                // - Derive helper attributes are in scope for the item to which the `#[derive]`
+                //   is applied, so they have to be produced by the container's expansion rather
+                //   than by individual derives.
+                // - Derives in the container need to know whether one of them is a built-in `Copy`.
+                // FIXME: Try to avoid repeated resolutions for derives here and in expansion.
+                let mut exts = Vec::new();
+                for path in derives {
+                    exts.push(match self.resolve_macro_path(
+                        path, Some(MacroKind::Derive), &parent_scope, true, force
+                    ) {
+                        Ok((Some(ext), _)) => ext,
+                        Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
+                        Err(Determinacy::Undetermined) => return Err(Indeterminate),
+                    })
                 }
-                return result;
+                return Ok(InvocationRes::DeriveContainer(exts));
             }
         };
 
@@ -178,22 +191,18 @@ impl<'a> base::Resolver for Resolver<'a> {
         let (ext, res) = self.smart_resolve_macro_path(path, kind, parent_scope, force)?;
 
         let span = invoc.span();
-        invoc.expansion_data.id.set_expn_data(
-            ext.expn_data(parent_scope.expansion, span, fast_print_path(path))
-        );
+        invoc_id.set_expn_data(ext.expn_data(parent_scope.expansion, span, fast_print_path(path)));
 
         if let Res::Def(_, def_id) = res {
             if after_derive {
                 self.session.span_err(span, "macro attributes must be placed before `#[derive]`");
             }
-            self.macro_defs.insert(invoc.expansion_data.id, def_id);
-            let normal_module_def_id =
-                self.macro_def_scope(invoc.expansion_data.id).normal_ancestor_id;
-            self.definitions.add_parent_module_of_macro_def(invoc.expansion_data.id,
-                                                            normal_module_def_id);
+            self.macro_defs.insert(invoc_id, def_id);
+            let normal_module_def_id = self.macro_def_scope(invoc_id).normal_ancestor_id;
+            self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
         }
 
-        Ok(Some(ext))
+        Ok(InvocationRes::Single(ext))
     }
 
     fn check_unused_macros(&self) {
@@ -790,7 +799,7 @@ impl<'a> Resolver<'a> {
 
     /// Compile the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
     /// extension partially or entirely for built-in macros and legacy plugin macros.
-    crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> Lrc<SyntaxExtension> {
+    crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
         let mut result = macro_rules::compile(
             &self.session.parse_sess, self.session.features_untracked(), item, edition
         );
@@ -812,6 +821,6 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        Lrc::new(result)
+        result
     }
 }

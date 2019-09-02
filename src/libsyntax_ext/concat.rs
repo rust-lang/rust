@@ -59,6 +59,6 @@ pub fn expand_syntax_ext(
     } else if has_errors {
         return DummyResult::any(sp);
     }
-    let sp = sp.apply_mark(cx.current_expansion.id);
+    let sp = cx.with_legacy_ctxt(sp);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&accumulator)))
 }

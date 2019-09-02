@@ -382,11 +382,6 @@
 # This is the name of the directory in which codegen backends will get installed
 #codegen-backends-dir = "codegen-backends"
 
-# Flag indicating whether `libstd` calls an imported function to handle basic IO
-# when targeting WebAssembly. Enable this to debug tests for the `wasm32-unknown-unknown`
-# target, as without this option the test output will not be captured.
-#wasm-syscall = false
-
 # Indicates whether LLD will be compiled and made available in the sysroot for
 # rustc to execute.
 #lld = false

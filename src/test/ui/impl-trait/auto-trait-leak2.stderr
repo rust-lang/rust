@@ -1,32 +1,28 @@
 error[E0277]: `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
   --> $DIR/auto-trait-leak2.rs:13:5
    |
+LL | fn send<T: Send>(_: T) {}
+   | ---------------------- required by `send`
+...
 LL |     send(before());
    |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
    |
    = help: within `impl std::ops::Fn<(i32,)>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::cell::Cell<i32>>`
    = note: required because it appears within the type `[closure@$DIR/auto-trait-leak2.rs:7:5: 7:22 p:std::rc::Rc<std::cell::Cell<i32>>]`
    = note: required because it appears within the type `impl std::ops::Fn<(i32,)>`
-note: required by `send`
-  --> $DIR/auto-trait-leak2.rs:10:1
-   |
-LL | fn send<T: Send>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
   --> $DIR/auto-trait-leak2.rs:16:5
    |
+LL | fn send<T: Send>(_: T) {}
+   | ---------------------- required by `send`
+...
 LL |     send(after());
    |     ^^^^ `std::rc::Rc<std::cell::Cell<i32>>` cannot be sent between threads safely
    |
    = help: within `impl std::ops::Fn<(i32,)>`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::cell::Cell<i32>>`
    = note: required because it appears within the type `[closure@$DIR/auto-trait-leak2.rs:24:5: 24:22 p:std::rc::Rc<std::cell::Cell<i32>>]`
    = note: required because it appears within the type `impl std::ops::Fn<(i32,)>`
-note: required by `send`
-  --> $DIR/auto-trait-leak2.rs:10:1
-   |
-LL | fn send<T: Send>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

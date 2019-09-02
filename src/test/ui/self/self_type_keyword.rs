@@ -14,7 +14,8 @@ pub fn main() {
         ref Self => (),
         //~^ ERROR expected identifier, found keyword `Self`
         mut Self => (),
-        //~^ ERROR expected identifier, found keyword `Self`
+        //~^ ERROR `mut` must be followed by a named binding
+        //~| ERROR cannot find unit struct/variant or constant `Self`
         ref mut Self => (),
         //~^ ERROR expected identifier, found keyword `Self`
         Self!() => (),

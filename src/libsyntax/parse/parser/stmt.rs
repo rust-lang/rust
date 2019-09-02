@@ -1,6 +1,7 @@
 use super::{Parser, PResult, Restrictions, PrevTokenKind, SemiColonMode, BlockMode};
 use super::expr::LhsExpr;
 use super::path::PathStyle;
+use super::pat::GateOr;
 
 use crate::ptr::P;
 use crate::{maybe_whole, ThinVec};
@@ -207,7 +208,7 @@ impl<'a> Parser<'a> {
     /// Parses a local variable declaration.
     fn parse_local(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Local>> {
         let lo = self.prev_span;
-        let pat = self.parse_top_level_pat()?;
+        let pat = self.parse_top_pat(GateOr::Yes)?;
 
         let (err, ty) = if self.eat(&token::Colon) {
             // Save the state of the parser before parsing type normally, in case there is a `:`

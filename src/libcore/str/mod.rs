@@ -2170,6 +2170,7 @@ impl str {
     #[inline(always)]
     #[rustc_const_unstable(feature="const_str_as_bytes")]
     pub const fn as_bytes(&self) -> &[u8] {
+        #[repr(C)]
         union Slices<'a> {
             str: &'a str,
             slice: &'a [u8],
@@ -3557,7 +3558,7 @@ impl str {
     /// A string is a sequence of bytes. `start` in this context means the first
     /// position of that byte string; for a left-to-right language like English or
     /// Russian, this will be left side, and for right-to-left languages like
-    /// like Arabic or Hebrew, this will be the right side.
+    /// Arabic or Hebrew, this will be the right side.
     ///
     /// # Examples
     ///
@@ -3594,7 +3595,7 @@ impl str {
     /// A string is a sequence of bytes. `end` in this context means the last
     /// position of that byte string; for a left-to-right language like English or
     /// Russian, this will be right side, and for right-to-left languages like
-    /// like Arabic or Hebrew, this will be the left side.
+    /// Arabic or Hebrew, this will be the left side.
     ///
     /// # Examples
     ///
@@ -3761,7 +3762,7 @@ impl str {
     /// A string is a sequence of bytes. `start` in this context means the first
     /// position of that byte string; for a left-to-right language like English or
     /// Russian, this will be left side, and for right-to-left languages like
-    /// like Arabic or Hebrew, this will be the right side.
+    /// Arabic or Hebrew, this will be the right side.
     ///
     /// # Examples
     ///
@@ -3800,7 +3801,7 @@ impl str {
     /// A string is a sequence of bytes. `end` in this context means the last
     /// position of that byte string; for a left-to-right language like English or
     /// Russian, this will be right side, and for right-to-left languages like
-    /// like Arabic or Hebrew, this will be the left side.
+    /// Arabic or Hebrew, this will be the left side.
     ///
     /// # Examples
     ///

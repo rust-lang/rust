@@ -7,13 +7,18 @@
 #![feature(decl_macro)]
 #![feature(mem_take)]
 #![feature(nll)]
+#![feature(proc_macro_internals)]
+#![feature(proc_macro_quote)]
 #![feature(rustc_diagnostic_macros)]
+
+extern crate proc_macro;
 
 use crate::deriving::*;
 
 use syntax::ast::Ident;
 use syntax::edition::Edition;
 use syntax::ext::base::{SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
+use syntax::ext::proc_macro::BangProcMacro;
 use syntax::symbol::sym;
 
 mod error_codes;
@@ -100,4 +105,7 @@ pub fn register_builtin_macros(resolver: &mut dyn syntax::ext::base::Resolver, e
         RustcDecodable: decodable::expand_deriving_rustc_decodable,
         RustcEncodable: encodable::expand_deriving_rustc_encodable,
     }
+
+    let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
+    register(sym::quote, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })));
 }

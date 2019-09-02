@@ -95,7 +95,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | "bitreverse" => {
                 let ty = substs.type_at(0);
                 let layout_of = self.layout_of(ty)?;
-                let bits = self.read_scalar(args[0])?.to_bits(layout_of.size)?;
+                let val = self.read_scalar(args[0])?.not_undef()?;
+                let bits = self.force_bits(val, layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
                     _ => throw_unsup!(TypeNotPrimitive(ty)),
@@ -149,7 +150,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // term since the sign of the second term can be inferred from this and
                         // the fact that the operation has overflowed (if either is 0 no
                         // overflow can occur)
-                        let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
+                        let first_term: u128 = self.force_bits(l.to_scalar()?, l.layout.size)?;
                         let first_term_positive = first_term & (1 << (num_bits-1)) == 0;
                         if first_term_positive {
                             // Negative overflow not possible since the positive first term
@@ -187,7 +188,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (val, overflowed, _ty) = self.overflowing_binary_op(bin_op, l, r)?;
                 if overflowed {
                     let layout = self.layout_of(substs.type_at(0))?;
-                    let r_val = r.to_scalar()?.to_bits(layout.size)?;
+                    let r_val = self.force_bits(r.to_scalar()?, layout.size)?;
                     throw_ub_format!("Overflowing shift by {} in `{}`", r_val, intrinsic_name);
                 }
                 self.write_scalar(val, dest)?;
@@ -196,8 +197,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
                 // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
                 let layout = self.layout_of(substs.type_at(0))?;
-                let val_bits = self.read_scalar(args[0])?.to_bits(layout.size)?;
-                let raw_shift_bits = self.read_scalar(args[1])?.to_bits(layout.size)?;
+                let val = self.read_scalar(args[0])?.not_undef()?;
+                let val_bits = self.force_bits(val, layout.size)?;
+                let raw_shift = self.read_scalar(args[1])?.not_undef()?;
+                let raw_shift_bits = self.force_bits(raw_shift, layout.size)?;
                 let width_bits = layout.size.bits() as u128;
                 let shift_bits = raw_shift_bits % width_bits;
                 let inv_shift_bits = (width_bits - shift_bits) % width_bits;

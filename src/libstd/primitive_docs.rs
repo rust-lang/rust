@@ -655,7 +655,7 @@ mod prim_slice { }
 /// [`len`]: #method.len
 ///
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
-/// used to get a string slice under normal circumstances. Use `as_slice`
+/// used to get a string slice under normal circumstances. Use `as_str`
 /// instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str { }

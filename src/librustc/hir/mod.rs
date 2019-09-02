@@ -1030,7 +1030,7 @@ pub enum Mutability {
 }
 
 impl Mutability {
-    /// Returns `MutMutable` only if both arguments are mutable.
+    /// Returns `MutMutable` only if both `self` and `other` are mutable.
     pub fn and(self, other: Self) -> Self {
         match self {
             MutMutable => other,
@@ -1324,7 +1324,7 @@ pub struct BodyId {
 ///
 /// Here, the `Body` associated with `foo()` would contain:
 ///
-/// - an `arguments` array containing the `(x, y)` pattern
+/// - an `params` array containing the `(x, y)` pattern
 /// - a `value` containing the `x + y` expression (maybe wrapped in a block)
 /// - `generator_kind` would be `None`
 ///
@@ -1332,7 +1332,7 @@ pub struct BodyId {
 /// map using `body_owner_def_id()`.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Body {
-    pub arguments: HirVec<Arg>,
+    pub params: HirVec<Param>,
     pub value: Expr,
     pub generator_kind: Option<GeneratorKind>,
 }
@@ -1644,7 +1644,7 @@ pub enum LocalSource {
     /// A desugared `for _ in _ { .. }` loop.
     ForLoopDesugar,
     /// When lowering async functions, we create locals within the `async move` so that
-    /// all arguments are dropped after the future is polled.
+    /// all parameters are dropped after the future is polled.
     ///
     /// ```ignore (pseudo-Rust)
     /// async fn foo(<pattern> @ x: Type) {
@@ -1940,7 +1940,7 @@ pub struct BareFnTy {
     pub abi: Abi,
     pub generic_params: HirVec<GenericParam>,
     pub decl: P<FnDecl>,
-    pub arg_names: HirVec<Ident>,
+    pub param_names: HirVec<Ident>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2027,9 +2027,9 @@ pub struct InlineAsm {
     pub dialect: AsmDialect,
 }
 
-/// Represents an argument in a function header.
+/// Represents a parameter in a function header.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Arg {
+pub struct Param {
     pub attrs: HirVec<Attribute>,
     pub hir_id: HirId,
     pub pat: P<Pat>,
@@ -2039,9 +2039,9 @@ pub struct Arg {
 /// Represents the header (not the body) of a function declaration.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct FnDecl {
-    /// The types of the function's arguments.
+    /// The types of the function's parameters.
     ///
-    /// Additional argument data is stored in the function's [body](Body::arguments).
+    /// Additional argument data is stored in the function's [body](Body::parameters).
     pub inputs: HirVec<Ty>,
     pub output: FunctionRetTy,
     pub c_variadic: bool,
@@ -2721,7 +2721,7 @@ impl CodegenFnAttrs {
 
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
-    Arg(&'hir Arg),
+    Param(&'hir Param),
     Item(&'hir Item),
     ForeignItem(&'hir ForeignItem),
     TraitItem(&'hir TraitItem),

@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Instance, Ty};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
@@ -454,13 +454,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::PlaceRef {
                 base: mir::PlaceBase::Static(box mir::Static {
                     ty,
-                    kind: mir::StaticKind::Promoted(promoted),
+                    kind: mir::StaticKind::Promoted(promoted, substs),
+                    def_id,
                 }),
                 projection: None,
             } => {
                 let param_env = ty::ParamEnv::reveal_all();
+                let instance = Instance::new(*def_id, self.monomorphize(substs));
                 let cid = mir::interpret::GlobalId {
-                    instance: self.instance,
+                    instance: instance,
                     promoted: Some(*promoted),
                 };
                 let layout = cx.layout_of(self.monomorphize(&ty));
@@ -487,7 +489,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::PlaceRef {
                 base: mir::PlaceBase::Static(box mir::Static {
                     ty,
-                    kind: mir::StaticKind::Static(def_id),
+                    kind: mir::StaticKind::Static,
+                    def_id,
                 }),
                 projection: None,
             } => {

@@ -473,14 +473,25 @@ fn configure_and_expand_inner<'a>(
         ast_validation::check_crate(sess, &krate)
     });
 
-    // If we're in rustdoc we're always compiling as an rlib, but that'll trip a
-    // bunch of checks in the `modify` function below. For now just skip this
-    // step entirely if we're rustdoc as it's not too useful anyway.
-    if !sess.opts.actually_rustdoc {
+
+    let crate_types = sess.crate_types.borrow();
+    let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
+
+    // For backwards compatibility, we don't try to run proc macro injection
+    // if rustdoc is run on a proc macro crate without '--crate-type proc-macro' being
+    // specified. This should only affect users who manually invoke 'rustdoc', as
+    // 'cargo doc' will automatically pass the proper '--crate-type' flags.
+    // However, we do emit a warning, to let such users know that they should
+    // start passing '--crate-type proc-macro'
+    if has_proc_macro_decls && sess.opts.actually_rustdoc && !is_proc_macro_crate {
+        let mut msg = sess.diagnostic().struct_warn(&"Trying to document proc macro crate \
+            without passing '--crate-type proc-macro to rustdoc");
+
+        msg.warn("The generated documentation may be incorrect");
+        msg.emit()
+    } else {
         krate = time(sess, "maybe creating a macro crate", || {
-            let crate_types = sess.crate_types.borrow();
             let num_crate_types = crate_types.len();
-            let is_proc_macro_crate = crate_types.contains(&config::CrateType::ProcMacro);
             let is_test_crate = sess.opts.test;
             syntax_ext::proc_macro_harness::inject(
                 &sess.parse_sess,

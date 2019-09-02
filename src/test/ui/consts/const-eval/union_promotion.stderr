@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/union_promotion.rs:9:29
+  --> $DIR/union_promotion.rs:10:29
    |
 LL |       let x: &'static bool = &unsafe {
    |  ____________-------------____^

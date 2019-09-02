@@ -72,16 +72,14 @@ LL | | }
 error[E0277]: `std::rc::Rc<std::string::String>` cannot be sent between threads safely
   --> $DIR/auto-trait-leak.rs:15:5
    |
+LL | fn send<T: Send>(_: T) {}
+   | ---------------------- required by `send`
+...
 LL |     send(cycle2().clone());
    |     ^^^^ `std::rc::Rc<std::string::String>` cannot be sent between threads safely
    |
    = help: within `impl std::clone::Clone`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::string::String>`
    = note: required because it appears within the type `impl std::clone::Clone`
-note: required by `send`
-  --> $DIR/auto-trait-leak.rs:4:1
-   |
-LL | fn send<T: Send>(_: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

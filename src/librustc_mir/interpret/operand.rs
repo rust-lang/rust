@@ -629,11 +629,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // post-process
         Ok(match *discr_kind {
             layout::DiscriminantKind::Tag => {
-                let bits_discr = match raw_discr.to_bits(discr_val.layout.size) {
-                    Ok(raw_discr) => raw_discr,
-                    Err(_) =>
-                        throw_unsup!(InvalidDiscriminant(raw_discr.erase_tag())),
-                };
+                let bits_discr = raw_discr
+                    .not_undef()
+                    .and_then(|raw_discr| self.force_bits(raw_discr, discr_val.layout.size))
+                    .map_err(|_| err_unsup!(InvalidDiscriminant(raw_discr.erase_tag())))?;
                 let real_discr = if discr_val.layout.ty.is_signed() {
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the layout discriminant

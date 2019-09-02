@@ -57,9 +57,9 @@ macro_rules! quote {
 }
 
 /// Quote a `TokenStream` into a `TokenStream`.
-/// This is the actual `quote!()` proc macro.
+/// This is the actual implementation of the `quote!()` proc macro.
 ///
-/// It is manually loaded in `CStore::load_macro_untracked`.
+/// It is loaded by the compiler in `register_builtin_macros`.
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
 pub fn quote(stream: TokenStream) -> TokenStream {
     if stream.is_empty() {

@@ -1,16 +1,14 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-mut-idx.rs:4:15
    |
+LL | fn bot<T>() -> T { loop {} }
+   | ---------------- required by `bot`
+...
 LL |     s[1..2] = bot();
    |               ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `str`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-note: required by `bot`
-  --> $DIR/str-mut-idx.rs:1:1
-   |
-LL | fn bot<T>() -> T { loop {} }
-   | ^^^^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-mut-idx.rs:4:5

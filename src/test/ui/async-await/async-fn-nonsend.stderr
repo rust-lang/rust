@@ -1,6 +1,9 @@
 error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:50:5
    |
+LL | fn assert_send(_: impl Send) {}
+   | ---------------------------- required by `assert_send`
+...
 LL |     assert_send(local_dropped_before_await());
    |     ^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
    |
@@ -11,15 +14,13 @@ LL |     assert_send(local_dropped_before_await());
    = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:21:39: 26:2 {impl std::fmt::Debug, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
-note: required by `assert_send`
-  --> $DIR/async-fn-nonsend.rs:47:1
-   |
-LL | fn assert_send(_: impl Send) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:52:5
    |
+LL | fn assert_send(_: impl Send) {}
+   | ---------------------------- required by `assert_send`
+...
 LL |     assert_send(non_send_temporary_in_match());
    |     ^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
    |
@@ -30,15 +31,13 @@ LL |     assert_send(non_send_temporary_in_match());
    = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 {fn(impl std::fmt::Debug) -> std::option::Option<impl std::fmt::Debug> {std::option::Option::<impl std::fmt::Debug>::Some}, fn() -> impl std::fmt::Debug {non_send}, impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
-note: required by `assert_send`
-  --> $DIR/async-fn-nonsend.rs:47:1
-   |
-LL | fn assert_send(_: impl Send) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `dyn std::fmt::Write` cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:54:5
    |
+LL | fn assert_send(_: impl Send) {}
+   | ---------------------------- required by `assert_send`
+...
 LL |     assert_send(non_sync_with_method_call());
    |     ^^^^^^^^^^^ `dyn std::fmt::Write` cannot be sent between threads safely
    |
@@ -51,15 +50,13 @@ LL |     assert_send(non_sync_with_method_call());
    = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
-note: required by `assert_send`
-  --> $DIR/async-fn-nonsend.rs:47:1
-   |
-LL | fn assert_send(_: impl Send) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
   --> $DIR/async-fn-nonsend.rs:54:5
    |
+LL | fn assert_send(_: impl Send) {}
+   | ---------------------------- required by `assert_send`
+...
 LL |     assert_send(non_sync_with_method_call());
    |     ^^^^^^^^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely
    |
@@ -76,11 +73,6 @@ LL |     assert_send(non_sync_with_method_call());
    = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:39:38: 45:2 for<'r, 's> {&'r mut std::fmt::Formatter<'s>, bool, impl std::future::Future, ()}]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
-note: required by `assert_send`
-  --> $DIR/async-fn-nonsend.rs:47:1
-   |
-LL | fn assert_send(_: impl Send) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

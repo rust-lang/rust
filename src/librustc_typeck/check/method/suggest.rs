@@ -743,8 +743,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // We do this to avoid suggesting code that ends up as `T: FooBar`,
                         // instead we suggest `T: Foo + Bar` in that case.
                         let mut has_bounds = false;
+                        let mut impl_trait = false;
                         if let Node::GenericParam(ref param) = hir.get(id) {
-                            has_bounds = !param.bounds.is_empty();
+                            match param.kind {
+                                hir::GenericParamKind::Type { synthetic: Some(_), .. } => {
+                                    // We've found `fn foo(x: impl Trait)` instead of
+                                    // `fn foo<T>(x: T)`. We want to suggest the correct
+                                    // `fn foo(x: impl Trait + TraitBound)` instead of
+                                    // `fn foo<T: TraitBound>(x: T)`. (#63706)
+                                    impl_trait = true;
+                                    has_bounds = param.bounds.len() > 1;
+                                }
+                                _ => {
+                                    has_bounds = !param.bounds.is_empty();
+                                }
+                            }
                         }
                         let sp = hir.span(id);
                         // `sp` only covers `T`, change it so that it covers
@@ -765,8 +778,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sp,
                             &msg[..],
                             candidates.iter().map(|t| format!(
-                                "{}: {}{}",
+                                "{}{} {}{}",
                                 param,
+                                if impl_trait { " +" } else { ":" },
                                 self.tcx.def_path_str(t.def_id),
                                 if has_bounds { " +"} else { "" },
                             )),

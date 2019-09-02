@@ -86,6 +86,7 @@ impl BoundRegion {
 /// AST structure in `libsyntax/ast.rs` as well.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
          RustcEncodable, RustcDecodable, HashStable, Debug)]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "TyKind")]
 pub enum TyKind<'tcx> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -385,7 +386,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
         let ty = self.closure_sig_ty(def_id, tcx);
         match ty.sty {
             ty::FnPtr(sig) => sig,
-            _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty),
+            _ => bug!("closure_sig_ty is not a fn-ptr: {:?}", ty.sty),
         }
     }
 }
@@ -2299,23 +2300,33 @@ impl<'tcx> Const<'tcx> {
         assert_eq!(self.ty, ty);
         // if `ty` does not depend on generic parameters, use an empty param_env
         let size = tcx.layout_of(param_env.with_reveal_all().and(ty)).ok()?.size;
+        self.eval(tcx, param_env).val.try_to_bits(size)
+    }
+
+    #[inline]
+    pub fn eval(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+    ) -> &Const<'tcx> {
+        // FIXME(const_generics): this doesn't work right now,
+        // because it tries to relate an `Infer` to a `Param`.
         match self.val {
-            // FIXME(const_generics): this doesn't work right now,
-            // because it tries to relate an `Infer` to a `Param`.
             ConstValue::Unevaluated(did, substs) => {
                 // if `substs` has no unresolved components, use and empty param_env
                 let (param_env, substs) = param_env.with_reveal_all().and(substs).into_parts();
                 // try to resolve e.g. associated constants to their definition on an impl
-                let instance = ty::Instance::resolve(tcx, param_env, did, substs)?;
+                let instance = match ty::Instance::resolve(tcx, param_env, did, substs) {
+                    Some(instance) => instance,
+                    None => return self,
+                };
                 let gid = GlobalId {
                     instance,
                     promoted: None,
                 };
-                let evaluated = tcx.const_eval(param_env.and(gid)).ok()?;
-                evaluated.val.try_to_bits(size)
+                tcx.const_eval(param_env.and(gid)).unwrap_or(self)
             },
-            // otherwise just extract a `ConstValue`'s bits if possible
-            _ => self.val.try_to_bits(size),
+            _ => self,
         }
     }
 

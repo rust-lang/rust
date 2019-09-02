@@ -20,7 +20,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt<'_>,
         Some(v) => v,
     };
 
-    let sp = sp.apply_mark(cx.current_expansion.id);
+    let sp = cx.with_legacy_ctxt(sp);
     let e = match env::var(&*var.as_str()) {
         Err(..) => {
             let lt = cx.lifetime(sp, Ident::with_dummy_span(kw::StaticLifetime));

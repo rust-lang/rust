@@ -1,0 +1,20 @@
+error[E0308]: if and else have incompatible types
+  --> $DIR/opaque-type-error.rs:20:9
+   |
+LL | /     if true {
+LL | |         thing_one()
+   | |         ----------- expected because of this
+LL | |     } else {
+LL | |         thing_two()
+   | |         ^^^^^^^^^^^ expected opaque type, found a different opaque type
+LL | |     }.await
+   | |_____- if and else have incompatible types
+   |
+   = note: expected type `impl std::future::Future` (opaque type)
+              found type `impl std::future::Future` (opaque type)
+   = note: distinct uses of `impl Trait` result in different opaque types
+   = help: if both `Future`s have the same `Output` type, consider `.await`ing on both of them
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

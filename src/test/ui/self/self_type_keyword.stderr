@@ -10,38 +10,40 @@ error: expected identifier, found keyword `Self`
 LL |         ref Self => (),
    |             ^^^^ expected identifier, found keyword
 
-error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:16:13
+error: `mut` must be followed by a named binding
+  --> $DIR/self_type_keyword.rs:16:9
    |
 LL |         mut Self => (),
-   |             ^^^^ expected identifier, found keyword
+   |         ^^^^^^^^ help: remove the `mut` prefix: `Self`
+   |
+   = note: `mut` may be followed by `variable` and `variable @ pattern`
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:18:17
+  --> $DIR/self_type_keyword.rs:19:17
    |
 LL |         ref mut Self => (),
    |                 ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:22:15
+  --> $DIR/self_type_keyword.rs:23:15
    |
 LL |         Foo { Self } => (),
    |               ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:28:26
+  --> $DIR/self_type_keyword.rs:29:26
    |
 LL |     extern crate core as Self;
    |                          ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:33:32
+  --> $DIR/self_type_keyword.rs:34:32
    |
 LL |     use std::option::Option as Self;
    |                                ^^^^ expected identifier, found keyword
 
 error: expected identifier, found keyword `Self`
-  --> $DIR/self_type_keyword.rs:38:11
+  --> $DIR/self_type_keyword.rs:39:11
    |
 LL |     trait Self {}
    |           ^^^^ expected identifier, found keyword
@@ -53,10 +55,20 @@ LL | struct Bar<'Self>;
    |            ^^^^^
 
 error: cannot find macro `Self!` in this scope
-  --> $DIR/self_type_keyword.rs:20:9
+  --> $DIR/self_type_keyword.rs:21:9
    |
 LL |         Self!() => (),
    |         ^^^^
+
+error[E0531]: cannot find unit struct/variant or constant `Self` in this scope
+  --> $DIR/self_type_keyword.rs:16:13
+   |
+LL |         mut Self => (),
+   |             ^^^^ not found in this scope
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use foo::Self;
+   |
 
 error[E0392]: parameter `'Self` is never used
   --> $DIR/self_type_keyword.rs:6:12
@@ -66,6 +78,6 @@ LL | struct Bar<'Self>;
    |
    = help: consider removing `'Self` or using a marker such as `std::marker::PhantomData`
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0392`.

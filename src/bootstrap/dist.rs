@@ -678,12 +678,7 @@ impl Step for Std {
         if builder.hosts.iter().any(|t| t == target) {
             builder.ensure(compile::Rustc { compiler, target });
         } else {
-            if builder.no_std(target) == Some(true) {
-                // the `test` doesn't compile for no-std targets
-                builder.ensure(compile::Std { compiler, target });
-            } else {
-                builder.ensure(compile::Test { compiler, target });
-            }
+            builder.ensure(compile::Std { compiler, target });
         }
 
         let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
@@ -912,6 +907,7 @@ impl Step for Src {
             "src/libproc_macro",
             "src/tools/rustc-std-workspace-core",
             "src/tools/rustc-std-workspace-alloc",
+            "src/tools/rustc-std-workspace-std",
             "src/librustc",
             "src/libsyntax",
         ];

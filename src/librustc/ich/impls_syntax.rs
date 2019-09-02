@@ -402,7 +402,6 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
     parent -> _,
     call_site,
     def_site,
-    default_transparency,
     allow_internal_unstable,
     allow_internal_unsafe,
     local_inner_macros,

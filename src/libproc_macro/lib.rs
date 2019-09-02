@@ -19,12 +19,15 @@
 
 #![feature(nll)]
 #![feature(staged_api)]
+#![feature(allow_internal_unstable)]
 #![feature(const_fn)]
+#![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(in_band_lifetimes)]
 #![feature(optin_builtin_traits)]
 #![feature(mem_take)]
 #![feature(non_exhaustive)]
+#![feature(rustc_attrs)]
 #![feature(specialization)]
 
 #![recursion_limit="256"]
@@ -222,11 +225,10 @@ pub mod token_stream {
 ///
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.
 /// To quote `$` itself, use `$$`.
-///
-/// This is a dummy macro, the actual implementation is in `quote::quote`.`
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
-#[macro_export]
-macro_rules! quote { () => {} }
+#[allow_internal_unstable(proc_macro_def_site)]
+#[cfg_attr(not(bootstrap), rustc_builtin_macro)]
+pub macro quote ($($t:tt)*) { /* compiler built-in */ }
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]

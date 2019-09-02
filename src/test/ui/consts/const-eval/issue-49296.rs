@@ -4,6 +4,7 @@
 #![feature(const_fn_union)]
 
 const unsafe fn transmute<T: Copy, U: Copy>(t: T) -> U {
+    #[repr(C)]
     union Transmute<T: Copy, U: Copy> {
         from: T,
         to: U,

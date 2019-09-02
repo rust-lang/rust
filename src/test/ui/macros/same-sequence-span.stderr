@@ -17,11 +17,15 @@ LL |                $(= $z:tt)*
 error: `$x:expr` may be followed by `$y:tt`, which is not allowed for `expr` fragments
   --> $DIR/same-sequence-span.rs:20:1
    |
-LL | proc_macro_sequence::make_foo!();
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |   proc_macro_sequence::make_foo!();
+   |   ^--------------------------------
+   |   |
+   |  _in this macro invocation
    | |
-   | not allowed after `expr` fragments
-   | in this macro invocation
+LL | |
+LL | |
+LL | | fn main() {}
+...  |
    |
    = note: allowed there are: `=>`, `,` or `;`
 

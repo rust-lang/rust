@@ -112,6 +112,7 @@ pub(crate) fn type_check<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
+    promoted: &IndexVec<Promoted, Body<'tcx>>,
     mir_def_id: DefId,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
@@ -157,6 +158,7 @@ pub(crate) fn type_check<'tcx>(
         mir_def_id,
         param_env,
         body,
+        promoted,
         &region_bound_pairs,
         implicit_region_bound,
         &mut borrowck_context,
@@ -180,6 +182,7 @@ fn type_check_internal<'a, 'tcx, R>(
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     body: &'a Body<'tcx>,
+    promoted: &'a IndexVec<Promoted, Body<'tcx>>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
@@ -197,7 +200,7 @@ fn type_check_internal<'a, 'tcx, R>(
         universal_region_relations,
     );
     let errors_reported = {
-        let mut verifier = TypeVerifier::new(&mut checker, body);
+        let mut verifier = TypeVerifier::new(&mut checker, body, promoted);
         verifier.visit_body(body);
         verifier.errors_reported
     };
@@ -254,6 +257,7 @@ enum FieldAccessError {
 struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     body: &'b Body<'tcx>,
+    promoted: &'b IndexVec<Promoted, Body<'tcx>>,
     last_span: Span,
     mir_def_id: DefId,
     errors_reported: bool,
@@ -380,9 +384,14 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'tcx>, body: &'b Body<'tcx>) -> Self {
+    fn new(
+        cx: &'a mut TypeChecker<'b, 'tcx>,
+        body: &'b Body<'tcx>,
+        promoted: &'b IndexVec<Promoted, Body<'tcx>>,
+    ) -> Self {
         TypeVerifier {
             body,
+            promoted,
             mir_def_id: cx.mir_def_id,
             cx,
             last_span: body.span,
@@ -416,7 +425,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             let mut place_ty = match place_base {
                 PlaceBase::Local(index) =>
                     PlaceTy::from_ty(self.body.local_decls[*index].ty),
-                PlaceBase::Static(box Static { kind, ty: sty }) => {
+                PlaceBase::Static(box Static { kind, ty: sty, def_id }) => {
                     let sty = self.sanitize_type(place, sty);
                     let check_err =
                         |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
@@ -440,16 +449,16 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                             };
                         };
                     match kind {
-                        StaticKind::Promoted(promoted) => {
+                        StaticKind::Promoted(promoted, _) => {
                             if !self.errors_reported {
-                                let promoted_body = &self.body.promoted[*promoted];
+                                let promoted_body = &self.promoted[*promoted];
                                 self.sanitize_promoted(promoted_body, location);
 
                                 let promoted_ty = promoted_body.return_ty();
                                 check_err(self, place, promoted_ty, sty);
                             }
                         }
-                        StaticKind::Static(def_id) => {
+                        StaticKind::Static => {
                             let ty = self.tcx().type_of(*def_id);
                             let ty = self.cx.normalize(ty, location);
 
@@ -466,7 +475,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     let is_promoted = match place {
                         Place {
                             base: PlaceBase::Static(box Static {
-                                kind: StaticKind::Promoted(_),
+                                kind: StaticKind::Promoted(..),
                                 ..
                             }),
                             projection: None,

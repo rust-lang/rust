@@ -39,6 +39,22 @@ crate mod unescape_error_reporting;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
+/// Collected spans during parsing for places where a certain feature was
+/// used and should be feature gated accordingly in `check_crate`.
+#[derive(Default)]
+pub struct GatedSpans {
+    /// Spans collected for gating `param_attrs`, e.g. `fn foo(#[attr] x: u8) {}`.
+    pub param_attrs: Lock<Vec<Span>>,
+    /// Spans collected for gating `let_chains`, e.g. `if a && let b = c {}`.
+    pub let_chains: Lock<Vec<Span>>,
+    /// Spans collected for gating `async_closure`, e.g. `async || ..`.
+    pub async_closure: Lock<Vec<Span>>,
+    /// Spans collected for gating `yield e?` expressions (`generators` gate).
+    pub yields: Lock<Vec<Span>>,
+    /// Spans collected for gating `or_patterns`, e.g. `Some(Foo | Bar)`.
+    pub or_patterns: Lock<Vec<Span>>,
+}
+
 /// Info about a parsing session.
 pub struct ParseSess {
     pub span_diagnostic: Handler,
@@ -58,16 +74,8 @@ pub struct ParseSess {
     /// operation token that followed it, but that the parser cannot identify without further
     /// analysis.
     pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
-    pub param_attr_spans: Lock<Vec<Span>>,
-    // Places where `let` exprs were used and should be feature gated according to `let_chains`.
-    pub let_chains_spans: Lock<Vec<Span>>,
-    // Places where `async || ..` exprs were used and should be feature gated.
-    pub async_closure_spans: Lock<Vec<Span>>,
-    // Places where `yield e?` exprs were used and should be feature gated.
-    pub yield_spans: Lock<Vec<Span>>,
     pub injected_crate_name: Once<Symbol>,
-    // Places where or-patterns e.g. `Some(Foo | Bar)` were used and should be feature gated.
-    pub or_pattern_spans: Lock<Vec<Span>>,
+    pub gated_spans: GatedSpans,
 }
 
 impl ParseSess {
@@ -93,12 +101,8 @@ impl ParseSess {
             buffered_lints: Lock::new(vec![]),
             edition: ExpnId::root().expn_data().edition,
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
-            param_attr_spans: Lock::new(Vec::new()),
-            let_chains_spans: Lock::new(Vec::new()),
-            async_closure_spans: Lock::new(Vec::new()),
-            yield_spans: Lock::new(Vec::new()),
             injected_crate_name: Once::new(),
-            or_pattern_spans: Lock::new(Vec::new()),
+            gated_spans: GatedSpans::default(),
         }
     }
 

@@ -154,7 +154,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         });
     }
 
-    fn visit_variant(&mut self, v: &'a Variant, g: &'a Generics, item_id: NodeId) {
+    fn visit_variant(&mut self, v: &'a Variant) {
         let def = self.create_def(v.id,
                                   DefPathData::TypeNs(v.ident.as_interned_str()),
                                   v.span);
@@ -162,12 +162,11 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             if let Some(ctor_hir_id) = v.data.ctor_id() {
                 this.create_def(ctor_hir_id, DefPathData::Ctor, v.span);
             }
-            visit::walk_variant(this, v, g, item_id)
+            visit::walk_variant(this, v)
         });
     }
 
-    fn visit_variant_data(&mut self, data: &'a VariantData, _: Ident,
-                          _: &'a Generics, _: NodeId, _: Span) {
+    fn visit_variant_data(&mut self, data: &'a VariantData) {
         for (index, field) in data.fields().iter().enumerate() {
             let name = field.ident.map(|ident| ident.name)
                 .unwrap_or_else(|| sym::integer(index));
