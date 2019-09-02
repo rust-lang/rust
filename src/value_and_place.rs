@@ -3,18 +3,54 @@ use crate::prelude::*;
 fn codegen_field<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     base: Value,
+    extra: Option<Value>,
     layout: TyLayout<'tcx>,
     field: mir::Field,
 ) -> (Value, TyLayout<'tcx>) {
     let field_offset = layout.fields.offset(field.index());
-    let field_ty = layout.field(&*fx, field.index());
-    if field_offset.bytes() > 0 {
-        (
-            fx.bcx.ins().iadd_imm(base, field_offset.bytes() as i64),
-            field_ty,
-        )
+    let field_layout = layout.field(&*fx, field.index());
+
+    let simple = |fx: &mut FunctionCx<_>| {
+        if field_offset.bytes() > 0 {
+            (
+                fx.bcx.ins().iadd_imm(base, field_offset.bytes() as i64),
+                field_layout,
+            )
+        } else {
+            (base, field_layout)
+        }
+    };
+
+    if let Some(extra) = extra {
+        if !field_layout.is_unsized() {
+            return simple(fx);
+        }
+        match field_layout.ty.sty {
+            ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(fx),
+            ty::Adt(def, _) if def.repr.packed() => {
+                assert_eq!(layout.align.abi.bytes(), 1);
+                return simple(fx);
+            }
+            _ => {
+                // We have to align the offset for DST's
+                let unaligned_offset = field_offset.bytes();
+                let (_, unsized_align) = crate::unsize::size_and_align_of_dst(fx, field_layout.ty, extra);
+
+                let one = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 1);
+                let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
+                let and_lhs = fx.bcx.ins().iadd_imm(align_sub_1, unaligned_offset as i64);
+                let zero = fx.bcx.ins().iconst(pointer_ty(fx.tcx), 0);
+                let and_rhs = fx.bcx.ins().isub(zero, unsized_align);
+                let offset = fx.bcx.ins().band(and_lhs, and_rhs);
+
+                (
+                    fx.bcx.ins().iadd(base, offset),
+                    field_layout,
+                )
+            }
+        }
     } else {
-        (base, field_ty)
+        simple(fx)
     }
 }
 
@@ -125,7 +161,7 @@ impl<'tcx> CValue<'tcx> {
             _ => bug!("place_field for {:?}", self),
         };
 
-        let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
+        let (field_ptr, field_layout) = codegen_field(fx, base, None, layout, field);
         CValue::by_ref(field_ptr, field_layout)
     }
 
@@ -431,7 +467,7 @@ impl<'tcx> CPlace<'tcx> {
         let layout = self.layout();
         let (base, extra) = self.to_addr_maybe_unsized(fx);
 
-        let (field_ptr, field_layout) = codegen_field(fx, base, layout, field);
+        let (field_ptr, field_layout) = codegen_field(fx, base, extra, layout, field);
         if field_layout.is_unsized() {
             CPlace::for_addr_with_extra(field_ptr, extra.unwrap(), field_layout)
         } else {

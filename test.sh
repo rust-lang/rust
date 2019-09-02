@@ -50,6 +50,10 @@ $RUSTC example/alloc_example.rs --crate-type bin
 
 jit std_example example/std_example.rs
 
+echo "[AOT] dst_field_align"
+$RUSTC example/dst-field-align.rs -Zmir-opt-level=2 --crate-name dst_field_align --crate-type bin
+./target/out/dst_field_align
+
 echo "[AOT] std_example"
 $RUSTC example/std_example.rs --crate-type bin
 ./target/out/std_example
