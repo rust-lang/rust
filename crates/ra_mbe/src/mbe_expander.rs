@@ -193,7 +193,7 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
         match pat {
             crate::TokenTree::Leaf(leaf) => match leaf {
                 crate::Leaf::Var(crate::Var { text, kind }) => {
-                    let kind = kind.clone().ok_or(ExpandError::UnexpectedToken)?;
+                    let kind = kind.as_ref().ok_or(ExpandError::UnexpectedToken)?;
                     match match_meta_var(kind.as_str(), input)? {
                         Some(tt) => {
                             res.inner.insert(text.clone(), Binding::Simple(tt));
