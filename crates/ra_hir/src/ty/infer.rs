@@ -50,8 +50,8 @@ use crate::{
     },
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    AdtDef, ConstData, DefWithBody, FnData, Function, HirDatabase, ImplItem, ModuleDef, Name, Path,
-    StructField,
+    AdtDef, ConstData, DefWithBody, FnData, Function, HasBody, HirDatabase, ImplItem, ModuleDef,
+    Name, Path, StructField,
 };
 
 mod unify;

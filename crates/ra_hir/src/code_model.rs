@@ -510,18 +510,6 @@ pub enum DefWithBody {
 impl_froms!(DefWithBody: Function, Const, Static);
 
 impl DefWithBody {
-    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self)
-    }
-
-    pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body_hir(self)
-    }
-
-    pub fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(self).1
-    }
-
     /// Builds a resolver for code inside this item.
     pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
         match self {
@@ -529,6 +517,43 @@ impl DefWithBody {
             DefWithBody::Function(f) => f.resolver(db),
             DefWithBody::Static(s) => s.resolver(db),
         }
+    }
+}
+
+pub trait HasBody: Copy {
+    fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult>;
+    fn body(self, db: &impl HirDatabase) -> Arc<Body>;
+    fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap>;
+}
+
+impl<T> HasBody for T
+where
+    T: Into<DefWithBody> + Copy + HasSource,
+{
+    fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer(self.into())
+    }
+
+    fn body(self, db: &impl HirDatabase) -> Arc<Body> {
+        db.body_hir(self.into())
+    }
+
+    fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map(self.into()).1
+    }
+}
+
+impl HasBody for DefWithBody {
+    fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
+        db.infer(self)
+    }
+
+    fn body(self, db: &impl HirDatabase) -> Arc<Body> {
+        db.body_hir(self)
+    }
+
+    fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map(self).1
     }
 }
 
