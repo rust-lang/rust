@@ -49,98 +49,96 @@ pub(crate) fn root(p: &mut Parser) {
     m.complete(p, SOURCE_FILE);
 }
 
-pub(crate) fn macro_items(p: &mut Parser) {
-    let m = p.start();
-    items::mod_contents(p, false);
-    m.complete(p, MACRO_ITEMS);
-}
+/// Various pieces of syntax that can be parsed by macros by example
+pub(crate) mod fragments {
+    use super::*;
 
-pub(crate) fn macro_stmts(p: &mut Parser) {
-    let m = p.start();
+    pub(crate) use super::{
+        expressions::block, paths::type_path as path, patterns::pattern, types::type_,
+    };
 
-    while !p.at(EOF) {
-        if p.current() == T![;] {
-            p.bump();
-            continue;
-        }
-
-        expressions::stmt(p, expressions::StmtWithSemi::Optional);
+    pub(crate) fn expr(p: &mut Parser) {
+        let _ = expressions::expr(p);
     }
 
-    m.complete(p, MACRO_STMTS);
-}
+    pub(crate) fn stmt(p: &mut Parser, with_semi: bool) {
+        let with_semi =
+            if with_semi { expressions::StmtWithSemi::Yes } else { expressions::StmtWithSemi::No };
 
-pub(crate) fn path(p: &mut Parser) {
-    paths::type_path(p);
-}
-
-pub(crate) fn expr(p: &mut Parser) {
-    expressions::expr(p);
-}
-
-pub(crate) fn type_(p: &mut Parser) {
-    types::type_(p)
-}
-
-pub(crate) fn pattern(p: &mut Parser) {
-    patterns::pattern(p)
-}
-
-pub(crate) fn stmt(p: &mut Parser, with_semi: bool) {
-    let with_semi =
-        if with_semi { expressions::StmtWithSemi::Yes } else { expressions::StmtWithSemi::No };
-
-    expressions::stmt(p, with_semi)
-}
-
-pub(crate) fn block(p: &mut Parser) {
-    expressions::block(p);
-}
-
-// Parse a meta item , which excluded [], e.g : #[ MetaItem ]
-pub(crate) fn meta_item(p: &mut Parser) {
-    fn is_delimiter(p: &mut Parser) -> bool {
-        match p.current() {
-            T!['{'] | T!['('] | T!['['] => true,
-            _ => false,
-        }
+        expressions::stmt(p, with_semi)
     }
 
-    if is_delimiter(p) {
-        items::token_tree(p);
-        return;
+    pub(crate) fn opt_visibility(p: &mut Parser) {
+        let _ = super::opt_visibility(p);
     }
 
-    let m = p.start();
-    while !p.at(EOF) {
-        if is_delimiter(p) {
-            items::token_tree(p);
-            break;
-        } else {
-            // https://doc.rust-lang.org/reference/attributes.html
-            // https://doc.rust-lang.org/reference/paths.html#simple-paths
-            // The start of an meta must be a simple path
+    // Parse a meta item , which excluded [], e.g : #[ MetaItem ]
+    pub(crate) fn meta_item(p: &mut Parser) {
+        fn is_delimiter(p: &mut Parser) -> bool {
             match p.current() {
-                IDENT | T![::] | T![super] | T![self] | T![crate] => p.bump(),
-                T![=] => {
-                    p.bump();
-                    match p.current() {
-                        c if c.is_literal() => p.bump(),
-                        T![true] | T![false] => p.bump(),
-                        _ => {}
-                    }
-                    break;
-                }
-                _ => break,
+                T!['{'] | T!['('] | T!['['] => true,
+                _ => false,
             }
         }
+
+        if is_delimiter(p) {
+            items::token_tree(p);
+            return;
+        }
+
+        let m = p.start();
+        while !p.at(EOF) {
+            if is_delimiter(p) {
+                items::token_tree(p);
+                break;
+            } else {
+                // https://doc.rust-lang.org/reference/attributes.html
+                // https://doc.rust-lang.org/reference/paths.html#simple-paths
+                // The start of an meta must be a simple path
+                match p.current() {
+                    IDENT | T![::] | T![super] | T![self] | T![crate] => p.bump(),
+                    T![=] => {
+                        p.bump();
+                        match p.current() {
+                            c if c.is_literal() => p.bump(),
+                            T![true] | T![false] => p.bump(),
+                            _ => {}
+                        }
+                        break;
+                    }
+                    _ => break,
+                }
+            }
+        }
+
+        m.complete(p, TOKEN_TREE);
     }
 
-    m.complete(p, TOKEN_TREE);
-}
+    pub(crate) fn item(p: &mut Parser) {
+        items::item_or_macro(p, true, items::ItemFlavor::Mod)
+    }
 
-pub(crate) fn item(p: &mut Parser) {
-    items::item_or_macro(p, true, items::ItemFlavor::Mod)
+    pub(crate) fn macro_items(p: &mut Parser) {
+        let m = p.start();
+        items::mod_contents(p, false);
+        m.complete(p, MACRO_ITEMS);
+    }
+
+    pub(crate) fn macro_stmts(p: &mut Parser) {
+        let m = p.start();
+
+        while !p.at(EOF) {
+            if p.current() == T![;] {
+                p.bump();
+                continue;
+            }
+
+            expressions::stmt(p, expressions::StmtWithSemi::Optional);
+        }
+
+        m.complete(p, MACRO_STMTS);
+    }
+
 }
 
 pub(crate) fn reparser(
@@ -180,7 +178,7 @@ impl BlockLike {
     }
 }
 
-pub(crate) fn opt_visibility(p: &mut Parser) -> bool {
+fn opt_visibility(p: &mut Parser) -> bool {
     match p.current() {
         T![pub] => {
             let m = p.start();

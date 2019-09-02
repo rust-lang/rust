@@ -18,7 +18,7 @@ pub(super) fn use_path(p: &mut Parser) {
     path(p, Mode::Use)
 }
 
-pub(super) fn type_path(p: &mut Parser) {
+pub(crate) fn type_path(p: &mut Parser) {
     path(p, Mode::Type)
 }
 

@@ -85,22 +85,22 @@ pub fn parse(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
 
 /// Parse given tokens into the given sink as a path
 pub fn parse_path(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::path);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::path);
 }
 
 /// Parse given tokens into the given sink as a expression
 pub fn parse_expr(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::expr);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::expr);
 }
 
 /// Parse given tokens into the given sink as a ty
 pub fn parse_ty(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::type_);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::type_);
 }
 
 /// Parse given tokens into the given sink as a pattern
 pub fn parse_pat(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::pattern);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::pattern);
 }
 
 /// Parse given tokens into the given sink as a statement
@@ -109,36 +109,34 @@ pub fn parse_stmt(
     tree_sink: &mut dyn TreeSink,
     with_semi: bool,
 ) {
-    parse_from_tokens(token_source, tree_sink, |p| grammar::stmt(p, with_semi));
+    parse_from_tokens(token_source, tree_sink, |p| grammar::fragments::stmt(p, with_semi));
 }
 
 /// Parse given tokens into the given sink as a block
 pub fn parse_block(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::block);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::block);
 }
 
 pub fn parse_meta(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::meta_item);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::meta_item);
 }
 
 /// Parse given tokens into the given sink as an item
 pub fn parse_item(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::item);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::item);
 }
 
 /// Parse given tokens into the given sink as an visibility qualifier
 pub fn parse_vis(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, |p| {
-        grammar::opt_visibility(p);
-    });
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::opt_visibility);
 }
 
 pub fn parse_macro_items(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::macro_items);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::macro_items);
 }
 
 pub fn parse_macro_stmts(token_source: &mut dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    parse_from_tokens(token_source, tree_sink, grammar::macro_stmts);
+    parse_from_tokens(token_source, tree_sink, grammar::fragments::macro_stmts);
 }
 
 /// A parsing function for a specific braced-block.
