@@ -2431,26 +2431,28 @@ This error indicates that the `self` parameter in a method has an invalid
 
 Methods take a special first parameter, of which there are three variants:
 `self`, `&self`, and `&mut self`. These are syntactic sugar for
-`self: Self`, `self: &Self`, and `self: &mut Self` respectively. The type
-`Self` acts as an alias to the type of the current trait implementer, or
-"receiver type". Besides the already mentioned `Self`, `&Self` and
-`&mut Self` valid receiver types, the following are also valid:
-`self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, and `self: Pin<P>`
-(where P is one of the previous types except `Self`).
+`self: Self`, `self: &Self`, and `self: &mut Self` respectively.
 
 ```
 # struct Foo;
 trait Trait {
     fn foo(&self);
+//         ^^^^^ `self` here is a reference to the receiver object
 }
 
 impl Trait for Foo {
     fn foo(&self) {}
-//         ^^^^^ this the receiver type `&Foo`
+//         ^^^^^ the receiver type is `&Foo`
 }
 ```
 
-The above is equivalent to:
+The type `Self` acts as an alias to the type of the current trait
+implementer, or "receiver type". Besides the already mentioned `Self`,
+`&Self` and `&mut Self` valid receiver types, the following are also valid:
+`self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, and `self: Pin<P>`
+(where P is one of the previous types except `Self`). Note that `Self` can
+also be the underlying implementing type, like `Foo` in the following
+example:
 
 ```
 # struct Foo;
