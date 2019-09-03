@@ -112,19 +112,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             self.diverges.set(pats_diverge);
-            let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
+            let arm_ty = if source_if && if_no_else && i != 0 && self.if_fallback_coercion(
+                expr.span,
+                &arms[0].body,
+                &mut coercion,
+            ) {
+                tcx.types.err
+            } else {
+                // Only call this if this is not an `if` expr with an expected type and no `else`
+                // clause to avoid duplicated type errors. (#60254)
+                self.check_expr_with_expectation(&arm.body, expected)
+            };
             all_arms_diverge &= self.diverges.get();
-
-            let span = expr.span;
-
             if source_if {
                 let then_expr = &arms[0].body;
                 match (i, if_no_else) {
-                    (0, _) => coercion.coerce(self, &self.misc(span), &arm.body, arm_ty),
-                    (_, true) => self.if_fallback_coercion(span, then_expr, &mut coercion),
+                    (0, _) => coercion.coerce(self, &self.misc(expr.span), &arm.body, arm_ty),
+                    (_, true) => {} // Handled above to avoid duplicated type errors (#60254).
                     (_, _) => {
                         let then_ty = prior_arm_ty.unwrap();
-                        let cause = self.if_cause(span, then_expr, &arm.body, then_ty, arm_ty);
+                        let cause = self.if_cause(expr.span, then_expr, &arm.body, then_ty, arm_ty);
                         coercion.coerce(self, &cause, &arm.body, arm_ty);
                     }
                 }
@@ -139,7 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // The reason for the first arm to fail is not that the match arms diverge,
                     // but rather that there's a prior obligation that doesn't hold.
                     0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
-                    _ => (span, ObligationCauseCode::MatchExpressionArm {
+                    _ => (expr.span, ObligationCauseCode::MatchExpressionArm {
                         arm_span,
                         source: match_src,
                         prior_arms: other_arms.clone(),
@@ -180,16 +187,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Handle the fallback arm of a desugared if(-let) like a missing else.
+    ///
+    /// Returns `true` if there was an error forcing the coercion to the `()` type.
     fn if_fallback_coercion(
         &self,
         span: Span,
         then_expr: &'tcx hir::Expr,
         coercion: &mut CoerceMany<'tcx, '_, rustc::hir::Arm>,
-    ) {
+    ) -> bool {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
         let ret_reason = self.maybe_get_coercion_reason(then_expr.hir_id, span);
         let cause = self.cause(span, ObligationCauseCode::IfExpressionWithNoElse);
+        let mut error = false;
         coercion.coerce_forced_unit(self, &cause, &mut |err| {
             if let Some((span, msg)) = &ret_reason {
                 err.span_label(*span, msg.as_str());
@@ -200,7 +210,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             err.note("`if` expressions without `else` evaluate to `()`");
             err.help("consider adding an `else` block that evaluates to the expected type");
+            error = true;
         }, ret_reason.is_none());
+        error
     }
 
     fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, span: Span) -> Option<(Span, String)> {
