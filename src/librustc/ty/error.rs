@@ -46,6 +46,8 @@ pub enum TypeError<'tcx> {
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
 
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
+
+    IntrinsicCast,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -178,6 +180,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             }
             ConstMismatch(ref values) => {
                 write!(f, "expected `{}`, found `{}`", values.expected, values.found)
+            }
+            IntrinsicCast => {
+                write!(f, "cannot coerce intrinsics to function pointers")
             }
         }
     }
