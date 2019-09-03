@@ -7,6 +7,8 @@
 ## It is set as callback for `src/ci/docker/x86_64-gnu-tools/repo.sh` by the CI scripts
 ## when a new commit lands on `master` (i.e., after it passed all checks on `auto`).
 
+from __future__ import print_function
+
 import sys
 import re
 import os
@@ -20,6 +22,8 @@ except ImportError:
     import urllib.request as urllib2
 
 # List of people to ping when the status of a tool or a book changed.
+# These should be collaborators of the rust-lang/rust repository (with at least
+# read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch @flip1995 @yaahc',
@@ -51,6 +55,53 @@ REPOS = {
     'rustc-guide': 'https://github.com/rust-lang/rustc-guide',
 }
 
+
+def validate_maintainers(repo, github_token):
+    '''Ensure all maintainers are assignable on a GitHub repo'''
+    next_link_re = re.compile(r'<([^>]+)>; rel="next"')
+
+    # Load the list of assignable people in the GitHub repo
+    assignable = []
+    url = 'https://api.github.com/repos/%s/collaborators?per_page=100' % repo
+    while url is not None:
+        response = urllib2.urlopen(urllib2.Request(url, headers={
+            'Authorization': 'token ' + github_token,
+            # Properly load nested teams.
+            'Accept': 'application/vnd.github.hellcat-preview+json',
+        }))
+        for user in json.loads(response.read()):
+            assignable.append(user['login'])
+        # Load the next page if available
+        if 'Link' in response.headers:
+            matches = next_link_re.match(response.headers['Link'])
+            if matches is not None:
+                url = matches.group(1)
+            else:
+                url = None
+
+    errors = False
+    for tool, maintainers in MAINTAINERS.items():
+        for maintainer in maintainers.split(' '):
+            if maintainer.startswith('@'):
+                maintainer = maintainer[1:]
+            if maintainer not in assignable:
+                errors = True
+                print(
+                    "error: %s maintainer @%s is not assignable in the %s repo"
+                    % (tool, maintainer, repo),
+                )
+
+    if errors:
+        print()
+        print("  To be assignable, a person needs to be explicitly listed as a")
+        print("  collaborator in the repository settings. The simple way to")
+        print("  fix this is to ask someone with 'admin' privileges on the repo")
+        print("  to add the person or whole team as a collaborator with 'read'")
+        print("  privileges. Those privileges don't grant any extra permissions")
+        print("  so it's safe to apply them.")
+        print()
+        print("The build will fail due to this.")
+        exit(1)
 
 def read_current_status(current_commit, path):
     '''Reads build status of `current_commit` from content of `history/*.tsv`
@@ -200,6 +251,15 @@ def update_latest(
 
 
 if __name__ == '__main__':
+    if 'TOOLSTATE_VALIDATE_MAINTAINERS_REPO' in os.environ:
+        repo = os.environ['TOOLSTATE_VALIDATE_MAINTAINERS_REPO']
+        if 'TOOLSTATE_REPO_ACCESS_TOKEN' in os.environ:
+            github_token = os.environ['TOOLSTATE_REPO_ACCESS_TOKEN']
+            validate_maintainers(repo, github_token)
+        else:
+            print('skipping toolstate maintainers validation since no GitHub token is present')
+        exit(0)
+
     cur_commit = sys.argv[1]
     cur_datetime = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
     cur_commit_msg = sys.argv[2]
