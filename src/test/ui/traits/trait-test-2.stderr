@@ -16,7 +16,7 @@ error[E0038]: the trait `bar` cannot be made into an object
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |                ---                    ---- method `blah` has generic type parameters
    |                |
-   |                method `dup` references the `Self` type in its arguments or return type
+   |                method `dup` references the `Self` type in its parameters or return type
 ...
 LL |     (box 10 as Box<dyn bar>).dup();
    |                ^^^^^^^^^^^^ the trait `bar` cannot be made into an object
@@ -27,7 +27,7 @@ error[E0038]: the trait `bar` cannot be made into an object
 LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |                ---                    ---- method `blah` has generic type parameters
    |                |
-   |                method `dup` references the `Self` type in its arguments or return type
+   |                method `dup` references the `Self` type in its parameters or return type
 ...
 LL |     (box 10 as Box<dyn bar>).dup();
    |      ^^^^^^ the trait `bar` cannot be made into an object

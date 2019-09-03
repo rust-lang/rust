@@ -2,7 +2,7 @@ error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/object-safety-mentions-Self.rs:17:1
    |
 LL |     fn bar(&self, x: &Self);
-   |        --- method `bar` references the `Self` type in its arguments or return type
+   |        --- method `bar` references the `Self` type in its parameters or return type
 ...
 LL | fn make_bar<T:Bar>(t: &T) -> &dyn Bar {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
@@ -11,7 +11,7 @@ error[E0038]: the trait `Baz` cannot be made into an object
   --> $DIR/object-safety-mentions-Self.rs:22:1
    |
 LL |     fn bar(&self) -> Self;
-   |        --- method `bar` references the `Self` type in its arguments or return type
+   |        --- method `bar` references the `Self` type in its parameters or return type
 ...
 LL | fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Baz` cannot be made into an object

@@ -20,7 +20,7 @@ use std::borrow::Cow;
 use std::iter::{self};
 use syntax::ast::{self};
 use syntax::symbol::InternedString;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation {
@@ -49,7 +49,7 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod, _) =>
                 format!("associated function `{}` has no `self` parameter", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf, _) => format!(
-                "method `{}` references the `Self` type in its arguments or return type",
+                "method `{}` references the `Self` type in its parameters or return type",
                 name,
             ).into(),
             ObjectSafetyViolation::Method(
@@ -67,9 +67,9 @@ impl ObjectSafetyViolation {
     }
 
     pub fn span(&self) -> Option<Span> {
-        match self {
+        match *self {
             ObjectSafetyViolation::AssocConst(_, span) |
-            ObjectSafetyViolation::Method(_, _, span) => Some(*span),
+            ObjectSafetyViolation::Method(_, _, span) if span != DUMMY_SP => Some(span),
             _ => None,
         }
     }

@@ -2,7 +2,7 @@ error[E0038]: the trait `A` cannot be made into an object
   --> $DIR/wf-object-safe.rs:9:13
    |
 LL |     fn foo(&self, _x: &Self);
-   |        --- method `foo` references the `Self` type in its arguments or return type
+   |        --- method `foo` references the `Self` type in its parameters or return type
 ...
 LL |     let _x: &dyn A;
    |             ^^^^^^ the trait `A` cannot be made into an object

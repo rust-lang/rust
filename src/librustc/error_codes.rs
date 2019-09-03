@@ -39,7 +39,7 @@ Generally, `Self: Sized` is used to indicate that the trait should not be used
 as a trait object. If the trait comes from your own crate, consider removing
 this restriction.
 
-### Method references the `Self` type in its arguments or return type
+### Method references the `Self` type in its parameters or return type
 
 This happens when a trait has a method like the following:
 
