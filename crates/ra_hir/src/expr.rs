@@ -472,7 +472,7 @@ pub enum Pat {
     Missing,
     Wild,
     Tuple(Vec<PatId>),
-    Struct {
+    Record {
         path: Option<Path>,
         args: Vec<RecordFieldPat>,
         // FIXME: 'ellipsis' option
@@ -518,7 +518,7 @@ impl Pat {
                 let total_iter = prefix.iter().chain(rest.iter()).chain(suffix.iter());
                 total_iter.copied().for_each(f);
             }
-            Pat::Struct { args, .. } => {
+            Pat::Record { args, .. } => {
                 args.iter().map(|f| f.pat).for_each(f);
             }
         }

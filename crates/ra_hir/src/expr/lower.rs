@@ -20,9 +20,8 @@ use crate::{
 };
 
 use super::{
-    ArithOp, Array, BinaryOp, BindingAnnotation, Body, BodySourceMap, CmpOp, Expr, ExprId,
-    Literal, LogicOp, MatchArm, Ordering, Pat, PatId, PatPtr, RecordFieldPat, RecordLitField,
-    Statement,
+    ArithOp, Array, BinaryOp, BindingAnnotation, Body, BodySourceMap, CmpOp, Expr, ExprId, Literal,
+    LogicOp, MatchArm, Ordering, Pat, PatId, PatPtr, RecordFieldPat, RecordLitField, Statement,
 };
 
 pub(crate) struct ExprCollector<DB> {
@@ -504,7 +503,7 @@ where
                 });
                 fields.extend(iter);
 
-                Pat::Struct { path, args: fields }
+                Pat::Record { path, args: fields }
             }
 
             // FIXME: implement

@@ -749,7 +749,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let is_non_ref_pat = match &body[pat] {
             Pat::Tuple(..)
             | Pat::TupleStruct { .. }
-            | Pat::Struct { .. }
+            | Pat::Record { .. }
             | Pat::Range { .. }
             | Pat::Slice { .. } => true,
             // FIXME: Path/Lit might actually evaluate to ref, but inference is unimplemented.
@@ -809,7 +809,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Pat::TupleStruct { path: ref p, args: ref subpats } => {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
             }
-            Pat::Struct { path: ref p, args: ref fields } => {
+            Pat::Record { path: ref p, args: ref fields } => {
                 self.infer_record_pat(p.as_ref(), fields, expected, default_bm, pat)
             }
             Pat::Path(path) => {
