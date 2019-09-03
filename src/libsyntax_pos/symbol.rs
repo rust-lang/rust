@@ -1231,18 +1231,6 @@ impl fmt::Display for LocalInternedString {
     }
 }
 
-impl Decodable for LocalInternedString {
-    fn decode<D: Decoder>(d: &mut D) -> Result<LocalInternedString, D::Error> {
-        Ok(LocalInternedString::intern(&d.read_str()?))
-    }
-}
-
-impl Encodable for LocalInternedString {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self.string)
-    }
-}
-
 /// An alternative to `Symbol` that is focused on string contents. It has two
 /// main differences to `Symbol`.
 ///
