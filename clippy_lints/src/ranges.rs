@@ -151,75 +151,82 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
             }
         }
 
-        // exclusive range plus one: `x..(y+1)`
-        if_chain! {
-            if let Some(higher::Range {
-                start,
-                end: Some(end),
-                limits: RangeLimits::HalfOpen
-            }) = higher::range(cx, expr);
-            if let Some(y) = y_plus_one(end);
-            then {
-                let span = if expr.span.from_expansion() {
-                    expr.span
-                        .ctxt()
-                        .outer_expn_data()
-                        .call_site
-                } else {
-                    expr.span
-                };
-                span_lint_and_then(
-                    cx,
-                    RANGE_PLUS_ONE,
-                    span,
-                    "an inclusive range would be more readable",
-                    |db| {
-                        let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
-                        let end = Sugg::hir(cx, y, "y");
-                        if let Some(is_wrapped) = &snippet_opt(cx, span) {
-                            if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
-                                db.span_suggestion(
-                                    span,
-                                    "use",
-                                    format!("({}..={})", start, end),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                db.span_suggestion(
-                                    span,
-                                    "use",
-                                    format!("{}..={}", start, end),
-                                    Applicability::MachineApplicable, // snippet
-                                );
-                            }
-                        }
-                    },
-                );
-            }
-        }
+        check_exclusive_range_plus_one(cx, expr);
+        check_inclusive_range_minus_one(cx, expr);
+    }
+}
 
-        // inclusive range minus one: `x..=(y-1)`
-        if_chain! {
-            if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(cx, expr);
-            if let Some(y) = y_minus_one(end);
-            then {
-                span_lint_and_then(
-                    cx,
-                    RANGE_MINUS_ONE,
-                    expr.span,
-                    "an exclusive range would be more readable",
-                    |db| {
-                        let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
-                        let end = Sugg::hir(cx, y, "y");
-                        db.span_suggestion(
-                            expr.span,
-                            "use",
-                            format!("{}..{}", start, end),
-                            Applicability::MachineApplicable, // snippet
-                        );
-                    },
-                );
-            }
+// exclusive range plus one: `x..(y+1)`
+fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
+    if_chain! {
+        if let Some(higher::Range {
+            start,
+            end: Some(end),
+            limits: RangeLimits::HalfOpen
+        }) = higher::range(cx, expr);
+        if let Some(y) = y_plus_one(end);
+        then {
+            let span = if expr.span.from_expansion() {
+                expr.span
+                    .ctxt()
+                    .outer_expn_data()
+                    .call_site
+            } else {
+                expr.span
+            };
+            span_lint_and_then(
+                cx,
+                RANGE_PLUS_ONE,
+                span,
+                "an inclusive range would be more readable",
+                |db| {
+                    let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
+                    let end = Sugg::hir(cx, y, "y");
+                    if let Some(is_wrapped) = &snippet_opt(cx, span) {
+                        if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
+                            db.span_suggestion(
+                                span,
+                                "use",
+                                format!("({}..={})", start, end),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            db.span_suggestion(
+                                span,
+                                "use",
+                                format!("{}..={}", start, end),
+                                Applicability::MachineApplicable, // snippet
+                            );
+                        }
+                    }
+                },
+            );
+        }
+    }
+}
+
+// inclusive range minus one: `x..=(y-1)`
+fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
+    if_chain! {
+        if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(cx, expr);
+        if let Some(y) = y_minus_one(end);
+        then {
+            span_lint_and_then(
+                cx,
+                RANGE_MINUS_ONE,
+                expr.span,
+                "an exclusive range would be more readable",
+                |db| {
+                    let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
+                    let end = Sugg::hir(cx, y, "y");
+                    db.span_suggestion(
+                        expr.span,
+                        "use",
+                        format!("{}..{}", start, end),
+                        Applicability::MachineApplicable, // snippet
+                    );
+                },
+            );
         }
     }
 }

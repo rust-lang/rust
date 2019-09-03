@@ -144,6 +144,7 @@ fn has_attr(sess: &Session, attrs: &[Attribute]) -> bool {
 }
 
 #[allow(clippy::similar_names)]
+#[allow(clippy::too_many_lines)]
 fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);
@@ -396,6 +397,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
 }
 
 #[allow(clippy::similar_names)]
+#[allow(clippy::too_many_lines)]
 fn print_pat(cx: &LateContext<'_, '_>, pat: &hir::Pat, indent: usize) {
     let ind = "  ".repeat(indent);
     println!("{}+", ind);

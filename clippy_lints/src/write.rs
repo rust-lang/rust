@@ -320,6 +320,7 @@ impl FmtStr {
 /// ```rust,ignore
 /// (Some("string to write: {}"), Some(buf))
 /// ```
+#[allow(clippy::too_many_lines)]
 fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &TokenStream, is_write: bool) -> (Option<FmtStr>, Option<Expr>) {
     use fmt_macros::*;
     let tts = tts.clone();

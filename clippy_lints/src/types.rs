@@ -1159,83 +1159,97 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
                 }
             }
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
-                match (cast_from.is_integral(), cast_to.is_integral()) {
-                    (true, false) => {
-                        let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
-                        let to_nbits = if let ty::Float(FloatTy::F32) = cast_to.sty {
-                            32
-                        } else {
-                            64
-                        };
-                        if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
-                            span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
-                        }
-                        if from_nbits < to_nbits {
-                            span_lossless_lint(cx, expr, ex, cast_from, cast_to);
-                        }
-                    },
-                    (false, true) => {
-                        span_lint(
-                            cx,
-                            CAST_POSSIBLE_TRUNCATION,
-                            expr.span,
-                            &format!("casting {} to {} may truncate the value", cast_from, cast_to),
-                        );
-                        if !cast_to.is_signed() {
-                            span_lint(
-                                cx,
-                                CAST_SIGN_LOSS,
-                                expr.span,
-                                &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to),
-                            );
-                        }
-                    },
-                    (true, true) => {
-                        check_loss_of_sign(cx, expr, ex, cast_from, cast_to);
-                        check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
-                        check_lossless(cx, expr, ex, cast_from, cast_to);
-                    },
-                    (false, false) => {
-                        if let (&ty::Float(FloatTy::F64), &ty::Float(FloatTy::F32)) = (&cast_from.sty, &cast_to.sty) {
-                            span_lint(
-                                cx,
-                                CAST_POSSIBLE_TRUNCATION,
-                                expr.span,
-                                "casting f64 to f32 may truncate the value",
-                            );
-                        }
-                        if let (&ty::Float(FloatTy::F32), &ty::Float(FloatTy::F64)) = (&cast_from.sty, &cast_to.sty) {
-                            span_lossless_lint(cx, expr, ex, cast_from, cast_to);
-                        }
-                    },
-                }
+                lint_numeric_casts(cx, expr, ex, cast_from, cast_to);
             }
 
-            if_chain! {
-                if let ty::RawPtr(from_ptr_ty) = &cast_from.sty;
-                if let ty::RawPtr(to_ptr_ty) = &cast_to.sty;
-                if let Ok(from_layout) = cx.layout_of(from_ptr_ty.ty);
-                if let Ok(to_layout) = cx.layout_of(to_ptr_ty.ty);
-                if from_layout.align.abi < to_layout.align.abi;
-                // with c_void, we inherently need to trust the user
-                if !is_c_void(cx, from_ptr_ty.ty);
-                // when casting from a ZST, we don't know enough to properly lint
-                if !from_layout.is_zst();
-                then {
-                    span_lint(
-                        cx,
-                        CAST_PTR_ALIGNMENT,
-                        expr.span,
-                        &format!(
-                            "casting from `{}` to a more-strictly-aligned pointer (`{}`) ({} < {} bytes)",
-                            cast_from,
-                            cast_to,
-                            from_layout.align.abi.bytes(),
-                            to_layout.align.abi.bytes(),
-                        ),
-                    );
-                }
+            lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
+        }
+    }
+}
+
+fn lint_numeric_casts<'tcx>(
+    cx: &LateContext<'_, 'tcx>,
+    expr: &Expr,
+    cast_expr: &Expr,
+    cast_from: Ty<'tcx>,
+    cast_to: Ty<'tcx>,
+) {
+    match (cast_from.is_integral(), cast_to.is_integral()) {
+        (true, false) => {
+            let from_nbits = int_ty_to_nbits(cast_from, cx.tcx);
+            let to_nbits = if let ty::Float(FloatTy::F32) = cast_to.sty {
+                32
+            } else {
+                64
+            };
+            if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
+                span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
             }
+            if from_nbits < to_nbits {
+                span_lossless_lint(cx, expr, cast_expr, cast_from, cast_to);
+            }
+        },
+        (false, true) => {
+            span_lint(
+                cx,
+                CAST_POSSIBLE_TRUNCATION,
+                expr.span,
+                &format!("casting {} to {} may truncate the value", cast_from, cast_to),
+            );
+            if !cast_to.is_signed() {
+                span_lint(
+                    cx,
+                    CAST_SIGN_LOSS,
+                    expr.span,
+                    &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to),
+                );
+            }
+        },
+        (true, true) => {
+            check_loss_of_sign(cx, expr, cast_expr, cast_from, cast_to);
+            check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
+            check_lossless(cx, expr, cast_expr, cast_from, cast_to);
+        },
+        (false, false) => {
+            if let (&ty::Float(FloatTy::F64), &ty::Float(FloatTy::F32)) = (&cast_from.sty, &cast_to.sty) {
+                span_lint(
+                    cx,
+                    CAST_POSSIBLE_TRUNCATION,
+                    expr.span,
+                    "casting f64 to f32 may truncate the value",
+                );
+            }
+            if let (&ty::Float(FloatTy::F32), &ty::Float(FloatTy::F64)) = (&cast_from.sty, &cast_to.sty) {
+                span_lossless_lint(cx, expr, cast_expr, cast_from, cast_to);
+            }
+        },
+    }
+}
+
+fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr, cast_from: Ty<'tcx>, cast_to: Ty<'tcx>) {
+    if_chain! {
+        if let ty::RawPtr(from_ptr_ty) = &cast_from.sty;
+        if let ty::RawPtr(to_ptr_ty) = &cast_to.sty;
+        if let Ok(from_layout) = cx.layout_of(from_ptr_ty.ty);
+        if let Ok(to_layout) = cx.layout_of(to_ptr_ty.ty);
+        if from_layout.align.abi < to_layout.align.abi;
+        // with c_void, we inherently need to trust the user
+        if !is_c_void(cx, from_ptr_ty.ty);
+        // when casting from a ZST, we don't know enough to properly lint
+        if !from_layout.is_zst();
+        then {
+            span_lint(
+                cx,
+                CAST_PTR_ALIGNMENT,
+                expr.span,
+                &format!(
+                    "casting from `{}` to a more-strictly-aligned pointer (`{}`) ({} < {} bytes)",
+                    cast_from,
+                    cast_to,
+                    from_layout.align.abi.bytes(),
+                    to_layout.align.abi.bytes(),
+                ),
+            );
         }
     }
 }
