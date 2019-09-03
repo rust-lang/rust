@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use super::{
     FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+    TypeWalk,
 };
 use crate::{
     adt::VariantDef,

@@ -30,7 +30,7 @@ use super::{
     autoderef, lower, method_resolution, op, primitive,
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
     ApplicationTy, CallableDef, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef,
-    Ty, TypableDef, TypeCtor,
+    Ty, TypableDef, TypeCtor, TypeWalk,
 };
 use crate::{
     adt::VariantDef,

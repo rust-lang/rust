@@ -8,7 +8,7 @@ use ra_db::salsa;
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
-use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty};
+use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 use crate::{db::HirDatabase, Crate, ImplBlock, Trait};
 
 use self::chalk::{from_chalk, ToChalk};
@@ -138,25 +138,13 @@ pub struct ProjectionPredicate {
     pub ty: Ty,
 }
 
-impl ProjectionPredicate {
-    pub fn subst(mut self, substs: &super::Substs) -> ProjectionPredicate {
-        self.walk_mut(&mut |ty| match ty {
-            Ty::Param { idx, .. } => {
-                if let Some(t) = substs.get(*idx as usize).cloned() {
-                    *ty = t;
-                }
-            }
-            _ => {}
-        });
-        self
-    }
-
-    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+impl TypeWalk for ProjectionPredicate {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
         self.projection_ty.walk(f);
         self.ty.walk(f);
     }
 
-    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         self.projection_ty.walk_mut(f);
         self.ty.walk_mut(f);
     }

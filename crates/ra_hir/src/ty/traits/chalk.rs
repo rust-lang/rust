@@ -19,6 +19,7 @@ use crate::{
     ty::display::HirDisplay,
     ty::{
         ApplicationTy, CallableDef, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+        TypeWalk,
     },
     Crate, HasGenericParams, ImplBlock, ImplItem, Trait, TypeAlias,
 };
