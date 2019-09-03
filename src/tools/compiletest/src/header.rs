@@ -835,10 +835,10 @@ impl Config {
 
             if name == "test" ||
                 util::matches_os(&self.target, name) ||             // target
+                util::matches_env(&self.target, name) ||            // env
                 name == util::get_arch(&self.target) ||             // architecture
                 name == util::get_pointer_width(&self.target) ||    // pointer width
                 name == self.stage_id.split('-').next().unwrap() || // stage
-                Some(name) == util::get_env(&self.target) ||        // env
                 (self.target != self.host && name == "cross-compile") ||
                 match self.compare_mode {
                     Some(CompareMode::Nll) => name == "compare-mode-nll",
