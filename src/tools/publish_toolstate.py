@@ -20,6 +20,8 @@ except ImportError:
     import urllib.request as urllib2
 
 # List of people to ping when the status of a tool or a book changed.
+# These must all be members of the rust-lang org on GitHub, or else
+# assigning them to the issue will fail (and no issue gets created).
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch @flip1995',
