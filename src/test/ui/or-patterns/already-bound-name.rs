@@ -1,8 +1,8 @@
 // This test ensures that the "already bound identifier in a product pattern"
 // correctly accounts for or-patterns.
 
-#![allow(warnings)]
 #![feature(or_patterns)]
+//~^ WARN the feature `or_patterns` is incomplete
 
 enum E<T> { A(T, T), B(T) }
 

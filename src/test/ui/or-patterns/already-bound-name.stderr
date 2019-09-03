@@ -82,6 +82,14 @@ error[E0416]: identifier `a` is bound more than once in the same pattern
 LL |     let B(A(a, _) | B(a)) | A(A(a, _) | B(a), A(a, _) | B(a)) = B(B(1));
    |                                                           ^ used in a pattern more than once
 
+warning: the feature `or_patterns` is incomplete and may cause the compiler to crash
+  --> $DIR/already-bound-name.rs:4:12
+   |
+LL | #![feature(or_patterns)]
+   |            ^^^^^^^^^^^
+   |
+   = note: `#[warn(incomplete_features)]` on by default
+
 error[E0308]: mismatched types
   --> $DIR/already-bound-name.rs:33:31
    |
