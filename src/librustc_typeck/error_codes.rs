@@ -212,7 +212,7 @@ match string {
 E0033: r##"
 This error indicates that a pointer to a trait type cannot be implicitly
 dereferenced by a pattern. Every trait defines a type, but because the
-size of trait implementors isn't fixed, this type has no compile-time size.
+size of trait implementers isn't fixed, this type has no compile-time size.
 Therefore, all accesses to trait types must be through pointers. If you
 encounter this error you should try to avoid dereferencing the pointer.
 
@@ -2430,23 +2430,23 @@ This error indicates that the `self` parameter in a method has an invalid
 "reciever type".
 
 Methods take a special first parameter, of which there are three variants:
-`self`, `&self`, and `&mut self`. The type `Self` acts as an alias to the
-type of the current trait implementor, or "receiver type". Besides the
-already mentioned `Self`, `&Self` and `&mut Self` valid receiver types, the
-following are also valid, if less common: `self: Box<Self>`,
-`self: Rc<Self>`, `self: Arc<Self>`, and `self: Pin<P>` (where P is one of
-the previous types except `Self`).
+`self`, `&self`, and `&mut self`. These are syntactic sugar for
+`self: Self`, `self: &Self`, and `self: &mut Self` respectively. The type
+`Self` acts as an alias to the type of the current trait implementer, or
+"receiver type". Besides the already mentioned `Self`, `&Self` and
+`&mut Self` valid receiver types, the following are also valid:
+`self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, and `self: Pin<P>`
+(where P is one of the previous types except `Self`).
 
 ```
 # struct Foo;
 trait Trait {
     fn foo(&self);
-//         ^^^^^ this let's you refer to the type that implements this trait
 }
+
 impl Trait for Foo {
-//             ^^^ this is the "receiver type"
     fn foo(&self) {}
-//         ^^^^^ this is of type `Foo`
+//         ^^^^^ this the receiver type `&Foo`
 }
 ```
 
@@ -2458,11 +2458,12 @@ The above is equivalent to:
 #     fn foo(&self);
 # }
 impl Trait for Foo {
-    fn foo(&self: &Foo) {}
+    fn foo(self: &Foo) {}
 }
 ```
 
-When using an invalid reciver type, like in the following example,
+E0307 will be emitted by the compiler when using an invalid reciver type,
+like in the following example:
 
 ```compile_fail,E0307
 # struct Foo;
@@ -2471,12 +2472,13 @@ When using an invalid reciver type, like in the following example,
 #     fn foo(&self);
 # }
 impl Trait for Struct {
-    fn foo(&self: &Bar) {}
+    fn foo(self: &Bar) {}
 }
 ```
 
 The nightly feature [Arbintrary self types][AST] extends the accepted
-receiver type to also include any type that can dereference to `Self`:
+set of receiver types to also include any type that can dereference to
+`Self`:
 
 ```
 #![feature(arbitrary_self_types)]
