@@ -12,7 +12,7 @@ use crate::check::fatally_break_rust;
 use crate::check::report_unexpected_variant_res;
 use crate::check::Needs;
 use crate::check::TupleArgumentsFlag::DontTupleArguments;
-use crate::check::method::SelfSource;
+use crate::check::method::{probe, SelfSource, MethodError};
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
 use crate::astconv::AstConv as _;
@@ -29,6 +29,7 @@ use rustc::hir::def::{CtorKind, Res, DefKind};
 use rustc::hir::ptr::P;
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc::middle::lang_items;
 use rustc::mir::interpret::GlobalId;
 use rustc::ty;
 use rustc::ty::adjustment::{
@@ -775,35 +776,80 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // no need to check for bot/err -- callee does that
         let rcvr_t = self.structurally_resolved_type(args[0].span, rcvr_t);
 
-        let method = match self.lookup_method(rcvr_t,
-                                              segment,
-                                              span,
-                                              expr,
-                                              rcvr) {
+        let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr) {
             Ok(method) => {
                 self.write_method_call(expr.hir_id, method);
                 Ok(method)
             }
             Err(error) => {
                 if segment.ident.name != kw::Invalid {
-                    self.report_method_error(span,
-                                             rcvr_t,
-                                             segment.ident,
-                                             SelfSource::MethodCall(rcvr),
-                                             error,
-                                             Some(args));
+                    self.report_extended_method_error(segment, span, args, rcvr_t, error);
                 }
                 Err(())
             }
         };
 
         // Call the generic checker.
-        self.check_method_argument_types(span,
-                                         expr.span,
-                                         method,
-                                         &args[1..],
-                                         DontTupleArguments,
-                                         expected)
+        self.check_method_argument_types(
+            span,
+            expr.span,
+            method,
+            &args[1..],
+            DontTupleArguments,
+            expected,
+        )
+    }
+
+    fn report_extended_method_error(
+        &self,
+        segment: &hir::PathSegment,
+        span: Span,
+        args: &'tcx [hir::Expr],
+        rcvr_t: Ty<'tcx>,
+        error: MethodError<'tcx>
+    ) {
+        let rcvr = &args[0];
+        let try_alt_rcvr = |err: &mut DiagnosticBuilder<'_>, new_rcvr_t| {
+            if let Ok(pick) = self.lookup_probe(
+                span,
+                segment.ident,
+                new_rcvr_t,
+                rcvr,
+                probe::ProbeScope::AllTraits,
+            ) {
+                err.span_label(
+                    pick.item.ident.span,
+                    &format!("the method is available for `{}` here", new_rcvr_t),
+                );
+            }
+        };
+
+        if let Some(mut err) = self.report_method_error(
+            span,
+            rcvr_t,
+            segment.ident,
+            SelfSource::MethodCall(rcvr),
+            error,
+            Some(args),
+        ) {
+            if let ty::Adt(..) = rcvr_t.sty {
+                // Try alternative arbitrary self types that could fulfill this call.
+                // FIXME: probe for all types that *could* be arbitrary self-types, not
+                // just this whitelist.
+                let box_rcvr_t = self.tcx.mk_box(rcvr_t);
+                try_alt_rcvr(&mut err, box_rcvr_t);
+                let pin_rcvr_t = self.tcx.mk_lang_item(
+                    rcvr_t,
+                    lang_items::PinTypeLangItem,
+                );
+                try_alt_rcvr(&mut err, pin_rcvr_t);
+                let arc_rcvr_t = self.tcx.mk_lang_item(rcvr_t, lang_items::Arc);
+                try_alt_rcvr(&mut err, arc_rcvr_t);
+                let rc_rcvr_t = self.tcx.mk_lang_item(rcvr_t, lang_items::Rc);
+                try_alt_rcvr(&mut err, rc_rcvr_t);
+            }
+            err.emit();
+        }
     }
 
     fn check_expr_cast(
@@ -1466,8 +1512,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let struct_variant_def = def.non_enum_variant();
             let field_names = self.available_field_names(struct_variant_def);
             if !field_names.is_empty() {
-                err.note(&format!("available fields are: {}",
-                                    self.name_series_display(field_names)));
+                err.note(&format!(
+                    "available fields are: {}",
+                    self.name_series_display(field_names),
+                ));
             }
         }
     }
