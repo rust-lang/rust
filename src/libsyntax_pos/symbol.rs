@@ -818,10 +818,14 @@ impl Ident {
         with_interner(|interner| interner.is_gensymed(self.name))
     }
 
+    /// Convert the name to a `LocalInternedString`. This is a slowish
+    /// operation because it requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
         self.name.as_str()
     }
 
+    /// Convert the name to an `InternedString`. This is a slowish operation
+    /// because it requires locking the symbol interner.
     pub fn as_interned_str(self) -> InternedString {
         self.name.as_interned_str()
     }
@@ -916,6 +920,25 @@ impl Symbol {
         with_interner(|interner| interner.intern(string))
     }
 
+    /// Access the symbol's chars. This is a slowish operation because it
+    /// requires locking the symbol interner.
+    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
+        with_interner(|interner| {
+            f(interner.get(self))
+        })
+    }
+
+    /// Access two symbols' chars. This is a slowish operation because it
+    /// requires locking the symbol interner, but it is faster than calling
+    /// `with()` twice.
+    fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: Symbol, f: F) -> R {
+        with_interner(|interner| {
+            f(interner.get(self), interner.get(other))
+        })
+    }
+
+    /// Convert to a `LocalInternedString`. This is a slowish operation because
+    /// it requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
         with_interner(|interner| unsafe {
             LocalInternedString {
@@ -924,6 +947,8 @@ impl Symbol {
         })
     }
 
+    /// Convert to an `InternedString`. This is a slowish operation because it
+    /// requires locking the symbol interner.
     pub fn as_interned_str(self) -> InternedString {
         with_interner(|interner| InternedString {
             symbol: interner.interned(self)
@@ -1245,28 +1270,19 @@ impl InternedString {
     }
 
     pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        let str = with_interner(|interner| {
-            interner.get(self.symbol) as *const str
-        });
-        // This is safe because the interner keeps string alive until it is dropped.
-        // We can access it because we know the interner is still alive since we use a
-        // scoped thread local to access it, and it was alive at the beginning of this scope
-        unsafe { f(&*str) }
+        self.symbol.with(f)
     }
 
     fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: &InternedString, f: F) -> R {
-        let (self_str, other_str) = with_interner(|interner| {
-            (interner.get(self.symbol) as *const str,
-             interner.get(other.symbol) as *const str)
-        });
-        // This is safe for the same reason that `with` is safe.
-        unsafe { f(&*self_str, &*other_str) }
+        self.symbol.with2(other.symbol, f)
     }
 
     pub fn as_symbol(self) -> Symbol {
         self.symbol
     }
 
+    /// Convert to a `LocalInternedString`. This is a slowish operation because it
+    /// requires locking the symbol interner.
     pub fn as_str(self) -> LocalInternedString {
         self.symbol.as_str()
     }
