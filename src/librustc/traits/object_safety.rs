@@ -47,13 +47,15 @@ impl ObjectSafetyViolation {
                 "the trait cannot use `Self` as a type parameter \
                  in the supertraits or where-clauses".into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod) =>
-                format!("method `{}` has no receiver", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf) =>
-                format!("method `{}` references the `Self` type \
-                         in its arguments or return type", name).into(),
-            ObjectSafetyViolation::Method(name,
-                                            MethodViolationCode::WhereClauseReferencesSelf(_)) =>
-                format!("method `{}` references the `Self` type in where clauses", name).into(),
+                format!("associated function `{}` has no `self` parameter", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf) => format!(
+                "method `{}` references the `Self` type in its arguments or return type",
+                name,
+            ).into(),
+            ObjectSafetyViolation::Method(
+                name,
+                MethodViolationCode::WhereClauseReferencesSelf(_),
+            ) => format!("method `{}` references the `Self` type in where clauses", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
                 format!("method `{}` has generic type parameters", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver) =>

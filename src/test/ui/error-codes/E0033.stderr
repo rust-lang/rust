@@ -10,7 +10,7 @@ error[E0038]: the trait `SomeTrait` cannot be made into an object
 LL |     let trait_obj: &dyn SomeTrait = SomeTrait;
    |                    ^^^^^^^^^^^^^^ the trait `SomeTrait` cannot be made into an object
    |
-   = note: method `foo` has no receiver
+   = note: associated function `foo` has no `self` parameter
 
 error[E0033]: type `&dyn SomeTrait` cannot be dereferenced
   --> $DIR/E0033.rs:11:9

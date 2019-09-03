@@ -4,7 +4,7 @@ error[E0038]: the trait `Tr` cannot be made into an object
 LL |     let _: &dyn Tr = &St;
    |                      ^^^ the trait `Tr` cannot be made into an object
    |
-   = note: method `foo` has no receiver
+   = note: associated function `foo` has no `self` parameter
    = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<&dyn Tr>` for `&St`
 
 error[E0038]: the trait `Tr` cannot be made into an object
@@ -13,7 +13,7 @@ error[E0038]: the trait `Tr` cannot be made into an object
 LL |     let _: &dyn Tr = &St;
    |            ^^^^^^^ the trait `Tr` cannot be made into an object
    |
-   = note: method `foo` has no receiver
+   = note: associated function `foo` has no `self` parameter
 
 error: aborting due to 2 previous errors
 

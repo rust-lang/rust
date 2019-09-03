@@ -4,7 +4,7 @@ error[E0038]: the trait `Qiz` cannot be made into an object
 LL |   foos: &'static [&'static (dyn Qiz + 'static)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Qiz` cannot be made into an object
    |
-   = note: method `qiz` has no receiver
+   = note: associated function `qiz` has no `self` parameter
 
 error: aborting due to previous error
 

@@ -4,7 +4,7 @@ error[E0038]: the trait `Foo` cannot be made into an object
 LL | fn foo_implicit<T:Foo+'static>(b: Box<T>) -> Box<dyn Foo + 'static> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = note: method `foo` has no receiver
+   = note: associated function `foo` has no `self` parameter
 
 error: aborting due to previous error
 

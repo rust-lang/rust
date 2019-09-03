@@ -2425,6 +2425,83 @@ struct Bar<S, T> { x: Foo<S, T> }
 ```
 "##,
 
+E0307: r##"
+This error indicates that the `self` parameter in a method has an invalid
+"reciever type".
+
+Methods take a special first parameter, of which there are three variants:
+`self`, `&self`, and `&mut self`. The type `Self` acts as an alias to the
+type of the current trait implementor, or "receiver type". Besides the
+already mentioned `Self`, `&Self` and `&mut Self` valid receiver types, the
+following are also valid, if less common: `self: Box<Self>`,
+`self: Rc<Self>`, `self: Arc<Self>`, and `self: Pin<P>` (where P is one of
+the previous types except `Self`).
+
+```
+# struct Foo;
+trait Trait {
+    fn foo(&self);
+//         ^^^^^ this let's you refer to the type that implements this trait
+}
+impl Trait for Foo {
+//             ^^^ this is the "receiver type"
+    fn foo(&self) {}
+//         ^^^^^ this is of type `Foo`
+}
+```
+
+The above is equivalent to:
+
+```
+# struct Foo;
+# trait Trait {
+#     fn foo(&self);
+# }
+impl Trait for Foo {
+    fn foo(&self: &Foo) {}
+}
+```
+
+When using an invalid reciver type, like in the following example,
+
+```compile_fail,E0307
+# struct Foo;
+# struct Bar;
+# trait Trait {
+#     fn foo(&self);
+# }
+impl Trait for Struct {
+    fn foo(&self: &Bar) {}
+}
+```
+
+The nightly feature [Arbintrary self types][AST] extends the accepted
+receiver type to also include any type that can dereference to `Self`:
+
+```
+#![feature(arbitrary_self_types)]
+
+struct Foo;
+struct Bar;
+
+// Because you can dereference `Bar` into `Foo`...
+impl std::ops::Deref for Bar {
+    type Target = Foo;
+
+    fn deref(&self) -> &Foo {
+        &Foo
+    }
+}
+
+impl Foo {
+    fn foo(self: Bar) {}
+//         ^^^^^^^^^ ...it can be used as the receiver type
+}
+```
+
+[AST]: https://doc.rust-lang.org/unstable-book/language-features/arbitrary-self-types.html
+"##,
+
 E0321: r##"
 A cross-crate opt-out trait was implemented on something which wasn't a struct
 or enum type. Erroneous code example:
@@ -4851,7 +4928,6 @@ register_diagnostics! {
 //  E0247,
 //  E0248, // value used as a type, now reported earlier during resolution as E0412
 //  E0249,
-    E0307, // invalid method `self` type
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
