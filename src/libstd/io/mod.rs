@@ -371,6 +371,14 @@ where
     loop {
         if g.len == g.buf.len() {
             unsafe {
+                // FIXME(danielhenrymantilla): #42788
+                //
+                //   - This creates a (mut) reference to a slice of
+                //     _uninitialized integers_.
+                //
+                //   - This having defined behavior is **unstable**:
+                //     it could become UB in the future,
+                //     at which point it would have be changed.
                 g.buf.reserve(reservation_size(r));
                 let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
