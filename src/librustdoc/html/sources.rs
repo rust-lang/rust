@@ -4,10 +4,10 @@ use crate::fold::DocFolder;
 use crate::html::layout;
 use crate::html::render::{Error, SharedContext, BASIC_KEYWORDS};
 use crate::html::highlight;
+use crate::html::format::Buffer;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
-use std::fmt;
 use syntax::source_map::FileName;
 
 crate fn render(dst: &Path, scx: &mut SharedContext,
@@ -105,7 +105,6 @@ impl<'a> SourceCollector<'a> {
         cur.push(&fname);
         href.push_str(&fname.to_string_lossy());
 
-        let mut v = Vec::new();
         let title = format!("{} -- source", cur.file_name().expect("failed to get file name")
                                                .to_string_lossy());
         let desc = format!("Source to the Rust file `{}`.", filename);
@@ -120,15 +119,10 @@ impl<'a> SourceCollector<'a> {
             extra_scripts: &[&format!("source-files{}", self.scx.resource_suffix)],
             static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
-        let result = layout::render(&mut v, &self.scx.layout,
-                       &page, &(""), &Source(contents),
-                       self.scx.css_file_extension.is_some(),
-                       &self.scx.themes,
-                       self.scx.generate_search_filter);
-        if let Err(e) = result {
-            return Err(Error::new(e, &cur));
-        }
-        self.scx.fs.write(&cur, &v)?;
+        let v = layout::render(&self.scx.layout,
+                       &page, "", |buf: &mut _| print_src(buf, &contents),
+                       &self.scx.themes);
+        self.scx.fs.write(&cur, v.as_bytes())?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
     }
@@ -163,25 +157,19 @@ where
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-struct Source<'a>(&'a str);
-
-impl<'a> fmt::Display for Source<'a> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Source(s) = *self;
-        let lines = s.lines().count();
-        let mut cols = 0;
-        let mut tmp = lines;
-        while tmp > 0 {
-            cols += 1;
-            tmp /= 10;
-        }
-        write!(fmt, "<pre class=\"line-numbers\">")?;
-        for i in 1..=lines {
-            write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
-        }
-        write!(fmt, "</pre>")?;
-        write!(fmt, "{}",
-               highlight::render_with_highlighting(s, None, None, None))?;
-        Ok(())
+fn print_src(buf: &mut Buffer, s: &str) {
+    let lines = s.lines().count();
+    let mut cols = 0;
+    let mut tmp = lines;
+    while tmp > 0 {
+        cols += 1;
+        tmp /= 10;
     }
+    write!(buf, "<pre class=\"line-numbers\">");
+    for i in 1..=lines {
+        write!(buf, "<span id=\"{0}\">{0:1$}</span>\n", i, cols);
+    }
+    write!(buf, "</pre>");
+    write!(buf, "{}",
+            highlight::render_with_highlighting(s, None, None, None));
 }
