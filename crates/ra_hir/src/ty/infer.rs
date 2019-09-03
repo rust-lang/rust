@@ -749,7 +749,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let is_non_ref_pat = match &body[pat] {
             Pat::Tuple(..)
             | Pat::TupleStruct { .. }
-            | Pat::Struct { .. }
+            | Pat::Record { .. }
             | Pat::Range { .. }
             | Pat::Slice { .. } => true,
             // FIXME: Path/Lit might actually evaluate to ref, but inference is unimplemented.
@@ -806,10 +806,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let subty = self.infer_pat(*pat, expectation, default_bm);
                 Ty::apply_one(TypeCtor::Ref(*mutability), subty)
             }
-            Pat::TupleStruct { path: ref p, args: ref subpats } => {
+            Pat::TupleStruct { path: p, args: subpats } => {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
             }
-            Pat::Struct { path: ref p, args: ref fields } => {
+            Pat::Record { path: p, args: fields } => {
                 self.infer_record_pat(p.as_ref(), fields, expected, default_bm, pat)
             }
             Pat::Path(path) => {
@@ -817,7 +817,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let resolver = self.resolver.clone();
                 self.infer_path_expr(&resolver, &path, pat.into()).unwrap_or(Ty::Unknown)
             }
-            Pat::Bind { mode, name: _name, subpat } => {
+            Pat::Bind { mode, name: _, subpat } => {
                 let mode = if mode == &BindingAnnotation::Unannotated {
                     default_bm
                 } else {
