@@ -24,7 +24,6 @@ compiler_builtins = { version = "0.1.16" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
 hashbrown = { version = "0.5.0", features = ['rustc-dep-of-std'] }
-wasi = { version = "0.7.0", features = ['rustc-dep-of-std', 'alloc'] }
 
 [dependencies.backtrace]
 version = "0.3.35"
@@ -56,6 +55,9 @@ dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
 fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
+
+[target.wasm32-wasi.dependencies]
+wasi = { version = "0.7.0", features = ['rustc-dep-of-std', 'alloc'] }
 
 [build-dependencies]
 cc = "1.0"
