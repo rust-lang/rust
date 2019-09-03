@@ -60,13 +60,15 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) =>
                 format!("method `{}` has generic type parameters", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) =>
-                format!("method `{}`'s receiver cannot be dispatched on", name).into(),
+                format!("method `{}`'s `self` parameter cannot be dispatched on", name).into(),
             ObjectSafetyViolation::AssocConst(name, _) =>
                 format!("the trait cannot contain associated consts like `{}`", name).into(),
         }
     }
 
     pub fn span(&self) -> Option<Span> {
+        // When `span` comes from a separate crate, it'll be `DUMMY_SP`. Treat it as `None` so
+        // diagnostics use a `note` instead of a `span_label`.
         match *self {
             ObjectSafetyViolation::AssocConst(_, span) |
             ObjectSafetyViolation::Method(_, _, span) if span != DUMMY_SP => Some(span),
