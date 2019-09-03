@@ -398,18 +398,37 @@ impl UnusedParens {
         }
     }
 
-    fn check_unused_parens_pat(&self,
-                                cx: &EarlyContext<'_>,
-                                value: &ast::Pat,
-                                msg: &str) {
-        if let ast::PatKind::Paren(_) = value.node {
+    fn check_unused_parens_pat(
+        &self,
+        cx: &EarlyContext<'_>,
+        value: &ast::Pat,
+        avoid_or: bool,
+        avoid_mut: bool,
+    ) {
+        use ast::{PatKind, BindingMode::ByValue, Mutability::Mutable};
+
+        if let PatKind::Paren(inner) = &value.node {
+            match inner.node {
+                // The lint visitor will visit each subpattern of `p`. We do not want to lint
+                // any range pattern no matter where it occurs in the pattern. For something like
+                // `&(a..=b)`, there is a recursive `check_pat` on `a` and `b`, but we will assume
+                // that if there are unnecessary parens they serve a purpose of readability.
+                PatKind::Range(..) => return,
+                // Avoid `p0 | .. | pn` if we should.
+                PatKind::Or(..) if avoid_or => return,
+                // Avoid `mut x` and `mut x @ p` if we should:
+                PatKind::Ident(ByValue(Mutable), ..) if avoid_mut => return,
+                // Otherwise proceed with linting.
+                _ => {}
+            }
+
             let pattern_text = if let Ok(snippet) = cx.sess().source_map()
                 .span_to_snippet(value.span) {
                     snippet
                 } else {
                     pprust::pat_to_string(value)
                 };
-            Self::remove_outer_parens(cx, value.span, &pattern_text, msg, (false, false));
+            Self::remove_outer_parens(cx, value.span, &pattern_text, "pattern", (false, false));
         }
     }
 
@@ -474,6 +493,13 @@ impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
         let (value, msg, followed_by_block, left_pos, right_pos) = match e.node {
+            Let(ref pats, ..) => {
+                for p in pats {
+                    self.check_unused_parens_pat(cx, p, false, false);
+                }
+                return;
+            }
+
             If(ref cond, ref block, ..) => {
                 let left = e.span.lo() + syntax_pos::BytePos(2);
                 let right = block.span.lo();
@@ -486,7 +512,8 @@ impl EarlyLintPass for UnusedParens {
                 (cond, "`while` condition", true, Some(left), Some(right))
             },
 
-            ForLoop(_, ref cond, ref block, ..) => {
+            ForLoop(ref pat, ref cond, ref block, ..) => {
+                self.check_unused_parens_pat(cx, pat, false, false);
                 (cond, "`for` head expression", true, None, Some(block.span.lo()))
             }
 
@@ -531,24 +558,44 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, p: &ast::Pat) {
-        use ast::PatKind::{Paren, Range};
-        // The lint visitor will visit each subpattern of `p`. We do not want to lint any range
-        // pattern no matter where it occurs in the pattern. For something like `&(a..=b)`, there
-        // is a recursive `check_pat` on `a` and `b`, but we will assume that if there are
-        // unnecessary parens they serve a purpose of readability.
-        if let Paren(ref pat) = p.node {
-            match pat.node {
-                Range(..) => {}
-                _ => self.check_unused_parens_pat(cx, &p, "pattern")
-            }
+        use ast::{PatKind::*, Mutability};
+        match &p.node {
+            // Do not lint on `(..)` as that will result in the other arms being useless.
+            Paren(_)
+            // The other cases do not contain sub-patterns.
+            | Wild | Rest | Lit(..) | Mac(..) | Range(..) | Ident(.., None) | Path(..) => return,
+            // These are list-like patterns; parens can always be removed.
+            TupleStruct(_, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
+                self.check_unused_parens_pat(cx, p, false, false);
+            },
+            Struct(_, fps, _) => for f in fps {
+                self.check_unused_parens_pat(cx, &f.pat, false, false);
+            },
+            // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
+            Ident(.., Some(p)) | Box(p) => self.check_unused_parens_pat(cx, p, true, false),
+            // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
+            // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
+            Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Immutable),
         }
     }
 
     fn check_stmt(&mut self, cx: &EarlyContext<'_>, s: &ast::Stmt) {
         if let ast::StmtKind::Local(ref local) = s.node {
+            self.check_unused_parens_pat(cx, &local.pat, false, false);
+
             if let Some(ref value) = local.init {
                 self.check_unused_parens_expr(cx, &value, "assigned value", false, None, None);
             }
+        }
+    }
+
+    fn check_param(&mut self, cx: &EarlyContext<'_>, param: &ast::Param) {
+        self.check_unused_parens_pat(cx, &param.pat, true, false);
+    }
+
+    fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
+        for p in &arm.pats {
+            self.check_unused_parens_pat(cx, p, false, false);
         }
     }
 }
