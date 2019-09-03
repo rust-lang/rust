@@ -13,14 +13,11 @@ LL | fn f(p: Path) { }
 error[E0277]: the trait bound `i32: Foo` is not satisfied
   --> $DIR/E0277.rs:17:5
    |
+LL | fn some_func<T: Foo>(foo: T) {
+   | ---------------------------- required by `some_func`
+...
 LL |     some_func(5i32);
    |     ^^^^^^^^^ the trait `Foo` is not implemented for `i32`
-   |
-note: required by `some_func`
-  --> $DIR/E0277.rs:9:1
-   |
-LL | fn some_func<T: Foo>(foo: T) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

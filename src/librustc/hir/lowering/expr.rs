@@ -724,7 +724,7 @@ impl LoweringContext<'_> {
                         self.sess,
                         fn_decl_span,
                         E0628,
-                        "generators cannot have explicit arguments"
+                        "generators cannot have explicit parameters"
                     );
                     self.sess.abort_if_errors();
                 }
@@ -775,7 +775,7 @@ impl LoweringContext<'_> {
                     this.sess,
                     fn_decl_span,
                     E0708,
-                    "`async` non-`move` closures with arguments are not currently supported",
+                    "`async` non-`move` closures with parameters are not currently supported",
                 )
                 .help(
                     "consider using `let` statements to manually capture \

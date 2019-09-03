@@ -19,7 +19,8 @@ struct S {
         struct U;
 
         mod inner {
-            #[empty_helper] //~ ERROR cannot find attribute macro `empty_helper` in this scope
+            // FIXME No ambiguity, attributes in non-macro positions are not resolved properly
+            #[empty_helper]
             struct V;
         }
 

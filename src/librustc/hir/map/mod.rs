@@ -360,7 +360,7 @@ impl<'hir> Map<'hir> {
             Node::Pat(_) |
             Node::Binding(_) |
             Node::Local(_) |
-            Node::Arg(_) |
+            Node::Param(_) |
             Node::Arm(_) |
             Node::Lifetime(_) |
             Node::Visibility(_) |
@@ -514,8 +514,7 @@ impl<'hir> Map<'hir> {
         &self.forest.krate.attrs
     }
 
-    pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId)
-    {
+    pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId) {
         let hir_id = self.as_local_hir_id(module).unwrap();
         self.read(hir_id);
         match self.find_entry(hir_id).unwrap().node {
@@ -525,7 +524,7 @@ impl<'hir> Map<'hir> {
                 ..
             }) => (m, span, hir_id),
             Node::Crate => (&self.forest.krate.module, self.forest.krate.span, hir_id),
-            _ => panic!("not a module")
+            node => panic!("not a module: {:?}", node),
         }
     }
 
@@ -678,6 +677,16 @@ impl<'hir> Map<'hir> {
             _ => false,
         }
     }
+
+    /// Wether `hir_id` corresponds to a `mod` or a crate.
+    pub fn is_hir_id_module(&self, hir_id: HirId) -> bool {
+        match self.lookup(hir_id) {
+            Some(Entry { node: Node::Item(Item { node: ItemKind::Mod(_), .. }), .. }) |
+            Some(Entry { node: Node::Crate, .. }) => true,
+            _ => false,
+        }
+    }
+
 
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
@@ -955,7 +964,7 @@ impl<'hir> Map<'hir> {
     pub fn attrs(&self, id: HirId) -> &'hir [ast::Attribute] {
         self.read(id); // reveals attributes on the node
         let attrs = match self.find_entry(id).map(|entry| entry.node) {
-            Some(Node::Arg(a)) => Some(&a.attrs[..]),
+            Some(Node::Param(a)) => Some(&a.attrs[..]),
             Some(Node::Local(l)) => Some(&l.attrs[..]),
             Some(Node::Item(i)) => Some(&i.attrs[..]),
             Some(Node::ForeignItem(fi)) => Some(&fi.attrs[..]),
@@ -1019,7 +1028,7 @@ impl<'hir> Map<'hir> {
     pub fn span(&self, hir_id: HirId) -> Span {
         self.read(hir_id); // reveals span from node
         match self.find_entry(hir_id).map(|entry| entry.node) {
-            Some(Node::Arg(arg)) => arg.span,
+            Some(Node::Param(param)) => param.span,
             Some(Node::Item(item)) => item.span,
             Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
             Some(Node::TraitItem(trait_method)) => trait_method.span,
@@ -1214,7 +1223,7 @@ impl<'hir> print::PpAnn for Map<'hir> {
             Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
             Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
             Nested::Body(id) => state.print_expr(&self.body(id).value),
-            Nested::BodyArgPat(id, i) => state.print_pat(&self.body(id).arguments[i].pat)
+            Nested::BodyParamPat(id, i) => state.print_pat(&self.body(id).params[i].pat)
         }
     }
 }
@@ -1222,7 +1231,7 @@ impl<'hir> print::PpAnn for Map<'hir> {
 impl<'a> print::State<'a> {
     pub fn print_node(&mut self, node: Node<'_>) {
         match node {
-            Node::Arg(a)          => self.print_arg(&a),
+            Node::Param(a)        => self.print_param(&a),
             Node::Item(a)         => self.print_item(&a),
             Node::ForeignItem(a)  => self.print_foreign_item(&a),
             Node::TraitItem(a)    => self.print_trait_item(a),
@@ -1364,8 +1373,8 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
         Some(Node::Pat(_)) => {
             format!("pat {}{}", map.hir_to_pretty_string(id), id_str)
         }
-        Some(Node::Arg(_)) => {
-            format!("arg {}{}", map.hir_to_pretty_string(id), id_str)
+        Some(Node::Param(_)) => {
+            format!("param {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Arm(_)) => {
             format!("arm {}{}", map.hir_to_pretty_string(id), id_str)

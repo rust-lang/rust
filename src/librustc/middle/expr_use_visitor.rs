@@ -313,9 +313,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     pub fn consume_body(&mut self, body: &hir::Body) {
         debug!("consume_body(body={:?})", body);
 
-        for arg in &body.arguments {
-            let arg_ty = return_if_err!(self.mc.pat_ty_adjusted(&arg.pat));
-            debug!("consume_body: arg_ty = {:?}", arg_ty);
+        for param in &body.params {
+            let param_ty = return_if_err!(self.mc.pat_ty_adjusted(&param.pat));
+            debug!("consume_body: param_ty = {:?}", param_ty);
 
             let fn_body_scope_r =
                 self.tcx().mk_region(ty::ReScope(
@@ -323,13 +323,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         id: body.value.hir_id.local_id,
                         data: region::ScopeData::Node
                 }));
-            let arg_cmt = Rc::new(self.mc.cat_rvalue(
-                arg.hir_id,
-                arg.pat.span,
-                fn_body_scope_r, // Args live only as long as the fn body.
-                arg_ty));
+            let param_cmt = Rc::new(self.mc.cat_rvalue(
+                param.hir_id,
+                param.pat.span,
+                fn_body_scope_r, // Parameters live only as long as the fn body.
+                param_ty));
 
-            self.walk_irrefutable_pat(arg_cmt, &arg.pat);
+            self.walk_irrefutable_pat(param_cmt, &param.pat);
         }
 
         self.consume_expr(&body.value);

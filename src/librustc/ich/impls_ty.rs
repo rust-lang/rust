@@ -168,25 +168,21 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     }
 }
 
-// Allocations treat their relocations specially
-impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::Allocation {
+// `Relocations` with default type parameters is a sorted map.
+impl<'a, Tag> HashStable<StableHashingContext<'a>>
+for mir::interpret::Relocations<Tag>
+where
+    Tag: HashStable<StableHashingContext<'a>>,
+{
     fn hash_stable<W: StableHasherResult>(
         &self,
         hcx: &mut StableHashingContext<'a>,
         hasher: &mut StableHasher<W>,
     ) {
-        let mir::interpret::Allocation {
-            bytes, relocations, undef_mask, align, mutability,
-            extra: _,
-        } = self;
-        bytes.hash_stable(hcx, hasher);
-        relocations.len().hash_stable(hcx, hasher);
-        for reloc in relocations.iter() {
+        self.len().hash_stable(hcx, hasher);
+        for reloc in self.iter() {
             reloc.hash_stable(hcx, hasher);
         }
-        undef_mask.hash_stable(hcx, hasher);
-        align.hash_stable(hcx, hasher);
-        mutability.hash_stable(hcx, hasher);
     }
 }
 

@@ -28,15 +28,13 @@ LL |     let _: () = (box || -> isize { unimplemented!() }) as Box<dyn FnMut() -
 error[E0277]: expected a `std::ops::Fn<(isize,)>` closure, found `{integer}`
   --> $DIR/fn-trait-formatting.rs:19:5
    |
+LL | fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
+   | ------------------------------------------------ required by `needs_fn`
+...
 LL |     needs_fn(1);
    |     ^^^^^^^^ expected an `Fn<(isize,)>` closure, found `{integer}`
    |
    = help: the trait `std::ops::Fn<(isize,)>` is not implemented for `{integer}`
-note: required by `needs_fn`
-  --> $DIR/fn-trait-formatting.rs:3:1
-   |
-LL | fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

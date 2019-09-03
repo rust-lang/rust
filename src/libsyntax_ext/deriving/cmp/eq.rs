@@ -53,7 +53,7 @@ fn cs_total_eq_assert(cx: &mut ExtCtxt<'_>,
                         ty: P<ast::Ty>, span: Span, helper_name: &str) {
         // Generate statement `let _: helper_name<ty>;`,
         // set the expn ID so we can use the unstable struct.
-        let span = span.with_ctxt(cx.backtrace());
+        let span = cx.with_def_site_ctxt(span);
         let assert_path = cx.path_all(span, true,
                                         cx.std_path(&[sym::cmp, Symbol::intern(helper_name)]),
                                         vec![GenericArg::Type(ty)], vec![]);

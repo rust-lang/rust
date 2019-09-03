@@ -269,10 +269,6 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
         debug!("Borrows::statement_effect: stmt={:?}", stmt);
         match stmt.kind {
             mir::StatementKind::Assign(ref lhs, ref rhs) => {
-                // Make sure there are no remaining borrows for variables
-                // that are assigned over.
-                self.kill_borrows_on_place(trans, lhs);
-
                 if let mir::Rvalue::Ref(_, _, ref place) = **rhs {
                     if place.ignore_borrow(
                         self.tcx,
@@ -287,6 +283,10 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
 
                     trans.gen(*index);
                 }
+
+                // Make sure there are no remaining borrows for variables
+                // that are assigned over.
+                self.kill_borrows_on_place(trans, lhs);
             }
 
             mir::StatementKind::StorageDead(local) => {

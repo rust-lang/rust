@@ -142,11 +142,8 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
     opts.display_warnings = options.display_warnings;
-    let mut collector = Collector::new(options.input.display().to_string(), options.cfgs,
-                                       options.libs, options.codegen_options, options.externs,
-                                       true, opts, options.maybe_sysroot, None,
-                                       Some(options.input),
-                                       options.linker, options.edition, options.persist_doctests);
+    let mut collector = Collector::new(options.input.display().to_string(), options.clone(),
+                                       true, opts, None, Some(options.input));
     collector.set_position(DUMMY_SP);
     let codes = ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build());
 
@@ -154,6 +151,6 @@ pub fn test(mut options: Options, diag: &errors::Handler) -> i32 {
 
     options.test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&options.test_args, collector.tests,
-                       testing::Options::new().display_output(options.display_warnings));
+                       Some(testing::Options::new().display_output(options.display_warnings)));
     0
 }

@@ -482,7 +482,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         }
     }
 
-    fn check_variant(&mut self, cx: &LateContext<'_, '_>, v: &hir::Variant, _: &hir::Generics) {
+    fn check_variant(&mut self, cx: &LateContext<'_, '_>, v: &hir::Variant) {
         self.check_missing_docs_attrs(cx,
                                       Some(v.id),
                                       &v.attrs,
@@ -570,7 +570,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
             _ => return,
         }
 
-        let debug = match cx.tcx.lang_items().debug_trait() {
+        let debug = match cx.tcx.get_diagnostic_item(sym::debug_trait) {
             Some(debug) => debug,
             None => return,
         };

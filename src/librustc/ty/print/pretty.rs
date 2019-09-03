@@ -944,10 +944,16 @@ pub trait PrettyPrinter<'tcx>:
                         .get_bytes(&self.tcx(), ptr, Size::from_bytes(n)).unwrap())
                 },
                 (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
-                    Some(&data.bytes[start..end])
+                    // The `inspect` here is okay since we checked the bounds, and there are no
+                    // relocations (we have an active slice reference here). We don't use this
+                    // result to affect interpreter execution.
+                    Some(data.inspect_with_undef_and_ptr_outside_interpreter(start..end))
                 },
                 (ConstValue::Slice { data, start, end }, ty::Str) => {
-                    let slice = &data.bytes[start..end];
+                    // The `inspect` here is okay since we checked the bounds, and there are no
+                    // relocations (we have an active `str` reference here). We don't use this
+                    // result to affect interpreter execution.
+                    let slice = data.inspect_with_undef_and_ptr_outside_interpreter(start..end);
                     let s = ::std::str::from_utf8(slice)
                         .expect("non utf8 str from miri");
                     p!(write("{:?}", s));

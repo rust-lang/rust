@@ -609,8 +609,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         mir::Operand::Copy(
                             Place {
                                 base: PlaceBase::Static(box Static {
-                                    kind: StaticKind::Promoted(promoted),
+                                    kind: StaticKind::Promoted(promoted, _),
                                     ty,
+                                    def_id: _,
                                 }),
                                 projection: None,
                             }
@@ -618,8 +619,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         mir::Operand::Move(
                             Place {
                                 base: PlaceBase::Static(box Static {
-                                    kind: StaticKind::Promoted(promoted),
+                                    kind: StaticKind::Promoted(promoted, _),
                                     ty,
+                                    def_id: _,
                                 }),
                                 projection: None,
                             }

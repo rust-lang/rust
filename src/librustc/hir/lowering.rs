@@ -510,12 +510,12 @@ impl<'a> LoweringContext<'a> {
                             &f.generic_params
                         );
                         // Mirrors visit::walk_fn_decl
-                        for argument in &f.decl.inputs {
+                        for parameter in &f.decl.inputs {
                             // We don't lower the ids of argument patterns
                             self.with_hir_id_owner(None, |this| {
-                                this.visit_pat(&argument.pat);
+                                this.visit_pat(&parameter.pat);
                             });
-                            self.visit_ty(&argument.ty)
+                            self.visit_ty(&parameter.ty)
                         }
                         self.visit_fn_ret_ty(&f.decl.output)
                     }
@@ -735,7 +735,7 @@ impl<'a> LoweringContext<'a> {
     ///
     /// Presuming that in-band lifetimes are enabled, then
     /// `self.anonymous_lifetime_mode` will be updated to match the
-    /// argument while `f` is running (and restored afterwards).
+    /// parameter while `f` is running (and restored afterwards).
     fn collect_in_band_defs<T, F>(
         &mut self,
         parent_id: DefId,
@@ -880,7 +880,7 @@ impl<'a> LoweringContext<'a> {
     ///
     /// Presuming that in-band lifetimes are enabled, then
     /// `self.anonymous_lifetime_mode` will be updated to match the
-    /// argument while `f` is running (and restored afterwards).
+    /// parameter while `f` is running (and restored afterwards).
     fn add_in_band_defs<F, T>(
         &mut self,
         generics: &Generics,
@@ -1080,7 +1080,7 @@ impl<'a> LoweringContext<'a> {
                     ImplTraitContext::Disallowed(_) if self.is_in_dyn_type =>
                         (true, ImplTraitContext::OpaqueTy(None)),
 
-                    // We are in the argument position, but not within a dyn type:
+                    // We are in the parameter position, but not within a dyn type:
                     //
                     //     fn foo(x: impl Iterator<Item: Debug>)
                     //
@@ -1204,7 +1204,7 @@ impl<'a> LoweringContext<'a> {
                                 unsafety: this.lower_unsafety(f.unsafety),
                                 abi: f.abi,
                                 decl: this.lower_fn_decl(&f.decl, None, false, None),
-                                arg_names: this.lower_fn_args_to_names(&f.decl),
+                                param_names: this.lower_fn_params_to_names(&f.decl),
                             }))
                         },
                     )
@@ -2093,12 +2093,12 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_fn_args_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
+    fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
         decl.inputs
             .iter()
-            .map(|arg| match arg.pat.node {
+            .map(|param| match param.pat.node {
                 PatKind::Ident(_, ident, _) => ident,
-                _ => Ident::new(kw::Invalid, arg.pat.span),
+                _ => Ident::new(kw::Invalid, param.pat.span),
             })
             .collect()
     }
@@ -2136,11 +2136,11 @@ impl<'a> LoweringContext<'a> {
         let inputs = self.with_anonymous_lifetime_mode(lt_mode, |this| {
             decl.inputs
                 .iter()
-                .map(|arg| {
+                .map(|param| {
                     if let Some((_, ibty)) = &mut in_band_ty_params {
-                        this.lower_ty_direct(&arg.ty, ImplTraitContext::Universal(ibty))
+                        this.lower_ty_direct(&param.ty, ImplTraitContext::Universal(ibty))
                     } else {
-                        this.lower_ty_direct(&arg.ty, ImplTraitContext::disallowed())
+                        this.lower_ty_direct(&param.ty, ImplTraitContext::disallowed())
                     }
                 })
                 .collect::<HirVec<_>>()
@@ -2205,7 +2205,7 @@ impl<'a> LoweringContext<'a> {
     //
     //     type OpaqueTy<generics_from_parent_fn> = impl Future<Output = T>;
     //
-    // `inputs`: lowered types of arguments to the function (used to collect lifetimes)
+    // `inputs`: lowered types of parameters to the function (used to collect lifetimes)
     // `output`: unlowered output type (`T` in `-> T`)
     // `fn_def_id`: `DefId` of the parent function (used to create child impl trait definition)
     // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created

@@ -2,6 +2,7 @@
 
 #![feature(const_fn_union)]
 
+#[repr(C)]
 union Transmute<T: Copy, U: Copy> {
     t: T,
     u: U,

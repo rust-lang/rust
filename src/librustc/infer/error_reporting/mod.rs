@@ -1636,6 +1636,9 @@ impl<'tcx> ObligationCause<'tcx> {
                 TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_generator() => {
                     Error0644("closure/generator type that references itself")
                 }
+                TypeError::IntrinsicCast => {
+                    Error0308("cannot coerce intrinsics to function pointers")
+                }
                 _ => Error0308("mismatched types"),
             },
         }
@@ -1650,7 +1653,7 @@ impl<'tcx> ObligationCause<'tcx> {
                 hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have compatible types",
                 _ => "match arms have compatible types",
             },
-            IfExpression { .. } => "if and else have compatible types",
+            IfExpression { .. } => "if and else have incompatible types",
             IfExpressionWithNoElse => "if missing an else returns ()",
             MainFunctionType => "`main` function has the correct type",
             StartFunctionType => "`start` function has the correct type",

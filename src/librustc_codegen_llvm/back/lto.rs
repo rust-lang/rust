@@ -183,13 +183,39 @@ pub(crate) fn prepare_thin(
 
 fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
            diag_handler: &Handler,
-           mut modules: Vec<FatLTOInput<LlvmCodegenBackend>>,
+           modules: Vec<FatLTOInput<LlvmCodegenBackend>>,
            cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
            mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
            symbol_white_list: &[*const libc::c_char])
     -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError>
 {
     info!("going for a fat lto");
+
+    // Sort out all our lists of incoming modules into two lists.
+    //
+    // * `serialized_modules` (also and argument to this function) contains all
+    //   modules that are serialized in-memory.
+    // * `in_memory` contains modules which are already parsed and in-memory,
+    //   such as from multi-CGU builds.
+    //
+    // All of `cached_modules` (cached from previous incremental builds) can
+    // immediately go onto the `serialized_modules` modules list and then we can
+    // split the `modules` array into these two lists.
+    let mut in_memory = Vec::new();
+    serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
+        info!("pushing cached module {:?}", wp.cgu_name);
+        (buffer, CString::new(wp.cgu_name).unwrap())
+    }));
+    for module in modules {
+        match module {
+            FatLTOInput::InMemory(m) => in_memory.push(m),
+            FatLTOInput::Serialized { name, buffer } => {
+                info!("pushing serialized module {:?}", name);
+                let buffer = SerializedModule::Local(buffer);
+                serialized_modules.push((buffer, CString::new(name).unwrap()));
+            }
+        }
+    }
 
     // Find the "costliest" module and merge everything into that codegen unit.
     // All the other modules will be serialized and reparsed into the new
@@ -200,14 +226,8 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
     // file copy operations in the backend work correctly. The only other kind
     // of module here should be an allocator one, and if your crate is smaller
     // than the allocator module then the size doesn't really matter anyway.
-    let costliest_module = modules.iter()
+    let costliest_module = in_memory.iter()
         .enumerate()
-        .filter_map(|(i, module)| {
-            match module {
-                FatLTOInput::InMemory(m) => Some((i, m)),
-                FatLTOInput::Serialized { .. } => None,
-            }
-        })
         .filter(|&(_, module)| module.kind == ModuleKind::Regular)
         .map(|(i, module)| {
             let cost = unsafe {
@@ -223,26 +243,14 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
     // re-executing the LTO passes. If that's the case deserialize the first
     // module and create a linker with it.
     let module: ModuleCodegen<ModuleLlvm> = match costliest_module {
-        Some((_cost, i)) => {
-            match modules.remove(i) {
-                FatLTOInput::InMemory(m) => m,
-                FatLTOInput::Serialized { .. } => unreachable!(),
-            }
-        }
+        Some((_cost, i)) => in_memory.remove(i),
         None => {
-            let pos = modules.iter().position(|m| {
-                match m {
-                    FatLTOInput::InMemory(_) => false,
-                    FatLTOInput::Serialized { .. } => true,
-                }
-            }).expect("must have at least one serialized module");
-            let (name, buffer) = match modules.remove(pos) {
-                FatLTOInput::Serialized { name, buffer } => (name, buffer),
-                FatLTOInput::InMemory(_) => unreachable!(),
-            };
+            assert!(serialized_modules.len() > 0, "must have at least one serialized module");
+            let (buffer, name) = serialized_modules.remove(0);
+            info!("no in-memory regular modules to choose from, parsing {:?}", name);
             ModuleCodegen {
-                module_llvm: ModuleLlvm::parse(cgcx, &name, &buffer, diag_handler)?,
-                name,
+                module_llvm: ModuleLlvm::parse(cgcx, &name, buffer.data(), diag_handler)?,
+                name: name.into_string().unwrap(),
                 kind: ModuleKind::Regular,
             }
         }
@@ -265,25 +273,13 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         // and we want to move everything to the same LLVM context. Currently the
         // way we know of to do that is to serialize them to a string and them parse
         // them later. Not great but hey, that's why it's "fat" LTO, right?
-        let mut new_modules = modules.into_iter().map(|module| {
-            match module {
-                FatLTOInput::InMemory(module) => {
-                    let buffer = ModuleBuffer::new(module.module_llvm.llmod());
-                    let llmod_id = CString::new(&module.name[..]).unwrap();
-                    (SerializedModule::Local(buffer), llmod_id)
-                }
-                FatLTOInput::Serialized { name, buffer } => {
-                    let llmod_id = CString::new(name).unwrap();
-                    (SerializedModule::Local(buffer), llmod_id)
-                }
-            }
-        }).collect::<Vec<_>>();
+        for module in in_memory {
+            let buffer = ModuleBuffer::new(module.module_llvm.llmod());
+            let llmod_id = CString::new(&module.name[..]).unwrap();
+            serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
+        }
         // Sort the modules to ensure we produce deterministic results.
-        new_modules.sort_by(|module1, module2| module1.1.partial_cmp(&module2.1).unwrap());
-        serialized_modules.extend(new_modules);
-        serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
-            (buffer, CString::new(wp.cgu_name).unwrap())
-        }));
+        serialized_modules.sort_by(|module1, module2| module1.1.cmp(&module2.1));
 
         // For all serialized bitcode files we parse them and link them in as we did
         // above, this is all mostly handled in C++. Like above, though, we don't
@@ -850,7 +846,7 @@ fn module_name_to_str(c_str: &CStr) -> &str {
         bug!("Encountered non-utf8 LLVM module name `{}`: {}", c_str.to_string_lossy(), e))
 }
 
-fn parse_module<'a>(
+pub fn parse_module<'a>(
     cx: &'a llvm::Context,
     name: &CStr,
     data: &[u8],

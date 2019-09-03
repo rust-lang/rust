@@ -1603,11 +1603,7 @@ impl<'test> TestCx<'test> {
             .args(&self.props.compile_flags);
 
         if let Some(ref linker) = self.config.linker {
-            rustdoc
-                .arg("--linker")
-                .arg(linker)
-                .arg("-Z")
-                .arg("unstable-options");
+            rustdoc.arg(format!("-Clinker={}", linker));
         }
 
         self.compose_and_run_compiler(rustdoc, None)

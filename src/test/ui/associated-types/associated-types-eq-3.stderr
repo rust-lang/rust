@@ -10,16 +10,14 @@ LL |     let _: Bar = x.boo();
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:38:5
    |
+LL | fn foo1<I: Foo<A=Bar>>(x: I) {
+   | ---------------------------- required by `foo1`
+...
 LL |     foo1(a);
    |     ^^^^ expected usize, found struct `Bar`
    |
    = note: expected type `usize`
               found type `Bar`
-note: required by `foo1`
-  --> $DIR/associated-types-eq-3.rs:18:1
-   |
-LL | fn foo1<I: Foo<A=Bar>>(x: I) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:41:9

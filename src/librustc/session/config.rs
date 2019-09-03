@@ -1292,6 +1292,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "show macro backtraces even for non-local macros"),
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help"),
+    terminal_width: Option<usize> = (None, parse_opt_uint, [UNTRACKED],
+        "set the current terminal width"),
     continue_parse_after_error: bool = (false, parse_bool, [TRACKED],
         "attempt to recover from parse errors (experimental)"),
     dep_tasks: bool = (false, parse_bool, [UNTRACKED],
@@ -1719,13 +1721,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                              static, framework, or dylib (the default).",
             "[KIND=]NAME",
         ),
-        opt::multi_s(
-            "",
-            "crate-type",
-            "Comma separated list of types of crates
-                                    for the compiler to emit",
-            "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
-        ),
+        make_crate_type_option(),
         opt::opt_s(
             "",
             "crate-name",
@@ -2503,6 +2499,16 @@ pub fn build_session_options_and_crate_config(
             json_artifact_notifications,
         },
         cfg,
+    )
+}
+
+pub fn make_crate_type_option() -> RustcOptGroup {
+    opt::multi_s(
+        "",
+        "crate-type",
+        "Comma separated list of types of crates
+                                for the compiler to emit",
+        "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
     )
 }
 

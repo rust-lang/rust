@@ -21,7 +21,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, interpret, ProjectionKind};
+use crate::mir::{Body, interpret, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -978,6 +978,7 @@ pub struct FreeRegionInfo {
 ///
 /// [rustc guide]: https://rust-lang.github.io/rustc-guide/ty.html
 #[derive(Copy, Clone)]
+#[cfg_attr(not(bootstrap), rustc_diagnostic_item = "TyCtxt")]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
@@ -1094,6 +1095,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
         self.arena.alloc(Steal::new(mir))
+    }
+
+    pub fn alloc_steal_promoted(self, promoted: IndexVec<Promoted, Body<'tcx>>) ->
+        &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
+        self.arena.alloc(Steal::new(promoted))
+    }
+
+    pub fn intern_promoted(self, promoted: IndexVec<Promoted, Body<'tcx>>) ->
+        &'tcx IndexVec<Promoted, Body<'tcx>> {
+        self.arena.alloc(promoted)
     }
 
     pub fn alloc_adt_def(
@@ -1298,8 +1309,20 @@ impl<'tcx> TyCtxt<'tcx> {
         self.get_lib_features(LOCAL_CRATE)
     }
 
+    /// Obtain all lang items of this crate and all dependencies (recursively)
     pub fn lang_items(self) -> &'tcx middle::lang_items::LanguageItems {
         self.get_lang_items(LOCAL_CRATE)
+    }
+
+    /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
+    /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
+    pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {
+        self.all_diagnostic_items(LOCAL_CRATE).get(&name).copied()
+    }
+
+    /// Check whether the diagnostic item with the given `name` has the given `DefId`.
+    pub fn is_diagnostic_item(self, name: Symbol, did: DefId) -> bool {
+        self.diagnostic_items(did.krate).get(&name) == Some(&did)
     }
 
     pub fn stability(self) -> &'tcx stability::Index<'tcx> {
@@ -2375,13 +2398,19 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
+        let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem, None);
+        self.mk_generic_adt(def_id, ty)
+    }
+
+    #[inline]
+    pub fn mk_lang_item(self, ty: Ty<'tcx>, item: lang_items::LangItem)  -> Ty<'tcx> {
+        let def_id = self.require_lang_item(item, None);
         self.mk_generic_adt(def_id, ty)
     }
 
     #[inline]
     pub fn mk_maybe_uninit(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        let def_id = self.require_lang_item(lang_items::MaybeUninitLangItem);
+        let def_id = self.require_lang_item(lang_items::MaybeUninitLangItem, None);
         self.mk_generic_adt(def_id, ty)
     }
 
@@ -2885,6 +2914,14 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.arena.alloc(middle::lang_items::collect(tcx))
+    };
+    providers.diagnostic_items = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        middle::diagnostic_items::collect(tcx)
+    };
+    providers.all_diagnostic_items = |tcx, id| {
+        assert_eq!(id, LOCAL_CRATE);
+        middle::diagnostic_items::collect_all(tcx)
     };
     providers.maybe_unused_trait_import = |tcx, id| {
         tcx.maybe_unused_trait_imports.contains(&id)

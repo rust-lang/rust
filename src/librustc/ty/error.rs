@@ -46,6 +46,8 @@ pub enum TypeError<'tcx> {
     ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>),
 
     ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
+
+    IntrinsicCast,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -179,6 +181,9 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ConstMismatch(ref values) => {
                 write!(f, "expected `{}`, found `{}`", values.expected, values.found)
             }
+            IntrinsicCast => {
+                write!(f, "cannot coerce intrinsics to function pointers")
+            }
         }
     }
 }
@@ -247,19 +252,31 @@ impl<'tcx> ty::TyS<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn note_and_explain_type_err(self,
-                                     db: &mut DiagnosticBuilder<'_>,
-                                     err: &TypeError<'tcx>,
-                                     sp: Span) {
+    pub fn note_and_explain_type_err(
+        self,
+        db: &mut DiagnosticBuilder<'_>,
+        err: &TypeError<'tcx>,
+        sp: Span,
+    ) {
         use self::TypeError::*;
 
-        match err.clone() {
+        match err {
             Sorts(values) => {
                 let expected_str = values.expected.sort_string(self);
                 let found_str = values.found.sort_string(self);
                 if expected_str == found_str && expected_str == "closure" {
                     db.note("no two closures, even if identical, have the same type");
                     db.help("consider boxing your closure and/or using it as a trait object");
+                }
+                if expected_str == found_str && expected_str == "opaque type" { // Issue #63167
+                    db.note("distinct uses of `impl Trait` result in different opaque types");
+                    let e_str = values.expected.to_string();
+                    let f_str = values.found.to_string();
+                    if &e_str == &f_str && &e_str == "impl std::future::Future" {
+                        // FIXME: use non-string based check.
+                        db.help("if both `Future`s have the same `Output` type, consider \
+                                 `.await`ing on both of them");
+                    }
                 }
                 if let (ty::Infer(ty::IntVar(_)), ty::Float(_)) =
                        (&values.found.sty, &values.expected.sty) // Issue #53280

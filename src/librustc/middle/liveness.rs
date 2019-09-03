@@ -242,7 +242,7 @@ struct LocalInfo {
 
 #[derive(Copy, Clone, Debug)]
 enum VarKind {
-    Arg(HirId, ast::Name),
+    Param(HirId, ast::Name),
     Local(LocalInfo),
     CleanExit
 }
@@ -298,7 +298,7 @@ impl IrMaps<'tcx> {
         self.num_vars += 1;
 
         match vk {
-            Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) => {
+            Local(LocalInfo { id: node_id, .. }) | Param(node_id, _) => {
                 self.variable_map.insert(node_id, v);
             },
             CleanExit => {}
@@ -320,7 +320,7 @@ impl IrMaps<'tcx> {
 
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds[var.get()] {
-            Local(LocalInfo { name, .. }) | Arg(_, name) => {
+            Local(LocalInfo { name, .. }) | Param(_, name) => {
                 name.to_string()
             },
             CleanExit => "<clean-exit>".to_owned()
@@ -330,7 +330,7 @@ impl IrMaps<'tcx> {
     fn variable_is_shorthand(&self, var: Variable) -> bool {
         match self.var_kinds[var.get()] {
             Local(LocalInfo { is_shorthand, .. }) => is_shorthand,
-            Arg(..) | CleanExit => false
+            Param(..) | CleanExit => false
         }
     }
 
@@ -371,13 +371,13 @@ fn visit_fn<'tcx>(
 
     let body = ir.tcx.hir().body(body_id);
 
-    for arg in &body.arguments {
-        let is_shorthand = match arg.pat.node {
+    for param in &body.params {
+        let is_shorthand = match param.pat.node {
             crate::hir::PatKind::Struct(..) => true,
             _ => false,
         };
-        arg.pat.each_binding(|_bm, hir_id, _x, ident| {
-            debug!("adding argument {:?}", hir_id);
+        param.pat.each_binding(|_bm, hir_id, _x, ident| {
+            debug!("adding parameters {:?}", hir_id);
             let var = if is_shorthand {
                 Local(LocalInfo {
                     id: hir_id,
@@ -385,7 +385,7 @@ fn visit_fn<'tcx>(
                     is_shorthand: true,
                 })
             } else {
-                Arg(hir_id, ident.name)
+                Param(hir_id, ident.name)
             };
             fn_maps.add_variable(var);
         })
@@ -1525,8 +1525,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn warn_about_unused_args(&self, body: &hir::Body, entry_ln: LiveNode) {
-        for arg in &body.arguments {
-            arg.pat.each_binding(|_bm, hir_id, _, ident| {
+        for param in &body.params {
+            param.pat.each_binding(|_bm, hir_id, _, ident| {
                 let sp = ident.span;
                 let var = self.variable(hir_id, sp);
                 // Ignore unused self.

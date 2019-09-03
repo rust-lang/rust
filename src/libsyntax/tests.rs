@@ -144,11 +144,14 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
             println!("text: {:?}", source_map.span_to_snippet(span));
         }
 
-        let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }),
-                                        Some(source_map.clone()),
-                                        false,
-                                        false,
-                                        false);
+        let emitter = EmitterWriter::new(
+            Box::new(Shared { data: output.clone() }),
+            Some(source_map.clone()),
+            false,
+            false,
+            false,
+            None,
+        );
         let handler = Handler::with_emitter(true, None, Box::new(emitter));
         handler.span_err(msp, "foo");
 

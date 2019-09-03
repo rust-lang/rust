@@ -159,7 +159,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(_),
+                        kind: StaticKind::Promoted(..),
                         ..
                     }),
                 projection: None,
@@ -169,7 +169,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef {
                 base:
                     PlaceBase::Static(box Static {
-                        kind: StaticKind::Static(def_id),
+                        kind: StaticKind::Static,
+                        def_id,
                         ..
                     }),
                 projection: None,
@@ -440,7 +441,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub fn is_place_thread_local(&self, place_ref: PlaceRef<'cx, 'tcx>) -> bool {
         if let PlaceRef {
             base: PlaceBase::Static(box Static {
-                kind: StaticKind::Static(def_id),
+                kind: StaticKind::Static,
+                def_id,
                 ..
             }),
             projection: None,

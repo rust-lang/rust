@@ -11,6 +11,9 @@ const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 
+// It is very important that we reject this: We do promote `&(4 * REF_AS_USIZE)`,
+// but that would fail to compile; so we ended up breaking user code that would
+// have worked fine had we not promoted.
 const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
 //~^ ERROR it is undefined behavior to use this value
 

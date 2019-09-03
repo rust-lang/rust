@@ -1,0 +1,174 @@
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:5:14
+   |
+LL |         Some(0 | 1 | 2) => {}
+   |              ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:28:11
+   |
+LL |     let | A | B;
+   |           ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:29:9
+   |
+LL |     let A | B;
+   |         ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:30:11
+   |
+LL |     for | A | B in 0 {}
+   |           ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:31:9
+   |
+LL |     for A | B in 0 {}
+   |         ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:32:13
+   |
+LL |     fn fun((A | B): _) {}
+   |             ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:33:15
+   |
+LL |     let _ = |(A | B): u8| ();
+   |               ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:34:10
+   |
+LL |     let (A | B);
+   |          ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:35:10
+   |
+LL |     let (A | B,);
+   |          ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:36:11
+   |
+LL |     let A(B | C);
+   |           ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:37:14
+   |
+LL |     let E::V(B | C);
+   |              ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:38:17
+   |
+LL |     let S { f1: B | C, f2 };
+   |                 ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:39:20
+   |
+LL |     let E::V { f1: B | C, f2 };
+   |                    ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:40:10
+   |
+LL |     let [A | B];
+   |          ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:16:14
+   |
+LL | accept_pat!((p | q));
+   |              ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:17:14
+   |
+LL | accept_pat!((p | q,));
+   |              ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:18:16
+   |
+LL | accept_pat!(TS(p | q));
+   |                ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:19:21
+   |
+LL | accept_pat!(NS { f: p | q });
+   |                     ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error[E0658]: or-patterns syntax is experimental
+  --> $DIR/feature-gate-or_patterns.rs:20:14
+   |
+LL | accept_pat!([p | q]);
+   |              ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54883
+   = help: add `#![feature(or_patterns)]` to the crate attributes to enable
+
+error: aborting due to 19 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

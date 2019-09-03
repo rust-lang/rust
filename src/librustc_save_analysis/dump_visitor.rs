@@ -230,7 +230,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_formals(&mut self, formals: &'l [ast::Arg], qualname: &str) {
+    fn process_formals(&mut self, formals: &'l [ast::Param], qualname: &str) {
         for arg in formals {
             self.visit_pat(&arg.pat);
             let mut collector = PathCollector::new();

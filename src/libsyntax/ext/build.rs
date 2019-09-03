@@ -655,7 +655,7 @@ impl<'a> ExtCtxt<'a> {
               body: P<ast::Expr>)
               -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
-            ids.iter().map(|id| self.arg(span, *id, self.ty_infer(span))).collect(),
+            ids.iter().map(|id| self.param(span, *id, self.ty_infer(span))).collect(),
             ast::FunctionRetTy::Default(span));
 
         // FIXME -- We are using `span` as the span of the `|...|`
@@ -693,9 +693,9 @@ impl<'a> ExtCtxt<'a> {
         self.lambda1(span, self.expr_block(self.block(span, stmts)), ident)
     }
 
-    pub fn arg(&self, span: Span, ident: ast::Ident, ty: P<ast::Ty>) -> ast::Arg {
+    pub fn param(&self, span: Span, ident: ast::Ident, ty: P<ast::Ty>) -> ast::Param {
         let arg_pat = self.pat_ident(span, ident);
-        ast::Arg {
+        ast::Param {
             attrs: ThinVec::default(),
             id: ast::DUMMY_NODE_ID,
             pat: arg_pat,
@@ -705,7 +705,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     // FIXME: unused `self`
-    pub fn fn_decl(&self, inputs: Vec<ast::Arg>, output: ast::FunctionRetTy) -> P<ast::FnDecl> {
+    pub fn fn_decl(&self, inputs: Vec<ast::Param>, output: ast::FunctionRetTy) -> P<ast::FnDecl> {
         P(ast::FnDecl {
             inputs,
             output,
@@ -731,7 +731,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_fn_poly(&self,
                     span: Span,
                     name: Ident,
-                    inputs: Vec<ast::Arg> ,
+                    inputs: Vec<ast::Param> ,
                     output: P<ast::Ty>,
                     generics: Generics,
                     body: P<ast::Block>) -> P<ast::Item> {
@@ -752,7 +752,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn item_fn(&self,
                span: Span,
                name: Ident,
-               inputs: Vec<ast::Arg> ,
+               inputs: Vec<ast::Param> ,
                output: P<ast::Ty>,
                body: P<ast::Block>
               ) -> P<ast::Item> {

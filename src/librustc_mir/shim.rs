@@ -112,7 +112,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
     };
     debug!("make_shim({:?}) = untransformed {:?}", instance, result);
 
-    run_passes(tcx, &mut result, instance, MirPhase::Const, &[
+    run_passes(tcx, &mut result, instance, None, MirPhase::Const, &[
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
         &no_landing_pads::NoLandingPads,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
@@ -201,7 +201,6 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
             SourceScopeData { span: span, parent_scope: None }, 1
         ),
         ClearCrossCrate::Clear,
-        IndexVec::new(),
         None,
         local_decls_for_sig(&sig, span),
         IndexVec::new(),
@@ -369,7 +368,6 @@ impl CloneShimBuilder<'tcx> {
                 SourceScopeData { span: self.span, parent_scope: None }, 1
             ),
             ClearCrossCrate::Clear,
-            IndexVec::new(),
             None,
             self.local_decls,
             IndexVec::new(),
@@ -813,7 +811,6 @@ fn build_call_shim<'tcx>(
             SourceScopeData { span: span, parent_scope: None }, 1
         ),
         ClearCrossCrate::Clear,
-        IndexVec::new(),
         None,
         local_decls,
         IndexVec::new(),
@@ -900,7 +897,6 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
             SourceScopeData { span: span, parent_scope: None }, 1
         ),
         ClearCrossCrate::Clear,
-        IndexVec::new(),
         None,
         local_decls,
         IndexVec::new(),

@@ -62,6 +62,7 @@
 #![feature(log_syntax)]
 #![feature(mem_take)]
 #![feature(associated_type_bounds)]
+#![feature(rustc_attrs)]
 
 #![recursion_limit="512"]
 
@@ -109,6 +110,7 @@ pub mod middle {
     pub mod cstore;
     pub mod dead;
     pub mod dependency_format;
+    pub mod diagnostic_items;
     pub mod entry;
     pub mod exported_symbols;
     pub mod free_region;

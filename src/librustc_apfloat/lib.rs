@@ -31,15 +31,19 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![no_std]
 #![forbid(unsafe_code)]
 
 #![feature(nll)]
 
-use std::cmp::Ordering;
-use std::fmt;
-use std::ops::{Neg, Add, Sub, Mul, Div, Rem};
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
-use std::str::FromStr;
+#[macro_use]
+extern crate alloc;
+
+use core::cmp::Ordering;
+use core::fmt;
+use core::ops::{Neg, Add, Sub, Mul, Div, Rem};
+use core::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
+use core::str::FromStr;
 
 bitflags::bitflags! {
     /// IEEE-754R 7: Default exception handling.
@@ -587,7 +591,7 @@ macro_rules! float_common_impls {
             }
         }
 
-        impl<$t> ::std::str::FromStr for $ty<$t> where Self: Float {
+        impl<$t> ::core::str::FromStr for $ty<$t> where Self: Float {
             type Err = ParseError;
             fn from_str(s: &str) -> Result<Self, ParseError> {
                 Self::from_str_r(s, Round::NearestTiesToEven).map(|x| x.value)
@@ -596,66 +600,66 @@ macro_rules! float_common_impls {
 
         // Rounding ties to the nearest even, by default.
 
-        impl<$t> ::std::ops::Add for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::Add for $ty<$t> where Self: Float {
             type Output = StatusAnd<Self>;
             fn add(self, rhs: Self) -> StatusAnd<Self> {
                 self.add_r(rhs, Round::NearestTiesToEven)
             }
         }
 
-        impl<$t> ::std::ops::Sub for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::Sub for $ty<$t> where Self: Float {
             type Output = StatusAnd<Self>;
             fn sub(self, rhs: Self) -> StatusAnd<Self> {
                 self.sub_r(rhs, Round::NearestTiesToEven)
             }
         }
 
-        impl<$t> ::std::ops::Mul for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::Mul for $ty<$t> where Self: Float {
             type Output = StatusAnd<Self>;
             fn mul(self, rhs: Self) -> StatusAnd<Self> {
                 self.mul_r(rhs, Round::NearestTiesToEven)
             }
         }
 
-        impl<$t> ::std::ops::Div for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::Div for $ty<$t> where Self: Float {
             type Output = StatusAnd<Self>;
             fn div(self, rhs: Self) -> StatusAnd<Self> {
                 self.div_r(rhs, Round::NearestTiesToEven)
             }
         }
 
-        impl<$t> ::std::ops::Rem for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::Rem for $ty<$t> where Self: Float {
             type Output = StatusAnd<Self>;
             fn rem(self, rhs: Self) -> StatusAnd<Self> {
                 self.c_fmod(rhs)
             }
         }
 
-        impl<$t> ::std::ops::AddAssign for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::AddAssign for $ty<$t> where Self: Float {
             fn add_assign(&mut self, rhs: Self) {
                 *self = (*self + rhs).value;
             }
         }
 
-        impl<$t> ::std::ops::SubAssign for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::SubAssign for $ty<$t> where Self: Float {
             fn sub_assign(&mut self, rhs: Self) {
                 *self = (*self - rhs).value;
             }
         }
 
-        impl<$t> ::std::ops::MulAssign for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::MulAssign for $ty<$t> where Self: Float {
             fn mul_assign(&mut self, rhs: Self) {
                 *self = (*self * rhs).value;
             }
         }
 
-        impl<$t> ::std::ops::DivAssign for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::DivAssign for $ty<$t> where Self: Float {
             fn div_assign(&mut self, rhs: Self) {
                 *self = (*self / rhs).value;
             }
         }
 
-        impl<$t> ::std::ops::RemAssign for $ty<$t> where Self: Float {
+        impl<$t> ::core::ops::RemAssign for $ty<$t> where Self: Float {
             fn rem_assign(&mut self, rhs: Self) {
                 *self = (*self % rhs).value;
             }

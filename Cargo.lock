@@ -185,7 +185,7 @@ dependencies = [
  "serde",
  "serde_json",
  "time",
- "toml 0.4.10",
+ "toml",
 ]
 
 [[package]]
@@ -202,7 +202,7 @@ name = "build-manifest"
 version = "0.1.0"
 dependencies = [
  "serde",
- "toml 0.4.10",
+ "toml",
 ]
 
 [[package]]
@@ -287,7 +287,7 @@ dependencies = [
  "git2-curl",
  "glob",
  "hex",
- "home 0.4.2",
+ "home 0.5.0",
  "ignore",
  "im-rc",
  "jobserver",
@@ -316,7 +316,7 @@ dependencies = [
  "tar",
  "tempfile",
  "termcolor",
- "toml 0.5.3",
+ "toml",
  "unicode-width",
  "url 2.1.0",
  "walkdir",
@@ -442,7 +442,7 @@ dependencies = [
  "semver",
  "serde",
  "smallvec",
- "toml 0.5.3",
+ "toml",
  "unicode-normalization",
  "url 2.1.0",
 ]
@@ -946,6 +946,7 @@ name = "error_index_generator"
 version = "0.0.0"
 dependencies = [
  "rustdoc",
+ "walkdir",
 ]
 
 [[package]]
@@ -1138,10 +1139,12 @@ dependencies = [
 
 [[package]]
 name = "getopts"
-version = "0.2.19"
+version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72327b15c228bfe31f1390f93dd5e9279587f0463836393c9df719ce62a3e450"
+checksum = "14dbbfd5c71d70241ecf9e6f13737f7b5ce823821063188d7e46c41d371eebd5"
 dependencies = [
+ "rustc-std-workspace-core",
+ "rustc-std-workspace-std",
  "unicode-width",
 ]
 
@@ -1157,9 +1160,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.9.2"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cb400360e8a4d61b10e648285bbfa919bbf9519d0d5d5720354456f44349226"
+checksum = "327d698f86a7ebdfeb86a4238ccdb004828939d3a3555b6ead679541d14e36c0"
 dependencies = [
  "bitflags",
  "libc",
@@ -1172,9 +1175,9 @@ dependencies = [
 
 [[package]]
 name = "git2-curl"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2293de73491c3dc4174c5949ef53d2cc037b27613f88d72032e3f5237247a7dd"
+checksum = "cd6527e480187ce19aaf4fa6acfb7657b25628ce31cb8ffabdfca3bf731524c5"
 dependencies = [
  "curl",
  "git2",
@@ -1279,9 +1282,9 @@ dependencies = [
 
 [[package]]
 name = "home"
-version = "0.4.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "013e4e6e9134211bb4d6bf53dd8cfb75d9e2715cc33614b9c0827718c6fbe0b8"
+checksum = "c07c315e106bd6f83f026a20ddaeef2706782e490db1dcdd37caad38a0e895b3"
 dependencies = [
  "scopeguard 1.0.0",
  "winapi 0.3.6",
@@ -1579,9 +1582,9 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 
 [[package]]
 name = "libc"
-version = "0.2.60"
+version = "0.2.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d44e80633f007889c7eff624b709ab43c92d708caad982295768a7b13ca3b5eb"
+checksum = "c665266eb592905e8503ba3403020f4b8794d26263f412ca33171600eca9a6fa"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -1601,9 +1604,9 @@ dependencies = [
 
 [[package]]
 name = "libgit2-sys"
-version = "0.8.2"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c179ed6d19cd3a051e68c177fbbc214e79ac4724fac3a850ec9f3d3eb8a5578"
+checksum = "8c2078aec6f4b16d1b89f6a72e4f6eb1e75ffa85312023291e89c6d3087bc8fb"
 dependencies = [
  "cc",
  "libc",
@@ -1665,9 +1668,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.6"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c84ec4b527950aa83a329754b01dbe3f58361d1c5efacd1f6d68c494d08a17c6"
+checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 dependencies = [
  "cfg-if",
 ]
@@ -1785,7 +1788,7 @@ dependencies = [
  "serde_json",
  "shlex",
  "tempfile",
- "toml 0.5.3",
+ "toml",
  "toml-query",
 ]
 
@@ -1989,6 +1992,7 @@ dependencies = [
  "compiletest_rs",
  "directories",
  "env_logger 0.6.0",
+ "getrandom",
  "hex",
  "log",
  "num-traits",
@@ -2374,6 +2378,9 @@ dependencies = [
 [[package]]
 name = "proc_macro"
 version = "0.0.0"
+dependencies = [
+ "std",
+]
 
 [[package]]
 name = "profiler_builtins"
@@ -2760,7 +2767,7 @@ dependencies = [
  "tokio",
  "tokio-process",
  "tokio-timer",
- "toml 0.5.3",
+ "toml",
  "url 1.7.2",
  "walkdir",
 ]
@@ -3063,6 +3070,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc-std-workspace-std"
+version = "1.0.0"
+dependencies = [
+ "std",
+]
+
+[[package]]
 name = "rustc-workspace-hack"
 version = "1.0.0"
 dependencies = [
@@ -3218,6 +3232,7 @@ dependencies = [
  "rustc_data_structures",
  "serialize",
  "syntax_pos",
+ "term_size",
  "termcolor",
  "unicode-width",
 ]
@@ -3564,7 +3579,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.4"
+version = "1.4.6"
 dependencies = [
  "annotate-snippets",
  "atty",
@@ -3590,7 +3605,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "term 0.6.0",
- "toml 0.5.3",
+ "toml",
  "unicode-segmentation",
  "unicode-width",
  "unicode_categories",
@@ -4067,6 +4082,10 @@ dependencies = [
 [[package]]
 name = "term"
 version = "0.0.0"
+dependencies = [
+ "core",
+ "std",
+]
 
 [[package]]
 name = "term"
@@ -4087,6 +4106,17 @@ dependencies = [
  "byteorder",
  "dirs",
  "winapi 0.3.6",
+]
+
+[[package]]
+name = "term_size"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e5b9a66db815dcfd2da92db471106457082577c3c278d4138ab3e3b4e189327"
+dependencies = [
+ "kernel32-sys",
+ "libc",
+ "winapi 0.2.8",
 ]
 
 [[package]]
@@ -4113,8 +4143,13 @@ dependencies = [
 name = "test"
 version = "0.0.0"
 dependencies = [
+ "core",
  "getopts",
+ "libc",
+ "panic_abort",
+ "panic_unwind",
  "proc_macro",
+ "std",
  "term 0.0.0",
 ]
 
@@ -4384,15 +4419,6 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.4.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "toml"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7aabe75941d914b72bf3e5d3932ed92ce0664d49d8432305a8b547c37227724"
@@ -4411,7 +4437,7 @@ dependencies = [
  "is-match",
  "lazy_static 1.3.0",
  "regex",
- "toml 0.5.3",
+ "toml",
  "toml-query_derive",
 ]
 
@@ -4491,9 +4517,14 @@ checksum = "aa6024fc12ddfd1c6dbc14a80fa2324d4568849869b779f6bd37e5e4c03344d1"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "882386231c45df4700b275c7ff55b6f3698780a650026380e72dabe76fa46526"
+checksum = "7007dbd421b92cc6e28410fe7362e2e0a2503394908f417b68ec8d1c364c4e20"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-core",
+ "rustc-std-workspace-std",
+]
 
 [[package]]
 name = "unicode-xid"

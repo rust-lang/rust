@@ -20,10 +20,10 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use std::mem;
-use syntax::ast::NodeId;
+use syntax::ast::{Ident, NodeId};
 use syntax::source_map::{SourceMap, StableSourceFileId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
-use syntax_pos::hygiene::{ExpnId, SyntaxContext, ExpnData};
+use syntax_pos::hygiene::{ExpnId, SyntaxContext};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -591,10 +591,11 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
         // FIXME(mw): This method does not restore `ExpnData::parent` or
         // `SyntaxContextData::prev_ctxt` or `SyntaxContextData::opaque`. These things
         // don't seem to be used after HIR lowering, so everything should be fine
-        // as long as incremental compilation does not kick in before that.
+        // until we want incremental compilation to serialize Spans that we need
+        // full hygiene information for.
         let location = || Span::with_root_ctxt(lo, hi);
-        let recover_from_expn_data = |this: &Self, expn_data, pos| {
-            let span = location().fresh_expansion(expn_data);
+        let recover_from_expn_data = |this: &Self, expn_data, transparency, pos| {
+            let span = location().fresh_expansion_with_transparency(expn_data, transparency);
             this.synthetic_syntax_contexts.borrow_mut().insert(pos, span.ctxt());
             span
         };
@@ -603,9 +604,9 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
                 location()
             }
             TAG_EXPN_DATA_INLINE => {
-                let expn_data = Decodable::decode(self)?;
+                let (expn_data, transparency) = Decodable::decode(self)?;
                 recover_from_expn_data(
-                    self, expn_data, AbsoluteBytePos::new(self.opaque.position())
+                    self, expn_data, transparency, AbsoluteBytePos::new(self.opaque.position())
                 )
             }
             TAG_EXPN_DATA_SHORTHAND => {
@@ -614,15 +615,22 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx> {
                 if let Some(ctxt) = cached_ctxt {
                     Span::new(lo, hi, ctxt)
                 } else {
-                    let expn_data =
-                        self.with_position(pos.to_usize(), |this| ExpnData::decode(this))?;
-                    recover_from_expn_data(self, expn_data, pos)
+                    let (expn_data, transparency) =
+                        self.with_position(pos.to_usize(), |this| Decodable::decode(this))?;
+                    recover_from_expn_data(self, expn_data, transparency, pos)
                 }
             }
             _ => {
                 unreachable!()
             }
         })
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<Ident> for CacheDecoder<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<Ident, Self::Error> {
+        // FIXME: Handle hygiene in incremental
+        bug!("Trying to decode Ident for incremental");
     }
 }
 
@@ -819,7 +827,7 @@ where
         if span_data.ctxt == SyntaxContext::root() {
             TAG_NO_EXPN_DATA.encode(self)
         } else {
-            let (expn_id, expn_data) = span_data.ctxt.outer_expn_with_data();
+            let (expn_id, transparency, expn_data) = span_data.ctxt.outer_mark_with_data();
             if let Some(pos) = self.expn_data_shorthands.get(&expn_id).cloned() {
                 TAG_EXPN_DATA_SHORTHAND.encode(self)?;
                 pos.encode(self)
@@ -827,9 +835,22 @@ where
                 TAG_EXPN_DATA_INLINE.encode(self)?;
                 let pos = AbsoluteBytePos::new(self.position());
                 self.expn_data_shorthands.insert(expn_id, pos);
-                expn_data.encode(self)
+                (expn_data, transparency).encode(self)
             }
         }
+    }
+}
+
+impl<'a, 'tcx, E> SpecializedEncoder<Ident> for CacheEncoder<'a, 'tcx, E>
+where
+    E: 'a + ty_codec::TyEncoder,
+{
+    fn specialized_encode(&mut self, _: &Ident) -> Result<(), Self::Error> {
+        // We don't currently encode enough information to ensure hygiene works
+        // with incremental, so panic rather than risk incremental bugs.
+
+        // FIXME: Handle hygiene in incremental
+        bug!("Trying to encode Ident for incremental")
     }
 }
 

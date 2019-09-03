@@ -40,6 +40,7 @@ use rustc::ty::{self, Ty, TypeFoldable, TypeAndMut};
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
+use rustc::ty::error::TypeError;
 use rustc::middle::lang_items;
 use syntax::ast;
 use syntax_pos::Span;
@@ -461,6 +462,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                              self.expr_ty,
                                              fcx.tcx.mk_fn_ptr(f),
                                              AllowTwoPhase::No);
+                    if let Err(TypeError::IntrinsicCast) = res {
+                        return Err(CastError::IllegalCast);
+                    }
                     if res.is_err() {
                         return Err(CastError::NonScalar);
                     }
@@ -649,7 +653,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn type_is_known_to_be_sized_modulo_regions(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
+        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         traits::type_known_to_meet_bound_modulo_regions(self, self.param_env, ty, lang_item, span)
     }
 }

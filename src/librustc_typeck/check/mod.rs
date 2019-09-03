@@ -70,6 +70,7 @@ type parameter).
 mod autoderef;
 pub mod dropck;
 pub mod _match;
+mod pat;
 pub mod writeback;
 mod regionck;
 pub mod coercion;
@@ -1101,20 +1102,19 @@ fn check_fn<'a, 'tcx>(
     GatherLocalsVisitor { fcx: &fcx, parent_id: outer_hir_id, }.visit_body(body);
 
     // Add formal parameters.
-    for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
+    for (param_ty, param) in fn_sig.inputs().iter().zip(&body.params) {
         // Check the pattern.
-        let binding_mode = ty::BindingMode::BindByValue(hir::Mutability::MutImmutable);
-        fcx.check_pat_walk(&arg.pat, arg_ty, binding_mode, None);
+        fcx.check_pat_top(&param.pat, param_ty, None);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if arg.pat.simple_ident().is_none() && !fcx.tcx.features().unsized_locals {
-            fcx.require_type_is_sized(arg_ty, decl.output.span(), traits::SizedArgumentType);
+        if param.pat.simple_ident().is_none() && !fcx.tcx.features().unsized_locals {
+            fcx.require_type_is_sized(param_ty, decl.output.span(), traits::SizedArgumentType);
         }
 
-        fcx.write_ty(arg.hir_id, arg_ty);
+        fcx.write_ty(param.hir_id, param_ty);
     }
 
     inherited.tables.borrow_mut().liberated_fn_sigs_mut().insert(fn_id, fn_sig);
@@ -1570,7 +1570,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
         } else {
             bug!("Matching on non-ByRef static")
         };
-        if alloc.relocations.len() != 0 {
+        if alloc.relocations().len() != 0 {
             let msg = "statics with a custom `#[link_section]` must be a \
                        simple list of bytes on the wasm target with no \
                        extra levels of indirection such as references";
@@ -1859,14 +1859,18 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
         for attr in tcx.get_attrs(def_id).iter() {
             for r in attr::find_repr_attrs(&tcx.sess.parse_sess, attr) {
                 if let attr::ReprPacked(pack) = r {
-                    if pack != repr.pack {
-                        struct_span_err!(tcx.sess, sp, E0634,
-                                         "type has conflicting packed representation hints").emit();
+                    if let Some(repr_pack) = repr.pack {
+                        if pack as u64 != repr_pack.bytes() {
+                            struct_span_err!(
+                                tcx.sess, sp, E0634,
+                                "type has conflicting packed representation hints"
+                            ).emit();
+                        }
                     }
                 }
             }
         }
-        if repr.align > 0 {
+        if repr.align.is_some() {
             struct_span_err!(tcx.sess, sp, E0587,
                              "type has conflicting packed and align representation hints").emit();
         }
@@ -1885,7 +1889,7 @@ fn check_packed_inner(tcx: TyCtxt<'_>, def_id: DefId, stack: &mut Vec<DefId>) ->
     }
     if let ty::Adt(def, substs) = t.sty {
         if def.is_struct() || def.is_union() {
-            if tcx.adt_def(def.did).repr.align > 0 {
+            if tcx.adt_def(def.did).repr.align.is_some() {
                 return true;
             }
             // push struct def_id before checking fields
@@ -2622,7 +2626,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  span: Span,
                                  code: traits::ObligationCauseCode<'tcx>)
     {
-        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
+        let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         self.require_type_meets(ty, span, code, lang_item);
     }
 
@@ -3576,7 +3580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     SelfSource::QPath(qself),
                     error,
                     None,
-                );
+                ).map(|mut e| e.emit());
             }
             result
         });
@@ -3630,12 +3634,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        self.check_pat_walk(
-            &local.pat,
-            t,
-            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
-            None,
-        );
+        self.check_pat_top(&local.pat, t, None);
         let pat_ty = self.node_ty(local.pat.hir_id);
         if pat_ty.references_error() {
             self.write_ty(local.hir_id, pat_ty);
@@ -3917,75 +3916,99 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        match found.sty {
-            ty::FnDef(..) | ty::FnPtr(_) => {}
-            _ => return false,
-        }
         let hir = self.tcx.hir();
+        let (def_id, sig) = match found.sty {
+            ty::FnDef(def_id, _) => (def_id, found.fn_sig(self.tcx)),
+            ty::Closure(def_id, substs) => {
+                // We don't use `closure_sig` to account for malformed closures like
+                // `|_: [_; continue]| {}` and instead we don't suggest anything.
+                let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
+                (def_id, match closure_sig_ty.sty {
+                    ty::FnPtr(sig) => sig,
+                    _ => return false,
+                })
+            }
+            _ => return false,
+        };
 
-        let sig = found.fn_sig(self.tcx);
         let sig = self
             .replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, &sig)
             .0;
         let sig = self.normalize_associated_types_in(expr.span, &sig);
-        if let Ok(_) = self.try_coerce(expr, sig.output(), expected, AllowTwoPhase::No) {
+        if self.can_coerce(sig.output(), expected) {
             let (mut sugg_call, applicability) = if sig.inputs().is_empty() {
                 (String::new(), Applicability::MachineApplicable)
             } else {
                 ("...".to_string(), Applicability::HasPlaceholders)
             };
             let mut msg = "call this function";
-            if let ty::FnDef(def_id, ..) = found.sty {
-                match hir.get_if_local(def_id) {
-                    Some(Node::Item(hir::Item {
-                        node: ItemKind::Fn(.., body_id),
-                        ..
-                    })) |
-                    Some(Node::ImplItem(hir::ImplItem {
-                        node: hir::ImplItemKind::Method(_, body_id),
-                        ..
-                    })) |
-                    Some(Node::TraitItem(hir::TraitItem {
-                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
-                        ..
-                    })) => {
-                        let body = hir.body(*body_id);
-                        sugg_call = body.arguments.iter()
-                            .map(|arg| match &arg.pat.node {
-                                hir::PatKind::Binding(_, _, ident, None)
-                                if ident.name != kw::SelfLower => ident.to_string(),
-                                _ => "_".to_string(),
-                            }).collect::<Vec<_>>().join(", ");
-                    }
-                    Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
-                        sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
-                        match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
-                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
-                                msg = "instantiate this tuple variant";
-                            }
-                            Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
-                                msg = "instantiate this tuple struct";
-                            }
-                            _ => {}
-                        }
-                    }
-                    Some(Node::ForeignItem(hir::ForeignItem {
-                        node: hir::ForeignItemKind::Fn(_, idents, _),
-                        ..
-                    })) |
-                    Some(Node::TraitItem(hir::TraitItem {
-                        node: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
-                        ..
-                    })) => sugg_call = idents.iter()
-                            .map(|ident| if ident.name != kw::SelfLower {
-                                ident.to_string()
-                            } else {
-                                "_".to_string()
-                            }).collect::<Vec<_>>()
-                            .join(", "),
-                    _ => {}
+            match hir.get_if_local(def_id) {
+                Some(Node::Item(hir::Item {
+                    node: ItemKind::Fn(.., body_id),
+                    ..
+                })) |
+                Some(Node::ImplItem(hir::ImplItem {
+                    node: hir::ImplItemKind::Method(_, body_id),
+                    ..
+                })) |
+                Some(Node::TraitItem(hir::TraitItem {
+                    node: hir::TraitItemKind::Method(.., hir::TraitMethod::Provided(body_id)),
+                    ..
+                })) => {
+                    let body = hir.body(*body_id);
+                    sugg_call = body.params.iter()
+                        .map(|param| match &param.pat.node {
+                            hir::PatKind::Binding(_, _, ident, None)
+                            if ident.name != kw::SelfLower => ident.to_string(),
+                            _ => "_".to_string(),
+                        }).collect::<Vec<_>>().join(", ");
                 }
-            };
+                Some(Node::Expr(hir::Expr {
+                    node: ExprKind::Closure(_, _, body_id, closure_span, _),
+                    span: full_closure_span,
+                    ..
+                })) => {
+                    if *full_closure_span == expr.span {
+                        return false;
+                    }
+                    err.span_label(*closure_span, "closure defined here");
+                    msg = "call this closure";
+                    let body = hir.body(*body_id);
+                    sugg_call = body.params.iter()
+                        .map(|param| match &param.pat.node {
+                            hir::PatKind::Binding(_, _, ident, None)
+                            if ident.name != kw::SelfLower => ident.to_string(),
+                            _ => "_".to_string(),
+                        }).collect::<Vec<_>>().join(", ");
+                }
+                Some(Node::Ctor(hir::VariantData::Tuple(fields, _))) => {
+                    sugg_call = fields.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
+                    match hir.as_local_hir_id(def_id).and_then(|hir_id| hir.def_kind(hir_id)) {
+                        Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Variant, _)) => {
+                            msg = "instantiate this tuple variant";
+                        }
+                        Some(hir::def::DefKind::Ctor(hir::def::CtorOf::Struct, _)) => {
+                            msg = "instantiate this tuple struct";
+                        }
+                        _ => {}
+                    }
+                }
+                Some(Node::ForeignItem(hir::ForeignItem {
+                    node: hir::ForeignItemKind::Fn(_, idents, _),
+                    ..
+                })) |
+                Some(Node::TraitItem(hir::TraitItem {
+                    node: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
+                    ..
+                })) => sugg_call = idents.iter()
+                        .map(|ident| if ident.name != kw::SelfLower {
+                            ident.to_string()
+                        } else {
+                            "_".to_string()
+                        }).collect::<Vec<_>>()
+                        .join(", "),
+                _ => {}
+            }
             if let Ok(code) = self.sess().source_map().span_to_snippet(expr.span) {
                 err.span_suggestion(
                     expr.span,

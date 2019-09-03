@@ -48,6 +48,9 @@ impl MultiItemModifier for BuiltinDerive {
               meta_item: &MetaItem,
               item: Annotatable)
               -> Vec<Annotatable> {
+        // FIXME: Built-in derives often forget to give spans contexts,
+        // so we are doing it here in a centralized way.
+        let span = ecx.with_def_site_ctxt(span);
         let mut items = Vec::new();
         (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
         items
@@ -60,7 +63,7 @@ fn call_intrinsic(cx: &ExtCtxt<'_>,
                   intrinsic: &str,
                   args: Vec<P<ast::Expr>>)
                   -> P<ast::Expr> {
-    let span = span.with_ctxt(cx.backtrace());
+    let span = cx.with_def_site_ctxt(span);
     let path = cx.std_path(&[sym::intrinsics, Symbol::intern(intrinsic)]);
     let call = cx.expr_call_global(span, path, args);
 

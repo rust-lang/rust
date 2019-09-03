@@ -1810,7 +1810,7 @@ impl<T> VecDeque<T> {
         other
     }
 
-    /// Moves all the elements of `other` into `Self`, leaving `other` empty.
+    /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
     /// # Panics
     ///
@@ -1847,7 +1847,7 @@ impl<T> VecDeque<T> {
     ///
     /// let mut buf = VecDeque::new();
     /// buf.extend(1..5);
-    /// buf.retain(|&x| x%2 == 0);
+    /// buf.retain(|&x| x % 2 == 0);
     /// assert_eq!(buf, [2, 4]);
     /// ```
     ///

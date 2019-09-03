@@ -78,7 +78,6 @@ pub struct ProcMacroDerive {
     pub client: proc_macro::bridge::client::Client<
         fn(proc_macro::TokenStream) -> proc_macro::TokenStream,
     >,
-    pub attrs: Vec<ast::Name>,
 }
 
 impl MultiItemModifier for ProcMacroDerive {
@@ -110,9 +109,6 @@ impl MultiItemModifier for ProcMacroDerive {
                 return Vec::new()
             }
         }
-
-        // Mark attributes as known, and used.
-        MarkAttrs(&self.attrs).visit_item(&item);
 
         let token = token::Interpolated(Lrc::new(token::NtItem(item)));
         let input = tokenstream::TokenTree::token(token, DUMMY_SP).into();
@@ -164,7 +160,7 @@ impl MultiItemModifier for ProcMacroDerive {
     }
 }
 
-struct MarkAttrs<'a>(&'a [ast::Name]);
+crate struct MarkAttrs<'a>(crate &'a [ast::Name]);
 
 impl<'a> Visitor<'a> for MarkAttrs<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {

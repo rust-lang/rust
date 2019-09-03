@@ -1,15 +1,3 @@
-error: cannot find derive macro `Send` in this scope
-  --> $DIR/deriving-bounds.rs:1:10
-   |
-LL | #[derive(Send)]
-   |          ^^^^
-   |
-note: unsafe traits like `Send` should be implemented explicitly
-  --> $DIR/deriving-bounds.rs:1:10
-   |
-LL | #[derive(Send)]
-   |          ^^^^
-
 error: cannot find derive macro `Sync` in this scope
   --> $DIR/deriving-bounds.rs:5:10
    |
@@ -20,6 +8,18 @@ note: unsafe traits like `Sync` should be implemented explicitly
   --> $DIR/deriving-bounds.rs:5:10
    |
 LL | #[derive(Sync)]
+   |          ^^^^
+
+error: cannot find derive macro `Send` in this scope
+  --> $DIR/deriving-bounds.rs:1:10
+   |
+LL | #[derive(Send)]
+   |          ^^^^
+   |
+note: unsafe traits like `Send` should be implemented explicitly
+  --> $DIR/deriving-bounds.rs:1:10
+   |
+LL | #[derive(Send)]
    |          ^^^^
 
 error: aborting due to 2 previous errors

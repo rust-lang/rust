@@ -1,6 +1,9 @@
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/issue-20005.rs:8:5
    |
+LL |   trait From<Src> {
+   |   --------------- required by `From`
+...
 LL | /     fn to<Dst>(
 LL | |         self
 LL | |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
@@ -11,11 +14,6 @@ LL | |     }
    = help: the trait `std::marker::Sized` is not implemented for `Self`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where Self: std::marker::Sized` bound
-note: required by `From`
-  --> $DIR/issue-20005.rs:1:1
-   |
-LL | trait From<Src> {
-   | ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -221,7 +221,7 @@ pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx>
         val: ConstValue::Slice {
             data: alloc,
             start: 0,
-            end: alloc.bytes.len(),
+            end: alloc.len(),
         },
         ty: tcx.mk_static_str(),
     })

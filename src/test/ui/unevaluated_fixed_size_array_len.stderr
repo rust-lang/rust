@@ -1,16 +1,14 @@
 error[E0277]: the trait bound `[(); 0]: Foo` is not satisfied
   --> $DIR/unevaluated_fixed_size_array_len.rs:12:5
    |
+LL |     fn foo();
+   |     --------- required by `Foo::foo`
+...
 LL |     <[(); 0] as Foo>::foo()
    |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `[(); 0]`
    |
    = help: the following implementations were found:
              <[(); 1] as Foo>
-note: required by `Foo::foo`
-  --> $DIR/unevaluated_fixed_size_array_len.rs:4:5
-   |
-LL |     fn foo();
-   |     ^^^^^^^^^
 
 error: aborting due to previous error
 

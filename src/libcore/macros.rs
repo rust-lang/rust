@@ -734,7 +734,6 @@ pub(crate) mod builtin {
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
     #[macro_export]
-    #[rustc_macro_transparency = "opaque"]
     macro_rules! format_args {
         ($fmt:expr) => ({ /* compiler built-in */ });
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -747,7 +746,6 @@ pub(crate) mod builtin {
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
     #[macro_export]
-    #[rustc_macro_transparency = "opaque"]
     macro_rules! format_args_nl {
         ($fmt:expr) => ({ /* compiler built-in */ });
         ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
@@ -1235,7 +1233,6 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
     pub macro test($item:item) { /* compiler built-in */ }
 
     /// Attribute macro applied to a function to turn it into a benchmark test.
@@ -1243,7 +1240,6 @@ pub(crate) mod builtin {
                reason = "`bench` is a part of custom test frameworks which are unstable")]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
     pub macro bench($item:item) { /* compiler built-in */ }
 
     /// An implementation detail of the `#[test]` and `#[bench]` macros.
@@ -1251,26 +1247,22 @@ pub(crate) mod builtin {
                reason = "custom test frameworks are an unstable feature")]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
     pub macro test_case($item:item) { /* compiler built-in */ }
 
     /// Attribute macro applied to a static to register it as a global allocator.
     #[stable(feature = "global_allocator", since = "1.28.0")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
-    #[rustc_macro_transparency = "semitransparent"]
     pub macro global_allocator($item:item) { /* compiler built-in */ }
 
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
-    #[cfg_attr(boostrap_stdarch_ignore_this, rustc_macro_transparency = "semitransparent")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics, libstd_sys_internals)]
     pub macro RustcDecodable($item:item) { /* compiler built-in */ }
 
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
-    #[cfg_attr(boostrap_stdarch_ignore_this, rustc_macro_transparency = "semitransparent")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics)]
     pub macro RustcEncodable($item:item) { /* compiler built-in */ }

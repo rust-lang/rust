@@ -1012,8 +1012,10 @@ mod impls {
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
-                    if *self == *other { Equal }
-                    else if *self < *other { Less }
+                    // The order here is important to generate more optimal assembly.
+                    // See <https://github.com/rust-lang/rust/issues/63758> for more info.
+                    if *self < *other { Less }
+                    else if *self == *other { Equal }
                     else { Greater }
                 }
             }
