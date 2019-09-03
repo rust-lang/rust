@@ -30,7 +30,7 @@ MAINTAINERS = {
     'rls': '@Xanewok',
     'rustfmt': '@topecongiro',
     'book': '@carols10cents @steveklabnik',
-    'nomicon': '@frewsxcv @Gankro',
+    'nomicon': '@frewsxcv @Gankra',
     'reference': '@steveklabnik @Havvy @matthewjasper @ehuss',
     'rust-by-example': '@steveklabnik @marioidival @projektir',
     'embedded-book': (
