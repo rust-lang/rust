@@ -806,10 +806,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let subty = self.infer_pat(*pat, expectation, default_bm);
                 Ty::apply_one(TypeCtor::Ref(*mutability), subty)
             }
-            Pat::TupleStruct { path: ref p, args: ref subpats } => {
+            Pat::TupleStruct { path: p, args: subpats } => {
                 self.infer_tuple_struct_pat(p.as_ref(), subpats, expected, default_bm)
             }
-            Pat::Record { path: ref p, args: ref fields } => {
+            Pat::Record { path: p, args: fields } => {
                 self.infer_record_pat(p.as_ref(), fields, expected, default_bm, pat)
             }
             Pat::Path(path) => {
