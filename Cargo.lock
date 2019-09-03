@@ -110,8 +110,6 @@ dependencies = [
 [[package]]
 name = "backtrace"
 version = "0.3.35"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1371048253fa3bac6704bfd6bbfc922ee9bdcee8881330d40f308b81cc5adc55"
 dependencies = [
  "backtrace-sys",
  "cfg-if",
