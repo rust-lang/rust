@@ -8,10 +8,10 @@ use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 use syntax::tokenstream::{TokenTree, TokenStream};
 
-pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
-                              sp: Span,
-                              tts: TokenStream)
-                              -> Box<dyn base::MacResult + 'cx> {
+pub fn expand_concat_idents<'cx>(cx: &'cx mut ExtCtxt<'_>,
+                                 sp: Span,
+                                 tts: TokenStream)
+                                 -> Box<dyn base::MacResult + 'cx> {
     if tts.is_empty() {
         cx.span_err(sp, "concat_idents! takes 1 or more arguments.");
         return DummyResult::any(sp);

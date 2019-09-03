@@ -5,7 +5,7 @@ use syntax::tokenstream::TokenStream;
 
 use std::string::String;
 
-pub fn expand_syntax_ext(
+pub fn expand_concat(
     cx: &mut base::ExtCtxt<'_>,
     sp: syntax_pos::Span,
     tts: TokenStream,
