@@ -291,7 +291,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         continue;
                     }
 
-                    Some(tool_ident.as_str())
+                    Some(tool_ident.name)
                 } else {
                     None
                 };
