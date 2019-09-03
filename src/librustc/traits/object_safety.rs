@@ -32,10 +32,10 @@ pub enum ObjectSafetyViolation {
     SupertraitSelf,
 
     /// Method has something illegal.
-    Method(ast::Name, MethodViolationCode),
+    Method(ast::Name, MethodViolationCode, Span),
 
     /// Associated const.
-    AssocConst(ast::Name),
+    AssocConst(ast::Name, Span),
 }
 
 impl ObjectSafetyViolation {
@@ -46,22 +46,31 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::SupertraitSelf =>
                 "the trait cannot use `Self` as a type parameter \
                  in the supertraits or where-clauses".into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod) =>
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod, _) =>
                 format!("associated function `{}` has no `self` parameter", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf) => format!(
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf, _) => format!(
                 "method `{}` references the `Self` type in its arguments or return type",
                 name,
             ).into(),
             ObjectSafetyViolation::Method(
                 name,
-                MethodViolationCode::WhereClauseReferencesSelf(_),
+                MethodViolationCode::WhereClauseReferencesSelf,
+                _,
             ) => format!("method `{}` references the `Self` type in where clauses", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
+            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic, _) =>
                 format!("method `{}` has generic type parameters", name).into(),
-            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver) =>
+            ObjectSafetyViolation::Method(name, MethodViolationCode::UndispatchableReceiver, _) =>
                 format!("method `{}`'s receiver cannot be dispatched on", name).into(),
-            ObjectSafetyViolation::AssocConst(name) =>
+            ObjectSafetyViolation::AssocConst(name, _) =>
                 format!("the trait cannot contain associated consts like `{}`", name).into(),
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            ObjectSafetyViolation::AssocConst(_, span) |
+            ObjectSafetyViolation::Method(_, _, span) => Some(*span),
+            _ => None,
         }
     }
 }
@@ -76,7 +85,7 @@ pub enum MethodViolationCode {
     ReferencesSelf,
 
     /// e.g., `fn foo(&self) where Self: Clone`
-    WhereClauseReferencesSelf(Span),
+    WhereClauseReferencesSelf,
 
     /// e.g., `fn foo<A>()`
     Generic,
@@ -90,9 +99,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// astconv -- currently, `Self` in supertraits. This is needed
     /// because `object_safety_violations` can't be used during
     /// type collection.
-    pub fn astconv_object_safety_violations(self, trait_def_id: DefId)
-                                            -> Vec<ObjectSafetyViolation>
-    {
+    pub fn astconv_object_safety_violations(
+        self,
+        trait_def_id: DefId,
+    ) -> Vec<ObjectSafetyViolation> {
         debug_assert!(self.generics_of(trait_def_id).has_self);
         let violations = traits::supertrait_def_ids(self, trait_def_id)
             .filter(|&def_id| self.predicates_reference_self(def_id, true))
@@ -130,7 +140,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match self.virtual_call_violation_for_method(trait_def_id, method) {
-            None | Some(MethodViolationCode::WhereClauseReferencesSelf(_)) => true,
+            None | Some(MethodViolationCode::WhereClauseReferencesSelf) => true,
             Some(_) => false,
         }
     }
@@ -140,12 +150,15 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut violations: Vec<_> = self.associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssocKind::Method)
             .filter_map(|item|
-                self.object_safety_violation_for_method(trait_def_id, &item)
-                    .map(|code| ObjectSafetyViolation::Method(item.ident.name, code))
+                self.object_safety_violation_for_method(trait_def_id, &item).map(|code| {
+                    ObjectSafetyViolation::Method(item.ident.name, code, item.ident.span)
+                })
             ).filter(|violation| {
-                if let ObjectSafetyViolation::Method(_,
-                    MethodViolationCode::WhereClauseReferencesSelf(span)) = violation
-                {
+                if let ObjectSafetyViolation::Method(
+                    _,
+                    MethodViolationCode::WhereClauseReferencesSelf,
+                    span,
+                ) = violation {
                     // Using `CRATE_NODE_ID` is wrong, but it's hard to get a more precise id.
                     // It's also hard to get a use site span, so we use the method definition span.
                     self.lint_node_note(
@@ -171,7 +184,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         violations.extend(self.associated_items(trait_def_id)
             .filter(|item| item.kind == ty::AssocKind::Const)
-            .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name)));
+            .map(|item| ObjectSafetyViolation::AssocConst(item.ident.name, item.ident.span)));
 
         debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
                trait_def_id,
@@ -327,8 +340,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 .visit_tys_shallow(|t| {
                     self.contains_illegal_self_type_reference(trait_def_id, t)
                 }) {
-            let span = self.def_span(method.def_id);
-            return Some(MethodViolationCode::WhereClauseReferencesSelf(span));
+            return Some(MethodViolationCode::WhereClauseReferencesSelf);
         }
 
         let receiver_ty = self.liberate_late_bound_regions(
