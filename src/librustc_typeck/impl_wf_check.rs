@@ -99,6 +99,10 @@ fn enforce_impl_params_are_constrained(
 ) {
     // Every lifetime used in an associated type must be constrained.
     let impl_self_ty = tcx.type_of(impl_def_id);
+    if impl_self_ty.sty == ty::Error {
+        // Don't complain about unconstrained type params when self ty doesn't exist. (#36836)
+        return;
+    }
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
