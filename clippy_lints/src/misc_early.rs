@@ -393,7 +393,8 @@ impl MiscEarlyLints {
         // The `line!()` macro is compiler built-in and a special case for these lints.
         let lit_snip = match snippet_opt(cx, lit.span) {
             Some(snip) => {
-                if snip.contains('!') {
+                // The snip could be empty in case of expand from procedure macro
+                if snip.is_empty() || snip.contains('!') {
                     return;
                 }
                 snip
