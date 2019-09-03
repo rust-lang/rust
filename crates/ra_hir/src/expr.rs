@@ -12,7 +12,7 @@ use crate::{
     path::GenericArgs,
     ty::primitive::{UncertainFloatTy, UncertainIntTy},
     type_ref::{Mutability, TypeRef},
-    DefWithBody, Either, HasSource, HirDatabase, Name, Path, Resolver,
+    DefWithBody, Either, HasSource, HirDatabase, Name, Path, Resolver, Source,
 };
 
 pub use self::scope::ExprScopes;
@@ -43,22 +43,31 @@ pub struct Body {
     body_expr: ExprId,
 }
 
+type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;
+type ExprSource = Source<ExprPtr>;
+
+type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
+type PatSource = Source<PatPtr>;
+
 /// An item body together with the mapping from syntax nodes to HIR expression
 /// IDs. This is needed to go from e.g. a position in a file to the HIR
 /// expression containing it; but for type inference etc., we want to operate on
 /// a structure that is agnostic to the actual positions of expressions in the
 /// file, so that we don't recompute types whenever some whitespace is typed.
+///
+/// One complication here is that, due to macro expansion, a single `Body` might
+/// be spread across several files. So, for each ExprId and PatId, we record
+/// both the HirFileId and the position inside the file. However, we only store
+/// AST -> ExprId mapping for non-macro files, as it is not clear how to handle
+/// this properly for macros.
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
     expr_map: FxHashMap<ExprPtr, ExprId>,
-    expr_map_back: ArenaMap<ExprId, ExprPtr>,
+    expr_map_back: ArenaMap<ExprId, ExprSource>,
     pat_map: FxHashMap<PatPtr, PatId>,
-    pat_map_back: ArenaMap<PatId, PatPtr>,
+    pat_map_back: ArenaMap<PatId, PatSource>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::RecordField>>,
 }
-
-type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;
-type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
 
 impl Body {
     pub fn params(&self) -> &[PatId] {
@@ -123,16 +132,16 @@ impl Index<PatId> for Body {
 }
 
 impl BodySourceMap {
-    pub(crate) fn expr_syntax(&self, expr: ExprId) -> Option<ExprPtr> {
-        self.expr_map_back.get(expr).cloned()
+    pub(crate) fn expr_syntax(&self, expr: ExprId) -> Option<ExprSource> {
+        self.expr_map_back.get(expr).copied()
     }
 
     pub(crate) fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
         self.expr_map.get(&Either::A(AstPtr::new(node))).cloned()
     }
 
-    pub(crate) fn pat_syntax(&self, pat: PatId) -> Option<PatPtr> {
-        self.pat_map_back.get(pat).cloned()
+    pub(crate) fn pat_syntax(&self, pat: PatId) -> Option<PatSource> {
+        self.pat_map_back.get(pat).copied()
     }
 
     pub(crate) fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {

@@ -1,11 +1,15 @@
-use ra_syntax::ast::{self, AstNode};
-
-use crate::{
-    ids::AstItemDef, AstDatabase, Const, DefDatabase, Enum, EnumVariant, FieldSource, Function,
-    HasBody, HirDatabase, HirFileId, MacroDef, Module, ModuleSource, Static, Struct, StructField,
-    Trait, TypeAlias, Union,
+use ra_syntax::{
+    ast::{self, AstNode},
+    SyntaxNode,
 };
 
+use crate::{
+    ids::AstItemDef, AstDatabase, Const, DefDatabase, Either, Enum, EnumVariant, FieldSource,
+    Function, HasBody, HirDatabase, HirFileId, MacroDef, Module, ModuleSource, Static, Struct,
+    StructField, Trait, TypeAlias, Union,
+};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct Source<T> {
     pub file_id: HirFileId,
     pub ast: T,
@@ -14,6 +18,15 @@ pub struct Source<T> {
 pub trait HasSource {
     type Ast;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<Self::Ast>;
+}
+
+impl<T> Source<T> {
+    pub(crate) fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
+        Source { file_id: self.file_id, ast: f(self.ast) }
+    }
+    pub(crate) fn file_syntax(&self, db: &impl AstDatabase) -> SyntaxNode {
+        db.parse_or_expand(self.file_id).expect("source created from invalid file")
+    }
 }
 
 /// NB: Module is !HasSource, because it has two source nodes at the same time:
@@ -117,12 +130,12 @@ where
         self,
         db: &impl HirDatabase,
         expr_id: crate::expr::ExprId,
-    ) -> Option<Source<ast::Expr>> {
+    ) -> Option<Source<Either<ast::Expr, ast::RecordField>>> {
         let source_map = self.body_source_map(db);
-        let expr_syntax = source_map.expr_syntax(expr_id)?.a()?;
-        let source = self.source(db);
-        let ast = expr_syntax.to_node(&source.ast.syntax());
-        Some(Source { file_id: source.file_id, ast })
+        let source_ptr = source_map.expr_syntax(expr_id)?;
+        let root = source_ptr.file_syntax(db);
+        let source = source_ptr.map(|ast| ast.map(|it| it.to_node(&root), |it| it.to_node(&root)));
+        Some(source)
     }
 }
 
