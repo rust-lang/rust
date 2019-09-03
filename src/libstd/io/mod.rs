@@ -374,11 +374,11 @@ where
                 // FIXME(danielhenrymantilla): #42788
                 //
                 //   - This creates a (mut) reference to a slice of
-                //     _uninitialized integers_.
+                //     _uninitialized_ integers, which is **undefined behavior**
                 //
-                //   - This having defined behavior is **unstable**:
-                //     it could become UB in the future,
-                //     at which point it would have be changed.
+                //   - Only the standard library gets to soundly "ignore" this,
+                //     based on its privileged knowledge of unstable rustc
+                //     internals;
                 g.buf.reserve(reservation_size(r));
                 let capacity = g.buf.capacity();
                 g.buf.set_len(capacity);
