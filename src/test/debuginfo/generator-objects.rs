@@ -10,31 +10,31 @@
 
 // gdb-command:run
 // gdb-command:print b
-// gdb-check:$1 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 0, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::Suspend0 {[...]}, 4: generator_objects::main::generator::Suspend1 {[...]}}}
+// gdb-check:$1 = generator_objects::main::generator-0 {__0: 0x[...], <<variant>>: {__state: 0, 0: generator_objects::main::generator-0::Unresumed, 1: generator_objects::main::generator-0::Returned, 2: generator_objects::main::generator-0::Panicked, 3: generator_objects::main::generator-0::Suspend0 {[...]}, 4: generator_objects::main::generator-0::Suspend1 {[...]}}}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$2 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 3, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::Suspend0 {c: 6, d: 7}, 4: generator_objects::main::generator::Suspend1 {[...]}}}
+// gdb-check:$2 = generator_objects::main::generator-0 {__0: 0x[...], <<variant>>: {__state: 3, 0: generator_objects::main::generator-0::Unresumed, 1: generator_objects::main::generator-0::Returned, 2: generator_objects::main::generator-0::Panicked, 3: generator_objects::main::generator-0::Suspend0 {c: 6, d: 7}, 4: generator_objects::main::generator-0::Suspend1 {[...]}}}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$3 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 4, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::Suspend0 {[...]}, 4: generator_objects::main::generator::Suspend1 {c: 7, d: 8}}}
+// gdb-check:$3 = generator_objects::main::generator-0 {__0: 0x[...], <<variant>>: {__state: 4, 0: generator_objects::main::generator-0::Unresumed, 1: generator_objects::main::generator-0::Returned, 2: generator_objects::main::generator-0::Panicked, 3: generator_objects::main::generator-0::Suspend0 {[...]}, 4: generator_objects::main::generator-0::Suspend1 {c: 7, d: 8}}}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$4 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 1, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::Suspend0 {[...]}, 4: generator_objects::main::generator::Suspend1 {[...]}}}
+// gdb-check:$4 = generator_objects::main::generator-0 {__0: 0x[...], <<variant>>: {__state: 1, 0: generator_objects::main::generator-0::Unresumed, 1: generator_objects::main::generator-0::Returned, 2: generator_objects::main::generator-0::Panicked, 3: generator_objects::main::generator-0::Suspend0 {[...]}, 4: generator_objects::main::generator-0::Suspend1 {[...]}}}
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::generator) $0 = generator(&0x[...])
+// lldbg-check:(generator_objects::main::generator-0) $0 = generator-0(&0x[...])
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::generator) $1 = generator(&0x[...])
+// lldbg-check:(generator_objects::main::generator-0) $1 = generator-0(&0x[...])
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::generator) $2 = generator(&0x[...])
+// lldbg-check:(generator_objects::main::generator-0) $2 = generator-0(&0x[...])
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::generator) $3 = generator(&0x[...])
+// lldbg-check:(generator_objects::main::generator-0) $3 = generator-0(&0x[...])
 
 #![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
 #![omit_gdb_pretty_printer_section]
