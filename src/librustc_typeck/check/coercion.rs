@@ -70,6 +70,7 @@ use std::ops::Deref;
 use syntax::feature_gate;
 use syntax::symbol::sym;
 use syntax_pos;
+use rustc_target::spec::abi::Abi;
 
 struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -689,6 +690,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match b.sty {
             ty::FnPtr(_) => {
                 let a_sig = a.fn_sig(self.tcx);
+                // Intrinsics are not coercible to function pointers
+                if a_sig.abi() == Abi::RustIntrinsic ||
+                   a_sig.abi() == Abi::PlatformIntrinsic {
+                   return Err(TypeError::IntrinsicCast);
+                }
                 let InferOk { value: a_sig, mut obligations } =
                     self.normalize_associated_types_in_as_infer_ok(self.cause.span, &a_sig);
 
