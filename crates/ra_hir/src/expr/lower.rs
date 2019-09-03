@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
@@ -15,8 +13,8 @@ use crate::{
     path::GenericArgs,
     ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
     type_ref::TypeRef,
-    DefWithBody, Either, HasSource, HirDatabase, HirFileId, MacroCallLoc, MacroFileKind,
-    Mutability, Path, Resolver,
+    DefWithBody, Either, HirDatabase, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path,
+    Resolver,
 };
 
 use super::{
@@ -24,14 +22,33 @@ use super::{
     LogicOp, MatchArm, Ordering, Pat, PatId, PatPtr, RecordFieldPat, RecordLitField, Statement,
 };
 
-pub(crate) struct ExprCollector<DB> {
-    db: DB,
+pub(super) fn lower(
+    db: &impl HirDatabase,
+    resolver: Resolver,
+    file_id: HirFileId,
     owner: DefWithBody,
-    exprs: Arena<ExprId, Expr>,
-    pats: Arena<PatId, Pat>,
-    source_map: BodySourceMap,
-    params: Vec<PatId>,
-    body_expr: Option<ExprId>,
+    params: Option<ast::ParamList>,
+    body: Option<ast::Expr>,
+) -> (Body, BodySourceMap) {
+    ExprCollector {
+        resolver,
+        db,
+        original_file_id: file_id,
+        current_file_id: file_id,
+        source_map: BodySourceMap::default(),
+        body: Body {
+            owner,
+            exprs: Arena::default(),
+            pats: Arena::default(),
+            params: Vec::new(),
+            body_expr: ExprId((!0).into()),
+        },
+    }
+    .collect(params, body)
+}
+
+struct ExprCollector<DB> {
+    db: DB,
     resolver: Resolver,
     // Expr collector expands macros along the way. original points to the file
     // we started with, current points to the current macro expansion. source
@@ -39,38 +56,73 @@ pub(crate) struct ExprCollector<DB> {
     // current == original (see #1196)
     original_file_id: HirFileId,
     current_file_id: HirFileId,
+
+    body: Body,
+    source_map: BodySourceMap,
 }
 
 impl<'a, DB> ExprCollector<&'a DB>
 where
     DB: HirDatabase,
 {
-    fn new(owner: DefWithBody, file_id: HirFileId, resolver: Resolver, db: &'a DB) -> Self {
-        ExprCollector {
-            owner,
-            resolver,
-            db,
-            exprs: Arena::default(),
-            pats: Arena::default(),
-            source_map: BodySourceMap::default(),
-            params: Vec::new(),
-            body_expr: None,
-            original_file_id: file_id,
-            current_file_id: file_id,
-        }
+    fn collect(
+        mut self,
+        param_list: Option<ast::ParamList>,
+        body: Option<ast::Expr>,
+    ) -> (Body, BodySourceMap) {
+        if let Some(param_list) = param_list {
+            if let Some(self_param) = param_list.self_param() {
+                let ptr = AstPtr::new(&self_param);
+                let param_pat = self.alloc_pat(
+                    Pat::Bind {
+                        name: SELF_PARAM,
+                        mode: BindingAnnotation::Unannotated,
+                        subpat: None,
+                    },
+                    Either::B(ptr),
+                );
+                self.body.params.push(param_pat);
+            }
+
+            for param in param_list.params() {
+                let pat = match param.pat() {
+                    None => continue,
+                    Some(pat) => pat,
+                };
+                let param_pat = self.collect_pat(pat);
+                self.body.params.push(param_pat);
+            }
+        };
+
+        self.body.body_expr = self.collect_expr_opt(body);
+        (self.body, self.source_map)
     }
+
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
         let ptr = Either::A(ptr);
-        let id = self.exprs.alloc(expr);
+        let id = self.body.exprs.alloc(expr);
         if self.current_file_id == self.original_file_id {
             self.source_map.expr_map.insert(ptr, id);
             self.source_map.expr_map_back.insert(id, ptr);
         }
         id
     }
-
+    // deshugared exprs don't have ptr, that's wrong and should be fixed
+    // somehow.
+    fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
+        self.body.exprs.alloc(expr)
+    }
+    fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
+        let ptr = Either::B(ptr);
+        let id = self.body.exprs.alloc(expr);
+        if self.current_file_id == self.original_file_id {
+            self.source_map.expr_map.insert(ptr, id);
+            self.source_map.expr_map_back.insert(id, ptr);
+        }
+        id
+    }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
-        let id = self.pats.alloc(pat);
+        let id = self.body.pats.alloc(pat);
 
         if self.current_file_id == self.original_file_id {
             self.source_map.pat_map.insert(ptr, id);
@@ -82,7 +134,15 @@ where
 
     fn empty_block(&mut self) -> ExprId {
         let block = Expr::Block { statements: Vec::new(), tail: None };
-        self.exprs.alloc(block)
+        self.body.exprs.alloc(block)
+    }
+
+    fn missing_expr(&mut self) -> ExprId {
+        self.body.exprs.alloc(Expr::Missing)
+    }
+
+    fn missing_pat(&mut self) -> PatId {
+        self.body.pats.alloc(Pat::Missing)
     }
 
     fn collect_expr(&mut self, expr: ast::Expr) -> ExprId {
@@ -100,14 +160,14 @@ where
                 });
 
                 let condition = match e.condition() {
-                    None => self.exprs.alloc(Expr::Missing),
+                    None => self.missing_expr(),
                     Some(condition) => match condition.pat() {
                         None => self.collect_expr_opt(condition.expr()),
                         // if let -- desugar to match
                         Some(pat) => {
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
-                            let placeholder_pat = self.pats.alloc(Pat::Missing);
+                            let placeholder_pat = self.missing_pat();
                             let arms = vec![
                                 MatchArm { pats: vec![pat], expr: then_branch, guard: None },
                                 MatchArm {
@@ -137,7 +197,7 @@ where
                 let body = self.collect_block_opt(e.loop_body());
 
                 let condition = match e.condition() {
-                    None => self.exprs.alloc(Expr::Missing),
+                    None => self.missing_expr(),
                     Some(condition) => match condition.pat() {
                         None => self.collect_expr_opt(condition.expr()),
                         // if let -- desugar to match
@@ -145,14 +205,14 @@ where
                             tested_by!(infer_while_let);
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
-                            let placeholder_pat = self.pats.alloc(Pat::Missing);
-                            let break_ = self.exprs.alloc(Expr::Break { expr: None });
+                            let placeholder_pat = self.missing_pat();
+                            let break_ = self.alloc_expr_desugared(Expr::Break { expr: None });
                             let arms = vec![
                                 MatchArm { pats: vec![pat], expr: body, guard: None },
                                 MatchArm { pats: vec![placeholder_pat], expr: break_, guard: None },
                             ];
                             let match_expr =
-                                self.exprs.alloc(Expr::Match { expr: match_expr, arms });
+                                self.alloc_expr_desugared(Expr::Match { expr: match_expr, arms });
                             return self.alloc_expr(Expr::Loop { body: match_expr }, syntax_ptr);
                         }
                     },
@@ -247,13 +307,12 @@ where
                                 self.collect_expr(e)
                             } else if let Some(nr) = field.name_ref() {
                                 // field shorthand
-                                let id = self.exprs.alloc(Expr::Path(Path::from_name_ref(&nr)));
-                                let ptr = Either::B(AstPtr::new(&field));
-                                self.source_map.expr_map.insert(ptr, id);
-                                self.source_map.expr_map_back.insert(id, ptr);
-                                id
+                                self.alloc_expr_field_shorthand(
+                                    Expr::Path(Path::from_name_ref(&nr)),
+                                    AstPtr::new(&field),
+                                )
                             } else {
-                                self.exprs.alloc(Expr::Missing)
+                                self.missing_expr()
                             },
                         })
                         .collect();
@@ -420,7 +479,7 @@ where
         if let Some(expr) = expr {
             self.collect_expr(expr)
         } else {
-            self.exprs.alloc(Expr::Missing)
+            self.missing_expr()
         }
     }
 
@@ -450,7 +509,7 @@ where
         if let Some(block) = expr {
             self.collect_block(block)
         } else {
-            self.exprs.alloc(Expr::Missing)
+            self.missing_expr()
         }
     }
 
@@ -519,59 +578,8 @@ where
         if let Some(pat) = pat {
             self.collect_pat(pat)
         } else {
-            self.pats.alloc(Pat::Missing)
+            self.missing_pat()
         }
-    }
-
-    fn collect_const_body(&mut self, node: ast::ConstDef) {
-        let body = self.collect_expr_opt(node.body());
-        self.body_expr = Some(body);
-    }
-
-    fn collect_static_body(&mut self, node: ast::StaticDef) {
-        let body = self.collect_expr_opt(node.body());
-        self.body_expr = Some(body);
-    }
-
-    fn collect_fn_body(&mut self, node: ast::FnDef) {
-        if let Some(param_list) = node.param_list() {
-            if let Some(self_param) = param_list.self_param() {
-                let ptr = AstPtr::new(&self_param);
-                let param_pat = self.alloc_pat(
-                    Pat::Bind {
-                        name: SELF_PARAM,
-                        mode: BindingAnnotation::Unannotated,
-                        subpat: None,
-                    },
-                    Either::B(ptr),
-                );
-                self.params.push(param_pat);
-            }
-
-            for param in param_list.params() {
-                let pat = if let Some(pat) = param.pat() {
-                    pat
-                } else {
-                    continue;
-                };
-                let param_pat = self.collect_pat(pat);
-                self.params.push(param_pat);
-            }
-        };
-
-        let body = self.collect_block_opt(node.body());
-        self.body_expr = Some(body);
-    }
-
-    fn finish(self) -> (Body, BodySourceMap) {
-        let body = Body {
-            owner: self.owner,
-            exprs: self.exprs,
-            pats: self.pats,
-            params: self.params,
-            body_expr: self.body_expr.expect("A body should have been collected"),
-        };
-        (body, self.source_map)
     }
 }
 
@@ -617,36 +625,4 @@ impl From<ast::BinOp> for BinaryOp {
             ast::BinOp::BitXorAssign => BinaryOp::Assignment { op: Some(ArithOp::BitXor) },
         }
     }
-}
-
-pub(crate) fn body_with_source_map_query(
-    db: &impl HirDatabase,
-    def: DefWithBody,
-) -> (Arc<Body>, Arc<BodySourceMap>) {
-    let mut collector;
-
-    match def {
-        DefWithBody::Const(ref c) => {
-            let src = c.source(db);
-            collector = ExprCollector::new(def, src.file_id, def.resolver(db), db);
-            collector.collect_const_body(src.ast)
-        }
-        DefWithBody::Function(ref f) => {
-            let src = f.source(db);
-            collector = ExprCollector::new(def, src.file_id, def.resolver(db), db);
-            collector.collect_fn_body(src.ast)
-        }
-        DefWithBody::Static(ref s) => {
-            let src = s.source(db);
-            collector = ExprCollector::new(def, src.file_id, def.resolver(db), db);
-            collector.collect_static_body(src.ast)
-        }
-    }
-
-    let (body, source_map) = collector.finish();
-    (Arc::new(body), Arc::new(source_map))
-}
-
-pub(crate) fn body_hir_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<Body> {
-    db.body_with_source_map(def).0
 }

@@ -12,7 +12,7 @@ use crate::{
     path::GenericArgs,
     ty::primitive::{UncertainFloatTy, UncertainIntTy},
     type_ref::{Mutability, TypeRef},
-    DefWithBody, Either, HirDatabase, Name, Path, Resolver,
+    DefWithBody, Either, HasSource, HirDatabase, Name, Path, Resolver,
 };
 
 pub use self::scope::ExprScopes;
@@ -523,4 +523,35 @@ impl Pat {
             }
         }
     }
+}
+
+// Queries
+pub(crate) fn body_with_source_map_query(
+    db: &impl HirDatabase,
+    def: DefWithBody,
+) -> (Arc<Body>, Arc<BodySourceMap>) {
+    let mut params = None;
+
+    let (file_id, body) = match def {
+        DefWithBody::Function(f) => {
+            let src = f.source(db);
+            params = src.ast.param_list();
+            (src.file_id, src.ast.body().map(ast::Expr::from))
+        }
+        DefWithBody::Const(c) => {
+            let src = c.source(db);
+            (src.file_id, src.ast.body())
+        }
+        DefWithBody::Static(s) => {
+            let src = s.source(db);
+            (src.file_id, src.ast.body())
+        }
+    };
+
+    let (body, source_map) = lower::lower(db, def.resolver(db), file_id, def, params, body);
+    (Arc::new(body), Arc::new(source_map))
+}
+
+pub(crate) fn body_hir_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<Body> {
+    db.body_with_source_map(def).0
 }
