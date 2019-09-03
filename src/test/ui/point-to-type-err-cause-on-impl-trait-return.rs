@@ -33,4 +33,33 @@ fn qux() -> impl std::fmt::Display {
     }
 }
 
+fn bat() -> impl std::fmt::Display {
+    match 13 {
+        0 => return 0i32,
+        _ => 1u32,
+        //~^ ERROR mismatched types
+    }
+}
+
+fn can() -> impl std::fmt::Display {
+    match 13 {
+    //~^ ERROR mismatched types
+        0 => return 0i32,
+        1 => 1u32,
+        _ => 2u32,
+    }
+}
+
+fn cat() -> impl std::fmt::Display {
+    match 13 {
+        0 => {
+            return 0i32;
+        }
+        _ => {
+            1u32
+            //~^ ERROR mismatched types
+        }
+    }
+}
+
 fn main() {}
