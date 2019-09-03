@@ -2951,8 +2951,24 @@ impl<'test> TestCx<'test> {
         let expected_stderr = self.load_expected_output(stderr_kind);
         let expected_stdout = self.load_expected_output(stdout_kind);
 
-        let normalized_stdout =
-            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
+        let normalized_stdout = match output_kind {
+            TestOutput::Run if self.config.remote_test_client.is_some() => {
+                // When tests are run using the remote-test-client, the string
+                // 'uploaded "$TEST_BUILD_DIR/<test_executable>, waiting for result"'
+                // is printed to stdout by the client and then captured in the ProcRes,
+                // so it needs to be removed when comparing the run-pass test execution output
+                lazy_static! {
+                    static ref REMOTE_TEST_RE: Regex = Regex::new(
+                        "^uploaded \"\\$TEST_BUILD_DIR(/[[:alnum:]_\\-]+)+\", waiting for result\n"
+                    ).unwrap();
+                }
+                REMOTE_TEST_RE.replace(
+                    &self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout),
+                    ""
+                ).to_string()
+            }
+            _ => self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout)
+        };
 
         let stderr = if explicit_format {
             proc_res.stderr.clone()
