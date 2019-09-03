@@ -14,7 +14,7 @@ use crate::sys::mutex::Mutex;
 use backtrace::{BytesOrWideString, Frame, Symbol};
 
 #[cfg(not(target_os = "fuchsia"))]
-pub const HEX_WIDTH: usize = 2 + 2 * mem::size_of::<usize>();
+const HEX_WIDTH: usize = 2 + 2 * mem::size_of::<usize>();
 
 /// Max number of frames to print.
 #[cfg(not(target_os = "fuchsia"))]
