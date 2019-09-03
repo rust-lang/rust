@@ -30,10 +30,8 @@ pub struct AnnotateSnippetEmitterWriter {
 impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
-        let primary_span = db.span.clone();
         let children = db.children.clone();
-        // FIXME(#59346): Collect suggestions (see emitter.rs)
-        let suggestions: &[_] = &[];
+        let (primary_span, suggestions) = self.primary_span_formatted(&db);
 
         // FIXME(#59346): Add `fix_multispans_in_std_macros` function from emitter.rs
 

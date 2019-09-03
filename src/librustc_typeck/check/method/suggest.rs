@@ -69,12 +69,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'b>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr]>,
-    ) {
+    ) -> Option<DiagnosticBuilder<'_>> {
         let orig_span = span;
         let mut span = span;
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
-            return;
+            return None;
         }
 
         let print_disambiguation_help = |
@@ -314,7 +314,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => {}
                         }
                         err.emit();
-                        return;
+                        return None;
                     } else {
                         span = item_name.span;
                         let mut err = struct_span_err!(
@@ -529,7 +529,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
 
-                err.emit();
+                return Some(err);
             }
 
             MethodError::Ambiguity(sources) => {
@@ -573,6 +573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 bug!("no return type expectations but got BadReturnType")
             }
         }
+        None
     }
 
     fn suggest_use_candidates(&self,
