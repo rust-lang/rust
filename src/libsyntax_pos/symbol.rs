@@ -1157,19 +1157,6 @@ pub struct LocalInternedString {
     string: &'static str,
 }
 
-impl LocalInternedString {
-    /// Maps a string to its interned representation.
-    pub fn intern(string: &str) -> Self {
-        let string = with_interner(|interner| {
-            let symbol = interner.intern(string);
-            interner.strings[symbol.0.as_usize()]
-        });
-        LocalInternedString {
-            string: unsafe { std::mem::transmute::<&str, &str>(string) }
-        }
-    }
-}
-
 impl<U: ?Sized> std::convert::AsRef<U> for LocalInternedString
 where
     str: std::convert::AsRef<U>
