@@ -1,3 +1,4 @@
+#![cfg_attr(target_os = "fuchsia", allow(unused_imports))]
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
 
@@ -12,9 +13,11 @@ use crate::sys::mutex::Mutex;
 
 use backtrace::{BytesOrWideString, Frame, Symbol};
 
+#[cfg(not(target_os = "fuchsia"))]
 pub const HEX_WIDTH: usize = 2 + 2 * mem::size_of::<usize>();
 
 /// Max number of frames to print.
+#[cfg(not(target_os = "fuchsia"))]
 const MAX_NB_FRAMES: usize = 100;
 
 /// Prints the current backtrace.
@@ -39,6 +42,7 @@ pub fn print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
     }
 }
 
+#[cfg(not(target_os = "fuchsia"))]
 fn _print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
     writeln!(w, "stack backtrace:")?;
 
@@ -66,6 +70,30 @@ fn _print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "fuchsia")]
+fn _print(w: &mut dyn Write, format: PrintFormat) -> io::Result<()> {
+    let _ = format;
+
+    struct DisplayBacktrace;
+    impl crate::fmt::Display for DisplayBacktrace {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+            let mut fb = backtrace::FuchsiaBacktraceFmt::new(f);
+            fb.add_context()?;
+            let mut res = Ok(());
+            unsafe {
+                backtrace::trace_unsynchronized(|frame| {
+                    res = fb.add_frame(frame.ip());
+                    res.is_ok()
+                });
+            }
+            res?;
+            fb.finish()
+        }
+    }
+
+    write!(w, "stack backtrace:\n{}", DisplayBacktrace)
+}
+
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
@@ -81,6 +109,7 @@ where
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum PrintFormat {
     /// Show only relevant data from the backtrace.
+    #[cfg_attr(target_os = "fuchsia", allow(unused))]
     Short = 2,
     /// Show all the frames with absolute path for files.
     Full = 3,
@@ -88,6 +117,7 @@ pub enum PrintFormat {
 
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
+#[cfg(not(target_os = "fuchsia"))]
 pub fn log_enabled() -> Option<PrintFormat> {
     static ENABLED: atomic::AtomicIsize = atomic::AtomicIsize::new(0);
     match ENABLED.load(Ordering::SeqCst) {
@@ -116,6 +146,15 @@ pub fn log_enabled() -> Option<PrintFormat> {
     val
 }
 
+// Configuring logging via environment variables doesn't make sense for
+// Fuchsia components, which don't inherit environment variables.
+// For now, leave this always enabled.
+#[cfg(target_os = "fuchsia")]
+pub fn log_enabled() -> Option<PrintFormat> {
+    Some(PrintFormat::Full)
+}
+
+#[cfg(not(target_os = "fuchsia"))]
 struct Printer<'a, 'b> {
     format: PrintFormat,
     done: bool,
@@ -124,6 +163,7 @@ struct Printer<'a, 'b> {
     out: &'a mut (dyn Write + 'b),
 }
 
+#[cfg(not(target_os = "fuchsia"))]
 impl<'a, 'b> Printer<'a, 'b> {
     fn new(format: PrintFormat, out: &'a mut (dyn Write + 'b)) -> Printer<'a, 'b> {
         Printer { format, done: false, skipped: false, idx: 0, out }
