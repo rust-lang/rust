@@ -1169,12 +1169,6 @@ impl LocalInternedString {
         }
     }
 
-    pub fn as_interned_str(self) -> InternedString {
-        InternedString {
-            symbol: Symbol::intern(self.string)
-        }
-    }
-
     #[inline]
     pub fn get(&self) -> &str {
         // This returns a valid string since we ensure that `self` outlives the interner
