@@ -2473,7 +2473,7 @@ like in the following example:
 # trait Trait {
 #     fn foo(&self);
 # }
-impl Trait for Struct {
+impl Trait for Foo {
     fn foo(self: &Bar) {}
 }
 ```
