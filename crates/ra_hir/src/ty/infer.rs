@@ -817,7 +817,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let resolver = self.resolver.clone();
                 self.infer_path_expr(&resolver, &path, pat.into()).unwrap_or(Ty::Unknown)
             }
-            Pat::Bind { mode, name: _name, subpat } => {
+            Pat::Bind { mode, name: _, subpat } => {
                 let mode = if mode == &BindingAnnotation::Unannotated {
                     default_bm
                 } else {
