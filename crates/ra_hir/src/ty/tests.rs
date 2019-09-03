@@ -2793,6 +2793,10 @@ fn main() {
 }
 "#),
         @r###"
+    ![0; 17) '{Foo(v...,2,])}': Foo
+    ![1; 4) 'Foo': Foo({unknown}) -> Foo
+    ![1; 16) 'Foo(vec![1,2,])': Foo
+    ![5; 15) 'vec![1,2,]': {unknown}
     [156; 182) '{     ...,2); }': ()
     [166; 167) 'x': Foo
     "###
@@ -3566,7 +3570,6 @@ fn infer(content: &str) -> String {
     let source_file = db.parse(file_id).ok().unwrap();
 
     let mut acc = String::new();
-    // acc.push_str("\n");
 
     let mut infer_def = |inference_result: Arc<InferenceResult>,
                          body_source_map: Arc<BodySourceMap>| {
@@ -3574,7 +3577,9 @@ fn infer(content: &str) -> String {
 
         for (pat, ty) in inference_result.type_of_pat.iter() {
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
-                Some(sp) => sp.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()),
+                Some(sp) => {
+                    sp.map(|ast| ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()))
+                }
                 None => continue,
             };
             types.push((syntax_ptr, ty));
@@ -3582,22 +3587,34 @@ fn infer(content: &str) -> String {
 
         for (expr, ty) in inference_result.type_of_expr.iter() {
             let syntax_ptr = match body_source_map.expr_syntax(expr) {
-                Some(sp) => sp.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()),
+                Some(sp) => {
+                    sp.map(|ast| ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()))
+                }
                 None => continue,
             };
             types.push((syntax_ptr, ty));
         }
 
         // sort ranges for consistency
-        types.sort_by_key(|(ptr, _)| (ptr.range().start(), ptr.range().end()));
-        for (syntax_ptr, ty) in &types {
-            let node = syntax_ptr.to_node(source_file.syntax());
+        types.sort_by_key(|(src_ptr, _)| (src_ptr.ast.range().start(), src_ptr.ast.range().end()));
+        for (src_ptr, ty) in &types {
+            let node = src_ptr.ast.to_node(&src_ptr.file_syntax(&db));
+
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.clone()) {
                 (self_param.self_kw_token().text_range(), "self".to_string())
             } else {
-                (syntax_ptr.range(), node.text().to_string().replace("\n", " "))
+                (src_ptr.ast.range(), node.text().to_string().replace("\n", " "))
             };
-            write!(acc, "{} '{}': {}\n", range, ellipsize(text, 15), ty.display(&db)).unwrap();
+            let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
+            write!(
+                acc,
+                "{}{} '{}': {}\n",
+                macro_prefix,
+                range,
+                ellipsize(text, 15),
+                ty.display(&db)
+            )
+            .unwrap();
         }
     };
 

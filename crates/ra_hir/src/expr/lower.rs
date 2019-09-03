@@ -14,7 +14,7 @@ use crate::{
     ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
     type_ref::TypeRef,
     DefWithBody, Either, HirDatabase, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path,
-    Resolver,
+    Resolver, Source,
 };
 
 use super::{
@@ -103,11 +103,13 @@ where
         let id = self.body.exprs.alloc(expr);
         if self.current_file_id == self.original_file_id {
             self.source_map.expr_map.insert(ptr, id);
-            self.source_map.expr_map_back.insert(id, ptr);
         }
+        self.source_map
+            .expr_map_back
+            .insert(id, Source { file_id: self.current_file_id, ast: ptr });
         id
     }
-    // deshugared exprs don't have ptr, that's wrong and should be fixed
+    // desugared exprs don't have ptr, that's wrong and should be fixed
     // somehow.
     fn alloc_expr_desugared(&mut self, expr: Expr) -> ExprId {
         self.body.exprs.alloc(expr)
@@ -117,18 +119,18 @@ where
         let id = self.body.exprs.alloc(expr);
         if self.current_file_id == self.original_file_id {
             self.source_map.expr_map.insert(ptr, id);
-            self.source_map.expr_map_back.insert(id, ptr);
         }
+        self.source_map
+            .expr_map_back
+            .insert(id, Source { file_id: self.current_file_id, ast: ptr });
         id
     }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.body.pats.alloc(pat);
-
         if self.current_file_id == self.original_file_id {
             self.source_map.pat_map.insert(ptr, id);
-            self.source_map.pat_map_back.insert(id, ptr);
         }
-
+        self.source_map.pat_map_back.insert(id, Source { file_id: self.current_file_id, ast: ptr });
         id
     }
 

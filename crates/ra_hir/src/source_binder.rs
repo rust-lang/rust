@@ -228,7 +228,7 @@ impl SourceAnalyzer {
             let scopes = db.expr_scopes(def);
             let scope = match offset {
                 None => scope_for(&scopes, &source_map, &node),
-                Some(offset) => scope_for_offset(&scopes, &source_map, offset),
+                Some(offset) => scope_for_offset(&scopes, &source_map, file_id.into(), offset),
             };
             let resolver = expr::resolver_for_scope(def.body(db), db, scope);
             SourceAnalyzer {
@@ -330,6 +330,7 @@ impl SourceAnalyzer {
                     .body_source_map
                     .as_ref()?
                     .pat_syntax(it)?
+                    .ast // FIXME: ignoring file_id here is definitelly wrong
                     .map_a(|ptr| ptr.cast::<ast::BindPat>().unwrap());
                 PathResolution::LocalBinding(pat_ptr)
             }
@@ -354,7 +355,7 @@ impl SourceAnalyzer {
         ret.and_then(|entry| {
             Some(ScopeEntryWithSyntax {
                 name: entry.name().clone(),
-                ptr: source_map.pat_syntax(entry.pat())?,
+                ptr: source_map.pat_syntax(entry.pat())?.ast,
             })
         })
     }
@@ -470,20 +471,27 @@ fn scope_for(
 fn scope_for_offset(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
+    file_id: HirFileId,
     offset: TextUnit,
 ) -> Option<ScopeId> {
     scopes
         .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| {
-            let ast_ptr = source_map.expr_syntax(*id)?.a()?;
-            Some((ast_ptr.syntax_node_ptr(), scope))
+            let source = source_map.expr_syntax(*id)?;
+            // FIXME: correctly handle macro expansion
+            if source.file_id != file_id {
+                return None;
+            }
+            let syntax_node_ptr =
+                source.ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+            Some((syntax_node_ptr, scope))
         })
         // find containing scope
         .min_by_key(|(ptr, _scope)| {
             (!(ptr.range().start() <= offset && offset <= ptr.range().end()), ptr.range().len())
         })
-        .map(|(ptr, scope)| adjust(scopes, source_map, ptr, offset).unwrap_or(*scope))
+        .map(|(ptr, scope)| adjust(scopes, source_map, ptr, file_id, offset).unwrap_or(*scope))
 }
 
 // XXX: during completion, cursor might be outside of any particular
@@ -492,6 +500,7 @@ fn adjust(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
     ptr: SyntaxNodePtr,
+    file_id: HirFileId,
     offset: TextUnit,
 ) -> Option<ScopeId> {
     let r = ptr.range();
@@ -499,8 +508,14 @@ fn adjust(
         .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| {
-            let ast_ptr = source_map.expr_syntax(*id)?.a()?;
-            Some((ast_ptr.syntax_node_ptr(), scope))
+            let source = source_map.expr_syntax(*id)?;
+            // FIXME: correctly handle macro expansion
+            if source.file_id != file_id {
+                return None;
+            }
+            let syntax_node_ptr =
+                source.ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+            Some((syntax_node_ptr, scope))
         })
         .map(|(ptr, scope)| (ptr.range(), scope))
         .filter(|(range, _)| range.start() <= offset && range.is_subrange(&r) && *range != r);
