@@ -1,5 +1,5 @@
 //! This modules takes care of rendering various defenitions as completion items.
-use hir::{Docs, HasSource, HirDisplay, PerNs, Resolution, Ty};
+use hir::{Docs, HasSource, HirDisplay, PerNs, Resolution, Ty, TypeWalk};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;

@@ -69,7 +69,9 @@ pub use self::{
     resolve::Resolution,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     source_id::{AstIdMap, ErasedFileAstId},
-    ty::{display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor},
+    ty::{
+        display::HirDisplay, ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
+    },
     type_ref::Mutability,
 };
 

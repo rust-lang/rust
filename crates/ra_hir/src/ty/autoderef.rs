@@ -7,7 +7,7 @@ use std::iter::successors;
 
 use log::{info, warn};
 
-use super::{traits::Solution, Canonical, Ty};
+use super::{traits::Solution, Canonical, Ty, TypeWalk};
 use crate::{HasGenericParams, HirDatabase, Name, Resolver};
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;

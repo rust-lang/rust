@@ -19,6 +19,7 @@ use crate::{
     ty::display::HirDisplay,
     ty::{
         ApplicationTy, CallableDef, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+        TypeWalk,
     },
     Crate, HasGenericParams, ImplBlock, ImplItem, Trait, TypeAlias,
 };
@@ -211,6 +212,13 @@ impl ToChalk for GenericPredicate {
             GenericPredicate::Implemented(trait_ref) => {
                 make_binders(chalk_ir::WhereClause::Implemented(trait_ref.to_chalk(db)), 0)
             }
+            GenericPredicate::Projection(projection_pred) => make_binders(
+                chalk_ir::WhereClause::ProjectionEq(chalk_ir::ProjectionEq {
+                    projection: projection_pred.projection_ty.to_chalk(db),
+                    ty: projection_pred.ty.to_chalk(db),
+                }),
+                0,
+            ),
             GenericPredicate::Error => {
                 let impossible_trait_ref = chalk_ir::TraitRef {
                     trait_id: UNKNOWN_TRAIT,

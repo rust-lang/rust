@@ -31,7 +31,8 @@ pub struct GenericArgs {
     /// Self type. Otherwise, when we have a path `Trait<X, Y>`, the Self type
     /// is left out.
     pub has_self_type: bool,
-    // someday also bindings
+    /// Associated type bindings like in `Iterator<Item = T>`.
+    pub bindings: Vec<(Name, TypeRef)>,
 }
 
 /// A single generic argument.
@@ -170,16 +171,24 @@ impl GenericArgs {
             let type_ref = TypeRef::from_ast_opt(type_arg.type_ref());
             args.push(GenericArg::Type(type_ref));
         }
-        // lifetimes and assoc type args ignored for now
-        if !args.is_empty() {
-            Some(GenericArgs { args, has_self_type: false })
-        } else {
+        // lifetimes ignored for now
+        let mut bindings = Vec::new();
+        for assoc_type_arg in node.assoc_type_args() {
+            if let Some(name_ref) = assoc_type_arg.name_ref() {
+                let name = name_ref.as_name();
+                let type_ref = TypeRef::from_ast_opt(assoc_type_arg.type_ref());
+                bindings.push((name, type_ref));
+            }
+        }
+        if args.is_empty() && bindings.is_empty() {
             None
+        } else {
+            Some(GenericArgs { args, has_self_type: false, bindings })
         }
     }
 
     pub(crate) fn empty() -> GenericArgs {
-        GenericArgs { args: Vec::new(), has_self_type: false }
+        GenericArgs { args: Vec::new(), has_self_type: false, bindings: Vec::new() }
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use ra_db::SourceDatabase;
-use ra_hir::{Crate, HasBodySource, HasSource, HirDisplay, ImplItem, ModuleDef, Ty};
+use ra_hir::{Crate, HasBodySource, HasSource, HirDisplay, ImplItem, ModuleDef, Ty, TypeWalk};
 use ra_syntax::AstNode;
 
 use crate::Result;

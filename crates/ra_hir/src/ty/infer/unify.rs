@@ -3,7 +3,7 @@
 use super::{InferenceContext, Obligation};
 use crate::db::HirDatabase;
 use crate::ty::{
-    Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty,
+    Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, TraitRef, Ty, TypeWalk,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {

@@ -8,7 +8,7 @@ use ra_db::salsa;
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
-use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty};
+use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 use crate::{db::HirDatabase, Crate, ImplBlock, Trait};
 
 use self::chalk::{from_chalk, ToChalk};
@@ -124,6 +124,9 @@ impl Obligation {
     pub fn from_predicate(predicate: GenericPredicate) -> Option<Obligation> {
         match predicate {
             GenericPredicate::Implemented(trait_ref) => Some(Obligation::Trait(trait_ref)),
+            GenericPredicate::Projection(projection_pred) => {
+                Some(Obligation::Projection(projection_pred))
+            }
             GenericPredicate::Error => None,
         }
     }
@@ -133,6 +136,18 @@ impl Obligation {
 pub struct ProjectionPredicate {
     pub projection_ty: ProjectionTy,
     pub ty: Ty,
+}
+
+impl TypeWalk for ProjectionPredicate {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.projection_ty.walk(f);
+        self.ty.walk(f);
+    }
+
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        self.projection_ty.walk_mut(f);
+        self.ty.walk_mut(f);
+    }
 }
 
 /// Solve a trait goal using Chalk.

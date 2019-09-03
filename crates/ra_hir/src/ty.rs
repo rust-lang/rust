@@ -120,10 +120,42 @@ pub struct ProjectionTy {
     pub parameters: Substs,
 }
 
+impl ProjectionTy {
+    pub fn trait_ref(&self, db: &impl HirDatabase) -> TraitRef {
+        TraitRef {
+            trait_: self
+                .associated_ty
+                .parent_trait(db)
+                .expect("projection ty without parent trait"),
+            substs: self.parameters.clone(),
+        }
+    }
+}
+
+impl TypeWalk for ProjectionTy {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.parameters.walk(f);
+    }
+
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        self.parameters.walk_mut(f);
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct UnselectedProjectionTy {
     pub type_name: Name,
     pub parameters: Substs,
+}
+
+impl TypeWalk for UnselectedProjectionTy {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        self.parameters.walk(f);
+    }
+
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        self.parameters.walk_mut(f);
+    }
 }
 
 /// A type.
@@ -282,20 +314,14 @@ impl TraitRef {
     pub fn self_ty(&self) -> &Ty {
         &self.substs[0]
     }
+}
 
-    pub fn subst(mut self, substs: &Substs) -> TraitRef {
-        self.substs.walk_mut(&mut |ty_mut| {
-            let ty = mem::replace(ty_mut, Ty::Unknown);
-            *ty_mut = ty.subst(substs);
-        });
-        self
-    }
-
-    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+impl TypeWalk for TraitRef {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
         self.substs.walk(f);
     }
 
-    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         self.substs.walk_mut(f);
     }
 }
@@ -306,6 +332,8 @@ impl TraitRef {
 pub enum GenericPredicate {
     /// The given trait needs to be implemented for its type parameters.
     Implemented(TraitRef),
+    /// An associated type bindings like in `Iterator<Item = T>`.
+    Projection(ProjectionPredicate),
     /// We couldn't resolve the trait reference. (If some type parameters can't
     /// be resolved, they will just be Unknown).
     Error,
@@ -319,25 +347,35 @@ impl GenericPredicate {
         }
     }
 
-    pub fn subst(self, substs: &Substs) -> GenericPredicate {
+    pub fn is_implemented(&self) -> bool {
         match self {
-            GenericPredicate::Implemented(trait_ref) => {
-                GenericPredicate::Implemented(trait_ref.subst(substs))
-            }
-            GenericPredicate::Error => self,
+            GenericPredicate::Implemented(_) => true,
+            _ => false,
         }
     }
 
-    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
+    pub fn trait_ref(&self, db: &impl HirDatabase) -> Option<TraitRef> {
+        match self {
+            GenericPredicate::Implemented(tr) => Some(tr.clone()),
+            GenericPredicate::Projection(proj) => Some(proj.projection_ty.trait_ref(db)),
+            GenericPredicate::Error => None,
+        }
+    }
+}
+
+impl TypeWalk for GenericPredicate {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.walk(f),
+            GenericPredicate::Projection(projection_pred) => projection_pred.walk(f),
             GenericPredicate::Error => {}
         }
     }
 
-    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.walk_mut(f),
+            GenericPredicate::Projection(projection_pred) => projection_pred.walk_mut(f),
             GenericPredicate::Error => {}
         }
     }
@@ -378,16 +416,16 @@ impl FnSig {
     pub fn ret(&self) -> &Ty {
         &self.params_and_return[self.params_and_return.len() - 1]
     }
+}
 
-    /// Applies the given substitutions to all types in this signature and
-    /// returns the result.
-    pub fn subst(&self, substs: &Substs) -> FnSig {
-        let result: Vec<_> =
-            self.params_and_return.iter().map(|ty| ty.clone().subst(substs)).collect();
-        FnSig { params_and_return: result.into() }
+impl TypeWalk for FnSig {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        for t in self.params_and_return.iter() {
+            t.walk(f);
+        }
     }
 
-    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         // Without an Arc::make_mut_slice, we can't avoid the clone here:
         let mut v: Vec<_> = self.params_and_return.iter().cloned().collect();
         for t in &mut v {
@@ -409,64 +447,6 @@ impl Ty {
     }
     pub fn unit() -> Self {
         Ty::apply(TypeCtor::Tuple { cardinality: 0 }, Substs::empty())
-    }
-
-    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        match self {
-            Ty::Apply(a_ty) => {
-                for t in a_ty.parameters.iter() {
-                    t.walk(f);
-                }
-            }
-            Ty::Projection(p_ty) => {
-                for t in p_ty.parameters.iter() {
-                    t.walk(f);
-                }
-            }
-            Ty::UnselectedProjection(p_ty) => {
-                for t in p_ty.parameters.iter() {
-                    t.walk(f);
-                }
-            }
-            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
-                for p in predicates.iter() {
-                    p.walk(f);
-                }
-            }
-            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
-        }
-        f(self);
-    }
-
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        match self {
-            Ty::Apply(a_ty) => {
-                a_ty.parameters.walk_mut(f);
-            }
-            Ty::Projection(p_ty) => {
-                p_ty.parameters.walk_mut(f);
-            }
-            Ty::UnselectedProjection(p_ty) => {
-                p_ty.parameters.walk_mut(f);
-            }
-            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
-                let mut v: Vec<_> = predicates.iter().cloned().collect();
-                for p in &mut v {
-                    p.walk_mut(f);
-                }
-                *predicates = v.into();
-            }
-            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
-        }
-        f(self);
-    }
-
-    fn fold(mut self, f: &mut impl FnMut(Ty) -> Ty) -> Ty {
-        self.walk_mut(&mut |ty_mut| {
-            let ty = mem::replace(ty_mut, Ty::Unknown);
-            *ty_mut = f(ty);
-        });
-        self
     }
 
     pub fn as_reference(&self) -> Option<(&Ty, Mutability)> {
@@ -544,26 +524,6 @@ impl Ty {
         }
     }
 
-    /// Replaces type parameters in this type using the given `Substs`. (So e.g.
-    /// if `self` is `&[T]`, where type parameter T has index 0, and the
-    /// `Substs` contain `u32` at index 0, we'll have `&[u32]` afterwards.)
-    pub fn subst(self, substs: &Substs) -> Ty {
-        self.fold(&mut |ty| match ty {
-            Ty::Param { idx, name } => {
-                substs.get(idx as usize).cloned().unwrap_or(Ty::Param { idx, name })
-            }
-            ty => ty,
-        })
-    }
-
-    /// Substitutes `Ty::Bound` vars (as opposed to type parameters).
-    pub fn subst_bound_vars(self, substs: &Substs) -> Ty {
-        self.fold(&mut |ty| match ty {
-            Ty::Bound(idx) => substs.get(idx as usize).cloned().unwrap_or_else(|| Ty::Bound(idx)),
-            ty => ty,
-        })
-    }
-
     /// Returns the type parameters of this type if it has some (i.e. is an ADT
     /// or function); so if `self` is `Option<u32>`, this returns the `u32`.
     pub fn substs(&self) -> Option<Substs> {
@@ -571,17 +531,6 @@ impl Ty {
             Ty::Apply(ApplicationTy { parameters, .. }) => Some(parameters.clone()),
             _ => None,
         }
-    }
-
-    /// Shifts up `Ty::Bound` vars by `n`.
-    pub fn shift_bound_vars(self, n: i32) -> Ty {
-        self.fold(&mut |ty| match ty {
-            Ty::Bound(idx) => {
-                assert!(idx as i32 >= -n);
-                Ty::Bound((idx as i32 + n) as u32)
-            }
-            ty => ty,
-        })
     }
 
     /// If this is an `impl Trait` or `dyn Trait`, returns that trait.
@@ -595,6 +544,116 @@ impl Ty {
             }
             _ => None,
         }
+    }
+}
+
+/// This allows walking structures that contain types to do something with those
+/// types, similar to Chalk's `Fold` trait.
+pub trait TypeWalk {
+    fn walk(&self, f: &mut impl FnMut(&Ty));
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty));
+
+    fn fold(mut self, f: &mut impl FnMut(Ty) -> Ty) -> Self
+    where
+        Self: Sized,
+    {
+        self.walk_mut(&mut |ty_mut| {
+            let ty = mem::replace(ty_mut, Ty::Unknown);
+            *ty_mut = f(ty);
+        });
+        self
+    }
+
+    /// Replaces type parameters in this type using the given `Substs`. (So e.g.
+    /// if `self` is `&[T]`, where type parameter T has index 0, and the
+    /// `Substs` contain `u32` at index 0, we'll have `&[u32]` afterwards.)
+    fn subst(self, substs: &Substs) -> Self
+    where
+        Self: Sized,
+    {
+        self.fold(&mut |ty| match ty {
+            Ty::Param { idx, name } => {
+                substs.get(idx as usize).cloned().unwrap_or(Ty::Param { idx, name })
+            }
+            ty => ty,
+        })
+    }
+
+    /// Substitutes `Ty::Bound` vars (as opposed to type parameters).
+    fn subst_bound_vars(self, substs: &Substs) -> Self
+    where
+        Self: Sized,
+    {
+        self.fold(&mut |ty| match ty {
+            Ty::Bound(idx) => substs.get(idx as usize).cloned().unwrap_or_else(|| Ty::Bound(idx)),
+            ty => ty,
+        })
+    }
+
+    /// Shifts up `Ty::Bound` vars by `n`.
+    fn shift_bound_vars(self, n: i32) -> Self
+    where
+        Self: Sized,
+    {
+        self.fold(&mut |ty| match ty {
+            Ty::Bound(idx) => {
+                assert!(idx as i32 >= -n);
+                Ty::Bound((idx as i32 + n) as u32)
+            }
+            ty => ty,
+        })
+    }
+}
+
+impl TypeWalk for Ty {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        match self {
+            Ty::Apply(a_ty) => {
+                for t in a_ty.parameters.iter() {
+                    t.walk(f);
+                }
+            }
+            Ty::Projection(p_ty) => {
+                for t in p_ty.parameters.iter() {
+                    t.walk(f);
+                }
+            }
+            Ty::UnselectedProjection(p_ty) => {
+                for t in p_ty.parameters.iter() {
+                    t.walk(f);
+                }
+            }
+            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+                for p in predicates.iter() {
+                    p.walk(f);
+                }
+            }
+            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
+        }
+        f(self);
+    }
+
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        match self {
+            Ty::Apply(a_ty) => {
+                a_ty.parameters.walk_mut(f);
+            }
+            Ty::Projection(p_ty) => {
+                p_ty.parameters.walk_mut(f);
+            }
+            Ty::UnselectedProjection(p_ty) => {
+                p_ty.parameters.walk_mut(f);
+            }
+            Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
+                let mut v: Vec<_> = predicates.iter().cloned().collect();
+                for p in &mut v {
+                    p.walk_mut(f);
+                }
+                *predicates = v.into();
+            }
+            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
+        }
+        f(self);
     }
 }
 
@@ -742,20 +801,66 @@ impl HirDisplay for Ty {
                     Ty::Opaque(_) => write!(f, "impl ")?,
                     _ => unreachable!(),
                 };
-                // looping by hand here just to format the bounds in a slightly nicer way
+                // Note: This code is written to produce nice results (i.e.
+                // corresponding to surface Rust) for types that can occur in
+                // actual Rust. It will have weird results if the predicates
+                // aren't as expected (i.e. self types = $0, projection
+                // predicates for a certain trait come after the Implemented
+                // predicate for that trait).
                 let mut first = true;
+                let mut angle_open = false;
                 for p in predicates.iter() {
-                    if !first {
-                        write!(f, " + ")?;
+                    match p {
+                        GenericPredicate::Implemented(trait_ref) => {
+                            if angle_open {
+                                write!(f, ">")?;
+                            }
+                            if !first {
+                                write!(f, " + ")?;
+                            }
+                            // We assume that the self type is $0 (i.e. the
+                            // existential) here, which is the only thing that's
+                            // possible in actual Rust, and hence don't print it
+                            write!(
+                                f,
+                                "{}",
+                                trait_ref.trait_.name(f.db).unwrap_or_else(Name::missing)
+                            )?;
+                            if trait_ref.substs.len() > 1 {
+                                write!(f, "<")?;
+                                f.write_joined(&trait_ref.substs[1..], ", ")?;
+                                // there might be assoc type bindings, so we leave the angle brackets open
+                                angle_open = true;
+                            }
+                        }
+                        GenericPredicate::Projection(projection_pred) => {
+                            // in types in actual Rust, these will always come
+                            // after the corresponding Implemented predicate
+                            if angle_open {
+                                write!(f, ", ")?;
+                            } else {
+                                write!(f, "<")?;
+                                angle_open = true;
+                            }
+                            let name = projection_pred.projection_ty.associated_ty.name(f.db);
+                            write!(f, "{} = ", name)?;
+                            projection_pred.ty.hir_fmt(f)?;
+                        }
+                        GenericPredicate::Error => {
+                            if angle_open {
+                                // impl Trait<X, {error}>
+                                write!(f, ", ")?;
+                            } else if !first {
+                                // impl Trait + {error}
+                                write!(f, " + ")?;
+                            }
+                            p.hir_fmt(f)?;
+                        }
                     }
                     first = false;
-                    match p {
-                        // don't show the $0 self type
-                        GenericPredicate::Implemented(trait_ref) => {
-                            trait_ref.hir_fmt_ext(f, false)?
-                        }
-                        GenericPredicate::Error => p.hir_fmt(f)?,
-                    }
+                }
+                if angle_open {
+                    write!(f, ">")?;
                 }
             }
             Ty::Unknown => write!(f, "{{unknown}}")?,
@@ -766,13 +871,12 @@ impl HirDisplay for Ty {
 }
 
 impl TraitRef {
-    fn hir_fmt_ext(
-        &self,
-        f: &mut HirFormatter<impl HirDatabase>,
-        with_self_ty: bool,
-    ) -> fmt::Result {
-        if with_self_ty {
-            write!(f, "{}: ", self.substs[0].display(f.db),)?;
+    fn hir_fmt_ext(&self, f: &mut HirFormatter<impl HirDatabase>, use_as: bool) -> fmt::Result {
+        self.substs[0].hir_fmt(f)?;
+        if use_as {
+            write!(f, " as ")?;
+        } else {
+            write!(f, ": ")?;
         }
         write!(f, "{}", self.trait_.name(f.db).unwrap_or_else(Name::missing))?;
         if self.substs.len() > 1 {
@@ -786,7 +890,7 @@ impl TraitRef {
 
 impl HirDisplay for TraitRef {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
-        self.hir_fmt_ext(f, true)
+        self.hir_fmt_ext(f, false)
     }
 }
 
@@ -800,6 +904,16 @@ impl HirDisplay for GenericPredicate {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
+            GenericPredicate::Projection(projection_pred) => {
+                write!(f, "<")?;
+                projection_pred.projection_ty.trait_ref(f.db).hir_fmt_ext(f, true)?;
+                write!(
+                    f,
+                    ">::{} = {}",
+                    projection_pred.projection_ty.associated_ty.name(f.db),
+                    projection_pred.ty.display(f.db)
+                )?;
+            }
             GenericPredicate::Error => write!(f, "{{error}}")?,
         }
         Ok(())
