@@ -102,10 +102,10 @@ fn enforce_impl_params_are_constrained(
     if impl_self_ty.references_error() {
         // Don't complain about unconstrained type params when self ty isn't known due to errors.
         // (#36836)
-        tcx.sess.delay_span_bug(tcx.def_span(impl_def_id), &format(
-            "potentially unconstrained type parameters weren't evaluated on `{:?}`",
-            impl_self_ty,
-        ));
+        tcx.sess.delay_span_bug(
+            tcx.def_span(impl_def_id),
+            "potentially unconstrained type parameters weren't evaluated",
+        );
         return;
     }
     let impl_generics = tcx.generics_of(impl_def_id);
