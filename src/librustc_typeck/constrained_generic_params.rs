@@ -36,8 +36,8 @@ pub fn parameters_for_impl<'tcx>(
 /// uniquely determined by `t` (see RFC 447). If it is true, return the list
 /// of parameters whose values are needed in order to constrain `ty` - these
 /// differ, with the latter being a superset, in the presence of projections.
-pub fn parameters_for<'tcx, T: TypeFoldable<'tcx>>(
-    t: &T,
+pub fn parameters_for<'tcx>(
+    t: &impl TypeFoldable<'tcx>,
     include_nonconstraining: bool,
 ) -> Vec<Parameter> {
     let mut collector = ParameterCollector {
