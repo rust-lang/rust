@@ -2403,6 +2403,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
+    pub fn mk_lang_item(self, ty: Ty<'tcx>, item: lang_items::LangItem)  -> Ty<'tcx> {
+        let def_id = self.require_lang_item(item, None);
+        self.mk_generic_adt(def_id, ty)
+    }
+
+    #[inline]
     pub fn mk_maybe_uninit(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::MaybeUninitLangItem, None);
         self.mk_generic_adt(def_id, ty)

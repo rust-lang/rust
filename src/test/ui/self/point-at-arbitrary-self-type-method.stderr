@@ -1,0 +1,15 @@
+error[E0599]: no method named `foo` found for type `A` in the current scope
+  --> $DIR/point-at-arbitrary-self-type-method.rs:8:7
+   |
+LL | struct A;
+   | --------- method `foo` not found for this
+...
+LL |     fn foo(self: Box<Self>) {}
+   |        --- the method is available for `std::boxed::Box<A>` here
+...
+LL |     A.foo();
+   |       ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

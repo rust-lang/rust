@@ -3580,7 +3580,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     SelfSource::QPath(qself),
                     error,
                     None,
-                );
+                ).map(|mut e| e.emit());
             }
             result
         });
