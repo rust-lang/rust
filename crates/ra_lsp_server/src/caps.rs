@@ -43,6 +43,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         rename_provider: Some(RenameProviderCapability::Options(RenameOptions {
             prepare_provider: Some(true),
         })),
+        document_link_provider: None,
         color_provider: None,
         execute_command_provider: None,
         workspace: None,
