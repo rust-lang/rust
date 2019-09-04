@@ -5,7 +5,8 @@ use std::ops::FnMut;
 fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
 
 fn call_it<F:FnMut(isize,isize)->isize>(y: isize, mut f: F) -> isize {
-//~^ NOTE required by `call_it`
+//~^ NOTE required by this bound in `call_it`
+//~| NOTE
     f(2, y)
 }
 

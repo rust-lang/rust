@@ -2,7 +2,7 @@ error[E0277]: the trait bound `dyn Foo<(isize,), isize, Output = ()>: Eq<dyn Foo
   --> $DIR/unboxed-closure-sugar-default.rs:21:5
    |
 LL | fn eq<A: ?Sized,B: ?Sized>() where A : Eq<B> { }
-   | -------------------------------------------- required by `eq`
+   |    --                                  ----- required by this bound in `eq`
 ...
 LL |     eq::<dyn Foo<(isize,), isize, Output=()>, dyn Foo(isize)>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Eq<dyn Foo<(isize,), Output = ()>>` is not implemented for `dyn Foo<(isize,), isize, Output = ()>`

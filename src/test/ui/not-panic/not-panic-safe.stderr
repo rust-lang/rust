@@ -2,7 +2,7 @@ error[E0277]: the type `&mut i32` may not be safely transferred across an unwind
   --> $DIR/not-panic-safe.rs:9:5
    |
 LL | fn assert<T: UnwindSafe + ?Sized>() {}
-   | ----------------------------------- required by `assert`
+   |    ------    ---------- required by this bound in `assert`
 ...
 LL |     assert::<&mut i32>();
    |     ^^^^^^^^^^^^^^^^^^ `&mut i32` may not be safely transferred across an unwind boundary

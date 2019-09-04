@@ -1,13 +1,13 @@
 error[E0271]: type mismatch resolving `for<'a> <&'a _ as Mirror>::Image == _`
   --> $DIR/higher-ranked-projection.rs:25:5
    |
-LL | / fn foo<U, T>(_t: T)
-LL | |     where for<'a> &'a T: Mirror<Image=U>
-LL | | {}
-   | |__- required by `foo`
+LL | fn foo<U, T>(_t: T)
+   |    ---
+LL |     where for<'a> &'a T: Mirror<Image=U>
+   |                                 ------- required by this bound in `foo`
 ...
-LL |       foo(());
-   |       ^^^ expected bound lifetime parameter 'a, found concrete lifetime
+LL |     foo(());
+   |     ^^^ expected bound lifetime parameter 'a, found concrete lifetime
 
 error: aborting due to previous error
 
