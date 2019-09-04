@@ -67,9 +67,7 @@ use macros::{LegacyBinding, LegacyScope};
 
 type Res = def::Res<NodeId>;
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
-mod error_codes;
+pub mod error_codes;
 mod diagnostics;
 mod late;
 mod macros;
@@ -2817,5 +2815,3 @@ impl CrateLint {
         }
     }
 }
-
-__build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }

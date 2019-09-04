@@ -8,7 +8,6 @@ use crate::parse::parser::Parser;
 use crate::parse::parser::emit_unclosed_delims;
 use crate::parse::token::TokenKind;
 use crate::tokenstream::{TokenStream, TokenTree};
-use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust;
 use crate::symbol::Symbol;
 
@@ -64,8 +63,6 @@ pub struct ParseSess {
     pub missing_fragment_specifiers: Lock<FxHashSet<Span>>,
     /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
     pub raw_identifier_spans: Lock<Vec<Span>>,
-    /// The registered diagnostics codes.
-    crate registered_diagnostics: Lock<ErrorMap>,
     /// Used to determine and report recursive module inclusions.
     included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
@@ -95,7 +92,6 @@ impl ParseSess {
             config: FxHashSet::default(),
             missing_fragment_specifiers: Lock::new(FxHashSet::default()),
             raw_identifier_spans: Lock::new(Vec::new()),
-            registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),

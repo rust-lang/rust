@@ -1,6 +1,6 @@
 // ignore-tidy-filelength
 
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 
 E0023: r##"
 A pattern used to match against an enum variant must provide a sub-pattern for
@@ -4870,10 +4870,7 @@ fn foo_recursive(n: usize) -> Pin<Box<dyn Future<Output = ()>>> {
 The `Box<...>` ensures that the result is of known size,
 and the pin is required to keep it in the same place in memory.
 "##,
-
-}  // (end of detailed error messages)
-
-register_diagnostics! {
+;
 //  E0035, merged into E0087/E0089
 //  E0036, merged into E0087/E0089
 //  E0068,

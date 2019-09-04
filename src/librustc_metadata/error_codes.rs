@@ -1,6 +1,4 @@
-use syntax::{register_diagnostics, register_long_diagnostics};
-
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 E0454: r##"
 A link name was given with an empty name. Erroneous code example:
 
@@ -84,10 +82,7 @@ You need to link your code to the relevant crate in order to be able to use it
 (through Cargo or the `-L` option of rustc example). Plugins are crates as
 well, and you link to them the same way.
 "##,
-
-}
-
-register_diagnostics! {
+;
     E0456, // plugin `..` is not available for triple `..`
     E0457, // plugin `..` only found in rlib format, but must be available...
     E0514, // metadata version mismatch

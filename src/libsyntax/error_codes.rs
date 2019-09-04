@@ -421,9 +421,8 @@ Delete the offending feature attribute, or add it to the list of allowed
 features in the `-Z allow_features` flag.
 "##,
 
-}
+;
 
-register_diagnostics! {
     E0539, // incorrect meta item
     E0540, // multiple rustc_deprecated attributes
     E0542, // missing 'since'
@@ -447,7 +446,7 @@ register_diagnostics! {
     // attribute
     E0630,
     E0693, // incorrect `repr(align)` attribute format
-    E0694, // an unknown tool name found in scoped attributes
+//  E0694, // an unknown tool name found in scoped attributes
     E0703, // invalid ABI
     E0717, // rustc_promotable without stability attribute
 }

@@ -60,9 +60,7 @@
 
 pub use registry::Registry;
 
-mod error_codes;
+pub mod error_codes;
 pub mod registry;
 pub mod load;
 pub mod build;
-
-__build_diagnostic_array! { librustc_plugin, DIAGNOSTICS }

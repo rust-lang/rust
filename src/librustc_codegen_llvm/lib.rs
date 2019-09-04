@@ -256,7 +256,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn diagnostics(&self) -> &[(&'static str, &'static str)] {
-        &DIAGNOSTICS
+        &error_codes::DIAGNOSTICS
     }
 
     fn target_features(&self, sess: &Session) -> Vec<Symbol> {
@@ -425,5 +425,3 @@ impl Drop for ModuleLlvm {
         }
     }
 }
-
-__build_diagnostic_array! { librustc_codegen_llvm, DIAGNOSTICS }

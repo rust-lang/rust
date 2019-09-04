@@ -123,11 +123,8 @@ scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
 pub mod diagnostics {
     #[macro_use]
     pub mod macros;
-    pub mod plugin;
 }
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
 pub mod error_codes;
 
 pub mod util {
@@ -182,5 +179,3 @@ pub mod ext {
 }
 
 pub mod early_buffered_lints;
-
-__build_diagnostic_array! { libsyntax, DIAGNOSTICS }

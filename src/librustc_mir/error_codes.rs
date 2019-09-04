@@ -1,4 +1,4 @@
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 
 
 E0001: r##"
@@ -2448,9 +2448,9 @@ information.
 
 There are some known bugs that trigger this message.
 "##,
-}
 
-register_diagnostics! {
+;
+
 //  E0298, // cannot compare constants
 //  E0299, // mismatched types between arms
 //  E0471, // constant evaluation error (in pattern)

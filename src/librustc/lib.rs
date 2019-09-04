@@ -88,8 +88,6 @@ mod tests;
 #[macro_use]
 mod macros;
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
 pub mod error_codes;
 
 #[macro_use]
@@ -143,6 +141,3 @@ pub mod util {
 
 // Allows macros to refer to this crate as `::rustc`
 extern crate self as rustc;
-
-// Build the diagnostics array at the end so that the metadata includes error use sites.
-__build_diagnostic_array! { librustc, DIAGNOSTICS }

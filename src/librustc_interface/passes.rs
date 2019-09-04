@@ -34,7 +34,7 @@ use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
 use rustc_typeck as typeck;
-use syntax::{self, ast, diagnostics, visit};
+use syntax::{self, ast, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::{NamedSyntaxExtension, ExtCtxt};
 use syntax::mut_visit::MutVisitor;
@@ -292,18 +292,7 @@ pub fn register_plugins<'a>(
 
     time(sess, "plugin registration", || {
         if sess.features_untracked().rustc_diagnostic_macros {
-            registry.register_macro(
-                "__diagnostic_used",
-                diagnostics::plugin::expand_diagnostic_used,
-            );
-            registry.register_macro(
-                "__register_diagnostic",
-                diagnostics::plugin::expand_register_diagnostic,
-            );
-            registry.register_macro(
-                "__build_diagnostic_array",
-                diagnostics::plugin::expand_build_diagnostic_array,
-            );
+            // FIXME: remove feature gate
         }
 
         for registrar in registrars {
