@@ -15,7 +15,7 @@ use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::hir_ty_to_ty;
-use syntax::ast::{FloatTy, IntTy, UintTy};
+use syntax::ast::{FloatTy, IntTy, LitIntType, LitKind, UintTy};
 use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
 use syntax::symbol::sym;
@@ -1122,7 +1122,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
             if let ExprKind::Lit(ref lit) = ex.node {
-                use syntax::ast::{LitIntType, LitKind};
                 if let LitKind::Int(n, _) = lit.node {
                     if cast_to.is_floating_point() {
                         let from_nbits = 128 - n.leading_zeros();
@@ -1487,29 +1486,40 @@ declare_clippy_lint! {
     /// ```
     pub CHAR_LIT_AS_U8,
     complexity,
-    "casting a character literal to u8"
+    "casting a character literal to u8 truncates"
 }
 
 declare_lint_pass!(CharLitAsU8 => [CHAR_LIT_AS_U8]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        use syntax::ast::LitKind;
+        if_chain! {
+            if !expr.span.from_expansion();
+            if let ExprKind::Cast(e, _) = &expr.node;
+            if let ExprKind::Lit(l) = &e.node;
+            if let LitKind::Char(c) = l.node;
+            if ty::Uint(UintTy::U8) == cx.tables.expr_ty(expr).sty;
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                let snippet = snippet_with_applicability(cx, e.span, "'x'", &mut applicability);
 
-        if let ExprKind::Cast(ref e, _) = expr.node {
-            if let ExprKind::Lit(ref l) = e.node {
-                if let LitKind::Char(_) = l.node {
-                    if ty::Uint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !expr.span.from_expansion() {
-                        let msg = "casting character literal to u8. `char`s \
-                                   are 4 bytes wide in rust, so casting to u8 \
-                                   truncates them";
-                        let help = format!(
-                            "Consider using a byte literal instead:\nb{}",
-                            snippet(cx, e.span, "'x'")
-                        );
-                        span_help_and_lint(cx, CHAR_LIT_AS_U8, expr.span, msg, &help);
-                    }
-                }
+                span_lint_and_then(
+                    cx,
+                    CHAR_LIT_AS_U8,
+                    expr.span,
+                    "casting a character literal to `u8` truncates",
+                    |db| {
+                        db.note("`char` is four bytes wide, but `u8` is a single byte");
+
+                        if c.is_ascii() {
+                            db.span_suggestion(
+                                expr.span,
+                                "use a byte literal instead",
+                                format!("b{}", snippet),
+                                applicability,
+                            );
+                        }
+                });
             }
         }
     }

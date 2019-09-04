@@ -171,7 +171,7 @@ pub const ALL_LINTS: [Lint; 313] = [
     Lint {
         name: "char_lit_as_u8",
         group: "complexity",
-        desc: "casting a character literal to u8",
+        desc: "casting a character literal to u8 truncates",
         deprecation: None,
         module: "types",
     },
