@@ -333,10 +333,12 @@ pub fn expected_output_path(
     testpaths.file.with_extension(extension)
 }
 
-pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED];
+pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
 pub const UI_FIXED: &str = "fixed";
+pub const UI_RUN_STDERR: &str = "run.stderr";
+pub const UI_RUN_STDOUT: &str = "run.stdout";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:

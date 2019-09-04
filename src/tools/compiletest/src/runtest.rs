@@ -2,6 +2,7 @@
 
 use crate::common::{CompareMode, PassMode};
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
+use crate::common::{UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};
 use crate::common::{Codegen, CodegenUnits, Rustdoc};
 use crate::common::{DebugInfoCdb, DebugInfoGdbLldb, DebugInfoGdb, DebugInfoLldb};
@@ -286,6 +287,11 @@ struct DebuggerCommands {
 enum ReadFrom {
     Path,
     Stdin(String),
+}
+
+enum TestOutput {
+    Compile,
+    Run,
 }
 
 impl<'test> TestCx<'test> {
@@ -2930,6 +2936,61 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn load_compare_outputs(&self, proc_res: &ProcRes,
+        output_kind: TestOutput, explicit_format: bool) -> usize {
+
+        let (stderr_kind, stdout_kind) = match output_kind {
+            TestOutput::Compile => (UI_STDERR, UI_STDOUT),
+            TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT)
+        };
+
+        let expected_stderr = self.load_expected_output(stderr_kind);
+        let expected_stdout = self.load_expected_output(stdout_kind);
+
+        let normalized_stdout = match output_kind {
+            TestOutput::Run if self.config.remote_test_client.is_some() => {
+                // When tests are run using the remote-test-client, the string
+                // 'uploaded "$TEST_BUILD_DIR/<test_executable>, waiting for result"'
+                // is printed to stdout by the client and then captured in the ProcRes,
+                // so it needs to be removed when comparing the run-pass test execution output
+                lazy_static! {
+                    static ref REMOTE_TEST_RE: Regex = Regex::new(
+                        "^uploaded \"\\$TEST_BUILD_DIR(/[[:alnum:]_\\-]+)+\", waiting for result\n"
+                    ).unwrap();
+                }
+                REMOTE_TEST_RE.replace(
+                    &self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout),
+                    ""
+                ).to_string()
+            }
+            _ => self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout)
+        };
+
+        let stderr = if explicit_format {
+            proc_res.stderr.clone()
+        } else {
+            json::extract_rendered(&proc_res.stderr)
+        };
+
+        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
+        let mut errors = 0;
+        match output_kind {
+            TestOutput::Compile => {
+                if !self.props.dont_check_compiler_stdout {
+                    errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
+                }
+                if !self.props.dont_check_compiler_stderr {
+                    errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+                }
+            }
+            TestOutput::Run => {
+                errors += self.compare_output(stdout_kind, &normalized_stdout, &expected_stdout);
+                errors += self.compare_output(stderr_kind, &normalized_stderr, &expected_stderr);
+            }
+        }
+        errors
+    }
+
     fn run_ui_test(&self) {
         // if the user specified a format in the ui test
         // print the output to the stderr file, otherwise extract
@@ -2942,31 +3003,12 @@ impl<'test> TestCx<'test> {
         let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
 
-        let expected_stderr = self.load_expected_output(UI_STDERR);
-        let expected_stdout = self.load_expected_output(UI_STDOUT);
         let expected_fixed = self.load_expected_output(UI_FIXED);
-
-        let normalized_stdout =
-            self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
-
-        let stderr = if explicit {
-            proc_res.stderr.clone()
-        } else {
-            json::extract_rendered(&proc_res.stderr)
-        };
-
-        let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
-
-        let mut errors = 0;
-        if !self.props.dont_check_compiler_stdout {
-            errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
-        }
-        if !self.props.dont_check_compiler_stderr {
-            errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
-        }
 
         let modes_to_prune = vec![CompareMode::Nll];
         self.prune_duplicate_outputs(&modes_to_prune);
+
+        let mut errors = self.load_compare_outputs(&proc_res, TestOutput::Compile, explicit);
 
         if self.config.compare_mode.is_some() {
             // don't test rustfix with nll right now
@@ -3045,7 +3087,17 @@ impl<'test> TestCx<'test> {
 
         if self.should_run_successfully() {
             let proc_res = self.exec_compiled_test();
-
+            let run_output_errors = if self.props.check_run_results {
+                self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
+            } else {
+                0
+            };
+            if run_output_errors > 0 {
+                self.fatal_proc_rec(
+                    &format!("{} errors occured comparing run output.", run_output_errors),
+                    &proc_res,
+                );
+            }
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }

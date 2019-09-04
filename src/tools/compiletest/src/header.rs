@@ -137,6 +137,11 @@ impl EarlyProps {
                    config.parse_needs_sanitizer_support(ln) {
                     props.ignore = Ignore::Ignore;
                 }
+
+                if config.target == "wasm32-unknown-unknown" && config.parse_check_run_results(ln) {
+                    props.ignore = Ignore::Ignore;
+                }
+
             }
 
             if (config.mode == common::DebugInfoGdb || config.mode == common::DebugInfoGdbLldb) &&
@@ -326,6 +331,8 @@ pub struct TestProps {
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
     pub check_stdout: bool,
+    // Check stdout & stderr for output of run-pass test
+    pub check_run_results: bool,
     // For UI tests, allows compiler to generate arbitrary output to stdout
     pub dont_check_compiler_stdout: bool,
     // For UI tests, allows compiler to generate arbitrary output to stderr
@@ -388,6 +395,7 @@ impl TestProps {
             build_aux_docs: false,
             force_host: false,
             check_stdout: false,
+            check_run_results: false,
             dont_check_compiler_stdout: false,
             dont_check_compiler_stderr: false,
             no_prefer_dynamic: false,
@@ -466,6 +474,10 @@ impl TestProps {
 
             if !self.check_stdout {
                 self.check_stdout = config.parse_check_stdout(ln);
+            }
+
+            if !self.check_run_results {
+                self.check_run_results = config.parse_check_run_results(ln);
             }
 
             if !self.dont_check_compiler_stdout {
@@ -710,6 +722,10 @@ impl Config {
 
     fn parse_check_stdout(&self, line: &str) -> bool {
         self.parse_name_directive(line, "check-stdout")
+    }
+
+    fn parse_check_run_results(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "check-run-results")
     }
 
     fn parse_dont_check_compiler_stdout(&self, line: &str) -> bool {
