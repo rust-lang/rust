@@ -6,14 +6,14 @@ use std::cell::Cell;
 use rustc::hir::def::DefKind;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue,
-    Local, NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
-    TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp, ProjectionElem,
+    Local, NullOp, UnOp, StatementKind, Statement, LocalKind,
+    TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp,
     SourceScope, SourceScopeLocalData, LocalDecl,
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
 };
-use rustc::mir::interpret::{Scalar, GlobalId, InterpResult, PanicInfo};
+use rustc::mir::interpret::{Scalar, InterpResult, PanicInfo};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
@@ -282,53 +282,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {
         trace!("eval_place(place={:?})", place);
-        let mut eval = match place.base {
-            PlaceBase::Local(loc) => self.get_const(loc).clone()?,
-            PlaceBase::Static(box Static {kind: StaticKind::Promoted(promoted, _), ..}) => {
-                let generics = self.tcx.generics_of(self.source.def_id());
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
-                }
-                let substs = InternalSubsts::identity_for_item(self.tcx, self.source.def_id());
-                let instance = Instance::new(self.source.def_id(), substs);
-                let cid = GlobalId {
-                    instance,
-                    promoted: Some(promoted),
-                };
-                let res = self.use_ecx(source_info, |this| {
-                    this.ecx.const_eval_raw(cid)
-                })?;
-                trace!("evaluated promoted {:?} to {:?}", promoted, res);
-                res.into()
-            }
-            _ => return None,
-        };
-
-        for (i, elem) in place.projection.iter().enumerate() {
-            let proj_base = &place.projection[..i];
-
-            match elem {
-                ProjectionElem::Field(field, _) => {
-                    trace!("field proj on {:?}", proj_base);
-                    eval = self.use_ecx(source_info, |this| {
-                        this.ecx.operand_field(eval, field.index() as u64)
-                    })?;
-                },
-                ProjectionElem::Deref => {
-                    trace!("processing deref");
-                    eval = self.use_ecx(source_info, |this| {
-                        this.ecx.deref_operand(eval)
-                    })?.into();
-                }
-                // We could get more projections by using e.g., `operand_projection`,
-                // but we do not even have the stack frame set up properly so
-                // an `Index` projection would throw us off-track.
-                _ => return None,
-            }
-        }
-
-        Some(eval)
+        self.use_ecx(source_info, |this| {
+            this.ecx.eval_place_to_op(place, None)
+        })
     }
 
     fn eval_operand(&mut self, op: &Operand<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {

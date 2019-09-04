@@ -393,6 +393,7 @@ pub enum UnsupportedOpInfo<'tcx> {
     InvalidPointerMath,
     ReadUndefBytes(Size),
     DeadLocal,
+    UninitializedLocal,
     InvalidBoolOp(mir::BinOp),
     UnimplementedTraitSelection,
     CalledClosureAsFunction,
@@ -420,6 +421,7 @@ pub enum UnsupportedOpInfo<'tcx> {
     HeapAllocNonPowerOfTwoAlignment(u64),
     ReadFromReturnPointer,
     PathNotFound(Vec<String>),
+    ReadOfStaticInConst,
 }
 
 impl fmt::Debug for UnsupportedOpInfo<'tcx> {
@@ -491,6 +493,8 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     addresses, e.g., comparing pointers into different allocations"),
             DeadLocal =>
                 write!(f, "tried to access a dead local variable"),
+            UninitializedLocal =>
+                write!(f, "tried to access an uninitialized local variable"),
             DerefFunctionPointer =>
                 write!(f, "tried to dereference a function pointer"),
             ExecuteMemory =>
@@ -532,6 +536,8 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     not a power of two"),
             Unsupported(ref msg) =>
                 write!(f, "{}", msg),
+            ReadOfStaticInConst =>
+                write!(f, "tried to read from a static during const evaluation"),
         }
     }
 }

@@ -470,7 +470,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
     // avoid allocations.
-    pub(super) fn eval_place_to_op(
+    pub fn eval_place_to_op(
         &self,
         place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
