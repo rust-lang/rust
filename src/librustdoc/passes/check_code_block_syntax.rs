@@ -81,7 +81,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
                 // We couldn't calculate the span of the markdown block that had the error, so our
                 // diagnostics are going to be a bit lacking.
                 let mut diag = self.cx.sess().struct_span_warn(
-                    super::span_of_attrs(&item.attrs),
+                    super::span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
                     "doc comment contains an invalid Rust code block",
                 );
 
