@@ -1,4 +1,3 @@
-use rustc_lexer::character_properties::is_whitespace;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Body};
@@ -715,7 +714,7 @@ fn annotate_struct_field(
 fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<String> {
     let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).ok()?;
     if hi_src.starts_with("ref")
-        && hi_src["ref".len()..].starts_with(is_whitespace)
+        && hi_src["ref".len()..].starts_with(rustc_lexer::is_whitespace)
     {
         let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
         Some(replacement)

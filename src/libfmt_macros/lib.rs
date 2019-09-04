@@ -23,7 +23,6 @@ use std::string;
 use std::iter;
 
 use syntax_pos::{InnerSpan, Symbol};
-use rustc_lexer::character_properties::{is_id_start, is_id_continue};
 
 #[derive(Copy, Clone)]
 struct InnerOffset(usize);
@@ -602,7 +601,7 @@ impl<'a> Parser<'a> {
     /// Rust identifier, except that it can't start with `_` character.
     fn word(&mut self) -> &'a str {
         let start = match self.cur.peek() {
-            Some(&(pos, c)) if c != '_' && is_id_start(c) => {
+            Some(&(pos, c)) if c != '_' && rustc_lexer::is_id_start(c) => {
                 self.cur.next();
                 pos
             }
@@ -611,7 +610,7 @@ impl<'a> Parser<'a> {
             }
         };
         while let Some(&(pos, c)) = self.cur.peek() {
-            if is_id_continue(c) {
+            if rustc_lexer::is_id_continue(c) {
                 self.cur.next();
             } else {
                 return &self.input[start..pos];
