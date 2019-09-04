@@ -875,6 +875,28 @@ impl<'a> Builder<'a> {
             extra_args.push_str("-Zforce-unstable-if-unmarked");
         }
 
+        match mode {
+            Mode::ToolStd { in_tree: true } |
+            Mode::ToolRustc { in_tree: true } |
+            Mode::ToolBootstrap { in_tree: true } |
+            Mode::Std |
+            Mode::Rustc |
+            Mode::Codegen => {
+                // When extending this list, add the new lints to the RUSTFLAGS of the
+                // build_bootstrap function of src/bootstrap/bootstrap.py as well as
+                // some code doesn't go through this `rustc` wrapper.
+                extra_args.push_str(" -Wrust_2018_idioms");
+                extra_args.push_str(" -Wunused_lifetimes");
+            }
+            Mode::ToolStd { in_tree: false } |
+            Mode::ToolRustc { in_tree: false } |
+            Mode::ToolBootstrap { in_tree: false } => {}
+        }
+
+        if self.config.deny_warnings {
+            extra_args.push_str(" -Dwarnings");
+        }
+
         if !extra_args.is_empty() {
             cargo.env(
                 "RUSTFLAGS",
@@ -1037,10 +1059,6 @@ impl<'a> Builder<'a> {
         }
 
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
-
-        if self.config.deny_warnings {
-            cargo.env("RUSTC_DENY_WARNINGS", "1");
-        }
 
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
