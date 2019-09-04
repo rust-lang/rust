@@ -435,6 +435,16 @@ fn f() {
 }
 ```
 
+- Move type bounds to where clause
+
+```rust
+// before:
+fn foo<T: u32, F: FnOnce(T) -> T>() {}
+
+// after:
+fn foo<T, F>() where T: u32, F: FnOnce(T) -> T {}
+```
+
 ### Magic Completions
 
 In addition to usual reference completion, rust-analyzer provides some ✨magic✨
