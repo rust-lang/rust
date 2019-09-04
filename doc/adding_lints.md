@@ -77,7 +77,7 @@ fn main() {
 
 ```
 
-Now we can run the test with `TESTNAME=ui/foo_functions cargo uitest`.
+Now we can run the test with `TESTNAME=foo_functions cargo uitest`.
 Currently this test will fail. If you go through the output you will see that we
 are told that `clippy::foo_functions` is an unknown lint, which is expected.
 
