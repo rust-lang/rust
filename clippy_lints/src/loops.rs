@@ -2003,10 +2003,7 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
 fn is_simple_break_expr(expr: &Expr) -> bool {
     match expr.node {
         ExprKind::Break(dest, ref passed_expr) if dest.label.is_none() && passed_expr.is_none() => true,
-        ExprKind::Block(ref b, _) => match extract_first_expr(b) {
-            Some(subexpr) => is_simple_break_expr(subexpr),
-            None => false,
-        },
+        ExprKind::Block(ref b, _) => extract_first_expr(b).map_or(false, |subexpr| is_simple_break_expr(subexpr)),
         _ => false,
     }
 }

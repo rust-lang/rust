@@ -398,10 +398,9 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 
 /// Returns `true` if the provided `def_id` is an entrypoint to a program.
 pub fn is_entrypoint_fn(cx: &LateContext<'_, '_>, def_id: DefId) -> bool {
-    if let Some((entry_fn_def_id, _)) = cx.tcx.entry_fn(LOCAL_CRATE) {
-        return def_id == entry_fn_def_id;
-    }
-    false
+    cx.tcx
+        .entry_fn(LOCAL_CRATE)
+        .map_or(false, |(entry_fn_def_id, _)| def_id == entry_fn_def_id)
 }
 
 /// Gets the name of the item the expression is in, if available.

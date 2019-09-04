@@ -44,11 +44,7 @@ fn missing_warning(cx: &EarlyContext<'_>, package: &cargo_metadata::Package, fie
 }
 
 fn is_empty_str(value: &Option<String>) -> bool {
-    match value {
-        None => true,
-        Some(value) if value.is_empty() => true,
-        _ => false,
-    }
+    value.as_ref().map_or(true, String::is_empty)
 }
 
 fn is_empty_vec(value: &[String]) -> bool {

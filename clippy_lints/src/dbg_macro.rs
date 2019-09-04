@@ -59,9 +59,6 @@ impl EarlyLintPass for DbgMacro {
 fn tts_span(tts: TokenStream) -> Option<Span> {
     let mut cursor = tts.into_trees();
     let first = cursor.next()?.span();
-    let span = match cursor.last() {
-        Some(tree) => first.to(tree.span()),
-        None => first,
-    };
+    let span = cursor.last().map_or(first, |tree| first.to(tree.span()));
     Some(span)
 }

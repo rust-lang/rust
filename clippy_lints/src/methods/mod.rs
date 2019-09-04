@@ -2797,10 +2797,9 @@ fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
 
 /// This checks whether a given type is known to implement Debug.
 fn has_debug_impl<'a, 'b>(ty: Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
-    match cx.tcx.get_diagnostic_item(sym::debug_trait) {
-        Some(debug) => implements_trait(cx, ty, debug, &[]),
-        None => false,
-    }
+    cx.tcx
+        .get_diagnostic_item(sym::debug_trait)
+        .map_or(false, |debug| implements_trait(cx, ty, debug, &[]))
 }
 
 enum Convention {
