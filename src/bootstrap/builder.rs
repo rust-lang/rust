@@ -765,7 +765,9 @@ impl<'a> Builder<'a> {
         if cmd == "doc" || cmd == "rustdoc" {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
-                Mode::Rustc | Mode::ToolRustc | Mode::Codegen => self.compiler_doc_out(target),
+                Mode::Rustc | Mode::ToolRustc { .. } | Mode::Codegen => {
+                    self.compiler_doc_out(target)
+                }
                 _ => self.crate_doc_out(target),
             };
             let rustdoc = self.rustdoc(compiler);
@@ -797,8 +799,8 @@ impl<'a> Builder<'a> {
         }
 
         match mode {
-            Mode::Std | Mode::ToolBootstrap | Mode::ToolStd => {},
-            Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {
+            Mode::Std | Mode::ToolBootstrap { .. } | Mode::ToolStd { .. } => {},
+            Mode::Rustc | Mode::Codegen | Mode::ToolRustc { .. } => {
                 // Build proc macros both for the host and the target
                 if target != compiler.host && cmd != "check" {
                     cargo.arg("-Zdual-proc-macros");
@@ -891,7 +893,11 @@ impl<'a> Builder<'a> {
         // the stage0 build means it uses libraries build by the stage0
         // compiler, but for tools we just use the precompiled libraries that
         // we've downloaded
-        let use_snapshot = mode == Mode::ToolBootstrap;
+        let use_snapshot = if let Mode::ToolBootstrap { .. } = mode {
+            true
+        } else {
+            false
+        };
         assert!(!use_snapshot || stage == 0 || self.local_rebuild);
 
         let maybe_sysroot = self.sysroot(compiler);
@@ -944,8 +950,9 @@ impl<'a> Builder<'a> {
         let debuginfo_level = match mode {
             Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
             Mode::Std => self.config.rust_debuginfo_level_std,
-            Mode::ToolBootstrap | Mode::ToolStd |
-            Mode::ToolRustc => self.config.rust_debuginfo_level_tools,
+            Mode::ToolBootstrap { .. } | Mode::ToolStd { .. } | Mode::ToolRustc { .. } => {
+                self.config.rust_debuginfo_level_tools
+            }
         };
         cargo.env("RUSTC_DEBUGINFO_LEVEL", debuginfo_level.to_string());
 

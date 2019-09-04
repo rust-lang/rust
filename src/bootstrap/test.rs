@@ -19,7 +19,7 @@ use crate::compile;
 use crate::dist;
 use crate::flags::Subcommand;
 use crate::native;
-use crate::tool::{self, Tool, SourceType};
+use crate::tool::{self, Tool};
 use crate::toolstate::ToolState;
 use crate::util::{self, dylib_path, dylib_path_var};
 use crate::Crate as CargoCrate;
@@ -213,11 +213,10 @@ impl Step for Cargo {
         });
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::ToolRustc,
+                                                 Mode::ToolRustc { in_tree: false },
                                                  self.host,
                                                  "test",
                                                  "src/tools/cargo",
-                                                 SourceType::Submodule,
                                                  &[]);
 
         if !builder.fail_fast {
@@ -279,11 +278,10 @@ impl Step for Rls {
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::ToolRustc,
+                                                 Mode::ToolRustc { in_tree: false },
                                                  host,
                                                  "test",
                                                  "src/tools/rls",
-                                                 SourceType::Submodule,
                                                  &[]);
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
@@ -335,11 +333,10 @@ impl Step for Rustfmt {
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::ToolRustc,
+                                                 Mode::ToolRustc { in_tree: false },
                                                  host,
                                                  "test",
                                                  "src/tools/rustfmt",
-                                                 SourceType::Submodule,
                                                  &[]);
 
         let dir = testdir(builder, compiler.host);
@@ -392,11 +389,10 @@ impl Step for Miri {
             let mut cargo = tool::prepare_tool_cargo(
                 builder,
                 compiler,
-                Mode::ToolRustc,
+                Mode::ToolRustc { in_tree: false },
                 host,
                 "run",
                 "src/tools/miri",
-                SourceType::Submodule,
                 &[],
             );
             cargo
@@ -451,11 +447,10 @@ impl Step for Miri {
             let mut cargo = tool::prepare_tool_cargo(
                 builder,
                 compiler,
-                Mode::ToolRustc,
+                Mode::ToolRustc { in_tree: false },
                 host,
                 "test",
                 "src/tools/miri",
-                SourceType::Submodule,
                 &[],
             );
 
@@ -504,11 +499,10 @@ impl Step for CompiletestTest {
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::ToolBootstrap,
+                                                 Mode::ToolBootstrap { in_tree: true },
                                                  host,
                                                  "test",
                                                  "src/tools/compiletest",
-                                                 SourceType::InTree,
                                                  &[]);
 
         try_run(builder, &mut cargo);
@@ -551,11 +545,10 @@ impl Step for Clippy {
         if let Some(clippy) = clippy {
             let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::ToolRustc,
+                                                 Mode::ToolRustc { in_tree: false },
                                                  host,
                                                  "test",
                                                  "src/tools/clippy",
-                                                 SourceType::Submodule,
                                                  &[]);
 
             // clippy tests need to know about the stage sysroot
@@ -563,7 +556,7 @@ impl Step for Clippy {
             cargo.env("RUSTC_TEST_SUITE", builder.rustc(compiler));
             cargo.env("RUSTC_LIB_PATH", builder.rustc_libdir(compiler));
             let host_libs = builder
-                .stage_out(compiler, Mode::ToolRustc)
+                .stage_out(compiler, Mode::ToolRustc { in_tree: false })
                 .join(builder.cargo_dir());
             cargo.env("HOST_LIBS", host_libs);
             // clippy tests need to find the driver
@@ -1877,11 +1870,10 @@ impl Step for CrateRustdoc {
 
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::ToolRustc,
+                                                 Mode::ToolRustc { in_tree: true },
                                                  target,
                                                  test_kind.subcommand(),
                                                  "src/tools/rustdoc",
-                                                 SourceType::InTree,
                                                  &[]);
         if test_kind.subcommand() == "test" && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
