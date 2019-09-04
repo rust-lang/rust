@@ -2,7 +2,7 @@ error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:50:5
    |
 LL | fn assert_send(_: impl Send) {}
-   | ---------------------------- required by `assert_send`
+   |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(local_dropped_before_await());
    |     ^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
@@ -19,7 +19,7 @@ error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:52:5
    |
 LL | fn assert_send(_: impl Send) {}
-   | ---------------------------- required by `assert_send`
+   |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_send_temporary_in_match());
    |     ^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
@@ -36,7 +36,7 @@ error[E0277]: `dyn std::fmt::Write` cannot be sent between threads safely
   --> $DIR/async-fn-nonsend.rs:54:5
    |
 LL | fn assert_send(_: impl Send) {}
-   | ---------------------------- required by `assert_send`
+   |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_sync_with_method_call());
    |     ^^^^^^^^^^^ `dyn std::fmt::Write` cannot be sent between threads safely
@@ -55,7 +55,7 @@ error[E0277]: `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between thr
   --> $DIR/async-fn-nonsend.rs:54:5
    |
 LL | fn assert_send(_: impl Send) {}
-   | ---------------------------- required by `assert_send`
+   |    -----------         ---- required by this bound in `assert_send`
 ...
 LL |     assert_send(non_sync_with_method_call());
    |     ^^^^^^^^^^^ `*mut (dyn std::ops::Fn() + 'static)` cannot be shared between threads safely

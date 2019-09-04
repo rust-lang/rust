@@ -2,7 +2,7 @@ error[E0277]: the trait bound `&str: std::convert::From<std::string::String>` is
   --> $DIR/into-str.rs:4:5
    |
 LL | fn foo<'a, T>(_t: T) where T: Into<&'a str> {}
-   | ------------------------------------------- required by `foo`
+   |    ---                        ------------- required by this bound in `foo`
 ...
 LL |     foo(String::new());
    |     ^^^ the trait `std::convert::From<std::string::String>` is not implemented for `&str`

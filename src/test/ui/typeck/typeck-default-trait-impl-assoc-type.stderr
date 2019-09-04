@@ -5,7 +5,7 @@ LL |     is_send::<T::AssocType>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ `<T as Trait>::AssocType` cannot be sent between threads safely
 ...
 LL | fn is_send<T:Send>() {
-   | -------------------- required by `is_send`
+   |    -------   ---- required by this bound in `is_send`
    |
    = help: the trait `std::marker::Send` is not implemented for `<T as Trait>::AssocType`
    = help: consider adding a `where <T as Trait>::AssocType: std::marker::Send` bound

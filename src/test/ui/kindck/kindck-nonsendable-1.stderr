@@ -2,7 +2,7 @@ error[E0277]: `std::rc::Rc<usize>` cannot be sent between threads safely
   --> $DIR/kindck-nonsendable-1.rs:9:5
    |
 LL | fn bar<F:FnOnce() + Send>(_: F) { }
-   | ------------------------------- required by `bar`
+   |    ---              ---- required by this bound in `bar`
 ...
 LL |     bar(move|| foo(x));
    |     ^^^ `std::rc::Rc<usize>` cannot be sent between threads safely

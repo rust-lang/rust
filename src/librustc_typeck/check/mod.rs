@@ -2548,16 +2548,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// As `instantiate_type_scheme`, but for the bounds found in a
     /// generic type scheme.
-    fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: SubstsRef<'tcx>)
-                          -> ty::InstantiatedPredicates<'tcx> {
+    fn instantiate_bounds(
+        &self,
+        span: Span,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> (ty::InstantiatedPredicates<'tcx>, Vec<Span>) {
         let bounds = self.tcx.predicates_of(def_id);
+        let spans: Vec<Span> = bounds.predicates.iter().map(|(_, span)| *span).collect();
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, &result);
-        debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
+        debug!(
+            "instantiate_bounds(bounds={:?}, substs={:?}) = {:?}, {:?}",
                bounds,
                substs,
-               result);
-        result
+            result,
+            spans,
+        );
+        (result, spans)
     }
 
     /// Replaces the opaque types from the given value with type variables,
@@ -3120,8 +3128,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // All the input types from the fn signature must outlive the call
         // so as to validate implied bounds.
-        for &fn_input_ty in fn_inputs {
-            self.register_wf_obligation(fn_input_ty, sp, traits::MiscObligation);
+        for (fn_input_ty, arg_expr) in fn_inputs.iter().zip(args.iter()) {
+            self.register_wf_obligation(fn_input_ty, arg_expr.span, traits::MiscObligation);
         }
 
         let expected_arg_count = fn_inputs.len();
@@ -3482,7 +3490,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.write_user_type_annotation_from_substs(hir_id, did, substs, None);
 
             // Check bounds on type arguments used in the path.
-            let bounds = self.instantiate_bounds(path_span, did, substs);
+            let (bounds, _) = self.instantiate_bounds(path_span, did, substs);
             let cause = traits::ObligationCause::new(path_span, self.body_id,
                                                      traits::ItemObligation(did));
             self.add_obligations_for_parameters(cause, &bounds);
@@ -4605,10 +4613,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Add all the obligations that are required, substituting and
         // normalized appropriately.
-        let bounds = self.instantiate_bounds(span, def_id, &substs);
-        self.add_obligations_for_parameters(
-            traits::ObligationCause::new(span, self.body_id, traits::ItemObligation(def_id)),
-            &bounds);
+        let (bounds, spans) = self.instantiate_bounds(span, def_id, &substs);
+
+        for (i, mut obligation) in traits::predicates_for_generics(
+            traits::ObligationCause::new(
+                span,
+                self.body_id,
+                traits::ItemObligation(def_id),
+            ),
+            self.param_env,
+            &bounds,
+        ).into_iter().enumerate() {
+            // This makes the error point at the bound, but we want to point at the argument
+            if let Some(span) = spans.get(i) {
+                obligation.cause.code = traits::BindingObligation(def_id, *span);
+            }
+            self.register_predicate(obligation);
+        }
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.

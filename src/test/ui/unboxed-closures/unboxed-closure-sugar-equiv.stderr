@@ -2,7 +2,7 @@ error[E0277]: the trait bound `dyn Foo<(char,), Output = ()>: Eq<dyn Foo<(), Out
   --> $DIR/unboxed-closure-sugar-equiv.rs:43:5
    |
 LL |   fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
-   |   ----------------------------------- required by `eq`
+   |      --                      ----- required by this bound in `eq`
 ...
 LL | /     eq::< dyn Foo<(),Output=()>,
 LL | |           dyn Foo(char)                                               >();
