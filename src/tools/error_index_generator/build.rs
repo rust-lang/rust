@@ -14,9 +14,7 @@ fn main() {
         if entry.file_name() == "error_codes.rs" {
             println!("cargo:rerun-if-changed={}", entry.path().to_str().unwrap());
             let file = fs::read_to_string(entry.path()).unwrap()
-                .replace("use syntax::{register_diagnostics, register_long_diagnostics};", "")
-                .replace("use syntax::register_diagnostics;", "")
-                .replace("use syntax::register_long_diagnostics;", "");
+                .replace("syntax::register_diagnostics!", "register_diagnostics!");
             let contents = format!("(|| {{\n{}\n}})();", file);
 
             fs::write(&out_dir.join(&format!("error_{}.rs", idx)), &contents).unwrap();
@@ -26,36 +24,31 @@ fn main() {
     }
 
     let mut all = String::new();
-    all.push_str("fn register_all() -> Vec<(&'static str, Option<&'static str>)> {\n");
-    all.push_str("let mut long_codes: Vec<(&'static str, Option<&'static str>)> = Vec::new();\n");
-    all.push_str(r#"
-macro_rules! register_diagnostics {
-    ($($code:tt),*) => {{
-        long_codes.extend([$(
-            stringify!($code),
-        )*].iter().cloned().map(|s| (s, None)).collect::<Vec<_>>());
-    }};
-    ($($code:tt),*,) => {{
-        long_codes.extend([$(
-            stringify!($code),
-        )*].iter().cloned().map(|s| (s, None)));
-    }}
-}
+    all.push_str(r###"
+fn register_all() -> Vec<(&'static str, Option<&'static str>)> {
+    let mut long_codes: Vec<(&'static str, Option<&'static str>)> = Vec::new();
+    macro_rules! register_diagnostics {
+        ($($ecode:ident: $message:expr,)*) => (
+            register_diagnostics!{$($ecode:$message,)* ;}
+        );
 
-macro_rules! register_long_diagnostics {
-    ($($code:tt: $description:tt),*) => {
-        {long_codes.extend([$(
-            (stringify!($code), Some(stringify!($description))),
-        )*].iter());}
-    };
-    ($($code:tt: $description:tt),*,) => {
-        {long_codes.extend([$(
-            (stringify!($code), Some(stringify!($description))),
-        )*].iter());}
+        ($($ecode:ident: $message:expr,)* ; $($code:ident,)*) => (
+            $(
+                {long_codes.extend([
+                    (stringify!($ecode), Some(stringify!($message))),
+                ].iter());}
+            )*
+            $(
+                {long_codes.extend([
+                    stringify!($code),
+                ].iter().cloned().map(|s| (s, None)).collect::<Vec<_>>());}
+            )*
+        )
     }
-}"#);
+"###);
     for idx in 0..idx {
         all.push_str(&format!(r#"include!(concat!(env!("OUT_DIR"), "/error_{}.rs"));"#, idx));
+        all.push_str("\n");
     }
     all.push_str("\nlong_codes\n");
     all.push_str("}\n");
