@@ -139,16 +139,33 @@ LL | |                    ).next();
    | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:265:13
+  --> $DIR/methods.rs:266:22
    |
 LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| *x < 0)`
    |
    = note: `-D clippy::search-is-some` implied by `-D warnings`
-   = note: replace `find(|&x| *x < 0).is_some()` with `any(|x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:268:13
+  --> $DIR/methods.rs:267:20
+   |
+LL |     let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| **y == x)`
+
+error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
+  --> $DIR/methods.rs:268:20
+   |
+LL |     let _ = (0..1).find(|x| *x == 0).is_some();
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| x == 0)`
+
+error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
+  --> $DIR/methods.rs:269:22
+   |
+LL |     let _ = v.iter().find(|x| **x == 0).is_some();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|x| *x == 0)`
+
+error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
+  --> $DIR/methods.rs:272:13
    |
 LL |       let _ = v.iter().find(|&x| {
    |  _____________^
@@ -158,15 +175,13 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:274:13
+  --> $DIR/methods.rs:278:22
    |
 LL |     let _ = v.iter().position(|&x| x < 0).is_some();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: replace `position(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:277:13
+  --> $DIR/methods.rs:281:13
    |
 LL |       let _ = v.iter().position(|&x| {
    |  _____________^
@@ -176,15 +191,13 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:283:13
+  --> $DIR/methods.rs:287:22
    |
 LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: replace `rposition(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:286:13
+  --> $DIR/methods.rs:290:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
    |  _____________^
@@ -194,12 +207,12 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-  --> $DIR/methods.rs:301:13
+  --> $DIR/methods.rs:305:13
    |
 LL |     let _ = opt.unwrap();
    |             ^^^^^^^^^^^^
    |
    = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 21 previous errors
+error: aborting due to 24 previous errors
 

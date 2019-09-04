@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             return;
         }
 
-        let (method_names, arg_lists) = method_calls(expr, 2);
+        let (method_names, arg_lists, method_spans) = method_calls(expr, 2);
         let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
         let method_names: Vec<&str> = method_names.iter().map(std::convert::AsRef::as_ref).collect();
 
@@ -1053,11 +1053,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["map", "find"] => lint_find_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
-            ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0]),
+            ["flat_map", ..] => lint_flat_map_identity(cx, expr, arg_lists[0], method_spans[0]),
             ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
-            ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0]),
-            ["is_some", "position"] => lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0]),
-            ["is_some", "rposition"] => lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0]),
+            ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0], method_spans[1]),
+            ["is_some", "position"] => {
+                lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0], method_spans[1])
+            },
+            ["is_some", "rposition"] => {
+                lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0], method_spans[1])
+            },
             ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
             ["as_ptr", "unwrap"] | ["as_ptr", "expect"] => {
                 lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0])
@@ -1068,7 +1072,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
             ["as_ref"] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
             ["as_mut"] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
-            ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0]),
+            ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0], method_spans[0]),
             ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
             ["count", "map"] => lint_suspicious_map(cx, expr),
             ["assume_init"] => lint_maybe_uninit(cx, &arg_lists[0][0], expr),
@@ -1746,11 +1750,12 @@ fn lint_iter_cloned_collect<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Ex
     }
 }
 
-fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: &[hir::Expr]) {
+fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: &[hir::Expr], fold_span: Span) {
     fn check_fold_with_op(
         cx: &LateContext<'_, '_>,
         expr: &hir::Expr,
         fold_args: &[hir::Expr],
+        fold_span: Span,
         op: hir::BinOpKind,
         replacement_method_name: &str,
         replacement_has_args: bool,
@@ -1772,8 +1777,6 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
             if match_var(&*left_expr, first_arg_ident);
             if replacement_has_args || match_var(&*right_expr, second_arg_ident);
 
-            if let hir::ExprKind::MethodCall(_, span, _) = &expr.node;
-
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = if replacement_has_args {
@@ -1793,7 +1796,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
                 span_lint_and_sugg(
                     cx,
                     UNNECESSARY_FOLD,
-                    span.with_hi(expr.span.hi()),
+                    fold_span.with_hi(expr.span.hi()),
                     // TODO #2371 don't suggest e.g., .any(|x| f(x)) if we can suggest .any(f)
                     "this `.fold` can be written more succinctly using another method",
                     "try",
@@ -1817,10 +1820,18 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
     // Check if the first argument to .fold is a suitable literal
     if let hir::ExprKind::Lit(ref lit) = fold_args[1].node {
         match lit.node {
-            ast::LitKind::Bool(false) => check_fold_with_op(cx, expr, fold_args, hir::BinOpKind::Or, "any", true),
-            ast::LitKind::Bool(true) => check_fold_with_op(cx, expr, fold_args, hir::BinOpKind::And, "all", true),
-            ast::LitKind::Int(0, _) => check_fold_with_op(cx, expr, fold_args, hir::BinOpKind::Add, "sum", false),
-            ast::LitKind::Int(1, _) => check_fold_with_op(cx, expr, fold_args, hir::BinOpKind::Mul, "product", false),
+            ast::LitKind::Bool(false) => {
+                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Or, "any", true)
+            },
+            ast::LitKind::Bool(true) => {
+                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::And, "all", true)
+            },
+            ast::LitKind::Int(0, _) => {
+                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Add, "sum", false)
+            },
+            ast::LitKind::Int(1, _) => {
+                check_fold_with_op(cx, expr, fold_args, fold_span, hir::BinOpKind::Mul, "product", false)
+            },
             _ => (),
         }
     }
@@ -2357,22 +2368,21 @@ fn lint_flat_map_identity<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &'tcx hir::Expr,
     flat_map_args: &'tcx [hir::Expr],
+    flat_map_span: Span,
 ) {
     if match_trait_method(cx, expr, &paths::ITERATOR) {
         let arg_node = &flat_map_args[1].node;
 
         let apply_lint = |message: &str| {
-            if let hir::ExprKind::MethodCall(_, span, _) = &expr.node {
-                span_lint_and_sugg(
-                    cx,
-                    FLAT_MAP_IDENTITY,
-                    span.with_hi(expr.span.hi()),
-                    message,
-                    "try",
-                    "flatten()".to_string(),
-                    Applicability::MachineApplicable,
-                );
-            }
+            span_lint_and_sugg(
+                cx,
+                FLAT_MAP_IDENTITY,
+                flat_map_span.with_hi(expr.span.hi()),
+                message,
+                "try",
+                "flatten()".to_string(),
+                Applicability::MachineApplicable,
+            );
         };
 
         if_chain! {
@@ -2409,6 +2419,7 @@ fn lint_search_is_some<'a, 'tcx>(
     search_method: &str,
     search_args: &'tcx [hir::Expr],
     is_some_args: &'tcx [hir::Expr],
+    method_span: Span,
 ) {
     // lint if caller of search is an Iterator
     if match_trait_method(cx, &is_some_args[0], &paths::ITERATOR) {
@@ -2420,31 +2431,36 @@ fn lint_search_is_some<'a, 'tcx>(
         let search_snippet = snippet(cx, search_args[1].span, "..");
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
+            // suggest `any(|..| *..)` instead of `any(|..| **..)` for `find(|..| **..).is_some()`
             let any_search_snippet = if_chain! {
                 if search_method == "find";
                 if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].node;
                 let closure_body = cx.tcx.hir().body(body_id);
                 if let Some(closure_arg) = closure_body.params.get(0);
-                if let hir::PatKind::Ref(..) = closure_arg.pat.node;
                 then {
-                    Some(search_snippet.replacen('&', "", 1))
+                    if let hir::PatKind::Ref(..) = closure_arg.pat.node {
+                        Some(search_snippet.replacen('&', "", 1))
+                    } else if let Some(name) = get_arg_name(&closure_arg.pat) {
+                        Some(search_snippet.replace(&format!("*{}", name), &name.as_str()))
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             };
             // add note if not multi-line
-            span_note_and_lint(
+            span_lint_and_sugg(
                 cx,
                 SEARCH_IS_SOME,
-                expr.span,
+                method_span.with_hi(expr.span.hi()),
                 &msg,
-                expr.span,
-                &format!(
-                    "replace `{0}({1}).is_some()` with `any({2})`",
-                    search_method,
-                    search_snippet,
+                "try this",
+                format!(
+                    "any({})",
                     any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
                 ),
+                Applicability::MachineApplicable,
             );
         } else {
             span_lint(cx, SEARCH_IS_SOME, expr.span, &msg);

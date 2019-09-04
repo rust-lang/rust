@@ -260,9 +260,13 @@ fn filter_next() {
 #[rustfmt::skip]
 fn search_is_some() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
+    let y = &&42;
 
     // Check `find().is_some()`, single-line case.
     let _ = v.iter().find(|&x| *x < 0).is_some();
+    let _ = (0..1).find(|x| **y == *x).is_some(); // one dereference less
+    let _ = (0..1).find(|x| *x == 0).is_some();
+    let _ = v.iter().find(|x| **x == 0).is_some();
 
     // Check `find().is_some()`, multi-line case.
     let _ = v.iter().find(|&x| {

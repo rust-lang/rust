@@ -342,26 +342,28 @@ pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> Res {
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up
-/// `expr`.
-pub fn method_calls(expr: &Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&[Expr]>) {
+/// `expr`. method/span lists are sorted with the most recent call first.
+pub fn method_calls(expr: &Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&[Expr]>, Vec<Span>) {
     let mut method_names = Vec::with_capacity(max_depth);
     let mut arg_lists = Vec::with_capacity(max_depth);
+    let mut spans = Vec::with_capacity(max_depth);
 
     let mut current = expr;
     for _ in 0..max_depth {
-        if let ExprKind::MethodCall(path, _, args) = &current.node {
+        if let ExprKind::MethodCall(path, span, args) = &current.node {
             if args.iter().any(|e| e.span.from_expansion()) {
                 break;
             }
             method_names.push(path.ident.name);
             arg_lists.push(&**args);
+            spans.push(*span);
             current = &args[0];
         } else {
             break;
         }
     }
 
-    (method_names, arg_lists)
+    (method_names, arg_lists, spans)
 }
 
 /// Matches an `Expr` against a chain of methods, and return the matched `Expr`s.
