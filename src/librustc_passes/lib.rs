@@ -9,7 +9,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(bind_by_move_pattern_guards)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 

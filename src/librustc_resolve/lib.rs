@@ -13,7 +13,6 @@
 #![feature(label_break_value)]
 #![feature(mem_take)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 

@@ -45,7 +45,6 @@
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![feature(range_is_empty)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]

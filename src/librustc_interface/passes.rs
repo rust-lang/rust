@@ -291,10 +291,6 @@ pub fn register_plugins<'a>(
     let mut registry = Registry::new(sess, krate.span);
 
     time(sess, "plugin registration", || {
-        if sess.features_untracked().rustc_diagnostic_macros {
-            // FIXME: remove feature gate
-        }
-
         for registrar in registrars {
             registry.args_hidden = Some(registrar.args);
             (registrar.fun)(&mut registry);

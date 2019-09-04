@@ -18,7 +18,6 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
 

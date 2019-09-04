@@ -9,7 +9,6 @@
 #![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
-#![feature(rustc_diagnostic_macros)]
 
 extern crate proc_macro;
 

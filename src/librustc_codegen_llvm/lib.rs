@@ -14,7 +14,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(libc)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(optin_builtin_traits)]
 #![feature(concat_idents)]
 #![feature(link_args)]

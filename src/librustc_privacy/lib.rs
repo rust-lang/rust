@@ -2,7 +2,6 @@
 
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
