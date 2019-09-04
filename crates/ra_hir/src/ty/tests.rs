@@ -3643,6 +3643,211 @@ fn test<T: Trait1<Type = u32>>(x: T) {
     "###
     );
 }
+
+#[test]
+fn where_clause_trait_in_scope_for_method_resolution() {
+    let t = type_at(
+        r#"
+//- /main.rs
+mod foo {
+    trait Trait {
+        fn foo(&self) -> u32 {}
+    }
+}
+
+fn test<T: foo::Trait>(x: T) {
+    x.foo()<|>;
+}
+"#,
+    );
+    // FIXME should be u32
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn super_trait_method_resolution() {
+    assert_snapshot!(
+        infer(r#"
+mod foo {
+    trait SuperTrait {
+        fn foo(&self) -> u32 {}
+    }
+}
+trait Trait1: SuperTrait {}
+trait Trait2 where Self: SuperTrait {}
+
+fn test<T: Trait1, U: Trait2>(x: T, y: U) {
+    x.foo();
+    y.foo();
+}
+"#),
+        @r###"
+    [50; 54) 'self': &Self
+    [63; 65) '{}': ()
+    [172; 173) 'x': T
+    [178; 179) 'y': U
+    [184; 213) '{     ...o(); }': ()
+    [190; 191) 'x': T
+    [190; 197) 'x.foo()': {unknown}
+    [203; 204) 'y': U
+    [203; 210) 'y.foo()': {unknown}
+    "###
+    );
+}
+
+#[test]
+fn super_trait_assoc_type_bounds() {
+    assert_snapshot!(
+        infer(r#"
+trait SuperTrait { type Type; }
+trait Trait where Self: SuperTrait {}
+
+fn get2<U, T: Trait<Type = U>>(t: T) -> U {}
+fn set<T: Trait<Type = u64>>(t: T) -> T {t}
+
+struct S<T>;
+impl<T> SuperTrait for S<T> { type Type = T; }
+impl<T> Trait for S<T> {}
+
+fn test() {
+    get2(set(S));
+}
+"#),
+        @r###"
+    [103; 104) 't': T
+    [114; 116) '{}': ()
+    [146; 147) 't': T
+    [157; 160) '{t}': T
+    [158; 159) 't': T
+    [259; 280) '{     ...S)); }': ()
+    [265; 269) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
+    [265; 277) 'get2(set(S))': {unknown}
+    [270; 273) 'set': fn set<S<{unknown}>>(T) -> T
+    [270; 276) 'set(S)': S<{unknown}>
+    [274; 275) 'S': S<{unknown}>
+    "###
+    );
+}
+
+#[test]
+fn fn_trait() {
+    assert_snapshot!(
+        infer(r#"
+trait FnOnce<Args> {
+    type Output;
+
+    fn call_once(self, args: Args) -> Self::Output;
+}
+
+fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
+    f.call_once((1, 2));
+}
+"#),
+        @r###"
+    [57; 61) 'self': Self
+    [63; 67) 'args': Args
+    [132; 133) 'f': F
+    [138; 166) '{     ...2)); }': ()
+    [144; 145) 'f': F
+    [144; 163) 'f.call...1, 2))': {unknown}
+    [156; 162) '(1, 2)': (i32, i32)
+    [157; 158) '1': i32
+    [160; 161) '2': i32
+    "###
+    );
+}
+
+#[test]
+fn closure_1() {
+    assert_snapshot!(
+        infer(r#"
+trait FnOnce<Args> {
+    type Output;
+}
+
+enum Option<T> { Some(T), None }
+impl<T> Option<T> {
+    fn map<U, F: FnOnce(T) -> U>(self, f: F) -> U {}
+}
+
+fn test() {
+    let x = Option::Some(1i32);
+    x.map(|v| v + 1);
+    x.map(|_v| 1u64);
+    let y: Option<i64> = x.map(|_v| 1);
+}
+"#),
+        @r###"
+    [128; 132) 'self': Option<T>
+    [134; 135) 'f': F
+    [145; 147) '{}': ()
+    [161; 280) '{     ... 1); }': ()
+    [171; 172) 'x': Option<i32>
+    [175; 187) 'Option::Some': Some<i32>(T) -> Option<T>
+    [175; 193) 'Option...(1i32)': Option<i32>
+    [188; 192) '1i32': i32
+    [199; 200) 'x': Option<i32>
+    [199; 215) 'x.map(...v + 1)': {unknown}
+    [205; 214) '|v| v + 1': {unknown}
+    [206; 207) 'v': {unknown}
+    [209; 210) 'v': {unknown}
+    [209; 214) 'v + 1': i32
+    [213; 214) '1': i32
+    [221; 222) 'x': Option<i32>
+    [221; 237) 'x.map(... 1u64)': {unknown}
+    [227; 236) '|_v| 1u64': {unknown}
+    [228; 230) '_v': {unknown}
+    [232; 236) '1u64': u64
+    [247; 248) 'y': Option<i64>
+    [264; 265) 'x': Option<i32>
+    [264; 277) 'x.map(|_v| 1)': Option<i64>
+    [270; 276) '|_v| 1': {unknown}
+    [271; 273) '_v': {unknown}
+    [275; 276) '1': i32
+    "###
+    );
+}
+
+#[test]
+fn closure_2() {
+    assert_snapshot!(
+        infer(r#"
+trait FnOnce<Args> {
+    type Output;
+}
+
+fn test<F: FnOnce(u32) -> u64>(f: F) {
+    f(1);
+    let g = |v| v + 1;
+    g(1u64);
+    let h = |v| 1u128 + v;
+}
+"#),
+        @r###"
+    [73; 74) 'f': F
+    [79; 155) '{     ...+ v; }': ()
+    [85; 86) 'f': F
+    [85; 89) 'f(1)': {unknown}
+    [87; 88) '1': i32
+    [99; 100) 'g': {unknown}
+    [103; 112) '|v| v + 1': {unknown}
+    [104; 105) 'v': {unknown}
+    [107; 108) 'v': {unknown}
+    [107; 112) 'v + 1': i32
+    [111; 112) '1': i32
+    [118; 119) 'g': {unknown}
+    [118; 125) 'g(1u64)': {unknown}
+    [120; 124) '1u64': u64
+    [135; 136) 'h': {unknown}
+    [139; 152) '|v| 1u128 + v': {unknown}
+    [140; 141) 'v': u128
+    [143; 148) '1u128': u128
+    [143; 152) '1u128 + v': u128
+    [151; 152) 'v': u128
+    "###
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
