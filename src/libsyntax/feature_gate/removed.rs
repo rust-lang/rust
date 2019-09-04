@@ -94,6 +94,11 @@ declare_features! (
     /// Allows defining `existential type`s.
     (removed, existential_type, "1.38.0", Some(63063), None,
      Some("removed in favor of `#![feature(type_alias_impl_trait)]`")),
+    /// Allows using the macros:
+    /// + `__diagnostic_used`
+    /// + `__register_diagnostic`
+    /// +`__build_diagnostic_array`
+    (removed, rustc_diagnostic_macros, "1.38.0", None, None, None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

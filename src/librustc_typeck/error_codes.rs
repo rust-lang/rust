@@ -4930,7 +4930,8 @@ register_diagnostics! {
 //  E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,
-//  E0248, // value used as a type, now reported earlier during resolution as E0412
+//  E0248, // value used as a type, now reported earlier during resolution
+           // as E0412
 //  E0249,
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
 //  E0372, // coherence not object safe
@@ -4938,7 +4939,7 @@ register_diagnostics! {
            // between structures with the same definition
 //  E0558, // replaced with a generic attribute input check
     E0533, // `{}` does not name a unit variant, unit struct or a constant
-//  E0563, // cannot determine a type for this `impl Trait`: {} // removed in 6383de15
+//  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
     E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
     E0587, // type has conflicting packed and align representation hints
@@ -4947,8 +4948,8 @@ register_diagnostics! {
 //  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0627, // yield statement outside of generator literal
-    E0632, // cannot provide explicit type parameters when `impl Trait` is used in
-           // argument position.
+    E0632, // cannot provide explicit type parameters when `impl Trait` is used
+           // in argument position.
     E0634, // type has conflicting packed representaton hints
     E0640, // infer outlives requirements
     E0641, // cannot cast to/from a pointer with an unknown kind
