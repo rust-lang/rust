@@ -1727,7 +1727,7 @@ impl<'test> TestCx<'test> {
 
     fn is_vxworks_pure_static(&self) -> bool {
         if self.config.target.contains("vxworks") {
-            match env::var("RUST_TEST_DYLINK") {
+            match env::var("RUST_VXWORKS_TEST_DYLINK") {
                 Ok(s) => s != "1",
                 _ => true
             }
@@ -1738,7 +1738,7 @@ impl<'test> TestCx<'test> {
 
     fn is_vxworks_pure_dynamic(&self) -> bool {
         if self.config.target.contains("vxworks") {
-            match env::var("RUST_TEST_DYLINK") {
+            match env::var("RUST_VXWORKS_TEST_DYLINK") {
                 Ok(s) => s == "1",
                 _ => false
             }
