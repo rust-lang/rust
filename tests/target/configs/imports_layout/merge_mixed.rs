@@ -2,7 +2,4 @@
 // rustfmt-merge_imports: true
 // rustfmt-imports_layout: Mixed
 
-use std::{
-    fmt, io,
-    str::{self, FromStr},
-};
+use std::{fmt, io, str, str::FromStr};

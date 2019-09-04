@@ -166,21 +166,14 @@ pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
         }
 
         for flattened in use_tree.flatten() {
-            merge_use_trees_inner(&mut result, flattened);
+            if let Some(tree) = result.iter_mut().find(|tree| tree.share_prefix(&flattened)) {
+                tree.merge(&flattened);
+            } else {
+                result.push(flattened);
+            }
         }
     }
     result
-}
-
-fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree) {
-    for tree in trees.iter_mut() {
-        if tree.share_prefix(&use_tree) {
-            tree.merge(&use_tree);
-            return;
-        }
-    }
-
-    trees.push(use_tree);
 }
 
 impl fmt::Debug for UseTree {
@@ -595,7 +588,6 @@ fn merge_rest(a: &[UseSegment], b: &[UseSegment], mut len: usize) -> Option<Vec<
     if a.len() != len && b.len() != len {
         if let UseSegment::List(mut list) = a[len].clone() {
             merge_use_trees_inner(&mut list, UseTree::from_path(b[len..].to_vec(), DUMMY_SP));
-            list.sort();
             let mut new_path = b[..len].to_vec();
             new_path.push(UseSegment::List(list));
             return Some(new_path);
@@ -620,6 +612,26 @@ fn merge_rest(a: &[UseSegment], b: &[UseSegment], mut len: usize) -> Option<Vec<
     let mut new_path = b[..len].to_vec();
     new_path.push(UseSegment::List(list));
     Some(new_path)
+}
+
+fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree) {
+    let similar_trees = trees.iter_mut().filter(|tree| tree.share_prefix(&use_tree));
+    if use_tree.path.len() == 1 {
+        if let Some(tree) = similar_trees.min_by_key(|tree| tree.path.len()) {
+            if tree.path.len() == 1 {
+                return;
+            }
+        }
+    } else {
+        if let Some(tree) = similar_trees.max_by_key(|tree| tree.path.len()) {
+            if tree.path.len() > 1 {
+                tree.merge(&use_tree);
+                return;
+            }
+        }
+    }
+    trees.push(use_tree);
+    trees.sort();
 }
 
 impl PartialOrd for UseSegment {
@@ -988,7 +1000,12 @@ mod test {
         test_merge!(["a::b::{c, d}", "a::b::{e, f}"], ["a::b::{c, d, e, f}"]);
         test_merge!(["a::b::c", "a::b"], ["a::{b, b::c}"]);
         test_merge!(["a::b", "a::b"], ["a::b"]);
-        test_merge!(["a", "a::b", "a::b::c"], ["a::{self, b::{self, c}}"]);
+        test_merge!(["a", "a::b", "a::b::c"], ["a::{self, b, b::c}"]);
+        test_merge!(
+            ["a", "a::b", "a::b::c", "a::b::c::d"],
+            ["a::{self, b, b::{c, c::d}}"]
+        );
+        test_merge!(["a", "a::b", "a::b::c", "a::b"], ["a::{self, b, b::c}"]);
         test_merge!(
             ["a::{b::{self, c}, d::e}", "a::d::f"],
             ["a::{b::{self, c}, d::{e, f}}"]
