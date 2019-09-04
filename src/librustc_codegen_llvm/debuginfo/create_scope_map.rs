@@ -1,4 +1,4 @@
-use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, FunctionDebugContextData, MirDebugScope};
+use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, FunctionDebugContextData, DebugScope};
 use super::metadata::file_metadata;
 use super::utils::{DIB, span_start};
 
@@ -22,8 +22,8 @@ pub fn create_mir_scopes(
     cx: &CodegenCx<'ll, '_>,
     mir: &Body<'_>,
     debug_context: &FunctionDebugContext<&'ll DISubprogram>,
-) -> IndexVec<SourceScope, MirDebugScope<&'ll DIScope>> {
-    let null_scope = MirDebugScope {
+) -> IndexVec<SourceScope, DebugScope<&'ll DIScope>> {
+    let null_scope = DebugScope {
         scope_metadata: None,
         file_start_pos: BytePos(0),
         file_end_pos: BytePos(0)
@@ -59,7 +59,7 @@ fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
                   has_variables: &BitSet<SourceScope>,
                   debug_context: &FunctionDebugContextData<&'ll DISubprogram>,
                   scope: SourceScope,
-                  scopes: &mut IndexVec<SourceScope, MirDebugScope<&'ll DIScope>>) {
+                  scopes: &mut IndexVec<SourceScope, DebugScope<&'ll DIScope>>) {
     if scopes[scope].is_valid() {
         return;
     }
@@ -71,7 +71,7 @@ fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
     } else {
         // The root is the function itself.
         let loc = span_start(cx, mir.span);
-        scopes[scope] = MirDebugScope {
+        scopes[scope] = DebugScope {
             scope_metadata: Some(debug_context.fn_metadata),
             file_start_pos: loc.file.start_pos,
             file_end_pos: loc.file.end_pos,
@@ -105,7 +105,7 @@ fn make_mir_scope(cx: &CodegenCx<'ll, '_>,
             loc.line as c_uint,
             loc.col.to_usize() as c_uint))
     };
-    scopes[scope] = MirDebugScope {
+    scopes[scope] = DebugScope {
         scope_metadata,
         file_start_pos: loc.file.start_pos,
         file_end_pos: loc.file.end_pos,

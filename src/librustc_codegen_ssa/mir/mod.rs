@@ -5,10 +5,9 @@ use rustc::session::config::DebugInfo;
 use rustc_target::abi::call::{FnType, PassMode};
 use rustc_target::abi::{Variants, VariantIdx};
 use crate::base;
-use crate::debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use crate::traits::*;
 
-use syntax_pos::{DUMMY_SP, BytePos, Span};
+use syntax_pos::DUMMY_SP;
 use syntax::symbol::kw;
 
 use std::iter;
@@ -17,6 +16,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 
 use self::analyze::CleanupKind;
+use self::debuginfo::{VariableAccess, VariableKind, FunctionDebugContext};
 use self::place::PlaceRef;
 use rustc::mir::traversal;
 
@@ -80,7 +80,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     locals: IndexVec<mir::Local, LocalRef<'tcx, Bx::Value>>,
 
     /// Debug information for MIR scopes.
-    scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Bx::DIScope>>,
+    scopes: IndexVec<mir::SourceScope, debuginfo::DebugScope<Bx::DIScope>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -92,64 +92,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ty::ParamEnv::reveal_all(),
             value,
         )
-    }
-
-    pub fn set_debug_loc(
-        &mut self,
-        bx: &mut Bx,
-        source_info: mir::SourceInfo
-    ) {
-        let (scope, span) = self.debug_loc(source_info);
-        bx.set_source_location(&mut self.debug_context, scope, span);
-    }
-
-    pub fn debug_loc(&self, source_info: mir::SourceInfo) -> (Option<Bx::DIScope>, Span) {
-        // Bail out if debug info emission is not enabled.
-        match self.debug_context {
-            FunctionDebugContext::DebugInfoDisabled |
-            FunctionDebugContext::FunctionWithoutDebugInfo => {
-                return (self.scopes[source_info.scope].scope_metadata, source_info.span);
-            }
-            FunctionDebugContext::RegularContext(_) =>{}
-        }
-
-        // In order to have a good line stepping behavior in debugger, we overwrite debug
-        // locations of macro expansions with that of the outermost expansion site
-        // (unless the crate is being compiled with `-Z debug-macros`).
-        if !source_info.span.from_expansion() ||
-           self.cx.sess().opts.debugging_opts.debug_macros {
-            let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo());
-            (scope, source_info.span)
-        } else {
-            // Walk up the macro expansion chain until we reach a non-expanded span.
-            // We also stop at the function body level because no line stepping can occur
-            // at the level above that.
-            let span = syntax_pos::hygiene::walk_chain(source_info.span, self.mir.span.ctxt());
-            let scope = self.scope_metadata_for_loc(source_info.scope, span.lo());
-            // Use span of the outermost expansion site, while keeping the original lexical scope.
-            (scope, span)
-        }
-    }
-
-    // DILocations inherit source file name from the parent DIScope.  Due to macro expansions
-    // it may so happen that the current span belongs to a different file than the DIScope
-    // corresponding to span's containing source scope.  If so, we need to create a DIScope
-    // "extension" into that file.
-    fn scope_metadata_for_loc(&self, scope_id: mir::SourceScope, pos: BytePos)
-                              -> Option<Bx::DIScope> {
-        let scope_metadata = self.scopes[scope_id].scope_metadata;
-        if pos < self.scopes[scope_id].file_start_pos ||
-           pos >= self.scopes[scope_id].file_end_pos {
-            let sm = self.cx.sess().source_map();
-            let defining_crate = self.debug_context.get_ref(DUMMY_SP).defining_crate;
-            Some(self.cx.extend_scope_to_file(
-                scope_metadata.unwrap(),
-                &sm.lookup_char_pos(pos).file,
-                defining_crate
-            ))
-        } else {
-            scope_metadata
-        }
     }
 }
 
@@ -721,6 +663,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 mod analyze;
 mod block;
 pub mod constant;
+pub mod debuginfo;
 pub mod place;
 pub mod operand;
 mod rvalue;

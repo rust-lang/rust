@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use crate::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess, VariableKind};
+use crate::mir::debuginfo::{FunctionDebugContext, DebugScope, VariableAccess, VariableKind};
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::ty::{self, Ty, Instance};
@@ -28,7 +28,7 @@ pub trait DebugInfoMethods<'tcx>: BackendTypes {
         &self,
         mir: &mir::Body<'_>,
         debug_context: &mut FunctionDebugContext<Self::DIScope>,
-    ) -> IndexVec<mir::SourceScope, MirDebugScope<Self::DIScope>>;
+    ) -> IndexVec<mir::SourceScope, DebugScope<Self::DIScope>>;
     fn extend_scope_to_file(
         &self,
         scope_metadata: Self::DIScope,

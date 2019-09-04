@@ -1,8 +1,8 @@
 // See doc.rs for documentation.
 mod doc;
 
-use rustc_codegen_ssa::debuginfo::VariableAccess::*;
-use rustc_codegen_ssa::debuginfo::VariableKind::*;
+use rustc_codegen_ssa::mir::debuginfo::VariableAccess::*;
+use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
 
 use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
 use self::namespace::mangled_name_of_instance;
@@ -27,8 +27,9 @@ use rustc::session::config::{self, DebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_index::vec::IndexVec;
-use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess,
-    VariableKind, FunctionDebugContextData, type_names};
+use rustc_codegen_ssa::debuginfo::type_names;
+use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, DebugScope, VariableAccess,
+    VariableKind, FunctionDebugContextData};
 
 use libc::c_uint;
 use std::cell::RefCell;
@@ -553,7 +554,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self,
         mir: &mir::Body<'_>,
         debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
-    ) -> IndexVec<mir::SourceScope, MirDebugScope<&'ll DIScope>> {
+    ) -> IndexVec<mir::SourceScope, DebugScope<&'ll DIScope>> {
         create_scope_map::create_mir_scopes(self, mir, debug_context)
     }
 

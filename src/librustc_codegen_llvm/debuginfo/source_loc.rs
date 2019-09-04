@@ -2,7 +2,7 @@ use self::InternalDebugLocation::*;
 
 use super::utils::{debug_context, span_start};
 use super::metadata::UNKNOWN_COLUMN_NUMBER;
-use rustc_codegen_ssa::debuginfo::FunctionDebugContext;
+use rustc_codegen_ssa::mir::debuginfo::FunctionDebugContext;
 
 use crate::llvm;
 use crate::llvm::debuginfo::DIScope;
