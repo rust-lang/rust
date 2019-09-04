@@ -75,6 +75,16 @@ impl PatternSource {
     }
 }
 
+/// Denotes whether the context for the set of already bound bindings is a `Product`
+/// or `Or` context. This is used in e.g., `fresh_binding` and `resolve_pattern_inner`.
+/// See those functions for more information.
+enum PatBoundCtx {
+    /// A product pattern context, e.g., `Variant(a, b)`.
+    Product,
+    /// An or-pattern context, e.g., `p_0 | ... | p_n`.
+    Or,
+}
+
 /// The rib kind restricts certain accesses,
 /// e.g. to a `Res::Local` of an outer item.
 #[derive(Copy, Clone, Debug)]
@@ -1109,7 +1119,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     fn resolve_params(&mut self, params: &[Param]) {
-        let mut bindings = smallvec![(false, Default::default())];
+        let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         for Param { pat, ty, .. } in params {
             self.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
             self.visit_ty(ty);
@@ -1255,14 +1265,15 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     /// Arising from `source`, resolve a top level pattern.
     fn resolve_pattern_top(&mut self, pat: &Pat, pat_src: PatternSource) {
-        self.resolve_pattern(pat, pat_src, &mut smallvec![(false, Default::default())]);
+        let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
+        self.resolve_pattern(pat, pat_src, &mut bindings);
     }
 
     fn resolve_pattern(
         &mut self,
         pat: &Pat,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(bool, FxHashSet<Ident>); 1]>,
+        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
         self.resolve_pattern_inner(pat, pat_src, bindings);
         // This has to happen *after* we determine which pat_idents are variants:
@@ -1276,15 +1287,15 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     ///
     /// A stack of sets of bindings accumulated.
     ///
-    /// In each set, `false` denotes that a found binding in it should be interpreted as
-    /// re-binding an already bound binding. This results in an error. Meanwhile, `true`
-    /// denotes that a found binding in the set should result in reusing this binding
-    /// rather  than creating a fresh one. In other words, `false` and `true` correspond
-    /// to product (e.g., `(a, b)`) and sum/or contexts (e.g., `p_0 | ... | p_i`) respectively.
+    /// In each set, `PatBoundCtx::Product` denotes that a found binding in it should
+    /// be interpreted as re-binding an already bound binding. This results in an error.
+    /// Meanwhile, `PatBound::Or` denotes that a found binding in the set should result
+    /// in reusing this binding rather than creating a fresh one.
     ///
-    /// When called at the top level, the stack should have a single element with `false`.
-    /// Otherwise, pushing to the stack happens as or-patterns are encountered and the
-    /// context needs to be switched to `true` and then `false` for each `p_i.
+    /// When called at the top level, the stack must have a single element
+    /// with `PatBound::Product`. Otherwise, pushing to the stack happens as
+    /// or-patterns (`p_0 | ... | p_n`) are encountered and the context needs
+    /// to be switched to `PatBoundCtx::Or` and then `PatBoundCtx::Product` for each `p_i`.
     /// When each `p_i` has been dealt with, the top set is merged with its parent.
     /// When a whole or-pattern has been dealt with, the thing happens.
     ///
@@ -1293,7 +1304,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         &mut self,
         pat: &Pat,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(bool, FxHashSet<Ident>); 1]>,
+        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) {
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
@@ -1317,15 +1328,15 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                     self.smart_resolve_path(pat.id, None, path, PathSource::Struct);
                 }
                 PatKind::Or(ref ps) => {
-                    // Add a new set of bindings to the stack. `true` here records that when a
+                    // Add a new set of bindings to the stack. `Or` here records that when a
                     // binding already exists in this set, it should not result in an error because
                     // `V1(a) | V2(a)` must be allowed and are checked for consistency later.
-                    bindings.push((true, Default::default()));
+                    bindings.push((PatBoundCtx::Or, Default::default()));
                     for p in ps {
                         // Now we need to switch back to a product context so that each
                         // part of the or-pattern internally rejects already bound names.
                         // For example, `V1(a) | V2(a, a)` and `V1(a, a) | V2(a)` are bad.
-                        bindings.push((false, Default::default()));
+                        bindings.push((PatBoundCtx::Product, Default::default()));
                         self.resolve_pattern_inner(p, pat_src, bindings);
                         // Move up the non-overlapping bindings to the or-pattern.
                         // Existing bindings just get "merged".
@@ -1352,7 +1363,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         ident: Ident,
         pat_id: NodeId,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(bool, FxHashSet<Ident>); 1]>,
+        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
     ) -> Res {
         // Add the binding to the local ribs, if it doesn't already exist in the bindings map.
         // (We must not add it if it's in the bindings map because that breaks the assumptions
@@ -1366,10 +1377,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         for (is_sum, set) in bindings.iter_mut().rev() {
             match (is_sum, set.get(&ident).cloned()) {
                 // Already bound in a product pattern, e.g. `(a, a)` which is not allowed.
-                (false, Some(..)) => already_bound_and = true,
+                (PatBoundCtx::Product, Some(..)) => already_bound_and = true,
                 // Already bound in an or-pattern, e.g. `V1(a) | V2(a)`.
                 // This is *required* for consistency which is checked later.
-                (true, Some(..)) => already_bound_or = true,
+                (PatBoundCtx::Or, Some(..)) => already_bound_or = true,
                 // Not already bound here.
                 _ => {}
             }
