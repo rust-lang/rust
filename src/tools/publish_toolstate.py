@@ -69,15 +69,14 @@ def validate_maintainers(repo, github_token):
             # Properly load nested teams.
             'Accept': 'application/vnd.github.hellcat-preview+json',
         }))
-        for user in json.loads(response.read()):
-            assignable.append(user['login'])
+        assignable.extend(user['login'] for user in json.load(response))
         # Load the next page if available
-        if 'Link' in response.headers:
-            matches = next_link_re.match(response.headers['Link'])
+        url = None
+        link_header = response.headers.get('Link')
+        if link_header:
+            matches = next_link_re.match(link_header)
             if matches is not None:
                 url = matches.group(1)
-            else:
-                url = None
 
     errors = False
     for tool, maintainers in MAINTAINERS.items():
@@ -251,13 +250,14 @@ def update_latest(
 
 
 if __name__ == '__main__':
-    if 'TOOLSTATE_VALIDATE_MAINTAINERS_REPO' in os.environ:
-        repo = os.environ['TOOLSTATE_VALIDATE_MAINTAINERS_REPO']
-        if 'TOOLSTATE_REPO_ACCESS_TOKEN' in os.environ:
-            github_token = os.environ['TOOLSTATE_REPO_ACCESS_TOKEN']
+    repo = os.environ.get('TOOLSTATE_VALIDATE_MAINTAINERS_REPO')
+    if repo:
+        github_token = os.environ.get('TOOLSTATE_REPO_ACCESS_TOKEN')
+        if github_token:
             validate_maintainers(repo, github_token)
         else:
             print('skipping toolstate maintainers validation since no GitHub token is present')
+        # When validating maintainers don't run the full script.
         exit(0)
 
     cur_commit = sys.argv[1]
