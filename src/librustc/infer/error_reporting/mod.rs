@@ -60,6 +60,7 @@ use crate::ty::error::TypeError;
 use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldable};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use std::{cmp, fmt};
+use std::borrow::Cow;
 use syntax_pos::{Pos, Span};
 
 mod note;
@@ -1140,8 +1141,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         &"type",
                         expected,
                         found,
-                        &format!(" ({})", values.expected.sort_string(self.tcx)),
-                        &format!(" ({})", values.found.sort_string(self.tcx)),
+                        &format!(" ({})",
+                             if let ty::Opaque(def_id, _) = values.expected.sty {
+                                Cow::from(format!("opaque type at {}", self.tcx.sess
+                                    .source_map().mk_substr_filename(self.tcx.def_span(def_id))))
+                             } else {
+                                 values.expected.sort_string(self.tcx)
+                             }),
+                        &format!(" ({})",
+                             if let ty::Opaque(def_id, _) = values.found.sty {
+                                Cow::from(format!("opaque type at {}", self.tcx.sess
+                                    .source_map().mk_substr_filename(self.tcx.def_span(def_id))))
+                             } else {
+                                 values.found.sort_string(self.tcx)
+                             }),
                     );
                 }
                 (_, false, _) => {
