@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 312] = [
+pub const ALL_LINTS: [Lint; 313] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -930,6 +930,13 @@ pub const ALL_LINTS: [Lint; 312] = [
         desc: "manually copying items between slices",
         deprecation: None,
         module: "loops",
+    },
+    Lint {
+        name: "manual_saturating_arithmetic",
+        group: "style",
+        desc: "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`",
+        deprecation: None,
+        module: "methods",
     },
     Lint {
         name: "manual_swap",

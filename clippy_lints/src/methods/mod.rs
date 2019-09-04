@@ -1,3 +1,4 @@
+mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
 
@@ -983,6 +984,33 @@ declare_clippy_lint! {
     "`MaybeUninit::uninit().assume_init()`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for `.checked_add/sub(x).unwrap_or(MAX/MIN)`.
+    ///
+    /// **Why is this bad?** These can be written simply with `saturating_add/sub` methods.
+    ///
+    /// **Example:**
+    ///
+    /// ```rust
+    /// # let y: u32 = 0;
+    /// # let x: u32 = 100;
+    /// let add = x.checked_add(y).unwrap_or(u32::max_value());
+    /// let sub = x.checked_sub(y).unwrap_or(u32::min_value());
+    /// ```
+    ///
+    /// can be written using dedicated methods for saturating addition/subtraction as:
+    ///
+    /// ```rust
+    /// # let y: u32 = 0;
+    /// # let x: u32 = 100;
+    /// let add = x.saturating_add(y);
+    /// let sub = x.saturating_sub(y);
+    /// ```
+    pub MANUAL_SATURATING_ARITHMETIC,
+    style,
+    "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`"
+}
+
 declare_lint_pass!(Methods => [
     OPTION_UNWRAP_USED,
     RESULT_UNWRAP_USED,
@@ -1024,6 +1052,7 @@ declare_lint_pass!(Methods => [
     INTO_ITER_ON_REF,
     SUSPICIOUS_MAP,
     UNINIT_ASSUMED_INIT,
+    MANUAL_SATURATING_ARITHMETIC,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
@@ -1076,6 +1105,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
             ["count", "map"] => lint_suspicious_map(cx, expr),
             ["assume_init"] => lint_maybe_uninit(cx, &arg_lists[0][0], expr),
+            ["unwrap_or", arith @ "checked_add"]
+            | ["unwrap_or", arith @ "checked_sub"]
+            | ["unwrap_or", arith @ "checked_mul"] => {
+                manual_saturating_arithmetic::lint(cx, expr, &arg_lists, &arith["checked_".len()..])
+            },
             _ => {},
         }
 
