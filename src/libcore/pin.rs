@@ -462,7 +462,7 @@ impl<P: Deref<Target: Unpin>> Pin<P> {
     /// can ignore the pinning invariants when unwrapping it.
     ///
     /// [`Unpin`]: ../../std/marker/trait.Unpin.html
-    #[unstable(feature = "pin_into_inner", issue = "60245")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
     pub fn into_inner(pin: Pin<P>) -> P {
         pin.pointer
@@ -569,7 +569,7 @@ impl<P: Deref> Pin<P> {
     ///
     /// [`Unpin`]: ../../std/marker/trait.Unpin.html
     /// [`Pin::into_inner`]: #method.into_inner
-    #[unstable(feature = "pin_into_inner", issue = "60245")]
+    #[stable(feature = "pin_into_inner", since = "1.39.0")]
     #[inline(always)]
     pub unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
         pin.pointer
