@@ -46,7 +46,7 @@ error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:13:5
    |
 LL | fn f<F: Fn<usize>>(_: F) {}
-   | ------------------------ required by `f`
+   |    -    --------- required by this bound in `f`
 ...
 LL |     f(|| panic!());
    |     ^ -- takes 0 arguments
@@ -61,7 +61,7 @@ error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:15:5
    |
 LL | fn f<F: Fn<usize>>(_: F) {}
-   | ------------------------ required by `f`
+   |    -    --------- required by this bound in `f`
 ...
 LL |     f(  move    || panic!());
    |     ^   ---------- takes 0 arguments
@@ -143,7 +143,7 @@ LL |     call(Foo);
    |          ^^^ expected function that takes 0 arguments
 ...
 LL | fn call<F, R>(_: F) where F: FnOnce() -> R {}
-   | ------------------------------------------ required by `call`
+   |    ----                      ------------- required by this bound in `call`
 LL | struct Foo(u8);
    | --------------- takes 1 argument
 

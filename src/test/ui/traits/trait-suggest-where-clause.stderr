@@ -3,23 +3,31 @@ error[E0277]: the size for values of type `U` cannot be known at compilation tim
    |
 LL |     mem::size_of::<U>();
    |     ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/libcore/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
    |
    = help: the trait `std::marker::Sized` is not implemented for `U`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where U: std::marker::Sized` bound
-   = note: required by `std::mem::size_of`
 
 error[E0277]: the size for values of type `U` cannot be known at compilation time
   --> $DIR/trait-suggest-where-clause.rs:10:5
    |
 LL |     mem::size_of::<Misc<U>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/libcore/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
    |
    = help: within `Misc<U>`, the trait `std::marker::Sized` is not implemented for `U`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = help: consider adding a `where U: std::marker::Sized` bound
    = note: required because it appears within the type `Misc<U>`
-   = note: required by `std::mem::size_of`
 
 error[E0277]: the trait bound `u64: std::convert::From<T>` is not satisfied
   --> $DIR/trait-suggest-where-clause.rs:15:5
@@ -52,20 +60,28 @@ error[E0277]: the size for values of type `[T]` cannot be known at compilation t
    |
 LL |     mem::size_of::<[T]>();
    |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/libcore/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
    |
    = help: the trait `std::marker::Sized` is not implemented for `[T]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required by `std::mem::size_of`
 
 error[E0277]: the size for values of type `[&U]` cannot be known at compilation time
   --> $DIR/trait-suggest-where-clause.rs:31:5
    |
 LL |     mem::size_of::<[&U]>();
    |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   | 
+  ::: $SRC_DIR/libcore/mem/mod.rs:LL:COL
+   |
+LL | pub const fn size_of<T>() -> usize {
+   |                      - required by this bound in `std::mem::size_of`
    |
    = help: the trait `std::marker::Sized` is not implemented for `[&U]`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: required by `std::mem::size_of`
 
 error: aborting due to 7 previous errors
 

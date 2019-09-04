@@ -5,7 +5,7 @@ LL |     want_y(t);
    |     ^^^^^^ expected associated type, found i32
 ...
 LL | fn want_y<T:Foo<Y=i32>>(t: &T) { }
-   | ------------------------------ required by `want_y`
+   |    ------       ----- required by this bound in `want_y`
    |
    = note: expected type `<T as Foo>::Y`
               found type `i32`
@@ -19,7 +19,7 @@ LL |     want_x(t);
    |     ^^^^^^ expected associated type, found u32
 ...
 LL | fn want_x<T:Foo<X=u32>>(t: &T) { }
-   | ------------------------------ required by `want_x`
+   |    ------       ----- required by this bound in `want_x`
    |
    = note: expected type `<T as Foo>::X`
               found type `u32`

@@ -2750,3 +2750,16 @@ pub enum Node<'hir> {
 
     Crate,
 }
+
+impl<'hir> Node<'hir> {
+    pub fn ident(&self) -> Option<Ident> {
+
+        match self {
+            Node::TraitItem(TraitItem { ident, .. }) |
+            Node::ImplItem(ImplItem { ident, .. }) |
+            Node::ForeignItem(ForeignItem { ident, .. }) |
+            Node::Item(Item { ident, .. }) => Some(*ident),
+            _ => None,
+        }
+    }
+}
