@@ -200,7 +200,7 @@ impl<'a, 'tcx> Functions {
             Some(i) => i + 1,
             None => 0,
         };
-        let end_brace_idx = match code_snippet.find('}') {
+        let end_brace_idx = match code_snippet.rfind('}') {
             Some(i) => i,
             None => code_snippet.len(),
         };

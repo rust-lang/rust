@@ -56,6 +56,7 @@ fn good_lines() {
 }
 
 fn bad_lines() {
+    println!("Dont get confused by braces: {{}}");
     println!("This is bad.");
     println!("This is bad.");
     println!("This is bad.");
