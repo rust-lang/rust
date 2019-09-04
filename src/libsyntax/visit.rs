@@ -831,7 +831,7 @@ pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) {
 
 pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
     visitor.visit_pat(&arm.pat);
-    // HACK(or_patterns; Centril | dlrobertson):
+    // NOTE(or_patterns; Centril | dlrobertson):
     // If you change this, also change the hack in `lowering.rs`.
     walk_list!(visitor, visit_expr, &arm.guard);
     visitor.visit_expr(&arm.body);

@@ -563,7 +563,7 @@ impl Pat {
 
     /// Walk top-down and call `it` in each place where a pattern occurs
     /// starting with the root pattern `walk` is called on. If `it` returns
-    /// false then we will decend no further but siblings will be processed.
+    /// false then we will descend no further but siblings will be processed.
     pub fn walk(&self, it: &mut impl FnMut(&Pat) -> bool) {
         if !it(self) {
             return;
@@ -1150,9 +1150,6 @@ pub enum ExprKind {
     Type(P<Expr>, P<Ty>),
     /// A `let pat = expr` expression that is only semantically allowed in the condition
     /// of `if` / `while` expressions. (e.g., `if let 0 = x { .. }`).
-    ///
-    /// The `Vec<P<Pat>>` is for or-patterns at the top level.
-    /// FIXME(54883): Change this to just `P<Pat>`.
     Let(P<Pat>, P<Expr>),
     /// An `if` block, with an optional `else` block.
     ///

@@ -1109,7 +1109,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     fn resolve_params(&mut self, params: &[Param]) {
-        let mut bindings = smallvec![(false, <_>::default())];
+        let mut bindings = smallvec![(false, Default::default())];
         for Param { pat, ty, .. } in params {
             self.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
             self.visit_ty(ty);
@@ -1255,7 +1255,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     /// Arising from `source`, resolve a top level pattern.
     fn resolve_pattern_top(&mut self, pat: &Pat, pat_src: PatternSource) {
-        self.resolve_pattern(pat, pat_src, &mut smallvec![(false, <_>::default())]);
+        self.resolve_pattern(pat, pat_src, &mut smallvec![(false, Default::default())]);
     }
 
     fn resolve_pattern(
@@ -1270,6 +1270,25 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         visit::walk_pat(self, pat);
     }
 
+    /// Resolve bindings in a pattern. This is a helper to `resolve_pattern`.
+    ///
+    /// ### `bindings`
+    ///
+    /// A stack of sets of bindings accumulated.
+    ///
+    /// In each set, `false` denotes that a found binding in it should be interpreted as
+    /// re-binding an already bound binding. This results in an error. Meanwhile, `true`
+    /// denotes that a found binding in the set should result in reusing this binding
+    /// rather  than creating a fresh one. In other words, `false` and `true` correspond
+    /// to product (e.g., `(a, b)`) and sum/or contexts (e.g., `p_0 | ... | p_i`) respectively.
+    ///
+    /// When called at the top level, the stack should have a single element with `false`.
+    /// Otherwise, pushing to the stack happens as or-patterns are encountered and the
+    /// context needs to be switched to `true` and then `false` for each `p_i.
+    /// When each `p_i` has been dealt with, the top set is merged with its parent.
+    /// When a whole or-pattern has been dealt with, the thing happens.
+    ///
+    /// See the implementation and `fresh_binding` for more details.
     fn resolve_pattern_inner(
         &mut self,
         pat: &Pat,
@@ -1301,12 +1320,12 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                     // Add a new set of bindings to the stack. `true` here records that when a
                     // binding already exists in this set, it should not result in an error because
                     // `V1(a) | V2(a)` must be allowed and are checked for consistency later.
-                    bindings.push((true, <_>::default()));
+                    bindings.push((true, Default::default()));
                     for p in ps {
                         // Now we need to switch back to a product context so that each
                         // part of the or-pattern internally rejects already bound names.
                         // For example, `V1(a) | V2(a, a)` and `V1(a, a) | V2(a)` are bad.
-                        bindings.push((false, <_>::default()));
+                        bindings.push((false, Default::default()));
                         self.resolve_pattern_inner(p, pat_src, bindings);
                         // Move up the non-overlapping bindings to the or-pattern.
                         // Existing bindings just get "merged".
