@@ -389,6 +389,14 @@ pub enum UnsupportedOpInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
 
+    /// Error used by the `ConstProp` pass when an attempt is made
+    /// to read an uninitialized local.
+    UninitializedLocal,
+
+    /// Error used by the `ConstProp` pass to prevent reading statics
+    /// while evaluating `const` items.
+    ReadOfStaticInConst,
+
     // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
     FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
@@ -511,6 +519,8 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     addresses, e.g., comparing pointers into different allocations"),
             DeadLocal =>
                 write!(f, "tried to access a dead local variable"),
+            UninitializedLocal =>
+                write!(f, "tried to access an uninitialized local variable"),
             DerefFunctionPointer =>
                 write!(f, "tried to dereference a function pointer"),
             ExecuteMemory =>
@@ -552,6 +562,8 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     not a power of two"),
             Unsupported(ref msg) =>
                 write!(f, "{}", msg),
+            ReadOfStaticInConst =>
+                write!(f, "tried to read from a static during const evaluation"),
         }
     }
 }

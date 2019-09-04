@@ -6,4 +6,5 @@ LL | static B: [u32; 1] = [0; A.len()];
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0013`.
+Some errors have detailed explanations: E0013, E0080.
+For more information about an error, try `rustc --explain E0013`.
