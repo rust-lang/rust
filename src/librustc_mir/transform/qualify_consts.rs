@@ -697,16 +697,16 @@ macro_rules! define_qualifs {
     ( $( $Q:ident, $field:ident );* $(;)? ) => {
         $(
             impl Index<$Q> for Resolvers<'mir, 'tcx> {
-                type Output = FlowSensitiveResolver<'mir, 'tcx, $Q>;
+                type Output = dyn 'mir + QualifResolver<'tcx, $Q>;
 
                 fn index(&self, _: $Q) -> &Self::Output {
-                    &self.$field
+                    &*self.$field
                 }
             }
 
             impl IndexMut<$Q> for Resolvers<'mir, 'tcx> {
                 fn index_mut(&mut self, _: $Q) -> &mut Self::Output {
-                    &mut self.$field
+                    &mut *self.$field
                 }
             }
         )*
@@ -840,10 +840,10 @@ trait QualifResolver<'tcx, Q>: Visitor<'tcx> {
 /// `resolvers[NeedsDrop]`). This chicanery makes the use of macros like `for_each_qualif` more
 /// convenient.
 pub struct Resolvers<'mir, 'tcx> {
-    needs_drop: FlowSensitiveResolver<'mir, 'tcx, NeedsDrop>,
-    has_mut_interior: FlowSensitiveResolver<'mir, 'tcx, HasMutInterior>,
-    is_not_promotable: FlowSensitiveResolver<'mir, 'tcx, IsNotPromotable>,
-    is_not_implicitly_promotable: FlowSensitiveResolver<'mir, 'tcx, IsNotImplicitlyPromotable>,
+    needs_drop: Box<dyn 'mir + QualifResolver<'tcx, NeedsDrop>>,
+    has_mut_interior: Box<dyn 'mir + QualifResolver<'tcx, HasMutInterior>>,
+    is_not_promotable: Box<dyn 'mir + QualifResolver<'tcx, IsNotPromotable>>,
+    is_not_implicitly_promotable: Box<dyn 'mir + QualifResolver<'tcx, IsNotImplicitlyPromotable>>,
 }
 
 impl Resolvers<'mir, 'tcx> {
@@ -867,34 +867,52 @@ impl Resolvers<'mir, 'tcx> {
         let borrowed_locals = dataflow::DataflowResultsCursor::new(borrowed_locals, cx.body);
         let borrowed_locals = Rc::new(RefCell::new(borrowed_locals));
 
-        let needs_drop = FlowSensitiveResolver::new(
-            NeedsDrop,
-            cx,
-            borrowed_locals.clone(),
-            temp_promotion_state,
-            &dead_unwinds,
-        );
-        let has_mut_interior = FlowSensitiveResolver::new(
-            HasMutInterior,
-            cx,
-            borrowed_locals.clone(),
-            temp_promotion_state,
-            &dead_unwinds,
-        );
-        let is_not_promotable = FlowSensitiveResolver::new(
+        let needs_drop = if cx.mode == Mode::NonConstFn {
+            Box::new(TempOnlyResolver::new(
+                NeedsDrop,
+                cx,
+                borrowed_locals.clone(),
+                temp_promotion_state,
+            )) as Box<_>
+        } else {
+            Box::new(FlowSensitiveResolver::new(
+                NeedsDrop,
+                cx,
+                borrowed_locals.clone(),
+                temp_promotion_state,
+                &dead_unwinds,
+            )) as Box<_>
+        };
+
+        let has_mut_interior = if cx.mode == Mode::NonConstFn {
+            Box::new(TempOnlyResolver::new(
+                HasMutInterior,
+                cx,
+                borrowed_locals.clone(),
+                temp_promotion_state,
+            )) as Box<_>
+        } else {
+            Box::new(FlowSensitiveResolver::new(
+                HasMutInterior,
+                cx,
+                borrowed_locals.clone(),
+                temp_promotion_state,
+                &dead_unwinds,
+            )) as Box<_>
+        };
+
+        let is_not_promotable = Box::new(TempOnlyResolver::new(
             IsNotPromotable,
             cx,
             borrowed_locals.clone(),
             temp_promotion_state,
-            &dead_unwinds,
-        );
-        let is_not_implicitly_promotable = FlowSensitiveResolver::new(
+        ));
+        let is_not_implicitly_promotable = Box::new(TempOnlyResolver::new(
             IsNotImplicitlyPromotable,
             cx,
             borrowed_locals.clone(),
             temp_promotion_state,
-            &dead_unwinds,
-        );
+        ));
 
         Resolvers {
             needs_drop,
@@ -902,6 +920,72 @@ impl Resolvers<'mir, 'tcx> {
             is_not_promotable,
             is_not_implicitly_promotable,
         }
+    }
+}
+
+struct TempOnlyResolver<'mir, 'tcx, Q> {
+    cx: ConstCx<'mir, 'tcx>,
+    borrowed_locals: BorrowedLocalsResults<'mir, 'tcx>,
+    per_local: BitSet<Local>,
+    _qualif: PhantomData<Q>,
+}
+
+impl<Q> TempOnlyResolver<'mir, 'tcx, Q>
+where
+    Q: Qualif,
+{
+    fn new(
+        _: Q,
+        cx: &ConstCx<'mir, 'tcx>,
+        borrowed_locals: BorrowedLocalsResults<'mir, 'tcx>,
+        temp_promotion_state: &IndexVec<Local, TempState>,
+    ) -> Self {
+        let mut per_local = BitSet::new_empty(cx.body.local_decls.len());
+        initialize_qualifs::<Q>(&mut per_local, cx, temp_promotion_state);
+
+        TempOnlyResolver {
+            cx: (*cx).clone(),
+            borrowed_locals,
+            per_local,
+            _qualif: PhantomData,
+        }
+    }
+}
+
+
+impl<Q> Visitor<'tcx> for TempOnlyResolver<'_, 'tcx, Q>
+where
+    Q: Qualif
+{
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        QualifPropagator::<Q>::new(&self.cx, &mut self.per_local, &self.borrowed_locals)
+            .visit_statement(statement, location);
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        QualifPropagator::<Q>::new(&self.cx, &mut self.per_local, &self.borrowed_locals)
+            .visit_terminator(terminator, location);
+
+        if let mir::TerminatorKind::Call {
+            destination: Some((return_place, _)),
+            func,
+            args,
+            ..
+        } = &terminator.kind {
+            let return_ty = return_place.ty(self.cx.body, self.cx.tcx).ty;
+            let in_call = Q::in_call(&self.cx, &mut self.per_local, func, args, return_ty);
+            QualifPropagator::<Q>::new(&self.cx, &mut self.per_local, &self.borrowed_locals)
+                .assign_qualif(return_place, in_call, location);
+        }
+    }
+}
+
+impl<Q> QualifResolver<'tcx, Q> for TempOnlyResolver<'_, 'tcx, Q>
+where
+    Q: Qualif
+{
+    fn get(&mut self) -> &BitSet<Local> {
+        &self.per_local
     }
 }
 
@@ -1116,9 +1200,8 @@ where
         borrowed_locals.seek(location);
 
         for local in borrowed_locals.get().iter() {
-            // FIXME: This is unsound. Mutable borrows can still mutate types that aren't `Freeze`.
             let ty = self.cx.body.local_decls[local].ty;
-            if !ty.is_freeze(self.cx.tcx, self.cx.param_env, DUMMY_SP) {
+            if Q::in_any_value_of_ty(&self.cx, ty).unwrap_or(true) {
                 self.qualifs_per_local.insert(local);
             }
         }
@@ -2220,7 +2303,8 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
         return (1 << IsNotPromotable::IDX, tcx.arena.alloc(BitSet::new_empty(0)));
     }
 
-    Checker::new(tcx, def_id, body, Mode::Const).check_const()
+    let mut checker = Checker::new(tcx, def_id, body, Mode::Const);
+    checker.check_const()
 }
 
 pub struct QualifyAndPromoteConstants<'tcx> {
