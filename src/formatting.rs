@@ -188,7 +188,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
         format_lines(
             &mut visitor.buffer,
             &path,
-            &visitor.skipped_range,
+            &visitor.skipped_range.borrow(),
             &self.config,
             &self.report,
         );
@@ -203,7 +203,7 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             self.report.add_macro_format_failure();
         }
         self.report
-            .add_non_formatted_ranges(visitor.skipped_range.clone());
+            .add_non_formatted_ranges(visitor.skipped_range.borrow().clone());
 
         self.handler.handle_formatted_file(
             self.parse_session.source_map(),

@@ -181,6 +181,11 @@ fn return_macro_parse_failure_fallback(
         return trim_left_preserve_layout(context.snippet(span), indent, &context.config);
     }
 
+    context.skipped_range.borrow_mut().push((
+        context.source_map.lookup_line(span.lo()).unwrap().line,
+        context.source_map.lookup_line(span.hi()).unwrap().line,
+    ));
+
     // Return the snippet unmodified if the macro is not block-like
     Some(context.snippet(span).to_owned())
 }

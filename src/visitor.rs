@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use syntax::parse::ParseSess;
 use syntax::source_map::{self, BytePos, Pos, SourceMap, Span};
@@ -65,7 +66,7 @@ pub(crate) struct FmtVisitor<'a> {
     pub(crate) line_number: usize,
     /// List of 1-based line ranges which were annotated with skip
     /// Both bounds are inclusifs.
-    pub(crate) skipped_range: Vec<(usize, usize)>,
+    pub(crate) skipped_range: Rc<RefCell<Vec<(usize, usize)>>>,
     pub(crate) macro_rewrite_failure: bool,
     pub(crate) report: FormatReport,
     pub(crate) skip_context: SkipContext,
@@ -652,7 +653,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let lo = std::cmp::min(attrs_end + 1, first_line);
         self.push_rewrite_inner(item_span, None);
         let hi = self.line_number + 1;
-        self.skipped_range.push((lo, hi));
+        self.skipped_range.borrow_mut().push((lo, hi));
     }
 
     pub(crate) fn from_context(ctx: &'a RewriteContext<'_>) -> FmtVisitor<'a> {
@@ -684,7 +685,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             is_if_else_block: false,
             snippet_provider,
             line_number: 0,
-            skipped_range: vec![],
+            skipped_range: Rc::new(RefCell::new(vec![])),
             macro_rewrite_failure: false,
             report,
             skip_context: Default::default(),
@@ -877,6 +878,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             macro_rewrite_failure: RefCell::new(false),
             report: self.report.clone(),
             skip_context: self.skip_context.clone(),
+            skipped_range: self.skipped_range.clone(),
         }
     }
 }
