@@ -1,4 +1,4 @@
-mod checked_arith_unwrap_or;
+mod manual_saturating_arithmetic;
 mod option_map_unwrap_or;
 mod unnecessary_filter_map;
 
@@ -994,15 +994,17 @@ declare_clippy_lint! {
     /// ```rust
     /// let x: u32 = 100;
     ///
-    /// let add = x.checked_add(y).unwrap_or(u32::max_value());
-    /// let sub = x.checked_sub(y).unwrap_or(u32::min_value());
+    /// let add = x.checked_add(3).unwrap_or(u32::max_value());
+    /// let sub = x.checked_sub(3).unwrap_or(u32::min_value());
     /// ```
     ///
     /// can be written using dedicated methods for saturating addition/subtraction as:
     ///
     /// ```rust
-    /// let add = x.saturating_add(y);
-    /// let sub = x.saturating_sub(y);
+    /// let x: u32 = 100;
+    ///
+    /// let add = x.saturating_add(3);
+    /// let sub = x.saturating_sub(3);
     /// ```
     pub MANUAL_SATURATING_ARITHMETIC,
     style,
@@ -1102,7 +1104,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["unwrap_or", arith @ "checked_add"]
             | ["unwrap_or", arith @ "checked_sub"]
             | ["unwrap_or", arith @ "checked_mul"] => {
-                checked_arith_unwrap_or::lint(cx, expr, &arg_lists, &arith["checked_".len()..])
+                manual_saturating_arithmetic::lint(cx, expr, &arg_lists, &arith["checked_".len()..])
             },
             _ => {},
         }
