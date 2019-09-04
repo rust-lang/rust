@@ -17,7 +17,7 @@ use build_helper::{t, up_to_date};
 
 use crate::util::symlink_dir;
 use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
-use crate::tool::{self, prepare_tool_cargo, Tool, SourceType};
+use crate::tool::{self, prepare_tool_cargo, Tool};
 use crate::compile;
 use crate::cache::{INTERNER, Interned};
 use crate::config::Config;
@@ -633,7 +633,7 @@ impl Step for Rustdoc {
         builder.ensure(tool::Rustdoc { compiler: compiler });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
-        let out_dir = builder.stage_out(compiler, Mode::ToolRustc)
+        let out_dir = builder.stage_out(compiler, Mode::ToolRustc { in_tree: true })
             .join(target)
             .join("doc");
         t!(fs::create_dir_all(&out_dir));
@@ -643,11 +643,10 @@ impl Step for Rustdoc {
         let mut cargo = prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolRustc,
+            Mode::ToolRustc { in_tree: true },
             target,
             "doc",
             "src/tools/rustdoc",
-            SourceType::InTree,
             &[]
         );
 
