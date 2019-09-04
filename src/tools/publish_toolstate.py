@@ -25,20 +25,23 @@ except ImportError:
 # These should be collaborators of the rust-lang/rust repository (with at least
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
-    'miri': '@oli-obk @RalfJung @eddyb',
-    'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch @flip1995 @yaahc',
-    'rls': '@Xanewok',
-    'rustfmt': '@topecongiro',
-    'book': '@carols10cents @steveklabnik',
-    'nomicon': '@frewsxcv @Gankra',
-    'reference': '@steveklabnik @Havvy @matthewjasper @ehuss',
-    'rust-by-example': '@steveklabnik @marioidival @projektir',
-    'embedded-book': (
-        '@adamgreig @andre-richter @jamesmunns @korken89 '
-        '@ryankurte @thejpster @therealprof'
-    ),
-    'edition-guide': '@ehuss @Centril @steveklabnik',
-    'rustc-guide': '@mark-i-m @spastorino @amanjeev'
+    'miri': {'oli-obk', 'RalfJung', 'eddyb'},
+    'clippy-driver': {
+        'Manishearth', 'llogiq', 'mcarton', 'oli-obk', 'phansch', 'flip1995',
+        'yaahc',
+    },
+    'rls': {'Xanewok'},
+    'rustfmt': {'topecongiro'},
+    'book': {'carols10cents', 'steveklabnik'},
+    'nomicon': {'frewsxcv', 'Gankra'},
+    'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
+    'rust-by-example': {'steveklabnik', 'marioidival', 'projektir'},
+    'embedded-book': {
+        'adamgreig', 'andre-richter', 'jamesmunns', 'korken89',
+        'ryankurte', 'thejpster', 'therealprof',
+    },
+    'edition-guide': {'ehuss', 'Centril', 'steveklabnik'},
+    'rustc-guide': {'mark-i-m', 'spastorino', 'amanjeev'},
 }
 
 REPOS = {
@@ -80,9 +83,7 @@ def validate_maintainers(repo, github_token):
 
     errors = False
     for tool, maintainers in MAINTAINERS.items():
-        for maintainer in maintainers.split(' '):
-            if maintainer.startswith('@'):
-                maintainer = maintainer[1:]
+        for maintainer in maintainers:
             if maintainer not in assignable:
                 errors = True
                 print(
@@ -123,13 +124,12 @@ def maybe_delink(message):
 def issue(
     tool,
     status,
-    maintainers,
+    assignees,
     relevant_pr_number,
     relevant_pr_user,
     pr_reviewer,
 ):
     # Open an issue about the toolstate failure.
-    assignees = [x.strip() for x in maintainers.split('@') if x != '']
     if status == 'test-fail':
         status_description = 'has failing tests'
     else:
@@ -150,7 +150,7 @@ def issue(
             REPOS.get(tool), relevant_pr_user, pr_reviewer
         )),
         'title': '`{}` no longer builds after {}'.format(tool, relevant_pr_number),
-        'assignees': assignees,
+        'assignees': list(assignees),
         'labels': ['T-compiler', 'I-nominated'],
     })
     print("Creating issue:\n{}".format(request))
@@ -200,18 +200,19 @@ def update_latest(
                 old = status[os]
                 new = s.get(tool, old)
                 status[os] = new
+                maintainers = ' '.join('@'+name for name in MAINTAINERS[tool])
                 if new > old: # comparing the strings, but they are ordered appropriately!
                     # things got fixed or at least the status quo improved
                     changed = True
                     message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
-                        .format(tool, os, old, new, MAINTAINERS.get(tool))
+                        .format(tool, os, old, new, maintainers)
                 elif new < old:
                     # tests or builds are failing and were not failing before
                     changed = True
                     title = '💔 {} on {}: {} → {}' \
                         .format(tool, os, old, new)
                     message += '{} (cc {}, @rust-lang/infra).\n' \
-                        .format(title, MAINTAINERS.get(tool))
+                        .format(title, maintainers)
                     # Most tools only create issues for build failures.
                     # Other failures can be spurious.
                     if new == 'build-fail' or (tool == 'miri' and new == 'test-fail'):
