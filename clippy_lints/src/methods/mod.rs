@@ -992,19 +992,19 @@ declare_clippy_lint! {
     /// **Example:**
     ///
     /// ```rust
-    /// let x: u32 = 100;
-    ///
-    /// let add = x.checked_add(3).unwrap_or(u32::max_value());
-    /// let sub = x.checked_sub(3).unwrap_or(u32::min_value());
+    /// # let y: u32 = 0;
+    /// # let x: u32 = 100;
+    /// let add = x.checked_add(y).unwrap_or(u32::max_value());
+    /// let sub = x.checked_sub(y).unwrap_or(u32::min_value());
     /// ```
     ///
     /// can be written using dedicated methods for saturating addition/subtraction as:
     ///
     /// ```rust
-    /// let x: u32 = 100;
-    ///
-    /// let add = x.saturating_add(3);
-    /// let sub = x.saturating_sub(3);
+    /// # let y: u32 = 0;
+    /// # let x: u32 = 100;
+    /// let add = x.saturating_add(y);
+    /// let sub = x.saturating_sub(y);
     /// ```
     pub MANUAL_SATURATING_ARITHMETIC,
     style,
