@@ -312,7 +312,7 @@ impl EarlyLintPass for MiscEarlyLints {
 
         if let PatKind::Ident(_, ident, Some(ref right)) = pat.node {
             if let PatKind::Wild = right.node {
-                span_lint(
+                span_lint_and_sugg(
                     cx,
                     REDUNDANT_PATTERN,
                     pat.span,
@@ -320,6 +320,9 @@ impl EarlyLintPass for MiscEarlyLints {
                         "the `{} @ _` pattern can be written as just `{}`",
                         ident.name, ident.name,
                     ),
+                    "try",
+                    format!("{}", ident.name),
+                    Applicability::MachineApplicable,
                 );
             }
         }
