@@ -145,7 +145,7 @@ of print values are:
   target CPU may be selected with the `-C target-cpu=val` flag.
 - `target-features` — List of available target features for the current
   target. Target features may be enabled with the `-C target-feature=val`
-  flag.
+  flag. This flag is unsafe. See [known issues](targets/known-issues.md) for more details.
 - `relocation-models` — List of relocation models. Relocation models may be
   selected with the `-C relocation-model=val` flag.
 - `code-models` — List of code models. Code models may be selected with the
