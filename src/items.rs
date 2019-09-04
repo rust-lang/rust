@@ -557,24 +557,20 @@ impl<'a> FmtVisitor<'a> {
                 self.block_indent,
                 Some(one_line_width),
             )?,
-            ast::VariantData::Unit(..) => {
-                if let Some(ref expr) = field.node.disr_expr {
-                    let lhs = format!(
-                        "{:1$} =",
-                        rewrite_ident(&context, field.node.ident),
-                        pad_discrim_ident_to
-                    );
-                    rewrite_assign_rhs_with(
-                        &context,
-                        lhs,
-                        &*expr.value,
-                        shape,
-                        RhsTactics::AllowOverflow,
-                    )?
-                } else {
-                    rewrite_ident(&context, field.node.ident).to_owned()
-                }
-            }
+            ast::VariantData::Unit(..) => rewrite_ident(&context, field.node.ident).to_owned(),
+        };
+
+        let variant_body = if let Some(ref expr) = field.node.disr_expr {
+            let lhs = format!("{:1$} =", variant_body, pad_discrim_ident_to);
+            rewrite_assign_rhs_with(
+                &context,
+                lhs,
+                &*expr.value,
+                shape,
+                RhsTactics::AllowOverflow,
+            )?
+        } else {
+            variant_body
         };
 
         combine_strs_with_missing_comments(&context, &attrs_str, &variant_body, span, shape, false)
