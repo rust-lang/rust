@@ -101,7 +101,10 @@ fn use_tree(p: &mut Parser) {
         }
         _ => {
             m.abandon(p);
-            p.err_and_bump("expected one of `*`, `::`, `{`, `self`, `super` or an indentifier");
+            p.err_recover(
+                "expected one of `*`, `::`, `{`, `self`, `super` or an identifier",
+                ITEM_RECOVERY_SET,
+            );
             return;
         }
     }
