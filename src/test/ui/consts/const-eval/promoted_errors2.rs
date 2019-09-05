@@ -1,11 +1,12 @@
-// compile-flags: -O
+// compile-flags: -C overflow-checks=on -O
 
 #![deny(const_err)]
 
 fn main() {
     println!("{}", 0u32 - 1);
+    //~^ ERROR attempt to subtract with overflow
     let _x = 0u32 - 1;
-    //~^ ERROR const_err
+    //~^ ERROR attempt to subtract with overflow
     println!("{}", 1/(1-1));
     //~^ ERROR attempt to divide by zero [const_err]
     //~| ERROR reaching this expression at runtime will panic or abort [const_err]
