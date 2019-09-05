@@ -485,7 +485,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.load_operand(PlaceRef::new_sized(
                             bx.cx().const_undef(bx.cx().type_ptr_to(bx.cx().backend_type(layout))),
                             layout,
-                            layout.align.abi,
                         ))
                     })
             }

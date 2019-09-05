@@ -349,7 +349,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             )};
             self.const_bitcast(llval, llty)
         };
-        PlaceRef::new_sized(llval, layout, alloc.align)
+        PlaceRef::new_sized(llval, layout)
     }
 
     fn const_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {

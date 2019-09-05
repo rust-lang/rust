@@ -561,7 +561,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(&mut body_bx,
-            PlaceRef::new_sized(current, cg_elem.layout, align));
+            PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
 
         let next = body_bx.inbounds_gep(current, &[self.const_usize(1)]);
         body_bx.br(header_bx.llbb());

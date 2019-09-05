@@ -6,21 +6,21 @@ use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
-use syntax::tokenstream::TokenTree;
+use syntax::tokenstream::{TokenTree, TokenStream};
 
-pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
-                              sp: Span,
-                              tts: &[TokenTree])
-                              -> Box<dyn base::MacResult + 'cx> {
+pub fn expand_concat_idents<'cx>(cx: &'cx mut ExtCtxt<'_>,
+                                 sp: Span,
+                                 tts: TokenStream)
+                                 -> Box<dyn base::MacResult + 'cx> {
     if tts.is_empty() {
         cx.span_err(sp, "concat_idents! takes 1 or more arguments.");
         return DummyResult::any(sp);
     }
 
     let mut res_str = String::new();
-    for (i, e) in tts.iter().enumerate() {
+    for (i, e) in tts.into_trees().enumerate() {
         if i & 1 == 1 {
-            match *e {
+            match e {
                 TokenTree::Token(Token { kind: token::Comma, .. }) => {}
                 _ => {
                     cx.span_err(sp, "concat_idents! expecting comma.");
@@ -28,7 +28,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
                 }
             }
         } else {
-            match *e {
+            match e {
                 TokenTree::Token(Token { kind: token::Ident(name, _), .. }) =>
                     res_str.push_str(&name.as_str()),
                 _ => {

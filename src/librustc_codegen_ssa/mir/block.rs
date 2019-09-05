@@ -988,7 +988,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Handle both by-ref and immediate tuples.
         if let Ref(llval, None, align) = tuple.val {
-            let tuple_ptr = PlaceRef::new_sized(llval, tuple.layout, align);
+            let tuple_ptr = PlaceRef::new_sized_aligned(llval, tuple.layout, align);
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 let field = bx.load_operand(field_ptr);
@@ -1202,7 +1202,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let llty = bx.backend_type(src.layout);
         let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
         let align = src.layout.align.abi.min(dst.align);
-        src.val.store(bx, PlaceRef::new_sized(cast_ptr, src.layout, align));
+        src.val.store(bx, PlaceRef::new_sized_aligned(cast_ptr, src.layout, align));
     }
 
 

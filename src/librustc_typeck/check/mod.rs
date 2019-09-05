@@ -3687,6 +3687,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// If `expr` is a `match` expression that has only one non-`!` arm, use that arm's tail
+    /// expression's `Span`, otherwise return `expr.span`. This is done to give better errors
+    /// when given code like the following:
+    /// ```text
+    /// if false { return 0i32; } else { 1u32 }
+    /// //                               ^^^^ point at this instead of the whole `if` expression
+    /// ```
+    fn get_expr_coercion_span(&self, expr: &hir::Expr) -> syntax_pos::Span {
+        if let hir::ExprKind::Match(_, arms, _) = &expr.node {
+            let arm_spans: Vec<Span> = arms.iter().filter_map(|arm| {
+                self.in_progress_tables
+                    .and_then(|tables| tables.borrow().node_type_opt(arm.body.hir_id))
+                    .and_then(|arm_ty| {
+                        if arm_ty.is_never() {
+                            None
+                        } else {
+                            Some(match &arm.body.node {
+                                // Point at the tail expression when possible.
+                                hir::ExprKind::Block(block, _) => block.expr
+                                    .as_ref()
+                                    .map(|e| e.span)
+                                    .unwrap_or(block.span),
+                                _ => arm.body.span,
+                            })
+                        }
+                    })
+            }).collect();
+            if arm_spans.len() == 1 {
+                return arm_spans[0];
+            }
+        }
+        expr.span
+    }
+
     fn check_block_with_expected(
         &self,
         blk: &'tcx hir::Block,
@@ -3746,12 +3780,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coerce = ctxt.coerce.as_mut().unwrap();
             if let Some(tail_expr_ty) = tail_expr_ty {
                 let tail_expr = tail_expr.unwrap();
-                let cause = self.cause(tail_expr.span,
-                                       ObligationCauseCode::BlockTailExpression(blk.hir_id));
-                coerce.coerce(self,
-                              &cause,
-                              tail_expr,
-                              tail_expr_ty);
+                let span = self.get_expr_coercion_span(tail_expr);
+                let cause = self.cause(span, ObligationCauseCode::BlockTailExpression(blk.hir_id));
+                coerce.coerce(self, &cause, tail_expr, tail_expr_ty);
             } else {
                 // Subtle: if there is no explicit tail expression,
                 // that is typically equivalent to a tail expression
