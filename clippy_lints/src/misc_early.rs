@@ -173,6 +173,28 @@ declare_clippy_lint! {
     "shadowing a builtin type"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for patterns in the form `name @ _`.
+    ///
+    /// **Why is this bad?** It's almost always more readable to just use direct
+    /// bindings.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// # let v = Some("abc");
+    ///
+    /// match v {
+    ///     Some(x) => (),
+    ///     y @ _ => (), // easier written as `y`,
+    /// }
+    /// ```
+    pub REDUNDANT_PATTERN,
+    style,
+    "using `name @ _` in a pattern"
+}
+
 declare_lint_pass!(MiscEarlyLints => [
     UNNEEDED_FIELD_PATTERN,
     DUPLICATE_UNDERSCORE_ARGUMENT,
@@ -181,7 +203,8 @@ declare_lint_pass!(MiscEarlyLints => [
     MIXED_CASE_HEX_LITERALS,
     UNSEPARATED_LITERAL_SUFFIX,
     ZERO_PREFIXED_LITERAL,
-    BUILTIN_TYPE_SHADOW
+    BUILTIN_TYPE_SHADOW,
+    REDUNDANT_PATTERN
 ]);
 
 // Used to find `return` statements or equivalents e.g., `?`
@@ -284,6 +307,23 @@ impl EarlyLintPass for MiscEarlyLints {
                         }
                     }
                 }
+            }
+        }
+
+        if let PatKind::Ident(_, ident, Some(ref right)) = pat.node {
+            if let PatKind::Wild = right.node {
+                span_lint_and_sugg(
+                    cx,
+                    REDUNDANT_PATTERN,
+                    pat.span,
+                    &format!(
+                        "the `{} @ _` pattern can be written as just `{}`",
+                        ident.name, ident.name,
+                    ),
+                    "try",
+                    format!("{}", ident.name),
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }
