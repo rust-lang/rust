@@ -66,13 +66,6 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     {
         self.iter.rfind(predicate)
     }
-
-    #[inline]
-    fn rposition<P>(&mut self, predicate: P) -> Option<usize> where
-        P: FnMut(Self::Item) -> bool
-    {
-        self.iter.position(predicate)
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
