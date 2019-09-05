@@ -1039,7 +1039,7 @@ impl GenericBound {
     fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+        let path = external_path(cx, cx.tcx.item_name(did),
             Some(did), false, vec![], empty);
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
         GenericBound::TraitBound(PolyTrait {
@@ -1138,13 +1138,13 @@ fn external_generic_args(
 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
-fn external_path(cx: &DocContext<'_>, name: &str, trait_did: Option<DefId>, has_self: bool,
+fn external_path(cx: &DocContext<'_>, name: Symbol, trait_did: Option<DefId>, has_self: bool,
                  bindings: Vec<TypeBinding>, substs: SubstsRef<'_>) -> Path {
     Path {
         global: false,
         res: Res::Err,
         segments: vec![PathSegment {
-            name: name.to_string(),
+            name: name.as_str().to_string(),
             args: external_generic_args(cx, trait_did, has_self, bindings, substs)
         }],
     }
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
     fn clean(&self, cx: &DocContext<'_>) -> GenericBound {
         let (trait_ref, ref bounds) = *self;
         inline::record_extern_fqn(cx, trait_ref.def_id, TypeKind::Trait);
-        let path = external_path(cx, &cx.tcx.item_name(trait_ref.def_id).as_str(),
+        let path = external_path(cx, cx.tcx.item_name(trait_ref.def_id),
                                  Some(trait_ref.def_id), true, bounds.clone(), trait_ref.substs);
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
@@ -3089,8 +3089,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     AdtKind::Enum => TypeKind::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
-                let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
-                                         None, false, vec![], substs);
+                let path = external_path(cx, cx.tcx.item_name(did), None, false, vec![], substs);
                 ResolvedPath {
                     path,
                     param_names: None,
@@ -3100,7 +3099,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             }
             ty::Foreign(did) => {
                 inline::record_extern_fqn(cx, did, TypeKind::Foreign);
-                let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+                let path = external_path(cx, cx.tcx.item_name(did),
                                          None, false, vec![], InternalSubsts::empty());
                 ResolvedPath {
                     path: path,
@@ -3129,7 +3128,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 reg.clean(cx).map(|b| param_names.push(GenericBound::Outlives(b)));
                 for did in dids {
                     let empty = cx.tcx.intern_substs(&[]);
-                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
+                    let path = external_path(cx, cx.tcx.item_name(did),
                         Some(did), false, vec![], empty);
                     inline::record_extern_fqn(cx, did, TypeKind::Trait);
                     let bound = GenericBound::TraitBound(PolyTrait {
@@ -3154,7 +3153,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     });
                 }
 
-                let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
+                let path = external_path(cx, cx.tcx.item_name(did), Some(did),
                     false, bindings, substs);
                 ResolvedPath {
                     path,
