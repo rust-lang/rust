@@ -33,10 +33,8 @@ fn or_patterns_no_lint() {
     if let &mut (0 | 1) = &mut 0 {} // Same.
 
     fn foo((Ok(a) | Err(a)): Result<u8, u8>) {} // Doesn't parse if we remove parens for now.
-    //~^ ERROR identifier `a` is bound more than once
 
     let _ = |(Ok(a) | Err(a)): Result<u8, u8>| 1; // `|Ok(a) | Err(a)| 1` parses as bit-or.
-    //~^ ERROR identifier `a` is bound more than once
 }
 
 fn or_patterns_will_lint() {
