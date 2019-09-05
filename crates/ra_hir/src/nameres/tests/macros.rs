@@ -147,25 +147,31 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
         #[macro_use]
         extern crate foo;
 
-        structs!(Foo, Bar)
+        structs!(Foo);
+        structs_priv!(Bar);
+        structs_not_exported!(MacroNotResolved1);
+        crates::structs!(MacroNotResolved2);
 
         mod bar;
 
         //- /bar.rs
-        use crate::*;
+        structs!(Baz);
+        crates::structs!(MacroNotResolved3);
 
         //- /lib.rs
         #[macro_export]
         macro_rules! structs {
-            ($($i:ident),*) => {
-                $(struct $i { field: u32 } )*
-            }
+            ($i:ident) => { struct $i; }
+        }
+
+        macro_rules! structs_not_exported {
+            ($i:ident) => { struct $i; }
         }
 
         mod priv_mod {
             #[macro_export]
-            macro_rules! baz {
-                () => {};
+            macro_rules! structs_priv {
+                ($i:ident) => { struct $i; }
             }
         }
         ",
@@ -179,16 +185,9 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
    ⋮Bar: t v
    ⋮Foo: t v
    ⋮bar: t
-   ⋮baz: m
    ⋮foo: t
-   ⋮structs: m
    ⋮
    ⋮crate::bar
-   ⋮Bar: t v
-   ⋮Foo: t v
-   ⋮bar: t
-   ⋮baz: m
-   ⋮foo: t
-   ⋮structs: m
+   ⋮Baz: t v
     "###);
 }
