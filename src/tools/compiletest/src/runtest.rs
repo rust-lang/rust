@@ -1733,14 +1733,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn is_vxworks_pure_dynamic(&self) -> bool {
-        if self.config.target.contains("vxworks") {
-            match env::var("RUST_VXWORKS_TEST_DYLINK") {
-                Ok(s) => s == "1",
-                _ => false
-            }
-        } else {
-            false
-        }
+        self.config.target.contains("vxworks") && !self.is_vxworks_pure_static()
     }
 
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
