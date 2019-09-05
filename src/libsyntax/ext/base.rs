@@ -10,7 +10,7 @@ use crate::parse::token;
 use crate::ptr::P;
 use crate::symbol::{kw, sym, Ident, Symbol};
 use crate::{ThinVec, MACRO_ARGUMENTS};
-use crate::tokenstream::{self, TokenStream, TokenTree};
+use crate::tokenstream::{self, TokenStream};
 use crate::visit::Visitor;
 
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -235,18 +235,18 @@ pub trait TTMacroExpander {
 }
 
 pub type MacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, &[tokenstream::TokenTree])
+    for<'cx> fn(&'cx mut ExtCtxt<'_>, Span, TokenStream)
                 -> Box<dyn MacResult+'cx>;
 
 impl<F> TTMacroExpander for F
-    where F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, &[tokenstream::TokenTree])
+    where F: for<'cx> Fn(&'cx mut ExtCtxt<'_>, Span, TokenStream)
     -> Box<dyn MacResult+'cx>
 {
     fn expand<'cx>(
         &self,
         ecx: &'cx mut ExtCtxt<'_>,
         span: Span,
-        input: TokenStream,
+        mut input: TokenStream,
     ) -> Box<dyn MacResult+'cx> {
         struct AvoidInterpolatedIdents;
 
@@ -268,10 +268,8 @@ impl<F> TTMacroExpander for F
                 mut_visit::noop_visit_mac(mac, self)
             }
         }
-
-        let input: Vec<_> =
-            input.trees().map(|mut tt| { AvoidInterpolatedIdents.visit_tt(&mut tt); tt }).collect();
-        (*self)(ecx, span, &input)
+        AvoidInterpolatedIdents.visit_tts(&mut input);
+        (*self)(ecx, span, input)
     }
 }
 
@@ -677,7 +675,7 @@ impl SyntaxExtension {
     }
 
     pub fn dummy_bang(edition: Edition) -> SyntaxExtension {
-        fn expander<'cx>(_: &'cx mut ExtCtxt<'_>, span: Span, _: &[TokenTree])
+        fn expander<'cx>(_: &'cx mut ExtCtxt<'_>, span: Span, _: TokenStream)
                          -> Box<dyn MacResult + 'cx> {
             DummyResult::any(span)
         }
@@ -811,9 +809,8 @@ impl<'a> ExtCtxt<'a> {
     pub fn monotonic_expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
         expand::MacroExpander::new(self, true)
     }
-
-    pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree]) -> parser::Parser<'a> {
-        parse::stream_to_parser(self.parse_sess, tts.iter().cloned().collect(), MACRO_ARGUMENTS)
+    pub fn new_parser_from_tts(&self, stream: TokenStream) -> parser::Parser<'a> {
+        parse::stream_to_parser(self.parse_sess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap { self.parse_sess.source_map() }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
@@ -1019,7 +1016,7 @@ pub fn expr_to_string(cx: &mut ExtCtxt<'_>, expr: P<ast::Expr>, err_msg: &str)
 /// done as rarely as possible).
 pub fn check_zero_tts(cx: &ExtCtxt<'_>,
                       sp: Span,
-                      tts: &[tokenstream::TokenTree],
+                      tts: TokenStream,
                       name: &str) {
     if !tts.is_empty() {
         cx.span_err(sp, &format!("{} takes no arguments", name));
@@ -1030,7 +1027,7 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>,
 /// expect exactly one string literal, or emit an error and return `None`.
 pub fn get_single_str_from_tts(cx: &mut ExtCtxt<'_>,
                                sp: Span,
-                               tts: &[tokenstream::TokenTree],
+                               tts: TokenStream,
                                name: &str)
                                -> Option<String> {
     let mut p = cx.new_parser_from_tts(tts);
@@ -1053,7 +1050,7 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt<'_>,
 /// parsing error, emit a non-fatal error and return `None`.
 pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>,
                           sp: Span,
-                          tts: &[tokenstream::TokenTree]) -> Option<Vec<P<ast::Expr>>> {
+                          tts: TokenStream) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {

@@ -701,7 +701,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         path: &Path,
         span: Span,
     ) -> AstFragment {
-        let mut parser = self.cx.new_parser_from_tts(&toks.into_trees().collect::<Vec<_>>());
+        let mut parser = self.cx.new_parser_from_tts(toks);
         match parser.parse_ast_fragment(kind, false) {
             Ok(fragment) => {
                 parser.ensure_complete_parse(path, kind.name(), span);
