@@ -19,7 +19,7 @@ pub const BITMASK_MASK: BitMaskWord = 0xffff;
 pub struct Group(x86::__m128i);
 
 // FIXME: https://github.com/rust-lang/rust-clippy/issues/3859
-#[allow(clippy::use_self)] 
+#[allow(clippy::use_self)]
 impl Group {
     /// Number of bytes in the group.
     pub const WIDTH: usize = mem::size_of::<Self>();
@@ -34,7 +34,7 @@ impl Group {
             _align: Group,
             bytes: [u8; Group::WIDTH],
         };
-        const ALIGNED_BYTES: AlignedBytes = AlignedBytes {
+        static ALIGNED_BYTES: AlignedBytes = AlignedBytes {
             bytes: [EMPTY; Group::WIDTH],
         };
         unsafe { &ALIGNED_BYTES.bytes }

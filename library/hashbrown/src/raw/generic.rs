@@ -63,7 +63,7 @@ impl Group {
             _align: Group,
             bytes: [u8; Group::WIDTH],
         };
-        const ALIGNED_BYTES: AlignedBytes = AlignedBytes {
+        static ALIGNED_BYTES: AlignedBytes = AlignedBytes {
             bytes: [EMPTY; Group::WIDTH],
         };
         unsafe { &ALIGNED_BYTES.bytes }
