@@ -153,7 +153,7 @@ impl ProjectWorkspace {
                     if let Some(file_id) = load(krate.root(&sysroot)) {
                         sysroot_crates.insert(
                             krate,
-                            crate_graph.add_crate_root(file_id, Edition::Edition2015),
+                            crate_graph.add_crate_root(file_id, Edition::Edition2018),
                         );
                     }
                 }
