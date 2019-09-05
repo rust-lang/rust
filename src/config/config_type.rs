@@ -179,6 +179,16 @@ macro_rules! create_config {
             }
 
             #[allow(unreachable_pub)]
+            pub fn is_valid_key_val(key: &str, val: &str) -> bool {
+                match key {
+                    $(
+                        stringify!($i) => val.parse::<$ty>().is_ok(),
+                    )+
+                        _ => false,
+                }
+            }
+
+            #[allow(unreachable_pub)]
             pub fn used_options(&self) -> PartialConfig {
                 PartialConfig {
                     $(

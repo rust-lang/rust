@@ -4,6 +4,7 @@ use io::Error as IoError;
 
 use rustfmt_nightly as rustfmt;
 
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::{self, stdout, Read, Write};
@@ -131,6 +132,12 @@ fn make_opts() -> Options {
         "files-with-diff",
         "Prints the names of mismatched files that were formatted. Prints the names of \
          files that would be formated when used with `--check` mode. ",
+    );
+    opts.optmulti(
+        "",
+        "config",
+        "Set options from command line. These settings take priority over .rustfmt.toml",
+        "[key1=val1,key2=val2...]",
     );
 
     if is_nightly {
@@ -478,6 +485,7 @@ struct GetOptsOptions {
     quiet: bool,
     verbose: bool,
     config_path: Option<PathBuf>,
+    inline_config: HashMap<String, String>,
     emit_mode: EmitMode,
     backup: bool,
     check: bool,
@@ -536,6 +544,29 @@ impl GetOptsOptions {
         }
 
         options.config_path = matches.opt_str("config-path").map(PathBuf::from);
+
+        options.inline_config = matches
+            .opt_strs("config")
+            .iter()
+            .flat_map(|config| config.split(","))
+            .map(
+                |key_val| match key_val.char_indices().find(|(_, ch)| *ch == '=') {
+                    Some((middle, _)) => {
+                        let (key, val) = (&key_val[..middle], &key_val[middle + 1..]);
+                        if !Config::is_valid_key_val(key, val) {
+                            Err(format_err!("invalid key=val pair: `{}`", key_val))
+                        } else {
+                            Ok((key.to_string(), val.to_string()))
+                        }
+                    }
+
+                    None => Err(format_err!(
+                        "--config expects comma-separated list of key=val pairs, found `{}`",
+                        key_val
+                    )),
+                },
+            )
+            .collect::<Result<HashMap<_, _>, _>>()?;
 
         options.check = matches.opt_present("check");
         if let Some(ref emit_str) = matches.opt_str("emit") {
@@ -623,6 +654,10 @@ impl CliOptions for GetOptsOptions {
         }
         if self.print_misformatted_file_names {
             config.set().print_misformatted_file_names(true);
+        }
+
+        for (key, val) in self.inline_config {
+            config.override_value(&key, &val);
         }
     }
 

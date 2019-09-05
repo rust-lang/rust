@@ -30,17 +30,16 @@ fn rustfmt(args: &[&str]) -> (String, String) {
 }
 
 macro_rules! assert_that {
-    ($args:expr, $check:ident $check_args:tt) => {
+    ($args:expr, $($check:ident $check_args:tt)&&+) => {
         let (stdout, stderr) = rustfmt($args);
-        if !stdout.$check$check_args && !stderr.$check$check_args {
+        if $(!stdout.$check$check_args && !stderr.$check$check_args)||* {
             panic!(
                 "Output not expected for rustfmt {:?}\n\
-                 expected: {}{}\n\
+                 expected: {}\n\
                  actual stdout:\n{}\n\
                  actual stderr:\n{}",
                 $args,
-                stringify!($check),
-                stringify!($check_args),
+                stringify!($( $check$check_args )&&*),
                 stdout,
                 stderr
             );
@@ -75,4 +74,29 @@ fn print_config() {
         stderr
     );
     remove_file("minimal-config").unwrap();
+}
+
+#[ignore]
+#[test]
+fn inline_config() {
+    // single invocation
+    assert_that!(
+        &[
+            "--print-config",
+            "current",
+            ".",
+            "--config=color=Never,edition=2018"
+        ],
+        contains("color = \"Never\"") && contains("edition = \"2018\"")
+    );
+
+    // multiple overriding invocations
+    assert_that!(
+        &["--print-config", "current", ".",
+        "--config", "color=never,edition=2018",
+        "--config", "color=always,format_strings=true"],
+        contains("color = \"Always\"") &&
+        contains("edition = \"2018\"") &&
+        contains("format_strings = true")
+    );
 }
