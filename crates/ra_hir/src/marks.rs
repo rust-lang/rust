@@ -11,4 +11,5 @@ test_utils::marks!(
     match_ergonomics_ref
     trait_resolution_on_fn_type
     infer_while_let
+    macro_rules_from_other_crates_are_visible_with_macro_use
 );

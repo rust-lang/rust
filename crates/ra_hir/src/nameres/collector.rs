@@ -157,9 +157,40 @@ where
         // crate root, even if the parent modules is **not** visible.
         if export {
             self.update(self.def_map.root, None, &[(name.clone(), def.clone())]);
+
+            // Exported macros are collected in crate level ready for
+            // glob import with `#[macro_use]`.
+            self.def_map.exported_macros.insert(name.clone(), macro_id);
         }
         self.update(module_id, None, &[(name.clone(), def)]);
         self.global_macro_scope.insert(name, macro_id);
+    }
+
+    /// Import macros from `#[macro_use] extern crate`.
+    ///
+    /// They are non-scoped, and will only be inserted into mutable `global_macro_scope`.
+    fn import_macros_from_extern_crate(&mut self, import: &raw::ImportData) {
+        log::debug!(
+            "importing macros from extern crate: {:?} ({:?})",
+            import,
+            self.def_map.edition,
+        );
+
+        let res = self.def_map.resolve_name_in_extern_prelude(
+            &import
+                .path
+                .as_ident()
+                .expect("extern crate should have been desugared to one-element path"),
+        );
+
+        if let Some(ModuleDef::Module(m)) = res.take_types() {
+            tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
+
+            let item_map = self.db.crate_def_map(m.krate);
+            for (name, &macro_id) in &item_map.exported_macros {
+                self.global_macro_scope.insert(name.clone(), macro_id);
+            }
+        }
     }
 
     fn resolve_imports(&mut self) -> ReachedFixedPoint {
@@ -494,11 +525,17 @@ where
         for item in items {
             match *item {
                 raw::RawItem::Module(m) => self.collect_module(&self.raw_items[m]),
-                raw::RawItem::Import(import) => self.def_collector.unresolved_imports.push((
-                    self.module_id,
-                    import,
-                    self.raw_items[import].clone(),
-                )),
+                raw::RawItem::Import(import_id) => {
+                    let import = self.raw_items[import_id].clone();
+                    // This should be processed eagerly instead of deferred to resolving.
+                    // Otherwise, since it will only mutate `global_macro_scope`
+                    // without `update` names in `mod`s, unresolved macros cannot be expanded.
+                    if import.is_extern_crate && import.is_macro_use {
+                        self.def_collector.import_macros_from_extern_crate(&import);
+                    }
+
+                    self.def_collector.unresolved_imports.push((self.module_id, import_id, import));
+                }
                 raw::RawItem::Def(def) => self.define_def(&self.raw_items[def]),
                 raw::RawItem::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
             }
@@ -860,6 +897,7 @@ mod tests {
                 root,
                 modules,
                 poison_macros: FxHashSet::default(),
+                exported_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };
