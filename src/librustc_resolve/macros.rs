@@ -128,9 +128,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         }
     }
 
-    // Create a Span with modern hygiene with a definition site of the provided
-    // module, or a fake empty `#[no_implicit_prelude]` module if no module is
-    // provided.
+    // Create a new Expansion with a definition site of the provided module, or
+    // a fake empty `#[no_implicit_prelude]` module if no module is provided.
     fn expansion_for_ast_pass(
         &mut self,
         call_site: Span,

@@ -366,8 +366,8 @@ fn configure_and_expand_inner<'a>(
         let (krate, name) = syntax_ext::standard_library_imports::inject(
             krate,
             &mut resolver,
+            &sess.parse_sess,
             alt_std_name,
-            sess.edition(),
         );
         if let Some(name) = name {
             sess.parse_sess.injected_crate_name.set(name);

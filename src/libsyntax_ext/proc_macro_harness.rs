@@ -392,41 +392,19 @@ fn mk_decls(
         i
     });
 
-    let block = P(ast::Expr {
-        id: ast::DUMMY_NODE_ID,
-        attrs: syntax::ThinVec::new(),
-        node: ast::ExprKind::Block(P(ast::Block {
-            id: ast::DUMMY_NODE_ID,
-            rules: ast::BlockCheckMode::Default,
-            stmts: vec![
-                ast::Stmt {
-                    id: ast::DUMMY_NODE_ID,
-                    node: ast::StmtKind::Item(krate),
-                    span,
-                },
-                ast::Stmt {
-                    id: ast::DUMMY_NODE_ID,
-                    node: ast::StmtKind::Item(decls_static),
-                    span,
-                }
-            ],
-            span,
-        }), None),
+    let block = cx.expr_block(cx.block(
         span,
-    });
+        vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)],
+    ));
 
     let anon_constant = cx.item_const(
         span,
         ast::Ident::new(kw::Underscore, span),
-        P(ast::Ty {
-            id: ast::DUMMY_NODE_ID,
-            node: ast::TyKind::Tup(Vec::new()),
-            span,
-        }),
+        cx.ty(span, ast::TyKind::Tup(Vec::new())),
         block,
     );
 
-    // Integrate the new module into existing module structures.
+    // Integrate the new item into existing module structures.
     let items = AstFragment::Items(smallvec![anon_constant]);
     cx.monotonic_expander().fully_expand_fragment(items).make_items().pop().unwrap()
 }
