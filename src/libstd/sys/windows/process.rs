@@ -472,9 +472,8 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
             cmd.push('"' as u16);
         }
 
-        let mut iter = arg.encode_wide();
         let mut backslashes: usize = 0;
-        while let Some(x) = iter.next() {
+        for x in arg.encode_wide() {
             if x == '\\' as u16 {
                 backslashes += 1;
             } else {
