@@ -47,7 +47,7 @@ impl<'mir, 'tcx> GlobalState {
         }
 
         let global_state = memory.extra.intptrcast.borrow();
-        
+
         Ok(match global_state.int_to_ptr_map.binary_search_by_key(&int, |(addr, _)| *addr) {
             Ok(pos) => {
                 let (_, alloc_id) = global_state.int_to_ptr_map[pos];
@@ -55,7 +55,7 @@ impl<'mir, 'tcx> GlobalState {
                 // zero. The pointer is untagged because it was created from a cast
                 Pointer::new_with_tag(alloc_id, Size::from_bytes(0), Tag::Untagged)
             },
-            Err(0) => throw_unsup!(DanglingPointerDeref), 
+            Err(0) => throw_unsup!(DanglingPointerDeref),
             Err(pos) => {
                 // This is the largest of the adresses smaller than `int`,
                 // i.e. the greatest lower bound (glb)
@@ -63,12 +63,12 @@ impl<'mir, 'tcx> GlobalState {
                 // This never overflows because `int >= glb`
                 let offset = int - glb;
                 // If the offset exceeds the size of the allocation, this access is illegal
-                if offset <= memory.get(alloc_id)?.bytes.len() as u64 {
+                if offset <= memory.get(alloc_id)?.size.bytes() {
                     // This pointer is untagged because it was created from a cast
                     Pointer::new_with_tag(alloc_id, Size::from_bytes(offset), Tag::Untagged)
                 } else {
                     throw_unsup!(DanglingPointerDeref)
-                } 
+                }
             }
         })
     }
@@ -108,7 +108,7 @@ impl<'mir, 'tcx> GlobalState {
                 global_state.next_base_addr = base_addr.checked_add(max(size.bytes(), 1)).unwrap();
                 // Given that `next_base_addr` increases in each allocation, pushing the
                 // corresponding tuple keeps `int_to_ptr_map` sorted
-                global_state.int_to_ptr_map.push((base_addr, ptr.alloc_id)); 
+                global_state.int_to_ptr_map.push((base_addr, ptr.alloc_id));
 
                 base_addr
             }
