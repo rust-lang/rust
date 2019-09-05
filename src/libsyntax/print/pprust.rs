@@ -1710,11 +1710,11 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Block(blk))
     }
 
-    /// Print a `let pats = scrutinee` expression.
-    crate fn print_let(&mut self, pats: &[P<ast::Pat>], scrutinee: &ast::Expr) {
+    /// Print a `let pat = scrutinee` expression.
+    crate fn print_let(&mut self, pat: &ast::Pat, scrutinee: &ast::Expr) {
         self.s.word("let ");
 
-        self.print_pats(pats);
+        self.print_pat(pat);
         self.s.space();
 
         self.word_space("=");
@@ -2040,8 +2040,8 @@ impl<'a> State<'a> {
                 self.word_space(":");
                 self.print_type(ty);
             }
-            ast::ExprKind::Let(ref pats, ref scrutinee) => {
-                self.print_let(pats, scrutinee);
+            ast::ExprKind::Let(ref pat, ref scrutinee) => {
+                self.print_let(pat, scrutinee);
             }
             ast::ExprKind::If(ref test, ref blk, ref elseopt) => {
                 self.print_if(test, blk, elseopt.as_ref().map(|e| &**e));
@@ -2451,21 +2451,16 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Pat(pat))
     }
 
-    fn print_pats(&mut self, pats: &[P<ast::Pat>]) {
-        self.strsep("|", true, Inconsistent, pats, |s, p| s.print_pat(p));
-    }
-
     fn print_arm(&mut self, arm: &ast::Arm) {
-        // I have no idea why this check is necessary, but here it
-        // is :(
+        // I have no idea why this check is necessary, but here it is :(
         if arm.attrs.is_empty() {
             self.s.space();
         }
         self.cbox(INDENT_UNIT);
         self.ibox(0);
-        self.maybe_print_comment(arm.pats[0].span.lo());
+        self.maybe_print_comment(arm.pat.span.lo());
         self.print_outer_attributes(&arm.attrs);
-        self.print_pats(&arm.pats);
+        self.print_pat(&arm.pat);
         self.s.space();
         if let Some(ref e) = arm.guard {
             self.word_space("if");

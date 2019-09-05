@@ -561,29 +561,31 @@ impl Pat {
         }))
     }
 
-    pub fn walk<F>(&self, it: &mut F) -> bool
-    where
-        F: FnMut(&Pat) -> bool,
-    {
+    /// Walk top-down and call `it` in each place where a pattern occurs
+    /// starting with the root pattern `walk` is called on. If `it` returns
+    /// false then we will descend no further but siblings will be processed.
+    pub fn walk(&self, it: &mut impl FnMut(&Pat) -> bool) {
         if !it(self) {
-            return false;
+            return;
         }
 
         match &self.node {
             PatKind::Ident(_, _, Some(p)) => p.walk(it),
-            PatKind::Struct(_, fields, _) => fields.iter().all(|field| field.pat.walk(it)),
+            PatKind::Struct(_, fields, _) => fields.iter().for_each(|field| field.pat.walk(it)),
             PatKind::TupleStruct(_, s)
             | PatKind::Tuple(s)
             | PatKind::Slice(s)
-            | PatKind::Or(s) => s.iter().all(|p| p.walk(it)),
-            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
+            | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
+            PatKind::Box(s)
+            | PatKind::Ref(s, _)
+            | PatKind::Paren(s) => s.walk(it),
             PatKind::Wild
             | PatKind::Rest
             | PatKind::Lit(_)
             | PatKind::Range(..)
             | PatKind::Ident(..)
             | PatKind::Path(..)
-            | PatKind::Mac(_) => true,
+            | PatKind::Mac(_) => {},
         }
     }
 
@@ -928,7 +930,7 @@ pub struct Local {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Arm {
     pub attrs: Vec<Attribute>,
-    pub pats: Vec<P<Pat>>,
+    pub pat: P<Pat>,
     pub guard: Option<P<Expr>>,
     pub body: P<Expr>,
     pub span: Span,
@@ -1146,12 +1148,9 @@ pub enum ExprKind {
     Cast(P<Expr>, P<Ty>),
     /// A type ascription (e.g., `42: usize`).
     Type(P<Expr>, P<Ty>),
-    /// A `let pats = expr` expression that is only semantically allowed in the condition
+    /// A `let pat = expr` expression that is only semantically allowed in the condition
     /// of `if` / `while` expressions. (e.g., `if let 0 = x { .. }`).
-    ///
-    /// The `Vec<P<Pat>>` is for or-patterns at the top level.
-    /// FIXME(54883): Change this to just `P<Pat>`.
-    Let(Vec<P<Pat>>, P<Expr>),
+    Let(P<Pat>, P<Expr>),
     /// An `if` block, with an optional `else` block.
     ///
     /// `if expr { block } else { expr }`
