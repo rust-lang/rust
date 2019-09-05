@@ -544,7 +544,7 @@ impl<'a> Parser<'a> {
     /// Produce an error if comparison operators are chained (RFC #558).
     /// We only need to check lhs, not rhs, because all comparison ops
     /// have same precedence and are left-associative
-    crate fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) {
+    crate fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) -> PResult<'a, ()> {
         debug_assert!(outer_op.is_comparison(),
                       "check_no_chained_comparison: {:?} is not comparison",
                       outer_op);
@@ -563,11 +563,14 @@ impl<'a> Parser<'a> {
                     err.help(
                         "use `::<...>` instead of `<...>` if you meant to specify type arguments");
                     err.help("or use `(...)` if you meant to specify fn arguments");
+                    // These cases cause too many knock-down errors, bail out (#61329).
+                    return Err(err);
                 }
                 err.emit();
             }
             _ => {}
         }
+        Ok(())
     }
 
     crate fn maybe_report_ambiguous_plus(
