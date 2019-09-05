@@ -1689,6 +1689,12 @@ fn test_rposition() {
 }
 
 #[test]
+fn test_rev_rposition() {
+    let v = [0, 0, 1, 1];
+    assert_eq!(v.iter().rev().rposition(|&x| x == 1), Some(1));
+}
+
+#[test]
 #[should_panic]
 fn test_rposition_panic() {
     let v: [(Box<_>, Box<_>); 4] =
