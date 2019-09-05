@@ -50,6 +50,7 @@
 mod per_ns;
 mod raw;
 mod collector;
+mod mod_resolution;
 #[cfg(test)]
 mod tests;
 
