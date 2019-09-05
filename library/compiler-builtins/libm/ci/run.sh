@@ -5,11 +5,14 @@ TARGET=$1
 
 CMD="cargo test --all --target $TARGET"
 
+# stable by default
 $CMD
 $CMD --release
 
-$CMD --features 'stable'
-$CMD --release --features 'stable'
+# unstable with a feature
+$CMD --features 'unstable'
+$CMD --release --features 'unstable'
 
-$CMD --features 'stable checked musl-reference-tests'
-$CMD --release --features  'stable checked musl-reference-tests'
+# also run the reference tests
+$CMD --features 'unstable musl-reference-tests'
+$CMD --release --features 'unstable musl-reference-tests'
