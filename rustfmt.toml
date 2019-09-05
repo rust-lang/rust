@@ -1,2 +1,3 @@
 reorder_modules = false
 use_small_heuristics = "Max"
+newline_style = "Unix"
