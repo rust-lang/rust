@@ -27,10 +27,8 @@ who are experts on each one.
 ## Rust compiler meeting
 
 The compiler team has a weekly meeting where we do triage and try to
-generally stay on top of new bugs, regressions, and other things. This
-general plan for this meeting can be found in
-[the rust-compiler-meeting etherpad][etherpad]. It works roughly as
-follows:
+generally stay on top of new bugs, regressions, and other things.
+They are held on [Zulip][zulip]. It works roughly as follows:
 
 - **Review P-high bugs:** P-high bugs are those that are sufficiently
   important for us to actively track progress. P-high bugs should
@@ -44,6 +42,8 @@ follows:
   the team is desired.
 - **Check for beta nominations:** These are nominations of things to
   backport to beta.
+- **Possibly WG checking:** A WG may give an update at this point, if there is
+  time.
 
 The meeting currently takes place on Thursdays at 10am Boston time
 (UTC-4 typically, but daylight savings time sometimes makes things
