@@ -183,11 +183,11 @@ impl CodeSuggestion {
         self.substitutions.iter().cloned().map(|mut substitution| {
             // Assumption: all spans are in the same file, and all spans
             // are disjoint. Sort in ascending order.
-            substitution.parts.sort_by_key(|part| part.span.lo());
+            substitution.parts.sort_by_key(|part| part.span.lo);
 
             // Find the bounding span.
-            let lo = substitution.parts.iter().map(|part| part.span.lo()).min().unwrap();
-            let hi = substitution.parts.iter().map(|part| part.span.hi()).min().unwrap();
+            let lo = substitution.parts.iter().map(|part| part.span.lo).min().unwrap();
+            let hi = substitution.parts.iter().map(|part| part.span.hi).min().unwrap();
             let bounding_span = Span::with_root_ctxt(lo, hi);
             let lines = cm.span_to_lines(bounding_span).unwrap();
             assert!(!lines.lines.is_empty());
@@ -202,14 +202,14 @@ impl CodeSuggestion {
             //
             // Finally push the trailing line segment of the last span
             let fm = &lines.file;
-            let mut prev_hi = cm.lookup_char_pos(bounding_span.lo());
+            let mut prev_hi = cm.lookup_char_pos(bounding_span.lo);
             prev_hi.col = CharPos::from_usize(0);
 
             let mut prev_line = fm.get_line(lines.lines[0].line_index);
             let mut buf = String::new();
 
             for part in &substitution.parts {
-                let cur_lo = cm.lookup_char_pos(part.span.lo());
+                let cur_lo = cm.lookup_char_pos(part.span.lo);
                 if prev_hi.line == cur_lo.line {
                     push_trailing(&mut buf, prev_line.as_ref(), &prev_hi, Some(&cur_lo));
                 } else {
@@ -227,7 +227,7 @@ impl CodeSuggestion {
                     }
                 }
                 buf.push_str(&part.snippet);
-                prev_hi = cm.lookup_char_pos(part.span.hi());
+                prev_hi = cm.lookup_char_pos(part.span.hi);
                 prev_line = fm.get_line(prev_hi.line - 1);
             }
             // if the replacement already ends with a newline, don't print the next line

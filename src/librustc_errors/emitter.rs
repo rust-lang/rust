@@ -864,7 +864,7 @@ impl EmitterWriter {
         if let Some(ref sm) = self.sm {
             for primary_span in msp.primary_spans() {
                 if !primary_span.is_dummy() {
-                    let hi = sm.lookup_char_pos(primary_span.hi());
+                    let hi = sm.lookup_char_pos(primary_span.hi);
                     if hi.line > max {
                         max = hi.line;
                     }
@@ -873,7 +873,7 @@ impl EmitterWriter {
             if !self.short_message {
                 for span_label in msp.span_labels() {
                     if !span_label.span.is_dummy() {
-                        let hi = sm.lookup_char_pos(span_label.span.hi());
+                        let hi = sm.lookup_char_pos(span_label.span.hi);
                         if hi.line > max {
                             max = hi.line;
                         }
@@ -1146,7 +1146,7 @@ impl EmitterWriter {
         let (primary_lo, sm) = if let (Some(sm), Some(ref primary_span)) =
             (self.sm.as_ref(), msp.primary_span().as_ref()) {
             if !primary_span.is_dummy() {
-                (sm.lookup_char_pos(primary_span.lo()), sm)
+                (sm.lookup_char_pos(primary_span.lo), sm)
             } else {
                 emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
                 return Ok(());
@@ -1453,7 +1453,7 @@ impl EmitterWriter {
 
                 assert!(!lines.lines.is_empty());
 
-                let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
+                let line_start = sm.lookup_char_pos(parts[0].span.lo).line;
                 draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
                 let mut line_pos = 0;
                 let mut lines = complete.lines();
@@ -1478,8 +1478,8 @@ impl EmitterWriter {
                 if show_underline {
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                     for part in parts {
-                        let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
-                        let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
+                        let span_start_pos = sm.lookup_char_pos(part.span.lo).col_display;
+                        let span_end_pos = sm.lookup_char_pos(part.span.hi).col_display;
 
                         // Do not underline the leading...
                         let start = part.snippet.len()
@@ -1680,8 +1680,8 @@ impl FileWithAnnotatedLines {
                     continue;
                 }
 
-                let lo = sm.lookup_char_pos(span_label.span.lo());
-                let mut hi = sm.lookup_char_pos(span_label.span.hi());
+                let lo = sm.lookup_char_pos(span_label.span.lo);
+                let mut hi = sm.lookup_char_pos(span_label.span.hi);
 
                 // Watch out for "empty spans". If we get a span like 6..6, we
                 // want to just display a `^` at 6, so convert that to

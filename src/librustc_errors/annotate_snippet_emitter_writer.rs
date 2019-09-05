@@ -71,7 +71,7 @@ impl<'a>  DiagnosticConverter<'a> {
             // Make sure our primary file comes first
             let primary_lo = if let Some(ref primary_span) =
                 self.msp.primary_span().as_ref() {
-                source_map.lookup_char_pos(primary_span.lo())
+                source_map.lookup_char_pos(primary_span.lo)
             } else {
                 // FIXME(#59346): Not sure when this is the case and what
                 // should be done if it happens

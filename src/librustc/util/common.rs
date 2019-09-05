@@ -10,7 +10,7 @@ use std::env;
 use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
-use syntax_pos::{SpanData};
+use syntax_pos::Span;
 use syntax::symbol::{Symbol, sym};
 use rustc_macros::HashStable;
 use crate::ty::TyCtxt;
@@ -96,7 +96,7 @@ pub enum ProfileQueriesMsg {
     TaskEnd,
     /// Begin a new query.
     /// Cannot use `Span` because queries are sent to other thread.
-    QueryBegin(SpanData, QueryMsg),
+    QueryBegin(Span, QueryMsg),
     /// Query is satisfied by using an already-known value for the given key.
     CacheHit,
     /// Query requires running a provider; providers may nest, permitting queries to nest.

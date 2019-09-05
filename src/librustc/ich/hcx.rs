@@ -321,21 +321,20 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
-        let span = self.data();
 
-        if span.hi < span.lo {
+        if self.hi < self.lo {
             return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
         let (file_lo, line_lo, col_lo) = match hcx.source_map()
-                                                  .byte_pos_to_line_and_col(span.lo) {
+                                                  .byte_pos_to_line_and_col(self.lo) {
             Some(pos) => pos,
             None => {
                 return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
             }
         };
 
-        if !file_lo.contains(span.hi) {
+        if !file_lo.contains(self.hi) {
             return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
         }
 
@@ -346,11 +345,11 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
 
         let col = (col_lo.0 as u64) & 0xFF;
         let line = ((line_lo as u64) & 0xFF_FF_FF) << 8;
-        let len = ((span.hi - span.lo).0 as u64) << 32;
+        let len = ((self.hi - self.lo).0 as u64) << 32;
         let line_col_len = col | line | len;
         std_hash::Hash::hash(&line_col_len, hasher);
 
-        if span.ctxt == SyntaxContext::root() {
+        if self.ctxt == SyntaxContext::root() {
             TAG_NO_EXPANSION.hash_stable(hcx, hasher);
         } else {
             TAG_EXPANSION.hash_stable(hcx, hasher);
@@ -363,7 +362,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             }
 
             let sub_hash: u64 = CACHE.with(|cache| {
-                let expn_id = span.ctxt.outer_expn();
+                let expn_id = self.ctxt.outer_expn();
 
                 if let Some(&sub_hash) = cache.borrow().get(&expn_id) {
                     return sub_hash;

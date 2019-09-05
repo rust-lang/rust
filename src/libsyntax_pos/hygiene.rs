@@ -37,7 +37,7 @@ use std::fmt;
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SyntaxContext(u32);
+pub struct SyntaxContext(pub u32);  // njn: pub is temporary
 
 #[derive(Debug)]
 struct SyntaxContextData {
@@ -209,8 +209,8 @@ impl HygieneData {
     }
 
     fn walk_chain(&self, mut span: Span, to: SyntaxContext) -> Span {
-        while span.from_expansion() && span.ctxt() != to {
-            span = self.expn_data(self.outer_expn(span.ctxt())).call_site;
+        while span.from_expansion() && span.ctxt != to {
+            span = self.expn_data(self.outer_expn(span.ctxt)).call_site;
         }
         span
     }
@@ -231,7 +231,7 @@ impl HygieneData {
             return self.apply_mark_internal(ctxt, expn_id, transparency);
         }
 
-        let call_site_ctxt = self.expn_data(expn_id).call_site.ctxt();
+        let call_site_ctxt = self.expn_data(expn_id).call_site.ctxt;
         let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
             self.modern(call_site_ctxt)
         } else {
@@ -350,11 +350,6 @@ impl SyntaxContext {
     }
 
     #[inline]
-    crate fn as_u32(self) -> u32 {
-        self.0
-    }
-
-    #[inline]
     crate fn from_u32(raw: u32) -> SyntaxContext {
         SyntaxContext(raw)
     }
@@ -452,7 +447,7 @@ impl SyntaxContext {
     pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
         HygieneData::with(|data| {
             let mut scope = None;
-            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            let mut glob_ctxt = data.modern(glob_span.ctxt);
             while !data.is_descendant_of(expn_id, data.outer_expn(glob_ctxt)) {
                 scope = Some(data.remove_mark(&mut glob_ctxt).0);
                 if data.remove_mark(self).0 != scope.unwrap() {
@@ -480,7 +475,7 @@ impl SyntaxContext {
                 return None;
             }
 
-            let mut glob_ctxt = data.modern(glob_span.ctxt());
+            let mut glob_ctxt = data.modern(glob_span.ctxt);
             let mut marks = Vec::new();
             while !data.is_descendant_of(expn_id, data.outer_expn(glob_ctxt)) {
                 marks.push(data.remove_mark(&mut glob_ctxt));

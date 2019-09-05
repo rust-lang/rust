@@ -776,7 +776,7 @@ impl Ident {
 
     /// Replaces `lo` and `hi` with those from `span`, but keep hygiene context.
     pub fn with_span_pos(self, span: Span) -> Ident {
-        Ident::new(self.name, span.with_ctxt(self.span.ctxt()))
+        Ident::new(self.name, span.with_ctxt(self.span.ctxt))
     }
 
     pub fn without_first_quote(self) -> Ident {
@@ -829,20 +829,20 @@ impl Ident {
 
 impl PartialEq for Ident {
     fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name && self.span.ctxt() == rhs.span.ctxt()
+        self.name == rhs.name && self.span.ctxt == rhs.span.ctxt
     }
 }
 
 impl Hash for Ident {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
-        self.span.ctxt().hash(state);
+        self.span.ctxt.hash(state);
     }
 }
 
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{:?}", self.name, self.span.ctxt())
+        write!(f, "{}{:?}", self.name, self.span.ctxt)
     }
 }
 

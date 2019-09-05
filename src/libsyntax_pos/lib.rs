@@ -24,9 +24,6 @@ pub mod hygiene;
 pub use hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind, MacroKind, DesugaringKind};
 use hygiene::Transparency;
 
-mod span_encoding;
-pub use span_encoding::{Span, DUMMY_SP};
-
 pub mod symbol;
 pub use symbol::{Symbol, sym};
 
@@ -37,7 +34,7 @@ use rustc_data_structures::sync::{Lrc, Lock};
 
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::cmp::{self, Ordering};
+use std::cmp;
 use std::fmt;
 use std::hash::{Hasher, Hash};
 use std::ops::{Add, Sub};
@@ -48,7 +45,6 @@ mod tests;
 
 pub struct Globals {
     symbol_interner: Lock<symbol::Interner>,
-    span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
 }
 
@@ -56,7 +52,6 @@ impl Globals {
     pub fn new(edition: Edition) -> Globals {
         Globals {
             symbol_interner: Lock::new(symbol::Interner::fresh()),
-            span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
         }
     }
@@ -187,6 +182,7 @@ impl FileName {
     }
 }
 
+// njn: update comment
 /// Spans represent a region of code, used for error reporting. Positions in spans
 /// are *absolute* positions from the beginning of the source_map, not positions
 /// relative to `SourceFile`s. Methods on the `SourceMap` can be used to relate spans back
@@ -195,12 +191,8 @@ impl FileName {
 /// able to use many of the functions on spans in source_map and you cannot assume
 /// that the length of the `span = hi - lo`; there may be space in the `BytePos`
 /// range between files.
-///
-/// `SpanData` is public because `Span` uses a thread-local interner and can't be
-/// sent to other threads, but some pieces of performance infra run in a separate thread.
-/// Using `Span` is generally preferred.
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd)]
-pub struct SpanData {
+pub struct Span {
     pub lo: BytePos,
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
@@ -208,7 +200,15 @@ pub struct SpanData {
     pub ctxt: SyntaxContext,
 }
 
-impl SpanData {
+/// Dummy span: zero length and position, and an empty syntax context.
+pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), ctxt: SyntaxContext(0) };
+
+impl Span {
+    #[inline]
+    pub fn new(lo: BytePos, hi: BytePos, ctxt: SyntaxContext) -> Self {
+        Span { lo, hi, ctxt }
+    }
+
     #[inline]
     pub fn with_lo(&self, lo: BytePos) -> Span {
         Span::new(lo, self.hi, self.ctxt)
@@ -220,25 +220,6 @@ impl SpanData {
     #[inline]
     pub fn with_ctxt(&self, ctxt: SyntaxContext) -> Span {
         Span::new(self.lo, self.hi, ctxt)
-    }
-}
-
-// The interner is pointed to by a thread local value which is only set on the main thread
-// with parallelization is disabled. So we don't allow `Span` to transfer between threads
-// to avoid panics and other errors, even though it would be memory safe to do so.
-#[cfg(not(parallel_compiler))]
-impl !Send for Span {}
-#[cfg(not(parallel_compiler))]
-impl !Sync for Span {}
-
-impl PartialOrd for Span {
-    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&self.data(), &rhs.data())
-    }
-}
-impl Ord for Span {
-    fn cmp(&self, rhs: &Self) -> Ordering {
-        Ord::cmp(&self.data(), &rhs.data())
     }
 }
 
@@ -255,36 +236,23 @@ pub struct MultiSpan {
 }
 
 impl Span {
-    #[inline]
+    #[inline]   // njn: remove this?
     pub fn lo(self) -> BytePos {
-        self.data().lo
+        self.lo
     }
-    #[inline]
-    pub fn with_lo(self, lo: BytePos) -> Span {
-        self.data().with_lo(lo)
-    }
-    #[inline]
+    #[inline]   // njn: remove this?
     pub fn hi(self) -> BytePos {
-        self.data().hi
+        self.hi
     }
-    #[inline]
-    pub fn with_hi(self, hi: BytePos) -> Span {
-        self.data().with_hi(hi)
-    }
-    #[inline]
+    #[inline]   // njn: remove this?
     pub fn ctxt(self) -> SyntaxContext {
-        self.data().ctxt
-    }
-    #[inline]
-    pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
-        self.data().with_ctxt(ctxt)
+        self.ctxt
     }
 
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
     pub fn is_dummy(self) -> bool {
-        let span = self.data();
-        span.lo.0 == 0 && span.hi.0 == 0
+        self.lo.0 == 0 && self.hi.0 == 0
     }
 
     /// Returns `true` if this span comes from a macro or desugaring.
@@ -301,14 +269,12 @@ impl Span {
     /// Returns a new span representing an empty span at the beginning of this span
     #[inline]
     pub fn shrink_to_lo(self) -> Span {
-        let span = self.data();
-        span.with_hi(span.lo)
+        self.with_hi(self.lo)
     }
     /// Returns a new span representing an empty span at the end of this span.
     #[inline]
     pub fn shrink_to_hi(self) -> Span {
-        let span = self.data();
-        span.with_lo(span.hi)
+        self.with_lo(self.hi)
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
@@ -318,16 +284,12 @@ impl Span {
 
     /// Returns `true` if `self` fully encloses `other`.
     pub fn contains(self, other: Span) -> bool {
-        let span = self.data();
-        let other = other.data();
-        span.lo <= other.lo && other.hi <= span.hi
+        self.lo <= other.lo && other.hi <= self.hi
     }
 
     /// Returns `true` if `self` touches `other`.
     pub fn overlaps(self, other: Span) -> bool {
-        let span = self.data();
-        let other = other.data();
-        span.lo < other.hi && other.lo < span.hi
+        self.lo < other.hi && other.lo < self.hi
     }
 
     /// Returns `true` if the spans are equal with regards to the source text.
@@ -335,17 +297,13 @@ impl Span {
     /// Use this instead of `==` when either span could be generated code,
     /// and you only care that they point to the same bytes of source text.
     pub fn source_equal(&self, other: &Span) -> bool {
-        let span = self.data();
-        let other = other.data();
-        span.lo == other.lo && span.hi == other.hi
+        self.lo == other.lo && self.hi == other.hi
     }
 
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`.
     pub fn trim_start(self, other: Span) -> Option<Span> {
-        let span = self.data();
-        let other = other.data();
-        if span.hi > other.hi {
-            Some(span.with_lo(cmp::max(span.lo, other.hi)))
+        if self.hi > other.hi {
+            Some(self.with_lo(cmp::max(self.lo, other.hi)))
         } else {
             None
         }
@@ -463,54 +421,47 @@ impl Span {
 
     /// Returns a `Span` that would enclose both `self` and `end`.
     pub fn to(self, end: Span) -> Span {
-        let span_data = self.data();
-        let end_data = end.data();
         // FIXME(jseyfried): `self.ctxt` should always equal `end.ctxt` here (cf. issue #23480).
         // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
         // have an incomplete span than a completely nonsensical one.
-        if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt == SyntaxContext::root() {
+        if self.ctxt != end.ctxt {
+            if self.ctxt == SyntaxContext::root() {
                 return end;
-            } else if end_data.ctxt == SyntaxContext::root() {
+            } else if end.ctxt == SyntaxContext::root() {
                 return self;
             }
             // Both spans fall within a macro.
             // FIXME(estebank): check if it is the *same* macro.
         }
         Span::new(
-            cmp::min(span_data.lo, end_data.lo),
-            cmp::max(span_data.hi, end_data.hi),
-            if span_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
+            cmp::min(self.lo, end.lo),
+            cmp::max(self.hi, end.hi),
+            if self.ctxt == SyntaxContext::root() { end.ctxt } else { self.ctxt },
         )
     }
 
     /// Returns a `Span` between the end of `self` to the beginning of `end`.
     pub fn between(self, end: Span) -> Span {
-        let span = self.data();
-        let end = end.data();
         Span::new(
-            span.hi,
+            self.hi,
             end.lo,
-            if end.ctxt == SyntaxContext::root() { end.ctxt } else { span.ctxt },
+            if end.ctxt == SyntaxContext::root() { end.ctxt } else { self.ctxt },
         )
     }
 
     /// Returns a `Span` between the beginning of `self` to the beginning of `end`.
     pub fn until(self, end: Span) -> Span {
-        let span = self.data();
-        let end = end.data();
         Span::new(
-            span.lo,
+            self.lo,
             end.lo,
-            if end.ctxt == SyntaxContext::root() { end.ctxt } else { span.ctxt },
+            if end.ctxt == SyntaxContext::root() { end.ctxt } else { self.ctxt },
         )
     }
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {
-        let span = self.data();
-        Span::new(span.lo + BytePos::from_usize(inner.start),
-                  span.lo + BytePos::from_usize(inner.end),
-                  span.ctxt)
+        Span::new(self.lo + BytePos::from_usize(inner.start),
+                  self.lo + BytePos::from_usize(inner.end),
+                  self.ctxt)
     }
 
     /// Produces a span with the same location as `self` and context produced by a macro with the
@@ -522,61 +473,53 @@ impl Span {
 
     #[inline]
     pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.apply_mark(expn_id, transparency))
+        self.with_ctxt(self.ctxt.apply_mark(expn_id, transparency))
     }
 
     #[inline]
     pub fn remove_mark(&mut self) -> ExpnId {
-        let mut span = self.data();
-        let mark = span.ctxt.remove_mark();
-        *self = Span::new(span.lo, span.hi, span.ctxt);
+        let mark = self.ctxt.remove_mark();
+        *self = Span::new(self.lo, self.hi, self.ctxt);
         mark
     }
 
     #[inline]
     pub fn adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
-        let mut span = self.data();
-        let mark = span.ctxt.adjust(expn_id);
-        *self = Span::new(span.lo, span.hi, span.ctxt);
+        let mark = self.ctxt.adjust(expn_id);
+        *self = Span::new(self.lo, self.hi, self.ctxt);
         mark
     }
 
     #[inline]
     pub fn modernize_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
-        let mut span = self.data();
-        let mark = span.ctxt.modernize_and_adjust(expn_id);
-        *self = Span::new(span.lo, span.hi, span.ctxt);
+        let mark = self.ctxt.modernize_and_adjust(expn_id);
+        *self = Span::new(self.lo, self.hi, self.ctxt);
         mark
     }
 
     #[inline]
     pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
-        let mut span = self.data();
-        let mark = span.ctxt.glob_adjust(expn_id, glob_span);
-        *self = Span::new(span.lo, span.hi, span.ctxt);
+        let mark = self.ctxt.glob_adjust(expn_id, glob_span);
+        *self = Span::new(self.lo, self.hi, self.ctxt);
         mark
     }
 
     #[inline]
     pub fn reverse_glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span)
                                -> Option<Option<ExpnId>> {
-        let mut span = self.data();
-        let mark = span.ctxt.reverse_glob_adjust(expn_id, glob_span);
-        *self = Span::new(span.lo, span.hi, span.ctxt);
+        let mark = self.ctxt.reverse_glob_adjust(expn_id, glob_span);
+        *self = Span::new(self.lo, self.hi, self.ctxt);
         mark
     }
 
     #[inline]
     pub fn modern(self) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.modern())
+        self.with_ctxt(self.ctxt.modern())
     }
 
     #[inline]
     pub fn modern_and_legacy(self) -> Span {
-        let span = self.data();
-        span.with_ctxt(span.ctxt.modern_and_legacy())
+        self.with_ctxt(self.ctxt.modern_and_legacy())
     }
 }
 
@@ -601,14 +544,13 @@ impl Default for Span {
 
 impl rustc_serialize::UseSpecializedEncodable for Span {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        let span = self.data();
         s.emit_struct("Span", 2, |s| {
             s.emit_struct_field("lo", 0, |s| {
-                span.lo.encode(s)
+                self.lo.encode(s)
             })?;
 
             s.emit_struct_field("hi", 1, |s| {
-                span.hi.encode(s)
+                self.hi.encode(s)
             })
         })
     }
@@ -633,12 +575,6 @@ pub fn default_span_debug(span: Span, f: &mut fmt::Formatter<'_>) -> fmt::Result
 }
 
 impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        SPAN_DEBUG.with(|span_debug| span_debug.get()(*self, f))
-    }
-}
-
-impl fmt::Debug for SpanData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         SPAN_DEBUG.with(|span_debug| span_debug.get()(Span::new(self.lo, self.hi, self.ctxt), f))
     }

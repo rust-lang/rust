@@ -1,5 +1,5 @@
 use super::*;
-use syntax_pos::SpanData;
+use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;
 use rustc::util::common::QueryMsg;
 use std::fs::File;
@@ -8,7 +8,7 @@ use rustc::dep_graph::{DepNode};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Query {
-    pub span: SpanData,
+    pub span: Span,
     pub msg: QueryMsg,
 }
 pub enum Effect {

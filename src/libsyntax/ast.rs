@@ -979,7 +979,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Expr, 96);
+static_assert_size!(Expr, 112);
 
 impl Expr {
     /// Whether this expression would be valid somewhere that expects a value; for example, an `if`

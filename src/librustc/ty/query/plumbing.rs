@@ -356,10 +356,7 @@ impl<'tcx> TyCtxt<'tcx> {
                span);
 
         profq_msg!(self,
-            ProfileQueriesMsg::QueryBegin(
-                span.data(),
-                profq_query_msg!(Q::NAME.as_str(), self, key),
-            )
+            ProfileQueriesMsg::QueryBegin(span, profq_query_msg!(Q::NAME.as_str(), self, key))
         );
 
         let job = match JobOwner::try_get(self, span, &key) {
@@ -620,8 +617,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn force_query<Q: QueryDescription<'tcx>>(self, key: Q::Key, span: Span, dep_node: DepNode) {
         profq_msg!(
             self,
-            ProfileQueriesMsg::QueryBegin(span.data(),
-                                          profq_query_msg!(Q::NAME.as_str(), self, key))
+            ProfileQueriesMsg::QueryBegin(span, profq_query_msg!(Q::NAME.as_str(), self, key))
         );
 
         // We may be concurrently trying both execute and force a query.

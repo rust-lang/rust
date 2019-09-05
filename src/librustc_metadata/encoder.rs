@@ -146,8 +146,6 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
             return TAG_INVALID_SPAN.encode(self)
         }
 
-        let span = span.data();
-
         // The Span infrastructure should make sure that this invariant holds:
         debug_assert!(span.lo <= span.hi);
 

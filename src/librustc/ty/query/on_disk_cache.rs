@@ -798,23 +798,21 @@ where
             return TAG_INVALID_SPAN.encode(self);
         }
 
-        let span_data = span.data();
-
-        if span_data.hi < span_data.lo {
+        if span.hi < span.lo {
             return TAG_INVALID_SPAN.encode(self);
         }
 
         let (file_lo, line_lo, col_lo) = match self.source_map
-                                                   .byte_pos_to_line_and_col(span_data.lo) {
+                                                   .byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,
             None => return TAG_INVALID_SPAN.encode(self)
         };
 
-        if !file_lo.contains(span_data.hi) {
+        if !file_lo.contains(span.hi) {
             return TAG_INVALID_SPAN.encode(self);
         }
 
-        let len = span_data.hi - span_data.lo;
+        let len = span.hi - span.lo;
 
         let source_file_index = self.source_file_index(file_lo);
 
@@ -824,10 +822,10 @@ where
         col_lo.encode(self)?;
         len.encode(self)?;
 
-        if span_data.ctxt == SyntaxContext::root() {
+        if span.ctxt == SyntaxContext::root() {
             TAG_NO_EXPN_DATA.encode(self)
         } else {
-            let (expn_id, transparency, expn_data) = span_data.ctxt.outer_mark_with_data();
+            let (expn_id, transparency, expn_data) = span.ctxt.outer_mark_with_data();
             if let Some(pos) = self.expn_data_shorthands.get(&expn_id).cloned() {
                 TAG_EXPN_DATA_SHORTHAND.encode(self)?;
                 pos.encode(self)
