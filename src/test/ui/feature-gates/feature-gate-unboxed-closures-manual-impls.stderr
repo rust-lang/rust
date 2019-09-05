@@ -44,10 +44,10 @@ LL | impl Fn<()> for Foo {
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
 error[E0229]: associated type bindings are not allowed here
-  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:15:12
+  --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:15:6
    |
 LL | impl FnOnce() for Foo1 {
-   |            ^^ associated type not allowed here
+   |      ^^^^^^^^ associated type not allowed here
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:21:6
