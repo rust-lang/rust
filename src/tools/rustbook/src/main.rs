@@ -8,6 +8,7 @@ use clap::{App, AppSettings, ArgMatches, SubCommand};
 use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
 
+#[cfg(feature = "linkcheck")]
 use failure::Error;
 #[cfg(feature = "linkcheck")]
 use mdbook::renderer::RenderContext;
@@ -52,35 +53,40 @@ fn main() {
             }
         }
         ("linkcheck", Some(sub_matches)) => {
-            if let Err(err) = linkcheck(sub_matches) {
-                eprintln!("Error: {}", err);
+            #[cfg(feature = "linkcheck")]
+            {
+                if let Err(err) = linkcheck(sub_matches) {
+                    eprintln!("Error: {}", err);
 
-                // HACK: ignore timeouts
-                let actually_broken = {
-                    #[cfg(feature = "linkcheck")]
-                    {
-                        err.downcast::<BrokenLinks>()
-                            .map(|broken_links| {
-                                broken_links
-                                    .links()
-                                    .iter()
-                                    .inspect(|cause| eprintln!("\tCaused By: {}", cause))
-                                    .any(|cause| !format!("{}", cause).contains("timed out"))
-                            })
-                            .unwrap_or(false)
+                    // HACK: ignore timeouts
+                    let actually_broken = err
+                        .downcast::<BrokenLinks>()
+                        .map(|broken_links| {
+                            broken_links
+                                .links()
+                                .iter()
+                                .inspect(|cause| eprintln!("\tCaused By: {}", cause))
+                                .fold(false, |already_broken, cause| {
+                                    already_broken || !format!("{}", cause).contains("timed out")
+                                })
+                        })
+                        .unwrap_or(false);
+
+                    if actually_broken {
+                        std::process::exit(101);
+                    } else {
+                        std::process::exit(0);
                     }
-
-                    #[cfg(not(feature = "linkcheck"))]
-                    {
-                        false
-                    }
-                };
-
-                if actually_broken {
-                    std::process::exit(101);
-                } else {
-                    std::process::exit(0);
                 }
+            }
+
+            #[cfg(not(feature = "linkcheck"))]
+            {
+                // This avoids the `unused_binding` lint.
+                println!(
+                    "mdbook-linkcheck is disabled, but arguments were passed: {:?}",
+                    sub_matches
+                );
             }
         }
         (_, _) => unreachable!(),
@@ -95,12 +101,6 @@ pub fn linkcheck(args: &ArgMatches<'_>) -> Result<(), Error> {
     let render_ctx = RenderContext::new(&book_dir, book.book, cfg, &book_dir);
 
     mdbook_linkcheck::check_links(&render_ctx)
-}
-
-#[cfg(not(feature = "linkcheck"))]
-pub fn linkcheck(_args: &ArgMatches<'_>) -> Result<(), Error> {
-    println!("mdbook-linkcheck is disabled.");
-    Ok(())
 }
 
 // Build command implementation
