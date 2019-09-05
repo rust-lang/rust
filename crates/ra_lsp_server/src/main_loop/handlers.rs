@@ -460,18 +460,16 @@ pub fn handle_prepare_rename(
 
     // We support renaming references like handle_rename does.
     // In the future we may want to reject the renaming of things like keywords here too.
-    let refs = match world.analysis().find_all_refs(position)? {
+    let optional_change = world.analysis().rename(position, "dummy")?;
+    let range = match optional_change {
         None => return Ok(None),
-        Some(refs) => refs,
+        Some(it) => it.range,
     };
 
-    // Refs should always have a declaration
-    let r = refs.declaration();
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
-    let loc = to_location(r.file_id(), r.range(), &world, &line_index)?;
-
-    Ok(Some(PrepareRenameResponse::Range(loc.range)))
+    let range = range.conv_with(&line_index);
+    Ok(Some(PrepareRenameResponse::Range(range)))
 }
 
 pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
@@ -488,7 +486,7 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
     let optional_change = world.analysis().rename(position, &*params.new_name)?;
     let change = match optional_change {
         None => return Ok(None),
-        Some(it) => it,
+        Some(it) => it.info,
     };
 
     let source_change_req = change.try_conv_with(&world)?;

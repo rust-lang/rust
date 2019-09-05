@@ -466,7 +466,7 @@ impl Analysis {
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<ReferenceSearchResult>> {
-        self.with_db(|db| references::find_all_refs(db, position))
+        self.with_db(|db| references::find_all_refs(db, position).map(|it| it.info))
     }
 
     /// Returns a short text describing element at position.
@@ -536,7 +536,7 @@ impl Analysis {
         &self,
         position: FilePosition,
         new_name: &str,
-    ) -> Cancelable<Option<SourceChange>> {
+    ) -> Cancelable<Option<RangeInfo<SourceChange>>> {
         self.with_db(|db| references::rename(db, position, new_name))
     }
 
