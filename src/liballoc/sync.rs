@@ -338,6 +338,18 @@ impl<T> Arc<T> {
         }
     }
 
+    #[inline(always)]
+    fn new_in_place(f: impl FnOnce() -> T) -> Arc<T> {
+        let mut r: Arc<mem::MaybeUninit<T>> = Arc::new_uninit();
+
+        unsafe {
+            let uninit: &mut mem::MaybeUninit<T> = Arc::get_mut_unchecked(&mut r);
+
+            *uninit = mem::MaybeUninit::new(f());
+            r.assume_init()
+        }
+    }
+
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
     /// `data` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -1933,7 +1945,7 @@ impl<T: Default> Default for Arc<T> {
     /// assert_eq!(*x, 0);
     /// ```
     fn default() -> Arc<T> {
-        Arc::new(Default::default())
+        Arc::new_in_place(T::default)
     }
 }
 

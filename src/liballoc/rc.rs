@@ -358,6 +358,18 @@ impl<T> Rc<T> {
         }
     }
 
+    #[inline(always)]
+    fn new_in_place(f: impl FnOnce() -> T) -> Rc<T> {
+        let mut r: Rc<mem::MaybeUninit<T>> = Rc::new_uninit();
+
+        unsafe {
+            let uninit: &mut mem::MaybeUninit<T> = Rc::get_mut_unchecked(&mut r);
+
+            *uninit = mem::MaybeUninit::new(f());
+            r.assume_init()
+        }
+    }
+
     /// Constructs a new `Pin<Rc<T>>`. If `T` does not implement `Unpin`, then
     /// `value` will be pinned in memory and unable to be moved.
     #[stable(feature = "pin", since = "1.33.0")]
@@ -1146,7 +1158,7 @@ impl<T: Default> Default for Rc<T> {
     /// ```
     #[inline]
     fn default() -> Rc<T> {
-        Rc::new(Default::default())
+        Rc::new_in_place(T::default)
     }
 }
 
