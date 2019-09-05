@@ -29,7 +29,7 @@ use std::cell::{Cell, RefCell};
 use std::iter;
 use std::str;
 use std::sync::Arc;
-use syntax::symbol::LocalInternedString;
+use syntax::symbol::Symbol;
 use syntax::source_map::{DUMMY_SP, Span};
 use crate::abi::Abi;
 
@@ -52,7 +52,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'ll Value>>,
+    pub const_cstr_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     /// Key is a Value holding a *T,

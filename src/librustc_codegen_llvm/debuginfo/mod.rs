@@ -290,7 +290,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let scope_line = span_start(self, span).line;
 
         let function_name = CString::new(name).unwrap();
-        let linkage_name = SmallCStr::new(&linkage_name.as_str());
+        let linkage_name = SmallCStr::new(&linkage_name.name.as_str());
 
         let mut flags = DIFlags::FlagPrototyped;
 

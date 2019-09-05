@@ -1808,6 +1808,23 @@ pub enum ProjectionElem<V, T> {
     Downcast(Option<Symbol>, VariantIdx),
 }
 
+impl<V, T> ProjectionElem<V, T> {
+    /// Returns `true` if the target of this projection may refer to a different region of memory
+    /// than the base.
+    fn is_indirect(&self) -> bool {
+        match self {
+            Self::Deref => true,
+
+            | Self::Field(_, _)
+            | Self::Index(_)
+            | Self::ConstantIndex { .. }
+            | Self::Subslice { .. }
+            | Self::Downcast(_, _)
+            => false
+        }
+    }
+}
+
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
@@ -1867,6 +1884,14 @@ impl<'tcx> Place<'tcx> {
             base: self.base,
             projection: Some(Box::new(Projection { base: self.projection, elem })),
         }
+    }
+
+    /// Returns `true` if this `Place` contains a `Deref` projection.
+    ///
+    /// If `Place::is_indirect` returns false, the caller knows that the `Place` refers to the
+    /// same region of memory as its base.
+    pub fn is_indirect(&self) -> bool {
+        self.iterate(|_, mut projections| projections.any(|proj| proj.elem.is_indirect()))
     }
 
     /// Finds the innermost `Local` from this `Place`, *if* it is either a local itself or

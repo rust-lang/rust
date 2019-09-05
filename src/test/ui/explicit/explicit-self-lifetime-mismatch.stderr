@@ -1,4 +1,4 @@
-error[E0308]: mismatched method receiver
+error[E0308]: mismatched `self` parameter type
   --> $DIR/explicit-self-lifetime-mismatch.rs:8:12
    |
 LL |            Foo<'b,'a>
@@ -17,7 +17,7 @@ note: ...does not necessarily outlive the lifetime 'a as defined on the impl at 
 LL | impl<'a,'b> Foo<'a,'b> {
    |      ^^
 
-error[E0308]: mismatched method receiver
+error[E0308]: mismatched `self` parameter type
   --> $DIR/explicit-self-lifetime-mismatch.rs:8:12
    |
 LL |            Foo<'b,'a>
