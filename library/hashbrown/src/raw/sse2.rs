@@ -25,7 +25,8 @@ impl Group {
     pub const WIDTH: usize = mem::size_of::<Self>();
 
     /// Returns a full group of empty bytes, suitable for use as the initial
-    /// value for an empty hash table.
+    /// value for an empty hash table. This value is explicitly declared as
+    /// a static variable to ensure the address is consistent across dylibs.
     ///
     /// This is guaranteed to be aligned to the group size.
     #[inline]
