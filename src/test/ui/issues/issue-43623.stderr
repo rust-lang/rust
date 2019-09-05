@@ -19,7 +19,7 @@ LL | pub fn break_me<T, F>(f: F)
    |        --------
 LL | where T: for<'b> Trait<'b>,
 LL |       F: for<'b> FnMut(<T as Trait<'b>>::Assoc) {
-   |                       ------------------------- required by this bound in `break_me`
+   |                  ------------------------------ required by this bound in `break_me`
 LL |     break_me::<Type, fn(_)>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ expected bound lifetime parameter 'b, found concrete lifetime
 
