@@ -1,8 +1,8 @@
 error[E0220]: associated type `Output` not found for `One<()>`
-  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-1.rs:5:19
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-1.rs:5:16
    |
 LL | fn foo(_: &dyn One())
-   |                   ^^ associated type `Output` not found
+   |                ^^^^^ associated type `Output` not found
 
 error: aborting due to previous error
 

@@ -20,7 +20,7 @@ LL | pub fn foo<T, F>(_: T, _: F)
    |        ---
 LL | where T: for<'a> Trait<'a>,
 LL |       F: for<'a> FnMut(<T as Trait<'a>>::Item) {}
-   |                       ------------------------ required by this bound in `foo`
+   |                  ----------------------------- required by this bound in `foo`
 ...
 LL |     foo((), drop)
    |     ^^^ expected bound lifetime parameter 'a, found concrete lifetime
