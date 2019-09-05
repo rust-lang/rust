@@ -2379,6 +2379,7 @@ There are some known bugs that trigger this message.
 
 ;
 
+//  E0008, // cannot bind by-move into a pattern guard
 //  E0298, // cannot compare constants
 //  E0299, // mismatched types between arms
 //  E0471, // constant evaluation error (in pattern)
