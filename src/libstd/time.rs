@@ -221,7 +221,6 @@ impl Instant {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(checked_duration_since)]
     /// use std::time::{Duration, Instant};
     /// use std::thread::sleep;
     ///
@@ -231,7 +230,7 @@ impl Instant {
     /// println!("{:?}", new_now.checked_duration_since(now));
     /// println!("{:?}", now.checked_duration_since(new_now)); // None
     /// ```
-    #[unstable(feature = "checked_duration_since", issue = "58402")]
+    #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
         self.0.checked_sub_instant(&earlier.0)
     }
@@ -242,7 +241,6 @@ impl Instant {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(checked_duration_since)]
     /// use std::time::{Duration, Instant};
     /// use std::thread::sleep;
     ///
@@ -252,7 +250,7 @@ impl Instant {
     /// println!("{:?}", new_now.saturating_duration_since(now));
     /// println!("{:?}", now.saturating_duration_since(new_now)); // 0ns
     /// ```
-    #[unstable(feature = "checked_duration_since", issue = "58402")]
+    #[stable(feature = "checked_duration_since", since = "1.39.0")]
     pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
         self.checked_duration_since(earlier).unwrap_or(Duration::new(0, 0))
     }
