@@ -936,8 +936,7 @@ impl f64 {
     /// assert!((2.0f64).clamp(-2.0, 1.0) == 1.0);
     /// assert!((std::f64::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
-    // The tests below invoke `clamp` without a return value in order to cause a `panic`.
-    // #[must_use = "method returns a new number and does not mutate the original value"]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]
     pub fn clamp(self, min: f64, max: f64) -> f64 {
@@ -1571,18 +1570,18 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_clamp_min_greater_than_max() {
-        1.0f64.clamp(3.0, 1.0);
+        let _ = 1.0f64.clamp(3.0, 1.0);
     }
 
     #[test]
     #[should_panic]
     fn test_clamp_min_is_nan() {
-        1.0f64.clamp(NAN, 1.0);
+        let _ = 1.0f64.clamp(NAN, 1.0);
     }
 
     #[test]
     #[should_panic]
     fn test_clamp_max_is_nan() {
-        1.0f64.clamp(3.0, NAN);
+        let _ = 1.0f64.clamp(3.0, NAN);
     }
 }
