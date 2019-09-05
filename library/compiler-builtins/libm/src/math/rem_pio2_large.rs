@@ -461,9 +461,9 @@ pub(crate) fn rem_pio2_large(x: &[f64], y: &mut [f64], e0: i32, prec: usize) -> 
                 i!(y, 2, =, -fw);
             }
         }
-        #[cfg(feature = "checked")]
+        #[cfg(debug_assertions)]
         _ => unreachable!(),
-        #[cfg(not(feature = "checked"))]
+        #[cfg(not(debug_assertions))]
         _ => {}
     }
     n & 7

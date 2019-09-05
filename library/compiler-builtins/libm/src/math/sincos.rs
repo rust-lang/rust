@@ -51,9 +51,9 @@ pub fn sincos(x: f64) -> (f64, f64) {
         1 => (c, -s),
         2 => (-s, -c),
         3 => (-c, s),
-        #[cfg(feature = "checked")]
+        #[cfg(debug_assertions)]
         _ => unreachable!(),
-        #[cfg(not(feature = "checked"))]
+        #[cfg(not(debug_assertions))]
         _ => (0.0, 1.0),
     }
 }
