@@ -889,6 +889,36 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
+                if self.token.is_path_start() {
+                    let path = self.parse_path(PathStyle::Expr)?;
+
+                    // `!`, as an operator, is prefix, so we know this isn't that
+                    if self.eat(&token::Not) {
+                        // MACRO INVOCATION expression
+                        let (delim, tts) = self.expect_delimited_token_tree()?;
+                        hi = self.prev_span;
+                        ex = ExprKind::Mac(Mac {
+                            path,
+                            tts,
+                            delim,
+                            span: lo.to(hi),
+                            prior_type_ascription: self.last_type_ascription,
+                        });
+                    } else if self.check(&token::OpenDelim(token::Brace)) {
+                        if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
+                            return expr;
+                        } else {
+                            hi = path.span;
+                            ex = ExprKind::Path(None, path);
+                        }
+                    } else {
+                        hi = path.span;
+                        ex = ExprKind::Path(None, path);
+                    }
+
+                    let expr = self.mk_expr(lo.to(hi), ex, attrs);
+                    return self.maybe_recover_from_bad_qpath(expr, true);
+                }
                 if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
                     return self.parse_lambda_expr(attrs);
                 }
@@ -1007,32 +1037,6 @@ impl<'a> Parser<'a> {
                     let (await_hi, e_kind) = self.parse_incorrect_await_syntax(lo, self.prev_span)?;
                     hi = await_hi;
                     ex = e_kind;
-                } else if self.token.is_path_start() {
-                    let path = self.parse_path(PathStyle::Expr)?;
-
-                    // `!`, as an operator, is prefix, so we know this isn't that
-                    if self.eat(&token::Not) {
-                        // MACRO INVOCATION expression
-                        let (delim, tts) = self.expect_delimited_token_tree()?;
-                        hi = self.prev_span;
-                        ex = ExprKind::Mac(Mac {
-                            path,
-                            tts,
-                            delim,
-                            span: lo.to(hi),
-                            prior_type_ascription: self.last_type_ascription,
-                        });
-                    } else if self.check(&token::OpenDelim(token::Brace)) {
-                        if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
-                            return expr;
-                        } else {
-                            hi = path.span;
-                            ex = ExprKind::Path(None, path);
-                        }
-                    } else {
-                        hi = path.span;
-                        ex = ExprKind::Path(None, path);
-                    }
                 } else {
                     if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
                         // Don't complain about bare semicolons after unclosed braces
