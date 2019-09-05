@@ -3554,7 +3554,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
             let ns_id = cx.derive_id(format!("{}.{}",
                                           variant.name.as_ref().unwrap(),
                                           ItemType::Variant.name_space()));
-            write!(w, "<span id=\"{id}\" class=\"variant small-section-header\">\
+            write!(w, "<div id=\"{id}\" class=\"variant small-section-header\">\
                        <a href=\"#{id}\" class=\"anchor field\"></a>\
                        <code id='{ns_id}'>{name}",
                    id = id,
@@ -3572,7 +3572,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                     write!(w, ")")?;
                 }
             }
-            write!(w, "</code></span>")?;
+            write!(w, "</code></div>")?;
             document(w, cx, variant)?;
             document_non_exhaustive(w, variant)?;
 
@@ -3583,7 +3583,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                 let variant_id = cx.derive_id(format!("{}.{}.fields",
                                                    ItemType::Variant,
                                                    variant.name.as_ref().unwrap()));
-                write!(w, "<span class='autohide sub-variant' id='{id}'>",
+                write!(w, "<div class='autohide sub-variant' id='{id}'>",
                        id = variant_id)?;
                 write!(w, "<h3>Fields of <b>{name}</b></h3><div>",
                        name = variant.name.as_ref().unwrap())?;
@@ -3609,7 +3609,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                         document(w, cx, field)?;
                     }
                 }
-                write!(w, "</div></span>")?;
+                write!(w, "</div></div>")?;
             }
             render_stability_since(w, variant, it)?;
         }
