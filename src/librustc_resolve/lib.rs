@@ -538,7 +538,11 @@ impl<'a> ModuleData<'a> {
     }
 
     fn nearest_item_scope(&'a self) -> Module<'a> {
-        if self.is_trait() { self.parent.unwrap() } else { self }
+        match self.kind {
+            ModuleKind::Def(DefKind::Enum, ..) | ModuleKind::Def(DefKind::Trait, ..) =>
+                self.parent.expect("enum or trait module without a parent"),
+            _ => self,
+        }
     }
 
     fn is_ancestor_of(&self, mut other: &Self) -> bool {
