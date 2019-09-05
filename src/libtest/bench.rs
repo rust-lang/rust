@@ -48,7 +48,7 @@ impl Bencher {
         F: FnMut(&mut Bencher),
     {
         f(self);
-        return self.summary;
+        self.summary
     }
 }
 
@@ -116,7 +116,7 @@ where
     for _ in 0..k {
         black_box(inner());
     }
-    return ns_from_dur(start.elapsed());
+    ns_from_dur(start.elapsed())
 }
 
 pub fn iter<T, F>(inner: &mut F) -> stats::Summary

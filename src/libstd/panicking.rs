@@ -217,7 +217,7 @@ pub fn update_panic_count(amt: isize) -> usize {
     PANIC_COUNT.with(|c| {
         let next = (c.get() as isize + amt) as usize;
         c.set(next);
-        return next
+        next
     })
 }
 

@@ -257,7 +257,7 @@ impl Stdio {
                         let ret = io.duplicate(0, true,
                                                c::DUPLICATE_SAME_ACCESS);
                         io.into_raw();
-                        return ret
+                        ret
                     }
                     Err(..) => Ok(Handle::new(c::INVALID_HANDLE_VALUE)),
                 }
