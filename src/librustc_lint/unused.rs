@@ -493,10 +493,8 @@ impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
         let (value, msg, followed_by_block, left_pos, right_pos) = match e.node {
-            Let(ref pats, ..) => {
-                for p in pats {
-                    self.check_unused_parens_pat(cx, p, false, false);
-                }
+            Let(ref pat, ..) => {
+                self.check_unused_parens_pat(cx, pat, false, false);
                 return;
             }
 
@@ -594,9 +592,7 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        for p in &arm.pats {
-            self.check_unused_parens_pat(cx, p, false, false);
-        }
+        self.check_unused_parens_pat(cx, &arm.pat, false, false);
     }
 }
 
