@@ -12,4 +12,5 @@ test_utils::marks!(
     trait_resolution_on_fn_type
     infer_while_let
     macro_rules_from_other_crates_are_visible_with_macro_use
+    prelude_is_macro_use
 );

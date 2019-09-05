@@ -185,11 +185,14 @@ where
 
         if let Some(ModuleDef::Module(m)) = res.take_types() {
             tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
+            self.import_all_macros_exported(m);
+        }
+    }
 
-            let item_map = self.db.crate_def_map(m.krate);
-            for (name, &macro_id) in &item_map.exported_macros {
-                self.global_macro_scope.insert(name.clone(), macro_id);
-            }
+    fn import_all_macros_exported(&mut self, module: Module) {
+        let item_map = self.db.crate_def_map(module.krate);
+        for (name, &macro_id) in &item_map.exported_macros {
+            self.global_macro_scope.insert(name.clone(), macro_id);
         }
     }
 
@@ -522,6 +525,12 @@ where
     DB: DefDatabase,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
+        // Prelude module is always considered to be `#[macro_use]`.
+        if let Some(prelude_module) = self.def_collector.def_map.prelude {
+            tested_by!(prelude_is_macro_use);
+            self.def_collector.import_all_macros_exported(prelude_module);
+        }
+
         for item in items {
             match *item {
                 raw::RawItem::Module(m) => self.collect_module(&self.raw_items[m]),
