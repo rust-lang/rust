@@ -2751,9 +2751,8 @@ pub enum Node<'hir> {
     Crate,
 }
 
-impl<'hir> Node<'hir> {
+impl Node<'_> {
     pub fn ident(&self) -> Option<Ident> {
-
         match self {
             Node::TraitItem(TraitItem { ident, .. }) |
             Node::ImplItem(ImplItem { ident, .. }) |

@@ -197,7 +197,7 @@ impl<'a> Parser<'a> {
                 let (args, constraints) =
                     self.parse_generic_args_with_leaning_angle_bracket_recovery(style, lo)?;
                 self.expect_gt()?;
-                let span = ident.span.to(self.prev_span);
+                let span = lo.to(self.prev_span);
                 AngleBracketedArgs { args, constraints, span }.into()
             } else {
                 // `(T, U) -> R`
