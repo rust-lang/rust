@@ -5,6 +5,15 @@
     all(target_arch = "wasm32", feature = "unstable"),
     feature(core_intrinsics)
 )]
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::many_single_char_names)]
+#![allow(clippy::needless_return)]
+#![allow(clippy::int_plus_one)]
+#![allow(clippy::deprecated_cfg_attr)]
+#![allow(clippy::mixed_case_hex_literals)]
+#![allow(clippy::float_cmp)]
+#![allow(clippy::eq_op)]
+#![allow(clippy::assign_op_pattern)]
 
 mod math;
 
