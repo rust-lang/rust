@@ -762,19 +762,19 @@ fn check_opaque_types<'fcx, 'tcx>(
     substituted_predicates
 }
 
+const HELP_FOR_SELF_TYPE: &str =
+    "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \
+     `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one \
+     of the previous types except `Self`)";
+
 fn check_method_receiver<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
     method_sig: &hir::MethodSig,
     method: &ty::AssocItem,
     self_ty: Ty<'tcx>,
 ) {
-    const HELP_FOR_SELF_TYPE: &str =
-        "consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, \
-         `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one \
-         of the previous types except `Self`)";
     // Check that the method has a valid receiver type, given the type `Self`.
-    debug!("check_method_receiver({:?}, self_ty={:?})",
-           method, self_ty);
+    debug!("check_method_receiver({:?}, self_ty={:?})", method, self_ty);
 
     if !method.method_has_self_argument {
         return;
@@ -805,12 +805,7 @@ fn check_method_receiver<'fcx, 'tcx>(
     if fcx.tcx.features().arbitrary_self_types {
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
             // Report error; `arbitrary_self_types` was enabled.
-            fcx.tcx.sess.diagnostic().mut_span_err(
-                span, &format!("invalid method receiver type: {:?}", receiver_ty)
-            ).note("type of `self` must be `Self` or a type that dereferences to it")
-            .help(HELP_FOR_SELF_TYPE)
-            .code(DiagnosticId::Error("E0307".into()))
-            .emit();
+            e0307(fcx, span, receiver_ty);
         }
     } else {
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, false) {
@@ -830,15 +825,20 @@ fn check_method_receiver<'fcx, 'tcx>(
                 .emit();
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
-                fcx.tcx.sess.diagnostic().mut_span_err(
-                    span, &format!("invalid method receiver type: {:?}", receiver_ty)
-                ).note("type must be `Self` or a type that dereferences to it")
-                .help(HELP_FOR_SELF_TYPE)
-                .code(DiagnosticId::Error("E0307".into()))
-                .emit();
+                e0307(fcx, span, receiver_ty);
             }
         }
     }
+}
+
+fn e0307(fcx: &FnCtxt<'fcx, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
+    fcx.tcx.sess.diagnostic().mut_span_err(
+        span,
+        &format!("invalid `self` parameter type: {:?}", receiver_ty)
+    ).note("type of `self` must be `Self` or a type that dereferences to it")
+    .help(HELP_FOR_SELF_TYPE)
+    .code(DiagnosticId::Error("E0307".into()))
+    .emit();
 }
 
 /// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If
