@@ -763,8 +763,8 @@ impl Tester for Collector {
             // We use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {
-                    if (i == 0 && c.is_xid_start()) ||
-                        (i != 0 && c.is_xid_continue()) {
+                    if (i == 0 && rustc_lexer::is_id_start(c)) ||
+                        (i != 0 && rustc_lexer::is_id_continue(c)) {
                         c
                     } else {
                         '_'
