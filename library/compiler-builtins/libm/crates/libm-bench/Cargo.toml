@@ -12,4 +12,4 @@ paste = "0.1.5"
 
 [features]
 default = []
-stable = [ "libm/stable" ]
+unstable = [ "libm/unstable" ]
