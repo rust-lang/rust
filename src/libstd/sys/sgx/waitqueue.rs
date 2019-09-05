@@ -98,6 +98,12 @@ impl<'a, T> WaitGuard<'a, T> {
     pub fn notified_tcs(&self) -> NotifiedTcs {
         self.notified_tcs
     }
+
+    /// Drop this `WaitGuard`, after dropping another `guard`.
+    pub fn drop_after<U>(self, guard: U) {
+        drop(guard);
+        drop(self);
+    }
 }
 
 impl<'a, T> Deref for WaitGuard<'a, T> {
@@ -140,7 +146,7 @@ impl WaitQueue {
     /// until a wakeup event.
     ///
     /// This function does not return until this thread has been awoken.
-    pub fn wait<T>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>) {
+    pub fn wait<T, F: FnOnce()>(mut guard: SpinMutexGuard<'_, WaitVariable<T>>, before_wait: F) {
         // very unsafe: check requirements of UnsafeList::push
         unsafe {
             let mut entry = UnsafeListEntry::new(SpinMutex::new(WaitEntry {
@@ -149,6 +155,7 @@ impl WaitQueue {
             }));
             let entry = guard.queue.inner.push(&mut entry);
             drop(guard);
+            before_wait();
             while !entry.lock().wake {
                 // don't panic, this would invalidate `entry` during unwinding
                 let eventset = rtunwrap!(Ok, usercalls::wait(EV_UNPARK, WAIT_INDEFINITE));
@@ -545,7 +552,7 @@ mod tests {
             assert!(WaitQueue::notify_one(wq2.lock()).is_ok());
         });
 
-        WaitQueue::wait(locked);
+        WaitQueue::wait(locked, ||{});
 
         t1.join().unwrap();
     }
