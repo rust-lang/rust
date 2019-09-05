@@ -297,6 +297,11 @@ impl AstBuilder<ast::Path> {
         ast_node_from_file_text(text)
     }
 
+    pub fn from_name(name: ast::Name) -> ast::Path {
+        let name = name.syntax().to_string();
+        Self::from_text(name.as_str())
+    }
+
     pub fn from_pieces(enum_name: ast::Name, var_name: ast::Name) -> ast::Path {
         Self::from_text(&format!("{}::{}", enum_name.syntax(), var_name.syntax()))
     }
@@ -377,6 +382,31 @@ impl AstBuilder<ast::MatchArmList> {
     pub fn from_arms(arms: impl Iterator<Item = ast::MatchArm>) -> ast::MatchArmList {
         let arms_str = arms.map(|arm| format!("\n    {}", arm.syntax())).join(",");
         Self::from_text(&format!("{},\n", arms_str))
+    }
+}
+
+impl AstBuilder<ast::WherePred> {
+    fn from_text(text: &str) -> ast::WherePred {
+        ast_node_from_file_text(&format!("fn f() where {} {{ }}", text))
+    }
+
+    pub fn from_pieces(
+        path: ast::Path,
+        bounds: impl Iterator<Item = ast::TypeBound>,
+    ) -> ast::WherePred {
+        let bounds = bounds.map(|b| b.syntax().to_string()).collect::<Vec<_>>().join(" + ");
+        Self::from_text(&format!("{}: {}", path.syntax(), bounds))
+    }
+}
+
+impl AstBuilder<ast::WhereClause> {
+    fn from_text(text: &str) -> ast::WhereClause {
+        ast_node_from_file_text(&format!("fn f() where {} {{ }}", text))
+    }
+
+    pub fn from_predicates(preds: impl Iterator<Item = ast::WherePred>) -> ast::WhereClause {
+        let preds = preds.map(|p| p.syntax().to_string()).collect::<Vec<_>>().join(", ");
+        Self::from_text(preds.as_str())
     }
 }
 
