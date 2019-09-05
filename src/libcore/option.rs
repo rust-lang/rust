@@ -837,9 +837,8 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert_with<F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
-        match *self {
-            None => *self = Some(f()),
-            _ => (),
+        if let None = *self {
+            *self = Some(f());
         }
 
         match *self {
