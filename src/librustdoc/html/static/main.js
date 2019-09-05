@@ -547,6 +547,11 @@ if (!DOMTokenList.prototype.remove) {
                 results.sort(function(aaa, bbb) {
                     var a, b;
 
+                    // sort by exact match with regard to the last word (mismatch goes later)
+                    a = (aaa.word !== val);
+                    b = (bbb.word !== val);
+                    if (a !== b) { return a - b; }
+
                     // Sort by non levenshtein results and then levenshtein results by the distance
                     // (less changes required to match means higher rankings)
                     a = (aaa.lev);
@@ -556,11 +561,6 @@ if (!DOMTokenList.prototype.remove) {
                     // sort by crate (non-current crate goes later)
                     a = (aaa.item.crate !== window.currentCrate);
                     b = (bbb.item.crate !== window.currentCrate);
-                    if (a !== b) { return a - b; }
-
-                    // sort by exact match (mismatch goes later)
-                    a = (aaa.word !== valLower);
-                    b = (bbb.word !== valLower);
                     if (a !== b) { return a - b; }
 
                     // sort by item name length (longer goes later)
@@ -1028,7 +1028,7 @@ if (!DOMTokenList.prototype.remove) {
                         if (lev > MAX_LEV_DISTANCE) {
                             continue;
                         } else if (lev > 0) {
-                            lev_add = 1;
+                            lev_add = lev / 10;
                         }
                     }
 
@@ -1099,10 +1099,6 @@ if (!DOMTokenList.prototype.remove) {
                     if (index !== -1 || lev <= MAX_LEV_DISTANCE) {
                         if (index !== -1 && paths.length < 2) {
                             lev = 0;
-                        } else if (searchWords[j] === val) {
-                            // Small trick to fix when you're looking for a one letter type
-                            // and there are other short named types.
-                            lev = -1;
                         }
                         if (results[fullId] === undefined) {
                             results[fullId] = {
