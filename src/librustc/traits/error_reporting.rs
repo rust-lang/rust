@@ -1384,7 +1384,10 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut reported_violations = FxHashSet::default();
         for violation in violations {
             if reported_violations.insert(violation.clone()) {
-                err.note(&violation.error_msg());
+                match violation.span() {
+                    Some(span) => err.span_label(span, violation.error_msg()),
+                    None => err.note(&violation.error_msg()),
+                };
             }
         }
         Some(err)

@@ -1627,7 +1627,7 @@ impl<'tcx> ObligationCause<'tcx> {
             MainFunctionType => Error0580("main function has wrong type"),
             StartFunctionType => Error0308("start function has wrong type"),
             IntrinsicType => Error0308("intrinsic has wrong type"),
-            MethodReceiver => Error0308("mismatched method receiver"),
+            MethodReceiver => Error0308("mismatched `self` parameter type"),
 
             // In the case where we have no more specific thing to
             // say, also take a look at the error code, maybe we can
