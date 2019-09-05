@@ -1,7 +1,7 @@
 // needed because negating int::MIN will behave differently between
 // optimized compilation and unoptimized compilation and thus would
 // lead to different lints being emitted
-// compile-flags: -O
+// compile-flags: -C overflow-checks=on -O
 
 #![feature(rustc_attrs)]
 #![allow(exceeding_bitshifts)]
@@ -22,7 +22,7 @@ fn main() {
     let d = 42u8 - (42u8 + 1);
     //~^ ERROR const_err
     let _e = [5u8][1];
-    //~^ ERROR index out of bounds
+    //~^ ERROR const_err
     black_box(a);
     black_box(b);
     black_box(c);
