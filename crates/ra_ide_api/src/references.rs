@@ -4,7 +4,7 @@ use ra_syntax::{algo::find_node_at_offset, ast, AstNode, SourceFile, SyntaxNode}
 use relative_path::{RelativePath, RelativePathBuf};
 
 use crate::{
-    db::RootDatabase, FileId, FilePosition, FileRange, FileSystemEdit, NavigationTarget,
+    db::RootDatabase, FileId, FilePosition, FileRange, FileSystemEdit, NavigationTarget, RangeInfo,
     SourceChange, SourceFileEdit, TextRange,
 };
 
@@ -48,9 +48,9 @@ impl IntoIterator for ReferenceSearchResult {
 pub(crate) fn find_all_refs(
     db: &RootDatabase,
     position: FilePosition,
-) -> Option<ReferenceSearchResult> {
+) -> Option<RangeInfo<ReferenceSearchResult>> {
     let parse = db.parse(position.file_id);
-    let (binding, analyzer) = find_binding(db, &parse.tree(), position)?;
+    let RangeInfo { range, info: (binding, analyzer) } = find_binding(db, &parse.tree(), position)?;
     let declaration = NavigationTarget::from_bind_pat(position.file_id, &binding);
 
     let references = analyzer
@@ -59,24 +59,26 @@ pub(crate) fn find_all_refs(
         .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
         .collect::<Vec<_>>();
 
-    return Some(ReferenceSearchResult { declaration, references });
+    return Some(RangeInfo::new(range, ReferenceSearchResult { declaration, references }));
 
     fn find_binding<'a>(
         db: &RootDatabase,
         source_file: &SourceFile,
         position: FilePosition,
-    ) -> Option<(ast::BindPat, hir::SourceAnalyzer)> {
+    ) -> Option<RangeInfo<(ast::BindPat, hir::SourceAnalyzer)>> {
         let syntax = source_file.syntax();
         if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
+            let range = binding.syntax().text_range();
             let analyzer = hir::SourceAnalyzer::new(db, position.file_id, binding.syntax(), None);
-            return Some((binding, analyzer));
+            return Some(RangeInfo::new(range, (binding, analyzer)));
         };
         let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
+        let range = name_ref.syntax().text_range();
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
         let resolved = analyzer.resolve_local_name(&name_ref)?;
         if let Either::A(ptr) = resolved.ptr() {
             if let ast::Pat::BindPat(binding) = ptr.to_node(source_file.syntax()) {
-                return Some((binding, analyzer));
+                return Some(RangeInfo::new(range, (binding, analyzer)));
             }
         }
         None
@@ -87,12 +89,14 @@ pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
     new_name: &str,
-) -> Option<SourceChange> {
+) -> Option<RangeInfo<SourceChange>> {
     let parse = db.parse(position.file_id);
     if let Some((ast_name, ast_module)) =
         find_name_and_module_at_offset(parse.tree().syntax(), position)
     {
+        let range = ast_name.syntax().text_range();
         rename_mod(db, &ast_name, &ast_module, position, new_name)
+            .map(|info| RangeInfo::new(range, info))
     } else {
         rename_reference(db, position, new_name)
     }
@@ -107,7 +111,7 @@ fn find_name_and_module_at_offset(
     Some((ast_name, ast_module))
 }
 
-fn source_edit_from_fileid_range(
+fn source_edit_from_file_id_range(
     file_id: FileId,
     range: TextRange,
     new_name: &str,
@@ -179,19 +183,19 @@ fn rename_reference(
     db: &RootDatabase,
     position: FilePosition,
     new_name: &str,
-) -> Option<SourceChange> {
-    let refs = find_all_refs(db, position)?;
+) -> Option<RangeInfo<SourceChange>> {
+    let RangeInfo { range, info: refs } = find_all_refs(db, position)?;
 
     let edit = refs
         .into_iter()
-        .map(|range| source_edit_from_fileid_range(range.file_id, range.range, new_name))
+        .map(|range| source_edit_from_file_id_range(range.file_id, range.range, new_name))
         .collect::<Vec<_>>();
 
     if edit.is_empty() {
         return None;
     }
 
-    Some(SourceChange::source_file_edits("rename", edit))
+    Some(RangeInfo::new(range, SourceChange::source_file_edits("rename", edit)))
 }
 
 #[cfg(test)]
@@ -342,38 +346,43 @@ mod tests {
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
         assert_debug_snapshot!(&source_change,
-@r#"Some(
-    SourceChange {
-        label: "rename",
-        source_file_edits: [
-            SourceFileEdit {
-                file_id: FileId(
-                    2,
-                ),
-                edit: TextEdit {
-                    atoms: [
-                        AtomTextEdit {
-                            delete: [4; 7),
-                            insert: "foo2",
+@r###"
+        Some(
+            RangeInfo {
+                range: [4; 7),
+                info: SourceChange {
+                    label: "rename",
+                    source_file_edits: [
+                        SourceFileEdit {
+                            file_id: FileId(
+                                2,
+                            ),
+                            edit: TextEdit {
+                                atoms: [
+                                    AtomTextEdit {
+                                        delete: [4; 7),
+                                        insert: "foo2",
+                                    },
+                                ],
+                            },
                         },
                     ],
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                3,
+                            ),
+                            dst_source_root: SourceRootId(
+                                0,
+                            ),
+                            dst_path: "bar/foo2.rs",
+                        },
+                    ],
+                    cursor_position: None,
                 },
             },
-        ],
-        file_system_edits: [
-            MoveFile {
-                src: FileId(
-                    3,
-                ),
-                dst_source_root: SourceRootId(
-                    0,
-                ),
-                dst_path: "bar/foo2.rs",
-            },
-        ],
-        cursor_position: None,
-    },
-)"#);
+        )
+        "###);
     }
 
     #[test]
@@ -389,38 +398,43 @@ mod tests {
         let new_name = "foo2";
         let source_change = analysis.rename(position, new_name).unwrap();
         assert_debug_snapshot!(&source_change,
-        @r###"Some(
-    SourceChange {
-        label: "rename",
-        source_file_edits: [
-            SourceFileEdit {
-                file_id: FileId(
-                    1,
-                ),
-                edit: TextEdit {
-                    atoms: [
-                        AtomTextEdit {
-                            delete: [4; 7),
-                            insert: "foo2",
+        @r###"
+        Some(
+            RangeInfo {
+                range: [4; 7),
+                info: SourceChange {
+                    label: "rename",
+                    source_file_edits: [
+                        SourceFileEdit {
+                            file_id: FileId(
+                                1,
+                            ),
+                            edit: TextEdit {
+                                atoms: [
+                                    AtomTextEdit {
+                                        delete: [4; 7),
+                                        insert: "foo2",
+                                    },
+                                ],
+                            },
                         },
                     ],
+                    file_system_edits: [
+                        MoveFile {
+                            src: FileId(
+                                2,
+                            ),
+                            dst_source_root: SourceRootId(
+                                0,
+                            ),
+                            dst_path: "foo2/mod.rs",
+                        },
+                    ],
+                    cursor_position: None,
                 },
             },
-        ],
-        file_system_edits: [
-            MoveFile {
-                src: FileId(
-                    2,
-                ),
-                dst_source_root: SourceRootId(
-                    0,
-                ),
-                dst_path: "foo2/mod.rs",
-            },
-        ],
-        cursor_position: None,
-    },
-)"###
+        )
+        "###
                );
     }
 
@@ -430,7 +444,7 @@ mod tests {
         let mut text_edit_builder = ra_text_edit::TextEditBuilder::default();
         let mut file_id: Option<FileId> = None;
         if let Some(change) = source_change {
-            for edit in change.source_file_edits {
+            for edit in change.info.source_file_edits {
                 file_id = Some(edit.file_id);
                 for atom in edit.edit.as_atoms() {
                     text_edit_builder.replace(atom.delete, atom.insert.clone());
