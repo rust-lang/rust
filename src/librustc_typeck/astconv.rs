@@ -1461,7 +1461,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         type_str: &str,
         trait_str: &str,
-        name: &str,
+        name: ast::Name,
     ) {
         let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
         if let (Some(_), Ok(snippet)) = (
@@ -1688,7 +1688,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         span,
                         &qself_ty.to_string(),
                         "Trait",
-                        &assoc_ident.as_str(),
+                        assoc_ident.name,
                     );
                 }
                 return Err(ErrorReported);
@@ -1761,7 +1761,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 span,
                 "Type",
                 &path_str,
-                &item_segment.ident.as_str(),
+                item_segment.ident.name,
             );
             return tcx.types.err;
         };
