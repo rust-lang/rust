@@ -567,7 +567,7 @@ impl<T: ?Sized> Rc<T> {
     ///     let x = Rc::from_raw(x_ptr);
     ///     assert_eq!(&*x, "hello");
     ///
-    ///     // Further calls to `Rc::from_raw(x_ptr)` would be memory unsafe.
+    ///     // Further calls to `Rc::from_raw(x_ptr)` would be memory-unsafe.
     /// }
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
