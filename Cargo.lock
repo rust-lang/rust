@@ -3870,6 +3870,7 @@ dependencies = [
  "rustc_msan",
  "rustc_tsan",
  "unwind",
+ "wasi",
 ]
 
 [[package]]
@@ -4684,6 +4685,17 @@ dependencies = [
  "futures",
  "log",
  "try-lock",
+]
+
+[[package]]
+name = "wasi"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b89c3ce4ce14bdc6fb6beaf9ec7928ca331de5df7e5ea278375642a2f478570d"
+dependencies = [
+ "compiler_builtins",
+ "rustc-std-workspace-alloc",
+ "rustc-std-workspace-core",
 ]
 
 [[package]]
