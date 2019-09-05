@@ -2,7 +2,12 @@
 
 output=$(mktemp)
 
-RUST_LOG=mdbook_linkcheck=debug mdbook build 2>&1 | tee $output
+mkdir -p book/
+cp -r $HOME/linkcheck/ book/
+RUST_LOG=mdbook_linkcheck=debug mdbook-linkcheck -s 2>&1 | tee -a $output
+cp -r book/linkcheck $HOME/
+
+mdbook build
 
 result=${PIPESTATUS[0]}
 

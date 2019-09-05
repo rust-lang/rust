@@ -3,10 +3,14 @@ title = "Guide to Rustc Development"
 author = "Rustc developers"
 description = "A guide to developing rustc"
 
+[build]
+create-missing = false
+
 [output.html]
 
 [output.html.search]
 
 [output.linkcheck]
+command = "sed 's/.*//'" # tell mdbook not to run, since we want to run it manually
 follow-web-links = true
 exclude = [ "crates\\.io", "gcc\\.godbolt\\.org", "youtube\\.com", "dl\\.acm\\.org" ]
