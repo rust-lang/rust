@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashMap;
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use syntax::symbol::LocalInternedString;
+use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for consecutive `if`s with the same condition.
@@ -168,8 +168,8 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
 fn lint_match_arms<'tcx>(cx: &LateContext<'_, 'tcx>, expr: &Expr) {
     fn same_bindings<'tcx>(
         cx: &LateContext<'_, 'tcx>,
-        lhs: &FxHashMap<LocalInternedString, Ty<'tcx>>,
-        rhs: &FxHashMap<LocalInternedString, Ty<'tcx>>,
+        lhs: &FxHashMap<Symbol, Ty<'tcx>>,
+        rhs: &FxHashMap<Symbol, Ty<'tcx>>,
     ) -> bool {
         lhs.len() == rhs.len()
             && lhs
@@ -275,12 +275,8 @@ fn if_sequence(mut expr: &Expr) -> (SmallVec<[&Expr; 1]>, SmallVec<[&Block; 1]>)
 }
 
 /// Returns the list of bindings in a pattern.
-fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalInternedString, Ty<'tcx>> {
-    fn bindings_impl<'a, 'tcx>(
-        cx: &LateContext<'a, 'tcx>,
-        pat: &Pat,
-        map: &mut FxHashMap<LocalInternedString, Ty<'tcx>>,
-    ) {
+fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<Symbol, Ty<'tcx>> {
+    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut FxHashMap<Symbol, Ty<'tcx>>) {
         match pat.node {
             PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
             PatKind::TupleStruct(_, ref pats, _) => {
@@ -289,7 +285,7 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalI
                 }
             },
             PatKind::Binding(.., ident, ref as_pat) => {
-                if let Entry::Vacant(v) = map.entry(ident.as_str()) {
+                if let Entry::Vacant(v) = map.entry(ident.name) {
                     v.insert(cx.tables.pat_ty(pat));
                 }
                 if let Some(ref as_pat) = *as_pat {
