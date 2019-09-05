@@ -9,7 +9,7 @@ use std::mem;
 use syntax::ast;
 use syntax::feature_gate;
 use syntax::parse::token;
-use syntax::symbol::{InternedString, LocalInternedString};
+use syntax::symbol::InternedString;
 use syntax::tokenstream;
 use syntax_pos::SourceFile;
 
@@ -35,27 +35,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for InternedString {
     fn to_stable_hash_key(&self,
                           _: &StableHashingContext<'a>)
                           -> InternedString {
-        self.clone()
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for LocalInternedString {
-    #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let s: &str = &**self;
-        s.hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for LocalInternedString {
-    type KeyType = LocalInternedString;
-
-    #[inline]
-    fn to_stable_hash_key(&self,
-                          _: &StableHashingContext<'a>)
-                          -> LocalInternedString {
         self.clone()
     }
 }

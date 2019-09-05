@@ -17,7 +17,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 
 use libc::{c_uint, c_char};
 
-use syntax::symbol::LocalInternedString;
+use syntax::symbol::Symbol;
 use syntax::ast::Mutability;
 
 pub use crate::context::CodegenCx;
@@ -122,7 +122,7 @@ impl CodegenCx<'ll, 'tcx> {
 
     fn const_cstr(
         &self,
-        s: LocalInternedString,
+        s: Symbol,
         null_terminated: bool,
     ) -> &'ll Value {
         unsafe {
@@ -130,9 +130,10 @@ impl CodegenCx<'ll, 'tcx> {
                 return llval;
             }
 
+            let s_str = s.as_str();
             let sc = llvm::LLVMConstStringInContext(self.llcx,
-                                                    s.as_ptr() as *const c_char,
-                                                    s.len() as c_uint,
+                                                    s_str.as_ptr() as *const c_char,
+                                                    s_str.len() as c_uint,
                                                     !null_terminated as Bool);
             let sym = self.generate_local_symbol_name("str");
             let g = self.define_global(&sym[..], self.val_ty(sc)).unwrap_or_else(||{
@@ -147,8 +148,8 @@ impl CodegenCx<'ll, 'tcx> {
         }
     }
 
-    pub fn const_str_slice(&self, s: LocalInternedString) -> &'ll Value {
-        let len = s.len();
+    pub fn const_str_slice(&self, s: Symbol) -> &'ll Value {
+        let len = s.as_str().len();
         let cs = consts::ptrcast(self.const_cstr(s, false),
             self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(self)));
         self.const_fat_ptr(cs, self.const_usize(len as u64))
