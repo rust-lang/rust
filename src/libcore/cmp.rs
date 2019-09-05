@@ -9,14 +9,22 @@
 //! * [`Ord`] and [`PartialOrd`] are traits that allow you to define total and
 //!   partial orderings between values, respectively. Implementing them overloads
 //!   the `<`, `<=`, `>`, and `>=` operators.
-//! * [`Ordering`][cmp::Ordering] is an enum returned by the
-//!   main functions of [`Ord`] and [`PartialOrd`], and describes an ordering.
-//! * [`Reverse`][cmp::Reverse] is a struct that allows you to easily reverse
-//!   an ordering.
-//! * [`max`][cmp::max] and [`min`][cmp::min] are functions that build off of
-//!   [`Ord`] and allow you to find the maximum or minimum of two values.
+//! * [`Ordering`] is an enum returned by the main functions of [`Ord`] and
+//!   [`PartialOrd`], and describes an ordering.
+//! * [`Reverse`] is a struct that allows you to easily reverse an ordering.
+//! * [`max`] and [`min`] are functions that build off of [`Ord`] and allow you
+//!   to find the maximum or minimum of two values.
 //!
 //! For more details, see the respective documentation of each item in the list.
+//!
+//! [`Eq`]: trait.Eq.html
+//! [`PartialEq`]: trait.PartialEq.html
+//! [`Ord`]: trait.Ord.html
+//! [`PartialOrd`]: trait.PartialOrd.html
+//! [`Ordering`]: enum.Ordering.html
+//! [`Reverse`]: struct.Reverse.html
+//! [`max`]: fn.max.html
+//! [`min`]: fn.min.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
