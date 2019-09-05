@@ -1,14 +1,14 @@
 use syntax::ast;
 use syntax::ext::base::{self, DummyResult};
 use syntax::symbol::Symbol;
-use syntax::tokenstream;
+use syntax::tokenstream::TokenStream;
 
 use std::string::String;
 
-pub fn expand_syntax_ext(
+pub fn expand_concat(
     cx: &mut base::ExtCtxt<'_>,
     sp: syntax_pos::Span,
-    tts: &[tokenstream::TokenTree],
+    tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
     let es = match base::get_exprs_from_tts(cx, sp, tts) {
         Some(e) => e,
