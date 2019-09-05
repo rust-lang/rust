@@ -144,15 +144,15 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
     let map = def_map_with_crate_graph(
         "
         //- /main.rs
-        #[macro_use]
-        extern crate foo;
-
         structs!(Foo);
         structs_priv!(Bar);
         structs_not_exported!(MacroNotResolved1);
         crate::structs!(MacroNotResolved2);
 
         mod bar;
+
+        #[macro_use]
+        extern crate foo;
 
         //- /bar.rs
         structs!(Baz);
@@ -186,6 +186,63 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
    ⋮Foo: t v
    ⋮bar: t
    ⋮foo: t
+   ⋮
+   ⋮crate::bar
+   ⋮Baz: t v
+    "###);
+}
+
+#[test]
+fn prelude_is_macro_use() {
+    covers!(prelude_is_macro_use);
+    let map = def_map_with_crate_graph(
+        "
+        //- /main.rs
+        structs!(Foo);
+        structs_priv!(Bar);
+        structs_outside!(Out);
+        crate::structs!(MacroNotResolved2);
+
+        mod bar;
+
+        //- /bar.rs
+        structs!(Baz);
+        crate::structs!(MacroNotResolved3);
+
+        //- /lib.rs
+        #[prelude_import]
+        use self::prelude::*;
+
+        mod prelude {
+            #[macro_export]
+            macro_rules! structs {
+                ($i:ident) => { struct $i; }
+            }
+
+            mod priv_mod {
+                #[macro_export]
+                macro_rules! structs_priv {
+                    ($i:ident) => { struct $i; }
+                }
+            }
+        }
+
+        #[macro_export]
+        macro_rules! structs_outside {
+            ($i:ident) => { struct $i; }
+        }
+        ",
+        crate_graph! {
+            "main": ("/main.rs", ["foo"]),
+            "foo": ("/lib.rs", []),
+        },
+    );
+    assert_snapshot!(map, @r###"
+   ⋮crate
+   ⋮Bar: t v
+   ⋮Foo: t v
+   ⋮Out: t v
+   ⋮bar: t
    ⋮
    ⋮crate::bar
    ⋮Baz: t v
