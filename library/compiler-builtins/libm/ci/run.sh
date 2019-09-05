@@ -3,7 +3,7 @@
 set -ex
 TARGET=$1
 
-CMD="cargo test --all --no-default-features --target $TARGET"
+CMD="cargo test --all --target $TARGET"
 
 $CMD
 $CMD --release

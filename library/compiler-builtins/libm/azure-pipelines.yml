@@ -49,8 +49,6 @@ jobs:
         displayName: "Install rust wasm target"
       - script: cargo build --target wasm32-unknown-unknown
         displayName: "Build for wasm"
-      - script: cargo build --target wasm32-unknown-unknown --no-default-features
-        displayName: "Build for wasm (no default features)"
     variables:
       TOOLCHAIN: nightly
 
