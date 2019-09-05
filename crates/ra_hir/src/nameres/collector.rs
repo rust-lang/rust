@@ -531,20 +531,26 @@ where
             self.def_collector.import_all_macros_exported(prelude_module);
         }
 
+        // This should be processed eagerly instead of deferred to resolving.
+        // `#[macro_use] extern crate` is hoisted to imports macros before collecting
+        // any other items.
+        for item in items {
+            if let raw::RawItem::Import(import_id) = *item {
+                let import = self.raw_items[import_id].clone();
+                if import.is_extern_crate && import.is_macro_use {
+                    self.def_collector.import_macros_from_extern_crate(&import);
+                }
+            }
+        }
+
         for item in items {
             match *item {
                 raw::RawItem::Module(m) => self.collect_module(&self.raw_items[m]),
-                raw::RawItem::Import(import_id) => {
-                    let import = self.raw_items[import_id].clone();
-                    // This should be processed eagerly instead of deferred to resolving.
-                    // Otherwise, since it will only mutate `global_macro_scope`
-                    // without `update` names in `mod`s, unresolved macros cannot be expanded.
-                    if import.is_extern_crate && import.is_macro_use {
-                        self.def_collector.import_macros_from_extern_crate(&import);
-                    }
-
-                    self.def_collector.unresolved_imports.push((self.module_id, import_id, import));
-                }
+                raw::RawItem::Import(import_id) => self.def_collector.unresolved_imports.push((
+                    self.module_id,
+                    import_id,
+                    self.raw_items[import_id].clone(),
+                )),
                 raw::RawItem::Def(def) => self.define_def(&self.raw_items[def]),
                 raw::RawItem::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
             }
