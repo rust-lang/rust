@@ -383,7 +383,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             return Ok(());
         }
         // An intrinsic that we do not support
-        let intrinsic_name = &ecx.tcx.item_name(instance.def_id()).as_str()[..];
+        let intrinsic_name = ecx.tcx.item_name(instance.def_id());
         Err(
             ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into()
         )

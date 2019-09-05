@@ -8,7 +8,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::source_map::Span;
 use syntax::feature_gate::{self, GateIssue};
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
 pub fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
@@ -132,7 +132,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
 impl Collector<'tcx> {
     fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLibrary) {
-        if lib.name.as_ref().map(|s| s.as_str().is_empty()).unwrap_or(false) {
+        if lib.name.as_ref().map(|&s| s == kw::Invalid).unwrap_or(false) {
             match span {
                 Some(span) => {
                     struct_span_err!(self.tcx.sess, span, E0454,
