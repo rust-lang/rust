@@ -623,7 +623,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             self.push_str(s);
         } else {
             let snippet = self.snippet(span);
-            self.push_str(snippet);
+            self.push_str(snippet.trim());
         }
         self.last_pos = source!(self, span).hi();
     }
