@@ -143,13 +143,12 @@ pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Opt
 /// > not a bound for the true error, but bounds the difference between the approximation z and
 /// > the best possible approximation that uses p bits of significand.)
 pub fn bellerophon<T: RawFloat>(f: &Big, e: i16) -> T {
-    let slop;
-    if f <= &Big::from_u64(T::MAX_SIG) {
+    let slop = if f <= &Big::from_u64(T::MAX_SIG) {
         // The cases abs(e) < log5(2^N) are in fast_path()
-        slop = if e >= 0 { 0 } else { 3 };
+        if e >= 0 { 0 } else { 3 }
     } else {
-        slop = if e >= 0 { 1 } else { 4 };
-    }
+        if e >= 0 { 1 } else { 4 }
+    };
     let z = rawfp::big_to_fp(f).mul(&power_of_ten(e)).normalize();
     let exp_p_n = 1 << (P - T::SIG_BITS as u32);
     let lowbits: i64 = (z.f % exp_p_n) as i64;
