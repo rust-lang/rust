@@ -32,13 +32,15 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 
 
-fn parse_expr(ps: &ParseSess, src: &str) -> P<Expr> {
+fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
 
-    let mut p = parse::new_parser_from_source_str(ps,
-                                                  FileName::Custom(src_as_string.clone()),
-                                                  src_as_string);
-    p.parse_expr().unwrap()
+    let mut p = parse::new_parser_from_source_str(
+        ps,
+        FileName::Custom(src_as_string.clone()),
+        src_as_string,
+    );
+    p.parse_expr().map_err(|mut e| e.cancel()).ok()
 }
 
 
@@ -209,22 +211,23 @@ fn run() {
         let printed = pprust::expr_to_string(&e);
         println!("printed: {}", printed);
 
-        let mut parsed = parse_expr(&ps, &printed);
-
-        // We want to know if `parsed` is structurally identical to `e`, ignoring trivial
-        // differences like placement of `Paren`s or the exact ranges of node spans.
-        // Unfortunately, there is no easy way to make this comparison. Instead, we add `Paren`s
-        // everywhere we can, then pretty-print. This should give an unambiguous representation of
-        // each `Expr`, and it bypasses nearly all of the parenthesization logic, so we aren't
-        // relying on the correctness of the very thing we're testing.
-        RemoveParens.visit_expr(&mut e);
-        AddParens.visit_expr(&mut e);
-        let text1 = pprust::expr_to_string(&e);
-        RemoveParens.visit_expr(&mut parsed);
-        AddParens.visit_expr(&mut parsed);
-        let text2 = pprust::expr_to_string(&parsed);
-        assert!(text1 == text2,
-                "exprs are not equal:\n  e =      {:?}\n  parsed = {:?}",
-                text1, text2);
+        // Ignore expressions with chained comparisons that fail to parse
+        if let Some(mut parsed) = parse_expr(&ps, &printed) {
+            // We want to know if `parsed` is structurally identical to `e`, ignoring trivial
+            // differences like placement of `Paren`s or the exact ranges of node spans.
+            // Unfortunately, there is no easy way to make this comparison. Instead, we add `Paren`s
+            // everywhere we can, then pretty-print. This should give an unambiguous representation
+            // of each `Expr`, and it bypasses nearly all of the parenthesization logic, so we
+            // aren't relying on the correctness of the very thing we're testing.
+            RemoveParens.visit_expr(&mut e);
+            AddParens.visit_expr(&mut e);
+            let text1 = pprust::expr_to_string(&e);
+            RemoveParens.visit_expr(&mut parsed);
+            AddParens.visit_expr(&mut parsed);
+            let text2 = pprust::expr_to_string(&parsed);
+            assert!(text1 == text2,
+                    "exprs are not equal:\n  e =      {:?}\n  parsed = {:?}",
+                    text1, text2);
+        }
     });
 }
