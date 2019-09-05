@@ -1,0 +1,54 @@
+SOURCE_FILE@[0; 48)
+  USE_ITEM@[0; 13)
+    USE_KW@[0; 3) "use"
+    WHITESPACE@[3; 4) " "
+    USE_TREE@[4; 12)
+      PATH@[4; 12)
+        PATH@[4; 7)
+          PATH_SEGMENT@[4; 7)
+            NAME_REF@[4; 7)
+              IDENT@[4; 7) "foo"
+        COLONCOLON@[7; 9) "::"
+        PATH_SEGMENT@[9; 12)
+          NAME_REF@[9; 12)
+            IDENT@[9; 12) "bar"
+    SEMI@[12; 13) ";"
+  WHITESPACE@[13; 14) "\n"
+  USE_ITEM@[14; 17)
+    USE_KW@[14; 17) "use"
+  WHITESPACE@[17; 18) "\n"
+  USE_ITEM@[18; 33)
+    USE_KW@[18; 21) "use"
+    WHITESPACE@[21; 22) " "
+    USE_TREE@[22; 32)
+      PATH@[22; 32)
+        PATH@[22; 27)
+          PATH_SEGMENT@[22; 27)
+            CRATE_KW@[22; 27) "crate"
+        COLONCOLON@[27; 29) "::"
+        PATH_SEGMENT@[29; 32)
+          NAME_REF@[29; 32)
+            IDENT@[29; 32) "baz"
+    SEMI@[32; 33) ";"
+  WHITESPACE@[33; 34) "\n"
+  USE_ITEM@[34; 37)
+    USE_KW@[34; 37) "use"
+  WHITESPACE@[37; 38) "\n"
+  FN_DEF@[38; 47)
+    FN_KW@[38; 40) "fn"
+    WHITESPACE@[40; 41) " "
+    NAME@[41; 42)
+      IDENT@[41; 42) "f"
+    PARAM_LIST@[42; 44)
+      L_PAREN@[42; 43) "("
+      R_PAREN@[43; 44) ")"
+    WHITESPACE@[44; 45) " "
+    BLOCK_EXPR@[45; 47)
+      BLOCK@[45; 47)
+        L_CURLY@[45; 46) "{"
+        R_CURLY@[46; 47) "}"
+  WHITESPACE@[47; 48) "\n"
+error 17: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 17: expected SEMI
+error 37: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
+error 37: expected SEMI
