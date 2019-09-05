@@ -3,7 +3,7 @@
 use crate::compile::{run_cargo, std_cargo, rustc_cargo, rustc_cargo_env,
                      add_to_sysroot};
 use crate::builder::{RunConfig, Builder, Kind, ShouldRun, Step};
-use crate::tool::{prepare_tool_cargo, SourceType};
+use crate::tool::prepare_tool_cargo;
 use crate::{Compiler, Mode};
 use crate::cache::{INTERNER, Interned};
 use std::path::PathBuf;
@@ -187,11 +187,10 @@ impl Step for Rustdoc {
 
         let mut cargo = prepare_tool_cargo(builder,
                                            compiler,
-                                           Mode::ToolRustc,
+                                           Mode::ToolRustc { in_tree: true },
                                            target,
                                            cargo_subcommand(builder.kind),
                                            "src/tools/rustdoc",
-                                           SourceType::InTree,
                                            &[]);
 
         println!("Checking rustdoc artifacts ({} -> {})", &compiler.host, target);
@@ -244,6 +243,7 @@ pub fn rustdoc_stamp(
     compiler: Compiler,
     target: Interned<String>,
 ) -> PathBuf {
-    builder.cargo_out(compiler, Mode::ToolRustc, target)
+    // doesn't really matter whether we're in-tree or not
+    builder.cargo_out(compiler, Mode::ToolRustc { in_tree: true }, target)
         .join(".rustdoc-check.stamp")
 }

@@ -17,12 +17,6 @@ use crate::cache::Interned;
 use crate::toolstate::ToolState;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum SourceType {
-    InTree,
-    Submodule,
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
     compiler: Compiler,
     target: Interned<String>,
@@ -30,7 +24,6 @@ struct ToolBuild {
     path: &'static str,
     mode: Mode,
     is_optional_tool: bool,
-    source_type: SourceType,
     extra_features: Vec<String>,
 }
 
@@ -53,13 +46,13 @@ impl Step for ToolBuild {
         let is_optional_tool = self.is_optional_tool;
 
         match self.mode {
-            Mode::ToolRustc => {
+            Mode::ToolRustc { .. } => {
                 builder.ensure(compile::Rustc { compiler, target })
             }
-            Mode::ToolStd => {
+            Mode::ToolStd { .. }=> {
                 builder.ensure(compile::Std { compiler, target })
             }
-            Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
+            Mode::ToolBootstrap { .. } => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build")
         }
 
@@ -70,7 +63,6 @@ impl Step for ToolBuild {
             target,
             "build",
             path,
-            self.source_type,
             &self.extra_features,
         );
 
@@ -227,7 +219,6 @@ pub fn prepare_tool_cargo(
     target: Interned<String>,
     command: &'static str,
     path: &'static str,
-    source_type: SourceType,
     extra_features: &[String],
 ) -> Command {
     let mut cargo = builder.cargo(compiler, mode, target, command);
@@ -237,10 +228,6 @@ pub fn prepare_tool_cargo(
     // We don't want to build tools dynamically as they'll be running across
     // stages and such and it's just easier if they're not dynamically linked.
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-
-    if source_type == SourceType::Submodule {
-        cargo.env("RUSTC_EXTERNAL_TOOL", "1");
-    }
 
     let mut features = extra_features.iter().cloned().collect::<Vec<_>>();
     if builder.build.config.cargo_native_static {
@@ -357,14 +344,9 @@ macro_rules! bootstrap_tool {
                     compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
-                    mode: Mode::ToolBootstrap,
+                    mode: Mode::ToolBootstrap { in_tree: true $(&& !$external)* },
                     path: $path,
                     is_optional_tool: false,
-                    source_type: if false $(|| $external)* {
-                        SourceType::Submodule
-                    } else {
-                        SourceType::InTree
-                    },
                     extra_features: {
                         // FIXME(#60643): avoid this lint by using `_`
                         let mut _tmp = Vec::new();
@@ -430,10 +412,9 @@ impl Step for ErrorIndex {
             compiler: self.compiler,
             target: self.compiler.host,
             tool: "error_index_generator",
-            mode: Mode::ToolRustc,
+            mode: Mode::ToolRustc { in_tree: true },
             path: "src/tools/error_index_generator",
             is_optional_tool: false,
-            source_type: SourceType::InTree,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -464,10 +445,9 @@ impl Step for RemoteTestServer {
             compiler: self.compiler,
             target: self.target,
             tool: "remote-test-server",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolStd { in_tree: true },
             path: "src/tools/remote-test-server",
             is_optional_tool: false,
-            source_type: SourceType::InTree,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -520,11 +500,10 @@ impl Step for Rustdoc {
         let mut cargo = prepare_tool_cargo(
             builder,
             build_compiler,
-            Mode::ToolRustc,
+            Mode::ToolRustc { in_tree: true },
             target,
             "build",
             "src/tools/rustdoc",
-            SourceType::InTree,
             &[],
         );
 
@@ -535,8 +514,9 @@ impl Step for Rustdoc {
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
         // rustdoc a different name.
-        let tool_rustdoc = builder.cargo_out(build_compiler, Mode::ToolRustc, target)
-            .join(exe("rustdoc_tool_binary", &target_compiler.host));
+        let tool_rustdoc = builder.cargo_out(
+            build_compiler, Mode::ToolRustc { in_tree: true }, target
+        ).join(exe("rustdoc_tool_binary", &target_compiler.host));
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
@@ -581,10 +561,9 @@ impl Step for Cargo {
             compiler: self.compiler,
             target: self.target,
             tool: "cargo",
-            mode: Mode::ToolRustc,
+            mode: Mode::ToolRustc { in_tree: true },
             path: "src/tools/cargo",
             is_optional_tool: false,
-            source_type: SourceType::Submodule,
             extra_features: Vec::new(),
         }).expect("expected to build -- essential tool")
     }
@@ -630,11 +609,10 @@ macro_rules! tool_extended {
                     compiler: $sel.compiler,
                     target: $sel.target,
                     tool: $tool_name,
-                    mode: Mode::ToolRustc,
+                    mode: Mode::ToolRustc { in_tree: false },
                     path: $path,
                     extra_features: $sel.extra_features,
                     is_optional_tool: true,
-                    source_type: SourceType::Submodule,
                 })
             }
         }
@@ -674,7 +652,8 @@ impl<'a> Builder<'a> {
         // right location to run `compiler`.
         let mut lib_paths: Vec<PathBuf> = vec![
             self.build.rustc_snapshot_libdir(),
-            self.cargo_out(compiler, Mode::ToolBootstrap, *host).join("deps"),
+            // doesn't really matter here whether we're in tree or not so just pass true
+            self.cargo_out(compiler, Mode::ToolBootstrap { in_tree: true }, *host).join("deps"),
         ];
 
         // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make

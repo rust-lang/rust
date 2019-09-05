@@ -304,19 +304,19 @@ pub enum Mode {
     /// "other" here is for miscellaneous sets of tools that are built using the
     /// bootstrap compiler in its entirety (target libraries and all).
     /// Typically these tools compile with stable Rust.
-    ToolBootstrap,
+    ToolBootstrap { in_tree: bool },
 
     /// Compile a tool which uses all libraries we compile (up to rustc).
     /// Doesn't use the stage0 compiler libraries like "other", and includes
     /// tools like rustdoc, cargo, rls, etc.
-    ToolStd,
-    ToolRustc,
+    ToolStd { in_tree: bool },
+    ToolRustc { in_tree: bool },
 }
 
 impl Mode {
     pub fn is_tool(&self) -> bool {
         match self {
-            Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd => true,
+            Mode::ToolBootstrap { .. } | Mode::ToolRustc { .. } | Mode::ToolStd { .. } => true,
             _ => false
         }
     }
@@ -528,8 +528,8 @@ impl Build {
             Mode::Std => "-std",
             Mode::Rustc => "-rustc",
             Mode::Codegen => "-codegen",
-            Mode::ToolBootstrap => "-bootstrap-tools",
-            Mode::ToolStd | Mode::ToolRustc => "-tools",
+            Mode::ToolBootstrap { .. } => "-bootstrap-tools",
+            Mode::ToolStd { .. } | Mode::ToolRustc { .. } => "-tools",
         };
         self.out.join(&*compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))

@@ -36,7 +36,7 @@ pub struct Flags {
     // This overrides the deny-warnings configuation option,
     // which passes -Dwarnings to the compiler invocations.
     //
-    // true => deny, false => allow
+    // true => deny, false => warn
     pub deny_warnings: Option<bool>,
 }
 
@@ -556,10 +556,10 @@ fn split(s: &[String]) -> Vec<String> {
 fn parse_deny_warnings(matches: &getopts::Matches) -> Option<bool> {
     match matches.opt_str("warnings").as_ref().map(|v| v.as_str()) {
         Some("deny") => Some(true),
-        Some("allow") => Some(false),
+        Some("warn") => Some(false),
         Some(value) => {
             eprintln!(
-                r#"invalid value for --warnings: {:?}, expected "allow" or "deny""#,
+                r#"invalid value for --warnings: {:?}, expected "warn" or "deny""#,
                 value,
                 );
             process::exit(1);
