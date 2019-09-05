@@ -2642,12 +2642,11 @@ where
         };
 
         let target = &cx.tcx().sess.target.target;
-        let win_x64_gnu =
-            target.target_os == "windows" && target.arch == "x86_64" && target.target_env == "gnu";
-        let linux_s390x =
-            target.target_os == "linux" && target.arch == "s390x" && target.target_env == "gnu";
-        let linux_sparc64 =
-            target.target_os == "linux" && target.arch == "sparc64" && target.target_env == "gnu";
+        let indirect_zst = match target.arch.as_ref() {
+            "powerpc" | "s390x" | "sparc64" => true,
+            "x86_64" => target.target_os == "windows" && target.target_env == "gnu",
+            _ => false,
+        };
         let rust_abi = match sig.abi {
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
             _ => false,
@@ -2709,11 +2708,10 @@ where
             let is_return = arg_idx.is_none();
             let mut arg = mk_arg_type(ty, arg_idx);
             if arg.layout.is_zst() {
-                // For some forsaken reason, x86_64-pc-windows-gnu
-                // doesn't ignore zero-sized struct arguments.
-                // The same is true for s390x-unknown-linux-gnu
-                // and sparc64-unknown-linux-gnu.
-                if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
+                // FIXME: The C ABI case should be handled in adjust_for_cabi.
+                // Zero-sized struct arguments cannot be ignored in the C ABI
+                // if they are passed indirectly.
+                if is_return || rust_abi || !indirect_zst {
                     arg.mode = PassMode::Ignore;
                 }
             }
