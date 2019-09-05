@@ -1011,6 +1011,7 @@ dependencies = [
 name = "fmt_macros"
 version = "0.0.0"
 dependencies = [
+ "rustc_lexer",
  "syntax_pos",
 ]
 
@@ -2372,7 +2373,7 @@ version = "0.4.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf3d2011ab5c909338f7887f4fc896d35932e29146c12c8d01da6b22a80ba759"
 dependencies = [
- "unicode-xid",
+ "unicode-xid 0.1.0",
 ]
 
 [[package]]
@@ -3290,7 +3291,7 @@ dependencies = [
 name = "rustc_lexer"
 version = "0.1.0"
 dependencies = [
- "unicode-xid",
+ "unicode-xid 0.2.0",
 ]
 
 [[package]]
@@ -3368,6 +3369,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_lexer",
  "rustc_target",
  "serialize",
  "smallvec",
@@ -3976,7 +3978,7 @@ checksum = "641e117d55514d6d918490e47102f7e08d096fdde360247e4a10f7a91a8478d3"
 dependencies = [
  "proc-macro2",
  "quote",
- "unicode-xid",
+ "unicode-xid 0.1.0",
 ]
 
 [[package]]
@@ -3988,7 +3990,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
- "unicode-xid",
+ "unicode-xid 0.1.0",
 ]
 
 [[package]]
@@ -4017,6 +4019,7 @@ dependencies = [
  "log",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_lexer",
  "rustc_target",
  "smallvec",
  "syntax",
@@ -4531,6 +4534,12 @@ name = "unicode-xid"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"
+
+[[package]]
+name = "unicode-xid"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "826e7639553986605ec5979c7dd957c7895e93eabed50ab2ffa7f6128a75097c"
 
 [[package]]
 name = "unicode_categories"
