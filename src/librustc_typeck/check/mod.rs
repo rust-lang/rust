@@ -4736,25 +4736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // First, store the "user substs" for later.
         self.write_user_type_annotation_from_substs(hir_id, def_id, substs, user_self_ty);
 
-        // Add all the obligations that are required, substituting and
-        // normalized appropriately.
-        let (bounds, spans) = self.instantiate_bounds(span, def_id, &substs);
-
-        for (i, mut obligation) in traits::predicates_for_generics(
-            traits::ObligationCause::new(
-                span,
-                self.body_id,
-                traits::ItemObligation(def_id),
-            ),
-            self.param_env,
-            &bounds,
-        ).into_iter().enumerate() {
-            // This makes the error point at the bound, but we want to point at the argument
-            if let Some(span) = spans.get(i) {
-                obligation.cause.code = traits::BindingObligation(def_id, *span);
-            }
-            self.register_predicate(obligation);
-        }
+        self.add_required_obligations(span, def_id, &substs);
 
         // Substitute the values for the type parameters into the type of
         // the referenced item.
@@ -4789,6 +4771,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.write_substs(hir_id, substs);
 
         (ty_substituted, res)
+    }
+
+    /// Add all the obligations that are required, substituting and normalized appropriately.
+    fn add_required_obligations(&self, span: Span, def_id: DefId, substs: &SubstsRef<'tcx>) {
+        let (bounds, spans) = self.instantiate_bounds(span, def_id, &substs);
+
+        for (i, mut obligation) in traits::predicates_for_generics(
+            traits::ObligationCause::new(
+                span,
+                self.body_id,
+                traits::ItemObligation(def_id),
+            ),
+            self.param_env,
+            &bounds,
+        ).into_iter().enumerate() {
+            // This makes the error point at the bound, but we want to point at the argument
+            if let Some(span) = spans.get(i) {
+                obligation.cause.code = traits::BindingObligation(def_id, *span);
+            }
+            self.register_predicate(obligation);
+        }
     }
 
     fn check_rustc_args_require_const(&self,
