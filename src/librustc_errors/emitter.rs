@@ -247,6 +247,133 @@ pub trait Emitter {
             (primary_span, &db.suggestions)
         }
     }
+
+    // This does a small "fix" for multispans by looking to see if it can find any that
+    // point directly at <*macros>. Since these are often difficult to read, this
+    // will change the span to point at the use site.
+    fn fix_multispans_in_std_macros(&self,
+                                    source_map: &Option<Lrc<SourceMapperDyn>>,
+                                    span: &mut MultiSpan,
+                                    children: &mut Vec<SubDiagnostic>,
+                                    level: &Level,
+                                    backtrace: bool) {
+        let mut spans_updated = self.fix_multispan_in_std_macros(source_map, span, backtrace);
+        for child in children.iter_mut() {
+            spans_updated |= self.fix_multispan_in_std_macros(
+                                 source_map,
+                                 &mut child.span,
+                                 backtrace
+                             );
+        }
+        let msg = if level == &Error {
+            "this error originates in a macro outside of the current crate \
+             (in Nightly builds, run with -Z external-macro-backtrace \
+              for more info)".to_string()
+        } else {
+            "this warning originates in a macro outside of the current crate \
+             (in Nightly builds, run with -Z external-macro-backtrace \
+              for more info)".to_string()
+        };
+
+        if spans_updated {
+            children.push(SubDiagnostic {
+                level: Level::Note,
+                message: vec![
+                    (msg,
+                     Style::NoStyle),
+                ],
+                span: MultiSpan::new(),
+                render_span: None,
+            });
+        }
+    }
+
+    // This "fixes" MultiSpans that contain Spans that are pointing to locations inside of
+    // <*macros>. Since these locations are often difficult to read, we move these Spans from
+    // <*macros> to their corresponding use site.
+    fn fix_multispan_in_std_macros(&self,
+                                   source_map: &Option<Lrc<SourceMapperDyn>>,
+                                   span: &mut MultiSpan,
+                                   always_backtrace: bool) -> bool {
+        let mut spans_updated = false;
+
+        if let Some(ref sm) = source_map {
+            let mut before_after: Vec<(Span, Span)> = vec![];
+            let mut new_labels: Vec<(Span, String)> = vec![];
+
+            // First, find all the spans in <*macros> and point instead at their use site
+            for sp in span.primary_spans() {
+                if sp.is_dummy() {
+                    continue;
+                }
+                let call_sp = sm.call_span_if_macro(*sp);
+                if call_sp != *sp && !always_backtrace {
+                    before_after.push((*sp, call_sp));
+                }
+                let backtrace_len = sp.macro_backtrace().len();
+                for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
+                    // Only show macro locations that are local
+                    // and display them like a span_note
+                    if trace.def_site_span.is_dummy() {
+                        continue;
+                    }
+                    if always_backtrace {
+                        new_labels.push((trace.def_site_span,
+                                            format!("in this expansion of `{}`{}",
+                                                    trace.macro_decl_name,
+                                                    if backtrace_len > 2 {
+                                                        // if backtrace_len == 1 it'll be pointed
+                                                        // at by "in this macro invocation"
+                                                        format!(" (#{})", i + 1)
+                                                    } else {
+                                                        String::new()
+                                                    })));
+                    }
+                    // Check to make sure we're not in any <*macros>
+                    if !sm.span_to_filename(trace.def_site_span).is_macros() &&
+                        !trace.macro_decl_name.starts_with("desugaring of ") &&
+                        !trace.macro_decl_name.starts_with("#[") ||
+                        always_backtrace {
+                        new_labels.push((trace.call_site,
+                                            format!("in this macro invocation{}",
+                                                    if backtrace_len > 2 && always_backtrace {
+                                                        // only specify order when the macro
+                                                        // backtrace is multiple levels deep
+                                                        format!(" (#{})", i + 1)
+                                                    } else {
+                                                        String::new()
+                                                    })));
+                        if !always_backtrace {
+                            break;
+                        }
+                    }
+                }
+            }
+            for (label_span, label_text) in new_labels {
+                span.push_span_label(label_span, label_text);
+            }
+            for sp_label in span.span_labels() {
+                if sp_label.span.is_dummy() {
+                    continue;
+                }
+                if sm.span_to_filename(sp_label.span.clone()).is_macros() &&
+                    !always_backtrace
+                {
+                    let v = sp_label.span.macro_backtrace();
+                    if let Some(use_site) = v.last() {
+                        before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
+                    }
+                }
+            }
+            // After we have them, make sure we replace these 'bad' def sites with their use sites
+            for (before, after) in before_after {
+                span.replace(before, after);
+                spans_updated = true;
+            }
+        }
+
+        spans_updated
+    }
 }
 
 impl Emitter for EmitterWriter {
@@ -254,7 +381,8 @@ impl Emitter for EmitterWriter {
         let mut children = db.children.clone();
         let (mut primary_span, suggestions) = self.primary_span_formatted(&db);
 
-        self.fix_multispans_in_std_macros(&mut primary_span,
+        self.fix_multispans_in_std_macros(&self.sm,
+                                          &mut primary_span,
                                           &mut children,
                                           &db.level,
                                           db.handler.flags.external_macro_backtrace);
@@ -917,127 +1045,6 @@ impl EmitterWriter {
             max = if sub_result > max { primary } else { max };
         }
         max
-    }
-
-    // This "fixes" MultiSpans that contain Spans that are pointing to locations inside of
-    // <*macros>. Since these locations are often difficult to read, we move these Spans from
-    // <*macros> to their corresponding use site.
-    fn fix_multispan_in_std_macros(&mut self,
-                                   span: &mut MultiSpan,
-                                   always_backtrace: bool) -> bool {
-        let mut spans_updated = false;
-
-        if let Some(ref sm) = self.sm {
-            let mut before_after: Vec<(Span, Span)> = vec![];
-            let mut new_labels: Vec<(Span, String)> = vec![];
-
-            // First, find all the spans in <*macros> and point instead at their use site
-            for sp in span.primary_spans() {
-                if sp.is_dummy() {
-                    continue;
-                }
-                let call_sp = sm.call_span_if_macro(*sp);
-                if call_sp != *sp && !always_backtrace {
-                    before_after.push((*sp, call_sp));
-                }
-                let backtrace_len = sp.macro_backtrace().len();
-                for (i, trace) in sp.macro_backtrace().iter().rev().enumerate() {
-                    // Only show macro locations that are local
-                    // and display them like a span_note
-                    if trace.def_site_span.is_dummy() {
-                        continue;
-                    }
-                    if always_backtrace {
-                        new_labels.push((trace.def_site_span,
-                                            format!("in this expansion of `{}`{}",
-                                                    trace.macro_decl_name,
-                                                    if backtrace_len > 2 {
-                                                        // if backtrace_len == 1 it'll be pointed
-                                                        // at by "in this macro invocation"
-                                                        format!(" (#{})", i + 1)
-                                                    } else {
-                                                        String::new()
-                                                    })));
-                    }
-                    // Check to make sure we're not in any <*macros>
-                    if !sm.span_to_filename(trace.def_site_span).is_macros() &&
-                        !trace.macro_decl_name.starts_with("desugaring of ") &&
-                        !trace.macro_decl_name.starts_with("#[") ||
-                        always_backtrace {
-                        new_labels.push((trace.call_site,
-                                            format!("in this macro invocation{}",
-                                                    if backtrace_len > 2 && always_backtrace {
-                                                        // only specify order when the macro
-                                                        // backtrace is multiple levels deep
-                                                        format!(" (#{})", i + 1)
-                                                    } else {
-                                                        String::new()
-                                                    })));
-                        if !always_backtrace {
-                            break;
-                        }
-                    }
-                }
-            }
-            for (label_span, label_text) in new_labels {
-                span.push_span_label(label_span, label_text);
-            }
-            for sp_label in span.span_labels() {
-                if sp_label.span.is_dummy() {
-                    continue;
-                }
-                if sm.span_to_filename(sp_label.span.clone()).is_macros() &&
-                    !always_backtrace
-                {
-                    let v = sp_label.span.macro_backtrace();
-                    if let Some(use_site) = v.last() {
-                        before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
-                    }
-                }
-            }
-            // After we have them, make sure we replace these 'bad' def sites with their use sites
-            for (before, after) in before_after {
-                span.replace(before, after);
-                spans_updated = true;
-            }
-        }
-
-        spans_updated
-    }
-
-    // This does a small "fix" for multispans by looking to see if it can find any that
-    // point directly at <*macros>. Since these are often difficult to read, this
-    // will change the span to point at the use site.
-    fn fix_multispans_in_std_macros(&mut self,
-                                    span: &mut MultiSpan,
-                                    children: &mut Vec<SubDiagnostic>,
-                                    level: &Level,
-                                    backtrace: bool) {
-        let mut spans_updated = self.fix_multispan_in_std_macros(span, backtrace);
-        for child in children.iter_mut() {
-            spans_updated |= self.fix_multispan_in_std_macros(&mut child.span, backtrace);
-        }
-        let msg = if level == &Error {
-            "this error originates in a macro outside of the current crate \
-             (in Nightly builds, run with -Z external-macro-backtrace \
-              for more info)".to_string()
-        } else {
-            "this warning originates in a macro outside of the current crate \
-             (in Nightly builds, run with -Z external-macro-backtrace \
-              for more info)".to_string()
-        };
-
-        if spans_updated {
-            children.push(SubDiagnostic {
-                level: Level::Note,
-                message: vec![
-                    (msg,
-                     Style::NoStyle),
-                ],
-                span: MultiSpan::new(),
-                render_span: None,
-            });
-        }
     }
 
     /// Adds a left margin to every line but the first, given a padding length and the label being
