@@ -677,12 +677,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
             let fields_ending = if variant.fields.len() == 1 { "" } else { "s" };
+            let span = tcx.def_span(res.def_id());
             struct_span_err!(tcx.sess, pat.span, E0023,
                              "this pattern has {} field{}, but the corresponding {} has {} field{}",
                              subpats.len(), subpats_ending, res.descr(),
                              variant.fields.len(),  fields_ending)
                 .span_label(pat.span, format!("expected {} field{}, found {}",
                                               variant.fields.len(), fields_ending, subpats.len()))
+                .span_label(span, format!("{} defined here", res.descr()))
                 .emit();
             on_error();
             return tcx.types.err;
