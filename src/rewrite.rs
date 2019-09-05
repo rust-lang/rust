@@ -29,7 +29,7 @@ pub(crate) struct RewriteContext<'a> {
     pub(crate) parse_session: &'a ParseSess,
     pub(crate) source_map: &'a SourceMap,
     pub(crate) config: &'a Config,
-    pub(crate) inside_macro: RefCell<bool>,
+    pub(crate) inside_macro: Rc<RefCell<bool>>,
     // Force block indent style even if we are using visual indent style.
     pub(crate) use_block: RefCell<bool>,
     // When `is_if_else_block` is true, unindent the comment on top
@@ -43,6 +43,23 @@ pub(crate) struct RewriteContext<'a> {
     pub(crate) report: FormatReport,
     pub(crate) skip_context: SkipContext,
     pub(crate) skipped_range: Rc<RefCell<Vec<(usize, usize)>>>,
+}
+
+pub(crate) struct InsideMacroGuard {
+    is_nested_macro_context: bool,
+    inside_macro_ref: Rc<RefCell<bool>>,
+}
+
+impl InsideMacroGuard {
+    pub(crate) fn is_nested(&self) -> bool {
+        self.is_nested_macro_context
+    }
+}
+
+impl Drop for InsideMacroGuard {
+    fn drop(&mut self) {
+        self.inside_macro_ref.replace(self.is_nested_macro_context);
+    }
 }
 
 impl<'a> RewriteContext<'a> {
@@ -61,6 +78,18 @@ impl<'a> RewriteContext<'a> {
 
     pub(crate) fn inside_macro(&self) -> bool {
         *self.inside_macro.borrow()
+    }
+
+    pub(crate) fn enter_macro(&self) -> InsideMacroGuard {
+        let is_nested_macro_context = self.inside_macro.replace(true);
+        InsideMacroGuard {
+            is_nested_macro_context,
+            inside_macro_ref: self.inside_macro.clone(),
+        }
+    }
+
+    pub(crate) fn leave_macro(&self) {
+        self.inside_macro.replace(false);
     }
 
     pub(crate) fn is_if_else_block(&self) -> bool {

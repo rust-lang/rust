@@ -549,3 +549,22 @@ fn issue_3005() {
                  },
              }
 }
+
+// #3774
+fn issue_3774() {
+    {
+        {
+            {
+                match foo {
+                    Lam(_, _, _) | Pi(_, _, _) | Let(_, _, _, _) | Embed(_) | Var(_) => unreachab(),
+                    Lam(_, _, _) | Pi(_, _, _) | Let(_, _, _, _) | Embed(_) | Var(_) => unreacha!(),
+                    Lam(_, _, _) | Pi(_, _, _) | Let(_, _, _, _) | Embed(_) | Var(_) => unreachabl(),
+                    Lam(_, _, _) | Pi(_, _, _) | Let(_, _, _, _) | Embed(_) | Var(_) => unreachae!(),
+                    Lam(_, _, _) | Pi(_, _, _) | Let(_, _, _, _) | Embed(_) | Var(_) => unreachable(),
+                    Lam(_, _, _) | Pi(_, _, _) | Let(_, _, _, _) | Embed(_) | Var(_) => unreachable!(),
+                    Lam(_, _, _) | Pi(_, _, _) | Let(_, _, _, _) | Embed(_) | Var(_) => rrunreachable!(),
+                }
+            }
+        }
+    }
+}

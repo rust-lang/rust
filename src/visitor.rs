@@ -870,7 +870,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             parse_session: self.parse_session,
             source_map: self.source_map,
             config: self.config,
-            inside_macro: RefCell::new(false),
+            inside_macro: Rc::new(RefCell::new(false)),
             use_block: RefCell::new(false),
             is_if_else_block: RefCell::new(false),
             force_one_line_chain: RefCell::new(false),

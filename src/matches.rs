@@ -19,7 +19,7 @@ use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
     contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,
-    ptr_vec_to_ref_vec, semicolon_for_expr, trimmed_last_line_width,
+    ptr_vec_to_ref_vec, semicolon_for_expr, trimmed_last_line_width, unicode_str_width,
 };
 
 /// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
@@ -452,7 +452,9 @@ fn rewrite_match_body(
 
         match rewrite {
             Some(ref body_str)
-                if is_block || (!body_str.contains('\n') && body_str.len() <= body_shape.width) =>
+                if is_block
+                    || (!body_str.contains('\n')
+                        && unicode_str_width(body_str) <= body_shape.width) =>
             {
                 return combine_orig_body(body_str);
             }
@@ -470,11 +472,6 @@ fn rewrite_match_body(
         next_line_body_shape.width,
     );
     match (orig_body, next_line_body) {
-        (Some(ref orig_str), Some(ref next_line_str))
-            if orig_str == next_line_str || context.inside_macro() =>
-        {
-            combine_orig_body(orig_str)
-        }
         (Some(ref orig_str), Some(ref next_line_str))
             if prefer_next_line(orig_str, next_line_str, RhsTactics::Default) =>
         {
@@ -575,6 +572,7 @@ fn can_flatten_block_around_this(body: &ast::Expr) -> bool {
         | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
+        | ast::ExprKind::Index(ref expr, _)
         | ast::ExprKind::Cast(ref expr, _) => can_flatten_block_around_this(expr),
         _ => false,
     }
