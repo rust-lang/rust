@@ -6,7 +6,7 @@ use rustc::lint::{EarlyContext, EarlyLintPass, Lint, LintArray, LintPass};
 use rustc::{declare_tool_lint, impl_lint_pass};
 use syntax::ast::*;
 use syntax::source_map::Span;
-use syntax::symbol::{InternedString, LocalInternedString};
+use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Detects enumeration variants that are prefixed or suffixed
@@ -102,7 +102,7 @@ declare_clippy_lint! {
 }
 
 pub struct EnumVariantNames {
-    modules: Vec<(InternedString, String)>,
+    modules: Vec<(Symbol, String)>,
     threshold: u64,
 }
 
@@ -121,10 +121,6 @@ impl_lint_pass!(EnumVariantNames => [
     MODULE_NAME_REPETITIONS,
     MODULE_INCEPTION
 ]);
-
-fn var2str(var: &Variant) -> LocalInternedString {
-    var.ident.as_str()
-}
 
 /// Returns the number of chars that match from the start
 fn partial_match(pre: &str, name: &str) -> usize {
@@ -157,7 +153,7 @@ fn check_variant(
         return;
     }
     for var in &def.variants {
-        let name = var2str(var);
+        let name = var.ident.name.as_str();
         if partial_match(item_name, &name) == item_name_chars
             && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
             && name.chars().nth(item_name_chars + 1).map_or(false, |c| !c.is_numeric())
@@ -168,11 +164,11 @@ fn check_variant(
             span_lint(cx, lint, var.span, "Variant name ends with the enum's name");
         }
     }
-    let first = var2str(&def.variants[0]);
+    let first = &def.variants[0].ident.name.as_str();
     let mut pre = &first[..camel_case::until(&*first)];
     let mut post = &first[camel_case::from(&*first)..];
     for var in &def.variants {
-        let name = var2str(var);
+        let name = var.ident.name.as_str();
 
         let pre_match = partial_match(pre, &name);
         pre = &pre[..pre_match];
@@ -245,14 +241,14 @@ impl EarlyLintPass for EnumVariantNames {
 
     #[allow(clippy::similar_names)]
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        let item_name = item.ident.as_str();
+        let item_name = item.ident.name.as_str();
         let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);
         if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
             if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
-                    if mod_name.as_symbol() == item.ident.name {
+                    if mod_name == &item.ident.name {
                         if let ItemKind::Mod(..) = item.node {
                             span_lint(
                                 cx,
@@ -299,6 +295,6 @@ impl EarlyLintPass for EnumVariantNames {
             };
             check_variant(cx, self.threshold, def, &item_name, item_name_chars, item.span, lint);
         }
-        self.modules.push((item_name.as_interned_str(), item_camel));
+        self.modules.push((item.ident.name, item_camel));
     }
 }

@@ -319,7 +319,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
             let name = meta_item.path.segments.last().unwrap().ident.name;
             if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(
                 &name.as_str(),
-                Some(tool_name.as_str()),
+                Some(tool_name.name),
             );
             then {
                 span_lint_and_then(
@@ -332,7 +332,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                             let name_lower = name.as_str().to_lowercase();
                             match lint_store.check_lint_name(
                                 &name_lower,
-                                Some(tool_name.as_str())
+                                Some(tool_name.name)
                             ) {
                                 // FIXME: can we suggest similar lint names here?
                                 // https://github.com/rust-lang/rust/pull/56992
