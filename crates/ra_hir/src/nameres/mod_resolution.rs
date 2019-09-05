@@ -120,10 +120,12 @@ enum OutOfLineMode {
 impl OutOfLineMode {
     pub fn resolve(&self, source_root: Arc<SourceRoot>) -> Result<FileId, RelativePathBuf> {
         match self {
-            OutOfLineMode::RootOrModRs { file, directory } => match source_root.files.get(file) {
-                None => resolve_simple_path(source_root, directory).map_err(|_| file.clone()),
-                file_id => resolve_find_result(file_id, file),
-            },
+            OutOfLineMode::RootOrModRs { file, directory } => {
+                match source_root.file_by_relative_path(file) {
+                    None => resolve_simple_path(source_root, directory).map_err(|_| file.clone()),
+                    file_id => resolve_find_result(file_id, file),
+                }
+            }
             OutOfLineMode::FileInDirectory(path) => resolve_simple_path(source_root, path),
             OutOfLineMode::WithAttributePath(path) => resolve_simple_path(source_root, path),
         }
@@ -168,11 +170,11 @@ fn resolve_simple_path(
     source_root: Arc<SourceRoot>,
     path: &RelativePathBuf,
 ) -> Result<FileId, RelativePathBuf> {
-    resolve_find_result(source_root.files.get(path), path)
+    resolve_find_result(source_root.file_by_relative_path(path), path)
 }
 
 fn resolve_find_result(
-    file_id: Option<&FileId>,
+    file_id: Option<FileId>,
     path: &RelativePathBuf,
 ) -> Result<FileId, RelativePathBuf> {
     match file_id {

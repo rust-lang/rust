@@ -34,10 +34,11 @@ pub(crate) fn run(verbose: bool, path: &Path, op: Op) -> Result<()> {
             .iter()
             .find_map(|(source_root_id, project_root)| {
                 if project_root.is_member() {
-                    for (rel_path, file_id) in &db.source_root(*source_root_id).files {
+                    for file_id in db.source_root(*source_root_id).walk() {
+                        let rel_path = db.file_relative_path(file_id);
                         let abs_path = rel_path.to_path(project_root.path());
                         if abs_path == path {
-                            return Some(*file_id);
+                            return Some(file_id);
                         }
                     }
                 }

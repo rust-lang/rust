@@ -87,7 +87,7 @@ pub(crate) fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> 
         let mut files = Vec::new();
         for &root in db.local_roots().iter() {
             let sr = db.source_root(root);
-            files.extend(sr.files.values().copied())
+            files.extend(sr.walk())
         }
 
         let snap = Snap(db.snapshot());

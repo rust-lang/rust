@@ -157,7 +157,7 @@ impl MockDatabase {
         self.set_file_text(file_id, text);
         self.set_file_relative_path(file_id, rel_path.clone());
         self.set_file_source_root(file_id, source_root_id);
-        source_root.files.insert(rel_path, file_id);
+        source_root.insert_file(rel_path, file_id);
 
         if is_crate_root {
             let mut crate_graph = CrateGraph::default();
