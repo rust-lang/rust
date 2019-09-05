@@ -150,13 +150,13 @@ fn macro_rules_from_other_crates_are_visible_with_macro_use() {
         structs!(Foo);
         structs_priv!(Bar);
         structs_not_exported!(MacroNotResolved1);
-        crates::structs!(MacroNotResolved2);
+        crate::structs!(MacroNotResolved2);
 
         mod bar;
 
         //- /bar.rs
         structs!(Baz);
-        crates::structs!(MacroNotResolved3);
+        crate::structs!(MacroNotResolved3);
 
         //- /lib.rs
         #[macro_export]
