@@ -109,7 +109,7 @@ impl<'a>  DiagnosticConverter<'a> {
         annotated_files: Vec<FileWithAnnotatedLines>,
         primary_lo: Loc
     ) -> Vec<Slice> {
-        // FIXME(#59346): Provide a test case where `annotated_files` is > 1
+        // FIXME(#64205): Provide a test case where `annotated_files` is > 1
         annotated_files.iter().flat_map(|annotated_file| {
             annotated_file.lines.iter().map(|line| {
                 let line_source = Self::source_string(annotated_file.file.clone(), &line);
