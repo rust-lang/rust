@@ -2546,6 +2546,16 @@ pub trait Iterator {
 
     /// Lexicographically compares the elements of this `Iterator` with those
     /// of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!([1].iter().cmp([1].iter()), Ordering::Equal);
+    /// assert_eq!([1].iter().cmp([1, 2].iter()), Ordering::Less);
+    /// assert_eq!([1, 2].iter().cmp([1].iter()), Ordering::Greater);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn cmp<I>(mut self, other: I) -> Ordering where
         I: IntoIterator<Item = Self::Item>,
@@ -2578,6 +2588,18 @@ pub trait Iterator {
 
     /// Lexicographically compares the elements of this `Iterator` with those
     /// of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cmp::Ordering;
+    ///
+    /// assert_eq!([1.].iter().partial_cmp([1.].iter()), Some(Ordering::Equal));
+    /// assert_eq!([1.].iter().partial_cmp([1., 2.].iter()), Some(Ordering::Less));
+    /// assert_eq!([1., 2.].iter().partial_cmp([1.].iter()), Some(Ordering::Greater));
+    ///
+    /// assert_eq!([std::f64::NAN].iter().partial_cmp([1.].iter()), None);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn partial_cmp<I>(mut self, other: I) -> Option<Ordering> where
         I: IntoIterator,
@@ -2610,6 +2632,13 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are equal to those of
     /// another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().eq([1].iter()), true);
+    /// assert_eq!([1].iter().eq([1, 2].iter()), false);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn eq<I>(mut self, other: I) -> bool where
         I: IntoIterator,
@@ -2635,6 +2664,13 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are unequal to those of
     /// another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().ne([1].iter()), false);
+    /// assert_eq!([1].iter().ne([1, 2].iter()), true);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ne<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2646,6 +2682,14 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// less than those of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().lt([1].iter()), false);
+    /// assert_eq!([1].iter().lt([1, 2].iter()), true);
+    /// assert_eq!([1, 2].iter().lt([1].iter()), false);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn lt<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2657,6 +2701,14 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// less or equal to those of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().le([1].iter()), true);
+    /// assert_eq!([1].iter().le([1, 2].iter()), true);
+    /// assert_eq!([1, 2].iter().le([1].iter()), false);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn le<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2671,6 +2723,14 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// greater than those of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().gt([1].iter()), false);
+    /// assert_eq!([1].iter().gt([1, 2].iter()), false);
+    /// assert_eq!([1, 2].iter().gt([1].iter()), true);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn gt<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2682,6 +2742,14 @@ pub trait Iterator {
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// greater than or equal to those of another.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!([1].iter().ge([1].iter()), true);
+    /// assert_eq!([1].iter().ge([1, 2].iter()), false);
+    /// assert_eq!([1, 2].iter().ge([1].iter()), true);
+    /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     fn ge<I>(self, other: I) -> bool where
         I: IntoIterator,
@@ -2729,6 +2797,18 @@ pub trait Iterator {
     /// Instead of using `PartialOrd::partial_cmp`, this function uses the given `compare`
     /// function to determine the ordering of two elements. Apart from that, it's equivalent to
     /// [`is_sorted`]; see its documentation for more information.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_sorted)]
+    ///
+    /// assert!([1, 2, 2, 9].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(![1, 3, 2, 4].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!([0].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(std::iter::empty::<i32>().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// assert!(![0.0, 1.0, std::f32::NAN].iter().is_sorted_by(|a, b| a.partial_cmp(b)));
+    /// ```
     ///
     /// [`is_sorted`]: trait.Iterator.html#method.is_sorted
     #[unstable(feature = "is_sorted", reason = "new API", issue = "53485")]

@@ -7,10 +7,12 @@ use crate::ptr;
 use crate::sys::fd::FileDesc;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::pipe::{self, AnonPipe};
-use crate::sys_common::process::{CommandEnv, DefaultEnvKey};
+use crate::sys_common::process::CommandEnv;
 use crate::collections::BTreeMap;
 
 use libc::{c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
+
+pub use crate::ffi::OsString as EnvKey;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -37,7 +39,7 @@ pub struct Command {
     program: CString,
     args: Vec<CString>,
     argv: Argv,
-    env: CommandEnv<DefaultEnvKey>,
+    env: CommandEnv,
 
     cwd: Option<CString>,
     uid: Option<uid_t>,
@@ -170,7 +172,7 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
-    pub fn env_mut(&mut self) -> &mut CommandEnv<DefaultEnvKey> {
+    pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }
 
@@ -240,7 +242,7 @@ impl CStringArray {
     }
 }
 
-fn construct_envp(env: BTreeMap<DefaultEnvKey, OsString>, saw_nul: &mut bool) -> CStringArray {
+fn construct_envp(env: BTreeMap<OsString, OsString>, saw_nul: &mut bool) -> CStringArray {
     let mut result = CStringArray::with_capacity(env.len());
     for (k, v) in env {
         let mut k: OsString = k.into();

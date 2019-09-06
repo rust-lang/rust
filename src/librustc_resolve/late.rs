@@ -9,7 +9,7 @@ use GenericParameters::*;
 use RibKind::*;
 
 use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
-use crate::{Module, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult};
+use crate::{Module, ModuleOrUniformRoot, NameBindingKind, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use log::debug;
@@ -18,7 +18,7 @@ use rustc::hir::def::{self, PartialRes, DefKind, CtorKind, PerNS};
 use rustc::hir::def::Namespace::{self, *};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::hir::TraitCandidate;
-use rustc::util::nodemap::FxHashMap;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
 use syntax::{unwrap_or, walk_list};
 use syntax::ast::*;
@@ -35,8 +35,10 @@ mod diagnostics;
 
 type Res = def::Res<NodeId>;
 
+type IdentMap<T> = FxHashMap<Ident, T>;
+
 /// Map from the name in a pattern to its binding mode.
-type BindingMap = FxHashMap<Ident, BindingInfo>;
+type BindingMap = IdentMap<BindingInfo>;
 
 #[derive(Copy, Clone, Debug)]
 struct BindingInfo {
@@ -71,6 +73,16 @@ impl PatternSource {
             PatternSource::FnParam => "function parameter",
         }
     }
+}
+
+/// Denotes whether the context for the set of already bound bindings is a `Product`
+/// or `Or` context. This is used in e.g., `fresh_binding` and `resolve_pattern_inner`.
+/// See those functions for more information.
+enum PatBoundCtx {
+    /// A product pattern context, e.g., `Variant(a, b)`.
+    Product,
+    /// An or-pattern context, e.g., `p_0 | ... | p_n`.
+    Or,
 }
 
 /// The rib kind restricts certain accesses,
@@ -143,7 +155,7 @@ impl RibKind<'_> {
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
 crate struct Rib<'a, R = Res> {
-    pub bindings: FxHashMap<Ident, R>,
+    pub bindings: IdentMap<R>,
     pub kind: RibKind<'a>,
 }
 
@@ -406,50 +418,32 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
             visit::walk_foreign_item(this, foreign_item);
         });
     }
-    fn visit_fn(&mut self,
-                function_kind: FnKind<'tcx>,
-                declaration: &'tcx FnDecl,
-                _: Span,
-                _: NodeId)
-    {
+    fn visit_fn(&mut self, fn_kind: FnKind<'tcx>, declaration: &'tcx FnDecl, _: Span, _: NodeId) {
         debug!("(resolving function) entering function");
-        let rib_kind = match function_kind {
+        let rib_kind = match fn_kind {
             FnKind::ItemFn(..) => FnItemRibKind,
             FnKind::Method(..) | FnKind::Closure(_) => NormalRibKind,
         };
 
         // Create a value rib for the function.
-        self.ribs[ValueNS].push(Rib::new(rib_kind));
+        self.with_rib(ValueNS, rib_kind, |this| {
+            // Create a label rib for the function.
+            this.with_label_rib(rib_kind, |this| {
+                // Add each argument to the rib.
+                this.resolve_params(&declaration.inputs);
 
-        // Create a label rib for the function.
-        self.label_ribs.push(Rib::new(rib_kind));
+                visit::walk_fn_ret_ty(this, &declaration.output);
 
-        // Add each argument to the rib.
-        let mut bindings_list = FxHashMap::default();
-        for argument in &declaration.inputs {
-            self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
+                // Resolve the function body, potentially inside the body of an async closure
+                match fn_kind {
+                    FnKind::ItemFn(.., body) |
+                    FnKind::Method(.., body) => this.visit_block(body),
+                    FnKind::Closure(body) => this.visit_expr(body),
+                };
 
-            self.visit_ty(&argument.ty);
-
-            debug!("(resolving function) recorded argument");
-        }
-        visit::walk_fn_ret_ty(self, &declaration.output);
-
-        // Resolve the function body, potentially inside the body of an async closure
-        match function_kind {
-            FnKind::ItemFn(.., body) |
-            FnKind::Method(.., body) => {
-                self.visit_block(body);
-            }
-            FnKind::Closure(body) => {
-                self.visit_expr(body);
-            }
-        };
-
-        debug!("(resolving function) leaving function");
-
-        self.label_ribs.pop();
-        self.ribs[ValueNS].pop();
+                debug!("(resolving function) leaving function");
+            })
+        });
     }
 
     fn visit_generics(&mut self, generics: &'tcx Generics) {
@@ -528,13 +522,14 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
         let parent_scope = ParentScope::module(graph_root);
+        let start_rib_kind = ModuleRibKind(graph_root);
         LateResolutionVisitor {
             r: resolver,
             parent_scope,
             ribs: PerNS {
-                value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-                type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-                macro_ns: vec![Rib::new(ModuleRibKind(graph_root))],
+                value_ns: vec![Rib::new(start_rib_kind)],
+                type_ns: vec![Rib::new(start_rib_kind)],
+                macro_ns: vec![Rib::new(start_rib_kind)],
             },
             label_ribs: Vec::new(),
             current_trait_ref: None,
@@ -588,23 +583,32 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     // generate a fake "implementation scope" containing all the
     // implementations thus found, for compatibility with old resolve pass.
 
-    fn with_scope<F, T>(&mut self, id: NodeId, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
-    {
+    /// Do some `work` within a new innermost rib of the given `kind` in the given namespace (`ns`).
+    fn with_rib<T>(
+        &mut self,
+        ns: Namespace,
+        kind: RibKind<'a>,
+        work: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        self.ribs[ns].push(Rib::new(kind));
+        let ret = work(self);
+        self.ribs[ns].pop();
+        ret
+    }
+
+    fn with_scope<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
         let id = self.r.definitions.local_def_id(id);
         let module = self.r.module_map.get(&id).cloned(); // clones a reference
         if let Some(module) = module {
             // Move down in the graph.
             let orig_module = replace(&mut self.parent_scope.module, module);
-            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(module)));
-            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(module)));
-
-            let ret = f(self);
-
-            self.parent_scope.module = orig_module;
-            self.ribs[ValueNS].pop();
-            self.ribs[TypeNS].pop();
-            ret
+            self.with_rib(ValueNS, ModuleRibKind(module), |this| {
+                this.with_rib(TypeNS, ModuleRibKind(module), |this| {
+                    let ret = f(this);
+                    this.parent_scope.module = orig_module;
+                    ret
+                })
+            })
         } else {
             f(self)
         }
@@ -808,7 +812,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     fn with_generic_param_rib<'c, F>(&'c mut self, generic_params: GenericParameters<'a, 'c>, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
+        where F: FnOnce(&mut Self)
     {
         debug!("with_generic_param_rib");
         match generic_params {
@@ -894,38 +898,24 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
     }
 
-    fn with_label_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
-        self.label_ribs.push(Rib::new(NormalRibKind));
+    fn with_label_rib(&mut self, kind: RibKind<'a>, f: impl FnOnce(&mut Self)) {
+        self.label_ribs.push(Rib::new(kind));
         f(self);
         self.label_ribs.pop();
     }
 
-    fn with_item_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
-        self.ribs[ValueNS].push(Rib::new(ItemRibKind));
-        self.ribs[TypeNS].push(Rib::new(ItemRibKind));
-        f(self);
-        self.ribs[TypeNS].pop();
-        self.ribs[ValueNS].pop();
+    fn with_item_rib(&mut self, f: impl FnOnce(&mut Self)) {
+        self.with_rib(ValueNS, ItemRibKind, |this| this.with_rib(TypeNS, ItemRibKind, f))
     }
 
-    fn with_constant_rib<F>(&mut self, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
+    fn with_constant_rib(&mut self, f: impl FnOnce(&mut Self)) {
         debug!("with_constant_rib");
-        self.ribs[ValueNS].push(Rib::new(ConstantItemRibKind));
-        self.label_ribs.push(Rib::new(ConstantItemRibKind));
-        f(self);
-        self.label_ribs.pop();
-        self.ribs[ValueNS].pop();
+        self.with_rib(ValueNS, ConstantItemRibKind, |this| {
+            this.with_label_rib(ConstantItemRibKind, f);
+        });
     }
 
-    fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
-    {
+    fn with_current_self_type<T>(&mut self, self_type: &Ty, f: impl FnOnce(&mut Self) -> T) -> T {
         // Handle nested impls (inside fn bodies)
         let previous_value = replace(&mut self.current_self_type, Some(self_type.clone()));
         let result = f(self);
@@ -933,9 +923,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         result
     }
 
-    fn with_current_self_item<T, F>(&mut self, self_item: &Item, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
-    {
+    fn with_current_self_item<T>(&mut self, self_item: &Item, f: impl FnOnce(&mut Self) -> T) -> T {
         let previous_value = replace(&mut self.current_self_item, Some(self_item.id));
         let result = f(self);
         self.current_self_item = previous_value;
@@ -943,9 +931,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     /// When evaluating a `trait` use its associated types' idents for suggestionsa in E0412.
-    fn with_trait_items<T, F>(&mut self, trait_items: &Vec<TraitItem>, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>) -> T
-    {
+    fn with_trait_items<T>(
+        &mut self,
+        trait_items: &Vec<TraitItem>,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let trait_assoc_types = replace(
             &mut self.current_trait_assoc_types,
             trait_items.iter().filter_map(|item| match &item.node {
@@ -959,9 +949,11 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
     }
 
     /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`).
-    fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>, Option<DefId>) -> T
-    {
+    fn with_optional_trait_ref<T>(
+        &mut self,
+        opt_trait_ref: Option<&TraitRef>,
+        f: impl FnOnce(&mut Self, Option<DefId>) -> T
+    ) -> T {
         let mut new_val = None;
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
@@ -996,27 +988,18 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         result
     }
 
-    fn with_self_rib<F>(&mut self, self_res: Res, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
+    fn with_self_rib_ns(&mut self, ns: Namespace, self_res: Res, f: impl FnOnce(&mut Self)) {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // Plain insert (no renaming, since types are not currently hygienic)
         self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
-        self.ribs[TypeNS].push(self_type_rib);
+        self.ribs[ns].push(self_type_rib);
         f(self);
-        self.ribs[TypeNS].pop();
+        self.ribs[ns].pop();
     }
 
-    fn with_self_struct_ctor_rib<F>(&mut self, impl_id: DefId, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
-        let self_res = Res::SelfCtor(impl_id);
-        let mut self_type_rib = Rib::new(NormalRibKind);
-        self_type_rib.bindings.insert(Ident::with_dummy_span(kw::SelfUpper), self_res);
-        self.ribs[ValueNS].push(self_type_rib);
-        f(self);
-        self.ribs[ValueNS].pop();
+    fn with_self_rib(&mut self, self_res: Res, f: impl FnOnce(&mut Self)) {
+        self.with_self_rib_ns(TypeNS, self_res, f)
     }
 
     fn resolve_implementation(&mut self,
@@ -1044,8 +1027,8 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                         this.visit_generics(generics);
                         // Resolve the items within the impl.
                         this.with_current_self_type(self_type, |this| {
-                            this.with_self_struct_ctor_rib(item_def_id, |this| {
-                                debug!("resolve_implementation with_self_struct_ctor_rib");
+                            this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
+                                debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                 for impl_item in impl_items {
                                     // We also need a new scope for the impl item type parameters.
                                     let generic_params = HasGenericParams(&impl_item.generics,
@@ -1135,6 +1118,15 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         }
     }
 
+    fn resolve_params(&mut self, params: &[Param]) {
+        let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
+        for Param { pat, ty, .. } in params {
+            self.resolve_pattern(pat, PatternSource::FnParam, &mut bindings);
+            self.visit_ty(ty);
+            debug!("(resolving function / closure) recorded parameter");
+        }
+    }
+
     fn resolve_local(&mut self, local: &Local) {
         // Resolve the type.
         walk_list!(self, visit_ty, &local.ty);
@@ -1143,72 +1135,93 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         walk_list!(self, visit_expr, &local.init);
 
         // Resolve the pattern.
-        self.resolve_pattern(&local.pat, PatternSource::Let, &mut FxHashMap::default());
+        self.resolve_pattern_top(&local.pat, PatternSource::Let);
     }
 
-    // build a map from pattern identifiers to binding-info's.
-    // this is done hygienically. This could arise for a macro
-    // that expands into an or-pattern where one 'x' was from the
-    // user and one 'x' came from the macro.
+    /// build a map from pattern identifiers to binding-info's.
+    /// this is done hygienically. This could arise for a macro
+    /// that expands into an or-pattern where one 'x' was from the
+    /// user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut binding_map = FxHashMap::default();
 
         pat.walk(&mut |pat| {
-            if let PatKind::Ident(binding_mode, ident, ref sub_pat) = pat.node {
-                if sub_pat.is_some() || match self.r.partial_res_map.get(&pat.id)
-                                                                  .map(|res| res.base_res()) {
-                    Some(Res::Local(..)) => true,
-                    _ => false,
-                } {
-                    let binding_info = BindingInfo { span: ident.span, binding_mode: binding_mode };
-                    binding_map.insert(ident, binding_info);
+            match pat.node {
+                PatKind::Ident(binding_mode, ident, ref sub_pat)
+                    if sub_pat.is_some() || self.is_base_res_local(pat.id) =>
+                {
+                    binding_map.insert(ident, BindingInfo { span: ident.span, binding_mode });
                 }
+                PatKind::Or(ref ps) => {
+                    // Check the consistency of this or-pattern and
+                    // then add all bindings to the larger map.
+                    for bm in self.check_consistent_bindings(ps) {
+                        binding_map.extend(bm);
+                    }
+                    return false;
+                }
+                _ => {}
             }
+
             true
         });
 
         binding_map
     }
 
-    // Checks that all of the arms in an or-pattern have exactly the
-    // same set of bindings, with the same binding modes for each.
-    fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) {
+    fn is_base_res_local(&self, nid: NodeId) -> bool {
+        match self.r.partial_res_map.get(&nid).map(|res| res.base_res()) {
+            Some(Res::Local(..)) => true,
+            _ => false,
+        }
+    }
+
+    /// Checks that all of the arms in an or-pattern have exactly the
+    /// same set of bindings, with the same binding modes for each.
+    fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) -> Vec<BindingMap> {
         let mut missing_vars = FxHashMap::default();
         let mut inconsistent_vars = FxHashMap::default();
 
-        for pat_outer in pats.iter() {
-            let map_outer = self.binding_mode_map(&pat_outer);
+        // 1) Compute the binding maps of all arms.
+        let maps = pats.iter()
+            .map(|pat| self.binding_mode_map(pat))
+            .collect::<Vec<_>>();
 
-            for pat_inner in pats.iter().filter(|pat| pat.id != pat_outer.id) {
-                let map_inner = self.binding_mode_map(&pat_inner);
+        // 2) Record any missing bindings or binding mode inconsistencies.
+        for (map_outer, pat_outer) in pats.iter().enumerate().map(|(idx, pat)| (&maps[idx], pat)) {
+            // Check against all arms except for the same pattern which is always self-consistent.
+            let inners = pats.iter().enumerate()
+                .filter(|(_, pat)| pat.id != pat_outer.id)
+                .flat_map(|(idx, _)| maps[idx].iter())
+                .map(|(key, binding)| (key.name, map_outer.get(&key), binding));
 
-                for (&key_inner, &binding_inner) in map_inner.iter() {
-                    match map_outer.get(&key_inner) {
-                        None => {  // missing binding
-                            let binding_error = missing_vars
-                                .entry(key_inner.name)
-                                .or_insert(BindingError {
-                                    name: key_inner.name,
-                                    origin: BTreeSet::new(),
-                                    target: BTreeSet::new(),
-                                    could_be_path:
-                                        key_inner.name.as_str().starts_with(char::is_uppercase)
-                                });
-                            binding_error.origin.insert(binding_inner.span);
-                            binding_error.target.insert(pat_outer.span);
-                        }
-                        Some(binding_outer) => {  // check consistent binding
-                            if binding_outer.binding_mode != binding_inner.binding_mode {
-                                inconsistent_vars
-                                    .entry(key_inner.name)
-                                    .or_insert((binding_inner.span, binding_outer.span));
-                            }
+            for (name, info, &binding_inner) in inners {
+                match info {
+                    None => { // The inner binding is missing in the outer.
+                        let binding_error = missing_vars
+                            .entry(name)
+                            .or_insert_with(|| BindingError {
+                                name,
+                                origin: BTreeSet::new(),
+                                target: BTreeSet::new(),
+                                could_be_path: name.as_str().starts_with(char::is_uppercase),
+                            });
+                        binding_error.origin.insert(binding_inner.span);
+                        binding_error.target.insert(pat_outer.span);
+                    }
+                    Some(binding_outer) => {
+                        if binding_outer.binding_mode != binding_inner.binding_mode {
+                            // The binding modes in the outer and inner bindings differ.
+                            inconsistent_vars
+                                .entry(name)
+                                .or_insert((binding_inner.span, binding_outer.span));
                         }
                     }
                 }
             }
         }
 
+        // 3) Report all missing variables we found.
         let mut missing_vars = missing_vars.iter_mut().collect::<Vec<_>>();
         missing_vars.sort();
         for (name, mut v) in missing_vars {
@@ -1220,212 +1233,245 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 ResolutionError::VariableNotBoundInPattern(v));
         }
 
+        // 4) Report all inconsistencies in binding modes we found.
         let mut inconsistent_vars = inconsistent_vars.iter().collect::<Vec<_>>();
         inconsistent_vars.sort();
         for (name, v) in inconsistent_vars {
             self.r.report_error(v.0, ResolutionError::VariableBoundWithDifferentMode(*name, v.1));
         }
+
+        // 5) Finally bubble up all the binding maps.
+        maps
+    }
+
+    /// Check the consistency of the outermost or-patterns.
+    fn check_consistent_bindings_top(&mut self, pat: &Pat) {
+        pat.walk(&mut |pat| match pat.node {
+            PatKind::Or(ref ps) => {
+                self.check_consistent_bindings(ps);
+                false
+            },
+            _ => true,
+        })
     }
 
     fn resolve_arm(&mut self, arm: &Arm) {
-        self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-
-        self.resolve_pats(&arm.pats, PatternSource::Match);
-
-        if let Some(ref expr) = arm.guard {
-            self.visit_expr(expr)
-        }
-        self.visit_expr(&arm.body);
-
-        self.ribs[ValueNS].pop();
+        self.with_rib(ValueNS, NormalRibKind, |this| {
+            this.resolve_pattern_top(&arm.pat, PatternSource::Match);
+            walk_list!(this, visit_expr, &arm.guard);
+            this.visit_expr(&arm.body);
+        });
     }
 
-    /// Arising from `source`, resolve a sequence of patterns (top level or-patterns).
-    fn resolve_pats(&mut self, pats: &[P<Pat>], source: PatternSource) {
-        let mut bindings_list = FxHashMap::default();
-        for pat in pats {
-            self.resolve_pattern(pat, source, &mut bindings_list);
-        }
-        // This has to happen *after* we determine which pat_idents are variants
-        if pats.len() > 1 {
-            self.check_consistent_bindings(pats);
-        }
+    /// Arising from `source`, resolve a top level pattern.
+    fn resolve_pattern_top(&mut self, pat: &Pat, pat_src: PatternSource) {
+        let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
+        self.resolve_pattern(pat, pat_src, &mut bindings);
     }
 
-    fn resolve_block(&mut self, block: &Block) {
-        debug!("(resolving block) entering block");
-        // Move down in the graph, if there's an anonymous module rooted here.
-        let orig_module = self.parent_scope.module;
-        let anonymous_module = self.r.block_map.get(&block.id).cloned(); // clones a reference
-
-        let mut num_macro_definition_ribs = 0;
-        if let Some(anonymous_module) = anonymous_module {
-            debug!("(resolving block) found anonymous module, moving down");
-            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
-            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
-            self.parent_scope.module = anonymous_module;
-        } else {
-            self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-        }
-
-        // Descend into the block.
-        for stmt in &block.stmts {
-            if let StmtKind::Item(ref item) = stmt.node {
-                if let ItemKind::MacroDef(..) = item.node {
-                    num_macro_definition_ribs += 1;
-                    let res = self.r.definitions.local_def_id(item.id);
-                    self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
-                    self.label_ribs.push(Rib::new(MacroDefinition(res)));
-                }
-            }
-
-            self.visit_stmt(stmt);
-        }
-
-        // Move back up.
-        self.parent_scope.module = orig_module;
-        for _ in 0 .. num_macro_definition_ribs {
-            self.ribs[ValueNS].pop();
-            self.label_ribs.pop();
-        }
-        self.ribs[ValueNS].pop();
-        if anonymous_module.is_some() {
-            self.ribs[TypeNS].pop();
-        }
-        debug!("(resolving block) leaving block");
+    fn resolve_pattern(
+        &mut self,
+        pat: &Pat,
+        pat_src: PatternSource,
+        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+    ) {
+        self.resolve_pattern_inner(pat, pat_src, bindings);
+        // This has to happen *after* we determine which pat_idents are variants:
+        self.check_consistent_bindings_top(pat);
+        visit::walk_pat(self, pat);
     }
 
-    fn fresh_binding(&mut self,
-                     ident: Ident,
-                     pat_id: NodeId,
-                     outer_pat_id: NodeId,
-                     pat_src: PatternSource,
-                     bindings: &mut FxHashMap<Ident, NodeId>)
-                     -> Res {
-        // Add the binding to the local ribs, if it
-        // doesn't already exist in the bindings map. (We
-        // must not add it if it's in the bindings map
-        // because that breaks the assumptions later
-        // passes make about or-patterns.)
-        let ident = ident.modern_and_legacy();
-        let mut res = Res::Local(pat_id);
-        match bindings.get(&ident).cloned() {
-            Some(id) if id == outer_pat_id => {
-                // `Variant(a, a)`, error
-                self.r.report_error(
-                    ident.span,
-                    ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
-                        &ident.as_str())
-                );
-            }
-            Some(..) if pat_src == PatternSource::FnParam => {
-                // `fn f(a: u8, a: u8)`, error
-                self.r.report_error(
-                    ident.span,
-                    ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
-                        &ident.as_str())
-                );
-            }
-            Some(..) if pat_src == PatternSource::Match ||
-                        pat_src == PatternSource::Let => {
-                // `Variant1(a) | Variant2(a)`, ok
-                // Reuse definition from the first `a`.
-                res = self.ribs[ValueNS].last_mut().unwrap().bindings[&ident];
-            }
-            Some(..) => {
-                span_bug!(ident.span, "two bindings with the same name from \
-                                       unexpected pattern source {:?}", pat_src);
-            }
-            None => {
-                // A completely fresh binding, add to the lists if it's valid.
-                if ident.name != kw::Invalid {
-                    bindings.insert(ident, outer_pat_id);
-                    self.ribs[ValueNS].last_mut().unwrap().bindings.insert(ident, res);
-                }
-            }
-        }
-
-        res
-    }
-
-    fn resolve_pattern(&mut self,
-                       pat: &Pat,
-                       pat_src: PatternSource,
-                       // Maps idents to the node ID for the
-                       // outermost pattern that binds them.
-                       bindings: &mut FxHashMap<Ident, NodeId>) {
+    /// Resolve bindings in a pattern. This is a helper to `resolve_pattern`.
+    ///
+    /// ### `bindings`
+    ///
+    /// A stack of sets of bindings accumulated.
+    ///
+    /// In each set, `PatBoundCtx::Product` denotes that a found binding in it should
+    /// be interpreted as re-binding an already bound binding. This results in an error.
+    /// Meanwhile, `PatBound::Or` denotes that a found binding in the set should result
+    /// in reusing this binding rather than creating a fresh one.
+    ///
+    /// When called at the top level, the stack must have a single element
+    /// with `PatBound::Product`. Otherwise, pushing to the stack happens as
+    /// or-patterns (`p_0 | ... | p_n`) are encountered and the context needs
+    /// to be switched to `PatBoundCtx::Or` and then `PatBoundCtx::Product` for each `p_i`.
+    /// When each `p_i` has been dealt with, the top set is merged with its parent.
+    /// When a whole or-pattern has been dealt with, the thing happens.
+    ///
+    /// See the implementation and `fresh_binding` for more details.
+    fn resolve_pattern_inner(
+        &mut self,
+        pat: &Pat,
+        pat_src: PatternSource,
+        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+    ) {
         // Visit all direct subpatterns of this pattern.
-        let outer_pat_id = pat.id;
         pat.walk(&mut |pat| {
             debug!("resolve_pattern pat={:?} node={:?}", pat, pat.node);
             match pat.node {
-                PatKind::Ident(bmode, ident, ref opt_pat) => {
-                    // First try to resolve the identifier as some existing
-                    // entity, then fall back to a fresh binding.
-                    let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS,
-                                                                      None, pat.span)
-                                      .and_then(LexicalScopeBinding::item);
-                    let res = binding.map(NameBinding::res).and_then(|res| {
-                        let is_syntactic_ambiguity = opt_pat.is_none() &&
-                            bmode == BindingMode::ByValue(Mutability::Immutable);
-                        match res {
-                            Res::Def(DefKind::Ctor(_, CtorKind::Const), _) |
-                            Res::Def(DefKind::Const, _) if is_syntactic_ambiguity => {
-                                // Disambiguate in favor of a unit struct/variant
-                                // or constant pattern.
-                                self.r.record_use(ident, ValueNS, binding.unwrap(), false);
-                                Some(res)
-                            }
-                            Res::Def(DefKind::Ctor(..), _)
-                            | Res::Def(DefKind::Const, _)
-                            | Res::Def(DefKind::Static, _) => {
-                                // This is unambiguously a fresh binding, either syntactically
-                                // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
-                                // to something unusable as a pattern (e.g., constructor function),
-                                // but we still conservatively report an error, see
-                                // issues/33118#issuecomment-233962221 for one reason why.
-                                self.r.report_error(
-                                    ident.span,
-                                    ResolutionError::BindingShadowsSomethingUnacceptable(
-                                        pat_src.descr(), ident.name, binding.unwrap())
-                                );
-                                None
-                            }
-                            Res::Def(DefKind::Fn, _) | Res::Err => {
-                                // These entities are explicitly allowed
-                                // to be shadowed by fresh bindings.
-                                None
-                            }
-                            res => {
-                                span_bug!(ident.span, "unexpected resolution for an \
-                                                       identifier in pattern: {:?}", res);
-                            }
-                        }
-                    }).unwrap_or_else(|| {
-                        self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings)
-                    });
-
+                PatKind::Ident(bmode, ident, ref sub) => {
+                    // First try to resolve the identifier as some existing entity,
+                    // then fall back to a fresh binding.
+                    let has_sub = sub.is_some();
+                    let res = self.try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
+                        .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                 }
-
                 PatKind::TupleStruct(ref path, ..) => {
                     self.smart_resolve_path(pat.id, None, path, PathSource::TupleStruct);
                 }
-
                 PatKind::Path(ref qself, ref path) => {
                     self.smart_resolve_path(pat.id, qself.as_ref(), path, PathSource::Pat);
                 }
-
                 PatKind::Struct(ref path, ..) => {
                     self.smart_resolve_path(pat.id, None, path, PathSource::Struct);
                 }
+                PatKind::Or(ref ps) => {
+                    // Add a new set of bindings to the stack. `Or` here records that when a
+                    // binding already exists in this set, it should not result in an error because
+                    // `V1(a) | V2(a)` must be allowed and are checked for consistency later.
+                    bindings.push((PatBoundCtx::Or, Default::default()));
+                    for p in ps {
+                        // Now we need to switch back to a product context so that each
+                        // part of the or-pattern internally rejects already bound names.
+                        // For example, `V1(a) | V2(a, a)` and `V1(a, a) | V2(a)` are bad.
+                        bindings.push((PatBoundCtx::Product, Default::default()));
+                        self.resolve_pattern_inner(p, pat_src, bindings);
+                        // Move up the non-overlapping bindings to the or-pattern.
+                        // Existing bindings just get "merged".
+                        let collected = bindings.pop().unwrap().1;
+                        bindings.last_mut().unwrap().1.extend(collected);
+                    }
+                    // This or-pattern itself can itself be part of a product,
+                    // e.g. `(V1(a) | V2(a), a)` or `(a, V1(a) | V2(a))`.
+                    // Both cases bind `a` again in a product pattern and must be rejected.
+                    let collected = bindings.pop().unwrap().1;
+                    bindings.last_mut().unwrap().1.extend(collected);
 
+                    // Prevent visiting `ps` as we've already done so above.
+                    return false;
+                }
                 _ => {}
             }
             true
         });
+    }
 
-        visit::walk_pat(self, pat);
+    fn fresh_binding(
+        &mut self,
+        ident: Ident,
+        pat_id: NodeId,
+        pat_src: PatternSource,
+        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+    ) -> Res {
+        // Add the binding to the local ribs, if it doesn't already exist in the bindings map.
+        // (We must not add it if it's in the bindings map because that breaks the assumptions
+        // later passes make about or-patterns.)
+        let ident = ident.modern_and_legacy();
+
+        // Walk outwards the stack of products / or-patterns and
+        // find out if the identifier has been bound in any of these.
+        let mut already_bound_and = false;
+        let mut already_bound_or = false;
+        for (is_sum, set) in bindings.iter_mut().rev() {
+            match (is_sum, set.get(&ident).cloned()) {
+                // Already bound in a product pattern, e.g. `(a, a)` which is not allowed.
+                (PatBoundCtx::Product, Some(..)) => already_bound_and = true,
+                // Already bound in an or-pattern, e.g. `V1(a) | V2(a)`.
+                // This is *required* for consistency which is checked later.
+                (PatBoundCtx::Or, Some(..)) => already_bound_or = true,
+                // Not already bound here.
+                _ => {}
+            }
+        }
+
+        if already_bound_and {
+            // Overlap in a product pattern somewhere; report an error.
+            use ResolutionError::*;
+            let error = match pat_src {
+                // `fn f(a: u8, a: u8)`:
+                PatternSource::FnParam => IdentifierBoundMoreThanOnceInParameterList,
+                // `Variant(a, a)`:
+                _ => IdentifierBoundMoreThanOnceInSamePattern,
+            };
+            self.r.report_error(ident.span, error(&ident.as_str()));
+        }
+
+        // Record as bound if it's valid:
+        let ident_valid = ident.name != kw::Invalid;
+        if ident_valid {
+            bindings.last_mut().unwrap().1.insert(ident);
+        }
+
+        if already_bound_or {
+            // `Variant1(a) | Variant2(a)`, ok
+            // Reuse definition from the first `a`.
+            self.innermost_rib_bindings(ValueNS)[&ident]
+        } else {
+            let res = Res::Local(pat_id);
+            if ident_valid {
+                // A completely fresh binding add to the set if it's valid.
+                self.innermost_rib_bindings(ValueNS).insert(ident, res);
+            }
+            res
+        }
+    }
+
+    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut IdentMap<Res> {
+        &mut self.ribs[ns].last_mut().unwrap().bindings
+    }
+
+    fn try_resolve_as_non_binding(
+        &mut self,
+        pat_src: PatternSource,
+        pat: &Pat,
+        bm: BindingMode,
+        ident: Ident,
+        has_sub: bool,
+    ) -> Option<Res> {
+        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?.item()?;
+        let res = binding.res();
+
+        // An immutable (no `mut`) by-value (no `ref`) binding pattern without
+        // a sub pattern (no `@ $pat`) is syntactically ambiguous as it could
+        // also be interpreted as a path to e.g. a constant, variant, etc.
+        let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Immutable);
+
+        match res {
+            Res::Def(DefKind::Ctor(_, CtorKind::Const), _) |
+            Res::Def(DefKind::Const, _) if is_syntactic_ambiguity => {
+                // Disambiguate in favor of a unit struct/variant or constant pattern.
+                self.r.record_use(ident, ValueNS, binding, false);
+                Some(res)
+            }
+            Res::Def(DefKind::Ctor(..), _)
+            | Res::Def(DefKind::Const, _)
+            | Res::Def(DefKind::Static, _) => {
+                // This is unambiguously a fresh binding, either syntactically
+                // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
+                // to something unusable as a pattern (e.g., constructor function),
+                // but we still conservatively report an error, see
+                // issues/33118#issuecomment-233962221 for one reason why.
+                self.r.report_error(
+                    ident.span,
+                    ResolutionError::BindingShadowsSomethingUnacceptable(
+                        pat_src.descr(),
+                        ident.name,
+                        binding,
+                    ),
+                );
+                None
+            }
+            Res::Def(DefKind::Fn, _) | Res::Err => {
+                // These entities are explicitly allowed to be shadowed by fresh bindings.
+                None
+            }
+            res => {
+                span_bug!(ident.span, "unexpected resolution for an \
+                                        identifier in pattern: {:?}", res);
+            }
+        }
     }
 
     // High-level and context dependent path resolution routine.
@@ -1723,12 +1769,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         Some(result)
     }
 
-    fn with_resolved_label<F>(&mut self, label: Option<Label>, id: NodeId, f: F)
-        where F: FnOnce(&mut LateResolutionVisitor<'_, '_>)
-    {
+    fn with_resolved_label(&mut self, label: Option<Label>, id: NodeId, f: impl FnOnce(&mut Self)) {
         if let Some(label) = label {
             self.unused_labels.insert(id, label.ident.span);
-            self.with_label_rib(|this| {
+            self.with_label_rib(NormalRibKind, |this| {
                 let ident = label.ident.modern_and_legacy();
                 this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
                 f(this);
@@ -1740,6 +1784,49 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn resolve_labeled_block(&mut self, label: Option<Label>, id: NodeId, block: &Block) {
         self.with_resolved_label(label, id, |this| this.visit_block(block));
+    }
+
+    fn resolve_block(&mut self, block: &Block) {
+        debug!("(resolving block) entering block");
+        // Move down in the graph, if there's an anonymous module rooted here.
+        let orig_module = self.parent_scope.module;
+        let anonymous_module = self.r.block_map.get(&block.id).cloned(); // clones a reference
+
+        let mut num_macro_definition_ribs = 0;
+        if let Some(anonymous_module) = anonymous_module {
+            debug!("(resolving block) found anonymous module, moving down");
+            self.ribs[ValueNS].push(Rib::new(ModuleRibKind(anonymous_module)));
+            self.ribs[TypeNS].push(Rib::new(ModuleRibKind(anonymous_module)));
+            self.parent_scope.module = anonymous_module;
+        } else {
+            self.ribs[ValueNS].push(Rib::new(NormalRibKind));
+        }
+
+        // Descend into the block.
+        for stmt in &block.stmts {
+            if let StmtKind::Item(ref item) = stmt.node {
+                if let ItemKind::MacroDef(..) = item.node {
+                    num_macro_definition_ribs += 1;
+                    let res = self.r.definitions.local_def_id(item.id);
+                    self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
+                    self.label_ribs.push(Rib::new(MacroDefinition(res)));
+                }
+            }
+
+            self.visit_stmt(stmt);
+        }
+
+        // Move back up.
+        self.parent_scope.module = orig_module;
+        for _ in 0 .. num_macro_definition_ribs {
+            self.ribs[ValueNS].pop();
+            self.label_ribs.pop();
+        }
+        self.ribs[ValueNS].pop();
+        if anonymous_module.is_some() {
+            self.ribs[TypeNS].pop();
+        }
+        debug!("(resolving block) leaving block");
     }
 
     fn resolve_expr(&mut self, expr: &Expr, parent: Option<&Expr>) {
@@ -1796,39 +1883,36 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::Let(ref pats, ref scrutinee) => {
+            ExprKind::Let(ref pat, ref scrutinee) => {
                 self.visit_expr(scrutinee);
-                self.resolve_pats(pats, PatternSource::Let);
+                self.resolve_pattern_top(pat, PatternSource::Let);
             }
 
             ExprKind::If(ref cond, ref then, ref opt_else) => {
-                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                self.visit_expr(cond);
-                self.visit_block(then);
-                self.ribs[ValueNS].pop();
-
+                self.with_rib(ValueNS, NormalRibKind, |this| {
+                    this.visit_expr(cond);
+                    this.visit_block(then);
+                });
                 opt_else.as_ref().map(|expr| self.visit_expr(expr));
             }
 
             ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
 
-            ExprKind::While(ref subexpression, ref block, label) => {
+            ExprKind::While(ref cond, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
-                    this.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                    this.visit_expr(subexpression);
-                    this.visit_block(block);
-                    this.ribs[ValueNS].pop();
+                    this.with_rib(ValueNS, NormalRibKind, |this| {
+                        this.visit_expr(cond);
+                        this.visit_block(block);
+                    })
                 });
             }
 
-            ExprKind::ForLoop(ref pattern, ref subexpression, ref block, label) => {
-                self.visit_expr(subexpression);
-                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::For, &mut FxHashMap::default());
-
-                self.resolve_labeled_block(label, expr.id, block);
-
-                self.ribs[ValueNS].pop();
+            ExprKind::ForLoop(ref pat, ref iter_expr, ref block, label) => {
+                self.visit_expr(iter_expr);
+                self.with_rib(ValueNS, NormalRibKind, |this| {
+                    this.resolve_pattern_top(pat, PatternSource::For);
+                    this.resolve_labeled_block(label, expr.id, block);
+                });
             }
 
             ExprKind::Block(ref block, label) => self.resolve_labeled_block(label, block.id, block),
@@ -1860,30 +1944,22 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             // `async |x| ...` gets desugared to `|x| future_from_generator(|| ...)`, so we need to
             // resolve the arguments within the proper scopes so that usages of them inside the
             // closure are detected as upvars rather than normal closure arg usages.
-            ExprKind::Closure(
-                _, IsAsync::Async { .. }, _,
-                ref fn_decl, ref body, _span,
-            ) => {
-                let rib_kind = NormalRibKind;
-                self.ribs[ValueNS].push(Rib::new(rib_kind));
-                // Resolve arguments:
-                let mut bindings_list = FxHashMap::default();
-                for argument in &fn_decl.inputs {
-                    self.resolve_pattern(&argument.pat, PatternSource::FnParam, &mut bindings_list);
-                    self.visit_ty(&argument.ty);
-                }
-                // No need to resolve return type-- the outer closure return type is
-                // FunctionRetTy::Default
+            ExprKind::Closure(_, IsAsync::Async { .. }, _, ref fn_decl, ref body, _span) => {
+                self.with_rib(ValueNS, NormalRibKind, |this| {
+                    // Resolve arguments:
+                    this.resolve_params(&fn_decl.inputs);
+                    // No need to resolve return type --
+                    // the outer closure return type is `FunctionRetTy::Default`.
 
-                // Now resolve the inner closure
-                {
-                    // No need to resolve arguments: the inner closure has none.
-                    // Resolve the return type:
-                    visit::walk_fn_ret_ty(self, &fn_decl.output);
-                    // Resolve the body
-                    self.visit_expr(body);
-                }
-                self.ribs[ValueNS].pop();
+                    // Now resolve the inner closure
+                    {
+                        // No need to resolve arguments: the inner closure has none.
+                        // Resolve the return type:
+                        visit::walk_fn_ret_ty(this, &fn_decl.output);
+                        // Resolve the body
+                        this.visit_expr(body);
+                    }
+                });
             }
             _ => {
                 visit::walk_expr(self, expr);

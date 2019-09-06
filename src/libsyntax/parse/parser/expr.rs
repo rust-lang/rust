@@ -1250,8 +1250,7 @@ impl<'a> Parser<'a> {
     /// The `let` token has already been eaten.
     fn parse_let_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
-        // FIXME(or_patterns, Centril | dlrobertson): use `parse_top_pat` instead.
-        let pat = self.parse_top_pat_unpack(GateOr::No)?;
+        let pat = self.parse_top_pat(GateOr::No)?;
         self.expect(&token::Eq)?;
         let expr = self.with_res(
             Restrictions::NO_STRUCT_LITERAL,
@@ -1393,8 +1392,7 @@ impl<'a> Parser<'a> {
     crate fn parse_arm(&mut self) -> PResult<'a, Arm> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
-        // FIXME(or_patterns, Centril | dlrobertson): use `parse_top_pat` instead.
-        let pat = self.parse_top_pat_unpack(GateOr::No)?;
+        let pat = self.parse_top_pat(GateOr::No)?;
         let guard = if self.eat_keyword(kw::If) {
             Some(self.parse_expr()?)
         } else {
@@ -1455,7 +1453,7 @@ impl<'a> Parser<'a> {
 
         Ok(ast::Arm {
             attrs,
-            pats: pat, // FIXME(or_patterns, Centril | dlrobertson): this should just be `pat,`.
+            pat,
             guard,
             body: expr,
             span: lo.to(hi),

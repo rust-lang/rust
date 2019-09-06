@@ -897,32 +897,23 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_var_decl_multi(&mut self, pats: &'l [P<ast::Pat>]) {
+    fn process_var_decl(&mut self, pat: &'l ast::Pat) {
+        // The pattern could declare multiple new vars,
+        // we must walk the pattern and collect them all.
         let mut collector = PathCollector::new();
-        for pattern in pats {
-            // collect paths from the arm's patterns
-            collector.visit_pat(&pattern);
-            self.visit_pat(&pattern);
-        }
+        collector.visit_pat(&pat);
+        self.visit_pat(&pat);
 
-        // process collected paths
-        for (id, ident, immut) in collector.collected_idents {
+        // Process collected paths.
+        for (id, ident, _) in collector.collected_idents {
             match self.save_ctxt.get_path_res(id) {
                 Res::Local(hir_id) => {
-                    let mut value = if immut == ast::Mutability::Immutable {
-                        self.span.snippet(ident.span)
-                    } else {
-                        "<mutable>".to_owned()
-                    };
                     let id = self.tcx.hir().hir_to_node_id(hir_id);
-                    let typ = self.save_ctxt
-                        .tables
-                        .node_type_opt(hir_id)
+                    let typ = self.save_ctxt.tables.node_type_opt(hir_id)
                         .map(|t| t.to_string())
                         .unwrap_or_default();
-                    value.push_str(": ");
-                    value.push_str(&typ);
 
+                    // Rust uses the id of the pattern for var lookups, so we'll use it too.
                     if !self.span.filter_generated(ident.span) {
                         let qualname = format!("{}${}", ident.to_string(), id);
                         let id = id_from_node_id(id, &self.save_ctxt);
@@ -969,61 +960,6 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
         for (id, ref path) in collector.collected_paths {
             self.process_path(id, path);
-        }
-    }
-
-    fn process_var_decl(&mut self, p: &'l ast::Pat, value: String) {
-        // The local could declare multiple new vars, we must walk the
-        // pattern and collect them all.
-        let mut collector = PathCollector::new();
-        collector.visit_pat(&p);
-        self.visit_pat(&p);
-
-        for (id, ident, immut) in collector.collected_idents {
-            let mut value = match immut {
-                ast::Mutability::Immutable => value.to_string(),
-                _ => String::new(),
-            };
-            let hir_id = self.tcx.hir().node_to_hir_id(id);
-            let typ = match self.save_ctxt.tables.node_type_opt(hir_id) {
-                Some(typ) => {
-                    let typ = typ.to_string();
-                    if !value.is_empty() {
-                        value.push_str(": ");
-                    }
-                    value.push_str(&typ);
-                    typ
-                }
-                None => String::new(),
-            };
-
-            // Rust uses the id of the pattern for var lookups, so we'll use it too.
-            if !self.span.filter_generated(ident.span) {
-                let qualname = format!("{}${}", ident.to_string(), id);
-                let id = id_from_node_id(id, &self.save_ctxt);
-                let span = self.span_from_span(ident.span);
-
-                self.dumper.dump_def(
-                    &Access {
-                        public: false,
-                        reachable: false,
-                    },
-                    Def {
-                        kind: DefKind::Local,
-                        id,
-                        span,
-                        name: ident.to_string(),
-                        qualname,
-                        value: typ,
-                        parent: None,
-                        children: vec![],
-                        decl_id: None,
-                        docs: String::new(),
-                        sig: None,
-                        attributes: vec![],
-                    },
-                );
-            }
         }
     }
 
@@ -1565,14 +1501,13 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 });
             }
             ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) => {
-                let value = self.span.snippet(subexpression.span);
-                self.process_var_decl(pattern, value);
+                self.process_var_decl(pattern);
                 debug!("for loop, walk sub-expr: {:?}", subexpression.node);
                 self.visit_expr(subexpression);
                 visit::walk_block(self, block);
             }
-            ast::ExprKind::Let(ref pats, ref scrutinee) => {
-                self.process_var_decl_multi(pats);
+            ast::ExprKind::Let(ref pat, ref scrutinee) => {
+                self.process_var_decl(pat);
                 self.visit_expr(scrutinee);
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
@@ -1599,7 +1534,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'l ast::Arm) {
-        self.process_var_decl_multi(&arm.pats);
+        self.process_var_decl(&arm.pat);
         if let Some(expr) = &arm.guard {
             self.visit_expr(expr);
         }
@@ -1617,11 +1552,7 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
 
     fn visit_local(&mut self, l: &'l ast::Local) {
         self.process_macro_use(l.span);
-        let value = l.init
-            .as_ref()
-            .map(|i| self.span.snippet(i.span))
-            .unwrap_or_default();
-        self.process_var_decl(&l.pat, value);
+        self.process_var_decl(&l.pat);
 
         // Just walk the initialiser and type (don't want to walk the pattern again).
         walk_list!(self, visit_ty, &l.ty);
