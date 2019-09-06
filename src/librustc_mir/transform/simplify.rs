@@ -289,14 +289,13 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
     }
 }
 
-
 pub struct SimplifyLocals;
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let mut marker = DeclMarker { locals: BitSet::new_empty(body.local_decls.len()) };
         marker.visit_body(body);
-        // Return pointer and arguments are always live
+        // Return pointer and arguments are always live.
         marker.locals.insert(RETURN_PLACE);
         for arg in body.args_iter() {
             marker.locals.insert(arg);
@@ -310,13 +309,13 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
         }
 
         let map = make_local_map(&mut body.local_decls, marker.locals);
-        // Update references to all vars and tmps now
+        // Update references to all vars and temps now.
         LocalUpdater { map }.visit_body(body);
         body.local_decls.shrink_to_fit();
     }
 }
 
-/// Construct the mapping while swapping out unused stuff out from the `vec`.
+/// Constructs the mapping while swapping out unused stuff out from the `vec`.
 fn make_local_map<V>(
     vec: &mut IndexVec<Local, V>,
     mask: BitSet<Local>,
@@ -340,7 +339,7 @@ struct DeclMarker {
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
     fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _: Location) {
-        // Ignore storage markers altogether, they get removed along with their otherwise unused
+        // Ignore storage markers altogether; they get removed along with their otherwise unused
         // decls.
         // FIXME: Extend this to all non-uses.
         if !ctx.is_storage_marker() {

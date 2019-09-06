@@ -1,10 +1,11 @@
-use rustc::mir::{self, Body, Location};
-use rustc::ty::{self, TyCtxt};
-use crate::util::elaborate_drops::DropFlagState;
-
 use super::{MoveDataParamEnv};
 use super::indexes::MovePathIndex;
 use super::move_paths::{MoveData, LookupResult, InitKind};
+
+use crate::util::elaborate_drops::DropFlagState;
+
+use rustc::mir::{self, Body, Location};
+use rustc::ty::{self, TyCtxt};
 
 pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
                                         path: MovePathIndex,
@@ -37,9 +38,9 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 /// references and indexes can be reseated, trying to track them can
 /// only lead to trouble.
 ///
-/// Places behind ADT's with a Drop impl are not tracked by
+/// Places behind ADT's with a `Drop` impl are not tracked by
 /// elaboration since they can never have a drop-flag state that
-/// differs from that of the parent with the Drop impl.
+/// differs from that of the parent with the `Drop` impl.
 ///
 /// In both cases, the contents can only be accessed if and only if
 /// their parents are initialized. This implies for example that there

@@ -64,36 +64,36 @@ pub struct Stmt<'tcx> {
 #[derive(Clone, Debug)]
 pub enum StmtKind<'tcx> {
     Expr {
-        /// scope for this statement; may be used as lifetime of temporaries
+        /// The scope for this statement; may be used as lifetime of temporaries.
         scope: region::Scope,
 
-        /// expression being evaluated in this statement
+        /// The expression being evaluated in this statement.
         expr: ExprRef<'tcx>,
     },
 
     Let {
-        /// scope for variables bound in this let; covers this and
-        /// remaining statements in block
+        /// The scope for variables bound in this `let`; covers this and
+        /// remaining statements in block.
         remainder_scope: region::Scope,
 
-        /// scope for the initialization itself; might be used as
-        /// lifetime of temporaries
+        /// The scope for the initialization itself; might be used as
+        /// lifetime of temporaries.
         init_scope: region::Scope,
 
         /// `let <PAT> = ...`
         ///
-        /// if a type is included, it is added as an ascription pattern
+        /// If a type is included, it is added as an ascription pattern.
         pattern: Pattern<'tcx>,
 
-        /// let pat: ty = <INIT> ...
+        /// `let pat: ty = <INIT> ...`
         initializer: Option<ExprRef<'tcx>>,
 
-        /// the lint level for this let-statement
+        /// The lint level for this let-statement.
         lint_level: LintLevel,
     },
 }
 
-/// The Hair trait implementor lowers their expressions (`&'tcx H::Expr`)
+/// The `Hair` trait implementor lowers its expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This lowering can be done
 /// basically as lazily or as eagerly as desired: every recursive
 /// reference to an expression in this enum is an `ExprRef<'tcx>`, which
@@ -109,17 +109,17 @@ pub enum StmtKind<'tcx> {
 /// expected to be converted into `Expr::Call` instances.
 #[derive(Clone, Debug)]
 pub struct Expr<'tcx> {
-    /// type of this expression
+    /// The type of this expression.
     pub ty: Ty<'tcx>,
 
-    /// lifetime of this expression if it should be spilled into a
-    /// temporary; should be None only if in a constant context
+    /// The lifetime of this expression if it should be spilled into a
+    /// temporary; should be `None` only if in a constant context.
     pub temp_lifetime: Option<region::Scope>,
 
-    /// span of the expression in the source
+    /// The span of the expression in the source.
     pub span: Span,
 
-    /// kind of expression
+    /// The kind of expression.
     pub kind: ExprKind<'tcx>,
 }
 

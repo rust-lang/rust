@@ -119,13 +119,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    /// End-user visible description of `place` if one can be found. If the
+    /// Gets an end-user visible description of `place` if one can be found. If the
     /// place is a temporary for instance, None will be returned.
     pub(super) fn describe_place(&self, place_ref: PlaceRef<'cx, 'tcx>) -> Option<String> {
         self.describe_place_with_options(place_ref, IncludingDowncast(false))
     }
 
-    /// End-user visible description of `place` if one can be found. If the
+    /// Gets an end-user visible description of `place` if one can be found. If the
     /// place is a temporary for instance, None will be returned.
     /// `IncludingDowncast` parameter makes the function return `Err` if `ProjectionElem` is
     /// `Downcast` and `IncludingDowncast` is true
@@ -195,7 +195,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                         } else {
                             if autoderef {
-                                // FIXME turn this recursion into iteration
+                                // FIXME: turn this recursion into iteration.
                                 self.append_place_to_string(
                                     PlaceRef {
                                         base,
@@ -219,7 +219,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                                 &including_downcast,
                                             )?;
                                         } else {
-                                            // FIXME deduplicate this and the _ => body below
+                                            // FIXME: deduplicate this and the `_ =>` body below.
                                             buf.push_str(&"*");
                                             self.append_place_to_string(
                                                 PlaceRef {
@@ -307,11 +307,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         }
                         buf.push_str("]");
                     }
-                    ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                    ProjectionElem::ConstantIndex { .. } |
+                    ProjectionElem::Subslice { .. } => {
                         autoderef = true;
                         // Since it isn't possible to borrow an element on a particular index and
                         // then use another while the borrow is held, don't output indices details
-                        // to avoid confusing the end-user
+                        // to avoid confusing the end-user.
                         self.append_place_to_string(
                             PlaceRef {
                                 base,
@@ -343,7 +344,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    /// End-user visible description of the `field`nth field of `base`
+    /// Gets an end-user visible description of the `field`nth field of `base`.
     fn describe_field(&self, place: PlaceRef<'cx, 'tcx>, field: Field) -> String {
         // FIXME Place2 Make this work iteratively
         match place {
@@ -375,9 +376,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ProjectionElem::Field(_, field_type) => {
                     self.describe_field_from_ty(&field_type, field, None)
                 }
-                ProjectionElem::Index(..)
-                | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {
+                ProjectionElem::Index(..) |
+                ProjectionElem::ConstantIndex { .. } |
+                ProjectionElem::Subslice { .. } => {
                     self.describe_field(PlaceRef {
                         base,
                         projection: &proj.base,
@@ -387,7 +388,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    /// End-user visible description of the `field_index`nth field of `ty`
+    /// Gets an end-user visible description of the `field_index`nth field of `ty`.
     fn describe_field_from_ty(
         &self,
         ty: Ty<'_>,
@@ -395,7 +396,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         variant_index: Option<VariantIdx>
     ) -> String {
         if ty.is_box() {
-            // If the type is a box, the field is described from the boxed type
+            // If the type is a box, the field is described from the boxed type.
             self.describe_field_from_ty(&ty.boxed_ty(), field, variant_index)
         } else {
             match ty.sty {
@@ -411,12 +412,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         .to_string()
                 },
                 ty::Tuple(_) => field.index().to_string(),
-                ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
+                ty::Ref(_, ty, _) |
+                ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
                     self.describe_field_from_ty(&ty, field, variant_index)
                 }
-                ty::Array(ty, _) | ty::Slice(ty) =>
+                ty::Array(ty, _) |
+                ty::Slice(ty) =>
                     self.describe_field_from_ty(&ty, field, variant_index),
-                ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
+                ty::Closure(def_id, _) |
+                ty::Generator(def_id, _, _) => {
                     // `tcx.upvars(def_id)` returns an `Option`, which is `None` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
@@ -491,7 +495,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // we'll use this to check whether it was originally from an overloaded
         // operator.
         match self.move_data.rev_lookup.find(deref_base) {
-            LookupResult::Exact(mpi) | LookupResult::Parent(Some(mpi)) => {
+            LookupResult::Exact(mpi) |
+            LookupResult::Parent(Some(mpi)) => {
                 debug!("borrowed_content_source: mpi={:?}", mpi);
 
                 for i in &self.move_data.init_path_map[mpi] {
@@ -557,8 +562,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
         match ty.sty {
-            ty::Ref(ty::RegionKind::ReLateBound(_, br), _, _)
-            | ty::Ref(
+            ty::Ref(ty::RegionKind::ReLateBound(_, br), _, _) |
+            ty::Ref(
                 ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
@@ -579,8 +584,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let region = match ty.sty {
             ty::Ref(region, _, _) => {
                 match region {
-                    ty::RegionKind::ReLateBound(_, br)
-                    | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
+                    ty::RegionKind::ReLateBound(_, br) |
+                    ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
                         printer.region_highlight_mode.highlighting_bound_region(*br, counter)
                     }
                     _ => {}
@@ -618,14 +623,15 @@ impl UseSpans {
         match self {
             UseSpans::ClosureUse {
                 args_span: span, ..
-            }
-            | UseSpans::OtherUse(span) => span,
+            } |
+            UseSpans::OtherUse(span) => span,
         }
     }
 
     pub(super) fn var_or_use(self) -> Span {
         match self {
-            UseSpans::ClosureUse { var_span: span, .. } | UseSpans::OtherUse(span) => span,
+            UseSpans::ClosureUse { var_span: span, .. } |
+            UseSpans::OtherUse(span) => span,
         }
     }
 
@@ -726,8 +732,8 @@ impl BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefMutableRef => Some("mutable reference"),
             // Overloaded deref and index operators should be evaluated into a
             // temporary. So we don't need a description here.
-            BorrowedContentSource::OverloadedDeref(_)
-            | BorrowedContentSource::OverloadedIndex(_) => None
+            BorrowedContentSource::OverloadedDeref(_) |
+            BorrowedContentSource::OverloadedIndex(_) => None
         }
     }
 

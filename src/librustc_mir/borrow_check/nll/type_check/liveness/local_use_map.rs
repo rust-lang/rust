@@ -5,11 +5,11 @@ use rustc::mir::{Body, Local, Location};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::vec_linked_list as vll;
 
-/// A map that cross references each local with the locations where it
+/// A map that cross-references each local with the locations where it
 /// is defined (assigned), used, or dropped. Used during liveness
 /// computation.
 ///
-/// We keep track only of `Local`s we'll do the liveness analysis later,
+/// We only keep track of `Local`s that we later perform liveness analysis on;
 /// this means that our internal `IndexVec`s will only be sparsely populated.
 /// In the time-memory trade-off between keeping compact vectors with new
 /// indexes (and needing to continuously map the `Local` index to its compact

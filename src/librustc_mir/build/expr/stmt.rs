@@ -40,7 +40,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Note: we evaluate assignments right-to-left. This
                 // is better for borrowck interaction with overloaded
-                // operators like x[j] = x[i].
+                // operators like `x[j] = x[i]`.
 
                 debug!("stmt_expr Assign block_context.push(SubExpr) : {:?}", expr2);
                 this.block_context.push(BlockFrame::SubExpr);
@@ -144,7 +144,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => {
                 assert!(
                     statement_scope.is_some(),
-                    "Should not be calling `stmt_expr` on a general expression \
+                    "should not be calling `stmt_expr` on a general expression \
                      without a statement scope",
                 );
 

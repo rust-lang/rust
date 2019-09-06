@@ -295,7 +295,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
 
-                // We need MIR for this fn
+                // We need MIR for this fn.
                 let body = match M::find_fn(self, instance, args, dest, ret)? {
                     Some(body) => body,
                     None => return Ok(()),
@@ -347,7 +347,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         if caller_abi == Abi::RustCall && !args.is_empty() {
                             // Untuple
                             let (&untuple_arg, args) = args.split_last().unwrap();
-                            trace!("eval_fn_call: Will pass last argument by untupling");
+                            trace!("eval_fn_call: will pass last argument by untupling");
                             Cow::from(args.iter().map(|&a| Ok(a))
                                 .chain((0..untuple_arg.layout.fields.count()).into_iter()
                                     .map(|i| self.operand_field(untuple_arg, i as u64))
@@ -476,7 +476,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         span: Span,
         target: mir::BasicBlock,
     ) -> InterpResult<'tcx> {
-        trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
+        trace!(
+            "drop_in_place: {:?},\n\
+             \t{:?}, {:?}",
+            *place, place.layout.ty, instance
+        );
+
         // We take the address of the object.  This may well be unaligned, which is fine
         // for us here.  However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.

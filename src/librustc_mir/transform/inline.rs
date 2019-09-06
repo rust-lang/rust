@@ -665,7 +665,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *local = l;
                     return;
                 },
-                ref place => bug!("Return place is {:?}, not local", place)
+                ref place => bug!("return place is {:?}, not local", place)
             }
         }
         let idx = local.index() - 1;

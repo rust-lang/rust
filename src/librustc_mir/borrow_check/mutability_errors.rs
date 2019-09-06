@@ -1,3 +1,7 @@
+use crate::borrow_check::MirBorrowckCtxt;
+use crate::borrow_check::error_reporting::BorrowedContentSource;
+use crate::util::collect_writes::FindAssignments;
+
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Body};
@@ -6,13 +10,9 @@ use rustc::mir::{
 };
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_errors::Applicability;
 use syntax_pos::Span;
 use syntax_pos::symbol::kw;
-
-use crate::borrow_check::MirBorrowckCtxt;
-use crate::borrow_check::error_reporting::BorrowedContentSource;
-use crate::util::collect_writes::FindAssignments;
-use rustc_errors::Applicability;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(super) enum AccessKind {

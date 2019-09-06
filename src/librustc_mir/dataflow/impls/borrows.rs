@@ -37,7 +37,7 @@ pub struct Borrows<'a, 'tcx> {
     borrow_set: Rc<BorrowSet<'tcx>>,
     borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
 
-    /// NLL region inference context with which NLL queries should be resolved
+    /// NLL region inference context with which NLL queries should be resolved.
     _nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
 }
 
@@ -235,13 +235,17 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
     type Idx = BorrowIndex;
-    fn name() -> &'static str { "borrows" }
+
+    fn name() -> &'static str {
+        "borrows"
+    }
+
     fn bits_per_block(&self) -> usize {
         self.borrow_set.borrows.len() * 2
     }
 
     fn start_block_effect(&self, _entry_set: &mut BitSet<Self::Idx>) {
-        // no borrows of code region_scopes have been taken prior to
+        // No borrows of code `region_scopes` have been taken prior to
         // function execution, so this method has no effect.
     }
 
@@ -336,6 +340,6 @@ impl<'a, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> BottomValue for Borrows<'a, 'tcx> {
-    /// bottom = nothing is reserved or activated yet;
+    /// bottom = nothing is reserved or activated yet
     const BOTTOM_VALUE: bool = false;
 }

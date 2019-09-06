@@ -257,7 +257,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     context: PlaceContext,
                     location: Location) {
         if let PlaceBase::Local(l) = place.base {
-            // Replace an Local in the remap with a generator struct access
+            // Replace an `Local` in the remap with a generator struct access.
             if let Some(&(ty, variant_index, idx)) = self.remap.get(&l) {
                 replace_base(place, self.make_field(variant_index, idx, ty));
             }
@@ -269,7 +269,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
     fn visit_basic_block_data(&mut self,
                               block: BasicBlock,
                               data: &mut BasicBlockData<'tcx>) {
-        // Remove StorageLive and StorageDead statements for remapped locals
+        // Remove StorageLive and StorageDead statements for remapped locals.
         data.retain_statements(|s| {
             match s.kind {
                 StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
@@ -293,7 +293,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
 
         if let Some((state_idx, resume, v, drop)) = ret_val {
             let source_info = data.terminator().source_info;
-            // We must assign the value first in case it gets declared dead below
+            // We must assign the value first in case it gets declared dead below.
             data.statements.push(Statement {
                 source_info,
                 kind: StatementKind::Assign(Place::RETURN_PLACE,
@@ -340,10 +340,10 @@ fn make_generator_state_argument_indirect<'tcx>(
         mutbl: hir::MutMutable
     });
 
-    // Replace the by value generator argument
+    // Replace the by value generator argument.
     body.local_decls.raw[1].ty = ref_gen_ty;
 
-    // Add a deref to accesses of the generator state
+    // Add a deref to accesses of the generator state.
     DerefArgVisitor.visit_body(body);
 }
 
@@ -358,7 +358,7 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     // Replace the by ref generator argument
     body.local_decls.raw[1].ty = pin_ref_gen_ty;
 
-    // Add the Pin field access to accesses of the generator state
+    // Add the `Pin` field access to accesses of the generator state.
     PinArgVisitor { ref_gen_ty }.visit_body(body);
 }
 
@@ -408,7 +408,7 @@ struct LivenessInfo {
     /// Which locals are live across any suspension point.
     ///
     /// GeneratorSavedLocal is indexed in terms of the elements in this set;
-    /// i.e. GeneratorSavedLocal::new(1) corresponds to the second local
+    /// i.e., `GeneratorSavedLocal::new(1)` corresponds to the second local
     /// included in this set.
     live_locals: liveness::LiveVarSet,
 
@@ -453,8 +453,7 @@ fn locals_live_across_suspend_points(
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, borrowed_locals_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
 
-    // Calculate the MIR locals that we actually need to keep storage around
-    // for.
+    // Calculate the MIR locals that we actually need to keep storage around for.
     let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_result);
     let requires_storage =
         do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
@@ -711,13 +710,13 @@ fn compute_layout<'tcx>(
     GeneratorLayout<'tcx>,
     FxHashMap<BasicBlock, liveness::LiveVarSet>,
 ) {
-    // Use a liveness analysis to compute locals which are live across a suspension point
+    // Use a liveness analysis to compute locals which are live across a suspension point.
     let LivenessInfo {
         live_locals, live_locals_at_suspension_points, storage_conflicts, storage_liveness
     } = locals_live_across_suspend_points(tcx, body, source, movable);
 
     // Erase regions from the types passed in from typeck so we can compare them with
-    // MIR types
+    // MIR types.
     let allowed_upvars = tcx.erase_regions(upvars);
     let allowed = match interior.sty {
         ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
@@ -725,13 +724,13 @@ fn compute_layout<'tcx>(
     };
 
     for (local, decl) in body.local_decls.iter_enumerated() {
-        // Ignore locals which are internal or not live
+        // Ignore locals which are internal or not live.
         if !live_locals.contains(local) || decl.internal {
             continue;
         }
 
         // Sanity check that typeck knows about the type of locals which are
-        // live across a suspension point
+        // live across a suspension point.
         if !allowed.contains(&decl.ty) && !allowed_upvars.contains(&decl.ty) {
             span_bug!(body.span,
                       "Broken MIR: generator contains type {} in MIR, \
@@ -892,7 +891,7 @@ fn create_generator_drop_shim<'tcx>(
     cases.insert(0, (UNRESUMED, drop_clean));
 
     // The returned state and the poisoned state fall through to the default
-    // case which is just to return
+    // case which is just to return.
 
     insert_switch(&mut body, cases, &transform, TerminatorKind::Return);
 
@@ -903,7 +902,7 @@ fn create_generator_drop_shim<'tcx>(
         }
     }
 
-    // Replace the return variable
+    // Replace the return variable.
     body.local_decls[RETURN_PLACE] = LocalDecl {
         mutability: Mutability::Mut,
         ty: tcx.mk_unit(),
@@ -918,7 +917,7 @@ fn create_generator_drop_shim<'tcx>(
 
     make_generator_state_argument_indirect(tcx, def_id, &mut body);
 
-    // Change the generator argument from &mut to *mut
+    // Change the generator argument from `&mut` to `*mut`.
     body.local_decls[self_arg()] = LocalDecl {
         mutability: Mutability::Mut,
         ty: tcx.mk_ptr(ty::TypeAndMut {
@@ -934,7 +933,7 @@ fn create_generator_drop_shim<'tcx>(
         is_user_variable: None,
     };
     if tcx.sess.opts.debugging_opts.mir_emit_retag {
-        // Alias tracking must know we changed the type
+        // Alias tracking must know we changed the type.
         body.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
             source_info,
             kind: StatementKind::Retag(RetagKind::Raw, Place::from(self_arg())),
@@ -944,7 +943,7 @@ fn create_generator_drop_shim<'tcx>(
     no_landing_pads(tcx, &mut body);
 
     // Make sure we remove dead blocks to remove
-    // unrelated code from the resume part of the function
+    // unrelated code from the resume part of the function.
     simplify::remove_dead_blocks(&mut body);
 
     dump_mir(tcx, None, "generator_drop", &0, source, &mut body, |_, _| Ok(()) );

@@ -1702,9 +1702,9 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
                 Checker::new(tcx, def_id, body, mode).check_const().1
             };
 
-            // In `const` and `static` everything without `StorageDead`
+            // In `const` and `static` everything without StorageDead
             // is `'static`, we don't have to create promoted MIR fragments,
-            // just remove `Drop` and `StorageDead` on "promoted" locals.
+            // just remove Drop and StorageDead on "promoted" locals.
             debug!("run_pass: promoted_temps={:?}", promoted_temps);
             for block in body.basic_blocks_mut() {
                 block.statements.retain(|statement| {

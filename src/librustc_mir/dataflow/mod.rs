@@ -579,7 +579,7 @@ impl<T> GenKill<T> {
     }
 }
 
-impl<E:Idx> GenKillSet<E> {
+impl<E: Idx> GenKillSet<E> {
     pub(crate) fn clear(&mut self) {
         self.gen_set.clear();
         self.kill_set.clear();
@@ -630,7 +630,7 @@ pub struct AllSets<E: Idx> {
     trans: Vec<GenKillSet<E>>,
 }
 
-impl<E:Idx> AllSets<E> {
+impl<E: Idx> AllSets<E> {
     pub fn bits_per_block(&self) -> usize { self.bits_per_block }
 
     pub fn get_mut(&mut self, block_idx: usize) -> (&mut BitSet<E>, &mut GenKillSet<E>) {
@@ -703,7 +703,8 @@ pub trait BitDenotation<'tcx>: BottomValue {
     /// plugged into a filename.
     fn name() -> &'static str;
 
-    /// Size of each bitvector allocated for each block in the analysis.
+    /// Gets the size of each bitvector allocated for each block in the
+    /// analysis.
     fn bits_per_block(&self) -> usize;
 
     /// Mutates the entry set according to the effects that

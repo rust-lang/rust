@@ -38,7 +38,7 @@ impl RemoveNoopLandingPads {
                 StatementKind::StorageDead(_) |
                 StatementKind::AscribeUserType(..) |
                 StatementKind::Nop => {
-                    // These are all nops in a landing pad
+                    // These are all nops in a landing pad.
                 }
 
                 StatementKind::Assign(Place {
@@ -46,7 +46,7 @@ impl RemoveNoopLandingPads {
                     projection: None,
                 }, box Rvalue::Use(_)) => {
                     // Writing to a local (e.g., a drop flag) does not
-                    // turn a landing pad to a non-nop
+                    // turn a landing pad to a non-nop.
                 }
 
                 StatementKind::Assign { .. } |

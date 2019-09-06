@@ -3,6 +3,7 @@ use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::path_utils::allow_two_phase_borrow;
 use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
+
 use rustc::mir::traversal;
 use rustc::mir::visit::{PlaceContext, Visitor, NonUseContext, MutatingUseContext};
 use rustc::mir::{self, Location, Body, Local};
@@ -168,7 +169,7 @@ struct GatherBorrows<'a, 'tcx> {
     activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
     local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 
-    /// When we encounter a 2-phase borrow statement, it will always
+    /// When we encounter a two-phase borrow statement, it will always
     /// be assigning into a temporary TEMP:
     ///
     ///    TEMP = &foo
@@ -228,7 +229,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         }
 
         // We found a use of some temporary TMP
-        // check whether we (earlier) saw a 2-phase borrow like
+        // check whether we (earlier) saw a two-phase borrow like
         //
         //     TMP = &mut place
         if let Some(&borrow_index) = self.pending_activations.get(temp) {
@@ -309,7 +310,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
             return;
         }
 
-        // When we encounter a 2-phase borrow statement, it will always
+        // When we encounter a two-phase borrow statement, it will always
         // be assigning into a temporary TEMP:
         //
         //    TEMP = &foo

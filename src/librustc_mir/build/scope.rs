@@ -1,4 +1,5 @@
 /*!
+
 Managing the scope stack. The scopes are tied to lexical scopes, so as
 we descend the HAIR, we push a scope on the stack, build its
 contents, and then pop it off. Every scope is named by a
@@ -19,7 +20,7 @@ paragraph). This is because region scopes are tied to
 them. Eventually, when we shift to non-lexical lifetimes, there should
 be no need to remember this mapping.
 
-### Not so SEME Regions
+### Not-so-SEME Regions
 
 In the course of building matches, it sometimes happens that certain code
 (namely guards) gets executed multiple times. This means that the scope lexical
@@ -98,32 +99,32 @@ struct Scope {
     /// The source scope this scope was created in.
     source_scope: SourceScope,
 
-    /// the region span of this scope within source code.
+    /// The region span of this scope within source code.
     region_scope: region::Scope,
 
-    /// the span of that region_scope
+    /// The span of `region_scope`.
     region_scope_span: Span,
 
     /// Whether there's anything to do for the cleanup path, that is,
     /// when unwinding through this scope. This includes destructors,
     /// but not StorageDead statements, which don't get emitted at all
     /// for unwinding, for several reasons:
-    ///  * clang doesn't emit llvm.lifetime.end for C++ unwinding
+    ///  * clang doesn't emit `llvm.lifetime.end` for C++ unwinding
     ///  * LLVM's memory dependency analysis can't handle it atm
     ///  * polluting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
-    /// Note that for generators we do emit StorageDeads, for the
+    /// Note that for generators we do emit StorageDead's, for the
     /// use of optimizations in the MIR generator transform.
     needs_cleanup: bool,
 
-    /// set of places to drop when exiting this scope. This starts
+    /// The set of places to drop when exiting this scope. This starts
     /// out empty but grows as variables are declared during the
     /// building process. This is a stack, so we always drop from the
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData>,
 
-    /// The cache for drop chain on “normal” exit into a particular BasicBlock.
+    /// The cache for drop chain on “normal” exit into a particular `BasicBlock`.
     cached_exits: FxHashMap<(BasicBlock, region::Scope), BasicBlock>,
 
     /// The cache for drop chain on "generator drop" exit.
@@ -142,10 +143,10 @@ pub struct Scopes<'tcx> {
 
 #[derive(Debug)]
 struct DropData {
-    /// span where drop obligation was incurred (typically where place was declared)
+    /// The span where the drop obligation was incurred (typically where the place was declared).
     span: Span,
 
-    /// local to drop
+    /// The local to drop.
     local: Local,
 
     /// Whether this is a value Drop or a StorageDead.
@@ -180,19 +181,19 @@ pub(crate) enum DropKind {
 
 #[derive(Clone, Debug)]
 struct BreakableScope<'tcx> {
-    /// Region scope of the loop
+    /// The region scope of the loop.
     region_scope: region::Scope,
-    /// Where the body of the loop begins. `None` if block
+    /// Where the body of the loop begins. `None` if a block.
     continue_block: Option<BasicBlock>,
-    /// Block to branch into when the loop or block terminates (either by being `break`-en out
-    /// from, or by having its condition to become false)
+    /// The block to branch into when the loop or block terminates (either by being exited via
+    /// `break`, or by having its condition become false).
     break_block: BasicBlock,
     /// The destination of the loop/block expression itself (i.e., where to put the result of a
-    /// `break` expression)
+    /// `break` expression).
     break_destination: Place<'tcx>,
 }
 
-/// The target of an expression that breaks out of a scope
+/// The target of an expression that breaks out of a scope.
 #[derive(Clone, Copy, Debug)]
 pub enum BreakableTarget {
     Continue(region::Scope),
@@ -229,17 +230,17 @@ impl Scope {
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a
     /// larger extent of code.
     ///
-    /// `storage_only` controls whether to invalidate only drop paths that run `StorageDead`.
+    /// `storage_only` controls whether to invalidate only drop paths that run StorageDead.
     /// `this_scope_only` controls whether to invalidate only drop paths that refer to the current
     /// top-of-scope (as opposed to dependent scopes).
     fn invalidate_cache(&mut self, storage_only: bool, is_generator: bool, this_scope_only: bool) {
         // FIXME: maybe do shared caching of `cached_exits` etc. to handle functions
         // with lots of `try!`?
 
-        // cached exits drop storage and refer to the top-of-scope
+        // Cached exits drop storage and refer to the top-of-scope.
         self.cached_exits.clear();
 
-        // the current generator drop and unwind refer to top-of-scope
+        // The current generator drop and unwind refer to top-of-scope.
         self.cached_generator_drop = None;
 
         let ignore_unwinds = storage_only && !is_generator;
@@ -254,7 +255,7 @@ impl Scope {
         }
     }
 
-    /// Given a span and this scope's source scope, make a SourceInfo.
+    /// Given a span and this scope's source scope, makes a `SourceInfo`.
     fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
             span,
@@ -306,7 +307,7 @@ impl<'tcx> Scopes<'tcx> {
         target: BreakableTarget,
     ) -> (BasicBlock, region::Scope, Option<Place<'tcx>>) {
         let get_scope = |scope: region::Scope| {
-            // find the loop-scope by its `region::Scope`.
+            // Find the loop-scope by its `region::Scope`.
             self.breakable_scopes.iter()
                 .rfind(|breakable_scope| breakable_scope.region_scope == scope)
                 .unwrap_or_else(|| span_bug!(span, "no enclosing breakable scope found"))
@@ -449,7 +450,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(rv)
     }
 
-    /// Push a scope onto the stack. You can then build code in this
+    /// Pushes a scope onto the stack. You can then build code in this
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
@@ -518,7 +519,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.start_new_block().unit()
     }
 
-    /// Branch out of `block` to `target`, exiting all scopes up to
+    /// Branches out of `block` to `target`, exiting all scopes up to
     /// and including `region_scope`. This will insert whatever drops are
     /// needed. See module comment for details.
     pub fn exit_scope(&mut self,
@@ -658,7 +659,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scope
     }
 
-    /// Given a span and the current source scope, make a SourceInfo.
+    /// Given a span and the current source scope, makes a `SourceInfo`.
     pub fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo {
             span,
@@ -668,6 +669,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Finding scopes
     // ==============
+
     /// Returns the scope that we should use as the lifetime of an
     /// operand. Basically, an operand must live until it is consumed.
     /// This is similar to, but not quite the same as, the temporary
@@ -713,6 +715,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Scheduling drops
     // ================
+
     pub fn schedule_drop_storage_and_value(
         &mut self,
         span: Span,
@@ -824,7 +827,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Other
     // =====
-    /// Branch based on a boolean condition.
+
+    /// Branches based on a boolean condition.
     ///
     /// This is a special case because the temporary for the condition needs to
     /// be dropped on both the true and the false arm.
@@ -846,7 +850,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.terminate(block, source_info, term);
 
         match cond {
-            // Don't try to drop a constant
+            // Don't try to drop a constant.
             Operand::Constant(_) => (),
             // If constants and statics, we don't generate StorageLive for this
             // temporary, so don't try to generate StorageDead for it either.
@@ -865,12 +869,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 match top_drop_data.kind {
                     DropKind::Value { .. } => {
-                        bug!("Drop scheduled on top of condition variable")
+                        bug!("drop scheduled on top of condition variable")
                     }
                     DropKind::Storage => {
                         let source_info = top_scope.source_info(top_drop_data.span);
                         let local = top_drop_data.local;
-                        assert_eq!(local, cond_temp, "Drop scheduled on top of condition");
+                        assert_eq!(local, cond_temp, "drop scheduled on top of condition");
                         self.cfg.push(
                             true_block,
                             Statement {
@@ -890,7 +894,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 top_scope.invalidate_cache(true, self.is_generator, true);
             }
-            _ => bug!("Expected as_local_operand to produce a temporary"),
+            _ => bug!("expected `as_local_operand` to produce a temporary"),
         }
 
         (true_block, false_block)
@@ -950,7 +954,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         target
     }
 
-    /// Utility function for *non*-scope code to build their own drops
+    /// Utility function for *non*-scope code to build their own drops.
     pub fn build_drop_and_replace(&mut self,
                                   block: BasicBlock,
                                   span: Span,
@@ -997,6 +1001,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // `match` arm scopes
     // ==================
+
     /// Unschedules any drops in the top scope.
     ///
     /// This is only needed for `match` arm scopes, because they have one
@@ -1011,7 +1016,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-/// Builds drops for pop_scope and exit_scope.
+/// Builds drops for `pop_scope` and `exit_scope`.
 fn build_scope_drops<'tcx>(
     cfg: &mut CFG<'tcx>,
     is_generator: bool,
@@ -1128,7 +1133,7 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
     let mut target_built_by_us = false;
 
     // Build up the drops. Here we iterate the vector in
-    // *forward* order, so that we generate drops[0] first (right to
+    // *forward* order, so that we generate `drops[0]` first (right to
     // left in diagram above).
     debug!("build_diverge_scope({:?})", scope.drops);
     for (j, drop_data) in scope.drops.iter_mut().enumerate() {
@@ -1152,8 +1157,7 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
                     // block for our StorageDead statements.
                     let block = cfg.start_new_cleanup_block();
                     let source_info = SourceInfo { span: DUMMY_SP, scope: source_scope };
-                    cfg.terminate(block, source_info,
-                                    TerminatorKind::Goto { target: target });
+                    cfg.terminate(block, source_info, TerminatorKind::Goto { target: target });
                     target = block;
                     target_built_by_us = true;
                 }

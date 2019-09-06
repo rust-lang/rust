@@ -1,4 +1,4 @@
-//! See docs in build/expr/mod.rs
+//! See docs in `build/expr/mod.rs`.
 
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
@@ -9,7 +9,7 @@ use rustc::ty;
 use rustc_target::spec::abi::Abi;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Compile `expr`, storing the result into `destination`, which
+    /// Compiles `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(
         &mut self,
@@ -22,9 +22,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             destination, block, expr
         );
 
-        // since we frequently have to reference `self` from within a
+        // Since we frequently have to reference `self` from within a
         // closure, where `self` would be shadowed, it's easier to
-        // just use the name `this` uniformly
+        // just use the name `this` uniformly.
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
@@ -269,19 +269,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.into(destination, block, source)
             }
 
-            // These cases don't actually need a destination
-            ExprKind::Assign { .. }
-            | ExprKind::AssignOp { .. }
-            | ExprKind::Continue { .. }
-            | ExprKind::Break { .. }
-            | ExprKind::InlineAsm { .. }
-            | ExprKind::Return { .. } => {
+            // These cases don't actually need a destination.
+            ExprKind::Assign { .. } |
+            ExprKind::AssignOp { .. } |
+            ExprKind::Continue { .. } |
+            ExprKind::Break { .. } |
+            ExprKind::InlineAsm { .. } |
+            ExprKind::Return { .. } => {
                 unpack!(block = this.stmt_expr(block, expr, None));
                 this.cfg.push_assign_unit(block, source_info, destination);
                 block.unit()
             }
 
-            // Avoid creating a temporary
+            // Avoid creating a temporary.
             ExprKind::VarRef { .. } |
             ExprKind::SelfRef |
             ExprKind::StaticRef { .. } |
@@ -315,7 +315,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.unit()
             }
 
-            // these are the cases that are more naturally handled by some other mode
+            // These are the cases that are more naturally handled by some other mode.
             ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
             | ExprKind::Box { .. }
@@ -330,12 +330,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Literal { .. }
             | ExprKind::Yield { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
-                    // should be handled above
+                    // Should be handled above.
                     Category::Rvalue(RvalueFunc::Into) => false,
 
-                    // must be handled above or else we get an
+                    // Must be handled above or else we get an
                     // infinite loop in the builder; see
-                    // e.g., `ExprKind::VarRef` above
+                    // e.g., `ExprKind::VarRef` above.
                     Category::Place => false,
 
                     _ => true,

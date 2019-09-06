@@ -1,8 +1,9 @@
 pub use super::*;
 
+use crate::dataflow::{BitDenotation, GenKillSet};
+
 use rustc::mir::*;
 use rustc::mir::visit::Visitor;
-use crate::dataflow::{BitDenotation, GenKillSet};
 
 /// This calculates if any part of a MIR local could have previously been borrowed.
 /// This means that once a local has been borrowed, its bit will be set
@@ -28,13 +29,17 @@ impl<'a, 'tcx> HaveBeenBorrowedLocals<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
     type Idx = Local;
-    fn name() -> &'static str { "has_been_borrowed_locals" }
+
+    fn name() -> &'static str {
+        "has_been_borrowed_locals"
+    }
+
     fn bits_per_block(&self) -> usize {
         self.body.local_decls.len()
     }
 
     fn start_block_effect(&self, _on_entry: &mut BitSet<Local>) {
-        // Nothing is borrowed on function entry
+        // Nothing is borrowed on function entry.
     }
 
     fn statement_effect(&self,
@@ -46,7 +51,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
             trans,
         }.visit_statement(stmt, loc);
 
-        // StorageDead invalidates all borrows and raw pointers to a local
+        // StorageDead invalidates all borrows and raw pointers to a local.
         match stmt.kind {
             StatementKind::StorageDead(l) => trans.kill(l),
             _ => (),
@@ -61,7 +66,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
             trans,
         }.visit_terminator(terminator, loc);
         match &terminator.kind {
-            // Drop terminators borrows the location
+            // Drop terminators borrows the location.
             TerminatorKind::Drop { location, .. } |
             TerminatorKind::DropAndReplace { location, .. } => {
                 if let Some(local) = find_local(location) {
@@ -79,7 +84,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
         _dest_bb: mir::BasicBlock,
         _dest_place: &mir::Place<'tcx>,
     ) {
-        // Nothing to do when a call returns successfully
+        // Nothing to do when a call returns successfully.
     }
 }
 

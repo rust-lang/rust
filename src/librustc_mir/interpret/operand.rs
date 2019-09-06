@@ -26,8 +26,8 @@ pub use rustc::mir::interpret::ScalarMaybeUndef;
 /// operations and fat pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Immediate<Tag=(), Id=AllocId> {
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub enum Immediate<Tag = (), Id = AllocId> {
     Scalar(ScalarMaybeUndef<Tag, Id>),
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
 }
@@ -66,7 +66,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     pub fn to_scalar_or_undef(self) -> ScalarMaybeUndef<Tag> {
         match self {
             Immediate::Scalar(val) => val,
-            Immediate::ScalarPair(..) => bug!("Got a fat pointer where a scalar was expected"),
+            Immediate::ScalarPair(..) => bug!("got a fat pointer where a scalar was expected"),
         }
     }
 
@@ -78,13 +78,13 @@ impl<'tcx, Tag> Immediate<Tag> {
     #[inline]
     pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
         match self {
-            Immediate::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
+            Immediate::Scalar(..) => bug!("got a thin pointer where a scalar pair was expected"),
             Immediate::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
         }
     }
 
     /// Converts the immediate into a pointer (or a pointer-sized integer).
-    /// Throws away the second half of a ScalarPair!
+    /// Throws away the second half of a `ScalarPair`!
     #[inline]
     pub fn to_scalar_ptr(self) -> InterpResult<'tcx, Scalar<Tag>> {
         match self {
@@ -94,7 +94,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 
     /// Converts the value into its metadata.
-    /// Throws away the first half of a ScalarPair!
+    /// Throws away the first half of a `ScalarPair`!
     #[inline]
     pub fn to_meta(self) -> InterpResult<'tcx, Option<Scalar<Tag>>> {
         Ok(match self {
@@ -104,10 +104,10 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 }
 
-// ScalarPair needs a type to interpret, so we often have an immediate and a type together
-// as input for binary and cast operations.
+/// `ScalarPair` needs a type to interpret, so we often have an immediate and a type together
+/// as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
-pub struct ImmTy<'tcx, Tag=()> {
+pub struct ImmTy<'tcx, Tag = ()> {
     pub(crate) imm: Immediate<Tag>,
     pub layout: TyLayout<'tcx>,
 }
@@ -123,8 +123,8 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 /// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Operand<Tag=(), Id=AllocId> {
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub enum Operand<Tag = (), Id = AllocId> {
     Immediate(Immediate<Tag, Id>),
     Indirect(MemPlace<Tag, Id>),
 }
@@ -136,7 +136,7 @@ impl<Tag> Operand<Tag> {
     {
         match self {
             Operand::Indirect(mplace) => mplace,
-            _ => bug!("assert_mem_place: expected Operand::Indirect, got {:?}", self),
+            _ => bug!("assert_mem_place: expected `Operand::Indirect`, got {:?}", self),
 
         }
     }
@@ -147,22 +147,22 @@ impl<Tag> Operand<Tag> {
     {
         match self {
             Operand::Immediate(imm) => imm,
-            _ => bug!("assert_immediate: expected Operand::Immediate, got {:?}", self),
+            _ => bug!("assert_immediate: expected `Operand::Immediate`, got {:?}", self),
 
         }
     }
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct OpTy<'tcx, Tag=()> {
-    op: Operand<Tag>, // Keep this private, it helps enforce invariants
+pub struct OpTy<'tcx, Tag = ()> {
+    op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyLayout<'tcx>,
 }
 
 impl<'tcx, Tag> ::std::ops::Deref for OpTy<'tcx, Tag> {
     type Target = Operand<Tag>;
     #[inline(always)]
-    fn deref(&self) -> &Operand<Tag> {
+    fn deref(&self) -> &Self::Target {
         &self.op
     }
 }
@@ -209,8 +209,8 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag> {
     }
 }
 
-// Use the existing layout if given (but sanity check in debug mode),
-// or compute the layout.
+// Uses the existing layout if given (but sanity check in debug mode),
+// or computes the layout.
 #[inline(always)]
 pub(super) fn from_known_layout<'tcx>(
     layout: Option<TyLayout<'tcx>>,
@@ -231,7 +231,7 @@ pub(super) fn from_known_layout<'tcx>(
 }
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    /// Normalice `place.ptr` to a `Pointer` if this is a place and not a ZST.
+    /// Normalizes `place.ptr` to a `Pointer` if this is a place and not a ZST.
     /// Can be helpful to avoid lots of `force_ptr` calls later, if this place is used a lot.
     #[inline]
     pub fn force_op_ptr(
@@ -244,14 +244,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
+    /// Tries reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
     fn try_read_immediate_from_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::PointerTag>>> {
         if mplace.layout.is_unsized() {
-            // Don't touch unsized
+            // Don't touch unsized.
             return Ok(None);
         }
 
@@ -300,7 +300,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Try returning an immediate for the operand.
+    /// Tries returning an immediate for the operand.
     /// If the layout does not permit loading this as an immediate, return where in memory
     /// we can find the data.
     /// Note that for a given layout, this operation will either always fail or always
@@ -322,7 +322,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })
     }
 
-    /// Read an immediate from a place, asserting that that is possible with the given layout.
+    /// Reads an immediate from a place, asserting that that is possible with the given layout.
     #[inline(always)]
     pub fn read_immediate(
         &self,
@@ -335,15 +335,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Read a scalar from a place
+    /// Reads a scalar from a place.
     pub fn read_scalar(
         &self,
-        op: OpTy<'tcx, M::PointerTag>
+        op: OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
         Ok(self.read_immediate(op)?.to_scalar_or_undef())
     }
 
-    // Turn the MPlace into a string (must already be dereferenced!)
+    // Turns the `MPlace` into a string (must already be dereferenced!).
     pub fn read_str(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
@@ -356,7 +356,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(str)
     }
 
-    /// Projection functions
+    /// Projection functions.
     pub fn operand_field(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
@@ -379,9 +379,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         let offset = op.layout.fields.offset(field);
         let immediate = match *base {
-            // the field covers the entire type
+            // The field covers the entire type.
             _ if offset.bytes() == 0 && field_layout.size == op.layout.size => *base,
-            // extract fields from types with `ScalarPair` ABI
+            // Extract fields from types with `ScalarPair` ABI.
             Immediate::ScalarPair(a, b) => {
                 let val = if offset.bytes() == 0 { a } else { b };
                 Immediate::from(val)
@@ -397,7 +397,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         op: OpTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        // Downcasts only change the layout
+        // Downcasts only change the layout.
         Ok(match op.try_as_mplace() {
             Ok(mplace) => {
                 self.mplace_downcast(mplace, variant)?.into()
@@ -422,19 +422,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Subslice { .. } | ConstantIndex { .. } | Index(_) => if base.layout.is_zst() {
                 OpTy {
                     op: Operand::Immediate(Scalar::zst().into()),
-                    // the actual index doesn't matter, so we just pick a convenient one like 0
+                    // The actual index doesn't matter, so we just pick a convenient one like 0.
                     layout: base.layout.field(self, 0)?,
                 }
             } else {
-                // The rest should only occur as mplace, we do not use Immediates for types
-                // allowing such operations.  This matches place_projection forcing an allocation.
+                // The rest should only occur as mplace, we do not use `Immediate`s for types
+                // allowing such operations. This matches `place_projection` forcing an allocation.
                 let mplace = base.assert_mem_place();
                 self.mplace_projection(mplace, proj_elem)?.into()
             }
         })
     }
 
-    /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
+    /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an `OpTy` from a local.
     pub fn access_local(
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
@@ -444,7 +444,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_ne!(local, mir::RETURN_PLACE);
         let layout = self.layout_of_local(frame, local, layout)?;
         let op = if layout.is_zst() {
-            // Do not read from ZST, they might not be initialized
+            // Do not read from ZST; it might not be initialized.
             Operand::Immediate(Scalar::zst().into())
         } else {
             frame.locals[local].access()?
@@ -452,7 +452,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(OpTy { op, layout })
     }
 
-    /// Every place can be read from, so we can turn them into an operand
+    /// Converts a place into an operand. This is possible because every place
+    /// can be read from.
     #[inline(always)]
     pub fn place_to_op(
         &self,
@@ -468,7 +469,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(OpTy { op, layout: place.layout })
     }
 
-    // Evaluate a place with the goal of reading from it.  This lets us sometimes
+    // Evaluates a place with the goal of reading from it. This lets us sometimes
     // avoid allocations.
     pub(super) fn eval_place_to_op(
         &self,
@@ -484,7 +485,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 PlaceBase::Local(local) => {
                     // Do not use the layout passed in as argument if the base we are looking at
                     // here is not the entire place.
-                    // FIXME use place_projection.is_empty() when is available
+                    // FIXME: use `place_projection.is_empty()` when available.
                     let layout = if mir_place.projection.is_none() {
                         layout
                     } else {
@@ -507,7 +508,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         })
     }
 
-    /// Evaluate the operand, returning a place where you can then find the data.
+    /// Evaluates the operand, returning a place where you can then find the data.
     /// If you already know the layout, you can save two table lookups
     /// by passing it in here.
     pub fn eval_operand(
@@ -517,7 +518,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Operand::*;
         let op = match *mir_op {
-            // FIXME: do some more logic on `move` to invalidate the old location
+            // FIXME: do some more logic on `move` to invalidate the old location.
             Copy(ref place) |
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
@@ -531,7 +532,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(op)
     }
 
-    /// Evaluate a bunch of operands at once
+    /// Evaluates a bunch of operands at once.
     pub(super) fn eval_operands(
         &self,
         ops: &[mir::Operand<'tcx>],
@@ -541,10 +542,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .collect()
     }
 
-    // Used when the miri-engine runs into a constant and for extracting information from constants
-    // in patterns via the `const_eval` module
-    /// The `val` and `layout` are assumed to already be in our interpreter
-    /// "universe" (param_env).
+    /// Used when the Miri engine runs into a constant and for extracting information from constants
+    /// in patterns via the `const_eval` module.
+    /// The `val` and `layouts` are assumed to already be in our interpreter
+    /// "universe" (`ParamEnv`).
     crate fn eval_const_to_op(
         &self,
         val: &'tcx ty::Const<'tcx>,
@@ -603,7 +604,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(OpTy { op, layout })
     }
 
-    /// Read discriminant, return the runtime value as well as the variant index.
+    /// Reads a discriminant and returns the runtime value as well as the variant index.
     pub fn read_discriminant(
         &self,
         rval: OpTy<'tcx, M::PointerTag>,
@@ -621,12 +622,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (discr_kind, discr_index),
         };
 
-        // read raw discriminant value
+        // Read raw discriminant value.
         let discr_op = self.operand_field(rval, discr_index as u64)?;
         let discr_val = self.read_immediate(discr_op)?;
         let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
-        // post-process
+        // Post-process.
         Ok(match *discr_kind {
             layout::DiscriminantKind::Tag => {
                 let bits_discr = raw_discr
@@ -634,10 +635,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     .and_then(|raw_discr| self.force_bits(raw_discr, discr_val.layout.size))
                     .map_err(|_| err_unsup!(InvalidDiscriminant(raw_discr.erase_tag())))?;
                 let real_discr = if discr_val.layout.ty.is_signed() {
-                    // going from layout tag type to typeck discriminant type
-                    // requires first sign extending with the layout discriminant
+                    // Going from layout tag type to typeck discriminant type
+                    // requires first sign extending with the layout discriminant...
                     let sexted = sign_extend(bits_discr, discr_val.layout.size) as i128;
-                    // and then zeroing with the typeck discriminant type
+                    // ... and then zeroing with the typeck discriminant type.
                     let discr_ty = rval.layout.ty
                         .ty_adt_def().expect("tagged layout corresponds to adt")
                         .repr
@@ -648,7 +649,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     bits_discr
                 };
-                // Make sure we catch invalid discriminants
+                // Make sure we catch invalid discriminants.
                 let index = match &rval.layout.ty.sty {
                     ty::Adt(adt, _) => adt
                         .discriminants(self.tcx.tcx)
@@ -674,7 +675,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 })?;
                 match raw_discr.to_bits_or_ptr(discr_val.layout.size, self) {
                     Err(ptr) => {
-                        // The niche must be just 0 (which an inbounds pointer value never is)
+                        // The niche must be just 0 (which an inbounds pointer value never is).
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
                             !self.memory.ptr_may_be_null(ptr);
                         if !ptr_valid {

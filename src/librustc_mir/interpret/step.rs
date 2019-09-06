@@ -75,7 +75,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         use rustc::mir::StatementKind::*;
 
-        // Some statements (e.g., box) push new stack frames.
+        // Some statements (e.g., `box`) push new stack frames.
         // We have to record the stack frame number *before* executing the statement.
         let frame_idx = self.cur_frame();
         self.tcx.span = stmt.source_info.span;
@@ -92,19 +92,19 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_discriminant_index(variant_index, dest)?;
             }
 
-            // Mark locals as alive
+            // Mark locals as alive.
             StorageLive(local) => {
                 let old_val = self.storage_live(local)?;
                 self.deallocate_local(old_val)?;
             }
 
-            // Mark locals as dead
+            // Mark locals as dead.
             StorageDead(local) => {
                 let old_val = self.storage_dead(local);
                 self.deallocate_local(old_val)?;
             }
 
-            // No dynamic semantics attached to `FakeRead`; MIR
+            // No dynamic semantics attached to FakeRead; MIR
             // interpreter is solely intended for borrowck'ed code.
             FakeRead(..) => {}
 
@@ -128,7 +128,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Evaluate an assignment statement.
+    /// Evaluates an assignment statement.
     ///
     /// There is no separate `eval_rvalue` function. Instead, the code for handling each rvalue
     /// type writes its results directly into the memory specified by the place.
@@ -142,7 +142,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc::mir::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
-                // Avoid recomputing the layout
+                // Avoid recomputing the layout.
                 let op = self.eval_operand(operand, Some(dest.layout))?;
                 self.copy_op(op, dest)?;
             }
@@ -221,14 +221,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // for big static/const arrays!
                         let rest_ptr = first_ptr.offset(elem_size, self)?;
                         self.memory.copy_repeatedly(
-                            first_ptr, rest_ptr, elem_size, length - 1, /*nonoverlapping:*/true
+                            first_ptr, rest_ptr, elem_size, length - 1, /* nonoverlapping: */ true
                         )?;
                     }
                 }
             }
 
             Len(ref place) => {
-                // FIXME(CTFE): don't allow computing the length of arrays in const eval
+                // FIXME(CTFE): don't allow computing the length of arrays in const eval.
                 let src = self.eval_place(place)?;
                 let mplace = self.force_allocation(src)?;
                 let len = mplace.len(self)?;
@@ -292,7 +292,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let old_bb = self.frame().block;
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
-            // This should change *something*
+            // This should change *something*.
             debug_assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
             info!("// {:?}", self.frame().block);
         }

@@ -14,12 +14,12 @@ use super::{
     InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
 };
 
-/// Whether this kind of memory is allowed to leak
+/// Whether this kind of memory is allowed to leak.
 pub trait MayLeak: Copy {
     fn may_leak(self) -> bool;
 }
 
-/// The functionality needed by memory to manage its allocations
+/// The functionality needed by memory to manage its allocations.
 pub trait AllocMap<K: Hash + Eq, V> {
     /// Tests if the map contains the given key.
     /// Deliberately takes `&mut` because that is sufficient, and some implementations
@@ -69,10 +69,10 @@ pub trait AllocMap<K: Hash + Eq, V> {
 /// Methods of this trait signifies a point where CTFE evaluation would fail
 /// and some use case dependent behaviour can instead be applied.
 pub trait Machine<'mir, 'tcx>: Sized {
-    /// Additional memory kinds a machine wishes to distinguish from the builtin ones
+    /// Additional memory kinds that a machine wishes to distinguish from the builtin ones.
     type MemoryKinds: ::std::fmt::Debug + MayLeak + Eq + 'static;
 
-    /// Tag tracked alongside every pointer. This is used to implement "Stacked Borrows"
+    /// Tags tracked alongside every pointer. This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
     type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
@@ -93,7 +93,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Extra data stored in every allocation.
     type AllocExtra: AllocationExtra<Self::PointerTag> + 'static;
 
-    /// Memory's allocation map
+    /// The allocation map of `Memory`.
     type MemoryMap:
         AllocMap<
             AllocId,
@@ -102,24 +102,24 @@ pub trait Machine<'mir, 'tcx>: Sized {
         Default +
         Clone;
 
-    /// The memory kind to use for copied statics -- or None if statics should not be mutated
+    /// The memory kind to use for copied statics -- or `None` if statics should not be mutated`
     /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.
     /// Statics are copied under two circumstances: When they are mutated, and when
     /// `tag_allocation` or `find_foreign_static` (see below) returns an owned allocation
     /// that is added to the memory so that the work is not done twice.
     const STATIC_KIND: Option<Self::MemoryKinds>;
 
-    /// Whether memory accesses should be alignment-checked.
+    /// `true` if memory accesses should be alignment-checked.
     const CHECK_ALIGN: bool;
 
-    /// Whether to enforce the validity invariant
+    /// Indicates whether to enforce the validity invariant.
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.
     fn before_terminator(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx>;
 
-    /// Entry point to all function calls.
+    /// The entry point to all function calls.
     ///
     /// Returns either the mir to use for the call, or `None` if execution should
     /// just proceed (which usually means this hook did all the work that the
@@ -137,7 +137,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
-    /// Execute `fn_val`.  it is the hook's responsibility to advance the instruction
+    /// Executes `fn_val`. It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -147,7 +147,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ret: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
-    /// Directly process an intrinsic without pushing a stack frame.
+    /// Directly processes an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
@@ -170,7 +170,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Called for all binary operations where the LHS has pointer type.
     ///
-    /// Returns a (value, overflowed) pair if the operation succeeded
+    /// Returns a `(value, overflowed)` pair if the operation succeeded.
     fn binary_ptr_op(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
@@ -178,7 +178,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         right: ImmTy<'tcx, Self::PointerTag>,
     ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool, Ty<'tcx>)>;
 
-    /// Heap allocations via the `box` keyword.
+    /// Performs heap allocations via the `box` keyword.
     fn box_alloc(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
@@ -207,7 +207,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         kind: Option<MemoryKind<Self::MemoryKinds>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
-    /// Return the "base" tag for the given static allocation: the one that is used for direct
+    /// Returns the "base" tag for the given static allocation: the one that is used for direct
     /// accesses to this static/const/fn allocation.
     ///
     /// Be aware that requesting the `Allocation` for that `id` will lead to cycles
@@ -217,7 +217,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         id: AllocId,
     ) -> Self::PointerTag;
 
-    /// Executes a retagging operation
+    /// Executes a retagging operation.
     #[inline]
     fn retag(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,

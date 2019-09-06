@@ -109,9 +109,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     // whether or not the right-hand side is a place expression
                     if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                         opt_match_place: Some((ref opt_match_place, match_span)),
-                        binding_mode: _,
-                        opt_ty_info: _,
-                        pat_span: _,
+                        ..
                     }))) = local_decl.is_user_variable
                     {
                         let stmt_source_info = self.body.source_info(location);

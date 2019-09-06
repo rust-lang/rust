@@ -2,7 +2,7 @@ pub use super::*;
 
 use rustc::mir::*;
 use rustc::mir::visit::{
-    PlaceContext, Visitor, NonMutatingUseContext,
+    NonMutatingUseContext, PlaceContext, Visitor,
 };
 use std::cell::RefCell;
 use crate::dataflow::BitDenotation;
@@ -34,7 +34,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
 
     fn start_block_effect(&self, _on_entry: &mut BitSet<Local>) {
         // Nothing is live on function entry (generators only have a self
-        // argument, and we don't care about that)
+        // argument, and we don't care about that).
         assert_eq!(1, self.body.arg_count);
     }
 
@@ -53,7 +53,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
     fn terminator_effect(&self,
                          _trans: &mut GenKillSet<Local>,
                          _loc: Location) {
-        // Terminators have no effect
+        // Terminators have no effect.
     }
 
     fn propagate_call_return(
@@ -63,7 +63,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeStorageLive<'a, 'tcx> {
         _dest_bb: mir::BasicBlock,
         _dest_place: &mir::Place<'tcx>,
     ) {
-        // Nothing to do when a call returns successfully
+        // Nothing to do when a call returns successfully.
     }
 }
 
@@ -98,14 +98,18 @@ impl<'mir, 'tcx: 'mir> RequiresStorage<'mir, 'tcx> {
 
 impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
     type Idx = Local;
-    fn name() -> &'static str { "requires_storage" }
+
+    fn name() -> &'static str {
+        "requires_storage"
+    }
+
     fn bits_per_block(&self) -> usize {
         self.body.local_decls.len()
     }
 
     fn start_block_effect(&self, _sets: &mut BitSet<Local>) {
-        // Nothing is live on function entry (generators only have a self
-        // argument, and we don't care about that)
+        // Nothing is live on function entry (generators only have a `self`
+        // argument, and we don't care about that).
         assert_eq!(1, self.body.arg_count);
     }
 
@@ -119,8 +123,8 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         match stmt.kind {
             StatementKind::StorageLive(l) => sets.gen(l),
             StatementKind::StorageDead(l) => sets.kill(l),
-            StatementKind::Assign(ref place, _)
-            | StatementKind::SetDiscriminant { ref place, .. } => {
+            StatementKind::Assign(ref place, _) |
+            StatementKind::SetDiscriminant { ref place, .. } => {
                 if let PlaceBase::Local(local) = place.base {
                     sets.gen(local);
                 }
@@ -132,7 +136,7 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
                     }
                 }
             }
-            _ => (),
+            _ => {}
         }
     }
 
@@ -157,7 +161,7 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
 }
 
 impl<'mir, 'tcx> RequiresStorage<'mir, 'tcx> {
-    /// Kill locals that are fully moved and have not been borrowed.
+    /// Kills locals that are fully moved and have not been borrowed.
     fn check_for_move(&self, sets: &mut GenKillSet<Local>, loc: Location) {
         let mut visitor = MoveVisitor {
             sets,
@@ -166,8 +170,9 @@ impl<'mir, 'tcx> RequiresStorage<'mir, 'tcx> {
         visitor.visit_location(self.body, loc);
     }
 
-    /// Gen locals that are newly borrowed. This includes borrowing any part of
-    /// a local (we rely on this behavior of `HaveBeenBorrowedLocals`).
+    /// Sets GEN bit for locals that are newly borrowed. This includes borrowing
+    /// any part of a local (we rely on this behavior of
+    /// `HaveBeenBorrowedLocals`).
     fn check_for_borrow(&self, sets: &mut GenKillSet<Local>, loc: Location) {
         let mut borrowed_locals = self.borrowed_locals.borrow_mut();
         borrowed_locals.seek(loc);

@@ -13,7 +13,7 @@ use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
 use syntax_pos::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// See comment on `as_local_operand`
+    /// See comment on `as_local_operand`.
     pub fn as_local_rvalue<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Rvalue<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
@@ -22,7 +22,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.as_rvalue(block, local_scope, expr)
     }
 
-    /// Compile `expr`, yielding an rvalue.
+    /// Compiles `expr`, yielding an rvalue.
     pub fn as_rvalue<M>(
         &mut self,
         block: BasicBlock,
@@ -83,7 +83,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(block = this.as_operand(block, scope, arg));
-                // Check for -MIN on signed integers
+                // Check for `-MIN` on signed integers.
                 if this.hir.check_overflow() && op == UnOp::Neg && expr.ty.is_signed() {
                     let bool_ty = this.hir.bool_ty();
 
@@ -123,7 +123,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
                 if let Some(scope) = scope {
-                    // schedule a shallow free of that memory, lest we unwind:
+                    // Schedule a shallow free of that memory, lest we unwind.
                     this.schedule_drop_storage_and_value(
                         expr_span,
                         scope,
@@ -132,12 +132,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                 }
 
-                // malloc some memory of suitable type (thus far, uninitialized):
+                // Allocate some memory of suitable type (thus far, uninitialized).
                 let box_ = Rvalue::NullaryOp(NullOp::Box, value.ty);
                 this.cfg
                     .push_assign(block, source_info, &Place::from(result), box_);
 
-                // initialize the box contents:
+                // Initialize the box contents.
                 unpack!(
                     block = this.into(
                         &Place::from(result).deref(),
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //     fields. We don't want `let x: ();` to compile
                 //     to the same MIR as `let x = ();`.
 
-                // first process the set of fields
+                // First, process the set of fields.
                 let el_ty = expr.ty.sequence_element_type(this.hir.tcx());
                 let fields: Vec<_> = fields
                     .into_iter()
@@ -191,8 +191,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Aggregate(box AggregateKind::Array(el_ty), fields))
             }
             ExprKind::Tuple { fields } => {
-                // see (*) above
-                // first process the set of fields
+                // See (*) above.
+                // First, process the set of fields.
                 let fields: Vec<_> = fields
                     .into_iter()
                     .map(|f| unpack!(block = this.as_operand(block, scope, f)))
@@ -206,20 +206,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 upvars,
                 movability,
             } => {
-                // see (*) above
+                // See (*) above.
                 let operands: Vec<_> = upvars
                     .into_iter()
                     .map(|upvar| {
                         let upvar = this.hir.mirror(upvar);
                         match Category::of(&upvar.kind) {
-                            // Use as_place to avoid creating a temporary when
+                            // Use `as_place` to avoid creating a temporary when
                             // moving a variable into a closure, so that
                             // borrowck knows which variables to mark as being
-                            // used as mut. This is OK here because the upvar
+                            // used as mut. This is okay here because the upvar
                             // expressions have no side effects and act on
                             // disjoint places.
                             // This occurs when capturing by copy/move, while
-                            // by reference captures use as_operand
+                            // by reference captures use `as_operand`.
                             Some(Category::Place) => {
                                 let place = unpack!(block = this.as_place(block, upvar));
                                 this.consume_by_copy_or_move(place)
@@ -248,8 +248,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }).collect();
                 let result = match substs {
                     UpvarSubsts::Generator(substs) => {
-                        // We implicitly set the discriminant to 0. See
-                        // librustc_mir/transform/deaggregator.rs for details.
+                        // We implicitly set the discriminant to `0`. See
+                        // `librustc_mir/transform/deaggregator.rs` for details.
                         let movability = movability.unwrap();
                         box AggregateKind::Generator(closure_id, substs, movability)
                     }
@@ -265,7 +265,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 fields,
                 base,
             } => {
-                // see (*) above
+                // See (*) above.
                 let is_union = adt_def.is_union();
                 let active_field_index = if is_union {
                     Some(fields[0].name.index())
@@ -273,8 +273,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 };
 
-                // first process the set of fields that were provided
-                // (evaluating them in order given by user)
+                // First, process the set of fields that were provided
+                // (evaluating them in order given by user).
                 let fields_map: FxHashMap<_, _> = fields
                     .into_iter()
                     .map(|f| {
@@ -342,28 +342,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 resume.and(this.unit_rvalue())
             }
-            ExprKind::Literal { .. }
-            | ExprKind::Block { .. }
-            | ExprKind::Match { .. }
-            | ExprKind::NeverToAny { .. }
-            | ExprKind::Use { .. }
-            | ExprKind::Loop { .. }
-            | ExprKind::LogicalOp { .. }
-            | ExprKind::Call { .. }
-            | ExprKind::Field { .. }
-            | ExprKind::Deref { .. }
-            | ExprKind::Index { .. }
-            | ExprKind::VarRef { .. }
-            | ExprKind::SelfRef
-            | ExprKind::Break { .. }
-            | ExprKind::Continue { .. }
-            | ExprKind::Return { .. }
-            | ExprKind::InlineAsm { .. }
-            | ExprKind::StaticRef { .. }
-            | ExprKind::PlaceTypeAscription { .. }
-            | ExprKind::ValueTypeAscription { .. } => {
-                // these do not have corresponding `Rvalue` variants,
-                // so make an operand and then return that
+            ExprKind::Literal { .. } |
+            ExprKind::Block { .. } |
+            ExprKind::Match { .. } |
+            ExprKind::NeverToAny { .. } |
+            ExprKind::Use { .. } |
+            ExprKind::Loop { .. } |
+            ExprKind::LogicalOp { .. } |
+            ExprKind::Call { .. } |
+            ExprKind::Field { .. } |
+            ExprKind::Deref { .. } |
+            ExprKind::Index { .. } |
+            ExprKind::VarRef { .. } |
+            ExprKind::SelfRef |
+            ExprKind::Break { .. } |
+            ExprKind::Continue { .. } |
+            ExprKind::Return { .. } |
+            ExprKind::InlineAsm { .. } |
+            ExprKind::StaticRef { .. } |
+            ExprKind::PlaceTypeAscription { .. } |
+            ExprKind::ValueTypeAscription { .. } => {
+                // These do not have corresponding `Rvalue` variants,
+                // so make an operand and then return that.
                 debug_assert!(match Category::of(&expr.kind) {
                     Some(Category::Rvalue(RvalueFunc::AsRvalue)) => false,
                     _ => true,
@@ -418,7 +418,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 let overflow_err = PanicInfo::Overflow(op);
 
-                // Check for / 0
+                // Check for division by zero.
                 let is_zero = self.temp(bool_ty, span);
                 let zero = self.zero_literal(span, ty);
                 self.cfg.push_assign(
@@ -431,7 +431,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block = self.assert(block, Operand::Move(is_zero), false, zero_err, span);
 
                 // We only need to check for the overflow in one case:
-                // MIN / -1, and only for signed values.
+                // `MIN / -1`, and only for signed values.
                 if ty.is_signed() {
                     let neg_1 = self.neg_1_literal(span, ty);
                     let min = self.minval_literal(span, ty);
@@ -440,7 +440,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let is_min = self.temp(bool_ty, span);
                     let of = self.temp(bool_ty, span);
 
-                    // this does (rhs == -1) & (lhs == MIN). It could short-circuit instead
+                    // This does `(rhs == -1) & (lhs == MIN)`. It could short-circuit instead.
 
                     self.cfg.push_assign(
                         block,
@@ -545,7 +545,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                     "Unexpected capture place"
                 );
-                // Not in a closure
+                // Not in a closure.
                 debug_assert!(
                     this.upvar_mutbls.len() > upvar_index.index(),
                     "Unexpected capture place"
@@ -569,7 +569,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place),
         );
 
-        // In constants, temp_lifetime is None. We should not need to drop
+        // In constants, `temp_lifetime` is `None`. We should not need to drop
         // anything because no values with a destructor can be created in
         // a constant at this time, even if the type may need dropping.
         if let Some(temp_lifetime) = temp_lifetime {
@@ -584,7 +584,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.and(Operand::Move(Place::from(temp)))
     }
 
-    // Helper to get a `-1` value of the appropriate type
+    // Helper to get a `-1` value of the appropriate type.
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         let param_ty = ty::ParamEnv::empty().and(ty);
         let bits = self.hir.tcx().layout_of(param_ty).unwrap().size.bits();
@@ -594,7 +594,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.literal_operand(span, literal)
     }
 
-    // Helper to get the minimum value of the appropriate type
+    // Helper to get the minimum value of the appropriate type.
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
         let param_ty = ty::ParamEnv::empty().and(ty);

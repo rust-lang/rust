@@ -79,7 +79,7 @@ mod input_output;
 crate mod liveness;
 mod relate_tys;
 
-/// Type checks the given `mir` in the context of the inference
+/// Type-checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
 /// be proven. This result is includes liveness constraints that
 /// ensure that regions appearing in the types of all local variables
@@ -206,7 +206,7 @@ fn type_check_internal<'a, 'tcx, R>(
     };
 
     if !errors_reported {
-        // if verifier failed, don't do further checks to avoid ICEs
+        // If verifier failed, don't do further checks to avoid ICEs.
         checker.typeck_mir(body);
     }
 
@@ -1474,12 +1474,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::FakeRead(..)
-            | StatementKind::StorageLive(..)
-            | StatementKind::StorageDead(..)
-            | StatementKind::InlineAsm { .. }
-            | StatementKind::Retag { .. }
-            | StatementKind::Nop => {}
+            StatementKind::FakeRead(..) |
+            StatementKind::StorageLive(..) |
+            StatementKind::StorageDead(..) |
+            StatementKind::InlineAsm { .. } |
+            StatementKind::Retag { .. } |
+            StatementKind::Nop => {}
         }
     }
 

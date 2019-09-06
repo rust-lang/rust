@@ -76,9 +76,9 @@ pub(super) fn is_active<'tcx>(
     debug!("is_active(borrow_data={:?}, location={:?})", borrow_data, location);
 
     let activation_location = match borrow_data.activation_location {
-        // If this is not a 2-phase borrow, it is always active.
+        // If this is not a two-phase borrow, it is always active.
         TwoPhaseActivation::NotTwoPhase => return true,
-        // And if the unique 2-phase use is not an activation, then it is *never* active.
+        // And if the unique two-phase use is not an activation, then it is *never* active.
         TwoPhaseActivation::NotActivated => return false,
         // Otherwise, we derive info from the activation point `loc`:
         TwoPhaseActivation::ActivatedAt(loc) => loc,

@@ -260,7 +260,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let later_use = self.later_use_kind(borrow, spans, location);
                     BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1)
                 } else {
-                    // Check if the location represents a `FakeRead`, and adapt the error
+                    // Check if the location represents a FakeRead, and adapt the error
                     // message to the `FakeReadCause` it is from: in particular,
                     // the ones inserted in optimized `let var = <expr>` patterns.
                     let later_use = self.later_use_kind(borrow, spans, location);

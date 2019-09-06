@@ -1,9 +1,12 @@
+use super::lints;
+
 use crate::build;
 use crate::build::scope::DropKind;
 use crate::hair::cx::Cx;
 use crate::hair::{LintLevel, BindingMode, PatternKind};
 use crate::transform::MirSource;
 use crate::util as mir_util;
+
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
@@ -19,9 +22,7 @@ use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::kw;
 use syntax_pos::Span;
 
-use super::lints;
-
-/// Construct the MIR for a given `DefId`.
+/// Constructs the MIR for a given `DefId`.
 pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
@@ -780,7 +781,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                      ast_body: &'tcx hir::Expr)
                      -> BlockAnd<()>
     {
-        // Allocate locals for the function arguments
+        // Allocate locals for the function arguments.
         for &ArgInfo(ty, _, arg_opt, _) in arguments.iter() {
             // If this is a simple binding pattern, give the local a name for
             // debuginfo and so that error reporting knows that this is a user
@@ -807,9 +808,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let mut scope = None;
-        // Bind the argument patterns
+        // Bind the argument patterns.
         for (index, arg_info) in arguments.iter().enumerate() {
-            // Function arguments always get the first Local indices after the return place
+            // Function arguments always get the first Local indices after the return place.
             let local = Local::new(index + 1);
             let place = Place::from(local);
             let &ArgInfo(ty, opt_ty_info, arg_opt, ref self_binding) = arg_info;
@@ -826,7 +827,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let span = pattern.span;
                 self.set_correct_source_scope_for_arg(arg.hir_id, original_source_scope, span);
                 match *pattern.kind {
-                    // Don't introduce extra copies for simple bindings
+                    // Don't introduce extra copies for simple bindings.
                     PatternKind::Binding {
                         mutability,
                         var,

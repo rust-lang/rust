@@ -41,21 +41,22 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
 
-    /// A cache for deduplicating vtables
+    /// A cache for deduplicating vtables.
     pub(super) vtables:
         FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), Pointer<M::PointerTag>>,
 }
 
 /// A stack frame.
 #[derive(Clone)]
-pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
+pub struct Frame<'mir, 'tcx, Tag = (), Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
-    // Function and callsite information
+    // Function and call-site information
     ////////////////////////////////////////////////////////////////////////////////
+
     /// The MIR for the function called on this frame.
     pub body: &'mir mir::Body<'tcx>,
 
-    /// The def_id and substs of the current function.
+    /// The `DefId` and substs of the current function.
     pub instance: ty::Instance<'tcx>,
 
     /// The span of the call site.
@@ -81,17 +82,19 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
+
     /// The block that is currently executed (or will be executed after the above call stacks
     /// return).
     pub block: mir::BasicBlock,
 
-    /// The index of the currently evaluated statement.
+    /// The index of the statement currently being interpreted.
     pub stmt: usize,
 
     /// Extra data for the machine.
     pub extra: Extra,
 }
 
+/// The action to perform when popping a particular frame off the stack.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
@@ -107,15 +110,15 @@ pub enum StackPopCleanup {
 
 /// State of a local variable including a memoized layout
 #[derive(Clone, PartialEq, Eq)]
-pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
+pub struct LocalState<'tcx, Tag = (), Id = AllocId> {
     pub value: LocalValue<Tag, Id>,
-    /// Don't modify if `Some`, this is only used to prevent computing the layout twice
+    /// Don't modify if `Some`; this is only used to prevent computing the layout twice.
     pub layout: Cell<Option<TyLayout<'tcx>>>,
 }
 
-/// Current value of a local variable
+/// The current value of a local variable.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum LocalValue<Tag=(), Id=AllocId> {
+pub enum LocalValue<Tag = (), Id = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// This local is alive but not yet initialized. It can be written to
@@ -136,12 +139,12 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
         match self.value {
             LocalValue::Dead => throw_unsup!(DeadLocal),
             LocalValue::Uninitialized =>
-                bug!("The type checker should prevent reading from a never-written local"),
+                bug!("the type checker should prevent reading from a never-written local"),
             LocalValue::Live(val) => Ok(val),
         }
     }
 
-    /// Overwrite the local.  If the local can be overwritten in place, return a reference
+    /// Overwrite the local. If the local can be overwritten in place, return a reference
     /// to do so; otherwise return the `MemPlace` to consult instead.
     pub fn access_mut(
         &mut self,
@@ -296,7 +299,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         instance: ty::InstanceDef<'tcx>,
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        // do not continue if typeck errors occurred (can only occur in local crate)
+        // Do not continue if typeck errors occurred (can only occur in local crate).
         let did = instance.def_id();
         if did.is_local()
             && self.tcx.has_typeck_tables(did)
@@ -475,6 +478,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => bug!("size_and_align_of::<{:?}> not supported", layout.ty),
         }
     }
+
     #[inline]
     pub fn size_and_align_of_mplace(
         &self,
@@ -496,15 +500,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         ::log_settings::settings().indentation += 1;
 
-        // first push a stack frame so we have access to the local substs
+        // First, push a stack frame so we have access to the local substs.
         let extra = M::stack_push(self)?;
         self.stack.push(Frame {
             body,
             block: mir::START_BLOCK,
             return_to_block,
             return_place,
-            // empty local array, we fill it in below, after we are inside the stack frame and
-            // all methods actually know about the frame
+            // Empty local array; we fill it in below, after we are inside the stack frame and
+            // all methods actually know about the frame.
             locals: IndexVec::new(),
             span,
             instance,
@@ -512,7 +516,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             extra,
         });
 
-        // don't allocate at all for trivial constants
+        // Don't allocate at all for trivial constants.
         if body.local_decls.len() > 1 {
             // Locals are initially uninitialized.
             let dummy = LocalState {
@@ -523,9 +527,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Return place is handled specially by the `eval_place` functions, and the
             // entry in `locals` should never be used. Make it dead, to be sure.
             locals[mir::RETURN_PLACE].value = LocalValue::Dead;
-            // Now mark those locals as dead that we do not want to initialize
+            // Now mark those locals as dead that we do not want to initialize.
             match self.tcx.def_kind(instance.def_id()) {
-                // statics and constants don't have `Storage*` statements, no need to look for them
+                // Statics and constants don't have `Storage*` statements; no need to look for them.
                 Some(DefKind::Static)
                 | Some(DefKind::Const)
                 | Some(DefKind::AssocConst) => {},
@@ -545,7 +549,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 },
             }
-            // done
+            // Done.
             self.frame_mut().locals = locals;
         }
 
@@ -599,9 +603,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 )?;
             }
         } else {
-            // Uh, that shouldn't happen... the function did not intend to return
+            // This shouldn't happen, since the function did not intend to return.
             throw_ub!(Unreachable)
         }
+
         // Jump to new block -- *after* validation so that the spans make more sense.
         match frame.return_to_block {
             StackPopCleanup::Goto(block) => {
@@ -617,13 +622,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Mark a storage as live, killing the previous content and returning it.
+    /// Marks a storage as live, killing the previous content and returning it.
     /// Remember to deallocate that!
     pub fn storage_live(
         &mut self,
         local: mir::Local
     ) -> InterpResult<'tcx, LocalValue<M::PointerTag>> {
-        assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
+        assert!(local != mir::RETURN_PLACE, "cannot make return place live");
         trace!("{:?} is now live", local);
 
         let local_val = LocalValue::Uninitialized;
@@ -636,7 +641,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Returns the old value of the local.
     /// Remember to deallocate that!
     pub fn storage_dead(&mut self, local: mir::Local) -> LocalValue<M::PointerTag> {
-        assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
+        assert!(local != mir::RETURN_PLACE, "cannot make return place dead");
         trace!("{:?} is now dead", local);
 
         mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead)
@@ -646,7 +651,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         local: LocalValue<M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        // FIXME: should we tell the user that there was a local which was never written to?
+        // FIXME: should we tell the user that there was a local that was never written to?
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
@@ -660,9 +665,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         gid: GlobalId<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // FIXME(oli-obk): make this check an assertion that it's not a static here
+        // FIXME(oli-obk): make this check an assertion that it's not a static here.
         // FIXME(RalfJ, oli-obk): document that `Place::Static` can never be anything but a static
-        // and `ConstValue::Unevaluated` can never be a static
+        // and `ConstValue::Unevaluated` can never be a static.
         let param_env = if self.tcx.is_static(gid.instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } else {
@@ -683,8 +688,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.raw_const_to_mplace(val)
     }
 
+    /// Prints the contents of the place, for debugging purposes.
     pub fn dump_place(&self, place: Place<M::PointerTag>) {
-        // Debug output
         if !log_enabled!(::log::Level::Trace) {
             return;
         }
@@ -751,7 +756,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut last_span = None;
         let mut frames = Vec::new();
         for &Frame { instance, span, body, block, stmt, .. } in self.stack().iter().rev() {
-            // make sure we don't emit frames that are duplicates of the previous
+            // Make sure we don't emit frames that are duplicates of the previous.
             if explicit_span == Some(span) {
                 last_span = Some(span);
                 continue;

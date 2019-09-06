@@ -33,7 +33,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 
     fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         match ty.sty {
-            // Types without identity.
+            // Types without identity
             | ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -50,7 +50,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Dynamic(_, _)
             => self.pretty_print_type(ty),
 
-            // Placeholders (all printed as `_` to uniformize them).
+            // Placeholders (all printed as `_` to make them uniform)
             | ty::Param(_)
             | ty::Bound(..)
             | ty::Placeholder(_)
@@ -61,7 +61,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
                 Ok(self)
             }
 
-            // Types with identity (print the module path).
+            // Types with identity (print the module path)
             | ty::Adt(&ty::AdtDef { did: def_id, .. }, substs)
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
@@ -72,9 +72,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             => self.print_def_path(def_id, substs),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
-            ty::GeneratorWitness(_) => {
-                bug!("type_name: unexpected `GeneratorWitness`")
-            }
+            ty::GeneratorWitness(_) => bug!("type_name: unexpected `GeneratorWitness`"),
         }
     }
 
@@ -82,7 +80,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         self,
         _: &'tcx ty::Const<'tcx>,
     ) -> Result<Self::Const, Self::Error> {
-        // don't print constants to the user
+        // Don't print constants to the user.
         Ok(self)
     }
 
@@ -172,6 +170,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
         }
     }
 }
+
 impl PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     fn region_should_not_be_omitted(
         &self,
@@ -179,6 +178,7 @@ impl PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
     ) -> bool {
         false
     }
+
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = Self::Error>,

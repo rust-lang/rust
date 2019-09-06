@@ -23,10 +23,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             safety_mode
         } =
             self.hir.mirror(ast_block);
-        self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), move |this| {
+        self.in_opt_scope(opt_destruction_scope.map(|de| (de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
-                    // This is a `break`-able block
+                    // This is a `break`-able block.
                     let exit_block = this.cfg.start_new_block();
                     let block_exit = this.in_breakable_scope(
                         None, exit_block, destination.clone(), |this| {
@@ -83,7 +83,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 StmtKind::Expr { scope, expr } => {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
                     unpack!(block = this.in_opt_scope(
-                        opt_destruction_scope.map(|de|(de, source_info)), |this| {
+                        opt_destruction_scope.map(|de| (de, source_info)), |this| {
                             let si = (scope, source_info);
                             this.in_scope(si, LintLevel::Inherited, |this| {
                                 let expr = this.hir.mirror(expr);
@@ -121,7 +121,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let initializer_span = init.span();
 
                         unpack!(block = this.in_opt_scope(
-                            opt_destruction_scope.map(|de|(de, source_info)), |this| {
+                            opt_destruction_scope.map(|de| (de, source_info)), |this| {
                                 let scope = (init_scope, source_info);
                                 this.in_scope(scope, lint_level, |this| {
                                     this.declare_bindings(
@@ -165,7 +165,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             let popped = this.block_context.pop();
-            assert!(popped.map_or(false, |bf|bf.is_statement()));
+            assert!(popped.map_or(false, |bf| bf.is_statement()));
         }
 
         // Then, the block may have an optional trailing expression which is a “return” value
@@ -180,7 +180,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             unpack!(block = this.into(destination, block, expr));
             let popped = this.block_context.pop();
 
-            assert!(popped.map_or(false, |bf|bf.is_tail_expr()));
+            assert!(popped.map_or(false, |bf| bf.is_tail_expr()));
         } else {
             // If a block has no trailing expression, then it is given an implicit return type.
             // This return type is usually `()`, unless the block is diverging, in which case the
@@ -204,10 +204,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block.unit()
     }
 
-    /// If we are changing the safety mode, create a new source scope
+    /// If we are changing the safety mode, creates a new source scope.
     fn update_source_scope_for_safety_mode(&mut self,
-                                               span: Span,
-                                               safety_mode: BlockSafety)
+                                           span: Span,
+                                           safety_mode: BlockSafety)
     {
         debug!("update_source_scope_for({:?}, {:?})", span, safety_mode);
         let new_unsafety = match safety_mode {

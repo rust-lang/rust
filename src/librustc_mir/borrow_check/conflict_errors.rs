@@ -26,7 +26,7 @@ use crate::util::borrowck_errors;
 
 #[derive(Debug)]
 struct MoveSite {
-    /// Index of the "move out" that we found. The `MoveData` can
+    /// The index of the "move out" that we found. The `MoveData` can
     /// then tell us where the move occurred.
     moi: MoveOutIndex,
 
@@ -35,7 +35,7 @@ struct MoveSite {
     traversed_back_edge: bool
 }
 
-/// Which case a StorageDeadOrDrop is for.
+/// Which case a `StorageDeadOrDrop` is for.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum StorageDeadOrDrop<'tcx> {
     LocalStorageDead,
@@ -1130,8 +1130,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("`{}` is borrowed here", place_desc),
             )
         } else {
-            let root_place = self.prefixes(borrow.borrowed_place.as_ref(),
-                                           PrefixSet::All)
+            let root_place = self.prefixes(borrow.borrowed_place.as_ref(), PrefixSet::All)
                 .last()
                 .unwrap();
             let local = if let PlaceRef {
@@ -1223,7 +1222,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     &format!("function requires argument type to outlive `{}`", fr_name),
                 );
             }
-            _ => bug!("report_escaping_closure_capture called with unexpected constraint \
+            _ => bug!("`report_escaping_closure_capture` called with unexpected constraint \
                        category: `{:?}`", category),
         }
         err
@@ -1245,7 +1244,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             match tables.node_type(mir_hir_id).sty {
                 ty::Closure(..) => "closure",
                 ty::Generator(..) => "generator",
-                _ => bug!("Closure body doesn't have a closure or generator type"),
+                _ => bug!("closure body doesn't have a closure or generator type"),
             }
         } else {
             "function"
@@ -1302,7 +1301,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         'dfs: while let Some((location, is_back_edge)) = stack.pop() {
             debug!(
-                "report_use_of_moved_or_uninitialized: (current_location={:?}, back_edge={})",
+                "report_use_of_moved_or_uninitialized: current_location={:?} back_edge={}",
                 location, is_back_edge
             );
 
@@ -1310,23 +1309,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 continue;
             }
 
-            // check for moves
+            // Check for moves.
             let stmt_kind = body[location.block]
                 .statements
                 .get(location.statement_index)
                 .map(|s| &s.kind);
             if let Some(StatementKind::StorageDead(..)) = stmt_kind {
-                // this analysis only tries to find moves explicitly
+                // This analysis only tries to find moves explicitly
                 // written by the user, so we ignore the move-outs
-                // created by `StorageDead` and at the beginning
+                // created by StorageDead and at the beginning
                 // of a function.
             } else {
-                // If we are found a use of a.b.c which was in error, then we want to look for
-                // moves not only of a.b.c but also a.b and a.
+                // If we are found a use of `a.b.c` which was in error, then we want to look for
+                // moves not only of `a.b.c` but also `a.b` and `a`.
                 //
                 // Note that the moves data already includes "parent" paths, so we don't have to
-                // worry about the other case: that is, if there is a move of a.b.c, it is already
-                // marked as a move of a.b and a as well, so we will generate the correct errors
+                // worry about the other case: that is, if there is a move of `a.b.c`, it is already
+                // marked as a move of `a.b` and `a` as well, so we will generate the correct errors
                 // there.
                 let mut mpis = vec![mpi];
                 let move_paths = &self.move_data.move_paths;
@@ -1362,7 +1361,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            // check for inits
+            // Check for inits.
             let mut any_match = false;
             drop_flag_effects::for_location_inits(
                 self.infcx.tcx,

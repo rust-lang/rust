@@ -217,19 +217,19 @@ fn check_statement(
 
         StatementKind::FakeRead(_, place) => check_place(place, span),
 
-        // just an assignment
+        // This is just an assignment.
         StatementKind::SetDiscriminant { .. } => Ok(()),
 
-        | StatementKind::InlineAsm { .. } => {
+        StatementKind::InlineAsm { .. } => {
             Err((span, "cannot use inline assembly in const fn".into()))
         }
 
-        // These are all NOPs
-        | StatementKind::StorageLive(_)
-        | StatementKind::StorageDead(_)
-        | StatementKind::Retag { .. }
-        | StatementKind::AscribeUserType(..)
-        | StatementKind::Nop => Ok(()),
+        // These are all nops.
+        StatementKind::StorageLive(_) |
+        StatementKind::StorageDead(_) |
+        StatementKind::Retag { .. } |
+        StatementKind::AscribeUserType(..) |
+        StatementKind::Nop => Ok(()),
     }
 }
 

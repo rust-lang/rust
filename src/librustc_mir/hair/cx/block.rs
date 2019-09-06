@@ -64,7 +64,7 @@ fn mirror_stmts<'a, 'tcx>(
                 })))
             }
             hir::StmtKind::Item(..) => {
-                // ignore for purposes of the MIR
+                // Ignore for purposes of the MIR.
             }
             hir::StmtKind::Local(ref local) => {
                 let remainder_scope = region::Scope {

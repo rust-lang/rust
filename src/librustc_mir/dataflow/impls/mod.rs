@@ -263,7 +263,11 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
     type Idx = MovePathIndex;
-    fn name() -> &'static str { "maybe_init" }
+
+    fn name() -> &'static str {
+        "maybe_init"
+    }
+
     fn bits_per_block(&self) -> usize {
         self.move_data().move_paths.len()
     }
@@ -316,7 +320,11 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
     type Idx = MovePathIndex;
-    fn name() -> &'static str { "maybe_uninit" }
+
+    fn name() -> &'static str {
+        "maybe_uninit"
+    }
+
     fn bits_per_block(&self) -> usize {
         self.move_data().move_paths.len()
     }
@@ -374,7 +382,11 @@ impl<'a, 'tcx> BitDenotation<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
     type Idx = MovePathIndex;
-    fn name() -> &'static str { "definite_init" }
+
+    fn name() -> &'static str {
+        "definite_init"
+    }
+
     fn bits_per_block(&self) -> usize {
         self.move_data().move_paths.len()
     }
@@ -430,7 +442,11 @@ impl<'a, 'tcx> BitDenotation<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 
 impl<'a, 'tcx> BitDenotation<'tcx> for EverInitializedPlaces<'a, 'tcx> {
     type Idx = InitIndex;
-    fn name() -> &'static str { "ever_init" }
+
+    fn name() -> &'static str {
+        "ever_init"
+    }
+
     fn bits_per_block(&self) -> usize {
         self.move_data().inits.len()
     }
@@ -511,12 +527,12 @@ impl<'a, 'tcx> BottomValue for MaybeInitializedPlaces<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> BottomValue for MaybeUninitializedPlaces<'a, 'tcx> {
-    /// bottom = initialized (start_block_effect counters this at outset)
+    /// bottom = initialized (`start_block_effect` counters this at outset)
     const BOTTOM_VALUE: bool = false;
 }
 
 impl<'a, 'tcx> BottomValue for DefinitelyInitializedPlaces<'a, 'tcx> {
-    /// bottom = initialized (start_block_effect counters this at outset)
+    /// bottom = initialized (`start_block_effect` counters this at outset)
     const BOTTOM_VALUE: bool = true;
 }
 

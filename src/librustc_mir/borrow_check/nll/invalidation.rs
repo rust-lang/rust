@@ -117,12 +117,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                     self.consume_operand(location, input);
                 }
             }
-            StatementKind::Nop |
             StatementKind::AscribeUserType(..) |
             StatementKind::Retag { .. } |
-            StatementKind::StorageLive(..) => {
-                // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
-                // to borrow check.
+            StatementKind::StorageLive(..) |
+            StatementKind::Nop => {
+                // Irrelevant to borrow check.
             }
             StatementKind::StorageDead(local) => {
                 self.access_place(
@@ -481,7 +480,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         for &borrow_index in self.borrow_set.activations_at_location(location) {
             let borrow = &self.borrow_set[borrow_index];
 
-            // only mutable borrows should be 2-phase
+            // only mutable borrows should be two-phase
             assert!(match borrow.kind {
                 BorrowKind::Shared | BorrowKind::Shallow => false,
                 BorrowKind::Unique | BorrowKind::Mut { .. } => true,

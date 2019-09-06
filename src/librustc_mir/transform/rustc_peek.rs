@@ -162,7 +162,7 @@ fn each_block<'tcx, O>(
             mir::StatementKind::Nop => continue,
             mir::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
-                          "sanity_check should run before Deaggregator inserts SetDiscriminant"),
+                          "`sanity_check` should run before Deaggregator inserts SetDiscriminant"),
         };
 
         if place == peek_arg_place {

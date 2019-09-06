@@ -78,7 +78,7 @@ pub fn dump_mir<'tcx, F>(
     }
 
     let node_path = ty::print::with_forced_impl_filename_line(|| {
-        // see notes on #41697 below
+        // See notes on #41697 below.
         tcx.def_path_str(source.def_id())
     });
     dump_matched_mir_node(
@@ -99,7 +99,7 @@ pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, source: MirSource<
         Some(ref filters) => filters,
     };
     let node_path = ty::print::with_forced_impl_filename_line(|| {
-        // see notes on #41697 below
+        // See notes on #41697 below.
         tcx.def_path_str(source.def_id())
     });
     filters.split('|').any(|or_filter| {
@@ -109,7 +109,7 @@ pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, source: MirSource<
     })
 }
 
-// #41697 -- we use `with_forced_impl_filename_line()` because
+// Issue #41697 -- we use `with_forced_impl_filename_line()` because
 // `def_path_str()` would otherwise trigger `type_of`, and this can
 // run while we are already attempting to evaluate `type_of`.
 
@@ -235,7 +235,7 @@ pub(crate) fn create_dump_file(
     fs::File::create(&file_path)
 }
 
-/// Write out a human-readable textual representation for the given MIR.
+/// Writes out a human-readable textual representation for the given MIR.
 pub fn write_mir_pretty<'tcx>(
     tcx: TyCtxt<'tcx>,
     single: Option<DefId>,
@@ -247,7 +247,7 @@ pub fn write_mir_pretty<'tcx>(
     )?;
     writeln!(
         w,
-        "// and is subject to change without notice. Knock yourself out."
+        "// and is subject to change without notice."
     )?;
 
     let mut first = true;
@@ -257,7 +257,7 @@ pub fn write_mir_pretty<'tcx>(
         if first {
             first = false;
         } else {
-            // Put empty lines between all items
+            // Put empty lines between all items.
             writeln!(w, "")?;
         }
 
@@ -298,7 +298,7 @@ where
     Ok(())
 }
 
-/// Write out a human-readable textual representation for the given basic block.
+/// Writes out a human-readable textual representation for the given basic block.
 pub fn write_basic_block<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     block: BasicBlock,
@@ -465,8 +465,8 @@ fn write_scope_tree(
 
     // Local variable types (including the user's name in a comment).
     for (local, local_decl) in body.local_decls.iter_enumerated() {
-        if (1..body.arg_count+1).contains(&local.index()) {
-            // Skip over argument locals, they're printed in the signature.
+        if (1..(body.arg_count + 1)).contains(&local.index()) {
+            // Skip over argument locals; they're printed in the signature.
             continue;
         }
 
@@ -527,7 +527,7 @@ fn write_scope_tree(
     Ok(())
 }
 
-/// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
+/// Writes out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
 pub fn write_mir_intro<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -538,7 +538,7 @@ pub fn write_mir_intro<'tcx>(
     write_mir_sig(tcx, src, body, w)?;
     writeln!(w, "{{")?;
 
-    // construct a scope tree and write it out
+    // Construct a scope tree and write it out.
     let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
     for (index, scope_data) in body.source_scopes.iter().enumerate() {
         if let Some(parent) = scope_data.parent_scope {
@@ -615,7 +615,7 @@ fn write_mir_sig(
     }
 
     write!(w, " ")?;
-    // Next thing that gets printed is the opening {
+    // The next thing that gets printed is the opening `{`.
 
     Ok(())
 }

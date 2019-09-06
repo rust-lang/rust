@@ -24,11 +24,11 @@ use super::{
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum MemoryKind<T> {
-    /// Error if deallocated except during a stack pop
+    /// Error if deallocated except during a stack pop.
     Stack,
-    /// Error if ever deallocated
+    /// Error if ever deallocated.
     Vtable,
-    /// Additional memory kinds a machine wishes to distinguish from the builtin ones
+    /// Additional memory kinds that a machine wishes to distinguish from the builtin ones.
     Machine(T),
 }
 
@@ -85,7 +85,8 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// the wrong type), so we let the machine override this type.
     /// Either way, if the machine allows writing to a static, doing so will
     /// create a copy of the static allocation here.
-    // FIXME: this should not be public, but interning currently needs access to it
+    //
+    // FIXME: this should not be public, but interning currently needs access to it.
     pub(super) alloc_map: M::MemoryMap,
 
     /// Map for "extra" function pointers.
@@ -94,13 +95,14 @@ pub struct Memory<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// To be able to compare pointers with NULL, and to check alignment for accesses
     /// to ZSTs (where pointers may dangle), we keep track of the size even for allocations
     /// that do not exist any more.
-    // FIXME: this should not be public, but interning currently needs access to it
+    //
+    // FIXME: this should not be public, but interning currently needs access to it.
     pub(super) dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
 
     /// Extra data added by the machine.
     pub extra: M::MemoryExtra,
 
-    /// Lets us implement `HasDataLayout`, which is awfully convenient.
+    /// Lets us implement `HasDataLayout`, which is very convenient.
     pub tcx: TyCtxtAt<'tcx>,
 }
 
@@ -111,7 +113,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for Memory<'mir, 'tcx, M>
     }
 }
 
-// FIXME: Really we shouldn't clone memory, ever. Snapshot machinery should instead
+// FIXME: Really, we shouldn't clone memory, ever. Snapshot machinery should instead
 // carefully copy only the reachable parts.
 impl<'mir, 'tcx, M> Clone for Memory<'mir, 'tcx, M>
 where
@@ -119,7 +121,7 @@ where
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     fn clone(&self) -> Self {
-        Memory {
+        Self {
             alloc_map: self.alloc_map.clone(),
             extra_fn_ptr_map: self.extra_fn_ptr_map.clone(),
             dead_alloc_map: self.dead_alloc_map.clone(),
@@ -131,7 +133,7 @@ where
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'tcx>, extra: M::MemoryExtra) -> Self {
-        Memory {
+        Self {
             alloc_map: M::MemoryMap::default(),
             extra_fn_ptr_map: FxHashMap::default(),
             dead_alloc_map: FxHashMap::default(),
@@ -148,8 +150,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn create_fn_alloc(
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
-    ) -> Pointer<M::PointerTag>
-    {
+    ) -> Pointer<M::PointerTag> {
         let id = match fn_val {
             FnVal::Instance(instance) => self.tcx.alloc_map.lock().create_fn_alloc(instance),
             FnVal::Other(extra) => {
@@ -205,8 +206,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             throw_unsup!(ReallocateNonBasePtr)
         }
 
-        // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
-        // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
+        // For simplicity's sake, we implement reallocate as "alloc, copy, dealloc".
+        // This happens so rarely, the performance advantage is outweighed by the maintenance cost.
         let new_ptr = self.allocate(new_size, new_align, kind);
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
@@ -216,14 +217,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             ptr,
             new_ptr,
             old_size.min(new_size),
-            /*nonoverlapping*/ true,
+            /* nonoverlapping */ true,
         )?;
         self.deallocate(ptr, old_size_and_align, kind)?;
 
         Ok(new_ptr)
     }
 
-    /// Deallocate a local, or do nothing if that local has been made into a static
+    /// Deallocates a local, or do nothing if that local has been made into a static
     pub fn deallocate_local(&mut self, ptr: Pointer<M::PointerTag>) -> InterpResult<'tcx> {
         // The allocation might be already removed by static interning.
         // This can only really happen in the CTFE instance, not in miri.
@@ -249,7 +250,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let (alloc_kind, mut alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
             Some(alloc) => alloc,
             None => {
-                // Deallocating static memory -- always an error
+                // Deallocating static memory -- always an error.
                 return Err(match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
                     Some(GlobalAlloc::Function(..)) => err_unsup!(DeallocatedWrongMemoryKind(
                         "function".to_string(),
@@ -277,23 +278,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         }
 
-        // Let the machine take some extra action
+        // Let the machine take some extra action.
         let size = alloc.size;
         AllocationExtra::memory_deallocated(&mut alloc, ptr, size)?;
 
-        // Don't forget to remember size and align of this now-dead allocation
+        // Don't forget to remember size and align of this now-dead allocation.
         let old = self.dead_alloc_map.insert(
             ptr.alloc_id,
             (alloc.size, alloc.align)
         );
         if old.is_some() {
-            bug!("Nothing can be deallocated twice");
+            bug!("nothing can be deallocated twice");
         }
 
         Ok(())
     }
 
-    /// Check if the given scalar is allowed to do a memory access of given `size`
+    /// Checks if the given scalar is allowed to do a memory access of given `size`
     /// and `align`. On success, returns `None` for zero-sized accesses (where
     /// nothing else is left to do) and a `Pointer` to use for the actual access otherwise.
     /// Crucially, if the input is a `Pointer`, we will test it for liveness
@@ -393,18 +394,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         })
     }
 
-    /// Test if the pointer might be NULL.
+    /// Tests if the pointer might be NULL.
     pub fn ptr_may_be_null(
         &self,
         ptr: Pointer<M::PointerTag>,
     ) -> bool {
         let (size, _align) = self.get_size_and_align(ptr.alloc_id, AllocCheck::MaybeDead)
-            .expect("alloc info with MaybeDead cannot fail");
+            .expect("alloc info with `MaybeDead` cannot fail");
         ptr.check_inbounds_alloc(size, CheckInAllocMsg::NullPointerTest).is_err()
     }
 }
 
-/// Allocation accessors
+/// Allocation accessors.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     /// Helper function to obtain the global (tcx) allocation for a static.
     /// This attempts to return a reference to an existing allocation if
@@ -445,12 +446,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                         instance,
                         promoted: None,
                     };
-                    // use the raw query here to break validation cycles. Later uses of the static
-                    // will call the full query anyway
+                    // Use the raw query here to break validation cycles. Later uses of the static
+                    // will call the full query anyway.
                     let raw_const = tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid))
                         .map_err(|err| {
-                            // no need to report anything, the const_eval call takes care of that
-                            // for statics
+                            // No need to report anything, the `const_eval` call takes care of that
+                            // for statics.
                             assert!(tcx.is_static(def_id));
                             match err {
                                 ErrorHandled::Reported =>
@@ -493,7 +494,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     Err(Ok(alloc))
                 }
                 Cow::Owned(alloc) => {
-                    // Need to put it into the map and return a ref to that
+                    // Need to put it into the map and return a ref to that.
                     let kind = M::STATIC_KIND.expect(
                         "I got an owned allocation that I have to copy but the machine does \
                             not expect that to happen"
@@ -502,7 +503,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 }
             }
         });
-        // Now unpack that funny error type
+        // Now unpack that funny error type.
         match a {
             Ok(a) => Ok(&a.1),
             Err(a) => a
@@ -541,7 +542,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
-    /// Obtain the size and alignment of an allocation, even if that allocation has
+    /// Obtains the size and alignment of an allocation, even if that allocation has
     /// been deallocated.
     ///
     /// If `liveness` is `AllocCheck::MaybeDead`, this function always returns `Ok`.
@@ -654,7 +655,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 relocations.push((i, target_id));
             }
             if alloc.undef_mask().is_range_defined(i, i + Size::from_bytes(1)).is_ok() {
-                // this `as usize` is fine, since `i` came from a `usize`
+                // This `as usize` is fine, since `i` came from a `usize`.
                 let i = i.bytes() as usize;
 
                 // Checked definedness (and thus range) and relocations. This access also doesn't
@@ -680,10 +681,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             let mut pos = Size::ZERO;
             let relocation_width = (self.pointer_size().bytes() - 1) * 3;
             for (i, target_id) in relocations {
-                // this `as usize` is fine, since we can't print more chars than `usize::MAX`
+                // This `as usize` is fine, since we can't print more chars than `usize::MAX`.
                 write!(msg, "{:1$}", "", ((i - pos) * 3).bytes() as usize).unwrap();
                 let target = format!("({})", target_id);
-                // this `as usize` is fine, since we can't print more chars than `usize::MAX`
+                // This `as usize` is fine, since we can't print more chars than `usize::MAX`.
                 write!(msg, "└{0:─^1$}┘ ", target, relocation_width as usize).unwrap();
                 pos = i + self.pointer_size();
             }
@@ -691,7 +692,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
-    /// For debugging, print a list of allocations and all allocations they point to, recursively.
+    /// For debugging, prints a list of allocations and all allocations they point to, recursively.
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
         if !log_enabled!(::log::Level::Trace) {
             return;
@@ -738,7 +739,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     }
                 },
             };
-
         }
     }
 
@@ -752,7 +752,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         n
     }
 
-    /// This is used by [priroda](https://github.com/oli-obk/priroda)
+    /// This is used by [priroda](https://github.com/oli-obk/priroda).
     pub fn alloc_map(&self) -> &M::MemoryMap {
         &self.alloc_map
     }
@@ -803,7 +803,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         length: u64,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
-        // first copy the relocations to a temporary buffer, because
+        // First, copy the relocations to a temporary buffer, because
         // `get_bytes_mut` will clear the relocations, which is correct,
         // since we don't want to keep any relocations at the target.
         // (`get_bytes_with_undef_and_ptr` below checks that there are no
@@ -813,7 +813,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
         let tcx = self.tcx.tcx;
 
-        // This checks relocation edges on the src.
+        // This checks relocation edges on `src`.
         let src_bytes = self.get(src.alloc_id)?
             .get_bytes_with_undef_and_ptr(&tcx, src, size)?
             .as_ptr();
@@ -853,18 +853,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         }
 
-        // copy definedness to the destination
+        // Copy definedness to the destination.
         self.copy_undef_mask(src, dest, size, length)?;
-        // copy the relocations to the destination
+        // Copy the relocations to the destination.
         self.get_mut(dest.alloc_id)?.mark_relocation_range(relocations);
 
         Ok(())
     }
 }
 
-/// Undefined bytes
+/// Undefined bytes.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
-    // FIXME: Add a fast version for the common, nonoverlapping case
+    // FIXME: Add a fast version for the common, nonoverlapping case.
     fn copy_undef_mask(
         &mut self,
         src: Pointer<M::PointerTag>,
@@ -878,7 +878,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let src_alloc = self.get(src.alloc_id)?;
         let compressed = src_alloc.compress_undef_range(src, size);
 
-        // now fill in all the data
+        // Now, fill in all the data.
         let dest_allocation = self.get_mut(dest.alloc_id)?;
         dest_allocation.mark_compressed_undef_range(&compressed, dest, size, repeat);
 

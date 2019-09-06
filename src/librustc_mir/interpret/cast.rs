@@ -247,14 +247,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         sty: Ty<'tcx>,
         dty: Ty<'tcx>,
     ) -> InterpResult<'tcx> {
-        // A<Struct> -> A<Trait> conversion
+        // `A<Struct>` -> `A<Trait>` conversion
         let (src_pointee_ty, dest_pointee_ty) =
             self.tcx.struct_lockstep_tails_erasing_lifetimes(sty, dty, self.param_env);
 
         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_immediate(src)?.to_scalar_ptr()?;
-                // u64 cast is from usize to u64, which is always good
+                // `u64` cast is from `usize` to `u64`, which is always good.
                 let val = Immediate::new_slice(
                     ptr,
                     length.eval_usize(self.tcx.tcx, self.param_env),
@@ -308,9 +308,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     );
                 }
 
-                // unsizing of generic struct with pointer fields
+                // Unsizing of generic struct with pointer fields
                 // Example: `Arc<T>` -> `Arc<Trait>`
-                // here we need to increase the size of every &T thin ptr field to a fat ptr
+                // Here, we need to increase the size of every `&T` thin ptr field to a fat ptr.
                 for i in 0..src.layout.fields.count() {
                     let dst_field = self.place_field(dest, i as u64)?;
                     if dst_field.layout.is_zst() {

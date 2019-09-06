@@ -1,4 +1,5 @@
 use crate::{build, shim};
+
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{Body, MirPhase, Promoted};
@@ -66,7 +67,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
     set.extend(tcx.body_owners());
 
     // Additionally, tuple struct/variant constructors have MIR, but
-    // they don't have a BodyId, so we need to build them separately.
+    // they don't have a `BodyId`, so we need to build them separately.
     struct GatherCtors<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         set: &'a mut DefIdSet,
@@ -184,7 +185,7 @@ pub fn run_passes(
 }
 
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
-    // Unsafety check uses the raw mir, so make sure it is run
+    // Unsafety check uses the raw MIR, so make sure it is run.
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut body = tcx.mir_built(def_id).steal();
@@ -226,7 +227,7 @@ fn run_optimization_passes<'tcx>(
     promoted: Option<Promoted>,
 ) {
     run_passes(tcx, body, InstanceDef::Item(def_id), promoted, MirPhase::Optimized, &[
-        // Remove all things only needed by analysis
+        // Remove all things only needed by analysis.
         &no_landing_pads::NoLandingPads,
         &simplify_branches::SimplifyBranches::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
@@ -234,7 +235,7 @@ fn run_optimization_passes<'tcx>(
 
         &simplify::SimplifyCfg::new("early-opt"),
 
-        // These next passes must be executed together
+        // These next passes must be executed together.
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
         &no_landing_pads::NoLandingPads,
@@ -242,7 +243,7 @@ fn run_optimization_passes<'tcx>(
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
         // AddRetag needs to run after ElaborateDrops, and it needs
-        // an AllCallEdges pass right before it.  Otherwise it should
+        // an AllCallEdges pass right before it. Otherwise, it should
         // run fairly late, but before optimizations begin.
         &add_call_guards::AllCallEdges,
         &add_retag::AddRetag,
@@ -253,7 +254,6 @@ fn run_optimization_passes<'tcx>(
 
         // From here on out, regions are gone.
         &erase_regions::EraseRegions,
-
 
         // Optimizations begin.
         &uniform_array_move_out::RestoreSubsliceArrayMoveOut,
@@ -282,12 +282,12 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     if tcx.is_constructor(def_id) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
-        // qualification and borrow checking the trouble of special casing
+        // qualification and borrow checking the trouble of special-casing
         // constructors.
         return shim::build_adt_ctor(tcx, def_id);
     }
 
-    // (Mir-)Borrowck uses `mir_validated`, so we have to force it to
+    // (MIR-)borrowck uses `mir_validated`, so we have to force it to
     // execute before we can steal.
     tcx.ensure().mir_borrowck(def_id);
 
