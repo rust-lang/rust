@@ -9,8 +9,9 @@ use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestI
 use lsp_types::{ClientCapabilities, NumberOrString};
 use ra_ide_api::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
-use ra_vfs::VfsTask;
+use ra_vfs::{VfsTask, Watch};
 use relative_path::RelativePathBuf;
+use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 use threadpool::ThreadPool;
 
@@ -55,72 +56,96 @@ pub fn main_loop(
 ) -> Result<()> {
     log::info!("server_config: {:#?}", config);
 
-    // FIXME: support dynamic workspace loading.
-    let workspaces = {
-        let mut loaded_workspaces = Vec::new();
-        for ws_root in &ws_roots {
-            let workspace = ra_project_model::ProjectWorkspace::discover_with_sysroot(
-                ws_root.as_path(),
-                config.with_sysroot,
-            );
-            match workspace {
-                Ok(workspace) => loaded_workspaces.push(workspace),
-                Err(e) => {
-                    log::error!("loading workspace failed: {}", e);
+    let mut loop_state = LoopState::default();
+    let mut world_state = {
+        // FIXME: support dynamic workspace loading.
+        let workspaces = {
+            let mut loaded_workspaces = Vec::new();
+            for ws_root in &ws_roots {
+                let workspace = ra_project_model::ProjectWorkspace::discover_with_sysroot(
+                    ws_root.as_path(),
+                    config.with_sysroot,
+                );
+                match workspace {
+                    Ok(workspace) => loaded_workspaces.push(workspace),
+                    Err(e) => {
+                        log::error!("loading workspace failed: {}", e);
 
+                        show_message(
+                            req::MessageType::Error,
+                            format!("rust-analyzer failed to load workspace: {}", e),
+                            &connection.sender,
+                        );
+                    }
+                }
+            }
+            loaded_workspaces
+        };
+
+        let globs = config
+            .exclude_globs
+            .iter()
+            .map(|glob| ra_vfs_glob::Glob::new(glob))
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+
+        if config.use_client_watching {
+            let registration_options = req::DidChangeWatchedFilesRegistrationOptions {
+                watchers: workspaces
+                    .iter()
+                    .flat_map(|ws| ws.to_roots())
+                    .filter(|root| root.is_member())
+                    .map(|root| format!("{}/**/*.rs", root.path().display()))
+                    .map(|glob_pattern| req::FileSystemWatcher { glob_pattern, kind: None })
+                    .collect(),
+            };
+            let registration = req::Registration {
+                id: "file-watcher".to_string(),
+                method: "workspace/didChangeWatchedFiles".to_string(),
+                register_options: Some(serde_json::to_value(registration_options).unwrap()),
+            };
+            let params = req::RegistrationParams { registrations: vec![registration] };
+            let request =
+                request_new::<req::RegisterCapability>(loop_state.next_request_id(), params);
+            connection.sender.send(request.into()).unwrap();
+        }
+
+        let feature_flags = {
+            let mut ff = FeatureFlags::default();
+            for (flag, value) in config.feature_flags {
+                if let Err(_) = ff.set(flag.as_str(), value) {
+                    log::error!("unknown feature flag: {:?}", flag);
                     show_message(
                         req::MessageType::Error,
-                        format!("rust-analyzer failed to load workspace: {}", e),
+                        format!("unknown feature flag: {:?}", flag),
                         &connection.sender,
                     );
                 }
             }
-        }
-        loaded_workspaces
+            ff
+        };
+        log::info!("feature_flags: {:#?}", feature_flags);
+
+        WorldState::new(
+            ws_roots,
+            workspaces,
+            config.lru_capacity,
+            &globs,
+            Watch(!config.use_client_watching),
+            Options {
+                publish_decorations: config.publish_decorations,
+                supports_location_link: client_caps
+                    .text_document
+                    .and_then(|it| it.definition)
+                    .and_then(|it| it.link_support)
+                    .unwrap_or(false),
+            },
+            feature_flags,
+        )
     };
-
-    let globs = config
-        .exclude_globs
-        .iter()
-        .map(|glob| ra_vfs_glob::Glob::new(glob))
-        .collect::<std::result::Result<Vec<_>, _>>()?;
-
-    let feature_flags = {
-        let mut ff = FeatureFlags::default();
-        for (flag, value) in config.feature_flags {
-            if let Err(_) = ff.set(flag.as_str(), value) {
-                log::error!("unknown feature flag: {:?}", flag);
-                show_message(
-                    req::MessageType::Error,
-                    format!("unknown feature flag: {:?}", flag),
-                    &connection.sender,
-                );
-            }
-        }
-        ff
-    };
-    log::info!("feature_flags: {:#?}", feature_flags);
-
-    let mut world_state = WorldState::new(
-        ws_roots,
-        workspaces,
-        config.lru_capacity,
-        &globs,
-        Options {
-            publish_decorations: config.publish_decorations,
-            supports_location_link: client_caps
-                .text_document
-                .and_then(|it| it.definition)
-                .and_then(|it| it.link_support)
-                .unwrap_or(false),
-        },
-        feature_flags,
-    );
 
     let pool = ThreadPool::new(THREADPOOL_SIZE);
     let (task_sender, task_receiver) = unbounded::<Task>();
     let (libdata_sender, libdata_receiver) = unbounded::<LibraryData>();
-    let mut loop_state = LoopState::default();
 
     log::info!("server initialized, serving requests");
     {
@@ -227,6 +252,8 @@ impl fmt::Debug for Event {
 
 #[derive(Debug, Default)]
 struct LoopState {
+    next_request_id: u64,
+    pending_responses: FxHashSet<RequestId>,
     pending_requests: PendingRequests,
     subscriptions: Subscriptions,
     // We try not to index more than MAX_IN_FLIGHT_LIBS libraries at the same
@@ -234,6 +261,16 @@ struct LoopState {
     in_flight_libraries: usize,
     pending_libraries: Vec<(SourceRootId, Vec<(FileId, RelativePathBuf, Arc<String>)>)>,
     workspace_loaded: bool,
+}
+
+impl LoopState {
+    fn next_request_id(&mut self) -> RequestId {
+        self.next_request_id += 1;
+        let res: RequestId = self.next_request_id.into();
+        let inserted = self.pending_responses.insert(res.clone());
+        assert!(inserted);
+        res
+    }
 }
 
 fn loop_turn(
@@ -290,7 +327,12 @@ fn loop_turn(
                 )?;
                 state_changed = true;
             }
-            Message::Response(resp) => log::error!("unexpected response: {:?}", resp),
+            Message::Response(resp) => {
+                let removed = loop_state.pending_responses.remove(&resp.id);
+                if !removed {
+                    log::error!("unexpected response: {:?}", resp)
+                }
+            }
         },
     };
 
@@ -475,6 +517,18 @@ fn on_notification(
     };
     let not = match notification_cast::<req::DidChangeConfiguration>(not) {
         Ok(_params) => {
+            return Ok(());
+        }
+        Err(not) => not,
+    };
+    let not = match notification_cast::<req::DidChangeWatchedFiles>(not) {
+        Ok(params) => {
+            let mut vfs = state.vfs.write();
+            for change in params.changes {
+                let uri = change.uri;
+                let path = uri.to_file_path().map_err(|()| format!("invalid uri: {}", uri))?;
+                vfs.notify_changed(path)
+            }
             return Ok(());
         }
         Err(not) => not,
@@ -681,4 +735,12 @@ where
     N::Params: Serialize,
 {
     Notification::new(N::METHOD.to_string(), params)
+}
+
+fn request_new<R>(id: RequestId, params: R::Params) -> Request
+where
+    R: lsp_types::request::Request,
+    R::Params: Serialize,
+{
+    Request::new(id, R::METHOD.to_string(), params)
 }

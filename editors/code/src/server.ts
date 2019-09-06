@@ -46,6 +46,7 @@ export class Server {
                     Server.config.showWorkspaceLoadedNotification,
                 lruCapacity: Server.config.lruCapacity,
                 excludeGlobs: Server.config.excludeGlobs,
+                useClientWatching: Server.config.useClientWatching,
                 featureFlags: Server.config.featureFlags
             },
             traceOutputChannel

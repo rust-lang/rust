@@ -6,7 +6,7 @@ use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{CrateGraph, FileId, SourceRootId};
 use ra_ide_api::{AnalysisChange, AnalysisHost, FeatureFlags};
 use ra_project_model::{PackageRoot, ProjectWorkspace};
-use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask};
+use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use ra_vfs_glob::RustPackageFilterBuilder;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -37,6 +37,7 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, 
             })
             .collect(),
         sender,
+        Watch(false),
     );
     let crate_graph = ws.to_crate_graph(&mut |path: &Path| {
         let vfs_file = vfs.load(path);

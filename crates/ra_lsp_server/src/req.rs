@@ -5,10 +5,11 @@ use serde::{Deserialize, Serialize};
 pub use lsp_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CodeLens,
     CodeLensParams, CompletionParams, CompletionResponse, DidChangeConfigurationParams,
-    DocumentOnTypeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse, Hover,
-    InitializeResult, MessageType, PublishDiagnosticsParams, ReferenceParams, ShowMessageParams,
-    SignatureHelp, TextDocumentEdit, TextDocumentPositionParams, TextEdit, WorkspaceEdit,
-    WorkspaceSymbolParams,
+    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
+    DocumentOnTypeFormattingParams, DocumentSymbolParams, DocumentSymbolResponse,
+    FileSystemWatcher, Hover, InitializeResult, MessageType, PublishDiagnosticsParams,
+    ReferenceParams, Registration, RegistrationParams, ShowMessageParams, SignatureHelp,
+    TextDocumentEdit, TextDocumentPositionParams, TextEdit, WorkspaceEdit, WorkspaceSymbolParams,
 };
 
 pub enum AnalyzerStatus {}
