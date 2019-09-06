@@ -327,7 +327,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
         self.apply(|this| {
             // just go through the first pattern, as either all patterns
             // bind the same bindings or rustc would have errored much earlier
-            SimilarNamesNameVisitor(this).visit_pat(&arm.pats[0]);
+            SimilarNamesNameVisitor(this).visit_pat(&arm.pat);
             this.apply(|this| walk_expr(this, &arm.body));
         });
 
