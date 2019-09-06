@@ -15,6 +15,9 @@
     note = {commit xxxxxxx}
  */
 
+
+#include <llvm/Config/llvm-config.h>
+
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Scalar/GVN.h"
@@ -23,9 +26,12 @@
 #include "llvm/Transforms/Utils/LoopSimplify.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
+
+#if LLVM_VERSION_MAJOR > 6
 #include "llvm/Analysis/PhiValues.h"
+#endif
+
 #include "llvm/IR/DebugInfoMetadata.h"
-#include "llvm/Transforms/Utils.h"
 
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Verifier.h"
@@ -43,7 +49,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Metadata.h"
-#include "llvm/Pass.h"
+
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Scalar.h"
@@ -63,8 +69,10 @@
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/IntrinsicInst.h"
 
-#include "llvm/Transforms/Scalar/EarlyCSE.h"
+#if LLVM_VERSION_MAJOR > 6
 #include "llvm/Transforms/Scalar/InstSimplifyPass.h"
+#endif
+#include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
@@ -72,7 +80,6 @@
 #include "llvm/Transforms/Scalar/DeadStoreElimination.h"
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Transforms/Scalar/CorrelatedValuePropagation.h"
-#include "llvm/Transforms/AggressiveInstCombine/AggressiveInstCombine.h"
 #include "llvm/Transforms/Scalar/LoopIdiomRecognize.h"
 
 #include "llvm/Analysis/BasicAliasAnalysis.h"
@@ -122,6 +129,27 @@ std::string tostring(DIFFE_TYPE t) {
         assert(0 && "illegal diffetype");
         return "";
     }
+}
+
+static inline FastMathFlags getFast() {
+#if LLVM_VERSION_MAJOR > 6
+    return FastMathFlags::getFast();
+#else
+    FastMathFlags f;
+    f.set();
+    return f;
+#endif
+}
+
+Instruction *getNextNonDebugInstruction(Instruction* Z) {
+   for (Instruction *I = Z->getNextNode(); I; I = I->getNextNode())
+     if (!isa<DbgInfoIntrinsic>(I))
+       return I;
+   return nullptr;
+}
+
+bool hasMetadata(const GlobalObject* O, StringRef kind) {
+    return O->getMetadata(kind) != nullptr;
 }
 
 //note this doesn't handle recursive types!
@@ -794,7 +822,10 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
  AM.registerPass([] { return MemoryDependenceAnalysis(); });
  AM.registerPass([] { return LoopAnalysis(); });
  AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+
+#if LLVM_VERSION_MAJOR > 6
  AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
 
     LoopSimplifyPass().run(*NewF, AM);
 
@@ -852,7 +883,9 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
      AM.registerPass([] { return MemoryDependenceAnalysis(); });
      AM.registerPass([] { return LoopAnalysis(); });
      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-     AM.registerPass([] { return PhiValuesAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
+ AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
      AM.registerPass([] { return LazyValueAnalysis(); });
 
  GVN().run(*NewF, AM);
@@ -911,10 +944,14 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
      AM.registerPass([] { return MemoryDependenceAnalysis(); });
      AM.registerPass([] { return LoopAnalysis(); });
      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
      AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
      AM.registerPass([] { return LazyValueAnalysis(); });
- AggressiveInstCombinePass().run(*NewF, AM);
+ InstCombinePass().run(*NewF, AM);
+#if LLVM_VERSION_MAJOR > 6
  InstSimplifyPass().run(*NewF, AM);
+#endif
  InstCombinePass().run(*NewF, AM);
  
  EarlyCSEPass(/*memoryssa*/true).run(*NewF, AM);
@@ -977,7 +1014,9 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
      AM.registerPass([] { return MemoryDependenceAnalysis(); });
      AM.registerPass([] { return LoopAnalysis(); });
      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
      AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
      AM.registerPass([] { return LazyValueAnalysis(); });
  
      DSEPass().run(*NewF, AM);
@@ -996,7 +1035,9 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
      AM.registerPass([] { return MemoryDependenceAnalysis(); });
      AM.registerPass([] { return LoopAnalysis(); });
      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
      AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
      AM.registerPass([] { return LazyValueAnalysis(); });
     LoopAnalysisManager LAM;
      AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
@@ -1035,7 +1076,7 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
  return NewF;
 }
 
-Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, ValueToValueMapTy& ptrInputs, const SmallSet<unsigned,4>& constant_args, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &returnvals, ReturnType returnValue, bool differentialReturn, Twine name, ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type* additionalArg = nullptr) {
+Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, ValueToValueMapTy& ptrInputs, const std::set<unsigned>& constant_args, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &returnvals, ReturnType returnValue, bool differentialReturn, Twine name, ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type* additionalArg = nullptr) {
  assert(!F->empty());
  F = preprocessForClone(F, AA);
  diffeReturnArg &= differentialReturn;
@@ -1246,7 +1287,7 @@ Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution
   assert(Latch && "No single loop latch found for loop.");
 
   IRBuilder<> Builder(&*Latch->getFirstInsertionPt());
-  Builder.setFastMathFlags(FastMathFlags::getFast());
+  Builder.setFastMathFlags(getFast());
 
   // This process assumes that IV's increment is in Latch.
 
@@ -1494,7 +1535,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 
 			loopContext.dynamic = false;
 		} else {
-          llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
+          //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
           llvm::errs() << "SE could not compute loop limit.\n";
 
 		  IRBuilder <>B(&Header->front());
@@ -1571,7 +1612,9 @@ bool isCertainMallocOrFree(Function* called) {
     switch(called->getIntrinsicID()) {
             case Intrinsic::dbg_declare:
             case Intrinsic::dbg_value:
+            #if LLVM_VERSION_MAJOR > 6
             case Intrinsic::dbg_label:
+            #endif
             case Intrinsic::dbg_addr:
             case Intrinsic::lifetime_start:
             case Intrinsic::lifetime_end:
@@ -1590,7 +1633,9 @@ bool isCertainPrintOrFree(Function* called) {
     switch(called->getIntrinsicID()) {
             case Intrinsic::dbg_declare:
             case Intrinsic::dbg_value:
+            #if LLVM_VERSION_MAJOR > 6
             case Intrinsic::dbg_label:
+            #endif
             case Intrinsic::dbg_addr:
             case Intrinsic::lifetime_start:
             case Intrinsic::lifetime_end:
@@ -1608,7 +1653,9 @@ bool isCertainPrintMallocOrFree(Function* called) {
     switch(called->getIntrinsicID()) {
             case Intrinsic::dbg_declare:
             case Intrinsic::dbg_value:
+            #if LLVM_VERSION_MAJOR > 6
             case Intrinsic::dbg_label:
+            #endif
             case Intrinsic::dbg_addr:
             case Intrinsic::lifetime_start:
             case Intrinsic::lifetime_end:
@@ -1619,7 +1666,7 @@ bool isCertainPrintMallocOrFree(Function* called) {
     return false;
 }
 
-Function* CreatePrimalAndGradient(Function* todiff, const SmallSet<unsigned,4>& constant_args, TargetLibraryInfo &TLI, AAResults &AA, bool returnValue, bool differentialReturn, bool topLevel, llvm::Type* additionalArg);
+Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, AAResults &AA, bool returnValue, bool differentialReturn, bool topLevel, llvm::Type* additionalArg);
 
 class GradientUtils {
 public:
@@ -1800,7 +1847,7 @@ public:
         } else {
             ret->eraseFromParent();
             IRBuilder<> entryBuilder(inversionAllocs);
-            entryBuilder.setFastMathFlags(FastMathFlags::getFast());
+            entryBuilder.setFastMathFlags(getFast());
             ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {tapeidx-1}));
 
             PHINode* phi = BuilderQ.CreatePHI(cast<PointerType>(ret->getType())->getElementType(), 1);
@@ -1831,7 +1878,7 @@ public:
             }
             assert(outermostPreheader);
                 IRBuilder<> tbuild(reverseBlocks[outermostPreheader]);
-                tbuild.setFastMathFlags(FastMathFlags::getFast());
+                tbuild.setFastMathFlags(getFast());
 
                 // ensure we are before the terminator if it exists
                 if (tbuild.GetInsertBlock()->size()) {
@@ -2033,7 +2080,7 @@ protected:
     }
 
 public:
-  static GradientUtils* CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const SmallSet<unsigned,4> & constant_args, ReturnType returnValue, bool differentialReturn, llvm::Type* additionalArg=nullptr) {
+  static GradientUtils* CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, llvm::Type* additionalArg=nullptr) {
     assert(!todiff->empty());
     ValueToValueMapTy invertedPointers;
     SmallPtrSet<Value*,4> constants;
@@ -2186,8 +2233,8 @@ public:
               continue;
           }
             
-            IRBuilder<> BuilderZ(op->getNextNonDebugInstruction());
-            BuilderZ.setFastMathFlags(FastMathFlags::getFast());
+            IRBuilder<> BuilderZ(getNextNonDebugInstruction(op));
+            BuilderZ.setFastMathFlags(getFast());
             this->invertedPointers[op] = BuilderZ.CreatePHI(op->getType(), 1);
           
 			if ( called && (called->getName() == "malloc" || called->getName() == "_Znwm")) {
@@ -2314,15 +2361,15 @@ endCheck:
             
         assert(inversionAllocs && "must be able to allocate inverted caches");
         IRBuilder<> entryBuilder(inversionAllocs);
-        entryBuilder.setFastMathFlags(FastMathFlags::getFast());
+        entryBuilder.setFastMathFlags(getFast());
 
         if (!inLoop) {
             scopeMap[inst] = entryBuilder.CreateAlloca(inst->getType(), nullptr, inst->getName()+"_cache");
             auto pn = dyn_cast<PHINode>(inst);
-            Instruction* putafter = ( pn && pn->getNumIncomingValues()>0 )? (inst->getParent()->getFirstNonPHI() ): inst->getNextNonDebugInstruction();
+            Instruction* putafter = ( pn && pn->getNumIncomingValues()>0 )? (inst->getParent()->getFirstNonPHI() ): getNextNonDebugInstruction(inst);
             assert(putafter);
             IRBuilder <> v(putafter);
-            v.setFastMathFlags(FastMathFlags::getFast());
+            v.setFastMathFlags(getFast());
             v.CreateStore(inst, scopeMap[inst]);
                   llvm::errs() << " place foo\n"; dumpSet(originalInstructions);
         } else {
@@ -2397,7 +2444,7 @@ endCheck:
                 assert(reverseBlocks.size());
 
                 IRBuilder<> tbuild(reverseBlocks[outermostPreheader]);
-                tbuild.setFastMathFlags(FastMathFlags::getFast());
+                tbuild.setFastMathFlags(getFast());
 
                 // ensure we are before the terminator if it exists
                 if (tbuild.GetInsertBlock()->size()) {
@@ -2413,9 +2460,9 @@ endCheck:
             }
 
             auto pn = dyn_cast<PHINode>(inst);
-            Instruction* putafter = ( pn && pn->getNumIncomingValues()>0 )? (inst->getParent()->getFirstNonPHI() ): inst->getNextNonDebugInstruction();
+            Instruction* putafter = ( pn && pn->getNumIncomingValues()>0 )? (inst->getParent()->getFirstNonPHI() ): getNextNonDebugInstruction(inst);
             IRBuilder <> v(putafter);
-            v.setFastMathFlags(FastMathFlags::getFast());
+            v.setFastMathFlags(getFast());
 
             SmallVector<Value*,3> indices;
             SmallVector<Value*,3> limits;
@@ -2664,7 +2711,7 @@ endCheck:
       }
 
       if (auto arg = dyn_cast<GlobalVariable>(val)) {
-          if (!arg->hasMetadata("enzyme_shadow")) {
+          if (!hasMetadata(arg, "enzyme_shadow")) {
               arg->dump();
               report_fatal_error("cannot compute with global variable that doesn't have marked shadow global");
           }
@@ -2800,7 +2847,7 @@ class DiffeGradientUtils : public GradientUtils {
 
 public:
   ValueToValueMapTy differentials;
-  static DiffeGradientUtils* CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const SmallSet<unsigned,4> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg) {
+  static DiffeGradientUtils* CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, Type* additionalArg) {
     assert(!todiff->empty());
     ValueToValueMapTy invertedPointers;
     SmallPtrSet<Value*,4> constants;
@@ -2819,7 +2866,7 @@ private:
     assert(inversionAllocs);
     if (differentials.find(val) == differentials.end()) {
         IRBuilder<> entryBuilder(inversionAllocs);
-        entryBuilder.setFastMathFlags(FastMathFlags::getFast());
+        entryBuilder.setFastMathFlags(getFast());
         differentials[val] = entryBuilder.CreateAlloca(val->getType(), nullptr, val->getName()+"'de");
         entryBuilder.CreateStore(Constant::getNullValue(val->getType()), differentials[val]);
     }
@@ -2937,7 +2984,9 @@ void optimizeIntermediate(GradientUtils* gutils, bool topLevel, Function *F) {
      AM.registerPass([] { return MemoryDependenceAnalysis(); });
      AM.registerPass([] { return LoopAnalysis(); });
      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
      AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
      AM.registerPass([] { return LazyValueAnalysis(); });
      LoopAnalysisManager LAM;
      AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
@@ -2949,7 +2998,9 @@ void optimizeIntermediate(GradientUtils* gutils, bool topLevel, Function *F) {
  GVN().run(*F, AM);
  SROA().run(*F, AM);
  EarlyCSEPass(/*memoryssa*/true).run(*F, AM);
+#if LLVM_VERSION_MAJOR > 6
  InstSimplifyPass().run(*F, AM);
+#endif
  CorrelatedValuePropagationPass().run(*F, AM);
 
  DCEPass().run(*F, AM);
@@ -2985,7 +3036,7 @@ void optimizeIntermediate(GradientUtils* gutils, bool topLevel, Function *F) {
 }
 
 //! return structtype if recursive function
-std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResults &AA, const SmallSet<unsigned,4>& constant_args, TargetLibraryInfo &TLI, bool differentialReturn) {
+std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResults &AA, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, bool differentialReturn) {
   static std::map<std::tuple<Function*,std::set<unsigned>, bool/*differentialReturn*/>, std::pair<Function*,StructType*>> cachedfunctions;
   static std::map<std::tuple<Function*,std::set<unsigned>, bool/*differentialReturn*/>, bool> cachedfinished;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()),  differentialReturn);
@@ -2993,7 +3044,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
     return cachedfunctions[tup];
   }
 
-    if (constant_args.size() == 0 && todiff->hasMetadata("enzyme_augment")) {
+    if (constant_args.size() == 0 && hasMetadata(todiff, "enzyme_augment")) {
       auto md = todiff->getMetadata("enzyme_augment");
       if (!isa<MDTuple>(md)) {
           todiff->dump();
@@ -3121,7 +3172,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             case Intrinsic::stackrestore:
             case Intrinsic::dbg_declare:
             case Intrinsic::dbg_value:
+            #if LLVM_VERSION_MAJOR > 6
             case Intrinsic::dbg_label:
+            #endif
             case Intrinsic::dbg_addr:
             case Intrinsic::lifetime_start:
             case Intrinsic::lifetime_end:
@@ -3191,13 +3244,13 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
               report_fatal_error("unknown augment non constant function");
             }
             
-              SmallSet<unsigned,4> subconstant_args;
+              std::set<unsigned> subconstant_args;
 
               SmallVector<Value*, 8> args;
               SmallVector<DIFFE_TYPE, 8> argsInverted;
               bool modifyPrimal = !called->hasFnAttribute(Attribute::ReadNone);
               IRBuilder<> BuilderZ(op);
-              BuilderZ.setFastMathFlags(FastMathFlags::getFast());
+              BuilderZ.setFastMathFlags(getFast());
 
               if ( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
                  modifyPrimal = true;
@@ -3312,7 +3365,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   }
   
   while(gutils->inversionAllocs->size() > 0) {
-    gutils->inversionAllocs->back().moveBefore(gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetimeOrAlloca());
+    gutils->inversionAllocs->back().moveBefore(gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
   }
 
   (IRBuilder <>(gutils->inversionAllocs)).CreateUnreachable();
@@ -3507,7 +3560,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
     BasicBlock* BB2 = gutils->reverseBlocks[BB];
     assert(BB2);
     IRBuilder<> Builder(BB2);
-    Builder.setFastMathFlags(FastMathFlags::getFast());
+    Builder.setFastMathFlags(getFast());
 
       SmallVector<BasicBlock*,4> preds;
       for(auto B : predecessors(BB)) {
@@ -3561,7 +3614,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
 
       } else if (preds.size() == 2) {
         IRBuilder <> pbuilder(&BB->front());
-        pbuilder.setFastMathFlags(FastMathFlags::getFast());
+        pbuilder.setFastMathFlags(getFast());
         Value* phi = nullptr;
 
         if (inLoop && BB2 == gutils->reverseBlocks[loopContext.var->getParent()]) {
@@ -3705,7 +3758,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
         Builder.CreateCondBr(phi, f0, f1);
       } else {
         IRBuilder <> pbuilder(&BB->front());
-        pbuilder.setFastMathFlags(FastMathFlags::getFast());
+        pbuilder.setFastMathFlags(getFast());
         Value* phi = nullptr;
 
         if (true) {
@@ -3766,14 +3819,14 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
-Function* CreatePrimalAndGradient(Function* todiff, const SmallSet<unsigned,4>& constant_args, TargetLibraryInfo &TLI, AAResults &AA, bool returnValue, bool differentialReturn, bool topLevel, llvm::Type* additionalArg) {
+Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, AAResults &AA, bool returnValue, bool differentialReturn, bool topLevel, llvm::Type* additionalArg) {
   static std::map<std::tuple<Function*,std::set<unsigned>, bool/*retval*/, bool/*differentialReturn*/, bool/*topLevel*/, llvm::Type*>, Function*> cachedfunctions;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), returnValue, differentialReturn, topLevel, additionalArg);
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
     return cachedfunctions[tup];
   }
 
-  if (constant_args.size() == 0 && !topLevel && !returnValue && todiff->hasMetadata("enzyme_gradient")) {
+  if (constant_args.size() == 0 && !topLevel && !returnValue && hasMetadata(todiff, "enzyme_gradient")) {
 
       auto md = todiff->getMetadata("enzyme_gradient");
       if (!isa<MDTuple>(md)) {
@@ -3899,7 +3952,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const SmallSet<unsigned,4>& 
     if (BB2->size() > 0) {
         Builder2.SetInsertPoint(BB2->getFirstNonPHI());
     }
-    Builder2.setFastMathFlags(FastMathFlags::getFast());
+    Builder2.setFastMathFlags(getFast());
 
     std::map<Value*,Value*> alreadyLoaded;
 
@@ -3948,7 +4001,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const SmallSet<unsigned,4>& 
   if(auto op = dyn_cast<ReturnInst>(term)) {
       auto retval = op->getReturnValue();
       IRBuilder<> rb(op);
-      rb.setFastMathFlags(FastMathFlags::getFast());
+      rb.setFastMathFlags(getFast());
 	  if (retAlloca) {
 		auto si = rb.CreateStore(retval, retAlloca);
         replacedReturns[cast<ReturnInst>(gutils->getOriginal(op))] = si;
@@ -3982,7 +4035,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const SmallSet<unsigned,4>& 
     BB2->getInstList().push_front(loopContext.antivar);
 
     IRBuilder<> tbuild(gutils->reverseBlocks[loopContext.exit]);
-    tbuild.setFastMathFlags(FastMathFlags::getFast());
+    tbuild.setFastMathFlags(getFast());
 
     // ensure we are before the terminator if it exists
     if (gutils->reverseBlocks[loopContext.exit]->size()) {
@@ -4105,7 +4158,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const SmallSet<unsigned,4>& 
         case Intrinsic::stackrestore:
         case Intrinsic::dbg_declare:
         case Intrinsic::dbg_value:
+        #if LLVM_VERSION_MAJOR > 6
         case Intrinsic::dbg_label:
+        #endif
         case Intrinsic::dbg_addr:
             break;
         case Intrinsic::lifetime_start:{
@@ -4374,14 +4429,14 @@ Function* CreatePrimalAndGradient(Function* todiff, const SmallSet<unsigned,4>& 
             modifyPrimal = true;
         }
 
-          SmallSet<unsigned,4> subconstant_args;
+          std::set<unsigned> subconstant_args;
 
           SmallVector<Value*, 8> args;
           SmallVector<Value*, 8> pre_args;
           SmallVector<DIFFE_TYPE, 8> argsInverted;
           IRBuilder<> BuilderZ(op);
           std::vector<Instruction*> postCreate;
-          BuilderZ.setFastMathFlags(FastMathFlags::getFast());
+          BuilderZ.setFastMathFlags(getFast());
 
           if ( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op)) {
               //llvm::errs() << "augmented modified " << called->getName() << " modified via return" << "\n";
@@ -4929,7 +4984,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const SmallSet<unsigned,4>& 
     gutils->eraseStructuralStoresAndCalls();
 
   while(gutils->inversionAllocs->size() > 0) {
-    gutils->inversionAllocs->back().moveBefore(gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetimeOrAlloca());
+    gutils->inversionAllocs->back().moveBefore(gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
   }
 
   (IRBuilder <>(gutils->inversionAllocs)).CreateUnreachable();
@@ -4987,7 +5042,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   if (autodiff_print)
       llvm::errs() << "prefn:\n" << *fn << "\n";
 
-  SmallSet<unsigned,4> constants;
+  std::set<unsigned> constants;
   SmallVector<Value*,2> args;
 
   unsigned truei = 0;
@@ -5080,7 +5135,7 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
   assert(newFunc);
   if (autodiff_print)
     llvm::errs() << "postfn:\n" << *newFunc << "\n";
-  Builder.setFastMathFlags(FastMathFlags::getFast());
+  Builder.setFastMathFlags(getFast());
 
   CallInst* diffret = cast<CallInst>(Builder.CreateCall(newFunc, args));
   diffret->setCallingConv(CI->getCallingConv());
@@ -5106,7 +5161,7 @@ static bool lowerAutodiffIntrinsic(Function &F, TargetLibraryInfo &TLI, AAResult
       if (!CI) continue;
 
       Function *Fn = CI->getCalledFunction();
-      if (Fn && (Fn->getIntrinsicID() == Intrinsic::autodiff || Fn->getName() == "__enzyme_autodiff")) {
+      if (Fn && Fn->getName() == "__enzyme_autodiff") {
         HandleAutoDiff(CI, TLI, AA);//, LI, DT);
         Changed = true;
       }
