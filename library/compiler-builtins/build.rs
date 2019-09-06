@@ -8,6 +8,9 @@ fn main() {
 
     println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
+    // Activate libm's unstable features to make full use of Nightly.
+    println!("rustc-cfg=libm/unstable");
+
     // Emscripten's runtime includes all the builtins
     if target.contains("emscripten") {
         return;
