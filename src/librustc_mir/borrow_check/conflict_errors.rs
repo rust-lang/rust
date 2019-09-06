@@ -98,7 +98,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 &self.describe_place_with_options(moved_place, IncludingDowncast(true))
                     .unwrap_or_else(|| "_".to_owned()),
             );
-            err.span_label(span, format!("use of possibly uninitialized {}", item_msg));
+            err.span_label(span, format!("use of possibly-uninitialized {}", item_msg));
 
             use_spans.var_span_label(
                 &mut err,

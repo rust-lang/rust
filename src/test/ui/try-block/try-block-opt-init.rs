@@ -12,5 +12,5 @@ pub fn main() {
         Ok::<(), ()>(())?;
         use_val(cfg_res);
     };
-    assert_eq!(cfg_res, 5); //~ ERROR borrow of possibly uninitialized variable: `cfg_res`
+    assert_eq!(cfg_res, 5); //~ ERROR borrow of possibly-uninitialized variable: `cfg_res`
 }

@@ -1998,7 +1998,7 @@ pub fn parse_error_format(
             Some(arg) => early_error(
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
                 &format!(
-                    "argument for --error-format must be `human`, `json` or \
+                    "argument for `--error-format` must be `human`, `json` or \
                      `short` (instead was `{}`)",
                     arg
                 ),
@@ -2037,7 +2037,7 @@ pub fn build_session_options_and_crate_config(
             early_error(
                 ErrorOutputType::default(),
                 &format!(
-                    "argument for --edition must be one of: \
+                    "argument for `--edition` must be one of: \
                      {}. (instead was `{}`)",
                     EDITION_NAME_LIST,
                     arg
@@ -2051,7 +2051,7 @@ pub fn build_session_options_and_crate_config(
         early_error(
                 ErrorOutputType::default(),
                 &format!(
-                    "Edition {} is unstable and only \
+                    "edition {} is unstable and only \
                      available for nightly builds of rustc.",
                     edition,
                 )
@@ -2075,14 +2075,14 @@ pub fn build_session_options_and_crate_config(
         if let ErrorOutputType::Json { pretty: true, json_rendered } = error_format {
             early_error(
                 ErrorOutputType::Json { pretty: false, json_rendered },
-                "--error-format=pretty-json is unstable",
+                "`--error-format=pretty-json` is unstable",
             );
         }
         if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(_)) =
             error_format {
             early_error(
                 ErrorOutputType::Json { pretty: false, json_rendered },
-                "--error-format=human-annotate-rs is unstable",
+                "`--error-format=human-annotate-rs` is unstable",
             );
         }
     }
@@ -2132,8 +2132,8 @@ pub fn build_session_options_and_crate_config(
                         early_warn(
                             error_format,
                             &format!(
-                                "--emit={} with -o incompatible with \
-                                 -C codegen-units=N for N > 1",
+                                "`--emit={}` with `-o` incompatible with \
+                                 `-C codegen-units=N` for N > 1",
                                 ot
                             ),
                         );
@@ -2153,21 +2153,21 @@ pub fn build_session_options_and_crate_config(
     if debugging_opts.threads == Some(0) {
         early_error(
             error_format,
-            "Value for threads must be a positive nonzero integer",
+            "value for threads must be a positive non-zero integer",
         );
     }
 
     if debugging_opts.threads.unwrap_or(1) > 1 && debugging_opts.fuel.is_some() {
         early_error(
             error_format,
-            "Optimization fuel is incompatible with multiple threads",
+            "optimization fuel is incompatible with multiple threads",
         );
     }
 
     if codegen_units == Some(0) {
         early_error(
             error_format,
-            "Value for codegen units must be a positive nonzero integer",
+            "value for codegen units must be a positive non-zero integer",
         );
     }
 

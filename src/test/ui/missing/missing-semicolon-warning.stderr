@@ -7,7 +7,7 @@ LL |         $( let x = $e1 )*;
 LL | fn main() { m!(0, 0; 0, 0); }
    |             --------------- in this macro invocation
    |
-   = note: This was erroneously allowed and will become a hard error in a future release
+   = note: this was erroneously allowed and will become a hard error in a future release
 
 warning: expected `;`, found `println`
   --> $DIR/missing-semicolon-warning.rs:7:12
@@ -18,5 +18,5 @@ LL |         $( println!("{}", $e2) )*;
 LL | fn main() { m!(0, 0; 0, 0); }
    |             --------------- in this macro invocation
    |
-   = note: This was erroneously allowed and will become a hard error in a future release
+   = note: this was erroneously allowed and will become a hard error in a future release
 

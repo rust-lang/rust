@@ -26,13 +26,13 @@ impl Drop for D {
 fn cannot_partially_init_adt_with_drop() {
     let d: D;
     d.x = 10;
-    //~^ ERROR assign of possibly uninitialized variable: `d` [E0381]
+    //~^ ERROR assign of possibly-uninitialized variable: `d` [E0381]
 }
 
 fn cannot_partially_init_mutable_adt_with_drop() {
     let mut d: D;
     d.x = 10;
-    //~^ ERROR assign of possibly uninitialized variable: `d` [E0381]
+    //~^ ERROR assign of possibly-uninitialized variable: `d` [E0381]
 }
 
 fn cannot_partially_reinit_adt_with_drop() {
@@ -45,13 +45,13 @@ fn cannot_partially_reinit_adt_with_drop() {
 fn cannot_partially_init_inner_adt_via_outer_with_drop() {
     let d: D;
     d.s.y = 20;
-    //~^ ERROR assign to part of possibly uninitialized variable: `d` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `d` [E0381]
 }
 
 fn cannot_partially_init_inner_adt_via_mutable_outer_with_drop() {
     let mut d: D;
     d.s.y = 20;
-    //~^ ERROR assign to part of possibly uninitialized variable: `d` [E0381]
+    //~^ ERROR assign to part of possibly-uninitialized variable: `d` [E0381]
 }
 
 fn cannot_partially_reinit_inner_adt_via_outer_with_drop() {

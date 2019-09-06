@@ -1,20 +1,20 @@
-error[E0381]: assign to part of possibly uninitialized variable: `t`
+error[E0381]: assign to part of possibly-uninitialized variable: `t`
   --> $DIR/partial-initialization-across-await.rs:13:5
    |
 LL |     t.0 = 42;
-   |     ^^^^^^^^ use of possibly uninitialized `t`
+   |     ^^^^^^^^ use of possibly-uninitialized `t`
 
-error[E0381]: assign to part of possibly uninitialized variable: `t`
+error[E0381]: assign to part of possibly-uninitialized variable: `t`
   --> $DIR/partial-initialization-across-await.rs:22:5
    |
 LL |     t.0 = 42;
-   |     ^^^^^^^^ use of possibly uninitialized `t`
+   |     ^^^^^^^^ use of possibly-uninitialized `t`
 
-error[E0381]: assign to part of possibly uninitialized variable: `t`
+error[E0381]: assign to part of possibly-uninitialized variable: `t`
   --> $DIR/partial-initialization-across-await.rs:31:5
    |
 LL |     t.x = 42;
-   |     ^^^^^^^^ use of possibly uninitialized `t`
+   |     ^^^^^^^^ use of possibly-uninitialized `t`
 
 error: aborting due to 3 previous errors
 

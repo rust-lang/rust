@@ -469,7 +469,7 @@ impl<'a> Parser<'a> {
         self.diagnostic().struct_span_warn(self.token.span, {
             &format!("expected `;`, found {}", self.this_token_descr())
         }).note({
-            "This was erroneously allowed and will become a hard error in a future release"
+            "this was erroneously allowed and will become a hard error in a future release"
         }).emit();
     }
 }
