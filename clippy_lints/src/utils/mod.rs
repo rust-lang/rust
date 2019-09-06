@@ -1126,7 +1126,6 @@ mod test {
 }
 
 pub fn match_def_path<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, did: DefId, syms: &[&str]) -> bool {
-    // HACK: find a way to use symbols from clippy or just go fully to diagnostic items
-    let syms: Vec<_> = syms.iter().map(|sym| Symbol::intern(sym)).collect();
-    cx.match_def_path(did, &syms)
+    let path = cx.get_def_path(did);
+    path.len() == syms.len() && path.into_iter().zip(syms.iter()).all(|(a, &b)| a.as_str() == b)
 }
