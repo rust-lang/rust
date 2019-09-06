@@ -106,35 +106,12 @@ to load path and require it in `init.el`
   - Note that if you use a plugin manager other than `vim-plug`, you may need to manually
     checkout the `release` branch wherever your plugin manager cloned it. Otherwise you will
     get errors about a missing javascript file.
-* Add rust analyzer using: [coc.nvim wiki][coc-wiki]
-  - Use `:CocConfig` in command mode to edit the config file.
-
-```jsonc
- "languageserver": {
-  "rust": {
-    "command": "ra_lsp_server",
-    "filetypes": ["rust"],
-    "rootPatterns": ["Cargo.toml"]
-  }
- }
-```
-
-For those not familiar with js, the whole file should be enclosed in `{` and `}`, with all of your config options in between. So for example, if rust-analyzer was your only language server, you could do the following:
-
-```jsonc
-{
- "languageserver": {
-  "rust": {
-    "command": "ra_lsp_server",
-    "filetypes": ["rust"],
-    "rootPatterns": ["Cargo.toml"]
-  }
- }
-}
-```
+* Run `:CocInstall coc-rust-analyzer` to install `coc-rust-analyzer`, this extension already implemented _almost_ all features supported in VSCode extension:
+  - same configurations as VSCode extension, `rust-analyzer.raLspServerPath`, `rust-analyzer.enableCargoWatchOnStartup` etc.
+  - same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.startCargoWatch` etc.
+  - highlighting and inlay_hints is not works by now
 
 [coc.nvim]: https://github.com/neoclide/coc.nvim
-[coc-wiki]: https://github.com/neoclide/coc.nvim/wiki/Language-servers#rust
 [coc-vim-conf]: https://github.com/neoclide/coc.nvim/#example-vim-configuration
 
 
