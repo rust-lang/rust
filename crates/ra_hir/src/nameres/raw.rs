@@ -134,12 +134,14 @@ pub(super) enum ModuleData {
         name: Name,
         ast_id: FileAstId<ast::Module>,
         attr_path: Option<SmolStr>,
+        is_macro_use: bool,
     },
     Definition {
         name: Name,
         ast_id: FileAstId<ast::Module>,
         items: Vec<RawItem>,
         attr_path: Option<SmolStr>,
+        is_macro_use: bool,
     },
 }
 
@@ -267,10 +269,15 @@ impl RawItemsCollector {
         };
 
         let ast_id = self.source_ast_id_map.ast_id(&module);
+        let is_macro_use = module.has_atom_attr("macro_use");
         if module.has_semi() {
             let attr_path = extract_mod_path_attribute(&module);
-            let item =
-                self.raw_items.modules.alloc(ModuleData::Declaration { name, ast_id, attr_path });
+            let item = self.raw_items.modules.alloc(ModuleData::Declaration {
+                name,
+                ast_id,
+                attr_path,
+                is_macro_use,
+            });
             self.push_item(current_module, RawItem::Module(item));
             return;
         }
@@ -282,6 +289,7 @@ impl RawItemsCollector {
                 ast_id,
                 items: Vec::new(),
                 attr_path,
+                is_macro_use,
             });
             self.process_module(Some(item), item_list);
             self.push_item(current_module, RawItem::Module(item));

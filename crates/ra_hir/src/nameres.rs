@@ -139,6 +139,7 @@ pub(crate) struct ModuleData {
 pub struct ModuleScope {
     items: FxHashMap<Name, Resolution>,
     macros: FxHashMap<Name, MacroDef>,
+    textual_macros: FxHashMap<Name, MacroDef>,
 }
 
 static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
@@ -164,12 +165,16 @@ impl ModuleScope {
             _ => None,
         })
     }
+    /// It resolves in module scope. Textual scoped macros are ignored here.
     fn get_item_or_macro(&self, name: &Name) -> Option<ItemOrMacro> {
         match (self.get(name), self.macros.get(name)) {
             (Some(item), _) if !item.def.is_none() => Some(Either::A(item.def)),
             (_, Some(macro_)) => Some(Either::B(*macro_)),
             _ => None,
         }
+    }
+    fn get_textual_macro(&self, name: &Name) -> Option<MacroDef> {
+        self.textual_macros.get(name).copied()
     }
 }
 
