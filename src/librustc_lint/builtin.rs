@@ -772,7 +772,7 @@ impl EarlyLintPass for UnusedDocComment {
     }
 
     fn check_arm(&mut self, cx: &EarlyContext<'_>, arm: &ast::Arm) {
-        let arm_span = arm.pats[0].span.with_hi(arm.body.span.hi());
+        let arm_span = arm.pat.span.with_hi(arm.body.span.hi());
         self.warn_if_doc(cx, arm_span, "match arms", false, &arm.attrs);
     }
 

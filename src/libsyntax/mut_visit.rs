@@ -402,14 +402,11 @@ pub fn noop_visit_use_tree<T: MutVisitor>(use_tree: &mut UseTree, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_flat_map_arm<T: MutVisitor>(
-    mut arm: Arm,
-    vis: &mut T,
-) -> SmallVec<[Arm; 1]> {
-    let Arm { attrs, pats, guard, body, span, id } = &mut arm;
+pub fn noop_flat_map_arm<T: MutVisitor>(mut arm: Arm, vis: &mut T) -> SmallVec<[Arm; 1]> {
+    let Arm { attrs, pat, guard, body, span, id } = &mut arm;
     visit_attrs(attrs, vis);
     vis.visit_id(id);
-    visit_vec(pats, |pat| vis.visit_pat(pat));
+    vis.visit_pat(pat);
     visit_opt(guard, |guard| vis.visit_expr(guard));
     vis.visit_expr(body);
     vis.visit_span(span);
@@ -1132,8 +1129,8 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
             vis.visit_ty(ty);
         }
         ExprKind::AddrOf(_m, ohs) => vis.visit_expr(ohs),
-        ExprKind::Let(pats, scrutinee) => {
-            visit_vec(pats, |pat| vis.visit_pat(pat));
+        ExprKind::Let(pat, scrutinee) => {
+            vis.visit_pat(pat);
             vis.visit_expr(scrutinee);
         }
         ExprKind::If(cond, tr, fl) => {

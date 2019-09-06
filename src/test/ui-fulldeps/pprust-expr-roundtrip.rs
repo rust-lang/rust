@@ -150,12 +150,12 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::Try(e)));
             },
             19 => {
-                let ps = vec![P(Pat {
+                let pat = P(Pat {
                     id: DUMMY_NODE_ID,
                     node: PatKind::Wild,
                     span: DUMMY_SP,
-                })];
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::Let(ps.clone(), e)))
+                });
+                iter_exprs(depth - 1, &mut |e| g(ExprKind::Let(pat.clone(), e)))
             },
             _ => panic!("bad counter value in iter_exprs"),
         }

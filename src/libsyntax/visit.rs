@@ -678,9 +678,8 @@ pub fn walk_anon_const<'a, V: Visitor<'a>>(visitor: &mut V, constant: &'a AnonCo
 }
 
 pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
-    for attr in expression.attrs.iter() {
-        visitor.visit_attribute(attr);
-    }
+    walk_list!(visitor, visit_attribute, expression.attrs.iter());
+
     match expression.node {
         ExprKind::Box(ref subexpression) => {
             visitor.visit_expr(subexpression)
@@ -719,8 +718,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
-        ExprKind::Let(ref pats, ref scrutinee) => {
-            walk_list!(visitor, visit_pat, pats);
+        ExprKind::Let(ref pat, ref scrutinee) => {
+            visitor.visit_pat(pat);
             visitor.visit_expr(scrutinee);
         }
         ExprKind::If(ref head_expression, ref if_block, ref optional_else) => {
@@ -831,10 +830,10 @@ pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) {
 }
 
 pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
-    walk_list!(visitor, visit_pat, &arm.pats);
-    if let Some(ref e) = &arm.guard {
-        visitor.visit_expr(e);
-    }
+    visitor.visit_pat(&arm.pat);
+    // NOTE(or_patterns; Centril | dlrobertson):
+    // If you change this, also change the hack in `lowering.rs`.
+    walk_list!(visitor, visit_expr, &arm.guard);
     visitor.visit_expr(&arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
 }
