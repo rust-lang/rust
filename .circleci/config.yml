@@ -19,6 +19,25 @@ jobs:
             cd build
             make -j2
       - run:
+          name: cmake-en
+          command: |
+            cd enzyme
+            mkdir build
+            cd build
+            cmake .. -DLLVM_DIR=../../build/lib/cmake/llvm -DLLVM_EXTERNAL_LIT=../../build/bin/llvm-lit -DARG_ALLOW_EXTERNAL=YES
+      - run:
+          name: make-en
+          command: |
+            cd enzyme
+            cd build
+            make -j2
+      - run:
+          name: check-en
+          command: |
+            cd enzyme
+            cd build
+            make -j2 check-enzyme
+      - run:
           name: test
           no_output_timeout: 1200
           command: |
