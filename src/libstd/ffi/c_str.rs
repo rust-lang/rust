@@ -938,13 +938,10 @@ impl CStr {
     /// allows inspection and interoperation of non-owned C strings. This method
     /// is unsafe for a number of reasons:
     ///
-    /// * There is no guarantee to the validity of `ptr`.
-    /// * The returned lifetime is not guaranteed to be the actual lifetime of
-    ///   `ptr`.
-    /// * There is no guarantee that the memory pointed to by `ptr` contains a
-    ///   valid nul terminator byte at the end of the string.
-    /// * It is not guaranteed that the memory pointed by `ptr` won't change
-    ///   before the `CStr` has been destroyed.
+    /// * The pointer must be non-null,
+    /// * The returned lifetime must be actual lifetime of the memory that `ptr` points to,
+    /// * The memory pointed to by `ptr` must have a nul terminator byte within the allocation,
+    /// * The memory pointed by `ptr` must not be modified before the `CStr` has been destroyed.
     ///
     /// # Examples
     ///
