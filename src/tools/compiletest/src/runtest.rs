@@ -1557,7 +1557,11 @@ impl<'test> TestCx<'test> {
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
                 // can turn it back on if needed.
-                if !self.config.src_base.ends_with("rustdoc-ui") {
+                if !self.config.src_base.ends_with("rustdoc-ui") &&
+                    // Note that we don't call pass_mode() here as we don't want
+                    // to set unused to allow if we've overriden the pass mode
+                    // via command line flags.
+                    self.props.local_pass_mode() != Some(PassMode::Run) {
                     rustc.args(&["-A", "unused"]);
                 }
             }

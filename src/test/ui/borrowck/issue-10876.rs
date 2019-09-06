@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 enum Nat {
     S(Box<Nat>),

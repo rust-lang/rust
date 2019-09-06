@@ -11,8 +11,8 @@ use std::sync::mpsc::channel;
 fn main() {
     let (tx, rx) = channel();
     let x = Some(rx);
-    tx.send(false);
-    tx.send(false);
+    tx.send(false).unwrap();
+    tx.send(false).unwrap();
     match x {
         Some(z) if z.recv().unwrap() => { panic!() },
         Some(z) => { assert!(!z.recv().unwrap()); },

@@ -3,6 +3,9 @@
 // run-pass
 
 #![deny(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_must_use)]
+#![allow(path_statements)]
 
 // Test that the drop order for locals in a fn and async fn matches up.
 extern crate arc_wake;
@@ -10,7 +13,6 @@ extern crate arc_wake;
 use arc_wake::ArcWake;
 use std::cell::RefCell;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -42,7 +44,7 @@ struct NeverReady;
 
 impl Future for NeverReady {
     type Output = ();
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         Poll::Pending
     }
 }

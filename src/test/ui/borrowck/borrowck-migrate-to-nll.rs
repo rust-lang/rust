@@ -15,8 +15,8 @@
 // revisions: zflag edition
 //[zflag]compile-flags: -Z borrowck=migrate
 //[edition]edition:2018
-//[zflag] run-pass
-//[edition] run-pass
+//[zflag] check-pass
+//[edition] check-pass
 
 pub struct Block<'a> {
     current: &'a u8,

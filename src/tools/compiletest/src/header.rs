@@ -628,6 +628,11 @@ impl TestProps {
         }
         self.pass_mode
     }
+
+    // does not consider CLI override for pass mode
+    pub fn local_pass_mode(&self) -> Option<PassMode> {
+        self.pass_mode
+    }
 }
 
 fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
