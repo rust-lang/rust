@@ -4,6 +4,8 @@
 //
 // Therefore, for backwards-compatiblity, under borrowck=migrate the
 // NLL checks will be emitted as *warnings*.
+//
+// In Rust 2018, no errors will be downgraded to warnings.
 
 // NLL mode makes this compile-fail; we cannot currently encode a
 // test that is run-pass or compile-fail based on compare-mode. So
@@ -16,7 +18,6 @@
 //[zflag]compile-flags: -Z borrowck=migrate
 //[edition]edition:2018
 //[zflag] run-pass
-//[edition] run-pass
 
 pub struct Block<'a> {
     current: &'a u8,
@@ -26,6 +27,7 @@ pub struct Block<'a> {
 fn bump<'a>(mut block: &mut Block<'a>) {
     let x = &mut block;
     let p: &'a u8 = &*block.current;
+    //[edition]~^ ERROR cannot borrow `*block.current` as immutable
     // (use `x` and `p` so enabling NLL doesn't assign overly short lifetimes)
     drop(x);
     drop(p);
