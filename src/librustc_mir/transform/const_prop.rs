@@ -325,39 +325,28 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             },
 
             Rvalue::UnaryOp(op, ref arg) => {
-                let def_id = if self.tcx.is_closure(self.source.def_id()) {
-                    self.tcx.closure_base_def_id(self.source.def_id())
-                } else {
-                    self.source.def_id()
-                };
-                let generics = self.tcx.generics_of(def_id);
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
-                }
+                let overflow_check = self.tcx.sess.overflow_checks();
 
-                let arg = self.eval_operand(arg, source_info)?;
-                let oflo_check = self.tcx.sess.overflow_checks();
-                let val = self.use_ecx(source_info, |this| {
-                    let prim = this.ecx.read_immediate(arg)?;
-                    match op {
-                        UnOp::Neg => {
-                            // We check overflow in debug mode already
-                            // so should only check in release mode.
-                            if !oflo_check
-                            && prim.layout.ty.is_signed()
-                            && prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
+                self.use_ecx(source_info, |this| {
+                    // We check overflow in debug mode already
+                    // so should only check in release mode.
+                    if op == UnOp::Neg && !overflow_check {
+                        let ty = arg.ty(&this.local_decls, this.tcx);
+
+                        if ty.is_integral() {
+                            let arg = this.ecx.eval_operand(arg, None)?;
+                            let prim = this.ecx.read_immediate(arg)?;
+                            // Need to do overflow check here: For actual CTFE, MIR
+                            // generation emits code that does this before calling the op.
+                            if prim.to_bits()? == (1 << (prim.layout.size.bits() - 1)) {
                                 throw_panic!(OverflowNeg)
                             }
                         }
-                        UnOp::Not => {
-                            // Cannot overflow
-                        }
                     }
-                    // Now run the actual operation.
-                    this.ecx.unary_op(op, prim)
-                })?;
-                Some(val.into())
+
+                    this.ecx.eval_rvalue_into_place(rvalue, place)?;
+                    this.ecx.eval_place_to_op(place, Some(place_layout))
+                })
             }
             Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
