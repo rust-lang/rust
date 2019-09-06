@@ -2,9 +2,27 @@
 
 ## [Unreleased]
 
+## [1.4.7] 2019-09-06
+
+### Added
+
+- Add `--config` command line option.
+
+### Changed
+
+- Update `rustc-ap-*` crates to 581.0.0.
+- rustfmt now do not warn against trailing whitespaces inside macro calls.
+
+### Fixed
+
+- Fix `merge_imports` generating invalid code.
+- Fix removing discriminant values on enum variants.
+- Fix modules defined inside `cfg_if!` not being formatted.
+- Fix minor formatting issues.
+
 ## [1.4.6] 2019-08-28
 
-## Added
+### Added
 
 - Add `--message-format` command line option to `cargo-fmt`.
 - Add `-l,--files-with-diff` command line option to `rustfmt`.
