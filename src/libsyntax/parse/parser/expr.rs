@@ -843,7 +843,7 @@ impl<'a> Parser<'a> {
                 return self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs);
             }
             token::BinOp(token::Or) | token::OrOr => {
-                return self.parse_closure(attrs);
+                return self.parse_closure_expr(attrs);
             }
             token::OpenDelim(token::Bracket) => {
                 self.bump();
@@ -919,7 +919,7 @@ impl<'a> Parser<'a> {
                     return self.maybe_recover_from_bad_qpath(expr, true);
                 }
                 if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
-                    return self.parse_closure(attrs);
+                    return self.parse_closure_expr(attrs);
                 }
                 if self.eat_keyword(kw::If) {
                     return self.parse_if_expr(attrs);
@@ -996,7 +996,7 @@ impl<'a> Parser<'a> {
                     return if self.is_async_block() { // Check for `async {` and `async move {`.
                         self.parse_async_block(attrs)
                     } else {
-                        self.parse_closure(attrs)
+                        self.parse_closure_expr(attrs)
                     };
                 }
                 if self.eat_keyword(kw::Return) {
@@ -1097,8 +1097,8 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, opt_label), attrs))
     }
 
-    /// Parses a closure (e.g., `move |args| expr`).
-    fn parse_closure(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    /// Parses a closure expression (e.g., `move |args| expr`).
+    fn parse_closure_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
 
         let movability = if self.eat_keyword(kw::Static) {

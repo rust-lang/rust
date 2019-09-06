@@ -344,7 +344,6 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
             walk_list!(visitor, visit_lifetime, opt_lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyKind::Never => {}
         TyKind::Tup(ref tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
@@ -373,6 +372,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Mac(ref mac) => {
             visitor.visit_mac(mac)
         }
+        TyKind::Never |
         TyKind::CVarArgs => {}
     }
 }

@@ -39,7 +39,7 @@ fn t1() {
         let mut string_reader = setup(
             &sm,
             &sh,
-            "/* my source file */ fn main() { println!(\"zebra\"); }\n".to_owned(),
+            "/* my source file */ fn main() { println!(\"zebra\"); }\n".to_string(),
         );
         assert_eq!(string_reader.next_token(), token::Comment);
         assert_eq!(string_reader.next_token(), token::Whitespace);

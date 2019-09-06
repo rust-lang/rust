@@ -479,8 +479,8 @@ impl SourceMap {
     }
 
     pub fn span_to_unmapped_path(&self, sp: Span) -> FileName {
-        let source_file = self.lookup_char_pos(sp.lo()).file;
-        source_file.unmapped_path.clone().unwrap_or(source_file.name.clone())
+        self.lookup_char_pos(sp.lo()).file.unmapped_path.clone()
+            .expect("`SourceMap::span_to_unmapped_path` called for imported `SourceFile`?")
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {

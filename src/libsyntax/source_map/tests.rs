@@ -97,7 +97,7 @@ fn t6() {
 #[test]
 fn t7() {
     let sm = init_source_map();
-    let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
+    let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
     let file_lines = sm.span_to_lines(span).unwrap();
 
     assert_eq!(file_lines.file.name, PathBuf::from("blork.rs").into());
@@ -113,7 +113,7 @@ fn span_from_selection(input: &str, selection: &str) -> Span {
     assert_eq!(input.len(), selection.len());
     let left_index = selection.find('~').unwrap() as u32;
     let right_index = selection.rfind('~').map(|x|x as u32).unwrap_or(left_index);
-    Span::new(BytePos(left_index), BytePos(right_index + 1), NO_EXPANSION)
+    Span::with_root_ctxt(BytePos(left_index), BytePos(right_index + 1))
 }
 
 /// Tests `span_to_snippet` and `span_to_lines` for a span converting 3
@@ -143,7 +143,7 @@ fn span_to_snippet_and_lines_spanning_multiple_lines() {
 #[test]
 fn t8() {
     let sm = init_source_map();
-    let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
+    let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
     let snippet = sm.span_to_snippet(span);
 
     assert_eq!(snippet, Ok("second line".to_string()));
@@ -153,7 +153,7 @@ fn t8() {
 #[test]
 fn t9() {
     let sm = init_source_map();
-    let span = Span::new(BytePos(12), BytePos(23), NO_EXPANSION);
+    let span = Span::with_root_ctxt(BytePos(12), BytePos(23));
     let sstr =  sm.span_to_string(span);
 
     assert_eq!(sstr, "blork.rs:2:1: 2:12");
@@ -176,7 +176,7 @@ fn span_merging_fail() {
 /// Returns the span corresponding to the `n`th occurrence of `substring` in `source_text`.
 trait SourceMapExtension {
     fn span_substr(
-        self,
+        &self,
         file: &Lrc<SourceFile>,
         source_text: &str,
         substring: &str,
@@ -208,10 +208,9 @@ impl SourceMapExtension for SourceMap {
             let lo = hi + offset;
             hi = lo + substring.len();
             if i == n {
-                let span = Span::new(
+                let span = Span::with_root_ctxt(
                     BytePos(lo as u32 + file.start_pos.0),
                     BytePos(hi as u32 + file.start_pos.0),
-                    NO_EXPANSION,
                 );
                 assert_eq!(&self.span_to_snippet(span).unwrap()[..], substring);
                 return span;
