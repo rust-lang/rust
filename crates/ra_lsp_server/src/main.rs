@@ -66,7 +66,7 @@ fn run_server() -> Result<()> {
         workspace_roots,
         initialize_params.capabilities,
         server_config,
-        &connection,
+        connection,
     )?;
 
     log::info!("shutting down IO...");

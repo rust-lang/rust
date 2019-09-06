@@ -52,7 +52,7 @@ pub fn main_loop(
     ws_roots: Vec<PathBuf>,
     client_caps: ClientCapabilities,
     config: ServerConfig,
-    connection: &Connection,
+    connection: Connection,
 ) -> Result<()> {
     log::info!("server_config: {:#?}", config);
 
@@ -174,7 +174,7 @@ pub fn main_loop(
                 &pool,
                 &task_sender,
                 &libdata_sender,
-                connection,
+                &connection,
                 &mut world_state,
                 &mut loop_state,
                 event,
