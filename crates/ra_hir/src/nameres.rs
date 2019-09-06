@@ -489,16 +489,21 @@ impl CrateDefMap {
         name: &Name,
     ) -> ItemOrMacro {
         // Resolve in:
+        //  - textual scoped macros
         //  - current module / scope
         //  - extern prelude
         //  - std prelude
+        let from_textual_mcro = self[module]
+            .scope
+            .get_textual_macro(name)
+            .map_or_else(|| Either::A(PerNs::none()), Either::B);
         let from_scope =
             self[module].scope.get_item_or_macro(name).unwrap_or_else(|| Either::A(PerNs::none()));
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
         let from_prelude = self.resolve_in_prelude(db, name);
 
-        or(from_scope, or(Either::A(from_extern_prelude), from_prelude))
+        or(from_textual_mcro, or(from_scope, or(Either::A(from_extern_prelude), from_prelude)))
     }
 
     fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {

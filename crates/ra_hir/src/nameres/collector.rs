@@ -14,8 +14,8 @@ use crate::{
         raw, CrateDefMap, CrateModuleId, ItemOrMacro, ModuleData, ModuleDef, PerNs,
         ReachedFixedPoint, Resolution, ResolveMode,
     },
-    AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, Static, Struct, Trait,
-    TypeAlias, Union,
+    AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,
+    Struct, Trait, TypeAlias, Union,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -156,9 +156,6 @@ where
     /// the definition of current module.
     /// And also, `macro_use` on a module will import all textual macros visable inside to
     /// current textual scope, with possible shadowing.
-    ///
-    /// In a single module, the order of definition/usage of textual scoped macros matters.
-    /// But we ignore it here to make it easy to implement.
     fn define_textual_macro(&mut self, module_id: CrateModuleId, name: Name, macro_id: MacroDefId) {
         // Always shadowing
         self.def_map.modules[module_id]
@@ -700,8 +697,13 @@ where
             return;
         }
 
-        // Case 3: path to a macro from another crate, expand during name resolution
-        self.def_collector.unexpanded_macros.push((self.module_id, ast_id, mac.path.clone()))
+        // Case 3: resolve in module scope, expand during name resolution.
+        // We rewrite simple path `macro_name` to `self::macro_name` to force resolve in module scope only.
+        let mut path = mac.path.clone();
+        if path.is_ident() {
+            path.kind = PathKind::Self_;
+        }
+        self.def_collector.unexpanded_macros.push((self.module_id, ast_id, path));
     }
 
     fn import_all_textual_macros(&mut self, module_id: CrateModuleId) {

@@ -279,7 +279,7 @@ fn prelude_cycle() {
 }
 
 #[test]
-fn plain_macros_are_textual_scoped_between_modules() {
+fn plain_macros_are_textual_scoped() {
     let map = def_map(
         r#"
         //- /main.rs
@@ -310,6 +310,15 @@ fn plain_macros_are_textual_scoped_between_modules() {
         }
         foo!(ok_double_macro_use_shadow);
 
+        baz!(NotFoundBefore);
+        #[macro_use]
+        mod m7 {
+            macro_rules! baz {
+                ($x:ident) => { struct $x; }
+            }
+        }
+        baz!(OkAfter);
+
         //- /m1.rs
         foo!(NotFoundBeforeInside1);
         macro_rules! bar {
@@ -337,13 +346,18 @@ fn plain_macros_are_textual_scoped_between_modules() {
     assert_snapshot!(map, @r###"
    ⋮crate
    ⋮Ok: t v
+   ⋮OkAfter: t v
    ⋮OkShadowStop: t v
    ⋮foo: m
    ⋮m1: t
    ⋮m2: t
    ⋮m3: t
    ⋮m5: t
+   ⋮m7: t
    ⋮ok_double_macro_use_shadow: v
+   ⋮
+   ⋮crate::m7
+   ⋮baz: m
    ⋮
    ⋮crate::m1
    ⋮bar: m

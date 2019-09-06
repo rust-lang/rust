@@ -2803,6 +2803,41 @@ fn main() {
     );
 }
 
+#[test]
+fn infer_textual_scoped_macros_expanded() {
+    assert_snapshot!(
+        infer(r#"
+struct Foo(Vec<i32>);
+
+#[macro_use]
+mod m {
+    macro_rules! foo {
+        ($($item:expr),*) => {
+            {
+                Foo(vec![$($item,)*])
+            }
+        };
+    }
+}
+
+fn main() {
+    let x = foo!(1,2);
+    let y = crate::foo!(1,2);
+}
+"#),
+        @r###"
+    ![0; 17) '{Foo(v...,2,])}': Foo
+    ![1; 4) 'Foo': Foo({unknown}) -> Foo
+    ![1; 16) 'Foo(vec![1,2,])': Foo
+    ![5; 15) 'vec![1,2,]': {unknown}
+    [195; 251) '{     ...,2); }': ()
+    [205; 206) 'x': Foo
+    [228; 229) 'y': {unknown}
+    [232; 248) 'crate:...!(1,2)': {unknown}
+    "###
+    );
+}
+
 #[ignore]
 #[test]
 fn method_resolution_trait_before_autoref() {
