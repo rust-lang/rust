@@ -107,14 +107,13 @@ struct BreakableScope<'tcx> {
     region_scope: region::Scope,
     /// Where the body of the loop begins. `None` if block
     continue_block: Option<BasicBlock>,
-    /// Block to branch into when the loop or block terminates (either by being `break`-en out
-    /// from, or by having its condition to become false)
+    /// Block to branch into when the loop or block terminates (either by being
+    /// `break`-en out from, or by having its condition to become false)
     break_block: BasicBlock,
-    /// The destination of the loop/block expression itself (i.e., where to put the result of a
-    /// `break` expression)
+    /// The destination of the loop/block expression itself (i.e., where to put
+    /// the result of a `break` expression)
     break_destination: Place<'tcx>,
 }
-
 
 #[derive(Debug)]
 struct DropData {
@@ -130,7 +129,6 @@ struct DropData {
     /// The cached blocks for unwinds.
     cached_block: CachedBlock,
 }
-
 
 /// The target of an expression that breaks out of a scope
 #[derive(Clone, Copy, Debug)]
@@ -526,25 +524,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // to left reading the cached results but never created anything.
 
         // Find the last cached block
-        debug!("diverge_cleanup_gen(self.scopes = {:?})", self.scopes);
-        let cached_cleanup = self.scopes.last_cached_unwind(generator_drop);
-        let (mut target, first_uncached) = cached_cleanup
-            .unwrap_or_else(|| (self.resume_block(), 0));
+        debug!("diverge_cleanup_gen(self.scopes = {:#?})", self.scopes);
+        let resume_block = self.resume_block();
+        let cfg = &mut self.cfg;
+        let is_generator = self.is_generator;
 
-        let scopes = self.scopes.diverge_blocks(first_uncached, generator_drop);
-        for (source_scope, drops, cached_unwind) in scopes {
-            target = build_diverge_scope(
-                &mut self.cfg,
-                source_scope,
-                drops,
-                target,
-                generator_drop,
-                self.is_generator,
-            );
-            *cached_unwind = Some(target);
-        }
-
-        target
+        self.scopes.for_each_diverge_block(
+            generator_drop,
+            resume_block,
+            |source_scope, drops, cached_unwind, mut target| {
+                target = build_diverge_scope(
+                    cfg,
+                    source_scope,
+                    drops,
+                    target,
+                    generator_drop,
+                    is_generator,
+                );
+                *cached_unwind = Some(target);
+                target
+            }
+        )
     }
 
     /// Utility function for *non*-scope code to build their own drops

@@ -140,7 +140,11 @@ impl<'tcx> Scopes<'tcx> {
         self.scopes.len()
     }
 
-    pub(super) fn push_scope(&mut self, region_scope: (region::Scope, SourceInfo), vis_scope: SourceScope) {
+    pub(super) fn push_scope(
+        &mut self,
+        region_scope: (region::Scope, SourceInfo),
+        vis_scope: SourceScope,
+    ) {
         debug!("push_scope({:?})", region_scope);
         self.scopes.push(Scope {
             source_scope: vis_scope,
@@ -217,24 +221,31 @@ impl<'tcx> Scopes<'tcx> {
         scope_count
     }
 
-    pub(super) fn last_cached_unwind(
+    /// Call the given action for each scope that doesn't already have a cached
+    /// unwind block. Scopes are iterated going up the scope stack.
+    pub(super) fn for_each_diverge_block<F>(
         &mut self,
         generator_drop: bool,
-    ) -> Option<(BasicBlock, usize)> {
-        self.scopes.iter_mut().enumerate().rev().find_map(move |(idx, scope)| {
-            let cached_block = scope.cached_unwind.get(generator_drop)?;
-            Some((cached_block, idx + 1))
-        })
-    }
-
-    pub(super) fn diverge_blocks(
-        &mut self,
-        start_at: usize,
-        generator_drop: bool,
-    ) -> impl Iterator<Item=(SourceScope, &mut [DropData], &mut Option<BasicBlock>)> {
-        self.scopes[start_at..].iter_mut().map(move |scope| {
-            (scope.source_scope, &mut *scope.drops, scope.cached_unwind.ref_mut(generator_drop))
-        })
+        resume_block: BasicBlock,
+        mut action: F,
+    ) -> BasicBlock
+    where
+        F: FnMut(SourceScope, &mut [DropData], &mut Option<BasicBlock>, BasicBlock) -> BasicBlock
+    {
+        let (mut target, start_at) = self.scopes.iter().enumerate().rev()
+            .find_map(move |(idx, scope)| {
+                let cached_block = scope.cached_unwind.get(generator_drop)?;
+                Some((cached_block, idx + 1))
+            }).unwrap_or((resume_block, 0));
+        self.scopes[start_at..].iter_mut().for_each(|scope| {
+            target = action(
+                scope.source_scope,
+                &mut *scope.drops,
+                scope.cached_unwind.ref_mut(generator_drop),
+                target,
+            )
+        });
+        target
     }
 
     /// Iterate over the [ScopeInfo] for exiting to the given target.
