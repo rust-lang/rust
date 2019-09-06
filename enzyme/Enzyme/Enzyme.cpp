@@ -3033,18 +3033,22 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
           switch(op->getIntrinsicID()) {
             case Intrinsic::memcpy: {
                 if (gutils->isConstantInstruction(inst)) continue;
-                assert(0 && "TODO: memcpy has bug that needs fixing (per int double vs ptr)");
-                /*
-                SmallVector<Value*, 4> args;
-                args.push_back(invertPointer(op->getOperand(0)));
-                args.push_back(invertPointer(op->getOperand(1)));
-                args.push_back(lookup(op->getOperand(2)));
-                args.push_back(lookup(op->getOperand(3)));
+          
+                if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
+                    SmallVector<Value*, 4> args;
+                    args.push_back(invertPointer(op->getOperand(0)));
+                    args.push_back(invertPointer(op->getOperand(1)));
+                    args.push_back(lookup(op->getOperand(2)));
+                    args.push_back(lookup(op->getOperand(3)));
 
-                Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
-                auto cal = Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memcpy, tys), args);
-                cal->setAttributes(op->getAttributes());
-                */
+                    Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
+                    auto cal = Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memcpy, tys), args);
+                    cal->setAttributes(op->getAttributes());
+                    cal->setCallingConv(op->getCallingConv());
+                    cal->setTailCallKind(op->getTailCallKind());
+                } else {
+                    //no change to forward pass if represents floats
+                }
                 break;
             }
             case Intrinsic::memset: {
@@ -4014,6 +4018,31 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         case Intrinsic::memcpy: {
             if (gutils->isConstantInstruction(inst)) continue;
             assert(0 && "TODO: memcpy has bug that needs fixing (per int double vs ptr)");
+                if (!isIntPointerASecretFloat(op->getOperand(0)) ) {
+                    //no change to forward pass if represents pointer
+                } else {
+                    //Zero the destination
+                    {
+                        TODO BECOME MEMSET
+                        SmallVector<Value*, 4> args;
+                        // source and dest are swapped
+                        args.push_back(invertPointer(op->getOperand(1)));
+                        args.push_back(invertPointer(op->getOperand(0)));
+                        args.push_back(lookup(op->getOperand(2)));
+                        args.push_back(lookup(op->getOperand(3)));
+
+                        Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
+                        auto cal = Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args);
+                        cal->setAttributes(op->getAttributes());
+                        cal->setCallingConv(op->getCallingConv());
+                        cal->setTailCallKind(op->getTailCallKind());
+                    }
+
+
+                    {
+
+                    }
+                }
             SmallVector<Value*, 4> args;
             // source and dest are swapped
             args.push_back(invertPointer(op->getOperand(1)));
