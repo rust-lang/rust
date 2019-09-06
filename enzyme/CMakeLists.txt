@@ -1,5 +1,6 @@
 project(Enzyme)
 
+set(CMAKE_CXX_STANDARD 11)
 cmake_minimum_required(VERSION 3.10)
 
 set(ENZYME_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
