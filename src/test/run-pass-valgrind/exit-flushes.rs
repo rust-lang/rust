@@ -1,4 +1,3 @@
-// no-prefer-dynamic
 // ignore-cloudabi
 // ignore-emscripten
 // ignore-sgx no processes

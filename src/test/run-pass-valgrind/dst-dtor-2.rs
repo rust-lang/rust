@@ -1,5 +1,3 @@
-// no-prefer-dynamic
-
 static mut DROP_RAN: isize = 0;
 
 struct Foo;
