@@ -304,9 +304,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
         match *rvalue {
+            Rvalue::Repeat(..) |
+            Rvalue::Aggregate(..) |
+            Rvalue::NullaryOp(NullOp::Box, _) |
+            Rvalue::Discriminant(..) => None,
+
             Rvalue::Use(_) |
             Rvalue::Len(_) |
-            Rvalue::Cast(..) => {
+            Rvalue::Cast(..) |
+            Rvalue::NullaryOp(..) => {
                 self.use_ecx(source_info, |this| {
                     this.ecx.eval_rvalue_into_place(rvalue, place)?;
                     this.ecx.eval_place_to_op(place, Some(place_layout))
@@ -317,19 +323,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let mplace = src.try_as_mplace().ok()?;
                 Some(ImmTy::from_scalar(mplace.ptr.into(), place_layout).into())
             },
-            Rvalue::Repeat(..) |
-            Rvalue::Aggregate(..) |
-            Rvalue::NullaryOp(NullOp::Box, _) |
-            Rvalue::Discriminant(..) => None,
 
-            Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
-                type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some(
-                    ImmTy::from_uint(
-                        n,
-                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
-                    ).into()
-                ))
-            }
             Rvalue::UnaryOp(op, ref arg) => {
                 let def_id = if self.tcx.is_closure(self.source.def_id()) {
                     self.tcx.closure_base_def_id(self.source.def_id())
@@ -513,14 +507,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn should_const_prop(&self) -> bool {
         self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2
     }
-}
-
-fn type_size_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-) -> Option<u64> {
-    tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
 struct CanConstProp {
