@@ -369,8 +369,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: br label %invertfor.cond.cleanup
 
 ; CHECK: invertfor.cond.cleanup:                           
-; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %.lcssa3, %invertfor.cond.cleanup.loopexit ]
 ; CHECK-NEXT:   %[[invertcache]] = phi double** [ undef, %entry ], [ %11, %invertfor.cond.cleanup.loopexit ]
+; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %.lcssa3, %invertfor.cond.cleanup.loopexit ]
 ; CHECK-NEXT:   br i1 %cmp18, label %invertentry, label %invertfor.cond.cleanup4.preheader
 
 ; CHECK: invertfor.cond.cleanup4.preheader

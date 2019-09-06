@@ -17,7 +17,7 @@
 ; Function Attrs: nounwind uwtable
 define dso_local void @_Z7dmatvecRKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEERS1_RKNS0_IdLin1ELi1ELi0ELin1ELi1EEERS5_S7_S8_(%"class.Eigen::Matrix"* noalias dereferenceable(24) %W, %"class.Eigen::Matrix"* noalias dereferenceable(24) %Wp, %"class.Eigen::Matrix.2"* noalias dereferenceable(16) %b, %"class.Eigen::Matrix.2"* noalias dereferenceable(16) %bp, %"class.Eigen::Matrix.2"* noalias dereferenceable(16) %output, %"class.Eigen::Matrix.2"* noalias dereferenceable(16) %outputp) local_unnamed_addr #0 {
 entry:
-  %0 = tail call double (void (%"class.Eigen::Matrix"*, %"class.Eigen::Matrix.2"*, %"class.Eigen::Matrix.2"*)*, ...) @"llvm.autodiff.p0f_isVoidp0s_class.Eigen::Matrixsp0s_class.Eigen::Matrix.2sp0s_class.Eigen::Matrix.2sf"(void (%"class.Eigen::Matrix"*, %"class.Eigen::Matrix.2"*, %"class.Eigen::Matrix.2"*)* nonnull @_ZL6matvecRKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEERKNS0_IdLin1ELi1ELi0ELin1ELi1EEERS4_, %"class.Eigen::Matrix"* nonnull %W, %"class.Eigen::Matrix"* nonnull %Wp, %"class.Eigen::Matrix.2"* nonnull %b, %"class.Eigen::Matrix.2"* nonnull %bp, %"class.Eigen::Matrix.2"* nonnull %output, %"class.Eigen::Matrix.2"* nonnull %outputp)
+  %0 = tail call double (void (%"class.Eigen::Matrix"*, %"class.Eigen::Matrix.2"*, %"class.Eigen::Matrix.2"*)*, ...) @__enzyme_autodiff(void (%"class.Eigen::Matrix"*, %"class.Eigen::Matrix.2"*, %"class.Eigen::Matrix.2"*)* nonnull @_ZL6matvecRKN5Eigen6MatrixIdLin1ELin1ELi0ELin1ELin1EEERKNS0_IdLin1ELi1ELi0ELin1ELi1EEERS4_, %"class.Eigen::Matrix"* nonnull %W, %"class.Eigen::Matrix"* nonnull %Wp, %"class.Eigen::Matrix.2"* nonnull %b, %"class.Eigen::Matrix.2"* nonnull %bp, %"class.Eigen::Matrix.2"* nonnull %output, %"class.Eigen::Matrix.2"* nonnull %outputp)
   ret void
 }
 
@@ -114,7 +114,7 @@ cond.false.i38:                                   ; preds = %_ZNK5Eigen15DenseCo
 }
 
 ; Function Attrs: nounwind
-declare double @"llvm.autodiff.p0f_isVoidp0s_class.Eigen::Matrixsp0s_class.Eigen::Matrix.2sp0s_class.Eigen::Matrix.2sf"(void (%"class.Eigen::Matrix"*, %"class.Eigen::Matrix.2"*, %"class.Eigen::Matrix.2"*)*, ...) #2
+declare double @__enzyme_autodiff(void (%"class.Eigen::Matrix"*, %"class.Eigen::Matrix.2"*, %"class.Eigen::Matrix.2"*)*, ...) #2
 
 ; Function Attrs: noreturn nounwind
 declare dso_local void @__assert_fail(i8*, i8*, i32, i8*) local_unnamed_addr #3

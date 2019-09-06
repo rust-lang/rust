@@ -184,8 +184,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertfor.cond.cleanup: 
-; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %0, %for.body ]
 ; CHECK-NEXT:   %_mdyncache.0 = phi %struct.n** [ undef, %entry ], [ %5, %for.body ]
+; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %0, %for.body ]
 ; CHECK-NEXT:   br i1 %cmp6, label %invertentry, label %invertfor.body
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.cond.cleanup, %invertfor.body

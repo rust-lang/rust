@@ -1250,72 +1250,15 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, ValueToValueMapT
 #include "llvm/IR/Constant.h"
 #include <deque>
 #include "llvm/IR/CFG.h"
+class GradientUtils;
 
-PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, SmallPtrSetImpl<Instruction*> &originalInstructions) {
-
-  BasicBlock* Header = L->getHeader();
-  Module* M = Header->getParent()->getParent();
-  const DataLayout &DL = M->getDataLayout();
-
-  SCEVExpander Exp(SE, DL, "ls");
-
-  PHINode *CanonicalIV = Exp.getOrInsertCanonicalInductionVariable(L, Ty);
-  assert (CanonicalIV && "canonicalizing IV");
-  //DEBUG(dbgs() << "Canonical induction variable " << *CanonicalIV << "\n");
-
-  SmallVector<WeakTrackingVH, 16> DeadInsts;
-  Exp.replaceCongruentIVs(L, &DT, DeadInsts);
-
-  
-  for (WeakTrackingVH V : DeadInsts) {
-    //DEBUG(dbgs() << "erasing dead inst " << *V << "\n");
-    Instruction *I = cast<Instruction>(V);
-    originalInstructions.erase(I);
-    I->eraseFromParent();
-  } 
-
-  return CanonicalIV;
-}
+PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils &gutils);
 
 /// \brief Replace the latch of the loop to check that IV is always less than or
 /// equal to the limit.
 ///
 /// This method assumes that the loop has a single loop latch.
-Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution &SE, BasicBlock* ExitBlock, SmallPtrSetImpl<Instruction*> &originalInstructions) {
-  Value *NewCondition;
-  BasicBlock *Header = L->getHeader();
-  BasicBlock *Latch = L->getLoopLatch();
-  assert(Latch && "No single loop latch found for loop.");
-
-  IRBuilder<> Builder(&*Latch->getFirstInsertionPt());
-  Builder.setFastMathFlags(getFast());
-
-  // This process assumes that IV's increment is in Latch.
-
-  // Create comparison between IV and Limit at top of Latch.
-  NewCondition = Builder.CreateICmpULT(IV, Limit);
-
-  // Replace the conditional branch at the end of Latch.
-  BranchInst *LatchBr = dyn_cast_or_null<BranchInst>(Latch->getTerminator());
-  assert(LatchBr && LatchBr->isConditional() &&
-         "Latch does not terminate with a conditional branch.");
-  Builder.SetInsertPoint(Latch->getTerminator());
-  Builder.CreateCondBr(NewCondition, Header, ExitBlock);
-
-  // Erase the old conditional branch.
-  Value *OldCond = LatchBr->getCondition();
-  originalInstructions.erase(LatchBr);
-  LatchBr->eraseFromParent();
-  
-  if (!OldCond->hasNUsesOrMore(1))
-    if (Instruction *OldCondInst = dyn_cast<Instruction>(OldCond)) {
-      originalInstructions.erase(OldCondInst);
-      OldCondInst->eraseFromParent();
-    }
-  
-
-  return NewCondition;
-}
+Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution &SE, BasicBlock* ExitBlock, GradientUtils &gutils);
 
 bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
           if (available.count(val)) return false;
@@ -1442,170 +1385,7 @@ bool operator==(const LoopContext& lhs, const LoopContext &rhs) {
     return lhs.parent == rhs.parent;
 }
 
-bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopContext> &loopContexts, LoopInfo &LI,ScalarEvolution &SE,DominatorTree &DT, SmallPtrSetImpl<Instruction*> &originalInstructions) {
-    if (auto L = LI.getLoopFor(BB)) {
-        if (loopContexts.find(L) != loopContexts.end()) {
-            loopContext = loopContexts.find(L)->second;
-            return true;
-        }
-
-        SmallVector<BasicBlock *, 8> PotentialExitBlocks;
-        SmallPtrSet<BasicBlock *, 8> ExitBlocks;
-        L->getExitBlocks(PotentialExitBlocks);
-        for(auto a:PotentialExitBlocks) {
-
-            SmallVector<BasicBlock*, 4> tocheck;
-            SmallPtrSet<BasicBlock*, 4> checked;
-            tocheck.push_back(a);
-
-            bool isExit = false;
-
-            while(tocheck.size()) {
-                auto foo = tocheck.back();
-                tocheck.pop_back();
-                if (checked.count(foo)) {
-                    isExit = true;
-                    goto exitblockcheck;
-                }
-                checked.insert(foo);
-                if(auto bi = dyn_cast<BranchInst>(foo->getTerminator())) {
-                    for(auto nb : bi->successors()) {
-                        if (L->contains(nb)) continue;
-                        tocheck.push_back(nb);
-                    }
-                } else if (isa<UnreachableInst>(foo->getTerminator())) {
-                    continue;
-                } else {
-                    isExit = true;
-                    goto exitblockcheck;
-                }
-            }
-
-            
-            exitblockcheck:
-            if (isExit) {
-				ExitBlocks.insert(a);
-            }
-        }
-
-        if (ExitBlocks.size() != 1) {
-            assert(BB);
-            assert(BB->getParent());
-            assert(L);
-            llvm::errs() << *BB->getParent() << "\n";
-            llvm::errs() << *L << "\n";
-			for(auto b:ExitBlocks) {
-                assert(b);
-                llvm::errs() << *b << "\n";
-            }
-			llvm::errs() << "offending: \n";
-			llvm::errs() << "No unique exit block (1)\n";
-        }
-
-        BasicBlock* ExitBlock = *ExitBlocks.begin(); //[0];
-
-        BasicBlock *Header = L->getHeader();
-        BasicBlock *Preheader = L->getLoopPreheader();
-        assert(Preheader && "requires preheader");
-        BasicBlock *Latch = L->getLoopLatch();
-
-        const SCEV *Limit = SE.getExitCount(L, Latch);
-        
-		SCEVExpander Exp(SE, Preheader->getParent()->getParent()->getDataLayout(), "ad");
-
-		PHINode *CanonicalIV = nullptr;
-		Value *LimitVar = nullptr;
-		if (SE.getCouldNotCompute() != Limit) {
-
-        	CanonicalIV = canonicalizeIVs(Limit->getType(), L, SE, DT, originalInstructions);
-        	if (!CanonicalIV) {
-                report_fatal_error("Couldn't get canonical IV.");
-        	}
-        	
-			const SCEVAddRecExpr *CanonicalSCEV = cast<const SCEVAddRecExpr>(SE.getSCEV(CanonicalIV));
-
-        	assert(SE.isLoopBackedgeGuardedByCond(L, ICmpInst::ICMP_ULT,
-                                              CanonicalSCEV, Limit) &&
-               "Loop backedge is not guarded by canonical comparison with limit.");
-        
-			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
-                                            Preheader->getTerminator());
-
-        	// Canonicalize the loop latch.
-			canonicalizeLoopLatch(CanonicalIV, LimitVar, L, SE, ExitBlock, originalInstructions);
-
-			loopContext.dynamic = false;
-		} else {
-          //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
-          llvm::errs() << "SE could not compute loop limit.\n";
-
-		  IRBuilder <>B(&Header->front());
-		  CanonicalIV = B.CreatePHI(Type::getInt64Ty(Header->getContext()), 1); // should be Header->getNumPredecessors());
-
-		  B.SetInsertPoint(Header->getTerminator());
-		  auto inc = B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1));
-		  CanonicalIV->addIncoming(inc, Latch);
-		  for (BasicBlock *Pred : predecessors(Header)) {
-			  if (Pred != Latch) {
-				  CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
-			  }
-		  }
-
-		  B.SetInsertPoint(&ExitBlock->front());
-		  LimitVar = B.CreatePHI(CanonicalIV->getType(), 1); // should be ExitBlock->getNumPredecessors());
-
-		  for (BasicBlock *Pred : predecessors(ExitBlock)) {
-    		if (LI.getLoopFor(Pred) == L)
-		    	cast<PHINode>(LimitVar)->addIncoming(CanonicalIV, Pred);
-			else
-				cast<PHINode>(LimitVar)->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
-		  }
-		  loopContext.dynamic = true;
-		}
-	
-		// Remove Canonicalizable IV's
-		{
-		  SmallVector<PHINode*, 8> IVsToRemove;
-		  for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
-			PHINode *PN = cast<PHINode>(II);
-			if (PN == CanonicalIV) continue;
-			if (!SE.isSCEVable(PN->getType())) continue;
-			const SCEV *S = SE.getSCEV(PN);
-			if (SE.getCouldNotCompute() == S) continue;
-			Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
-			if (NewIV == PN) {
-				llvm::errs() << "TODO: odd case need to ensure replacement\n";
-				continue;
-			}
-			PN->replaceAllUsesWith(NewIV);
-			IVsToRemove.push_back(PN);
-		  }
-		  for (PHINode *PN : IVsToRemove) {
-			//llvm::errs() << "ERASING: " << *PN << "\n";
-            originalInstructions.erase(PN);
-			PN->eraseFromParent();
-		  }
-		}
-
-        //if (SE.getCouldNotCompute() == Limit) {
-        //Limit = SE.getMaxBackedgeTakenCount(L);
-        //}
-		assert(CanonicalIV);
-		assert(LimitVar);
-        loopContext.var = CanonicalIV;
-        loopContext.limit = LimitVar;
-        loopContext.antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
-        loopContext.exit = ExitBlock;
-        loopContext.latch = Latch;
-        loopContext.preheader = Preheader;
-		loopContext.header = Header;
-        loopContext.parent = L->getParentLoop();
-
-        loopContexts[L] = loopContext;
-        return true;
-    }
-    return false;
-  }
+bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopContext> &loopContexts, LoopInfo &LI,ScalarEvolution &SE,DominatorTree &DT, GradientUtils &gutils);
 
 bool isCertainMallocOrFree(Function* called) {
     if (called == nullptr) return false;
@@ -1750,6 +1530,20 @@ public:
 
     A->replaceAllUsesWith(B);
   }
+
+  void erase(Instruction *I) {
+    assert(I);
+    invertedPointers.erase(I);
+    constants.erase(I);
+    nonconstant.erase(I);
+    nonconstant_values.erase(I);
+    originalInstructions.erase(I);
+    scopeMap.erase(I);
+    lastScopeAlloc.erase(I);
+    scopeFrees.erase(I);
+    I->eraseFromParent();
+  }
+
   void setTape(Value* newtape) {
     assert(tape == nullptr);
     assert(newtape != nullptr);
@@ -1796,7 +1590,7 @@ public:
     assert(placeholder != anti);
     bb.SetInsertPoint(placeholder->getNextNode());
     replaceAWithB(placeholder, anti);
-    placeholder->eraseFromParent();
+    erase(placeholder);
 
     anti = addMalloc<Instruction>(bb, anti); 
     invertedPointers[call] = anti;
@@ -1846,7 +1640,7 @@ public:
 
         if (!inLoop) {
         } else {
-            ret->eraseFromParent();
+            erase(ret);
             IRBuilder<> entryBuilder(inversionAllocs);
             entryBuilder.setFastMathFlags(getFast());
             ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {tapeidx-1}));
@@ -1865,7 +1659,8 @@ public:
             }
             scopeMap[v] = scopeMap[phi];
             scopeMap.erase(phi);
-            phi->eraseFromParent();
+            originalInstructions.erase(ret);
+            erase(phi);
 
             assert(reverseBlocks.size() > 0);
 
@@ -1919,14 +1714,14 @@ public:
                     for( auto u : users) {
                         if (auto li = dyn_cast<LoadInst>(u)) {
                             li->replaceAllUsesWith(ret);
-                            li->eraseFromParent();
+                            erase(li);
                         } else if (auto si = dyn_cast<StoreInst>(u)) {
-                            si->eraseFromParent();
+                            erase(si);
                         } else {
                             assert(0 && "illegal use for out of loop scopeMap");
                         }
                     }
-                    cast<Instruction>(scopeMap[malloc])->eraseFromParent();
+                    erase(cast<Instruction>(scopeMap[malloc]));
                     scopeMap.erase(malloc);
                 } else {
                     std::vector<User*> users;
@@ -1960,13 +1755,13 @@ public:
                                         scopeFrees.erase(malloc);
                                     if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == cali)
                                         lastScopeAlloc.erase(malloc);
-                                    cali->eraseFromParent();
+                                    erase(cali);
                                 }
-                                if (u0->getNumUses() == 0 && u2 != u0) cast<Instruction>(u0)->eraseFromParent();
+                                if (u0->getNumUses() == 0 && u2 != u0) erase(cast<Instruction>(u0));
                             }
 
                             li->setOperand(0, scopeMap[ret]);
-                            if (li->getNumUses() == 0) li->eraseFromParent();
+                            if (li->getNumUses() == 0) erase(li);
                         } else if (auto si = dyn_cast<StoreInst>(u)) {
                             Instruction* u2 = cast<Instruction>(si->getValueOperand());
                             if (auto ci = dyn_cast<CastInst>(u2)) {
@@ -1979,15 +1774,15 @@ public:
                                 if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && (lastScopeAlloc[malloc] == cali || lastScopeAlloc[malloc] == si->getValueOperand()))
                                     lastScopeAlloc.erase(malloc);
                                 Value* vak = si->getValueOperand();
-                                si->eraseFromParent();
+                                erase(si);
                                 if (auto ci = dyn_cast<CastInst>(vak)) {
-                                    ci->eraseFromParent();
+                                    erase(ci);
                                 }
                                 if (cali != vak)
-                                    cali->eraseFromParent();
+                                    erase(cali);
                                 continue;
                             }
-                            si->eraseFromParent();
+                            erase(si);
                         } else if (auto cali = dyn_cast<CallInst>(u)) {
                             auto called = cali->getCalledFunction();
                             if (called == nullptr) continue;
@@ -1996,19 +1791,19 @@ public:
                                 scopeFrees.erase(malloc);
                             if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == cali)
                                 lastScopeAlloc.erase(malloc);
-                            cali->eraseFromParent();
+                            erase(cali);
                         } else {
                             assert(0 && "illegal use for scopeMap");
                         }
                         //TODO consider realloc/free
                     }
                     
-                    cast<Instruction>(scopeMap[malloc])->eraseFromParent();
+                    erase(cast<Instruction>(scopeMap[malloc]));
                     
                     if (op0) {
                         if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == op0)
                             lastScopeAlloc.erase(malloc);
-                        op0->eraseFromParent();
+                        erase(op0);
                     }
 
                     scopeMap.erase(malloc);
@@ -2023,7 +1818,7 @@ public:
             cast<Instruction>(malloc)->replaceAllUsesWith(ret);
             auto n = malloc->getName();
             originalInstructions.erase(cast<Instruction>(malloc));
-            cast<Instruction>(malloc)->eraseFromParent();
+            erase(cast<Instruction>(malloc));
             ret->setName(n);
         }
         return ret;
@@ -2117,7 +1912,7 @@ public:
   }
  
   bool getContext(BasicBlock* BB, LoopContext& loopContext) {
-    return getContextM(BB, loopContext, this->loopContexts, this->LI, this->SE, this->DT, this->originalInstructions);
+    return getContextM(BB, loopContext, this->loopContexts, this->LI, this->SE, this->DT, *this);
   }
 
   bool isOriginalBlock(const BasicBlock &BB) const {
@@ -2152,8 +1947,7 @@ public:
           if (originalInstructions.find(inst) == originalInstructions.end()) continue;
 
           if (isa<StoreInst>(inst)) {
-            originalInstructions.erase(inst);
-            inst->eraseFromParent();
+            erase(inst);
             continue;
           }
         }
@@ -2172,23 +1966,20 @@ public:
 
           if (!isa<TerminatorInst>(inst) && this->isConstantInstruction(inst)) {
             if (inst->getNumUses() == 0) {
-                originalInstructions.erase(inst);
-                inst->eraseFromParent();
+                erase(inst);
 			    continue;
             }
           } else {
             if (auto inti = dyn_cast<IntrinsicInst>(inst)) {
                 if (inti->getIntrinsicID() == Intrinsic::memset || inti->getIntrinsicID() == Intrinsic::memcpy) {
-                    originalInstructions.erase(inst);
-                    inst->eraseFromParent();
+                    erase(inst);
                     continue;
                 }
             }
             if (replaceableCalls.find(inst) != replaceableCalls.end()) {
                 if (inst->getNumUses() != 0) {
                 } else {
-                    originalInstructions.erase(inst);
-                    inst->eraseFromParent();
+                    erase(inst);
                     continue;
                 }
             }
@@ -3026,7 +2817,7 @@ void optimizeIntermediate(GradientUtils* gutils, bool topLevel, Function *F) {
             if (inst->getNumUses() != 0 && !cast<CallInst>(inst)->getCalledFunction()->hasFnAttribute(Attribute::ReadNone) ) {
                 llvm::errs() << "found call ripe for replacement " << *inst;
             } else {
-                    inst->eraseFromParent();
+                    gutils->erase(inst);
                     continue;
             }
           }
@@ -3108,8 +2899,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
         if (oldval)
             rt = ib.CreateInsertValue(rt, oldval, {1});
         term = ib.CreateRet(rt);
-        gutils->originalInstructions.erase(ri);
-        ri->eraseFromParent();
+        gutils->erase(ri);
       } else if (isa<BranchInst>(term) || isa<SwitchInst>(term)) {
 
       } else if (isa<UnreachableInst>(term)) {
@@ -3310,8 +3100,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                     if (I != E && placeholder == &*I) I++;
                     gutils->invertedPointers.erase(op);
                     placeholder->replaceAllUsesWith(antiptr);
-                    gutils->originalInstructions.erase(placeholder);
-                    placeholder->eraseFromParent();
+                    gutils->erase(placeholder);
                     gutils->invertedPointers[rv] = antiptr;
                     gutils->addMalloc<Instruction>(BuilderZ, antiptr);
                   }
@@ -3322,13 +3111,11 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 Value* tp = BuilderZ.CreateExtractValue(augmentcall, {0});
                 if (tp->getType()->isEmptyTy()) {
                     auto tpt = tp->getType();
-                    gutils->originalInstructions.erase(cast<Instruction>(tp));
-                    cast<Instruction>(tp)->eraseFromParent();
+                    gutils->erase(cast<Instruction>(tp));
                     tp = UndefValue::get(tpt);
                 }
                 gutils->addMalloc<Value>(BuilderZ, tp);
-                gutils->originalInstructions.erase(op);
-                op->eraseFromParent();
+                gutils->erase(op);
               }
         } else if(isa<LoadInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
@@ -3510,7 +3297,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             i++;
           }
           ib.CreateRet(ib.CreateLoad(ret));
-          cast<Instruction>(VMap[ri])->eraseFromParent();
+          gutils->erase(cast<Instruction>(VMap[ri]));
       }
   }
 
@@ -4010,8 +3797,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 	 
       rb.CreateBr(BB2);
 
-      gutils->originalInstructions.erase(op);
-      op->eraseFromParent();
+      gutils->erase(op);
 
       if (differentialReturn && !gutils->isConstantValue(retval)) {
         setDiffe(retval, differetval);
@@ -4175,8 +3961,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             break;
         }
         case Intrinsic::lifetime_end:
-            gutils->originalInstructions.erase(op);
-            op->eraseFromParent();
+            gutils->erase(op);
             break;
         case Intrinsic::sqrt: {
           if (!gutils->isConstantInstruction(op) && !gutils->isConstantValue(op->getOperand(0)))
@@ -4374,21 +4159,18 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
             if (auto dc = dyn_cast<CallInst>(val)) {
                 if (dc->getCalledFunction()->getName() == "malloc") {
-                    gutils->originalInstructions.erase(op);
-                    op->eraseFromParent();
+                    gutils->erase(op);
                     llvm::errs() << " place free\n"; dumpSet(gutils->originalInstructions);
                     continue;
                 }
             }
             if (isa<ConstantPointerNull>(val)) {
-                gutils->originalInstructions.erase(op);
-                op->eraseFromParent();
+                gutils->erase(op);
                 llvm::errs() << "removing free of null pointer\n";
                 continue;
             }
             llvm::errs() << "freeing without malloc " << *val << "\n";
-            gutils->originalInstructions.erase(op);
-            op->eraseFromParent();
+            gutils->erase(op);
             continue;
             //TODO HANDLE FREE
         }
@@ -4398,14 +4180,12 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
             if (auto dc = dyn_cast<CallInst>(val)) {
                 if (dc->getCalledFunction()->getName() == "_Znwm") {
-                    gutils->originalInstructions.erase(op);
-                    op->eraseFromParent();
+                    gutils->erase(op);
                     continue;
                 }
             }
             llvm::errs() << "deleting without new " << *val << "\n";
-            gutils->originalInstructions.erase(op);
-            op->eraseFromParent();
+            gutils->erase(op);
             continue;
             //TODO HANDLE FREE/DELETE
         }
@@ -4656,7 +4436,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
               tape = BuilderZ.CreateExtractValue(augmentcall, {0});
               if (tape->getType()->isEmptyTy()) {
                 auto tt = tape->getType();
-                cast<Instruction>(tape)->eraseFromParent();
+                gutils->erase(cast<Instruction>(tape));
                 tape = UndefValue::get(tt);
               }
 
@@ -4665,7 +4445,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                 auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
                 if (I != E && placeholder == &*I) I++;
                 placeholder->replaceAllUsesWith(newip);
-                placeholder->eraseFromParent();
+                gutils->erase(placeholder);
                 gutils->invertedPointers[op] = newip;
               }
             } else {
@@ -4774,8 +4554,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                 }
                 a->moveBefore(*Builder2.GetInsertBlock(), Builder2.GetInsertPoint());
             }
-            gutils->originalInstructions.erase(op);
-            op->eraseFromParent();
+            gutils->erase(op);
             continue;
           }
 
@@ -4812,8 +4591,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
               op->replaceAllUsesWith(dcall);
             }
 
-            gutils->originalInstructions.erase(op);
-            op->eraseFromParent();
+            gutils->erase(op);
 
             if (augmentcall)
                gutils->replaceableCalls.insert(augmentcall);
@@ -5162,7 +4940,14 @@ static bool lowerAutodiffIntrinsic(Function &F, TargetLibraryInfo &TLI, AAResult
       if (!CI) continue;
 
       Function *Fn = CI->getCalledFunction();
-      if (Fn && Fn->getName() == "__enzyme_autodiff") {
+            
+      if (auto castinst = dyn_cast<ConstantExpr>(CI->getCalledValue())) {
+        if (castinst->isCast())
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0)))
+                Fn = fn;
+      }
+
+      if (Fn && ( Fn->getName() == "__enzyme_autodiff" || Fn->getName().startswith("__enzyme_autodiff")) ) {
         HandleAutoDiff(CI, TLI, AA);//, LI, DT);
         Changed = true;
       }
@@ -5171,6 +4956,230 @@ static bool lowerAutodiffIntrinsic(Function &F, TargetLibraryInfo &TLI, AAResult
 
   return Changed;
 }
+
+PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils &gutils) {
+
+  BasicBlock* Header = L->getHeader();
+  Module* M = Header->getParent()->getParent();
+  const DataLayout &DL = M->getDataLayout();
+
+  SCEVExpander Exp(SE, DL, "ls");
+
+  PHINode *CanonicalIV = Exp.getOrInsertCanonicalInductionVariable(L, Ty);
+  assert (CanonicalIV && "canonicalizing IV");
+  //DEBUG(dbgs() << "Canonical induction variable " << *CanonicalIV << "\n");
+
+  SmallVector<WeakTrackingVH, 16> DeadInsts;
+  Exp.replaceCongruentIVs(L, &DT, DeadInsts);
+
+  
+  for (WeakTrackingVH V : DeadInsts) {
+    //DEBUG(dbgs() << "erasing dead inst " << *V << "\n");
+    Instruction *I = cast<Instruction>(V);
+    gutils.erase(I);
+  } 
+
+  return CanonicalIV;
+}
+
+Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution &SE, BasicBlock* ExitBlock, GradientUtils &gutils) {
+  Value *NewCondition;
+  BasicBlock *Header = L->getHeader();
+  BasicBlock *Latch = L->getLoopLatch();
+  assert(Latch && "No single loop latch found for loop.");
+
+  IRBuilder<> Builder(&*Latch->getFirstInsertionPt());
+  Builder.setFastMathFlags(getFast());
+
+  // This process assumes that IV's increment is in Latch.
+
+  // Create comparison between IV and Limit at top of Latch.
+  NewCondition = Builder.CreateICmpULT(IV, Limit);
+
+  // Replace the conditional branch at the end of Latch.
+  BranchInst *LatchBr = dyn_cast_or_null<BranchInst>(Latch->getTerminator());
+  assert(LatchBr && LatchBr->isConditional() &&
+         "Latch does not terminate with a conditional branch.");
+  Builder.SetInsertPoint(Latch->getTerminator());
+  Builder.CreateCondBr(NewCondition, Header, ExitBlock);
+
+  // Erase the old conditional branch.
+  Value *OldCond = LatchBr->getCondition();
+  gutils.erase(LatchBr);
+  
+  if (!OldCond->hasNUsesOrMore(1))
+    if (Instruction *OldCondInst = dyn_cast<Instruction>(OldCond)) {
+      gutils.erase(OldCondInst);
+    }
+  
+
+  return NewCondition;
+}
+
+bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopContext> &loopContexts, LoopInfo &LI,ScalarEvolution &SE,DominatorTree &DT, GradientUtils &gutils) {
+    if (auto L = LI.getLoopFor(BB)) {
+        if (loopContexts.find(L) != loopContexts.end()) {
+            loopContext = loopContexts.find(L)->second;
+            return true;
+        }
+
+        SmallVector<BasicBlock *, 8> PotentialExitBlocks;
+        SmallPtrSet<BasicBlock *, 8> ExitBlocks;
+        L->getExitBlocks(PotentialExitBlocks);
+        for(auto a:PotentialExitBlocks) {
+
+            SmallVector<BasicBlock*, 4> tocheck;
+            SmallPtrSet<BasicBlock*, 4> checked;
+            tocheck.push_back(a);
+
+            bool isExit = false;
+
+            while(tocheck.size()) {
+                auto foo = tocheck.back();
+                tocheck.pop_back();
+                if (checked.count(foo)) {
+                    isExit = true;
+                    goto exitblockcheck;
+                }
+                checked.insert(foo);
+                if(auto bi = dyn_cast<BranchInst>(foo->getTerminator())) {
+                    for(auto nb : bi->successors()) {
+                        if (L->contains(nb)) continue;
+                        tocheck.push_back(nb);
+                    }
+                } else if (isa<UnreachableInst>(foo->getTerminator())) {
+                    continue;
+                } else {
+                    isExit = true;
+                    goto exitblockcheck;
+                }
+            }
+
+            
+            exitblockcheck:
+            if (isExit) {
+				ExitBlocks.insert(a);
+            }
+        }
+
+        if (ExitBlocks.size() != 1) {
+            assert(BB);
+            assert(BB->getParent());
+            assert(L);
+            llvm::errs() << *BB->getParent() << "\n";
+            llvm::errs() << *L << "\n";
+			for(auto b:ExitBlocks) {
+                assert(b);
+                llvm::errs() << *b << "\n";
+            }
+			llvm::errs() << "offending: \n";
+			llvm::errs() << "No unique exit block (1)\n";
+        }
+
+        BasicBlock* ExitBlock = *ExitBlocks.begin(); //[0];
+
+        BasicBlock *Header = L->getHeader();
+        BasicBlock *Preheader = L->getLoopPreheader();
+        assert(Preheader && "requires preheader");
+        BasicBlock *Latch = L->getLoopLatch();
+
+        const SCEV *Limit = SE.getExitCount(L, Latch);
+        
+		SCEVExpander Exp(SE, Preheader->getParent()->getParent()->getDataLayout(), "ad");
+
+		PHINode *CanonicalIV = nullptr;
+		Value *LimitVar = nullptr;
+		if (SE.getCouldNotCompute() != Limit) {
+
+        	CanonicalIV = canonicalizeIVs(Limit->getType(), L, SE, DT, gutils);
+        	if (!CanonicalIV) {
+                report_fatal_error("Couldn't get canonical IV.");
+        	}
+        	
+			const SCEVAddRecExpr *CanonicalSCEV = cast<const SCEVAddRecExpr>(SE.getSCEV(CanonicalIV));
+
+        	assert(SE.isLoopBackedgeGuardedByCond(L, ICmpInst::ICMP_ULT,
+                                              CanonicalSCEV, Limit) &&
+               "Loop backedge is not guarded by canonical comparison with limit.");
+        
+			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
+                                            Preheader->getTerminator());
+
+        	// Canonicalize the loop latch.
+			canonicalizeLoopLatch(CanonicalIV, LimitVar, L, SE, ExitBlock, gutils);
+
+			loopContext.dynamic = false;
+		} else {
+          //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
+          llvm::errs() << "SE could not compute loop limit.\n";
+
+		  IRBuilder <>B(&Header->front());
+		  CanonicalIV = B.CreatePHI(Type::getInt64Ty(Header->getContext()), 1); // should be Header->getNumPredecessors());
+
+		  B.SetInsertPoint(Header->getTerminator());
+		  auto inc = B.CreateNUWAdd(CanonicalIV, ConstantInt::get(CanonicalIV->getType(), 1));
+		  CanonicalIV->addIncoming(inc, Latch);
+		  for (BasicBlock *Pred : predecessors(Header)) {
+			  if (Pred != Latch) {
+				  CanonicalIV->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
+			  }
+		  }
+
+		  B.SetInsertPoint(&ExitBlock->front());
+		  LimitVar = B.CreatePHI(CanonicalIV->getType(), 1); // should be ExitBlock->getNumPredecessors());
+
+		  for (BasicBlock *Pred : predecessors(ExitBlock)) {
+    		if (LI.getLoopFor(Pred) == L)
+		    	cast<PHINode>(LimitVar)->addIncoming(CanonicalIV, Pred);
+			else
+				cast<PHINode>(LimitVar)->addIncoming(ConstantInt::get(CanonicalIV->getType(), 0), Pred);
+		  }
+		  loopContext.dynamic = true;
+		}
+	
+		// Remove Canonicalizable IV's
+		{
+		  SmallVector<PHINode*, 8> IVsToRemove;
+		  for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
+			PHINode *PN = cast<PHINode>(II);
+			if (PN == CanonicalIV) continue;
+			if (!SE.isSCEVable(PN->getType())) continue;
+			const SCEV *S = SE.getSCEV(PN);
+			if (SE.getCouldNotCompute() == S) continue;
+			Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
+			if (NewIV == PN) {
+				llvm::errs() << "TODO: odd case need to ensure replacement\n";
+				continue;
+			}
+			PN->replaceAllUsesWith(NewIV);
+			IVsToRemove.push_back(PN);
+		  }
+		  for (PHINode *PN : IVsToRemove) {
+			//llvm::errs() << "ERASING: " << *PN << "\n";
+			gutils.erase(PN);
+		  }
+		}
+
+        //if (SE.getCouldNotCompute() == Limit) {
+        //Limit = SE.getMaxBackedgeTakenCount(L);
+        //}
+		assert(CanonicalIV);
+		assert(LimitVar);
+        loopContext.var = CanonicalIV;
+        loopContext.limit = LimitVar;
+        loopContext.antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
+        loopContext.exit = ExitBlock;
+        loopContext.latch = Latch;
+        loopContext.preheader = Preheader;
+		loopContext.header = Header;
+        loopContext.parent = L->getParentLoop();
+
+        loopContexts[L] = loopContext;
+        return true;
+    }
+    return false;
+  }
+
 
 namespace {
 /// Legacy pass for lowering expect intrinsics out of the IR.

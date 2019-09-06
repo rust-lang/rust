@@ -114,8 +114,8 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   br i1 %exitcond11, label %invertentry, label %invertfor.cond.cleanup.loopexit
 
 ; CHECK: invertfor.body.for.body_crit_edge:    
-; CHECK-NEXT:   %"'de.1" = phi double [ 0.000000e+00, %invertfor.cond.cleanup.loopexit ], [ %17, %invertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %"cond.i'de.0" = phi double [ 1.000000e+00, %invertfor.cond.cleanup.loopexit ], [ %diffecond.i12, %invertfor.body.for.body_crit_edge ]
+; CHECK-NEXT:   %"'de.1" = phi double [ 0.000000e+00, %invertfor.cond.cleanup.loopexit ], [ %17, %invertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %"indvar'phi" = phi i64 [ %8, %invertfor.cond.cleanup.loopexit ], [ %9, %invertfor.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %9 = sub i64 %"indvar'phi", 1
 ; CHECK-NEXT:   %10 = getelementptr i1, i1* %cmp.i_mdyncache.0, i64 %"indvar'phi"

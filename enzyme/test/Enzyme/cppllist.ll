@@ -59,8 +59,8 @@ entry:
   br i1 %cmp6, label %for.end, label %for.body
 
 for.body:                                         ; preds = %entry, %for.body
-  %val.08 = phi %class.node* [ %1, %for.body ], [ %node, %entry ]
   %sum.07 = phi double [ %add, %for.body ], [ 0.000000e+00, %entry ]
+  %val.08 = phi %class.node* [ %1, %for.body ], [ %node, %entry ]
   %value = getelementptr inbounds %class.node, %class.node* %val.08, i64 0, i32 0
   %0 = load double, double* %value, align 8, !tbaa !2
   %add = fadd fast double %0, %sum.07
@@ -282,7 +282,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   br i1 %14, label %invertfor.body, label %invertfor.body.preheader
 
 ; CHECK: invertfor.end:                                    ; preds = %entry, %for.body
-; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %0, %for.body ]
 ; CHECK-NEXT:   %_mdyncache.1 = phi %class.node** [ undef, %entry ], [ %5, %for.body ]
+; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %0, %for.body ]
 ; CHECK-NEXT:   br i1 %cmp6, label %invertentry, label %invertfor.body
 ; CHECK-NEXT: }
