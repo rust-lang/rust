@@ -1,15 +1,12 @@
 /// This module provides linkage between rustc::middle::graph and
 /// libgraphviz traits.
 
-// For clarity, rename the graphviz crate locally to dot.
-use graphviz as dot;
-
 use crate::cfg;
-use crate::hir;
-use crate::ty::TyCtxt;
+use rustc::hir;
+use rustc::ty::TyCtxt;
 
-pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);
-pub type Edge<'a> = &'a cfg::CFGEdge;
+pub(crate) type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);
+pub(crate) type Edge<'a> = &'a cfg::CFGEdge;
 
 pub struct LabelledCFG<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
