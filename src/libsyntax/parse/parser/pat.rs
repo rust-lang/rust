@@ -844,14 +844,14 @@ impl<'a> Parser<'a> {
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let hi;
         let (subpat, fieldname, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
-            // Parsing a pattern of the form "fieldname: pat"
+            // Parsing a pattern of the form `fieldname: pat`.
             let fieldname = self.parse_field_name()?;
             self.bump();
             let pat = self.parse_pat_with_or_inner()?;
             hi = pat.span;
             (pat, fieldname, false)
         } else {
-            // Parsing a pattern of the form "(box) (ref) (mut) fieldname"
+            // Parsing a pattern of the form `(box) (ref) (mut) fieldname`.
             let is_box = self.eat_keyword(kw::Box);
             let boxed_span = self.token.span;
             let is_ref = self.eat_keyword(kw::Ref);

@@ -1,4 +1,4 @@
-//! Functions dealing with attributes and meta items
+//! Functions dealing with attributes and meta items.
 
 mod builtin;
 
@@ -61,7 +61,7 @@ pub fn is_known_lint_tool(m_item: Ident) -> bool {
 }
 
 impl NestedMetaItem {
-    /// Returns the MetaItem if self is a NestedMetaItem::MetaItem.
+    /// Returns the `MetaItem` if `self` is a `NestedMetaItem::MetaItem`.
     pub fn meta_item(&self) -> Option<&MetaItem> {
         match *self {
             NestedMetaItem::MetaItem(ref item) => Some(item),
@@ -69,7 +69,7 @@ impl NestedMetaItem {
         }
     }
 
-    /// Returns the Lit if self is a NestedMetaItem::Literal.
+    /// Returns the `Lit` if `self` is a `NestedMetaItem::Literal`s.
     pub fn literal(&self) -> Option<&Lit> {
         match *self {
             NestedMetaItem::Literal(ref lit) => Some(lit),
@@ -82,7 +82,7 @@ impl NestedMetaItem {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
     }
 
-    /// For a single-segment meta-item returns its name, otherwise returns `None`.
+    /// For a single-segment meta item, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
         self.meta_item().and_then(|meta_item| meta_item.ident())
     }
@@ -90,13 +90,13 @@ impl NestedMetaItem {
         self.ident().unwrap_or(Ident::invalid()).name
     }
 
-    /// Gets the string value if self is a MetaItem and the MetaItem is a
-    /// MetaItemKind::NameValue variant containing a string, otherwise None.
+    /// Gets the string value if `self` is a `MetaItem` and the `MetaItem` is a
+    /// `MetaItemKind::NameValue` variant containing a string, otherwise `None`.
     pub fn value_str(&self) -> Option<Symbol> {
         self.meta_item().and_then(|meta_item| meta_item.value_str())
     }
 
-    /// Returns a name and single literal value tuple of the MetaItem.
+    /// Returns a name and single literal value tuple of the `MetaItem`.
     pub fn name_value_literal(&self) -> Option<(Name, &Lit)> {
         self.meta_item().and_then(
             |meta_item| meta_item.meta_item_list().and_then(
@@ -112,32 +112,32 @@ impl NestedMetaItem {
                 }))
     }
 
-    /// Gets a list of inner meta items from a list MetaItem type.
+    /// Gets a list of inner meta items from a list `MetaItem` type.
     pub fn meta_item_list(&self) -> Option<&[NestedMetaItem]> {
         self.meta_item().and_then(|meta_item| meta_item.meta_item_list())
     }
 
-    /// Returns `true` if the variant is MetaItem.
+    /// Returns `true` if the variant is `MetaItem`.
     pub fn is_meta_item(&self) -> bool {
         self.meta_item().is_some()
     }
 
-    /// Returns `true` if the variant is Literal.
+    /// Returns `true` if the variant is `Literal`.
     pub fn is_literal(&self) -> bool {
         self.literal().is_some()
     }
 
-    /// Returns `true` if self is a MetaItem and the meta item is a word.
+    /// Returns `true` if `self` is a `MetaItem` and the meta item is a word.
     pub fn is_word(&self) -> bool {
         self.meta_item().map_or(false, |meta_item| meta_item.is_word())
     }
 
-    /// Returns `true` if self is a MetaItem and the meta item is a ValueString.
+    /// Returns `true` if `self` is a `MetaItem` and the meta item is a `ValueString`.
     pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
     }
 
-    /// Returns `true` if self is a MetaItem and the meta item is a list.
+    /// Returns `true` if `self` is a `MetaItem` and the meta item is a list.
     pub fn is_meta_item_list(&self) -> bool {
         self.meta_item_list().is_some()
     }
@@ -156,7 +156,7 @@ impl Attribute {
         matches
     }
 
-    /// For a single-segment attribute returns its name, otherwise returns `None`.
+    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
         if self.path.segments.len() == 1 {
             Some(self.path.segments[0].ident)
@@ -187,14 +187,14 @@ impl Attribute {
         self.meta_item_list().is_some()
     }
 
-    /// Indicates if the attribute is a Value String.
+    /// Indicates if the attribute is a `ValueString`.
     pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
     }
 }
 
 impl MetaItem {
-    /// For a single-segment meta-item returns its name, otherwise returns `None`.
+    /// For a single-segment meta item, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
         if self.path.segments.len() == 1 {
             Some(self.path.segments[0].ident)
@@ -206,8 +206,9 @@ impl MetaItem {
         self.ident().unwrap_or(Ident::invalid()).name
     }
 
-    // #[attribute(name = "value")]
-    //             ^^^^^^^^^^^^^^
+    // Example:
+    //     #[attribute(name = "value")]
+    //                 ^^^^^^^^^^^^^^
     pub fn name_value_literal(&self) -> Option<&Lit> {
         match &self.node {
             MetaItemKind::NameValue(v) => Some(v),
@@ -255,7 +256,7 @@ impl MetaItem {
 }
 
 impl Attribute {
-    /// Extracts the MetaItem from inside this Attribute.
+    /// Extracts the `MetaItem` from inside this `Attribute`.
     pub fn meta(&self) -> Option<MetaItem> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
@@ -318,8 +319,8 @@ impl Attribute {
         })
     }
 
-    /// Converts self to a normal #[doc="foo"] comment, if it is a
-    /// comment like `///` or `/** */`. (Returns self unchanged for
+    /// Converts `self` to a normal `#[doc="foo"]` comment, if it is a
+    /// comment like `///` or `/** */`. (Returns `self` unchanged for
     /// non-sugared doc attributes.)
     pub fn with_desugared_doc<T, F>(&self, f: F) -> T where
         F: FnOnce(&Attribute) -> T,

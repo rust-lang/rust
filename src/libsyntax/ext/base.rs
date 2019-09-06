@@ -958,7 +958,7 @@ impl<'a> ExtCtxt<'a> {
         self.resolver.check_unused_macros();
     }
 
-    /// Resolve a path mentioned inside Rust code.
+    /// Resolves a path mentioned inside Rust code.
     ///
     /// This unifies the logic used for resolving `include_X!`, and `#[doc(include)]` file paths.
     ///

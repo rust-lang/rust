@@ -6,7 +6,7 @@
 //!
 //! ## Ownership
 //!
-//! `TokenStreams` are persistent data structures constructed as ropes with reference
+//! `TokenStream`s are persistent data structures constructed as ropes with reference
 //! counted-children. In general, this means that calling an operation on a `TokenStream`
 //! (such as `slice`) produces an entirely new `TokenStream` from the borrowed reference to
 //! the original. This essentially coerces `TokenStream`s into 'views' of their subparts,
@@ -147,9 +147,8 @@ impl TokenTree {
     }
 }
 
-/// # Token Streams
-///
 /// A `TokenStream` is an abstract sequence of tokens, organized into `TokenTree`s.
+///
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
 /// instead of a representation of the abstract syntax tree.
 /// Today's `TokenTree`s can still contain AST via `token::Interpolated` for back-compat.
@@ -304,7 +303,7 @@ impl TokenStream {
         Cursor::new(self)
     }
 
-    /// Compares two TokenStreams, checking equality without regarding span information.
+    /// Compares two `TokenStream`s, checking equality without regarding span information.
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
         let mut t1 = self.trees();
         let mut t2 = other.trees();

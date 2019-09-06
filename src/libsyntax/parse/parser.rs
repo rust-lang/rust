@@ -10,22 +10,22 @@ pub use path::PathStyle;
 mod stmt;
 mod generics;
 
-use crate::ast::{self, AttrStyle, Attribute, Param, BindingMode, StrStyle, SelfKind};
-use crate::ast::{FnDecl, Ident, IsAsync, MacDelimiter, Mutability, TyKind};
-use crate::ast::{Visibility, VisibilityKind, Unsafety, CrateSugar};
-use crate::source_map::{self, respan};
-use crate::parse::{SeqSep, literal, token};
+use crate::ast::{
+    self, DUMMY_NODE_ID, AttrStyle, Attribute, BindingMode, CrateSugar, FnDecl, Ident,
+    IsAsync, MacDelimiter, Mutability, Param, StrStyle, SelfKind, TyKind, Visibility,
+    VisibilityKind, Unsafety,
+};
+use crate::parse::{ParseSess, PResult, Directory, DirectoryOwnership, SeqSep, literal, token};
+use crate::parse::diagnostics::{Error, dummy_arg};
 use crate::parse::lexer::UnmatchedBrace;
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::token::{Token, TokenKind, DelimToken};
-use crate::parse::{ParseSess, Directory, DirectoryOwnership};
 use crate::print::pprust;
 use crate::ptr::P;
-use crate::parse::PResult;
-use crate::ThinVec;
-use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
+use crate::source_map::{self, respan};
 use crate::symbol::{kw, sym, Symbol};
-use crate::parse::diagnostics::{Error, dummy_arg};
+use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
+use crate::ThinVec;
 
 use errors::{Applicability, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
@@ -56,7 +56,7 @@ crate enum BlockMode {
     Ignore,
 }
 
-/// As maybe_whole_expr, but for things other than expressions
+/// Like `maybe_whole_expr`, but for things other than expressions.
 #[macro_export]
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
@@ -116,11 +116,11 @@ pub struct Parser<'a> {
     /// with non-interpolated identifier and lifetime tokens they refer to.
     /// Perhaps the normalized / non-normalized setup can be simplified somehow.
     pub token: Token,
-    /// Span of the current non-normalized token.
+    /// The span of the current non-normalized token.
     meta_var_span: Option<Span>,
-    /// Span of the previous non-normalized token.
+    /// The span of the previous non-normalized token.
     pub prev_span: Span,
-    /// Kind of the previous normalized token (in simplified form).
+    /// The kind of the previous normalized token (in simplified form).
     prev_token_kind: PrevTokenKind,
     restrictions: Restrictions,
     /// Used to determine the path to externally loaded source files.
@@ -143,7 +143,7 @@ pub struct Parser<'a> {
     /// See the comments in the `parse_path_segment` function for more details.
     crate unmatched_angle_bracket_count: u32,
     crate max_angle_bracket_count: u32,
-    /// List of all unclosed delimiters found by the lexer. If an entry is used for error recovery
+    /// A list of all unclosed delimiters found by the lexer. If an entry is used for error recovery
     /// it gets removed from here. Every entry left at the end gets emitted as an independent
     /// error.
     crate unclosed_delims: Vec<UnmatchedBrace>,
@@ -799,14 +799,14 @@ impl<'a> Parser<'a> {
                             break;
                         }
                         Err(mut e) => {
-                            // Attempt to keep parsing if it was a similar separator
+                            // Attempt to keep parsing if it was a similar separator.
                             if let Some(ref tokens) = t.similar_tokens() {
                                 if tokens.contains(&self.token.kind) {
                                     self.bump();
                                 }
                             }
                             e.emit();
-                            // Attempt to keep parsing if it was an omitted separator
+                            // Attempt to keep parsing if it was an omitted separator.
                             match f(self) {
                                 Ok(t) => {
                                     v.push(t);
@@ -871,7 +871,7 @@ impl<'a> Parser<'a> {
         self.parse_delim_comma_seq(token::Paren, f)
     }
 
-    /// Advance the parser by one token
+    /// Advance the parser by one token.
     pub fn bump(&mut self) {
         if self.prev_token_kind == PrevTokenKind::Eof {
             // Bumping after EOF is a bad sign, usually an infinite loop.
@@ -894,17 +894,17 @@ impl<'a> Parser<'a> {
 
         self.token = self.next_tok();
         self.expected_tokens.clear();
-        // check after each token
+        // Check after each token.
         self.process_potential_macro_variable();
     }
 
-    /// Advance the parser using provided token as a next one. Use this when
+    /// Advances the parser using provided token as a next one. Use this when
     /// consuming a part of a token. For example a single `<` from `<<`.
     fn bump_with(&mut self, next: TokenKind, span: Span) {
         self.prev_span = self.token.span.with_hi(span.lo());
         // It would be incorrect to record the kind of the current token, but
         // fortunately for tokens currently using `bump_with`, the
-        // prev_token_kind will be of no use anyway.
+        // `prev_token_kind` will be of no use anyway.
         self.prev_token_kind = PrevTokenKind::Other;
         self.token = Token::new(next, span);
         self.expected_tokens.clear();
@@ -937,8 +937,8 @@ impl<'a> Parser<'a> {
     fn parse_asyncness(&mut self) -> IsAsync {
         if self.eat_keyword(kw::Async) {
             IsAsync::Async {
-                closure_id: ast::DUMMY_NODE_ID,
-                return_impl_trait_id: ast::DUMMY_NODE_ID,
+                closure_id: DUMMY_NODE_ID,
+                return_impl_trait_id: DUMMY_NODE_ID,
             }
         } else {
             IsAsync::NotAsync
@@ -1040,7 +1040,7 @@ impl<'a> Parser<'a> {
 
         let span = lo.to(self.token.span);
 
-        Ok(Param { attrs: attrs.into(), id: ast::DUMMY_NODE_ID, pat, span, ty })
+        Ok(Param { attrs: attrs.into(), id: DUMMY_NODE_ID, pat, span, ty })
     }
 
     /// Parses mutability (`mut` or nothing).
@@ -1497,7 +1497,7 @@ impl<'a> Parser<'a> {
                         format!("in {}", path),
                         Applicability::MachineApplicable,
                     )
-                    .emit();  // emit diagnostic, but continue with public visibility
+                    .emit(); // Emit diagnostic, but continue with public visibility.
             }
         }
 

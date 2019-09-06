@@ -6,13 +6,13 @@ use crate::print::pprust;
 use crate::mut_visit;
 use crate::with_default_globals;
 
-// this version doesn't care about getting comments or docstrings in.
+// This version doesn't care about getting comments or doc-strings in.
 fn fake_print_crate(s: &mut pprust::State<'_>,
                     krate: &ast::Crate) {
     s.print_mod(&krate.module, &krate.attrs)
 }
 
-// change every identifier to "zz"
+// Change every identifier to "zz".
 struct ToZzIdentMutVisitor;
 
 impl MutVisitor for ToZzIdentMutVisitor {
@@ -24,7 +24,7 @@ impl MutVisitor for ToZzIdentMutVisitor {
     }
 }
 
-// maybe add to expand.rs...
+// Maybe add to `expand.rs`.
 macro_rules! assert_pred {
     ($pred:expr, $predname:expr, $a:expr , $b:expr) => (
         {
@@ -39,7 +39,7 @@ macro_rules! assert_pred {
     )
 }
 
-// make sure idents get transformed everywhere
+// Make sure idents get transformed everywhere.
 #[test] fn ident_transformation () {
     with_default_globals(|| {
         let mut zz_visitor = ToZzIdentMutVisitor;
@@ -54,7 +54,7 @@ macro_rules! assert_pred {
     })
 }
 
-// even inside macro defs....
+// Make sure idents get transformed even inside macro defs.
 #[test] fn ident_transformation_in_defs () {
     with_default_globals(|| {
         let mut zz_visitor = ToZzIdentMutVisitor;

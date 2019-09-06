@@ -36,12 +36,12 @@ impl<'a> Parser<'a> {
         krate
     }
 
-    /// Parse a `mod <foo> { ... }` or `mod <foo>;` item
+    /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     pub(super) fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
         let (in_cfg, outer_attrs) = {
             let mut strip_unconfigured = crate::config::StripUnconfigured {
                 sess: self.sess,
-                features: None, // don't perform gated feature checking
+                features: None, // Don't perform gated feature checking.
             };
             let mut outer_attrs = outer_attrs.to_owned();
             strip_unconfigured.process_cfg_attrs(&mut outer_attrs);
@@ -57,7 +57,7 @@ impl<'a> Parser<'a> {
                     self.submod_path(id, &outer_attrs, id_span)?;
                 let (module, mut attrs) =
                     self.eval_src_mod(path, directory_ownership, id.to_string(), id_span)?;
-                // Record that we fetched the mod from an external file
+                // Record that we fetched the mod from an external file.
                 if warn {
                     let attr = attr::mk_attr_outer(
                         attr::mk_word_item(Ident::with_dummy_span(sym::warn_directory_ownership)));
