@@ -1,7 +1,5 @@
 // Regression test for issue #45045
 
-#![feature(nll)]
-
 enum Xyz {
     A,
     B,
