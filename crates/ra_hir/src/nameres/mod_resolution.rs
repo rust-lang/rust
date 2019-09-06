@@ -1,3 +1,5 @@
+//! This module resolves `mod foo;` declaration to file.
+
 use std::{borrow::Cow, sync::Arc};
 
 use ra_db::{FileId, SourceRoot};
@@ -77,7 +79,7 @@ pub(super) fn resolve_submodule(
             let path = dir_path.join(file_path.as_ref()).normalize();
             ResolutionMode::OutOfLine(OutOfLineMode::WithAttributePath(path))
         }
-        _ => {
+        (None, None) => {
             let is_dir_owner = is_root || mod_name == "mod";
             if is_dir_owner {
                 let file_mod = dir_path.join(format!("{}.rs", name));
