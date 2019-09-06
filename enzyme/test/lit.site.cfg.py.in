@@ -1,0 +1,44 @@
+@LIT_SITE_CFG_IN_HEADER@
+
+#config.llvm_src_root = "@LLVM_SOURCE_DIR@"
+config.llvm_obj_root = "@LLVM_BINARY_DIR@"
+config.llvm_tools_dir = "@LLVM_TOOLS_DIR@"
+config.llvm_libs_dir = "@LLVM_LIBS_DIR@"
+config.enzyme_obj_root = "@ENZYME_BINARY_DIR@"
+config.target_triple = "@TARGET_TRIPLE@"
+
+config.llvm_shlib_ext = "@LLVM_SHLIBEXT@"
+
+config.targets_to_build = "@TARGETS_TO_BUILD@"
+
+## Check the current platform with regex
+import re
+EAT_ERR_ON_X86 = ' '
+if (re.match(r'^x86_64*', '@TARGET_TRIPLE@') == None) :
+  EAT_ERR_ON_X86 = '|| echo \"error is eaten\"'
+
+for arch in config.targets_to_build.split():
+    config.available_features.add(arch.lower() + '-registered-target')
+
+# Support substitution of the tools and libs dirs with user parameters. This is
+# used when we can't determine the tool dir at configuration time.
+try:
+    config.llvm_tools_dir = config.llvm_tools_dir % lit_config.params
+    config.llvm_libs_dir = config.llvm_libs_dir % lit_config.params
+except KeyError:
+    e = sys.exc_info()[1]
+    key, = e.args
+    lit_config.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
+
+# excludes: A list of directories to exclude from the testsuite. The 'Inputs'
+# subdirectories contain auxiliary inputs for various tests in their parent
+# directories.
+config.excludes = ['Inputs']
+
+config.substitutions.append(('%shlibext', config.llvm_shlib_ext))
+config.substitutions.append(('%loadEnzyme', ''
+                                 + ' -load=@ENZYME_BINARY_DIR@/Enzyme/LLVMEnzyme' + config.llvm_shlib_ext
+                                 ))
+
+# Let the main config do the real work.
+lit_config.load_config(config, "@ENZYME_SOURCE_DIR@/test/lit.cfg.py")

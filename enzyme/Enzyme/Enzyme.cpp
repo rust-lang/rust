@@ -29,6 +29,7 @@
 
 #if LLVM_VERSION_MAJOR > 6
 #include "llvm/Analysis/PhiValues.h"
+#include "llvm/Transforms/Utils.h"
 #endif
 
 #include "llvm/IR/DebugInfoMetadata.h"

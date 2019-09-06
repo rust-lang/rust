@@ -1,0 +1,324 @@
+in new function diffemalloced nonconstant arg double %0
+in new function diffemalloced constant arg i64 %0
+in new function diffemalloced nonconstant retval   %mul3 = fmul fast double %call1, %call1
+checking if is constant[3]   %call = tail call i8* @malloc(i64 %mul)
+ < MEMSEARCH3>  %call = tail call i8* @malloc(i64 %mul)
+checking if is constant[3]   %0 = bitcast i8* %call to double*
+ < MEMSEARCH3>  %0 = bitcast i8* %call to double*
+checking if is constant[3]   %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+ < UPSEARCH3>  %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+constant(3)  call:  %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+checking if is constant[3]   %call1 = tail call fast double @f(double* %0)
+ < USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+nonconstant(3) inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ < UPSEARCH3>  %call1 = tail call fast double @f(double* %0)
+constant(3)  call:  %call1 = tail call fast double @f(double* %0)
+ VALUE nonconst from arg nonconst double %x
+memory(3)  erase 1:   %0 = bitcast i8* %call to double*
+memory(3) erase 3:   %call = tail call i8* @malloc(i64 %mul) op   %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+checking if is constant[3]   %call1 = tail call fast double @f(double* %0)
+ < USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+nonconstant(3) inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ < UPSEARCH3>  %call1 = tail call fast double @f(double* %0)
+checking if is constant[1]   %0 = bitcast i8* %call to double*
+ < MEMSEARCH1>  %0 = bitcast i8* %call to double*
+checking if is constant[1]   %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+ < UPSEARCH1>  %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+constant(1)  call:  %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+ VALUE nonconst from arg nonconst double %x
+memory(1)  erase 1:   %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[1]  %0 = bitcast i8* %call to double*
+nonconstant(3)  call   %call1 = tail call fast double @f(double* %0) op   %0 = bitcast i8* %call to double*
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+checking if is constant[3]   %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+ < UPSEARCH3>  %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+checking if is constant[1]   %0 = bitcast i8* %call to double*
+ < MEMSEARCH1>  %0 = bitcast i8* %call to double*
+memory(1) erase 3:   %0 = bitcast i8* %call to double* op   %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[1]  %0 = bitcast i8* %call to double*
+nonconstant(3)  call   %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4 op   %0 = bitcast i8* %call to double*
+ <Value USESEARCH3>  %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+Value constant inst (uses):  %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+ VALUE nonconst from retval   %mul3 = fmul fast double %call1, %call1
+ VALUE nonconst from retval   %mul3 = fmul fast double %call1, %call1
+ VALUE nonconst from retval   %mul3 = fmul fast double %call1, %call1
+ VALUE nonconst from retval   %mul3 = fmul fast double %call1, %call1
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ VALUE nonconst from retval   %mul3 = fmul fast double %call1, %call1
+ VALUE nonconst from retval   %mul3 = fmul fast double %call1, %call1
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+checking if is constant[3]   %0 = bitcast i8* %call to double*
+ < MEMSEARCH3>  %0 = bitcast i8* %call to double*
+memory(3) erase 3:   %0 = bitcast i8* %call to double* op   %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ failed to replace function f due to   %call2 = tail call i32 (double*, ...) bitcast (i32 (...)* @free to i32 (double*, ...)*)(double* %0) #4
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+in new function fakeaugmented_f nonconstant arg double* %0
+in new function fakeaugmented_f nonconstant retval   %0 = load double, double* %x, align 8, !tbaa !2
+function with differential return f 1
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+in new function diffef nonconstant arg double* %0
+in new function diffef nonconstant retval   %0 = load double, double* %x, align 8, !tbaa !2
+ VALUE nonconst from retval   %0 = load double, double* %x, align 8, !tbaa !2
+ VALUE nonconst from retval   %0 = load double, double* %x, align 8, !tbaa !2
+ VALUE nonconst from retval   %0 = load double, double* %x, align 8, !tbaa !2
+ VALUE nonconst from retval   %0 = load double, double* %x, align 8, !tbaa !2
+ VALUE nonconst from retval   %0 = load double, double* %x, align 8, !tbaa !2
+ VALUE nonconst from retval   %0 = load double, double* %x, align 8, !tbaa !2
+ VALUE nonconst from retval   %0 = load double, double* %x, align 8, !tbaa !2
+ VALUE nonconst from arg nonconst double* %x
+ VALUE nonconst from arg nonconst double* %x
+ VALUE nonconst from arg nonconst double* %x
+ VALUE nonconst from arg nonconst double* %"x'"
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+augmented considering differential ip of f double  <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+0
+ <Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+      considering use of   %call1 = tail call fast double @f(double* %0) -   store double %call1, double* %call1_cache
+Value found constant inst use:  %call1 = tail call fast double @f(double* %0) user   store double %call1, double* %call1_cache
+      considering use of   %call1 = tail call fast double @f(double* %0) -   %mul3 = fmul fast double %call1, %call1
+Value nonconstant inst (uses):  %call1 = tail call fast double @f(double* %0) user   %mul3 = fmul fast double %call1, %call1
+ </Value USESEARCH3>  %call1 = tail call fast double @f(double* %0)
+ Value nonconstant (couldn't disprove)[3]  %call1 = tail call fast double @f(double* %0)
+checking if is constant[3]   store double %x, double* %0, align 8, !tbaa !2
+ < UPSEARCH3>  store double %x, double* %0, align 8, !tbaa !2
+ VALUE nonconst from arg nonconst double %x
+nonconstant(3)  inst   store double %x, double* %0, align 8, !tbaa !2 op double %x
+ VALUE nonconst from arg nonconst double %x
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ VALUE nonconst from arg nonconst double %x
+ VALUE nonconst from arg nonconst double %x
+ VALUE nonconst from arg nonconst double %x
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %0 = bitcast i8* %call to double*
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+ Value nonconstant (couldn't disprove)[3]  %call = tail call i8* @malloc(i64 %mul)
+
+; Function Attrs: nounwind uwtable
+define internal { double } @diffemalloced(double %x, i64 %n, double %differeturn) #1 {
+entry:
+  %mul = shl i64 %n, 3
+  %call = tail call i8* @malloc(i64 %mul)
+  %"call'mi" = phi i8* 
+  store i8* %"call'mi", i8** %"call'mi_cache"
+  %0 = bitcast i8* %call to double*
+  %"'ipc4" = bitcast i8* %"call'mi" to double*
+  store double* %0, double** %_cache
+  store double %x, double* %0, align 8, !tbaa !2
+  %"'ipc1" = bitcast i8* %"call'mi" to double*
+  %1 = call { {}, double } @augmented_f(double* %0, double* %"'ipc1")
+  %2 = extractvalue { {}, double } %1, 1
+  store double %2, double* %call1_cache
+  %mul3 = fmul fast double %2, %2
+  br label %invertentry
+
+allocsForInversion:                               ; No predecessors!
+  %"mul3'de" = alloca double
+  store double 0.000000e+00, double* %"mul3'de"
+  %call1_cache = alloca double
+  %"call1'de" = alloca double
+  store double 0.000000e+00, double* %"call1'de"
+  %_cache = alloca double*
+  %"call'mi_cache" = alloca i8*
+  %"x'de" = alloca double
+  store double 0.000000e+00, double* %"x'de"
+
+invertentry:                                      ; preds = %entry
+  store double %differeturn, double* %"mul3'de"
+  %3 = load double, double* %"mul3'de"
+  %4 = load double, double* %call1_cache
+  %m0diffecall1 = fmul fast double %3, %4
+  %m1diffecall1 = fmul fast double %3, %4
+  store double 0.000000e+00, double* %"mul3'de"
+  %5 = load double, double* %"call1'de"
+  %6 = fadd fast double %5, %m0diffecall1
+  store double %6, double* %"call1'de"
+  %7 = load double, double* %"call1'de"
+  %8 = fadd fast double %7, %m1diffecall1
+  store double %8, double* %"call1'de"
+  %9 = load double*, double** %_cache
+  %10 = load i8*, i8** %"call'mi_cache"
+  %"'ipc" = bitcast i8* %10 to double*
+  %11 = load double, double* %"call1'de"
+  %12 = call {} @diffef(double* %9, double* %"'ipc", double %11, {} undef)
+  store double 0.000000e+00, double* %"call1'de"
+  %13 = load i8*, i8** %"call'mi_cache"
+  %"'ipc2" = bitcast i8* %13 to double*
+  %14 = load double, double* %"'ipc2"
+  %15 = load i8*, i8** %"call'mi_cache"
+  %"'ipc3" = bitcast i8* %15 to double*
+  store double 0.000000e+00, double* %"'ipc3"
+  %16 = load double, double* %"x'de"
+  %17 = fadd fast double %16, %14
+  store double %17, double* %"x'de"
+}
+
+  %_cache = alloca double*
+opt: /home/ubuntu/Enzyme/llvm/lib/Transforms/Enzyme/Enzyme.cpp:2645: llvm::Value* GradientUtils::invertPointerM(llvm::Value*, llvm::IRBuilder<>&): Assertion `!isConstantValue(val)' failed.
+Stack dump:
+0.	Program arguments: /home/ubuntu/Enzyme/build/bin/opt -load=/home/ubuntu/Enzyme/build/./lib/LLVMEnzyme.so -enzyme -inline -O3 -dse -S -enzyme_printconst 
+1.	Running pass 'Function Pass Manager' on module '<stdin>'.
+2.	Running pass 'Enzyme Pass' on function '@derivative'
+#0 0x0000561ca2907ee7 llvm::sys::PrintStackTrace(llvm::raw_ostream&) /home/ubuntu/Enzyme/llvm/lib/Support/Unix/Signals.inc:490:0
+#1 0x0000561ca2907f7a PrintStackTraceSignalHandler(void*) /home/ubuntu/Enzyme/llvm/lib/Support/Unix/Signals.inc:554:0
+#2 0x0000561ca2905cb6 llvm::sys::RunSignalHandlers() /home/ubuntu/Enzyme/llvm/lib/Support/Signals.cpp:67:0
+#3 0x0000561ca290790a SignalHandler(int) /home/ubuntu/Enzyme/llvm/lib/Support/Unix/Signals.inc:353:0
+#4 0x00007f40f1aad890 __restore_rt (/lib/x86_64-linux-gnu/libpthread.so.0+0x12890)
+#5 0x00007f40f0ba5e97 gsignal (/lib/x86_64-linux-gnu/libc.so.6+0x3ee97)
+#6 0x00007f40f0ba7801 abort (/lib/x86_64-linux-gnu/libc.so.6+0x40801)
+#7 0x00007f40f0b9739a (/lib/x86_64-linux-gnu/libc.so.6+0x3039a)
+#8 0x00007f40f0b97412 (/lib/x86_64-linux-gnu/libc.so.6+0x30412)
+#9 0x00007f40f088a2a8 GradientUtils::invertPointerM(llvm::Value*, llvm::IRBuilder<llvm::ConstantFolder, llvm::IRBuilderDefaultInserter>&) /home/ubuntu/Enzyme/llvm/lib/Transforms/Enzyme/Enzyme.cpp:2646:0
+#10 0x00007f40f0872059 CreatePrimalAndGradient(llvm::Function*, llvm::SmallSet<unsigned int, 4u, std::less<unsigned int> > const&, llvm::TargetLibraryInfo&, llvm::AAResults&, bool, bool, bool, llvm::Type*) /home/ubuntu/Enzyme/llvm/lib/Transforms/Enzyme/Enzyme.cpp:4785:0
+#11 0x00007f40f08748cf HandleAutoDiff(llvm::CallInst*, llvm::TargetLibraryInfo&, llvm::AAResults&) /home/ubuntu/Enzyme/llvm/lib/Transforms/Enzyme/Enzyme.cpp:5049:0
+#12 0x00007f40f0874d00 lowerAutodiffIntrinsic(llvm::Function&, llvm::TargetLibraryInfo&, llvm::AAResults&) /home/ubuntu/Enzyme/llvm/lib/Transforms/Enzyme/Enzyme.cpp:5084:0
+#13 0x00007f40f0874e2b (anonymous namespace)::Enzyme::runOnFunction(llvm::Function&) /home/ubuntu/Enzyme/llvm/lib/Transforms/Enzyme/Enzyme.cpp:5118:0
+#14 0x0000561ca2038e3e llvm::FPPassManager::runOnFunction(llvm::Function&) /home/ubuntu/Enzyme/llvm/lib/IR/LegacyPassManager.cpp:1586:0
+#15 0x0000561ca2039003 llvm::FPPassManager::runOnModule(llvm::Module&) /home/ubuntu/Enzyme/llvm/lib/IR/LegacyPassManager.cpp:1609:0
+#16 0x0000561ca20393d6 (anonymous namespace)::MPPassManager::runOnModule(llvm::Module&) /home/ubuntu/Enzyme/llvm/lib/IR/LegacyPassManager.cpp:1669:0
+#17 0x0000561ca2039b60 llvm::legacy::PassManagerImpl::run(llvm::Module&) /home/ubuntu/Enzyme/llvm/lib/IR/LegacyPassManager.cpp:1774:0
+#18 0x0000561ca2039d8f llvm::legacy::PassManager::run(llvm::Module&) /home/ubuntu/Enzyme/llvm/lib/IR/LegacyPassManager.cpp:1806:0
+#19 0x0000561ca02d343a main /home/ubuntu/Enzyme/llvm/tools/opt/opt.cpp:827:0
+#20 0x00007f40f0b88b97 __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x21b97)
+#21 0x0000561ca029751a _start (/home/ubuntu/Enzyme/build/bin/opt+0x13e951a)
