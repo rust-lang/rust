@@ -36,7 +36,7 @@ mod error_codes;
 
 mod borrow_check;
 mod build;
-mod dataflow;
+pub mod dataflow;
 mod hair;
 mod lints;
 mod shim;
