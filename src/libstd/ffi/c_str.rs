@@ -204,7 +204,9 @@ extern "C" {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for CStr {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.to_bytes().hash(state)
+        // we also hash a trailing zero in order to make CStr and CString produce the same hash
+        // for the same string
+        self.to_bytes_with_nul().hash(state);
     }
 }
 
