@@ -241,7 +241,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
-    // Allocate variable and temp allocas
+    // Allocate variable and temp allocas.
     fx.locals = {
         // FIXME(dlrobertson): This is ugly. Find a better way of getting the `PlaceRef` or
         // `LocalRef` from `arg_local_refs`

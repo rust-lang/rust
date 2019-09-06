@@ -182,7 +182,7 @@ pub fn new_handler(error_format: ErrorOutputType,
                    ui_testing: bool,
 ) -> errors::Handler {
     // rustdoc doesn't override (or allow to override) anything from this that is relevant here, so
-    // stick to the defaults
+    // stick to the defaults.
     let sessopts = Options::default();
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(kind) => {

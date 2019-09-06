@@ -3645,7 +3645,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Don't do all the complex logic below for `DeclItem`.
         match stmt.node {
             hir::StmtKind::Item(..) => return,
-            hir::StmtKind::Local(..) | hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => {}
+            hir::StmtKind::Local(..) |
+            hir::StmtKind::Expr(..) |
+            hir::StmtKind::Semi(..) => {}
         }
 
         self.warn_if_unreachable(stmt.hir_id, stmt.span, "statement");

@@ -31,7 +31,7 @@ const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
 pub fn write_file_header(stream: &mut Encoder) {
     stream.emit_raw_bytes(FILE_MAGIC);
     stream.emit_raw_bytes(&[(HEADER_FORMAT_VERSION >> 0) as u8,
-                       (HEADER_FORMAT_VERSION >> 8) as u8]);
+                          (HEADER_FORMAT_VERSION >> 8) as u8]);
 
     let rustc_version = rustc_version();
     assert_eq!(rustc_version.len(), (rustc_version.len() as u8) as usize);
@@ -59,18 +59,18 @@ pub fn read_file(report_incremental_info: bool, path: &Path)
 
     let mut file = io::Cursor::new(data);
 
-    // Check FILE_MAGIC
+    // Check `FILE_MAGIC`.
     {
         debug_assert!(FILE_MAGIC.len() == 4);
         let mut file_magic = [0u8; 4];
         file.read_exact(&mut file_magic)?;
         if file_magic != FILE_MAGIC {
-            report_format_mismatch(report_incremental_info, path, "Wrong FILE_MAGIC");
+            report_format_mismatch(report_incremental_info, path, "wrong `FILE_MAGIC`");
             return Ok(None)
         }
     }
 
-    // Check HEADER_FORMAT_VERSION
+    // Check `HEADER_FORMAT_VERSION`.
     {
         debug_assert!(::std::mem::size_of_val(&HEADER_FORMAT_VERSION) == 2);
         let mut header_format_version = [0u8; 2];
@@ -79,12 +79,12 @@ pub fn read_file(report_incremental_info: bool, path: &Path)
                                     ((header_format_version[1] as u16) << 8);
 
         if header_format_version != HEADER_FORMAT_VERSION {
-            report_format_mismatch(report_incremental_info, path, "Wrong HEADER_FORMAT_VERSION");
+            report_format_mismatch(report_incremental_info, path, "wrong `HEADER_FORMAT_VERSION`");
             return Ok(None)
         }
     }
 
-    // Check RUSTC_VERSION
+    // Check `RUSTC_VERSION`.
     {
         let mut rustc_version_str_len = [0u8; 1];
         file.read_exact(&mut rustc_version_str_len)?;
@@ -94,7 +94,7 @@ pub fn read_file(report_incremental_info: bool, path: &Path)
         file.read_exact(&mut buffer)?;
 
         if buffer != rustc_version().as_bytes() {
-            report_format_mismatch(report_incremental_info, path, "Different compiler version");
+            report_format_mismatch(report_incremental_info, path, "different compiler version");
             return Ok(None);
         }
     }
@@ -120,7 +120,7 @@ fn rustc_version() -> String {
         }
     }
 
-    RUSTC_VERSION.expect("Cannot use rustc without explicit version for \
+    RUSTC_VERSION.expect("cannot use rustc without explicit version for \
                           incremental compilation")
                  .to_string()
 }

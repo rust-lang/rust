@@ -5,8 +5,8 @@ mod tests;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
 pub enum Abi {
-    // N.B., this ordering MUST match the AbiDatas array below.
-    // (This is ensured by the test indices_are_correct().)
+    // N.B., this ordering MUST match the `AbiData`s array below.
+    // (This is ensured by the test `indices_are_correct()`.)
 
     // Single platform ABIs
     Cdecl,
@@ -22,7 +22,7 @@ pub enum Abi {
     X86Interrupt,
     AmdGpuKernel,
 
-    // Multiplatform / generic ABIs
+    // Multi-platform / generic ABIs
     Rust,
     C,
     System,

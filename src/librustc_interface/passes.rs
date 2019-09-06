@@ -115,7 +115,7 @@ declare_box_region_type!(
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
 ///
-/// Returns `None` if we're aborting after handling -W help.
+/// Returns `None` if we're aborting after handling `-W help`.
 pub fn configure_and_expand(
     sess: Lrc<Session>,
     cstore: Lrc<CStore>,
@@ -241,7 +241,7 @@ pub fn register_plugins<'a>(
         sess.edition(),
         &sess.opts.debugging_opts.allow_features,
     );
-    // these need to be set "early" so that expansion sees `quote` if enabled.
+    // These need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
     let crate_types = util::collect_crate_types(sess, &krate.attrs);
@@ -252,7 +252,7 @@ pub fn register_plugins<'a>(
     rustc_incremental::prepare_session_directory(sess, &crate_name, disambiguator);
 
     if sess.opts.incremental.is_some() {
-        time(sess, "garbage collect incremental cache directory", || {
+        time(sess, "garbage-collect incremental cache directory", || {
             if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
                 warn!(
                     "Error while trying to garbage collect incremental \
@@ -330,7 +330,7 @@ fn configure_and_expand_inner<'a>(
     plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     let attributes = plugin_info.attributes;
-    time(sess, "pre ast expansion lint checks", || {
+    time(sess, "pre-AST-expansion lint checks", || {
         lint::check_ast_crate(
             sess,
             &krate,
@@ -366,13 +366,13 @@ fn configure_and_expand_inner<'a>(
         &mut krate, &mut resolver, plugin_info.syntax_exts, sess.edition()
     );
 
-    // Expand all macros
+    // Expand all macros.
     sess.profiler(|p| p.start_activity("macro expansion"));
     krate = time(sess, "expansion", || {
-        // Windows dlls do not have rpaths, so they don't know how to find their
+        // Windows DLLs do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
-        // dependent dlls. Note that this uses cfg!(windows) as opposed to
-        // targ_cfg because syntax extensions are always loaded for the host
+        // dependent DLLs. Note that this uses `cfg!(windows)` as opposed to
+        // `targ_cfg` because syntax extensions are always loaded for the host
         // compiler, not for the target.
         //
         // This is somewhat of an inherently racy operation, however, as
@@ -401,7 +401,7 @@ fn configure_and_expand_inner<'a>(
             );
         }
 
-        // Create the config for macro expansion
+        // Create the config for macro expansion.
         let features = sess.features_untracked();
         let cfg = syntax::ext::expand::ExpansionConfig {
             features: Some(&features),
@@ -418,7 +418,7 @@ fn configure_and_expand_inner<'a>(
             ecx.monotonic_expander().expand_crate(krate)
         });
 
-        // The rest is error reporting
+        // The rest is error reporting.
 
         time(sess, "check unused macros", || {
             ecx.check_unused_macros();
@@ -456,7 +456,7 @@ fn configure_and_expand_inner<'a>(
     });
 
     // If we're actually rustdoc then there's no need to actually compile
-    // anything, so switch everything to just looping
+    // anything, so switch everything to just looping.
     if sess.opts.actually_rustdoc {
         util::ReplaceBodyWithLoop::new(sess).visit_crate(&mut krate);
     }
@@ -546,8 +546,8 @@ pub fn lower_to_hir(
     dep_graph: &DepGraph,
     krate: &ast::Crate,
 ) -> Result<hir::map::Forest> {
-    // Lower ast -> hir
-    let hir_forest = time(sess, "lowering ast -> hir", || {
+    // Lower AST to HIR.
+    let hir_forest = time(sess, "lowering AST -> HIR", || {
         let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, resolver);
 
         if sess.opts.debugging_opts.hir_stats {
@@ -592,7 +592,7 @@ fn generated_output_paths(
                 out_filenames.push(p);
             },
             OutputType::DepInfo if sess.opts.debugging_opts.dep_info_omit_d_target => {
-                // Don't add the dep-info output when omitting it from dep-info targets
+                // Don't add the dep-info output when omitting it from dep-info targets.
             }
             _ => {
                 out_filenames.push(file);
@@ -650,7 +650,7 @@ fn escape_dep_filename(filename: &FileName) -> String {
 
 fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames: &[PathBuf]) {
     let sess = &compiler.sess;
-    // Write out dependency rules to the dep-info file if requested
+    // Write out dependency rules to the dep-info file if requested.
     if !sess.opts.output_types.contains_key(&OutputType::DepInfo) {
         return;
     }
@@ -658,7 +658,7 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
     let result = (|| -> io::Result<()> {
         // Build a list of files used to compile the output and
-        // write Makefile-compatible dependency rules
+        // write Makefile-compatible dependency rules.
         let mut files: Vec<String> = sess.source_map()
             .files()
             .iter()
@@ -690,7 +690,7 @@ fn write_out_deps(compiler: &Compiler, outputs: &OutputFilenames, out_filenames:
 
         // Emit a fake target for each input file to the compilation. This
         // prevents `make` from spitting out an error if a file is later
-        // deleted. For more info see #28735
+        // deleted. For more info see #28735.
         for path in files {
             writeln!(file, "{}:", path)?;
         }
@@ -720,7 +720,7 @@ pub fn prepare_outputs(
     krate: &ast::Crate,
     crate_name: &str
 ) -> Result<OutputFilenames> {
-    // FIXME: rustdoc passes &[] instead of &krate.attrs here
+    // FIXME: rustdoc passes `&[]` instead of `&krate.attrs` here.
     let outputs = util::build_output_filenames(
         &compiler.input,
         &compiler.output_dir,
@@ -741,8 +741,7 @@ pub fn prepare_outputs(
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
                 sess.err(&format!(
-                    "the input file \"{}\" would be overwritten by the generated \
-                        executable",
+                    "the input file \"{}\" would be overwritten by the generated executable",
                     input_path.display()
                 ));
                 return Err(ErrorReported);
@@ -750,7 +749,7 @@ pub fn prepare_outputs(
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
                 sess.err(&format!(
                     "the generated executable for the input file \"{}\" conflicts with the \
-                        existing directory \"{}\"",
+                     existing directory \"{}\"",
                     input_path.display(),
                     dir_path.display()
                 ));
@@ -767,7 +766,7 @@ pub fn prepare_outputs(
     if !only_dep_info {
         if let Some(ref dir) = compiler.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.err("failed to find or create the directory specified by --out-dir");
+                sess.err("failed to find or create the directory specified by `--out-dir`");
                 return Err(ErrorReported);
             }
         }
@@ -842,8 +841,8 @@ pub fn create_global_ctxt(
         let global_ctxt: Option<GlobalCtxt<'_>>;
         let arenas = AllArenas::new();
 
-        // Construct the HIR map
-        let hir_map = time(sess, "indexing hir", || {
+        // Construct the HIR map.
+        let hir_map = time(sess, "indexing HIR", || {
             hir::map::map_crate(sess, cstore, &mut hir_forest, &defs)
         });
 
@@ -870,14 +869,14 @@ pub fn create_global_ctxt(
             query_result_on_disk_cache,
             &crate_name,
             tx,
-            &outputs
+            &outputs,
         );
 
         global_ctxt = Some(gcx);
         let gcx = global_ctxt.as_ref().unwrap();
 
         ty::tls::enter_global(gcx, |tcx| {
-            // Do some initialization of the DepGraph that can only be done with the
+            // Do some initialization of the `DepGraph` that can only be done with the
             // tcx available.
             time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
         });
@@ -924,7 +923,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         });
     });
 
-    // passes are timed inside typeck
+    // Passes are timed inside typeck.
     typeck::check_crate(tcx)?;
 
     time(sess, "misc checking 2", || {
@@ -938,13 +937,13 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         }, {
             time(sess, "liveness checking + intrinsic checking", || {
                 par_iter(&tcx.hir().krate().modules).for_each(|(&module, _)| {
-                    // this must run before MIR dump, because
+                    // This must run before MIR dump, because
                     // "not all control paths return a value" is reported here.
                     //
-                    // maybe move the check to a MIR pass?
-                    tcx.ensure().check_mod_liveness(tcx.hir().local_def_id_from_node_id(module));
-
-                    tcx.ensure().check_mod_intrinsics(tcx.hir().local_def_id_from_node_id(module));
+                    // FIXME: maybe move the check to a MIR pass?
+                    let def_id = tcx.hir().local_def_id_from_node_id(module);
+                    tcx.ensure().check_mod_liveness(def_id);
+                    tcx.ensure().check_mod_intrinsics(def_id);
                 });
             });
         });
@@ -960,7 +959,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
         tcx.par_body_owners(|def_id| tcx.ensure().mir_borrowck(def_id));
     });
 
-    time(sess, "dumping chalk-like clauses", || {
+    time(sess, "dumping Chalk-like clauses", || {
         rustc_traits::lowering::dump_program_clauses(tcx);
     });
 
@@ -1073,8 +1072,7 @@ fn encode_and_write_metadata(
     (metadata, need_metadata_module)
 }
 
-/// Runs the codegen backend, after which the AST and analysis can
-/// be discarded.
+/// Runs the codegen backend, after which the AST and analysis can be discarded.
 pub fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,

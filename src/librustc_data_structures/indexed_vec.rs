@@ -61,25 +61,25 @@ impl Idx for u32 {
 macro_rules! newtype_index {
     // ---- public rules ----
 
-    // Use default constants
+    // Use default constants.
     ($(#[$attrs:meta])* $v:vis struct $name:ident { .. }) => (
         $crate::newtype_index!(
-            // Leave out derives marker so we can use its absence to ensure it comes first
+            // Leave out derives marker so we can use its absence to ensure it comes first.
             @attrs        [$(#[$attrs])*]
             @type         [$name]
-            // shave off 256 indices at the end to allow space for packing these indices into enums
+            // Shave off 256 indices at the end to allow space for packing these indices into enums.
             @max          [0xFFFF_FF00]
             @vis          [$v]
             @debug_format ["{}"]);
     );
 
-    // Define any constants
+    // Define any constants.
     ($(#[$attrs:meta])* $v:vis struct $name:ident { $($tokens:tt)+ }) => (
         $crate::newtype_index!(
-            // Leave out derives marker so we can use its absence to ensure it comes first
+            // Leave out derives marker so we can use its absence to ensure it comes first.
             @attrs        [$(#[$attrs])*]
             @type         [$name]
-            // shave off 256 indices at the end to allow space for packing these indices into enums
+            // Shave off 256 indices at the end to allow space for packing these indices into enums.
             @max          [0xFFFF_FF00]
             @vis          [$v]
             @debug_format ["{}"]
@@ -88,7 +88,7 @@ macro_rules! newtype_index {
 
     // ---- private rules ----
 
-    // Base case, user-defined constants (if any) have already been defined
+    // Base case where user-defined constants (if any) have already been defined.
     (@derives      [$($derives:ident,)*]
      @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
@@ -266,13 +266,13 @@ macro_rules! newtype_index {
             @debug_format [$debug_format]);
     );
 
-    // base case for handle_debug where format is custom. No Debug implementation is emitted.
+    // Base case for `handle_debug` where format is custom. No `Debug` implementation is emitted.
     (@handle_debug
      @derives      [$($_derives:ident,)*]
      @type         [$type:ident]
      @debug_format [custom]) => ();
 
-    // base case for handle_debug, no debug overrides found, so use default
+    // Base case for `handle_debug` where no debug overrides found. Use default.
     (@handle_debug
      @derives      []
      @type         [$type:ident]
@@ -284,7 +284,7 @@ macro_rules! newtype_index {
         }
     );
 
-    // Debug is requested for derive, don't generate any Debug implementation.
+    // `Debug` is requested for derive, don't generate any `Debug` implementation.
     (@handle_debug
      @derives      [Debug, $($derives:ident,)*]
      @type         [$type:ident]
@@ -302,7 +302,7 @@ macro_rules! newtype_index {
             @debug_format [$debug_format]);
     );
 
-    // Append comma to end of derives list if it's missing
+    // Append comma to end of derives list if it's missing.
     (@attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$max:expr]
@@ -361,7 +361,7 @@ macro_rules! newtype_index {
     );
 
     // The case where no derives are added, but encodable is overridden. Don't
-    // derive serialization traits
+    // derive serialization traits.
     (@attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$max:expr]
@@ -379,7 +379,7 @@ macro_rules! newtype_index {
                           $($tokens)*);
     );
 
-    // The case where no derives are added, add serialization derives by default
+    // The case where no derives are added. Add serialization derives by default.
     (@attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
      @max          [$max:expr]
@@ -405,7 +405,7 @@ macro_rules! newtype_index {
         }
     );
 
-    // Rewrite final without comma to one that includes comma
+    // Rewrite final without comma to one that includes comma.
     (@derives      [$($derives:ident,)*]
      @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
@@ -423,7 +423,7 @@ macro_rules! newtype_index {
                           $name = $constant,);
     );
 
-    // Rewrite final const without comma to one that includes comma
+    // Rewrite final const without comma to one that includes comma.
     (@derives      [$($derives:ident,)*]
      @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
@@ -442,7 +442,7 @@ macro_rules! newtype_index {
                           $(#[doc = $doc])* const $name = $constant,);
     );
 
-    // Replace existing default for max
+    // Replace existing default for `max`.
     (@derives      [$($derives:ident,)*]
      @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
@@ -461,7 +461,7 @@ macro_rules! newtype_index {
                           $($tokens)*);
     );
 
-    // Replace existing default for debug_format
+    // Replace existing default for `debug_format`.
     (@derives      [$($derives:ident,)*]
      @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
@@ -480,7 +480,7 @@ macro_rules! newtype_index {
                           $($tokens)*);
     );
 
-    // Assign a user-defined constant
+    // Assign a user-defined constant.
     (@derives      [$($derives:ident,)*]
      @attrs        [$(#[$attrs:meta])*]
      @type         [$type:ident]
@@ -674,7 +674,7 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.get_mut(index.index())
     }
 
-    /// Returns mutable references to two distinct elements, a and b. Panics if a == b.
+    /// Returns mutable references to two distinct elements, `a` and `b`. Panics if `a == b`.
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());

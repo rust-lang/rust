@@ -1,3 +1,5 @@
+//! This module handles encoding metadata for a single crate.
+
 use crate::index::Index;
 use crate::schema::*;
 
@@ -55,7 +57,7 @@ pub struct EncodeContext<'tcx> {
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
 
-    // This is used to speed up Span encoding.
+    // This is used to speed up `Span` encoding.
     source_file_cache: Lrc<SourceFile>,
 }
 
@@ -148,7 +150,7 @@ impl<'tcx> SpecializedEncoder<Span> for EncodeContext<'tcx> {
 
         let span = span.data();
 
-        // The Span infrastructure should make sure that this invariant holds:
+        // The `Span` infrastructure should make sure that this invariant holds.
         debug_assert!(span.lo <= span.hi);
 
         if !self.source_file_cache.contains(span.lo) {
@@ -213,6 +215,7 @@ impl<'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'tcx> {
 }
 
 impl<'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext<'tcx> {
+    #[inline]
     fn specialized_encode(&mut self,
                           predicates: &ty::GenericPredicates<'tcx>)
                           -> Result<(), Self::Error> {
@@ -221,12 +224,14 @@ impl<'tcx> SpecializedEncoder<ty::GenericPredicates<'tcx>> for EncodeContext<'tc
 }
 
 impl<'tcx> SpecializedEncoder<Fingerprint> for EncodeContext<'tcx> {
+    #[inline]
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.opaque)
     }
 }
 
 impl<'tcx, T: Encodable> SpecializedEncoder<mir::ClearCrossCrate<T>> for EncodeContext<'tcx> {
+    #[inline]
     fn specialized_encode(&mut self,
                           _: &mir::ClearCrossCrate<T>)
                           -> Result<(), Self::Error> {
@@ -312,6 +317,7 @@ impl<'tcx> EncodeContext<'tcx> {
     /// arguments. This `record` function will call `op` to generate
     /// the `Entry` (which may point to other encoded information)
     /// and will then record the `Lazy<Entry>` for use in the index.
+    //
     // FIXME(eddyb) remove this.
     pub fn record<DATA>(&mut self,
                         id: DefId,
@@ -361,7 +367,7 @@ impl<'tcx> EncodeContext<'tcx> {
                     // cloning the whole map in the process).
                     _  if source_file.name_was_remapped => source_file.clone(),
 
-                    // Otherwise expand all paths to absolute paths because
+                    // Otherwise, expand all paths to absolute paths because
                     // any relative paths are potentially relative to a
                     // wrong directory.
                     FileName::Real(ref name) => {
@@ -409,19 +415,19 @@ impl<'tcx> EncodeContext<'tcx> {
         let diagnostic_items = self.encode_diagnostic_items();
         let diagnostic_item_bytes = self.position() - i;
 
-        // Encode the native libraries used
+        // Encode the native libraries used.
         i = self.position();
         let native_libraries = self.encode_native_libraries();
         let native_lib_bytes = self.position() - i;
 
         let foreign_modules = self.encode_foreign_modules();
 
-        // Encode source_map
+        // Encode `source_map`.
         i = self.position();
         let source_map = self.encode_source_map();
         let source_map_bytes = self.position() - i;
 
-        // Encode DefPathTable
+        // Encode `def_path_table`.
         i = self.position();
         let def_path_table = self.encode_def_path_table();
         let def_path_table_bytes = self.position() - i;
@@ -444,19 +450,19 @@ impl<'tcx> EncodeContext<'tcx> {
         self.encode_info_for_items();
         let item_bytes = self.position() - i;
 
-        // Encode the allocation index
+        // Encode the allocation index.
         let interpret_alloc_index = {
             let mut interpret_alloc_index = Vec::new();
             let mut n = 0;
-            trace!("beginning to encode alloc ids");
+            trace!("beginning to encode alloc IDs");
             loop {
                 let new_n = self.interpret_allocs_inverse.len();
-                // if we have found new ids, serialize those, too
+                // If we have found new Ids, serialize those too.
                 if n == new_n {
-                    // otherwise, abort
+                    // Otherwise, abort.
                     break;
                 }
-                trace!("encoding {} further alloc ids", new_n - n);
+                trace!("encoding {} further alloc IDs", new_n - n);
                 for idx in n..new_n {
                     let id = self.interpret_allocs_inverse[idx];
                     let pos = self.position() as u32;

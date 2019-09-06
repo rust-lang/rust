@@ -24,7 +24,7 @@ pub use syntax::attr::{self, InlineAttr, OptimizeAttr};
 use crate::context::CodegenCx;
 use crate::value::Value;
 
-/// Mark LLVM function to use provided inline heuristic.
+/// Marks an LLVM function to use the provided inline heuristic.
 #[inline]
 pub fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
     use self::InlineAttr::*;
@@ -44,19 +44,19 @@ pub fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
     };
 }
 
-/// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
+/// Tells LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
 pub fn emit_uwtable(val: &'ll Value, emit: bool) {
     Attribute::UWTable.toggle_llfn(Function, val, emit);
 }
 
-/// Tell LLVM whether the function can or cannot unwind.
+/// Tells LLVM whether the function can or cannot unwind.
 #[inline]
 fn unwind(val: &'ll Value, can_unwind: bool) {
     Attribute::NoUnwind.toggle_llfn(Function, val, !can_unwind);
 }
 
-/// Tell LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
+/// Tells LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
 #[inline]
 pub fn naked(val: &'ll Value, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
@@ -70,7 +70,7 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
     }
 }
 
-/// Tell LLVM what instrument function to insert.
+/// Tells LLVM what instrument function to insert.
 #[inline]
 pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().instrument_mcount() {
@@ -78,7 +78,7 @@ pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
         // `post-inline-ee-instrument` LLVM pass.
 
         // The function name varies on platforms.
-        // See test/CodeGen/mcount.c in clang.
+        // See `test/CodeGen/mcount.c` in Clang.
         let mcount_name = CString::new(
             cx.sess().target.target.options.target_mcount.as_str().as_bytes()).unwrap();
 
@@ -90,7 +90,7 @@ pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 
 pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
-    // should be using stack probes
+    // should be using stack probes.
     if !cx.sess().target.target.options.stack_probes {
         return
     }
@@ -167,7 +167,7 @@ pub fn apply_target_cpu_attr(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
 /// Sets the `NonLazyBind` LLVM attribute on a given function,
 /// assuming the codegen options allow skipping the PLT.
 pub fn non_lazy_bind(sess: &Session, llfn: &'ll Value) {
-    // Don't generate calls through PLT if it's not necessary
+    // Don't generate calls through PLT if it's not necessary.
     if !sess.needs_plt() {
         Attribute::NonLazyBind.apply_llfn(Function, llfn);
     }
@@ -194,8 +194,7 @@ pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
     }
 }
 
-
-/// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
+/// Composite function that sets LLVM attributes for function depending on its AST (`#[attribute]`)
 /// attributes.
 pub fn from_fn_attrs(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -268,10 +267,10 @@ pub fn from_fn_attrs(
         // optimize based on this!
         false
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::UNWIND) {
-        // If a specific #[unwind] attribute is present, use that
+        // If a specific `#[unwind]` attribute is present, use that.
         true
     } else if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND) {
-        // Special attribute for allocator functions, which can't unwind
+        // Special attribute for allocator functions, which can't unwind.
         false
     } else if let Some(id) = id {
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
@@ -286,11 +285,11 @@ pub fn from_fn_attrs(
             false
         } else {
             // Anything else defined in Rust is assumed that it can possibly
-            // unwind
+            // unwind.
             true
         }
     } else {
-        // assume this can possibly unwind, avoiding the application of a
+        // Assume this can possibly unwind, avoiding the application of a
         // `nounwind` attribute below.
         true
     });

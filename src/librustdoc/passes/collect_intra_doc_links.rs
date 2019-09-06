@@ -74,7 +74,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             };
 
             if let Ok((_, res)) = result {
-                let res = res.map_id(|_| panic!("unexpected node_id"));
+                let res = res.map_id(|_| panic!("unexpected `NodeId`"));
                 // In case this is a trait item, skip the
                 // early return and try looking for the trait.
                 let value = match res {
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             if let Res::Err = ty_res {
                 return Err(());
             }
-            let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
+            let ty_res = ty_res.map_id(|_| panic!("unexpected `NodeId`"));
             match ty_res {
                 Res::Def(DefKind::Struct, did)
                 | Res::Def(DefKind::Union, did)

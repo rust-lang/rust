@@ -52,7 +52,7 @@ pub enum PpSourceMode {
 pub enum PpFlowGraphMode {
     Default,
     /// Drops the labels from the edges in the flowgraph output. This
-    /// is mostly for use in the -Z unpretty flowgraph run-make tests,
+    /// is mostly for use in the `-Z unpretty` flowgraph run-make tests,
     /// since the labels are largely uninteresting in those cases and
     /// have become a pain to maintain.
     UnlabelledEdges,
@@ -578,8 +578,8 @@ impl UserIdentifiedItem {
                       map: &hir_map::Map<'_>)
                       -> ast::NodeId {
         let fail_because = |is_wrong_because| -> ast::NodeId {
-            let message = format!("{} needs NodeId (int) or unique path suffix (b::c::d); got \
-                                   {}, which {}",
+            let message = format!("`{}` needs `NodeId` (int) or unique path suffix (`b::c::d`); \
+                                   got `{}`, which {}",
                                   user_option,
                                   self.reconstructed_input(),
                                   is_wrong_because);
@@ -721,15 +721,17 @@ pub fn print_after_parsing(sess: &Session,
         // Silently ignores an identified node.
         let out = &mut out;
         s.call_with_pp_support(sess, None, move |annotation| {
-            debug!("pretty printing source code {:?}", s);
+            debug!("pretty-printing source code {:?}", s);
             let sess = annotation.sess();
-            *out = pprust::print_crate(sess.source_map(),
-                                &sess.parse_sess,
-                                krate,
-                                src_name,
-                                src,
-                                annotation.pp_ann(),
-                                false)
+            *out = pprust::print_crate(
+                sess.source_map(),
+                &sess.parse_sess,
+                krate,
+                src_name,
+                src,
+                annotation.pp_ann(),
+                false
+            )
         })
     } else {
         unreachable!();
@@ -766,15 +768,17 @@ pub fn print_after_hir_lowering<'tcx>(
                 let out = &mut out;
                 let src = src.clone();
                 s.call_with_pp_support(tcx.sess, Some(tcx), move |annotation| {
-                    debug!("pretty printing source code {:?}", s);
+                    debug!("pretty-printing source code {:?}", s);
                     let sess = annotation.sess();
-                    *out = pprust::print_crate(sess.source_map(),
-                                        &sess.parse_sess,
-                                        krate,
-                                        src_name,
-                                        src,
-                                        annotation.pp_ann(),
-                                        true)
+                    *out = pprust::print_crate(
+                        sess.source_map(),
+                        &sess.parse_sess,
+                        krate,
+                        src_name,
+                        src,
+                        annotation.pp_ann(),
+                        true
+                    )
                 })
             }
 
@@ -782,21 +786,23 @@ pub fn print_after_hir_lowering<'tcx>(
                 let out = &mut out;
                 let src = src.clone();
                 s.call_with_pp_support_hir(tcx, move |annotation, krate| {
-                    debug!("pretty printing source code {:?}", s);
+                    debug!("pretty-printing source code {:?}", s);
                     let sess = annotation.sess();
-                    *out = pprust_hir::print_crate(sess.source_map(),
-                                            &sess.parse_sess,
-                                            krate,
-                                            src_name,
-                                            src,
-                                            annotation.pp_ann())
+                    *out = pprust_hir::print_crate(
+                        sess.source_map(),
+                        &sess.parse_sess,
+                        krate,
+                        src_name,
+                        src,
+                        annotation.pp_ann()
+                    )
                 })
             }
 
             (PpmHirTree(s), None) => {
                 let out = &mut out;
                 s.call_with_pp_support_hir(tcx, move |_annotation, krate| {
-                    debug!("pretty printing source code {:?}", s);
+                    debug!("pretty-printing source code {:?}", s);
                     *out = format!("{:#?}", krate);
                 });
             }
@@ -805,21 +811,23 @@ pub fn print_after_hir_lowering<'tcx>(
                 let out = &mut out;
                 let src = src.clone();
                 s.call_with_pp_support_hir(tcx, move |annotation, _| {
-                    debug!("pretty printing source code {:?}", s);
+                    debug!("pretty-printing source code {:?}", s);
                     let sess = annotation.sess();
-                    let hir_map = annotation.hir_map().expect("-Z unpretty missing HIR map");
-                    let mut pp_state = pprust_hir::State::new_from_input(sess.source_map(),
-                                                                         &sess.parse_sess,
-                                                                         src_name,
-                                                                         src,
-                                                                         annotation.pp_ann());
+                    let hir_map = annotation.hir_map().expect("`-Z unpretty` missing HIR map");
+                    let mut pp_state = pprust_hir::State::new_from_input(
+                        sess.source_map(),
+                        &sess.parse_sess,
+                        src_name,
+                        src,
+                        annotation.pp_ann()
+                    );
                     for node_id in uii.all_matching_node_ids(hir_map) {
                         let hir_id = tcx.hir().node_to_hir_id(node_id);
                         let node = hir_map.get(hir_id);
                         pp_state.print_node(node);
                         pp_state.s.space();
                         let path = annotation.node_path(hir_id)
-                            .expect("-Z unpretty missing node paths");
+                            .expect("`-Z unpretty` missing node paths");
                         pp_state.synth_comment(path);
                         pp_state.s.hardbreak();
                     }
@@ -830,7 +838,7 @@ pub fn print_after_hir_lowering<'tcx>(
             (PpmHirTree(s), Some(uii)) => {
                 let out = &mut out;
                 s.call_with_pp_support_hir(tcx, move |_annotation, _krate| {
-                    debug!("pretty printing source code {:?}", s);
+                    debug!("pretty-printing source code {:?}", s);
                     for node_id in uii.all_matching_node_ids(tcx.hir()) {
                         let hir_id = tcx.hir().node_to_hir_id(node_id);
                         let node = tcx.hir().get(hir_id);
@@ -856,10 +864,10 @@ fn print_with_analysis(
     ofile: Option<&Path>,
 ) -> Result<(), ErrorReported> {
     let nodeid = if let Some(uii) = uii {
-        debug!("pretty printing for {:?}", uii);
+        debug!("pretty-printing for {:?}", uii);
         Some(uii.to_one_node_id("-Z unpretty", tcx.sess, tcx.hir()))
     } else {
-        debug!("pretty printing for whole crate");
+        debug!("pretty-printing for whole crate");
         None
     };
 

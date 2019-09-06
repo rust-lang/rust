@@ -434,7 +434,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
 
                 visit::walk_fn_ret_ty(this, &declaration.output);
 
-                // Resolve the function body, potentially inside the body of an async closure
+                // Resolve the function body, potentially inside the body of an async closure.
                 match fn_kind {
                     FnKind::ItemFn(.., body) |
                     FnKind::Method(.., body) => this.visit_block(body),
@@ -1138,10 +1138,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         self.resolve_pattern_top(&local.pat, PatternSource::Let);
     }
 
-    /// build a map from pattern identifiers to binding-info's.
+    /// Builds a map from pattern identifiers to `BindingInfo`s.
     /// this is done hygienically. This could arise for a macro
-    /// that expands into an or-pattern where one 'x' was from the
-    /// user and one 'x' came from the macro.
+    /// that expands into an or-pattern where one `x` was from the
+    /// user and one `x` came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut binding_map = FxHashMap::default();
 
@@ -1244,7 +1244,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         maps
     }
 
-    /// Check the consistency of the outermost or-patterns.
+    /// Checks the consistency of the outermost or-patterns.
     fn check_consistent_bindings_top(&mut self, pat: &Pat) {
         pat.walk(&mut |pat| match pat.node {
             PatKind::Or(ref ps) => {
@@ -1263,7 +1263,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         });
     }
 
-    /// Arising from `source`, resolve a top level pattern.
+    /// Arising from `source`, resolves a top level pattern.
     fn resolve_pattern_top(&mut self, pat: &Pat, pat_src: PatternSource) {
         let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
         self.resolve_pattern(pat, pat_src, &mut bindings);
@@ -1281,7 +1281,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         visit::walk_pat(self, pat);
     }
 
-    /// Resolve bindings in a pattern. This is a helper to `resolve_pattern`.
+    /// Resolves bindings in a pattern. This is a helper to `resolve_pattern`.
     ///
     /// ### `bindings`
     ///
@@ -1603,7 +1603,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
-    // Resolve in alternative namespaces if resolution in the primary namespace fails.
+    // Resolves in alternative namespaces if resolution in the primary namespace fails.
     fn resolve_qpath_anywhere(
         &mut self,
         id: NodeId,
@@ -1946,17 +1946,17 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
             // closure are detected as upvars rather than normal closure arg usages.
             ExprKind::Closure(_, IsAsync::Async { .. }, _, ref fn_decl, ref body, _span) => {
                 self.with_rib(ValueNS, NormalRibKind, |this| {
-                    // Resolve arguments:
+                    // Resolve arguments.
                     this.resolve_params(&fn_decl.inputs);
                     // No need to resolve return type --
                     // the outer closure return type is `FunctionRetTy::Default`.
 
                     // Now resolve the inner closure
                     {
-                        // No need to resolve arguments: the inner closure has none.
-                        // Resolve the return type:
+                        // No need to resolve arguments; the inner closure has none.
+                        // Resolve the return type.
                         visit::walk_fn_ret_ty(this, &fn_decl.output);
-                        // Resolve the body
+                        // Resolve the body.
                         this.visit_expr(body);
                     }
                 });

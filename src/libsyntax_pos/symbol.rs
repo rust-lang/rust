@@ -102,7 +102,7 @@ symbols! {
     }
 
     // Symbols that can be referred to with syntax_pos::sym::*. The symbol is
-    // the stringified identifier unless otherwise specified (e.g.
+    // the stringified identifier unless otherwise specified (e.g.,
     // `proc_dash_macro` represents "proc-macro").
     //
     // As well as the symbols listed, there are symbols for the the strings

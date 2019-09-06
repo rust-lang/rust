@@ -486,7 +486,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     check_for_rustc_errors_attr(tcx);
 
-    // Skip crate items and just output metadata in -Z no-codegen mode.
+    // Skip crate items and just output metadata in `-Z no-codegen` mode.
     if tcx.sess.opts.debugging_opts.no_codegen ||
        !tcx.sess.opts.output_types.should_codegen() {
         let ongoing_codegen = start_async_codegen(

@@ -411,7 +411,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::BindingAnnotation::Unannotated => def_bm,
             _ => BindingMode::convert(ba),
         };
-        // ...and store it in a side table:
+        // ... and store it in a side table:
         self.inh
             .tables
             .borrow_mut()

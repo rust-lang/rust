@@ -763,7 +763,7 @@ impl EarlyLintPass for UnusedDocComment {
             ast::StmtKind::Local(..) => ("statements", false),
             ast::StmtKind::Item(..) => ("inner items", false),
             ast::StmtKind::Mac(..) => ("macro expansions", true),
-            // expressions will be reported by `check_expr`.
+            // Expressions will be reported by `check_expr`.
             ast::StmtKind::Semi(..) |
             ast::StmtKind::Expr(..) => return,
         };

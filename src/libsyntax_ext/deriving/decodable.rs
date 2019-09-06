@@ -1,4 +1,5 @@
-//! The compiler code necessary for `#[derive(RustcDecodable)]`. See encodable.rs for more.
+//! Expands the `#[derive(RustcDecodable)]` attribute, which implements the `Decodable` trait for
+//! types. See `encodable.rs` for the converse `RustcEncodable` attribute.
 
 use crate::deriving::pathvec_std;
 use crate::deriving::generic::*;
@@ -18,42 +19,54 @@ pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt<'_>,
                                        push: &mut dyn FnMut(Annotatable)) {
     let krate = "rustc_serialize";
     let typaram = "__D";
+    let decodable_path = Path::new_(vec![krate, "Decodable"], None, vec![], PathKind::Global);
 
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: Path::new_(vec![krate, "Decodable"], None, vec![], PathKind::Global),
-        additional_bounds: Vec::new(),
+        path: decodable_path.clone(),
+        additional_bounds: vec![Ty::Literal(decodable_path)],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
-                          name: "decode",
-                          generics: LifetimeBounds {
-                              lifetimes: Vec::new(),
-                              bounds: vec![(typaram,
-                                            vec![Path::new_(vec![krate, "Decoder"],
-                                                            None,
-                                                            vec![],
-                                                            PathKind::Global)])],
-                          },
-                          explicit_self: None,
-                          args: vec![(Ptr(Box::new(Literal(Path::new_local(typaram))),
-                                         Borrowed(None, Mutability::Mutable)), "d")],
-                          ret_ty:
-                              Literal(Path::new_(pathvec_std!(cx, result::Result),
-                                                 None,
-                                                 vec![Box::new(Self_), Box::new(Literal(Path::new_(
-                        vec![typaram, "Error"], None, vec![], PathKind::Local
-                    )))],
-                                                 PathKind::Std)),
-                          attributes: Vec::new(),
-                          is_unsafe: false,
-                          unify_fieldless_variants: false,
-                          combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                              decodable_substructure(a, b, c, krate)
-                          })),
-                      }],
+            name: "decode",
+            generics: LifetimeBounds {
+                lifetimes: Vec::new(),
+                bounds: vec![
+                    (
+                        typaram,
+                        vec![Path::new_(vec![krate, "Decoder"], None, vec![], PathKind::Global)],
+                    )
+                ],
+            },
+            explicit_self: None,
+            args: vec![
+                (
+                    Ptr(Box::new(Literal(Path::new_local(typaram))),
+                    Borrowed(None, Mutability::Mutable)), "d",
+                )
+            ],
+            ret_ty: Literal(
+                Path::new_(
+                    pathvec_std!(cx, result::Result),
+                    None,
+                    vec![
+                        Box::new(Self_),
+                        Box::new(Literal(
+                            Path::new_(vec![typaram, "Error"], None, vec![], PathKind::Local)
+                        )),
+                    ],
+                    PathKind::Std
+                )
+            ),
+            attributes: Vec::new(),
+            is_unsafe: false,
+            unify_fieldless_variants: false,
+            combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                decodable_substructure(a, b, c, krate)
+            })),
+        }],
         associated_types: Vec::new(),
     };
 
@@ -68,7 +81,7 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
     let decoder = substr.nonself_args[0].clone();
     let recurse = vec![cx.ident_of(krate), cx.ident_of("Decodable"), cx.ident_of("decode")];
     let exprdecode = cx.expr_path(cx.path_global(trait_span, recurse));
-    // throw an underscore in front to suppress unused variable warnings
+    // Throw an underscore in front to suppress unused variable warnings.
     let blkarg = cx.ident_of("_d");
     let blkdecoder = cx.expr_ident(trait_span, blkarg);
 
@@ -83,21 +96,31 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
             let path = cx.path_ident(trait_span, substr.type_ident);
             let result =
                 decode_static_fields(cx, trait_span, path, summary, |cx, span, name, field| {
-                    cx.expr_try(span,
-                                cx.expr_method_call(span,
-                                                    blkdecoder.clone(),
-                                                    read_struct_field,
-                                                    vec![cx.expr_str(span, name),
-                                                         cx.expr_usize(span, field),
-                                                         exprdecode.clone()]))
+                    cx.expr_try(
+                        span,
+                        cx.expr_method_call(
+                            span,
+                            blkdecoder.clone(),
+                            read_struct_field,
+                            vec![
+                                cx.expr_str(span, name),
+                                cx.expr_usize(span, field),
+                                exprdecode.clone(),
+                            ]
+                        ),
+                    )
                 });
             let result = cx.expr_ok(trait_span, result);
-            cx.expr_method_call(trait_span,
-                                decoder,
-                                cx.ident_of("read_struct"),
-                                vec![cx.expr_str(trait_span, substr.type_ident.name),
-                                     cx.expr_usize(trait_span, nfields),
-                                     cx.lambda1(trait_span, result, blkarg)])
+            cx.expr_method_call(
+                trait_span,
+                decoder,
+                cx.ident_of("read_struct"),
+                vec![
+                    cx.expr_str(trait_span, substr.type_ident.name),
+                    cx.expr_usize(trait_span, nfields),
+                    cx.lambda1(trait_span, result, blkarg),
+                ],
+            )
         }
         StaticEnum(_, ref fields) => {
             let variant = cx.ident_of("i");
@@ -112,11 +135,15 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
                 let path = cx.path(trait_span, vec![substr.type_ident, ident]);
                 let decoded = decode_static_fields(cx, v_span, path, parts, |cx, span, _, field| {
                     let idx = cx.expr_usize(span, field);
-                    cx.expr_try(span,
-                                cx.expr_method_call(span,
-                                                    blkdecoder.clone(),
-                                                    rvariant_arg,
-                                                    vec![idx, exprdecode.clone()]))
+                    cx.expr_try(
+                        span,
+                        cx.expr_method_call(
+                            span,
+                            blkdecoder.clone(),
+                            rvariant_arg,
+                            vec![idx, exprdecode.clone()],
+                        ),
+                    )
                 });
 
                 arms.push(cx.arm(v_span, cx.pat_lit(v_span, cx.expr_usize(v_span, i)), decoded));
@@ -124,23 +151,29 @@ fn decodable_substructure(cx: &mut ExtCtxt<'_>,
 
             arms.push(cx.arm_unreachable(trait_span));
 
-            let result =
-                cx.expr_ok(trait_span,
-                           cx.expr_match(trait_span, cx.expr_ident(trait_span, variant), arms));
+            let result = cx.expr_ok(
+                trait_span, cx.expr_match(trait_span, cx.expr_ident(trait_span, variant), arms)
+            );
             let lambda = cx.lambda(trait_span, vec![blkarg, variant], result);
             let variant_vec = cx.expr_vec(trait_span, variants);
             let variant_vec = cx.expr_addr_of(trait_span, variant_vec);
-            let result = cx.expr_method_call(trait_span,
-                                             blkdecoder,
-                                             cx.ident_of("read_enum_variant"),
-                                             vec![variant_vec, lambda]);
-            cx.expr_method_call(trait_span,
-                                decoder,
-                                cx.ident_of("read_enum"),
-                                vec![cx.expr_str(trait_span, substr.type_ident.name),
-                                     cx.lambda1(trait_span, result, blkarg)])
+            let result = cx.expr_method_call(
+                trait_span,
+                blkdecoder,
+                cx.ident_of("read_enum_variant"),
+                vec![variant_vec, lambda],
+            );
+            cx.expr_method_call(
+                trait_span,
+                decoder,
+                cx.ident_of("read_enum"),
+                vec![
+                    cx.expr_str(trait_span, substr.type_ident.name),
+                    cx.lambda1(trait_span, result, blkarg),
+                ],
+            )
         }
-        _ => cx.bug("expected StaticEnum or StaticStruct in derive(Decodable)"),
+        _ => cx.bug("expected `StaticEnum` or `StaticStruct` in ``derive(Decodable)`"),
     };
 }
 
@@ -172,7 +205,7 @@ fn decode_static_fields<F>(cx: &mut ExtCtxt<'_>,
             }
         }
         Named(ref fields) => {
-            // use the field's span to get nicer error messages.
+            // Use the field's span to get nicer error messages.
             let fields = fields.iter()
                 .enumerate()
                 .map(|(i, &(ident, span))| {

@@ -415,8 +415,8 @@ pub fn make_test(s: &str,
 
                     if !found_extern_crate {
                         if let ast::ItemKind::ExternCrate(original) = item.node {
-                            // This code will never be reached if `cratename` is none because
-                            // `found_extern_crate` is initialized to `true` if it is none.
+                            // This code will never be reached if `cratename` is `None` because
+                            // `found_extern_crate` is initialized to `true` if it is `None`.
                             let cratename = cratename.unwrap();
 
                             match original {

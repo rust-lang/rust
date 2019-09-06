@@ -118,7 +118,7 @@ enum Scope<'a> {
 /// but not for late resolution yet.
 enum ScopeSet {
     /// All scopes with the given namespace.
-    All(Namespace, /*is_import*/ bool),
+    All(Namespace, /* is_import */ bool),
     /// Crate root, then extern prelude (used for mixed 2015-2018 mode in macros).
     AbsolutePath(Namespace),
     /// All scopes with macro namespace and the given macro kind restriction.

@@ -895,7 +895,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Configure a Coerce instance to compute the LUB.
         // We don't allow two-phase borrows on any autorefs this creates since we
         // probably aren't processing function arguments here and even if we were,
-        // they're going to get autorefed again anyway and we can apply 2-phase borrows
+        // they're going to get autorefed again anyway and we can apply two-phase borrows
         // at that time.
         let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No);
         coerce.use_lub = true;

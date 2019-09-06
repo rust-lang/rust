@@ -1,3 +1,9 @@
+use super::data::*;
+use super::fs::*;
+use super::dirty_clean;
+use super::file_format;
+use super::work_product;
+
 use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
@@ -6,14 +12,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
+
 use std::fs;
 use std::path::PathBuf;
-
-use super::data::*;
-use super::fs::*;
-use super::dirty_clean;
-use super::file_format;
-use super::work_product;
 
 pub fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
@@ -75,7 +76,7 @@ pub fn save_work_product_index(sess: &Session,
         }
     }
 
-    // Check that we did not delete one of the current work-products:
+    // Check that we did not delete one of the current work-products.
     debug_assert!({
         new_work_products.iter()
                          .flat_map(|(_, wp)| wp.saved_files
@@ -91,10 +92,10 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
 {
     debug!("save: storing data in {}", path_buf.display());
 
-    // delete the old dep-graph, if any
+    // Delete the old dep-graph, if any.
     // Note: It's important that we actually delete the old file and not just
     // truncate and overwrite it, since it might be a shared hard-link, the
-    // underlying data of which we don't want to modify
+    // underlying data of which we don't want to modify.
     if path_buf.exists() {
         match fs::remove_file(&path_buf) {
             Ok(()) => {
@@ -109,12 +110,12 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
         }
     }
 
-    // generate the data in a memory buffer
+    // Generate the data in a memory buffer.
     let mut encoder = Encoder::new(Vec::new());
     file_format::write_file_header(&mut encoder);
     encode(&mut encoder);
 
-    // write the data out
+    // Write the data out.
     let data = encoder.into_inner();
     match fs::write(&path_buf, data) {
         Ok(_) => {

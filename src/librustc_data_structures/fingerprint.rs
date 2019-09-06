@@ -85,16 +85,17 @@ impl stable_hasher::StableHasherResult for Fingerprint {
 impl_stable_hash_via_hash!(Fingerprint);
 
 impl rustc_serialize::UseSpecializedEncodable for Fingerprint { }
-
 impl rustc_serialize::UseSpecializedDecodable for Fingerprint { }
 
 impl rustc_serialize::SpecializedEncoder<Fingerprint> for Encoder {
+    #[inline]
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(self)
     }
 }
 
 impl<'a> rustc_serialize::SpecializedDecoder<Fingerprint> for Decoder<'a> {
+    #[inline]
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(self)
     }

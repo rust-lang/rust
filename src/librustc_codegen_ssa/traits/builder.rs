@@ -256,10 +256,10 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn atomic_fence(&mut self, order: AtomicOrdering, scope: SynchronizationScope);
     fn set_invariant_load(&mut self, load: Self::Value);
 
-    /// Called for `StorageLive`
+    /// Called for StorageLive statements.
     fn lifetime_start(&mut self, ptr: Self::Value, size: Size);
 
-    /// Called for `StorageDead`
+    /// Called for StorageDead statements.
     fn lifetime_end(&mut self, ptr: Self::Value, size: Size);
 
     fn call(

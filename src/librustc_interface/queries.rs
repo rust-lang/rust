@@ -15,7 +15,7 @@ use std::any::Any;
 use std::mem;
 use syntax::{self, ast};
 
-/// Represent the result of a query.
+/// Represents the result of a query.
 /// This result can be stolen with the `take` method and returned with the `give` method.
 pub struct Query<T> {
     result: RefCell<Option<Result<T>>>,
@@ -47,14 +47,14 @@ impl<T> Query<T> {
         *result = Some(Ok(value));
     }
 
-    /// Borrows the query result using the RefCell. Panics if the result is stolen.
+    /// Borrows the query result using the `RefCell`. Panics if the result is stolen.
     pub fn peek(&self) -> Ref<'_, T> {
         Ref::map(self.result.borrow(), |r| {
             r.as_ref().unwrap().as_ref().expect("missing query result")
         })
     }
 
-    /// Mutably borrows the query result using the RefCell. Panics if the result is stolen.
+    /// Mutably borrows the query result using the `RefCell`. Panics if the result is stolen.
     pub fn peek_mut(&self) -> RefMut<'_, T> {
         RefMut::map(self.result.borrow_mut(), |r| {
             r.as_mut().unwrap().as_mut().expect("missing query result")
@@ -71,7 +71,7 @@ impl<T> Default for Query<T> {
 }
 
 #[derive(Default)]
-pub(crate) struct Queries {
+pub struct Queries {
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
@@ -226,7 +226,8 @@ impl Compiler {
                 expansion.resolutions.steal(),
                 outputs,
                 tx,
-                &crate_name))
+                &crate_name,
+            ))
         })
     }
 
@@ -237,7 +238,7 @@ impl Compiler {
             self.global_ctxt()?.peek_mut().enter(|tcx| {
                 tcx.analysis(LOCAL_CRATE).ok();
 
-                // Don't do code generation if there were any errors
+                // Don't do code generation if there were any errors.
                 self.session().compile_status()?;
 
                 Ok(passes::start_codegen(
@@ -278,12 +279,12 @@ impl Compiler {
 
         self.global_ctxt()?;
 
-        // Drop AST after creating GlobalCtxt to free memory
+        // Drop AST after creating `GlobalCtxt` to free memory.
         mem::drop(self.expansion()?.take());
 
         self.ongoing_codegen()?;
 
-        // Drop GlobalCtxt after starting codegen to free memory
+        // Drop `GlobalCtxt` after starting codegen to free memory.
         mem::drop(self.global_ctxt()?.take());
 
         self.link().map(|_| ())

@@ -21,13 +21,13 @@ use syntax_pos::edition;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
-/// Represents a compiler session.
+/// Represents a compiler instance.
 /// Can be used run `rustc_interface` queries.
 /// Created by passing `Config` to `run_compiler`.
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
-    codegen_backend: Lrc<Box<dyn CodegenBackend>>,
-    source_map: Lrc<SourceMap>,
+    pub codegen_backend: Lrc<Box<dyn CodegenBackend>>,
+    pub source_map: Lrc<SourceMap>,
     pub(crate) input: Input,
     pub(crate) input_path: Option<PathBuf>,
     pub(crate) output_dir: Option<PathBuf>,
@@ -61,12 +61,12 @@ impl Compiler {
     }
 }
 
-/// The compiler configuration
+/// The compiler configuration.
 pub struct Config {
-    /// Command line options
+    /// The command-line options.
     pub opts: config::Options,
 
-    /// cfg! configuration in addition to the default ones
+    /// `cfg!` configuration in addition to the default ones.
     pub crate_cfg: FxHashSet<(String, Option<String>)>,
 
     pub input: Input,
@@ -76,17 +76,14 @@ pub struct Config {
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub diagnostic_output: DiagnosticOutput,
 
-    /// Set to capture stderr output during compiler execution
+    /// `true` to capture stderr output during compiler execution.
     pub stderr: Option<Arc<Mutex<Vec<u8>>>>,
 
     pub crate_name: Option<String>,
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 }
 
-pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
-where
-    F: FnOnce(&Compiler) -> R,
-{
+fn create_compiler(config: Config) -> Compiler {
     let (sess, codegen_backend, source_map) = util::create_session(
         config.opts,
         config.crate_cfg,
@@ -98,7 +95,7 @@ where
 
     let cstore = Lrc::new(CStore::new(codegen_backend.metadata_loader()));
 
-    let compiler = Compiler {
+    Compiler {
         sess,
         codegen_backend,
         source_map,
@@ -109,7 +106,14 @@ where
         output_file: config.output_file,
         queries: Default::default(),
         crate_name: config.crate_name,
-    };
+    }
+}
+
+pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
+where
+    F: FnOnce(&Compiler) -> R,
+{
+    let compiler = create_compiler(config);
 
     let _sess_abort_error = OnDrop(|| {
         compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());

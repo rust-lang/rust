@@ -2367,7 +2367,7 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     match tcx.hir().get_if_local(def_id) {
         Some(Node::ForeignItem(..)) => true,
         Some(_) => false,
-        _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id),
+        _ => bug!("`is_foreign_item` applied to non-local `DefId` {:?}", def_id),
     }
 }
 
@@ -2380,7 +2380,7 @@ fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> 
             node: hir::ForeignItemKind::Static(_, mutbl), ..
         })) => Some(mutbl),
         Some(_) => None,
-        _ => bug!("static_mutability applied to non-local def-id {:?}", def_id),
+        _ => bug!("`static_mutability` applied to non-local `DefId` {:?}", def_id),
     }
 }
 
@@ -2482,14 +2482,14 @@ fn from_target_feature(
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
     use rustc::mir::mono::Linkage::*;
 
-    // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
+    // Use the names from `src/llvm/docs/LangRef.rst` here. Most types are only
     // applicable to variable declarations and may not really make sense for
     // Rust code in the first place but whitelist them anyway and trust that
-    // the user knows what s/he's doing. Who knows, unanticipated use cases
+    // the user knows what they're doing. Who knows, unanticipated use cases
     // may pop up in the future.
     //
-    // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported
-    // and don't have to be, LLVM treats them as no-ops.
+    // `ghost`, `dllimport`, `dllexport` and `linkonce_odr_autohide` are not
+    // supported and don't have to be; LLVM treats them as no-ops.
     match name {
         "appending" => Appending,
         "available_externally" => AvailableExternally,
@@ -2676,9 +2676,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         }
     });
 
-    // If a function uses #[target_feature] it can't be inlined into general
+    // If a function uses `#[target_feature]` it can't be inlined into general
     // purpose functions as they wouldn't have the right target features
-    // enabled. For that reason we also forbid #[inline(always)] as it can't be
+    // enabled. For that reason we also forbid `#[inline(always)]` as it can't be
     // respected.
     if codegen_fn_attrs.target_features.len() > 0 {
         if codegen_fn_attrs.inline == InlineAttr::Always {
@@ -2696,7 +2696,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     // sense that they're preserved through all our LTO passes and only
     // strippable by the linker.
     //
-    // Additionally weak lang items have predetermined symbol names.
+    // Additionally, weak lang items have predetermined symbol names.
     if tcx.is_weak_lang_item(id) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
     }
@@ -2705,7 +2705,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         codegen_fn_attrs.link_name = Some(name);
     }
 
-    // Internal symbols to the standard library all have no_mangle semantics in
+    // Internal symbols to the standard library all have `no_mangle` semantics in
     // that they have defined symbol names present in the function name. This
     // also applies to weak symbols where they all have known symbol names.
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {

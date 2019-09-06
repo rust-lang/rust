@@ -565,7 +565,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
         return vec![config::CrateType::Executable];
     }
 
-    // Only check command line flags if present. If no types are specified by
+    // Only check command-line flags if present. If no types are specified by
     // command line, then reuse the empty `base` Vec to hold the types that
     // will be found in crate attributes.
     let mut base = session.opts.crate_types.clone();
@@ -607,11 +607,11 @@ pub fn build_output_filenames(
     match *ofile {
         None => {
             // "-" as input file will cause the parser to read from stdin so we
-            // have to make up a name
+            // have to make up a name.
             // We want to toss everything after the final '.'
             let dirpath = (*odir).as_ref().cloned().unwrap_or_default();
 
-            // If a crate name is present, we use it as the link name
+            // If a crate name is present, we use it as the link name.
             let stem = sess.opts
                 .crate_name
                 .clone()
@@ -641,12 +641,12 @@ pub fn build_output_filenames(
                 None
             } else {
                 if !sess.opts.cg.extra_filename.is_empty() {
-                    sess.warn("ignoring -C extra-filename flag due to -o flag");
+                    sess.warn("ignoring `-C extra-filename` flag due to `-o` flag");
                 }
                 Some(out_file.clone())
             };
             if *odir != None {
-                sess.warn("ignoring --out-dir flag due to -o flag");
+                sess.warn("ignoring `--out-dir` flag due to `-o` flag");
             }
 
             OutputFilenames {
@@ -665,7 +665,7 @@ pub fn build_output_filenames(
     }
 }
 
-// Note: Also used by librustdoc, see PR #43348. Consider moving this struct elsewhere.
+// Note: Also used by librustdoc; see PR #43348. Consider moving this struct elsewhere.
 //
 // FIXME: Currently the `everybody_loops` transformation is not applied to:
 //  * `const fn`, due to issue #43636 that `loop` is not supported for const evaluation. We are

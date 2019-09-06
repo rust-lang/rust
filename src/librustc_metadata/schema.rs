@@ -42,8 +42,8 @@ pub const METADATA_VERSION: u8 = 4;
 pub const METADATA_HEADER: &[u8; 12] =
     &[0, 0, 0, 0, b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
-/// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
-/// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
+/// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`.
+/// E.g., for `Lazy<[T]>`, this is the length (count of `T` values).
 pub trait LazyMeta {
     type Meta: Copy + 'static;
 
@@ -69,7 +69,7 @@ impl<T> LazyMeta for [T] {
     }
 }
 
-/// A value of type T referred to by its absolute position
+/// A value of type `T` referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
 ///
 /// Metadata is effective a tree, encoded in post-order,
@@ -99,8 +99,9 @@ impl<T> LazyMeta for [T] {
 // FIXME(#59875) the `Meta` parameter only exists to dodge
 // invariance wrt `T` (coming from the `meta: T::Meta` field).
 pub struct Lazy<T, Meta = <T as LazyMeta>::Meta>
-    where T: ?Sized + LazyMeta<Meta = Meta>,
-          Meta: 'static + Copy,
+where
+    T: ?Sized + LazyMeta<Meta = Meta>,
+    Meta: 'static + Copy,
 {
     pub position: usize,
     pub meta: Meta,
@@ -270,7 +271,7 @@ pub enum EntryKind<'tcx> {
     TraitAlias(Lazy<TraitAliasData<'tcx>>),
 }
 
-/// Additional data for EntryKind::Const and EntryKind::AssocConst
+/// Additional data for `EntryKind::Const` and `EntryKind::AssocConst`.
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
 pub struct ConstQualif {
     pub mir: u8,
@@ -304,10 +305,9 @@ pub struct FnData<'tcx> {
 pub struct VariantData<'tcx> {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
-    /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
+    /// If this is unit or tuple-variant/struct, then this is the index of the ctor ID.
     pub ctor: Option<DefIndex>,
-    /// If this is a tuple struct or variant
-    /// ctor, this is its "function" signature.
+    /// If this is a tuple struct or variant ctor, this is its "function" signature.
     pub ctor_sig: Option<Lazy<ty::PolyFnSig<'tcx>>>,
 }
 

@@ -17,10 +17,10 @@ use log::debug;
 
 #[derive(Default)]
 pub struct MoveData<'tcx> {
-    /// Move paths. See section "Move paths" in `README.md`.
+    /// Move paths. See the section "Move paths" in `README.md`.
     pub paths: RefCell<Vec<MovePath<'tcx>>>,
 
-    /// Cache of loan path to move path index, for easy lookup.
+    /// A cache of move path indexes by loan paths, for easy lookup.
     pub path_map: RefCell<FxHashMap<Rc<LoanPath<'tcx>>, MovePathIndex>>,
 
     /// Each move or uninitialized variable gets an entry here.
@@ -48,7 +48,7 @@ pub struct FlowedMoveData<'tcx> {
     pub dfcx_assign: AssignDataFlow<'tcx>,
 }
 
-/// Index into `MoveData.paths`, used like a pointer
+/// Index into `MoveData.paths`, used like a pointer.
 #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct MovePathIndex(usize);
 
@@ -67,7 +67,7 @@ impl Clone for MovePathIndex {
 #[allow(non_upper_case_globals)]
 const InvalidMovePathIndex: MovePathIndex = MovePathIndex(usize::MAX);
 
-/// Index into `MoveData.moves`, used like a pointer
+/// Index into `MoveData.moves`, used like a pointer.
 #[derive(Copy, Clone, PartialEq)]
 pub struct MoveIndex(usize);
 
@@ -81,17 +81,17 @@ impl MoveIndex {
 const InvalidMoveIndex: MoveIndex = MoveIndex(usize::MAX);
 
 pub struct MovePath<'tcx> {
-    /// Loan path corresponding to this move path
+    /// Loan path corresponding to this move path.
     pub loan_path: Rc<LoanPath<'tcx>>,
 
-    /// Parent pointer, `InvalidMovePathIndex` if root
+    /// Parent pointer, `InvalidMovePathIndex` if root.
     pub parent: MovePathIndex,
 
     /// Head of linked list of moves to this path,
-    /// `InvalidMoveIndex` if not moved
+    /// `InvalidMoveIndex` if not moved.
     pub first_move: MoveIndex,
 
-    /// First node in linked list of children, `InvalidMovePathIndex` if leaf
+    /// First node in linked list of children, `InvalidMovePathIndex` if leaf.
     pub first_child: MovePathIndex,
 
     /// Next node in linked list of parent's children (siblings),
@@ -102,25 +102,25 @@ pub struct MovePath<'tcx> {
 
 #[derive(Copy, Clone)]
 pub struct Move {
-    /// Path being moved.
+    /// The path being moved.
     pub path: MovePathIndex,
 
-    /// ID of node that is doing the move.
+    /// The ID of the node that is doing the move.
     pub id: hir::ItemLocalId,
 
-    /// Next node in linked list of moves from `path`, or `InvalidMoveIndex`
+    /// The next node in the linked list of moves from `path`, or `InvalidMoveIndex`.
     pub next_move: MoveIndex
 }
 
 #[derive(Copy, Clone)]
 pub struct Assignment {
-    /// Path being assigned.
+    /// The path being assigned.
     pub path: MovePathIndex,
 
-    /// ID where assignment occurs
+    /// The ID where assignment occurs.
     pub id: hir::ItemLocalId,
 
-    /// span of node where assignment occurs
+    /// The span of node where assignment occurs.
     pub span: Span,
 }
 
@@ -200,12 +200,12 @@ impl MoveData<'tcx> {
     }
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {
-        //! Type safe indexing operator
+        //! Type-safe indexing operator.
         (*self.moves.borrow())[index.get()].next_move
     }
 
     fn is_var_path(&self, index: MovePathIndex) -> bool {
-        //! True if `index` refers to a variable
+        //! `true` if `index` refers to a variable.
         self.path_parent(index) == InvalidMovePathIndex
     }
 
@@ -274,7 +274,7 @@ impl MoveData<'tcx> {
     }
 
     /// Adds any existing move path indices for `lp` and any base paths of `lp` to `result`, but
-    /// does not add new move paths
+    /// does not add new move paths.
     fn add_existing_base_paths(&self, lp: &Rc<LoanPath<'tcx>>,
                                result: &mut Vec<MovePathIndex>) {
         match self.path_map.borrow().get(lp).cloned() {
@@ -486,7 +486,7 @@ impl MoveData<'tcx> {
         return true;
     }
 
-    // FIXME(#19596) This is a workaround, but there should be better way to do this
+    // FIXME(#19596): this is a workaround, but there should be better way to do this.
     fn each_extending_path_<F>(&self, index: MovePathIndex, f: &mut F) -> bool where
         F: FnMut(MovePathIndex) -> bool,
     {
@@ -630,7 +630,7 @@ impl<'tcx> FlowedMoveData<'tcx> {
         //
         // OK scenario:
         //
-        // 4. move of `a.b.c`, use of `a.b.d`
+        // 4. Move of `a.b.c`, use of `a.b.d`
 
         let base_indices = self.move_data.existing_base_paths(loan_path);
         if base_indices.is_empty() {
@@ -656,7 +656,7 @@ impl<'tcx> FlowedMoveData<'tcx> {
                     let cont = self.move_data.each_base_path(moved_path, |p| {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`
-                            // was moved
+                            // was moved.
                             f(the_move,
                               &self.move_data.path_loan_path(moved_path))
                         } else {
@@ -683,7 +683,7 @@ impl<'tcx> FlowedMoveData<'tcx> {
             match self.move_data.existing_move_path(loan_path) {
                 Some(i) => i,
                 None => {
-                    // if there were any assignments, it'd have an index
+                    // If there were any assignments, it'd have an index.
                     return true;
                 }
             }
@@ -704,27 +704,27 @@ impl<'tcx> FlowedMoveData<'tcx> {
 impl BitwiseOperator for MoveDataFlowOperator {
     #[inline]
     fn join(&self, succ: usize, pred: usize) -> usize {
-        succ | pred // moves from both preds are in scope
+        succ | pred // Moves from both predicates are in scope.
     }
 }
 
 impl DataFlowOperator for MoveDataFlowOperator {
     #[inline]
     fn initial_value(&self) -> bool {
-        false // no loans in scope by default
+        false // No loans in scope by default.
     }
 }
 
 impl BitwiseOperator for AssignDataFlowOperator {
     #[inline]
     fn join(&self, succ: usize, pred: usize) -> usize {
-        succ | pred // moves from both preds are in scope
+        succ | pred // Moves from both predicates are in scope.
     }
 }
 
 impl DataFlowOperator for AssignDataFlowOperator {
     #[inline]
     fn initial_value(&self) -> bool {
-        false // no assignments in scope by default
+        false // No assignments in scope by default.
     }
 }

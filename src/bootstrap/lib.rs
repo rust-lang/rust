@@ -997,27 +997,27 @@ impl Build {
         self.package_vers(channel::CFG_RELEASE_NUM)
     }
 
-    /// Returns the value of `package_vers` above for Cargo
+    /// Returns the value of `package_vers` above for Cargo.
     fn cargo_package_vers(&self) -> String {
         self.package_vers(&self.release_num("cargo"))
     }
 
-    /// Returns the value of `package_vers` above for rls
+    /// Returns the value of `package_vers` above for rls.
     fn rls_package_vers(&self) -> String {
         self.package_vers(&self.release_num("rls"))
     }
 
-    /// Returns the value of `package_vers` above for clippy
+    /// Returns the value of `package_vers` above for clippy.
     fn clippy_package_vers(&self) -> String {
         self.package_vers(&self.release_num("clippy"))
     }
 
-    /// Returns the value of `package_vers` above for miri
+    /// Returns the value of `package_vers` above for miri.
     fn miri_package_vers(&self) -> String {
         self.package_vers(&self.release_num("miri"))
     }
 
-    /// Returns the value of `package_vers` above for rustfmt
+    /// Returns the value of `package_vers` above for rustfmt.
     fn rustfmt_package_vers(&self) -> String {
         self.package_vers(&self.release_num("rustfmt"))
     }

@@ -242,7 +242,7 @@ pub struct DirtyCleanVisitor<'tcx> {
 }
 
 impl DirtyCleanVisitor<'tcx> {
-    /// Possibly "deserialize" the attribute into a clean/dirty assertion
+    /// Possibly "deserialize" the attribute into a clean/dirty assertion.
     fn assertion_maybe(&mut self, item_id: hir::HirId, attr: &Attribute)
         -> Option<Assertion>
     {
@@ -251,11 +251,11 @@ impl DirtyCleanVisitor<'tcx> {
         } else if attr.check_name(ATTR_CLEAN) {
             true
         } else {
-            // skip: not rustc_clean/dirty
-            return None
+            // Skip: not `rustc_clean`/`rustc_dirty`.
+            return None;
         };
         if !check_config(self.tcx, attr) {
-            // skip: not the correct `cfg=`
+            // Skip: not the correct `cfg=`.
             return None;
         }
         let assertion = if let Some(labels) = self.labels(attr) {
@@ -279,7 +279,7 @@ impl DirtyCleanVisitor<'tcx> {
         for e in except.iter() {
             if !auto.remove(e) {
                 let msg = format!(
-                    "`except` specified DepNodes that can not be affected for \"{}\": \"{}\"",
+                    "`except` specified `DepNode`s that can not be affected for \"{}\": \"{}\"",
                     name,
                     e
                 );
@@ -309,7 +309,7 @@ impl DirtyCleanVisitor<'tcx> {
         None
     }
 
-    /// `except=` attribute value
+    /// `except=` attribute value.
     fn except(&self, attr: &Attribute) -> Labels {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(EXCEPT) {
@@ -317,18 +317,18 @@ impl DirtyCleanVisitor<'tcx> {
                 return self.resolve_labels(&item, value.as_str().as_ref());
             }
         }
-        // if no `label` or `except` is given, only the node's group are asserted
+        // If no `label` or `except` is given, only the node's group are asserted.
         Labels::default()
     }
 
-    /// Return all DepNode labels that should be asserted for this item.
-    /// index=0 is the "name" used for error messages
+    /// Returns all `DepNode` labels that should be asserted for this item.
+    /// `index=0` is the "name" used for error messages.
     fn auto_labels(&mut self, item_id: hir::HirId, attr: &Attribute) -> (&'static str, Labels) {
         let node = self.tcx.hir().get(item_id);
         let (name, labels) = match node {
             HirNode::Item(item) => {
                 match item.node {
-                    // note: these are in the same order as hir::Item_;
+                    // NOTE: these are in the same order as `hir::Item_`.
                     // FIXME(michaelwoerister): do commented out ones
 
                     // // An `extern crate` item, with optional original crate name,
@@ -381,7 +381,7 @@ impl DirtyCleanVisitor<'tcx> {
                     // However, this did not seem to work effectively and more bugs were hit.
                     // Nebie @vitiral gave up :)
                     //
-                    //HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
+                    // HirItem::Trait(..) => ("ItemTrait", LABELS_TRAIT),
 
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
                     HirItem::Impl(..) => ("ItemKind::Impl", LABELS_IMPL),
@@ -601,7 +601,7 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> ast::Name 
     }
 }
 
-// A visitor that collects all #[rustc_dirty]/#[rustc_clean] attributes from
+// A visitor that collects all `#[rustc_dirty]`/`#[rustc_clean]` attributes from
 // the HIR. It is used to verfiy that we really ran checks for all annotated
 // nodes.
 pub struct FindAllAttrs<'tcx> {

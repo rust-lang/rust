@@ -358,6 +358,7 @@ impl Config {
 
     pub fn default_opts() -> Config {
         let mut config = Config::default();
+
         config.llvm_optimize = true;
         config.llvm_version_check = true;
         config.backtrace = true;
@@ -376,7 +377,7 @@ impl Config {
         config.deny_warnings = true;
         config.missing_tools = false;
 
-        // set by bootstrap.py
+        // set by `bootstrap.py`
         config.build = INTERNER.intern_str(&env::var("BUILD").expect("'BUILD' to be set"));
         config.src = Config::path_from_python("SRC");
         config.out = Config::path_from_python("BUILD_DIR");
@@ -410,7 +411,7 @@ impl Config {
             config.out = dir;
         }
 
-        // If --target was specified but --host wasn't specified, don't run any host-only tests.
+        // If `--target` was specified but `--host` wasn't specified, don't run any host-only tests.
         let has_hosts = !flags.host.is_empty();
         let has_targets = !flags.target.is_empty();
         config.skip_only_host_steps = !has_hosts && has_targets;
@@ -428,7 +429,7 @@ impl Config {
         }).unwrap_or_else(|| TomlConfig::default());
 
         let build = toml.build.clone().unwrap_or_default();
-        // set by bootstrap.py
+        // set by `bootstrap.py`
         config.hosts.push(config.build.clone());
         for host in build.host.iter() {
             let host = INTERNER.intern_str(host);
@@ -487,8 +488,8 @@ impl Config {
             config.mandir = install.mandir.clone().map(PathBuf::from);
         }
 
-        // Store off these values as options because if they're not provided
-        // we'll infer default values for them later
+        // Store away these values as options because if they're not provided
+        // we'll infer default values for them later.
         let mut llvm_assertions = None;
         let mut debug = None;
         let mut debug_assertions = None;
@@ -552,7 +553,7 @@ impl Config {
             set(&mut config.channel, rust.channel.clone());
             set(&mut config.rust_dist_src, rust.dist_src);
             set(&mut config.verbose_tests, rust.verbose_tests);
-            // in the case "false" is set explicitly, do not overwrite the command line args
+            // In the case "false" is set explicitly, do not overwrite the command-line args.
             if let Some(true) = rust.incremental {
                 config.incremental = true;
             }

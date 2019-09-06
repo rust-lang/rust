@@ -68,7 +68,7 @@ const LEN_TAG: u16 = 0b1000_0000_0000_0000;
 const MAX_LEN: u32 = 0b0111_1111_1111_1111;
 const MAX_CTXT: u32 = 0b1111_1111_1111_1111;
 
-/// Dummy span, both position and length are zero, syntax context is zero as well.
+/// Dummy span: both position and length are zero; syntax context is zero (empty) as well.
 pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_zero: 0 };
 
 impl Span {

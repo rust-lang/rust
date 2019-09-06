@@ -35,7 +35,7 @@ type Res = def::Res<NodeId>;
 #[derive(Debug)]
 pub struct LegacyBinding<'a> {
     crate binding: &'a NameBinding<'a>,
-    /// Legacy scope into which the `macro_rules` item was planted.
+    /// The legacy scope into which the `macro_rules` item was planted.
     crate parent_legacy_scope: LegacyScope<'a>,
     crate ident: Ident,
 }
@@ -246,7 +246,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    /// Resolve macro path with error reporting and recovery.
+    /// Resolves macro path with error reporting and recovery.
     fn smart_resolve_macro_path(
         &mut self,
         path: &ast::Path,
@@ -376,7 +376,7 @@ impl<'a> Resolver<'a> {
         res.map(|res| (self.get_macro(res), res))
     }
 
-    // Resolve an identifier in lexical scope.
+    // Resolves an identifier in lexical scope.
     // This is a variation of `fn resolve_ident_in_lexical_scope` that can be run during
     // expansion and import resolution (perhaps they can be merged in the future).
     // The function is used for resolving initial segments of macro paths (e.g., `foo` in
@@ -820,7 +820,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Compile the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
+    /// Compiles the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
     /// extension partially or entirely for built-in macros and legacy plugin macros.
     crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
         let mut result = macro_rules::compile(

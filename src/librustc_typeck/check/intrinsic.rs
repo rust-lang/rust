@@ -1,15 +1,14 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
+use crate::require_same_types;
+
+use rustc::hir;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::subst::Subst;
-use crate::require_same_types;
-
 use rustc_target::spec::abi::Abi;
 use syntax::symbol::InternedString;
-
-use rustc::hir;
 
 use std::iter;
 
@@ -77,8 +76,8 @@ pub fn intrisic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     }
 }
 
-/// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
-/// and in libcore/intrinsics.rs
+// Remember to add all intrinsics here, in `librustc_codegen_llvm/intrinsic.rs`,
+// and in `libcore/intrinsics.rs`.
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     let param = |n| tcx.mk_ty_param(n, InternedString::intern(&format!("P{}", n)));
     let name = it.ident.as_str();
@@ -97,9 +96,9 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
 
     let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
-        assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
+        assert!(split.len() >= 2, "atomic intrinsic in an incorrect format");
 
-        //We only care about the operation here
+        // We only care about the operation here.
         let (n_tps, inputs, output) = match split[1] {
             "cxchg" | "cxchgweak" => (1, vec![tcx.mk_mut_ptr(param(0)),
                                               param(0),
@@ -355,14 +354,14 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                         let va_list_ptr_ty = tcx.mk_mut_ptr(va_list_ty);
                         (0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.mk_unit())
                     }
-                    None => bug!("`va_list` language item needed for C-variadic intrinsics")
+                    None => bug!("`va_list` language item needed for C-variadic intrinsics"),
                 }
             }
 
             "va_arg" => {
                 match mk_va_list_ty(hir::MutMutable) {
                     Some((va_list_ref_ty, _)) => (1, vec![va_list_ref_ty], param(0)),
-                    None => bug!("`va_list` language item needed for C-variadic intrinsics")
+                    None => bug!("`va_list` language item needed for C-variadic intrinsics"),
                 }
             }
 
@@ -384,7 +383,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     equate_intrinsic_type(tcx, it, n_tps, Abi::RustIntrinsic, unsafety, inputs, output)
 }
 
-/// Type-check `extern "platform-intrinsic" { ... }` functions.
+/// Type-checks `extern "platform-intrinsic" { ... }` functions.
 pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     let param = |n| {
         let name = InternedString::intern(&format!("P{}", n));

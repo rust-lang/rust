@@ -1,10 +1,8 @@
-use rustc::mir;
+use super::{FunctionCx, LocalRef, OperandValue};
 
-use crate::traits::BuilderMethods;
-use super::FunctionCx;
-use super::LocalRef;
-use super::OperandValue;
 use crate::traits::*;
+
+use rustc::mir;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_statement(
@@ -55,7 +53,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
 
                             // If the type is zero-sized, it's already been set here,
-                            // but we still need to make sure we codegen the operand
+                            // but we still need to make sure we codegen the operand.
                             self.codegen_rvalue_operand(bx, rvalue).0
                         }
                     }

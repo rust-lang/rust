@@ -1,4 +1,4 @@
-//! A mini version of ast::Ty, which is easier to use, and features an explicit `Self` type to use
+//! A mini version of `ast::Ty`, which is easier to use, and features an explicit `Self` type to use
 //! when specifying impls to be derived.
 
 pub use PtrTy::*;
@@ -11,12 +11,12 @@ use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax_pos::symbol::kw;
 
-/// The types of pointers
+/// The types of pointers.
 #[derive(Clone)]
 pub enum PtrTy<'a> {
-    /// &'lifetime mut
+    /// `&'lifetime mut`
     Borrowed(Option<&'a str>, ast::Mutability),
-    /// *mut
+    /// `*mut`
     #[allow(dead_code)]
     Raw(ast::Mutability),
 }
@@ -94,16 +94,16 @@ impl<'a> Path<'a> {
     }
 }
 
-/// A type. Supports pointers, Self, and literals.
+/// A type. Supports pointers, `Self`, and literals.
 #[derive(Clone)]
 pub enum Ty<'a> {
     Self_,
-    /// &/Box/ Ty
+    /// `&/Box/ Ty`.
     Ptr(Box<Ty<'a>>, PtrTy<'a>),
-    /// mod::mod::Type<[lifetime], [Params...]>, including a plain type
-    /// parameter, and things like `i32`
+    /// `mod::mod::Type<[lifetime], [Params...]>`, including a plain type
+    /// parameter, and things like `i32`.
     Literal(Path<'a>),
-    /// includes unit
+    /// Includes unit.
     Tuple(Vec<Ty<'a>>),
 }
 
@@ -194,7 +194,6 @@ impl<'a> Ty<'a> {
     }
 }
 
-
 fn mk_ty_param(cx: &ExtCtxt<'_>,
                span: Span,
                name: &str,
@@ -223,7 +222,7 @@ fn mk_generics(params: Vec<ast::GenericParam>, span: Span) -> Generics {
     }
 }
 
-/// Lifetimes and bounds on type parameters
+/// Lifetimes and bounds on type parameters.
 #[derive(Clone)]
 pub struct LifetimeBounds<'a> {
     pub lifetimes: Vec<(&'a str, Vec<&'a str>)>,
@@ -267,7 +266,7 @@ pub fn get_explicit_self(cx: &ExtCtxt<'_>,
                          span: Span,
                          self_ptr: &Option<PtrTy<'_>>)
                          -> (P<Expr>, ast::ExplicitSelf) {
-    // this constructs a fresh `self` path
+    // This constructs a fresh `self` path.
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => (self_path, respan(span, SelfKind::Value(ast::Mutability::Immutable))),

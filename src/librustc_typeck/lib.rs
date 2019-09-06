@@ -188,11 +188,11 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
 
             let actual = tcx.fn_sig(main_def_id);
             let expected_return_type = if tcx.lang_items().termination().is_some() {
-                // we take the return type of the given main function, the real check is done
-                // in `check_fn`
+                // We take the return type of the given main function, the real check is done
+                // in `check_fn`.
                 actual.output().skip_binder()
             } else {
-                // standard () main return type
+                // Standard `()` main return type.
                 tcx.mk_unit()
             };
 

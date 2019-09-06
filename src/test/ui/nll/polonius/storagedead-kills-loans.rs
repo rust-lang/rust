@@ -1,4 +1,4 @@
-// Whenever a `StorageDead` MIR statement destroys a value `x`,
+// Whenever a StorageDead MIR statement destroys a value `x`,
 // we should kill all loans of `x`. This is extracted from `rand 0.4.6`,
 // is correctly accepted by NLL but was incorrectly rejected by
 // Polonius because of these missing `killed` facts.

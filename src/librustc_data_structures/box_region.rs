@@ -107,8 +107,8 @@ macro_rules! declare_box_region_type {
             }
 
             $v fn access<F: for<$($lifetimes)*> FnOnce($($args,)*) -> R, R>(&mut self, f: F) -> R {
-                // Turn the FnOnce closure into *mut dyn FnMut()
-                // so we can pass it in to the generator using the BOX_REGION_ARG thread local
+                // Turn the `FnOnce` closure into `*mut dyn FnMut()`
+                // so we can pass it in to the generator using the `BOX_REGION_ARG` thread local.
                 let mut r = None;
                 let mut f = Some(f);
                 let mut_f: &mut dyn for<$($lifetimes)*> FnMut(($($args,)*)) =
@@ -118,12 +118,12 @@ macro_rules! declare_box_region_type {
                 };
                 let mut_f = mut_f as *mut dyn for<$($lifetimes)*> FnMut(($($args,)*));
 
-                // Get the generator to call our closure
+                // Get the generator to call our closure.
                 unsafe {
                     self.0.access(::std::mem::transmute(mut_f));
                 }
 
-                // Unwrap the result
+                // Unwrap the result.
                 r.unwrap()
             }
 

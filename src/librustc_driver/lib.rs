@@ -25,7 +25,6 @@ pub extern crate rustc_plugin_impl as plugin;
 
 use pretty::{PpMode, UserIdentifiedItem};
 
-//use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc::session::{config, Session, DiagnosticOutput};
@@ -95,27 +94,30 @@ pub fn abort_on_err<T>(result: Result<T, ErrorReported>, sess: &Session) -> T {
     match result {
         Err(..) => {
             sess.abort_if_errors();
-            panic!("error reported but abort_if_errors didn't abort???");
+            panic!("error reported but `abort_if_errors` didn't abort?");
         }
         Ok(x) => x,
     }
 }
 
 pub trait Callbacks {
-    /// Called before creating the compiler instance
+    /// Called before creating the compiler instance.
     fn config(&mut self, _config: &mut interface::Config) {}
-    /// Called after parsing. Return value instructs the compiler whether to
-    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+
+    /// Called after parsing. The return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`).
     fn after_parsing(&mut self, _compiler: &interface::Compiler) -> Compilation {
         Compilation::Continue
     }
-    /// Called after expansion. Return value instructs the compiler whether to
-    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+
+    /// Called after expansion. The return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`).
     fn after_expansion(&mut self, _compiler: &interface::Compiler) -> Compilation {
         Compilation::Continue
     }
-    /// Called after analysis. Return value instructs the compiler whether to
-    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+
+    /// Called after analysis. The return value instructs the compiler whether to
+    /// continue the compilation afterwards (defaults to `Compilation::Continue`).
     fn after_analysis(&mut self, _compiler: &interface::Compiler) -> Compilation {
         Compilation::Continue
     }
@@ -138,8 +140,8 @@ impl Callbacks for TimePassesCallbacks {
 }
 
 // Parse args and run the compiler. This is the primary entry point for rustc.
-// See comments on CompilerCalls below for details about the callbacks argument.
-// The FileLoader provides a way to load files from sources other than the file system.
+// See comments on `CompilerCalls` below for details about the callbacks argument.
+// The `FileLoader` provides a way to load files from sources other than the file system.
 pub fn run_compiler(
     at_args: &[String],
     callbacks: &mut (dyn Callbacks + Send),
@@ -220,7 +222,7 @@ pub fn run_compiler(
                     });
                     return Ok(());
                 }
-                1 => panic!("make_input should have provided valid inputs"),
+                1 => panic!("`make_input` should have provided valid inputs"),
                 _ => early_error(sopts.error_format, &format!(
                     "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                     matches.free[0],
@@ -231,8 +233,8 @@ pub fn run_compiler(
     };
 
     if let Some(err) = input_err {
-        // Immediately stop compilation if there was an issue reading
-        // the input (for example if the input stream is not UTF-8).
+        // Immediately stop compilation if there was an issue reading the input (for example,
+        // if the input stream is not UTF-8).
         interface::run_compiler(dummy_config(sopts, cfg, diagnostic_output), |compiler| {
             compiler.session().err(&err.to_string());
         });
@@ -320,7 +322,7 @@ pub fn run_compiler(
 
         compiler.register_plugins()?;
 
-        // Lint plugins are registered; now we can process command line flags.
+        // Lint plugins are registered; now we can process command-line flags.
         if sess.opts.describe_lints {
             describe_lints(&sess, &sess.lint_store.borrow(), true);
             return sess.compile_status();
@@ -365,10 +367,10 @@ pub fn run_compiler(
 
                 result
                 // AST will be dropped *after* the `after_analysis` callback
-                // (needed by the RLS)
+                // (needed by the RLS).
             })?;
         } else {
-            // Drop AST after creating GlobalCtxt to free memory
+            // Drop AST after creating `GlobalCtxt` to free memory.
             mem::drop(compiler.expansion()?.take());
         }
 
@@ -384,7 +386,7 @@ pub fn run_compiler(
 
         compiler.ongoing_codegen()?;
 
-        // Drop GlobalCtxt after starting codegen to free memory
+        // Drop `GlobalCtxt` after starting codegen to free memory.
         mem::drop(compiler.global_ctxt()?.take());
 
         if sess.opts.debugging_opts.print_type_sizes {
@@ -496,17 +498,17 @@ impl Compilation {
     }
 }
 
-/// CompilerCalls instance for a regular rustc build.
+/// `CompilerCalls` instance for a regular rustc build.
 #[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
-// FIXME remove these and use winapi 0.3 instead
-// Duplicates: bootstrap/compile.rs, librustc_errors/emitter.rs
 #[cfg(unix)]
 fn stdout_isatty() -> bool {
     unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
 }
 
+// FIXME: remove these and use v0.3 of winapi crate instead.
+// Duplicates: `bootstrap/compile.rs`, `librustc_errors/emitter.rs`
 #[cfg(windows)]
 fn stdout_isatty() -> bool {
     type DWORD = u32;
@@ -593,7 +595,7 @@ fn show_content_with_pager(content: &String) {
     }
 
     // If pager fails for whatever reason, we should still print the content
-    // to standard output
+    // to standard output.
     if fallback_to_println {
         print!("{}", content);
     }
@@ -628,7 +630,6 @@ impl RustcDefaultCalls {
         Compilation::Continue
     }
 
-
     fn print_crate_info(codegen_backend: &dyn CodegenBackend,
                         sess: &Session,
                         input: Option<&Input>,
@@ -636,8 +637,8 @@ impl RustcDefaultCalls {
                         ofile: &Option<PathBuf>)
                         -> Compilation {
         use rustc::session::config::PrintRequest::*;
-        // PrintRequest::NativeStaticLibs is special - printed during linking
-        // (empty iterator returns true)
+        // `PrintRequest::NativeStaticLibs` is special -- printed during linking
+        // (empty iterator returns `true`).
         if sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {
             return Compilation::Continue;
         }
@@ -714,7 +715,7 @@ impl RustcDefaultCalls {
                         let value = value.as_ref().map(|s| s.as_ref());
                         if name != sym::target_feature || value != Some("crt-static") {
                             if !allow_unstable_cfg && gated_cfg.is_some() {
-                                return None
+                                return None;
                             }
                         }
 
@@ -733,7 +734,7 @@ impl RustcDefaultCalls {
                 RelocationModels | CodeModels | TlsModels | TargetCPUs | TargetFeatures => {
                     codegen_backend.print(*req, sess);
                 }
-                // Any output here interferes with Cargo's parsing of other printed output
+                // Any output here interferes with Cargo's parsing of other printed output.
                 PrintRequest::NativeStaticLibs => {}
             }
         }
@@ -756,7 +757,7 @@ fn commit_date_str() -> Option<&'static str> {
     option_env!("CFG_VER_DATE")
 }
 
-/// Prints version information
+/// Prints version information.
 pub fn version(binary: &str, matches: &getopts::Matches) {
     let verbose = matches.opt_present("verbose");
 
@@ -977,8 +978,8 @@ fn print_flag_list<T>(cmdline_opt: &str,
     }
 }
 
-/// Process command line options. Emits messages as appropriate. If compilation
-/// should continue, returns a getopts::Matches object parsed from args,
+/// Processes command-line options. Emits messages as appropriate. If compilation
+/// should continue, returns a `getopts::Matches` object parsed from arguments,
 /// otherwise returns `None`.
 ///
 /// The compiler's handling of options is a little complicated as it ties into
@@ -1001,11 +1002,11 @@ fn print_flag_list<T>(cmdline_opt: &str,
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
 pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
-    // Throw away the first argument, the name of the binary
+    // Throw away the first argument (the name of the binary).
     let args = &args[1..];
 
     if args.is_empty() {
-        // user did not write `-v` nor `-Z unstable-options`, so do not
+        // User did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
         usage(false, false);
         return None;
@@ -1033,26 +1034,26 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
-    // Late check to see if @file was used without unstable options enabled
+    // Late check to see if `@path` was used without unstable options enabled.
     if crate::args::used_unstable_argsfile() && !nightly_options::is_unstable_enabled(&matches) {
         early_error(ErrorOutputType::default(),
-            "@path is unstable - use -Z unstable-options to enable its use");
+            "`@path` is unstable; use `-Z unstable-options` to enable its use");
     }
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        // Only show unstable options in --help if we accept unstable options.
+        // Only show unstable options in `--help` if we accept unstable options.
         usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
         return None;
     }
 
-    // Handle the special case of -Wall.
+    // Handle the special case of `-Wall`.
     let wall = matches.opt_strs("W");
     if wall.iter().any(|x| *x == "all") {
         print_wall_help();
         return None;
     }
 
-    // Don't handle -W help here, because we might first load plugins.
+    // Don't handle `-W` help here, because we might first load plugins.
     let r = matches.opt_strs("Z");
     if r.iter().any(|x| *x == "help") {
         describe_debug_flags();
@@ -1161,7 +1162,7 @@ pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, Erro
         if value.is::<errors::FatalErrorMarker>() {
             ErrorReported
         } else {
-            // Thread panicked without emitting a fatal diagnostic
+            // Thread panicked without emitting a fatal diagnostic.
             eprintln!("");
 
             let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
@@ -1173,8 +1174,7 @@ pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, Erro
             ));
             let handler = errors::Handler::with_emitter(true, None, emitter);
 
-            // a .span_bug or .bug call has already printed what
-            // it wants to print.
+            // A `.span_bug` or `.bug` call has already printed what it wants to print.
             if !value.is::<errors::ExplicitBug>() {
                 handler.emit(&MultiSpan::new(),
                              "unexpected panic",
@@ -1208,8 +1208,8 @@ pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, Erro
     })
 }
 
-/// This allows tools to enable rust logging without having to magically match rustc's
-/// log crate version
+/// This allows tools to enable Rust logging without having to magically match rustc's
+/// `log` crate version.
 pub fn init_rustc_env_logger() {
     env_logger::init_from_env("RUSTC_LOG");
 }

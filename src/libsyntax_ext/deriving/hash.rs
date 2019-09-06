@@ -13,7 +13,6 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt<'_>,
                             mitem: &MetaItem,
                             item: &Annotatable,
                             push: &mut dyn FnMut(Annotatable)) {
-
     let path = Path::new_(pathvec_std!(cx, hash::Hash), None, vec![], PathKind::Std);
 
     let typaram = "__H";

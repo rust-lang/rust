@@ -66,7 +66,7 @@ thread_local!(pub static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Defau
 
 const FN_OUTPUT_NAME: &'static str = "Output";
 
-// extract the stability index for a node from tcx, if possible
+// Extracts the stability index for a node from tcx, if possible.
 fn get_stability(cx: &DocContext<'_>, def_id: DefId) -> Option<Stability> {
     cx.tcx.lookup_stability(def_id).clean(cx)
 }
@@ -150,7 +150,7 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     let mut externs = Vec::new();
     for &cnum in cx.tcx.crates().iter() {
         externs.push((cnum, cnum.clean(cx)));
-        // Analyze doc-reachability for extern items
+        // Analyze doc-reachability for extern items.
         LibEmbargoVisitor::new(&mut cx).visit_lib(cnum);
     }
     externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
@@ -355,9 +355,9 @@ impl Clean<ExternalCrate> for CrateNum {
 /// directly to the AST's concept of an item; it's a strict superset.
 #[derive(Clone)]
 pub struct Item {
-    /// Stringified span
+    /// The stringified span.
     pub source: Span,
-    /// Not everything has a name. E.g., impls
+    /// The name of the item. (Not everything has a name, e.g., impls.)
     pub name: Option<String>,
     pub attrs: Attributes,
     pub inner: ItemEnum,
@@ -589,9 +589,9 @@ impl Clean<Item> for doctree::Module<'_> {
             String::new()
         };
 
-        // maintain a stack of mod ids, for doc comment path resolution
-        // but we also need to resolve the module's own docs based on whether its docs were written
-        // inside or outside the module, so check for that
+        // Maintain a stack of mod IDs, for doc comment path resolution.
+        // However, we also need to resolve the module's own docs based on whether its docs were
+        // written inside or outside the module, so check for that.
         let attrs = self.attrs.clean(cx);
 
         let mut items: Vec<Item> = vec![];
@@ -613,17 +613,17 @@ impl Clean<Item> for doctree::Module<'_> {
         items.extend(self.proc_macros.iter().map(|x| x.clean(cx)));
         items.extend(self.trait_aliases.iter().map(|x| x.clean(cx)));
 
-        // determine if we should display the inner contents or
+        // Determine if we should display the inner contents or
         // the outer `mod` item for the source code.
         let whence = {
             let cm = cx.sess().source_map();
             let outer = cm.lookup_char_pos(self.where_outer.lo());
             let inner = cm.lookup_char_pos(self.where_inner.lo());
             if outer.file.start_pos == inner.file.start_pos {
-                // mod foo { ... }
+                // `mod foo { ... }`
                 self.where_outer
             } else {
-                // mod foo; (and a separate SourceFile for the contents)
+                // `mod foo` (separate `SourceFile` for contents)
                 self.where_inner
             }
         };
@@ -694,7 +694,7 @@ impl AttributesExt for [ast::Attribute] {
 }
 
 pub trait NestedAttributesExt {
-    /// Returns `true` if the attribute list contains a specific `Word`
+    /// Returns `true` if the attribute list contains a specific `Word`.
     fn has_word(self, word: Symbol) -> bool;
 }
 
@@ -768,7 +768,7 @@ pub struct Attributes {
     pub other_attrs: Vec<ast::Attribute>,
     pub cfg: Option<Arc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
-    /// map from Rust paths to resolved defs and potential URL fragments
+    /// Map from Rust paths to resolved defs and potential URL fragments.
     pub links: Vec<(String, Option<DefId>, Option<String>)>,
     pub inner_docs: bool,
 }
@@ -806,9 +806,9 @@ impl Attributes {
         mi.meta_item_list().and_then(|list| {
             for meta in list {
                 if meta.check_name(sym::include) {
-                    // the actual compiled `#[doc(include="filename")]` gets expanded to
+                    // The actual compiled `#[doc(include="filename")]` gets expanded to
                     // `#[doc(include(file="filename", contents="file contents")]` so we need to
-                    // look for that instead
+                    // look for that instead.
                     return meta.meta_item_list().and_then(|list| {
                         let mut filename: Option<String> = None;
                         let mut contents: Option<String> = None;
@@ -864,7 +864,7 @@ impl Attributes {
                 if attr.check_name(sym::doc) {
                     if let Some(mi) = attr.meta() {
                         if let Some(value) = mi.value_str() {
-                            // Extracted #[doc = "..."]
+                            // Extracted `#[doc = "..."]`.
                             let value = value.to_string();
                             let line = doc_line;
                             doc_line += value.lines().count();
@@ -880,7 +880,7 @@ impl Attributes {
                             }
                             return None;
                         } else if let Some(cfg_mi) = Attributes::extract_cfg(&mi) {
-                            // Extracted #[doc(cfg(...))]
+                            // Extracted `#[doc(cfg(...))]`.
                             match Cfg::parse(cfg_mi) {
                                 Ok(new_cfg) => cfg &= new_cfg,
                                 Err(e) => diagnostic.span_err(e.span, e.msg),
@@ -901,8 +901,8 @@ impl Attributes {
             })
         }).collect();
 
-        // treat #[target_feature(enable = "feat")] attributes as if they were
-        // #[doc(cfg(target_feature = "feat"))] attributes as well
+        // Treat `#[target_feature(enable = "feat")]` attributes as if they were
+        // `#[doc(cfg(target_feature = "feat"))]` attributes as well.
         for attr in attrs.lists(sym::target_feature) {
             if attr.check_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
@@ -947,9 +947,9 @@ impl Attributes {
         }
     }
 
-    /// Gets links as a vector
+    /// Gets the links as a vector.
     ///
-    /// Cache must be populated before call
+    /// The cache must be populated before the call.
     pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
         use crate::html::format::href;
 
@@ -985,7 +985,7 @@ impl Attributes {
                                       &fragment[..tail],
                                       &fragment[tail..])))
                     } else {
-                        panic!("This isn't a primitive?!");
+                        panic!("this isn't a primitive?!");
                     }
                 }
             }
@@ -1115,7 +1115,7 @@ fn external_generic_args(
     }).collect();
 
     match trait_did {
-        // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
+        // Attempt to sugar an external path like `Fn<(A, B,), C>` to `Fn(A, B) -> C`.
         Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
             assert!(ty_sty.is_some());
             let inputs = match ty_sty {
@@ -1136,8 +1136,8 @@ fn external_generic_args(
     }
 }
 
-// trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
-// from Fn<(A, B,), C> to Fn(A, B) -> C
+// `trait_did` should be set to a trait's `DefId` if called on a `TraitRef`, in order to desugar
+// from `Fn<(A, B,), C>` to `Fn(A, B) -> C`.
 fn external_path(cx: &DocContext<'_>, name: &str, trait_did: Option<DefId>, has_self: bool,
                  bindings: Vec<TypeBinding>, substs: SubstsRef<'_>) -> Path {
     Path {
@@ -1159,7 +1159,7 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
-        // collect any late bound regions
+        // Collect any late-bound regions.
         let mut late_bounds = vec![];
         for ty_s in trait_ref.input_types().skip(1) {
             if let ty::Tuple(ts) = ty_s.sty {
@@ -1588,7 +1588,7 @@ impl Clean<GenericParamDef> for hir::GenericParam {
     }
 }
 
-// maybe use a Generic enum and use Vec<Generic>?
+// FIXME: maybe use a `Generic` enum and use `Vec<Generic>` instead?
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
 pub struct Generics {
     pub params: Vec<GenericParamDef>,
@@ -1636,7 +1636,7 @@ impl Clean<Generics> for hir::Generics {
             where_predicates: self.where_clause.predicates.clean(cx),
         };
 
-        // Some duplicates are generated for ?Sized bounds between type params and where
+        // Some duplicates are generated for `?Sized` bounds between type params and where-
         // predicates. The point in here is to move the bounds definitions from type params
         // to where predicates when such cases occur.
         for where_pred in &mut generics.where_predicates {
@@ -1677,7 +1677,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         let mut impl_trait = BTreeMap::<ImplTraitParam, Vec<GenericBound>>::default();
 
         // Bounds in the type_params and lifetimes fields are repeated in the
-        // predicates field (see rustc_typeck::collect::ty_generics), so remove
+        // predicates field (see [`rustc_typeck::collect::ty_generics`]), so remove
         // them.
         let stripped_typarams = gens.params.iter()
             .filter_map(|param| match param.kind {
@@ -1696,7 +1696,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                 ty::GenericParamDefKind::Const { .. } => None,
             }).collect::<Vec<GenericParamDef>>();
 
-        // param index -> [(DefId of trait, associated type name, type)]
+        // param index -> [(`DefId` of trait, associated type name, type)]
         let mut impl_trait_proj =
             FxHashMap::<u32, Vec<(DefId, String, Ty<'tcx>)>>::default();
 
@@ -1787,13 +1787,13 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             .flat_map(|p| p.clean(cx))
             .collect::<Vec<_>>();
 
-        // Type parameters and have a Sized bound by default unless removed with
-        // ?Sized. Scan through the predicates and mark any type parameter with
+        // Type parameters and have a `Sized` bound by default unless removed with
+        // `?Sized`. Scan through the predicates and mark any type parameter with
         // a Sized bound, removing the bounds as we find them.
         //
         // Note that associated types also have a sized bound by default, but we
         // don't actually know the set of associated types right here so that's
-        // handled in cleaning associated types
+        // handled in cleaning associated types.
         let mut sized_params = FxHashSet::default();
         where_predicates.retain(|pred| {
             match *pred {
@@ -1809,8 +1809,8 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             }
         });
 
-        // Run through the type parameters again and insert a ?Sized
-        // unbound for any we didn't find to be Sized.
+        // Run through the type parameters again and insert a `?Sized`
+        // unbound for any we didn't find to be `Sized`.
         for tp in &stripped_typarams {
             if !sized_params.contains(&tp.name) {
                 where_predicates.push(WP::BoundPredicate {
@@ -1821,7 +1821,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         }
 
         // It would be nice to collect all of the bounds on a type and recombine
-        // them if possible, to avoid e.g., `where T: Foo, T: Bar, T: Sized, T: 'a`
+        // them if possible, to avoid, e.g., `where T: Foo, T: Bar, T: Sized, T: 'a`
         // and instead see `where T: Foo + Bar + Sized + 'a`
 
         Generics {
@@ -1838,9 +1838,9 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
     }
 }
 
-/// The point of this function is to replace bounds with types.
+/// Replaces bounds with types.
 ///
-/// i.e. `[T, U]` when you have the following bounds: `T: Display, U: Option<T>` will return
+/// E.g., given `[T, U]` and the bounds `T: Display, U: Option<T>`, this will return
 /// `[Display, Option]` (we just returns the list of the types, we don't care about the
 /// wrapped types in here).
 fn get_real_types(
@@ -1867,7 +1867,7 @@ fn get_real_types(
                     GenericBound::TraitBound(ref poly_trait, _) => {
                         for x in poly_trait.generic_params.iter() {
                             if !x.is_type() {
-                                continue
+                                continue;
                             }
                             if let Some(ty) = x.get_type(cx) {
                                 let adds = get_real_types(generics, &ty, cx, recurse + 1);
@@ -1915,9 +1915,9 @@ fn get_real_types(
     res
 }
 
-/// Return the full list of types when bounds have been resolved.
+/// Returns the full list of types when bounds have been resolved.
 ///
-/// i.e. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
+/// E.g.. `fn foo<A: Display, B: Option<A>>(x: u32, y: B)` will return
 /// `[u32, Display, Option]`.
 pub fn get_all_types(
     generics: &Generics,
@@ -4536,7 +4536,7 @@ impl From<GenericBound> for SimpleBound {
                                             t.generic_params,
                                             mod_)
                 }
-                _ => panic!("Unexpected bound {:?}", bound),
+                _ => panic!("unexpected bound {:?}", bound),
             }
         }
     }

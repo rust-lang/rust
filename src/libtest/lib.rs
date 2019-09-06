@@ -74,9 +74,9 @@ use std::time::{Duration, Instant};
 mod tests;
 
 const TEST_WARN_TIMEOUT_S: u64 = 60;
-const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
+const QUIET_MODE_MAX_COLUMN: usize = 100; // Insert a '\n' after 100 tests in quiet mode.
 
-// to be used by rustc to compile tests in libtest
+// To be used by rustc to compile tests in libtest.
 pub mod test {
     pub use crate::{
         assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
@@ -91,7 +91,7 @@ pub mod stats;
 
 use crate::formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
 
-/// Whether to execute tests concurrently or not
+/// Whether to execute tests concurrently or not.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Concurrent {
     Yes,
@@ -102,7 +102,6 @@ pub enum Concurrent {
 // paths; i.e., it should be a series of identifiers separated by double
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
-
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TestName {
     StaticTestName(&'static str),
@@ -225,8 +224,7 @@ pub enum ShouldPanic {
     YesWithMessage(&'static str),
 }
 
-// The definition of a single test. A test runner will run a list of
-// these.
+/// Definition of a single test. A test runner will run a list of these.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TestDesc {
     pub name: TestName,
@@ -272,8 +270,8 @@ impl Options {
     }
 }
 
-// The default console test runner. It accepts the command line
-// arguments and a vector of test_descs.
+/// The default console test runner. Accepts the command-line arguments and a vector of
+/// test descriptions.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Options>) {
     let mut opts = match parse_opts(args) {
         Some(Ok(o)) => o,
@@ -288,7 +286,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
     }
     if opts.list {
         if let Err(e) = list_tests_console(&opts, tests) {
-            eprintln!("error: io error when listing tests: {:?}", e);
+            eprintln!("error: I/O error when listing tests: {:?}", e);
             process::exit(101);
         }
     } else {
@@ -296,20 +294,20 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
             Ok(true) => {}
             Ok(false) => process::exit(101),
             Err(e) => {
-                eprintln!("error: io error when listing tests: {:?}", e);
+                eprintln!("error: I/O error when listing tests: {:?}", e);
                 process::exit(101);
             }
         }
     }
 }
 
-// A variant optimized for invocation with a static test vector.
-// This will panic (intentionally) when fed any dynamic tests, because
-// it is copying the static values out into a dynamic vector and cannot
-// copy dynamic values. It is doing this because from this point on
-// a Vec<TestDescAndFn> is used in order to effect ownership-transfer
-// semantics into parallel test runners, which in turn requires a Vec<>
-// rather than a &[].
+/// A variant optimized for invocation with a static test vector.
+/// This will panic (intentionally) when fed any dynamic tests, because
+/// it is copying the static values out into a dynamic vector and cannot
+/// copy dynamic values. It is doing this because from this point on
+/// a `Vec<TestDescAndFn>` is used in order to effect ownership-transfer
+/// semantics into parallel test runners, which in turn requires a `Vec<>`
+/// rather than a `&[]`.
 pub fn test_main_static(tests: &[&TestDescAndFn]) {
     let args = env::args().collect::<Vec<_>>();
     let owned_tests = tests
@@ -498,17 +496,17 @@ Test Attributes:
     );
 }
 
-// FIXME: Copied from libsyntax until linkage errors are resolved. Issue #47566
+// FIXME(#47566): Copied from libsyntax until linkage errors are resolved.
 fn is_nightly() -> bool {
-    // Whether this is a feature-staged build, i.e., on the beta or stable channel
+    // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
     let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-    // Whether we should enable unstable features for bootstrapping
+    // `true` if we should enable unstable features for bootstrapping.
     let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
 
     bootstrap || !disable_unstable_features
 }
 
-// Parses command line arguments into test options
+// Parses command-line arguments into test options.
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let mut allow_unstable = false;
     let opts = optgroups();
@@ -869,7 +867,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     Ok(())
 }
 
-// A simple console test runner
+/// A simple console test runner.
 pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Result<bool> {
     fn callback(
         event: &TestEvent,
@@ -1313,20 +1311,20 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
         }
     };
 
-    // Remove tests that don't match the test filter
+    // Remove tests that don't match the test filter.
     if let Some(ref filter) = opts.filter {
         filtered.retain(|test| matches_filter(test, filter));
     }
 
-    // Skip tests that match any of the skip filters
+    // Skip tests that match any of the skip filters.
     filtered.retain(|test| !opts.skip.iter().any(|sf| matches_filter(test, sf)));
 
-    // Excludes #[should_panic] tests
+    // Excludes `#[should_panic]` tests.
     if opts.exclude_should_panic {
         filtered.retain(|test| test.desc.should_panic == ShouldPanic::No);
     }
 
-    // maybe unignore tests
+    // Maybe unignore tests.
     match opts.run_ignored {
         RunIgnored::Yes => {
             filtered
@@ -1342,14 +1340,14 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
         RunIgnored::No => {}
     }
 
-    // Sort the tests alphabetically
+    // Sort the tests alphabetically.
     filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
 
     filtered
 }
 
 pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
-    // convert benchmarks to tests, if we're not benchmarking them
+    // Convert benchmarks to tests if we're not benchmarking them.
     tests
         .into_iter()
         .map(|x| {
@@ -1395,7 +1393,7 @@ pub fn run_test(
         testfn: Box<dyn FnOnce() + Send>,
         concurrency: Concurrent,
     ) {
-        // Buffer for capturing standard I/O
+        // Buffer for capturing standard I/O.
         let data = Arc::new(Mutex::new(Vec::new()));
         let data2 = data.clone();
 
@@ -1424,9 +1422,8 @@ pub fn run_test(
                 .unwrap();
         };
 
-        // If the platform is single-threaded we're just going to run
-        // the test synchronously, regardless of the concurrency
-        // level.
+        // If the platform is single-threaded, we're just going to run
+        // the test synchronously, regardless of the concurrency level.
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
         if concurrency == Concurrent::Yes && supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
@@ -1500,7 +1497,7 @@ impl MetricMap {
         MetricMap(BTreeMap::new())
     }
 
-    /// Insert a named `value` (+/- `noise`) metric into the map. The value
+    /// Inserts a named `value` (+/- `noise`) metric into the map. The value
     /// must be non-negative. The `noise` indicates the uncertainty of the
     /// metric, which doubles as the "noise range" of acceptable
     /// pairwise-regressions on this named value, when comparing from one
@@ -1582,7 +1579,7 @@ where
     let ns_target_total = 1_000_000; // 1ms
     let mut n = ns_target_total / cmp::max(1, ns_single);
 
-    // if the first run took more than 1ms we don't want to just
+    // If the first run took more than 1ms we don't want to just
     // be left doing 0 iterations on every loop. The unfortunate
     // side effect of not being able to do as many runs is
     // automatically handled by the statistical analysis below
@@ -1629,7 +1626,7 @@ where
         // If we overflow here just return the results so far. We check a
         // multiplier of 10 because we're about to multiply by 2 and the
         // next iteration of the loop will also multiply by 5 (to calculate
-        // the summ5 result)
+        // the `summ5` result).
         n = match n.checked_mul(10) {
             Some(_) => n * 2,
             None => {
@@ -1677,7 +1674,7 @@ pub mod bench {
         };
 
         let test_result = match result {
-            //bs.bench(f) {
+            // bs.bench(f) {
             Ok(Some(ns_iter_summ)) => {
                 let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
                 let mb_s = bs.bytes * 1000 / ns_iter;
@@ -1689,7 +1686,7 @@ pub mod bench {
                 TestResult::TrBench(bs)
             }
             Ok(None) => {
-                // iter not called, so no data.
+                // Iter not called, so no data.
                 // FIXME: error in this case?
                 let samples: &mut [f64] = &mut [0.0_f64; 1];
                 let bs = BenchSamples {

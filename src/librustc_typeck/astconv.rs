@@ -1,4 +1,4 @@
-//! Conversion from AST representation of types to the `ty.rs` representation.
+//! Conversion from AST representation of types to the typesystem representation.
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
 
@@ -61,8 +61,7 @@ pub trait AstConv<'tcx> {
         &self,
         param: Option<&ty::GenericParamDef>,
         span: Span,
-    )
-                -> Option<ty::Region<'tcx>>;
+    ) -> Option<ty::Region<'tcx>>;
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;
@@ -275,7 +274,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Checks that the correct number of generic arguments have been provided.
-    /// This is used both for datatypes and function calls.
+    /// This is used both for data types and function calls.
     fn check_generic_arg_count(
         tcx: TyCtxt<'_>,
         span: Span,
@@ -603,9 +602,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         def_id: DefId,
         generic_args: &'a hir::GenericArgs,
         infer_args: bool,
-        self_ty: Option<Ty<'tcx>>)
-        -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>)
-    {
+        self_ty: Option<Ty<'tcx>>
+    ) -> (SubstsRef<'tcx>, Vec<ConvertedBinding<'a, 'tcx>>, Option<Vec<Span>>) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
@@ -772,8 +770,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     pub fn instantiate_mono_trait_ref(&self,
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>
-    ) -> ty::TraitRef<'tcx>
-    {
+    ) -> ty::TraitRef<'tcx> {
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
         self.ast_path_to_mono_trait_ref(trait_ref.path.span,
@@ -782,7 +779,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                         trait_ref.path.segments.last().unwrap())
     }
 
-    /// The given trait-ref must actually be a trait.
+    /// Instantiates the path for the given trait reference.
+    /// `trait_ref` must actually refer to a trait.
     pub(super) fn instantiate_poly_trait_ref_inner(&self,
         trait_ref: &hir::TraitRef,
         span: Span,
@@ -863,9 +861,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        trait_segment: &hir::PathSegment
-    ) -> ty::TraitRef<'tcx>
-    {
+        trait_segment: &hir::PathSegment,
+    ) -> ty::TraitRef<'tcx> {
         let (substs, assoc_bindings, _) =
             self.create_substs_for_ast_trait_ref(span,
                                                  trait_def_id,
@@ -1197,9 +1194,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn ast_path_to_ty(&self,
         span: Span,
         did: DefId,
-        item_segment: &hir::PathSegment)
-        -> Ty<'tcx>
-    {
+        item_segment: &hir::PathSegment
+    ) -> Ty<'tcx> {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
         self.normalize_ty(
             span,
@@ -1212,7 +1208,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
                                 -> ty::ExistentialTraitRef<'tcx> {
         if trait_ref.self_ty() != self.tcx().types.trait_object_dummy_self {
-            bug!("trait_ref_to_existential called on {:?} with non-dummy Self", trait_ref);
+            bug!("trait_ref_to_existential called on {:?} with non-dummy self type", trait_ref);
         }
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
@@ -1220,9 +1216,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn conv_object_ty_poly_trait_ref(&self,
         span: Span,
         trait_bounds: &[hir::PolyTraitRef],
-        lifetime: &hir::Lifetime)
-        -> Ty<'tcx>
-    {
+        lifetime: &hir::Lifetime,
+    ) -> Ty<'tcx> {
         let tcx = self.tcx();
 
         let mut bounds = Bounds::default();
@@ -1583,7 +1578,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         return Ok(bound);
     }
 
-    // Create a type from a path to an associated type.
+    // Creates a type from a path to an associated type.
     // For a path `A::B::C::D`, `qself_ty` and `qself_def` are the type and def for `A::B::C`
     // and item_segment is the path segment for `D`. We return a type and a def for
     // the whole path.
@@ -1963,7 +1958,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         path_segs
     }
 
-    // Check a type `Path` and convert it to a `Ty`.
+    // Checks a type `Path` and convert it to a `Ty`.
     pub fn res_to_ty(&self,
                      opt_self_ty: Option<Ty<'tcx>>,
                      path: &hir::Path,
@@ -2144,7 +2139,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::Infer => {
                 // Infer also appears as the type of arguments or return
-                // values in a ExprKind::Closure, or as
+                // values in a `ExprKind::Closure`, or as
                 // the type of local variables. Both of these cases are
                 // handled specially and will not descend into this routine.
                 self.ty_infer(None, ast_ty.span)

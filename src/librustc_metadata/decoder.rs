@@ -1,4 +1,4 @@
-// Decoding metadata from a single crate's metadata
+//! This module handles decoding metadata for a single crate.
 
 use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use crate::schema::*;
@@ -178,7 +178,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx.expect("missing TyCtxt in DecodeContext")
+        self.tcx.expect("missing `TyCtxt` in `DecodeContext`")
     }
 
     #[inline]
@@ -284,7 +284,7 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
         if let Some(alloc_decoding_session) = self.alloc_decoding_session {
             alloc_decoding_session.decode_alloc_id(self)
         } else {
-            bug!("Attempting to decode interpret::AllocId without CrateMetadata")
+            bug!("attempting to decode `interpret::AllocId` without `CrateMetadata`");
         }
     }
 }
@@ -306,13 +306,13 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
-            bug!("Cannot decode Span without Session.")
+            bug!("cannot decode `Span` without `Session`");
         };
 
         let imported_source_files = self.cdata().imported_source_files(&sess.source_map());
         let source_file = {
             // Optimize for the case that most spans within a translated item
-            // originate from the same source_file.
+            // originate from the same `SourceFile`.
             let last_source_file = &imported_source_files[self.last_source_file_index];
 
             if lo >= last_source_file.original_start_pos &&
@@ -340,7 +340,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         debug_assert!(lo >= source_file.original_start_pos &&
                       lo <= source_file.original_end_pos);
 
-        // Make sure we correctly filtered out invalid spans during encoding
+        // Make sure we correctly filtered out invalid spans during encoding.
         debug_assert!(hi >= source_file.original_start_pos &&
                       hi <= source_file.original_end_pos);
 
@@ -362,6 +362,7 @@ impl SpecializedDecoder<Ident> for DecodeContext<'_, '_> {
 }
 
 impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for DecodeContext<'a, 'tcx> {
+    #[inline]
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(&mut self.opaque)
     }
@@ -575,7 +576,7 @@ impl<'a, 'tcx> CrateMetadata {
                                   false,
                                   self.def_path_table.def_path_hash(item_id))
             },
-            _ => bug!("def-index does not refer to trait or trait alias"),
+            _ => bug!("`DefIndex` does not refer to trait or trait alias"),
         }
     }
 
@@ -630,7 +631,7 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::Enum(repr) => (ty::AdtKind::Enum, repr),
             EntryKind::Struct(_, repr) => (ty::AdtKind::Struct, repr),
             EntryKind::Union(_, repr) => (ty::AdtKind::Union, repr),
-            _ => bug!("get_adt_def called on a non-ADT {:?}", did),
+            _ => bug!("`get_adt_def` called on a non-ADT {:?}", did),
         };
 
         let variants = if let ty::AdtKind::Enum = kind {
@@ -671,7 +672,7 @@ impl<'a, 'tcx> CrateMetadata {
         let super_predicates = match self.entry(item_id).kind {
             EntryKind::Trait(data) => data.decode(self).super_predicates,
             EntryKind::TraitAlias(data) => data.decode(self).super_predicates,
-            _ => bug!("def-index does not refer to trait or trait alias"),
+            _ => bug!("`DefIndex` does not refer to trait or trait alias"),
         };
 
         super_predicates.decode((self, tcx))
@@ -975,7 +976,7 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::AssocOpaqueTy(container) => {
                 (ty::AssocKind::OpaqueTy, container, false)
             }
-            _ => bug!("cannot get associated-item of `{:?}`", def_key)
+            _ => bug!("cannot get associated item of `{:?}`", def_key)
         };
 
         ty::AssocItem {
@@ -1261,25 +1262,25 @@ impl<'a, 'tcx> CrateMetadata {
         self.def_path_table.def_path_hash(index)
     }
 
-    /// Imports the source_map from an external crate into the source_map of the crate
+    /// Imports the `SourceMap` from an external crate into the `SourceMap` of the crate
     /// currently being compiled (the "local crate").
     ///
     /// The import algorithm works analogous to how AST items are inlined from an
     /// external crate's metadata:
-    /// For every SourceFile in the external source_map an 'inline' copy is created in the
-    /// local source_map. The correspondence relation between external and local
+    /// For every `SourceFile` in the external `SourceMap` an 'inline' copy is created in the
+    /// local `SourceMap`. The correspondence relation between external and local
     /// SourceFiles is recorded in the `ImportedSourceFile` objects returned from this
     /// function. When an item from an external crate is later inlined into this
     /// crate, this correspondence information is used to translate the span
     /// information of the inlined item so that it refers the correct positions in
-    /// the local source_map (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
+    /// the local `SourceMap` (see `<decoder::DecodeContext as SpecializedDecoder<Span>>`).
     ///
     /// The import algorithm in the function below will reuse SourceFiles already
-    /// existing in the local source_map. For example, even if the SourceFile of some
+    /// existing in the local `SourceMap`. For example, even if the SourceFile of some
     /// source file of libstd gets imported many times, there will only ever be
-    /// one SourceFile object for the corresponding file in the local source_map.
+    /// one SourceFile object for the corresponding file in the local `SourceMap`.
     ///
-    /// Note that imported SourceFiles do not actually contain the source code of the
+    /// Note that imported `SourceFile`s do not actually contain the source code of the
     /// file they represent, just information about length, line breaks, and
     /// multibyte characters. This information is enough to generate valid debuginfo
     /// for items inlined from other crates.
@@ -1296,7 +1297,7 @@ impl<'a, 'tcx> CrateMetadata {
             }
         }
 
-        // Lock the source_map_import_info to ensure this only happens once
+        // Lock the `source_map_import_info` to ensure this only happens once.
         let mut source_map_import_info = self.source_map_import_info.borrow_mut();
 
         if !source_map_import_info.is_empty() {
@@ -1307,18 +1308,20 @@ impl<'a, 'tcx> CrateMetadata {
         let external_source_map = self.root.source_map.decode(self);
 
         let imported_source_files = external_source_map.map(|source_file_to_import| {
-            // We can't reuse an existing SourceFile, so allocate a new one
+            // We can't reuse an existing `SourceFile`, so allocate a new one
             // containing the information we need.
-            let syntax_pos::SourceFile { name,
-                                      name_was_remapped,
-                                      src_hash,
-                                      start_pos,
-                                      end_pos,
-                                      mut lines,
-                                      mut multibyte_chars,
-                                      mut non_narrow_chars,
-                                      name_hash,
-                                      .. } = source_file_to_import;
+            let syntax_pos::SourceFile {
+                name,
+                name_was_remapped,
+                src_hash,
+                start_pos,
+                end_pos,
+                mut lines,
+                mut multibyte_chars,
+                mut non_narrow_chars,
+                name_hash,
+                ..
+             } = source_file_to_import;
 
             let source_length = (end_pos - start_pos).to_usize();
 
@@ -1326,7 +1329,7 @@ impl<'a, 'tcx> CrateMetadata {
             // position into frame of reference local to file.
             // `SourceMap::new_imported_source_file()` will then translate those
             // coordinates to their new global frame of reference when the
-            // offset of the SourceFile is known.
+            // offset of the `SourceFile` is known.
             for pos in &mut lines {
                 *pos = *pos - start_pos;
             }
@@ -1337,15 +1340,17 @@ impl<'a, 'tcx> CrateMetadata {
                 *swc = *swc - start_pos;
             }
 
-            let local_version = local_source_map.new_imported_source_file(name,
-                                                                   name_was_remapped,
-                                                                   self.cnum.as_u32(),
-                                                                   src_hash,
-                                                                   name_hash,
-                                                                   source_length,
-                                                                   lines,
-                                                                   multibyte_chars,
-                                                                   non_narrow_chars);
+            let local_version = local_source_map.new_imported_source_file(
+                name,
+                name_was_remapped,
+                self.cnum.as_u32(),
+                src_hash,
+                name_hash,
+                source_length,
+                lines,
+                multibyte_chars,
+                non_narrow_chars,
+            );
             debug!("CrateMetaData::imported_source_files alloc \
                     source_file {:?} original (start_pos {:?} end_pos {:?}) \
                     translated (start_pos {:?} end_pos {:?})",
@@ -1362,7 +1367,7 @@ impl<'a, 'tcx> CrateMetadata {
         *source_map_import_info = imported_source_files;
         drop(source_map_import_info);
 
-        // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
+        // This shouldn't borrow twice, but there is no way to downgrade `RefMut` to `Ref`.
         self.source_map_import_info.borrow()
     }
 }
