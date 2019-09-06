@@ -18,10 +18,8 @@ pub(super) fn lint(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr
     if let hir::ExprKind::Closure(_, _, body_id, ..) = args[1].node {
         let body = cx.tcx.hir().body(body_id);
         let arg_id = body.params[0].pat.hir_id;
-        let mutates_arg = match mutated_variables(&body.value, cx) {
-            Some(used_mutably) => used_mutably.contains(&arg_id),
-            None => true,
-        };
+        let mutates_arg =
+            mutated_variables(&body.value, cx).map_or(true, |used_mutably| used_mutably.contains(&arg_id));
 
         let (mut found_mapping, mut found_filtering) = check_expression(&cx, arg_id, &body.value);
 

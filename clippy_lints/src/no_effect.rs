@@ -63,10 +63,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
         ExprKind::Struct(_, ref fields, ref base) => {
             !has_drop(cx, cx.tables.expr_ty(expr))
                 && fields.iter().all(|field| has_no_effect(cx, &field.expr))
-                && match *base {
-                    Some(ref base) => has_no_effect(cx, base),
-                    None => true,
-                }
+                && base.as_ref().map_or(true, |base| has_no_effect(cx, base))
         },
         ExprKind::Call(ref callee, ref args) => {
             if let ExprKind::Path(ref qpath) = callee.node {
@@ -82,12 +79,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
             }
         },
         ExprKind::Block(ref block, _) => {
-            block.stmts.is_empty()
-                && if let Some(ref expr) = block.expr {
-                    has_no_effect(cx, expr)
-                } else {
-                    false
-                }
+            block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| has_no_effect(cx, expr))
         },
         _ => false,
     }
