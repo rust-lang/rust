@@ -45,7 +45,7 @@ error[E0599]: no method named `iter` found for type `()` in the current scope
   --> $DIR/issue-34334.rs:9:36
    |
 LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_receiver)| {}).collect();
-   |                                    ^^^^
+   |                                    ^^^^ method not found in `()`
 
 error: aborting due to 7 previous errors
 

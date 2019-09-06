@@ -2,7 +2,7 @@ error[E0599]: no method named `hello` found for type `impl Foo` in the current s
   --> $DIR/impl-trait-with-missing-trait-bounds-in-arg.rs:15:9
    |
 LL |     foo.hello();
-   |         ^^^^^
+   |         ^^^^^ method not found in `impl Foo`
    |
    = help: items from traits can only be used if the type parameter is bounded by the trait
 help: the following trait defines an item `hello`, perhaps you need to restrict type parameter `impl Foo` with it:

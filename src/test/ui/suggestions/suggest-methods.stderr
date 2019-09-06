@@ -23,7 +23,7 @@ error[E0599]: no method named `count_o` found for type `u32` in the current scop
   --> $DIR/suggest-methods.rs:28:19
    |
 LL |     let _ = 63u32.count_o();
-   |                   ^^^^^^^
+   |                   ^^^^^^^ method not found in `u32`
 
 error: aborting due to 4 previous errors
 
