@@ -24,7 +24,7 @@ use rustc::ty::layout::{
 
 use crate::interpret::{
     self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
-    ImmTy, MemoryKind, StackPopCleanup, LocalValue, LocalState,
+    ImmTy, StackPopCleanup, LocalValue, LocalState,
 };
 use crate::const_eval::{
     CompileTimeInterpreter, error_to_const_error, mk_eval_cx,
@@ -305,7 +305,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let span = source_info.span;
         match *rvalue {
             Rvalue::Use(_) |
-            Rvalue::Len(_) => {
+            Rvalue::Len(_) |
+            Rvalue::Cast(..) => {
                 self.use_ecx(source_info, |this| {
                     this.ecx.eval_rvalue_into_place(rvalue, place)?;
                     this.ecx.eval_place_to_op(place, Some(place_layout))
@@ -321,14 +322,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Rvalue::NullaryOp(NullOp::Box, _) |
             Rvalue::Discriminant(..) => None,
 
-            Rvalue::Cast(kind, ref operand, _) => {
-                let op = self.eval_operand(operand, source_info)?;
-                self.use_ecx(source_info, |this| {
-                    let dest = this.ecx.allocate(place_layout, MemoryKind::Stack);
-                    this.ecx.cast(op, kind, dest.into())?;
-                    Ok(dest.into())
-                })
-            },
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some(
                     ImmTy::from_uint(
