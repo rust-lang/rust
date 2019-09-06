@@ -932,6 +932,7 @@ impl fmt::Display for IntoStringError {
 
 impl CStr {
     /// Wraps a raw C string with a safe C string wrapper.
+    /// This operation is a zero cost conversion.
     ///
     /// This function will wrap the provided `ptr` with a `CStr` wrapper, which
     /// allows inspection and interoperation of non-owned C strings. This method
@@ -944,10 +945,6 @@ impl CStr {
     ///   valid nul terminator byte at the end of the string.
     /// * It is not guaranteed that the memory pointed by `ptr` won't change
     ///   before the `CStr` has been destroyed.
-    ///
-    /// > **Note**: This operation is intended to be a 0-cost cast but it is
-    /// > currently implemented with an up-front calculation of the length of
-    /// > the string. This is not guaranteed to always be the case.
     ///
     /// # Examples
     ///
@@ -1021,7 +1018,7 @@ impl CStr {
     ///
     /// This function will cast the provided `bytes` to a `CStr` wrapper without
     /// performing any sanity checks. The provided slice **must** be nul-terminated
-    /// and not contain any interior nul bytes.
+    /// and its length will be truncated to its first interior nul (if any).
     ///
     /// # Examples
     ///
@@ -1099,9 +1096,9 @@ impl CStr {
     /// The returned slice will **not** contain the trailing nul terminator that this C
     /// string has.
     ///
-    /// > **Note**: This method is currently implemented as a constant-time
-    /// > cast, but it is planned to alter its definition in the future to
-    /// > perform the length calculation whenever this method is called.
+    /// > **Note**: This method performs the length calculation whenever this method is called.
+    /// > Calculating the length of the C string requires iterating through all bytes of the
+    /// > C string and can thus be an expensive operation.
     ///
     /// # Examples
     ///
@@ -1123,9 +1120,9 @@ impl CStr {
     /// This function is the equivalent of [`to_bytes`] except that it will retain
     /// the trailing nul terminator instead of chopping it off.
     ///
-    /// > **Note**: This method is currently implemented as a 0-cost cast, but
-    /// > it is planned to alter its definition in the future to perform the
-    /// > length calculation whenever this method is called.
+    /// > **Note**: This method performs the length calculation whenever this method is called.
+    /// > Calculating the length of the C string requires iterating through all bytes of the
+    /// > C string and can thus be an expensive operation.
     ///
     /// [`to_bytes`]: #method.to_bytes
     ///
@@ -1155,10 +1152,8 @@ impl CStr {
     /// function will return the corresponding [`&str`] slice. Otherwise,
     /// it will return an error with details of where UTF-8 validation failed.
     ///
-    /// > **Note**: This method is currently implemented to check for validity
-    /// > after a constant-time cast, but it is planned to alter its definition
-    /// > in the future to perform the length calculation in addition to the
-    /// > UTF-8 check whenever this method is called.
+    /// > **Note**: This method performs the length calculation in
+    /// > addition to the UTF-8 check whenever this method is called.
     ///
     /// [`&str`]: ../primitive.str.html
     ///
@@ -1172,9 +1167,7 @@ impl CStr {
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
     pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
-        // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
-        // instead of in `from_ptr()`, it may be worth considering if this should
-        // be rewritten to do the UTF-8 check inline with the length calculation
+        // FIXME: this should be rewritten to do the UTF-8 check inline with the length calculation
         // instead of doing it afterwards.
         str::from_utf8(self.to_bytes())
     }
@@ -1188,10 +1181,8 @@ impl CStr {
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
     /// [`Cow`]`::`[`Owned`]`(`[`String`]`)` with the result.
     ///
-    /// > **Note**: This method is currently implemented to check for validity
-    /// > after a constant-time cast, but it is planned to alter its definition
-    /// > in the future to perform the length calculation in addition to the
-    /// > UTF-8 check whenever this method is called.
+    /// > **Note**: This method performs the length calculation in
+    /// > addition to the UTF-8 check whenever this method is called.
     ///
     /// [`Cow`]: ../borrow/enum.Cow.html
     /// [`Borrowed`]: ../borrow/enum.Cow.html#variant.Borrowed
