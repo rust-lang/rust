@@ -118,7 +118,7 @@ impl Server {
                         experimental: None,
                     },
                     ServerConfig { with_sysroot, ..ServerConfig::default() },
-                    &connection,
+                    connection,
                 )
                 .unwrap()
             })
