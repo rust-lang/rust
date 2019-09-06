@@ -230,7 +230,9 @@ pub fn register_plugins<'a>(
     crate_name: &str,
 ) -> Result<(ast::Crate, PluginInfo)> {
     krate = time(sess, "attributes injection", || {
-        syntax::attr::inject(krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr)
+        syntax_ext::cmdline_attrs::inject(
+            krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr
+        )
     });
 
     let (mut krate, features) = syntax::config::features(

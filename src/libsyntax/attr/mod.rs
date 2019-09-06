@@ -16,7 +16,7 @@ use crate::mut_visit::visit_clobber;
 use crate::source_map::{BytePos, Spanned, DUMMY_SP};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::parser::Parser;
-use crate::parse::{self, ParseSess, PResult};
+use crate::parse::{ParseSess, PResult};
 use crate::parse::token::{self, Token};
 use crate::ptr::P;
 use crate::symbol::{sym, Symbol};
@@ -25,7 +25,7 @@ use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 use crate::GLOBALS;
 
 use log::debug;
-use syntax_pos::{FileName, Span};
+use syntax_pos::Span;
 
 use std::iter;
 use std::ops::DerefMut;
@@ -381,28 +381,25 @@ crate fn mk_attr_id() -> AttrId {
     AttrId(id)
 }
 
-/// Returns an inner attribute with the given value and span.
-pub fn mk_attr_inner(item: MetaItem) -> Attribute {
+pub fn mk_attr(style: AttrStyle, path: Path, tokens: TokenStream, span: Span) -> Attribute {
     Attribute {
         id: mk_attr_id(),
-        style: ast::AttrStyle::Inner,
-        path: item.path,
-        tokens: item.node.tokens(item.span),
+        style,
+        path,
+        tokens,
         is_sugared_doc: false,
-        span: item.span,
+        span,
     }
+}
+
+/// Returns an inner attribute with the given value and span.
+pub fn mk_attr_inner(item: MetaItem) -> Attribute {
+    mk_attr(AttrStyle::Inner, item.path, item.node.tokens(item.span), item.span)
 }
 
 /// Returns an outer attribute with the given value and span.
 pub fn mk_attr_outer(item: MetaItem) -> Attribute {
-    Attribute {
-        id: mk_attr_id(),
-        style: ast::AttrStyle::Outer,
-        path: item.path,
-        tokens: item.node.tokens(item.span),
-        is_sugared_doc: false,
-        span: item.span,
-    }
+    mk_attr(AttrStyle::Outer, item.path, item.node.tokens(item.span), item.span)
 }
 
 pub fn mk_sugared_doc_attr(text: Symbol, span: Span) -> Attribute {
@@ -715,34 +712,4 @@ macro_rules! derive_has_attrs {
 derive_has_attrs! {
     Item, Expr, Local, ast::ForeignItem, ast::StructField, ast::ImplItem, ast::TraitItem, ast::Arm,
     ast::Field, ast::FieldPat, ast::Variant, ast::Param
-}
-
-pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -> ast::Crate {
-    for raw_attr in attrs {
-        let mut parser = parse::new_parser_from_source_str(
-            parse_sess,
-            FileName::cli_crate_attr_source_code(&raw_attr),
-            raw_attr.clone(),
-        );
-
-        let start_span = parser.token.span;
-        let (path, tokens) = panictry!(parser.parse_meta_item_unrestricted());
-        let end_span = parser.token.span;
-        if parser.token != token::Eof {
-            parse_sess.span_diagnostic
-                .span_err(start_span.to(end_span), "invalid crate attribute");
-            continue;
-        }
-
-        krate.attrs.push(Attribute {
-            id: mk_attr_id(),
-            style: AttrStyle::Inner,
-            path,
-            tokens,
-            is_sugared_doc: false,
-            span: start_span.to(end_span),
-        });
-    }
-
-    krate
 }

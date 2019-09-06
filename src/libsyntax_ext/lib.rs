@@ -40,6 +40,7 @@ mod source_util;
 mod test;
 mod trace_macros;
 
+pub mod cmdline_attrs;
 pub mod plugin_macro_defs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
