@@ -15,6 +15,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0 / MIT",
     "MIT OR Apache-2.0",
     "Apache-2.0 OR MIT",
+    "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
     "MIT",
     "Unlicense/MIT",
     "Unlicense OR MIT",
@@ -172,6 +173,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("vcpkg"),
     Crate("version_check"),
     Crate("void"),
+    Crate("wasi"),
     Crate("winapi"),
     Crate("winapi-build"),
     Crate("winapi-i686-pc-windows-gnu"),

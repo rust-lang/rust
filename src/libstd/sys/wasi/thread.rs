@@ -1,10 +1,10 @@
-use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
-use crate::sys::cvt;
+use crate::mem;
 use crate::sys::{unsupported, Void};
 use crate::time::Duration;
-use libc;
+
+use ::wasi::wasi_unstable as wasi;
 
 pub struct Thread(Void);
 
@@ -19,8 +19,8 @@ impl Thread {
     }
 
     pub fn yield_now() {
-        let ret = unsafe { libc::__wasi_sched_yield() };
-        debug_assert_eq!(ret, 0);
+        let ret = wasi::sched_yield();
+        debug_assert_eq!(ret, Ok(()));
     }
 
     pub fn set_name(_name: &CStr) {
@@ -28,19 +28,37 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        let mut secs = dur.as_secs();
-        let mut nsecs = dur.subsec_nanos() as i32;
+        let nanos = dur.as_nanos();
+        assert!(nanos <= u64::max_value() as u128);
 
-        unsafe {
-            while secs > 0 || nsecs > 0 {
-                let mut ts = libc::timespec {
-                    tv_sec: cmp::min(libc::time_t::max_value() as u64, secs) as libc::time_t,
-                    tv_nsec: nsecs,
-                };
-                secs -= ts.tv_sec as u64;
-                cvt(libc::nanosleep(&ts, &mut ts)).unwrap();
-                nsecs = 0;
-            }
+        const CLOCK_ID: wasi::Userdata = 0x0123_45678;
+
+        let clock = wasi::raw::__wasi_subscription_u_clock_t {
+            identifier: CLOCK_ID,
+            clock_id: wasi::CLOCK_MONOTONIC,
+            timeout: nanos as u64,
+            precision: 0,
+            flags: 0,
+        };
+
+        let in_ = [wasi::Subscription {
+            userdata: 0,
+            type_: wasi::EVENTTYPE_CLOCK,
+            u: wasi::raw::__wasi_subscription_u { clock: clock },
+        }];
+        let (res, event) = unsafe {
+            let mut out: [wasi::Event; 1] = mem::zeroed();
+            let res = wasi::poll_oneoff(&in_, &mut out);
+            (res, out[0])
+        };
+        match (res, event) {
+            (Ok(1), wasi::Event {
+                userdata: CLOCK_ID,
+                error: 0,
+                type_: wasi::EVENTTYPE_CLOCK,
+                ..
+            }) => {}
+            _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
         }
     }
 

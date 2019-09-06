@@ -1,7 +1,5 @@
 use crate::time::Duration;
-use crate::mem;
-use crate::sys::cvt_wasi;
-use libc;
+use ::wasi::wasi_unstable as wasi;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
@@ -12,23 +10,19 @@ pub struct SystemTime(Duration);
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
 fn current_time(clock: u32) -> Duration {
-    unsafe {
-        let mut ts = mem::zeroed();
-        cvt_wasi(libc::__wasi_clock_time_get(
-            clock,
-            1, // precision... seems ignored though?
-            &mut ts,
-        )).unwrap();
-        Duration::new(
-            (ts / 1_000_000_000) as u64,
-            (ts % 1_000_000_000) as u32,
-        )
-    }
+    let ts = wasi::clock_time_get(
+        clock,
+        1, // precision... seems ignored though?
+    ).unwrap();
+    Duration::new(
+        (ts / 1_000_000_000) as u64,
+        (ts % 1_000_000_000) as u32,
+    )
 }
 
 impl Instant {
     pub fn now() -> Instant {
-        Instant(current_time(libc::__WASI_CLOCK_MONOTONIC))
+        Instant(current_time(wasi::CLOCK_MONOTONIC))
     }
 
     pub const fn zero() -> Instant {
@@ -54,10 +48,10 @@ impl Instant {
 
 impl SystemTime {
     pub fn now() -> SystemTime {
-        SystemTime(current_time(libc::__WASI_CLOCK_REALTIME))
+        SystemTime(current_time(wasi::CLOCK_REALTIME))
     }
 
-    pub fn from_wasi_timestamp(ts: libc::__wasi_timestamp_t) -> SystemTime {
+    pub fn from_wasi_timestamp(ts: wasi::Timestamp) -> SystemTime {
         SystemTime(Duration::from_nanos(ts))
     }
 

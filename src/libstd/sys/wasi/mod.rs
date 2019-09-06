@@ -14,10 +14,10 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-use libc;
-use crate::io::{Error, ErrorKind};
+use crate::io as std_io;
 use crate::mem;
 use crate::os::raw::c_char;
+use ::wasi::wasi_unstable as wasi;
 
 pub mod alloc;
 pub mod args;
@@ -56,31 +56,42 @@ pub mod ext;
 pub fn init() {
 }
 
-pub fn unsupported<T>() -> crate::io::Result<T> {
+pub fn unsupported<T>() -> std_io::Result<T> {
     Err(unsupported_err())
 }
 
-pub fn unsupported_err() -> Error {
-    Error::new(ErrorKind::Other, "operation not supported on wasm yet")
+pub fn unsupported_err() -> std_io::Error {
+    std_io::Error::new(
+        std_io::ErrorKind::Other,
+        "operation not supported on wasm yet",
+    )
 }
 
-pub fn decode_error_kind(errno: i32) -> ErrorKind {
-    match errno as libc::c_int {
-        libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
-        libc::ECONNRESET => ErrorKind::ConnectionReset,
-        libc::EPERM | libc::EACCES => ErrorKind::PermissionDenied,
-        libc::EPIPE => ErrorKind::BrokenPipe,
-        libc::ENOTCONN => ErrorKind::NotConnected,
-        libc::ECONNABORTED => ErrorKind::ConnectionAborted,
-        libc::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
-        libc::EADDRINUSE => ErrorKind::AddrInUse,
-        libc::ENOENT => ErrorKind::NotFound,
-        libc::EINTR => ErrorKind::Interrupted,
-        libc::EINVAL => ErrorKind::InvalidInput,
-        libc::ETIMEDOUT => ErrorKind::TimedOut,
-        libc::EEXIST => ErrorKind::AlreadyExists,
-        libc::EAGAIN => ErrorKind::WouldBlock,
-        _ => ErrorKind::Other,
+pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
+    use std_io::ErrorKind::*;
+    if errno > u16::max_value() as i32 || errno < 0 {
+        return Other;
+    }
+    let code = match wasi::Error::new(errno as u16) {
+        Some(code) => code,
+        None => return Other,
+    };
+    match code {
+        wasi::ECONNREFUSED => ConnectionRefused,
+        wasi::ECONNRESET => ConnectionReset,
+        wasi::EPERM | wasi::EACCES => PermissionDenied,
+        wasi::EPIPE => BrokenPipe,
+        wasi::ENOTCONN => NotConnected,
+        wasi::ECONNABORTED => ConnectionAborted,
+        wasi::EADDRNOTAVAIL => AddrNotAvailable,
+        wasi::EADDRINUSE => AddrInUse,
+        wasi::ENOENT => NotFound,
+        wasi::EINTR => Interrupted,
+        wasi::EINVAL => InvalidInput,
+        wasi::ETIMEDOUT => TimedOut,
+        wasi::EEXIST => AlreadyExists,
+        wasi::EAGAIN => WouldBlock,
+        _ => Other,
     }
 }
 
@@ -105,40 +116,16 @@ pub unsafe fn abort_internal() -> ! {
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut ret = (0u64, 0u64);
     unsafe {
-        let base = &mut ret as *mut (u64, u64) as *mut libc::c_void;
+        let base = &mut ret as *mut (u64, u64) as *mut core::ffi::c_void;
         let len = mem::size_of_val(&ret);
-        cvt_wasi(libc::__wasi_random_get(base, len)).unwrap();
+        let ret = wasi::raw::__wasi_random_get(base, len);
+        if ret != 0 {
+            panic!("__wasi_random_get failure")
+        }
     }
     return ret
 }
 
-#[doc(hidden)]
-pub trait IsMinusOne {
-    fn is_minus_one(&self) -> bool;
-}
-
-macro_rules! impl_is_minus_one {
-    ($($t:ident)*) => ($(impl IsMinusOne for $t {
-        fn is_minus_one(&self) -> bool {
-            *self == -1
-        }
-    })*)
-}
-
-impl_is_minus_one! { i8 i16 i32 i64 isize }
-
-pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
-    if t.is_minus_one() {
-        Err(Error::last_os_error())
-    } else {
-        Ok(t)
-    }
-}
-
-pub fn cvt_wasi(r: u16) -> crate::io::Result<()> {
-    if r != libc::__WASI_ESUCCESS {
-        Err(Error::from_raw_os_error(r as i32))
-    } else {
-        Ok(())
-    }
+fn err2io(err: wasi::Error) -> std_io::Error {
+    std_io::Error::from_raw_os_error(err.get() as i32)
 }
