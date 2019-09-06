@@ -675,19 +675,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx.check_stability(variant.fields[i].did, Some(pat.hir_id), subpat.span);
             }
         } else {
-            let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
-            let fields_ending = if variant.fields.len() == 1 { "" } else { "s" };
-            struct_span_err!(tcx.sess, pat.span, E0023,
-                             "this pattern has {} field{}, but the corresponding {} has {} field{}",
-                             subpats.len(), subpats_ending, res.descr(),
-                             variant.fields.len(),  fields_ending)
-                .span_label(pat.span, format!("expected {} field{}, found {}",
-                                              variant.fields.len(), fields_ending, subpats.len()))
-                .emit();
+            // Pattern has wrong number of fields.
+            self.e0023(pat.span, res, &subpats, &variant.fields);
             on_error();
             return tcx.types.err;
         }
         pat_ty
+    }
+
+    fn e0023(&self, pat_span: Span, res: Res, subpats: &'tcx [P<Pat>], fields: &[ty::FieldDef]) {
+        let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
+        let fields_ending = if fields.len() == 1 { "" } else { "s" };
+        let res_span = self.tcx.def_span(res.def_id());
+        struct_span_err!(
+            self.tcx.sess,
+            pat_span,
+            E0023,
+            "this pattern has {} field{}, but the corresponding {} has {} field{}",
+            subpats.len(),
+            subpats_ending,
+            res.descr(),
+            fields.len(),
+            fields_ending,
+        )
+            .span_label(pat_span, format!(
+                "expected {} field{}, found {}",
+                fields.len(),
+                fields_ending,
+                subpats.len(),
+            ))
+            .span_label(res_span, format!("{} defined here", res.descr()))
+            .emit();
     }
 
     fn check_pat_tuple(
