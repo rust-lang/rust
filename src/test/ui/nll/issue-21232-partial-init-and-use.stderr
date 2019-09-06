@@ -1,14 +1,14 @@
-error[E0381]: assign to part of possibly uninitialized variable: `s`
+error[E0381]: assign to part of possibly-uninitialized variable: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:99:5
    |
 LL |     s.x = 10; s.y = Box::new(20);
-   |     ^^^^^^^^ use of possibly uninitialized `s`
+   |     ^^^^^^^^ use of possibly-uninitialized `s`
 
-error[E0381]: assign to part of possibly uninitialized variable: `t`
+error[E0381]: assign to part of possibly-uninitialized variable: `t`
   --> $DIR/issue-21232-partial-init-and-use.rs:106:5
    |
 LL |     t.0 = 10; t.1 = Box::new(20);
-   |     ^^^^^^^^ use of possibly uninitialized `t`
+   |     ^^^^^^^^ use of possibly-uninitialized `t`
 
 error[E0382]: assign to part of moved value: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:113:5
@@ -30,17 +30,17 @@ LL |     let mut t: T = (0, Box::new(0)); drop(t);
 LL |     t.0 = 10; t.1 = Box::new(20);
    |     ^^^^^^^^ value partially assigned here after move
 
-error[E0381]: assign to part of possibly uninitialized variable: `s`
+error[E0381]: assign to part of possibly-uninitialized variable: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:127:5
    |
 LL |     s.x = 10;
-   |     ^^^^^^^^ use of possibly uninitialized `s`
+   |     ^^^^^^^^ use of possibly-uninitialized `s`
 
-error[E0381]: assign to part of possibly uninitialized variable: `t`
+error[E0381]: assign to part of possibly-uninitialized variable: `t`
   --> $DIR/issue-21232-partial-init-and-use.rs:134:5
    |
 LL |     t.0 = 10;
-   |     ^^^^^^^^ use of possibly uninitialized `t`
+   |     ^^^^^^^^ use of possibly-uninitialized `t`
 
 error[E0382]: assign to part of moved value: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:141:5
@@ -62,29 +62,29 @@ LL |     let mut t: T = (0, Box::new(0)); drop(t);
 LL |     t.0 = 10;
    |     ^^^^^^^^ value partially assigned here after move
 
-error[E0381]: assign to part of possibly uninitialized variable: `s`
+error[E0381]: assign to part of possibly-uninitialized variable: `s`
   --> $DIR/issue-21232-partial-init-and-use.rs:155:5
    |
 LL |     s.x = 10;
-   |     ^^^^^^^^ use of possibly uninitialized `s`
+   |     ^^^^^^^^ use of possibly-uninitialized `s`
 
-error[E0381]: assign to part of possibly uninitialized variable: `t`
+error[E0381]: assign to part of possibly-uninitialized variable: `t`
   --> $DIR/issue-21232-partial-init-and-use.rs:162:5
    |
 LL |     t.0 = 10;
-   |     ^^^^^^^^ use of possibly uninitialized `t`
+   |     ^^^^^^^^ use of possibly-uninitialized `t`
 
-error[E0381]: assign to part of possibly uninitialized variable: `q`
+error[E0381]: assign to part of possibly-uninitialized variable: `q`
   --> $DIR/issue-21232-partial-init-and-use.rs:178:5
    |
 LL |     q.r.f.x = 10; q.r.f.y = Box::new(20);
-   |     ^^^^^^^^^^^^ use of possibly uninitialized `q.r.f`
+   |     ^^^^^^^^^^^^ use of possibly-uninitialized `q.r.f`
 
-error[E0381]: assign to part of possibly uninitialized variable: `q`
+error[E0381]: assign to part of possibly-uninitialized variable: `q`
   --> $DIR/issue-21232-partial-init-and-use.rs:185:5
    |
 LL |     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
-   |     ^^^^^^^^^^^^ use of possibly uninitialized `q.r.f`
+   |     ^^^^^^^^^^^^ use of possibly-uninitialized `q.r.f`
 
 error[E0382]: assign to part of moved value: `q.r`
   --> $DIR/issue-21232-partial-init-and-use.rs:192:5
@@ -106,17 +106,17 @@ LL |     q.r.f.0 = 10; q.r.f.1 = Box::new(20);
    |
    = note: move occurs because `q.r` has type `R<(u32, std::boxed::Box<u32>)>`, which does not implement the `Copy` trait
 
-error[E0381]: assign to part of possibly uninitialized variable: `q`
+error[E0381]: assign to part of possibly-uninitialized variable: `q`
   --> $DIR/issue-21232-partial-init-and-use.rs:206:5
    |
 LL |     q.r.f.x = 10;
-   |     ^^^^^^^^^^^^ use of possibly uninitialized `q.r.f`
+   |     ^^^^^^^^^^^^ use of possibly-uninitialized `q.r.f`
 
-error[E0381]: assign to part of possibly uninitialized variable: `q`
+error[E0381]: assign to part of possibly-uninitialized variable: `q`
   --> $DIR/issue-21232-partial-init-and-use.rs:213:5
    |
 LL |     q.r.f.0 = 10;
-   |     ^^^^^^^^^^^^ use of possibly uninitialized `q.r.f`
+   |     ^^^^^^^^^^^^ use of possibly-uninitialized `q.r.f`
 
 error[E0382]: assign to part of moved value: `q.r`
   --> $DIR/issue-21232-partial-init-and-use.rs:220:5
@@ -138,17 +138,17 @@ LL |     q.r.f.0 = 10;
    |
    = note: move occurs because `q.r` has type `R<(u32, std::boxed::Box<u32>)>`, which does not implement the `Copy` trait
 
-error[E0381]: assign to part of possibly uninitialized variable: `q`
+error[E0381]: assign to part of possibly-uninitialized variable: `q`
   --> $DIR/issue-21232-partial-init-and-use.rs:234:5
    |
 LL |     q.r.f.x = 10;
-   |     ^^^^^^^^^^^^ use of possibly uninitialized `q.r.f`
+   |     ^^^^^^^^^^^^ use of possibly-uninitialized `q.r.f`
 
-error[E0381]: assign to part of possibly uninitialized variable: `q`
+error[E0381]: assign to part of possibly-uninitialized variable: `q`
   --> $DIR/issue-21232-partial-init-and-use.rs:241:5
    |
 LL |     q.r.f.0 = 10;
-   |     ^^^^^^^^^^^^ use of possibly uninitialized `q.r.f`
+   |     ^^^^^^^^^^^^ use of possibly-uninitialized `q.r.f`
 
 error[E0382]: assign to part of moved value: `c`
   --> $DIR/issue-21232-partial-init-and-use.rs:259:13

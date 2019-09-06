@@ -20,7 +20,7 @@ fn guard_may_be_skipped(y: i32) {
     match y {
         _ if { x = 2; true } => 1,
         _ if {
-            x; //~ ERROR use of possibly uninitialized variable: `x`
+            x; //~ ERROR use of possibly-uninitialized variable: `x`
             false
         } => 2,
         _ => 3,
