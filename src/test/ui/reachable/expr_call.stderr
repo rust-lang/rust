@@ -10,11 +10,11 @@ note: lint level defined here
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
-error: unreachable expression
+error: unreachable call
   --> $DIR/expr_call.rs:18:5
    |
 LL |     bar(return);
-   |     ^^^^^^^^^^^
+   |     ^^^
 
 error: aborting due to 2 previous errors
 

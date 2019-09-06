@@ -11,11 +11,11 @@ LL | #![warn(unused)]
    |         ^^^^^^
    = note: `#[warn(unreachable_code)]` implied by `#[warn(unused)]`
 
-warning: unreachable expression
+warning: unreachable call
   --> $DIR/never-assign-dead-code.rs:10:5
    |
 LL |     drop(x);
-   |     ^^^^^^^
+   |     ^^^^
 
 warning: unused variable: `x`
   --> $DIR/never-assign-dead-code.rs:9:9
