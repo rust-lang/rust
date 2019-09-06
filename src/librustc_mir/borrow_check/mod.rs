@@ -259,10 +259,8 @@ fn do_mir_borrowck<'a, 'tcx>(
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
-        // Only downgrade errors on Rust 2015 and refuse to do so on Rust 2018.
-        // FIXME(Centril): In Rust 1.40.0, refuse doing so on 2015 as well and
-        // proceed to throwing out the migration infrastructure.
-        disable_error_downgrading: body.span.rust_2018(),
+        // FIXME(Centril): throw out the migration infrastructure.
+        disable_error_downgrading: true,
         nonlexical_regioncx: regioncx,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
