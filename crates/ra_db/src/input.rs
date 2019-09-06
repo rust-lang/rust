@@ -5,7 +5,7 @@
 /// Note that neither this module, nor any other part of the analyzer's core do
 /// actual IO. See `vfs` and `project_model` in the `ra_lsp_server` crate for how
 /// actual IO is done and lowered to input.
-use relative_path::RelativePathBuf;
+use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 
 use ra_syntax::SmolStr;
@@ -36,7 +36,7 @@ pub struct SourceRoot {
     /// Libraries are considered mostly immutable, this assumption is used to
     /// optimize salsa's query structure
     pub is_library: bool,
-    pub files: FxHashMap<RelativePathBuf, FileId>,
+    files: FxHashMap<RelativePathBuf, FileId>,
 }
 
 impl SourceRoot {
@@ -45,6 +45,18 @@ impl SourceRoot {
     }
     pub fn new_library() -> SourceRoot {
         SourceRoot { is_library: true, ..SourceRoot::new() }
+    }
+    pub fn file_by_relative_path(&self, path: &RelativePath) -> Option<FileId> {
+        self.files.get(path).copied()
+    }
+    pub fn insert_file(&mut self, path: RelativePathBuf, file_id: FileId) {
+        self.files.insert(path, file_id);
+    }
+    pub fn remove_file(&mut self, path: &RelativePath) {
+        self.files.remove(path);
+    }
+    pub fn walk(&self) -> impl Iterator<Item = FileId> + '_ {
+        self.files.values().copied()
     }
 }
 

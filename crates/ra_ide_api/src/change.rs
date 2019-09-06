@@ -213,11 +213,11 @@ impl RootDatabase {
                 durability,
             );
             self.set_file_source_root_with_durability(add_file.file_id, root_id, durability);
-            source_root.files.insert(add_file.path, add_file.file_id);
+            source_root.insert_file(add_file.path, add_file.file_id);
         }
         for remove_file in root_change.removed {
             self.set_file_text_with_durability(remove_file.file_id, Default::default(), durability);
-            source_root.files.remove(&remove_file.path);
+            source_root.remove_file(&remove_file.path);
         }
         self.set_source_root_with_durability(root_id, Arc::new(source_root), durability);
     }

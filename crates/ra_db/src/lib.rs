@@ -12,7 +12,7 @@ pub use crate::{
     cancellation::Canceled,
     input::{CrateGraph, CrateId, Dependency, Edition, FileId, SourceRoot, SourceRootId},
 };
-pub use ::salsa;
+pub use salsa;
 
 pub trait CheckCanceled {
     /// Aborts current query if there are pending changes.
@@ -93,8 +93,7 @@ pub trait SourceDatabase: CheckCanceled + std::fmt::Debug {
 fn source_root_crates(db: &impl SourceDatabase, id: SourceRootId) -> Arc<Vec<CrateId>> {
     let root = db.source_root(id);
     let graph = db.crate_graph();
-    let res =
-        root.files.values().filter_map(|&it| graph.crate_id_for_crate_root(it)).collect::<Vec<_>>();
+    let res = root.walk().filter_map(|it| graph.crate_id_for_crate_root(it)).collect::<Vec<_>>();
     Arc::new(res)
 }
 
