@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 //! Type context book-keeping.
 
 use crate::arena::Arena;
@@ -1753,7 +1751,7 @@ pub mod tls {
         pub task_deps: Option<&'a Lock<TaskDeps>>,
     }
 
-    /// Sets Rayon's thread local variablem, which is preserved for Rayon jobs
+    /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
     /// to `value` during the call to `f`. It is restored to its previous value after.
     /// This is used to set the pointer to the new `ImplicitCtxt`.
     #[cfg(parallel_compiler)]
@@ -1762,7 +1760,7 @@ pub mod tls {
         rayon_core::tlv::with(value, f)
     }
 
-    /// Gets Rayon's thread local variable, which is preserved for Rayon jobs.
+    /// Gets Rayon's thread-local variable, which is preserved for Rayon jobs.
     /// This is used to get the pointer to the current `ImplicitCtxt`.
     #[cfg(parallel_compiler)]
     #[inline]

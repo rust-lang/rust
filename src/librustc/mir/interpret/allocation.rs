@@ -4,13 +4,14 @@ use super::{
     Pointer, InterpResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
 };
 
-use crate::ty::layout::{Size, Align};
-use syntax::ast::Mutability;
-use std::iter;
 use crate::mir;
-use std::ops::{Range, Deref, DerefMut};
+use crate::ty::layout::{Size, Align};
+
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_target::abi::HasDataLayout;
+use syntax::ast::Mutability;
+use std::iter;
+use std::ops::{Range, Deref, DerefMut};
 use std::borrow::Cow;
 
 // NOTE: When adding new fields, make sure to adjust the `Snapshot` impl in
@@ -765,7 +766,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
         }
     }
 
-    /// Apply a relocation copy.
+    /// Applies a relocation copy.
     /// The affected range, as defined in the parameters to `prepare_relocation_copy` is expected
     /// to be clear of relocations.
     pub fn mark_relocation_range(

@@ -349,7 +349,6 @@ pub enum GlobalAlloc<'tcx> {
     Memory(&'tcx Allocation),
 }
 
-#[derive(Clone)]
 pub struct AllocMap<'tcx> {
     /// Maps `AllocId`s to their corresponding allocations.
     alloc_map: FxHashMap<AllocId, GlobalAlloc<'tcx>>,

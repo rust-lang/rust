@@ -429,7 +429,7 @@ impl<'sess> OnDiskCache<'sess> {
 
 //- DECODING -------------------------------------------------------------------
 
-/// A decoder that can read fro the incr. comp. cache. It is similar to the onem
+/// A decoder that can read fro the incr. comp. cache. It is similar to the one
 /// we use for crate metadata decoding in that it can rebase spans and eventually
 /// will also handle things that contain `Ty` instances.
 struct CacheDecoder<'a, 'tcx> {
@@ -460,19 +460,17 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
     }
 }
 
-pub trait DecoderWithPosition: Decoder {
+trait DecoderWithPosition: Decoder {
     fn position(&self) -> usize;
 }
 
 impl<'a> DecoderWithPosition for opaque::Decoder<'a> {
-    #[inline]
     fn position(&self) -> usize {
         self.position()
     }
 }
 
 impl<'a, 'tcx> DecoderWithPosition for CacheDecoder<'a, 'tcx> {
-    #[inline]
     fn position(&self) -> usize {
         self.opaque.position()
     }
@@ -480,7 +478,7 @@ impl<'a, 'tcx> DecoderWithPosition for CacheDecoder<'a, 'tcx> {
 
 // Decodes something that was encoded with `encode_tagged()` and verify that the
 // tag matches and the correct amount of bytes was read.
-pub fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> Result<V, D::Error>
+fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> Result<V, D::Error>
 where
     T: Decodable + Eq + ::std::fmt::Debug,
     V: Decodable,
@@ -700,7 +698,6 @@ impl<'a, 'tcx> SpecializedDecoder<NodeId> for CacheDecoder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> SpecializedDecoder<Fingerprint> for CacheDecoder<'a, 'tcx> {
-    #[inline]
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(&mut self.opaque)
     }
@@ -754,7 +751,7 @@ where
     /// encode the specified tag, then the given value, then the number of
     /// bytes taken up by tag and value. On decoding, we can then verify that
     /// we get the expected tag and read the expected number of bytes.
-    pub fn encode_tagged<T: Encodable, V: Encodable>(
+    fn encode_tagged<T: Encodable, V: Encodable>(
         &mut self,
         tag: T,
         value: &V
@@ -960,7 +957,6 @@ where
 }
 
 impl<'a, 'tcx> SpecializedEncoder<Fingerprint> for CacheEncoder<'a, 'tcx, opaque::Encoder> {
-    #[inline]
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(&mut self.encoder)
     }

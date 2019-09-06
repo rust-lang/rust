@@ -605,8 +605,6 @@ pub enum LocalKind {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct VarBindingForm<'tcx> {
-    /// The `HirId` of the variable.
-    pub var_id: hir::HirId,
     /// Is variable bound via `x`, `mut x`, `ref x`, or `ref mut x`?
     pub binding_mode: ty::BindingMode,
     /// If an explicit type was provided for this variable binding,
@@ -656,7 +654,6 @@ pub enum ImplicitSelfKind {
 CloneTypeFoldableAndLiftImpls! { BindingForm<'tcx>, }
 
 impl_stable_hash_for!(struct self::VarBindingForm<'tcx> {
-    var_id,
     binding_mode,
     opt_ty_info,
     opt_match_place,
@@ -877,7 +874,9 @@ impl<'tcx> LocalDecl<'tcx> {
         match self.is_user_variable {
             Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
-                ..
+                opt_ty_info: _,
+                opt_match_place: _,
+                pat_span: _,
             }))) => true,
 
             Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm))) => true,
@@ -893,7 +892,9 @@ impl<'tcx> LocalDecl<'tcx> {
         match self.is_user_variable {
             Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
-                ..
+                opt_ty_info: _,
+                opt_match_place: _,
+                pat_span: _,
             }))) => true,
 
             Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_))) => true,
@@ -2830,7 +2831,7 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsafetyViolationKind {
     General,
-    /// Permitted in const fns and regular fns.
+    /// Permitted both in `const fn`s and regular `fn`s.
     GeneralAndConstFn,
     ExternStatic(hir::HirId),
     BorrowPacked(hir::HirId),
@@ -2848,7 +2849,7 @@ pub struct UnsafetyViolation {
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function.
     pub violations: Lrc<[UnsafetyViolation]>,
-    /// Unsafe blocks in this function, along with whether they are used. This is
+    /// `unsafe` blocks in this function, along with whether they are used. This is
     /// used for the "unused_unsafe" lint.
     pub unsafe_blocks: Lrc<[(hir::HirId, bool)]>,
 }
@@ -2875,12 +2876,14 @@ pub struct GeneratorLayout<'tcx> {
     /// layout.
     pub storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
 
-    /// Names and scopes of all the stored generator locals.
+    /// The names and scopes of all the stored generator locals.
+    ///
+    /// N.B., this is *strictly* a temporary hack for codegen
+    /// debuginfo generation, and will be removed at some point.
+    /// Do **NOT** use it for anything else, local information should not be
+    /// in the MIR, please rely on local crate HIR or other side-channels.
     //
-    // NOTE(tmandry) This is *strictly* a temporary hack for codegen
-    // debuginfo generation, and will be removed at some point.
-    // Do **NOT** use it for anything else, local information should not be
-    // in the MIR, please rely on local crate HIR or other side-channels.
+    // FIXME(tmandry): see above.
     pub __local_debuginfo_codegen_only_do_not_use: IndexVec<GeneratorSavedLocal, LocalDecl<'tcx>>,
 }
 

@@ -1093,38 +1093,35 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         }
 
         let key = self.tcx.def_key(def_id);
-        match key.disambiguated_data.data {
-            DefPathData::Impl => {
-                // Always use types for non-local impls, where types are always
-                // available, and filename/line-number is mostly uninteresting.
-                let use_types =
-                    !def_id.is_local() || {
-                        // Otherwise, use filename/line-number if forced.
-                        let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
-                        !force_no_types
-                    };
+        if let DefPathData::Impl = key.disambiguated_data.data {
+            // Always use types for non-local impls, where types are always
+            // available, and filename/line-number is mostly uninteresting.
+            let use_types =
+                !def_id.is_local() || {
+                    // Otherwise, use filename/line-number if forced.
+                    let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
+                    !force_no_types
+                };
 
-                if !use_types {
-                    // If no type info is available, fall back to
-                    // pretty-printing some span information. This should
-                    // only occur very early in the compiler pipeline.
-                    let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
-                    let span = self.tcx.def_span(def_id);
+            if !use_types {
+                // If no type info is available, fall back to
+                // pretty printing some span information. This should
+                // only occur very early in the compiler pipeline.
+                let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
+                let span = self.tcx.def_span(def_id);
 
-                    self = self.print_def_path(parent_def_id, &[])?;
+                self = self.print_def_path(parent_def_id, &[])?;
 
-                    // HACK(eddyb) copy of `path_append` to avoid
-                    // constructing a `DisambiguatedDefPathData`.
-                    if !self.empty_path {
-                        write!(self, "::")?;
-                    }
-                    write!(self, "<impl at {:?}>", span)?;
-                    self.empty_path = false;
-
-                    return Ok(self);
+                // HACK(eddyb) copy of `path_append` to avoid
+                // constructing a `DisambiguatedDefPathData`.
+                if !self.empty_path {
+                    write!(self, "::")?;
                 }
+                write!(self, "<impl at {:?}>", span)?;
+                self.empty_path = false;
+
+                return Ok(self);
             }
-            _ => {}
         }
 
         self.default_print_def_path(def_id, substs)

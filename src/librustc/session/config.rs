@@ -711,11 +711,11 @@ impl Passes {
 }
 
 /// Defines all `CodegenOptions`/`DebuggingOptions` fields and parsers all at once. The goal of this
-/// macro is to define an interface that can be programmatically used by the option parser in order
+/// macro is to define an interface that can be programmatically used by the option parser
 /// to initialize the struct without hardcoding field names all over the place.
 ///
 /// The goal is to invoke this macro once with the correct fields, and then this macro generates all
-/// necessary code. The main gotcha of this macro is the cgsetters module which is a bunch of
+/// necessary code. The main gotcha of this macro is the `cgsetters` module which is a bunch of
 /// generated code to parse an option into its respective field in the struct. There are a few
 /// hand-written parsers for parsing specific types of values in this module.
 macro_rules! options {

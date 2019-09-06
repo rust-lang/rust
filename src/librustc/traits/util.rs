@@ -571,7 +571,7 @@ impl<'tcx> TyCtxt<'tcx> {
                           -> Vec<ty::PolyTraitRef<'tcx>>
     {
         if source_trait_ref.def_id() == target_trait_def_id {
-            return vec![source_trait_ref]; // Shorcut the most common case.
+            return vec![source_trait_ref]; // Shortcut the most common case.
         }
 
         supertraits(self, source_trait_ref)

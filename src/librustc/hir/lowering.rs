@@ -126,7 +126,7 @@ pub struct LoweringContext<'a> {
     /// lifetime definitions in the corresponding impl or function generics.
     lifetimes_to_define: Vec<(Span, ParamName)>,
 
-    /// `true` ifs in-band lifetimes are being collected. This is used to
+    /// `true` if in-band lifetimes are being collected. This is used to
     /// indicate whether or not we're in a place where new lifetimes will result
     /// in in-band lifetime definitions, such a function or an impl header,
     /// including implicit lifetimes from `impl_header_lifetime_elision`.
