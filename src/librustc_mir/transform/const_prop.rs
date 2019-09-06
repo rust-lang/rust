@@ -300,11 +300,16 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         rvalue: &Rvalue<'tcx>,
         place_layout: TyLayout<'tcx>,
         source_info: SourceInfo,
+        place: &Place<'tcx>,
     ) -> Option<Const<'tcx>> {
         let span = source_info.span;
         match *rvalue {
-            Rvalue::Use(ref op) => {
-                self.eval_operand(op, source_info)
+            Rvalue::Use(_) |
+            Rvalue::Len(_) => {
+                self.use_ecx(source_info, |this| {
+                    this.ecx.eval_rvalue_into_place(rvalue, place)?;
+                    this.ecx.eval_place_to_op(place, Some(place_layout))
+                })
             },
             Rvalue::Ref(_, _, ref place) => {
                 let src = self.eval_place(place, source_info)?;
@@ -323,22 +328,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     this.ecx.cast(op, kind, dest.into())?;
                     Ok(dest.into())
                 })
-            },
-            Rvalue::Len(ref place) => {
-                let place = self.eval_place(&place, source_info)?;
-                let mplace = place.try_as_mplace().ok()?;
-
-                if let ty::Slice(_) = mplace.layout.ty.kind {
-                    let len = mplace.meta.unwrap().to_usize(&self.ecx).unwrap();
-
-                    Some(ImmTy::from_uint(
-                        len,
-                        self.tcx.layout_of(self.param_env.and(self.tcx.types.usize)).ok()?,
-                    ).into())
-                } else {
-                    trace!("not slice: {:?}", mplace.layout.ty.kind);
-                    None
-                }
             },
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some(
@@ -626,15 +615,15 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 .ty(&self.local_decls, self.tcx)
                 .ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {
-                if let Some(value) = self.const_prop(rval, place_layout, statement.source_info) {
-                    if let Place {
-                        base: PlaceBase::Local(local),
-                        projection: box [],
-                    } = *place {
+                if let Place {
+                    base: PlaceBase::Local(local),
+                    projection: box [],
+                } = *place {
+                    if let Some(value) = self.const_prop(rval, place_layout, statement.source_info, place) {
                         trace!("checking whether {:?} can be stored to {:?}", value, local);
                         if self.can_const_prop[local] {
                             trace!("storing {:?} to {:?}", value, local);
-                            assert!(self.get_const(local).is_none());
+                            assert!(self.get_const(local).is_none() || self.get_const(local) == Some(value));
                             self.set_const(local, value);
 
                             if self.should_const_prop() {
@@ -647,6 +636,18 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         }
                     }
                 }
+            }
+        } else if let StatementKind::StorageLive(local) = statement.kind {
+            if self.can_const_prop[local] {
+                let frame = self.ecx.frame_mut();
+
+                frame.locals[local].value = LocalValue::Uninitialized;
+            }
+        } else if let StatementKind::StorageDead(local) = statement.kind {
+            if self.can_const_prop[local] {
+                let frame = self.ecx.frame_mut();
+
+                frame.locals[local].value = LocalValue::Dead;
             }
         }
         self.super_statement(statement, location);
