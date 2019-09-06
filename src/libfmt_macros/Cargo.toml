@@ -10,4 +10,4 @@ path = "lib.rs"
 
 [dependencies]
 syntax_pos = { path = "../libsyntax_pos" }
-
+rustc_lexer = { path = "../librustc_lexer" }

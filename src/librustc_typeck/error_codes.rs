@@ -212,7 +212,7 @@ match string {
 E0033: r##"
 This error indicates that a pointer to a trait type cannot be implicitly
 dereferenced by a pattern. Every trait defines a type, but because the
-size of trait implementors isn't fixed, this type has no compile-time size.
+size of trait implementers isn't fixed, this type has no compile-time size.
 Therefore, all accesses to trait types must be through pointers. If you
 encounter this error you should try to avoid dereferencing the pointer.
 
@@ -2423,6 +2423,87 @@ struct Foo { x: bool }
 
 struct Bar<S, T> { x: Foo<S, T> }
 ```
+"##,
+
+E0307: r##"
+This error indicates that the `self` parameter in a method has an invalid
+"reciever type".
+
+Methods take a special first parameter, of which there are three variants:
+`self`, `&self`, and `&mut self`. These are syntactic sugar for
+`self: Self`, `self: &Self`, and `self: &mut Self` respectively.
+
+```
+# struct Foo;
+trait Trait {
+    fn foo(&self);
+//         ^^^^^ `self` here is a reference to the receiver object
+}
+
+impl Trait for Foo {
+    fn foo(&self) {}
+//         ^^^^^ the receiver type is `&Foo`
+}
+```
+
+The type `Self` acts as an alias to the type of the current trait
+implementer, or "receiver type". Besides the already mentioned `Self`,
+`&Self` and `&mut Self` valid receiver types, the following are also valid:
+`self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, and `self: Pin<P>`
+(where P is one of the previous types except `Self`). Note that `Self` can
+also be the underlying implementing type, like `Foo` in the following
+example:
+
+```
+# struct Foo;
+# trait Trait {
+#     fn foo(&self);
+# }
+impl Trait for Foo {
+    fn foo(self: &Foo) {}
+}
+```
+
+E0307 will be emitted by the compiler when using an invalid reciver type,
+like in the following example:
+
+```compile_fail,E0307
+# struct Foo;
+# struct Bar;
+# trait Trait {
+#     fn foo(&self);
+# }
+impl Trait for Foo {
+    fn foo(self: &Bar) {}
+}
+```
+
+The nightly feature [Arbintrary self types][AST] extends the accepted
+set of receiver types to also include any type that can dereference to
+`Self`:
+
+```
+#![feature(arbitrary_self_types)]
+
+struct Foo;
+struct Bar;
+
+// Because you can dereference `Bar` into `Foo`...
+impl std::ops::Deref for Bar {
+    type Target = Foo;
+
+    fn deref(&self) -> &Foo {
+        &Foo
+    }
+}
+
+impl Foo {
+    fn foo(self: Bar) {}
+//         ^^^^^^^^^ ...it can be used as the receiver type
+}
+```
+
+[AST]: https://doc.rust-lang.org/unstable-book/language-features/arbitrary-self-types.html
 "##,
 
 E0321: r##"
@@ -4851,7 +4932,6 @@ register_diagnostics! {
 //  E0247,
 //  E0248, // value used as a type, now reported earlier during resolution as E0412
 //  E0249,
-    E0307, // invalid method `self` type
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion

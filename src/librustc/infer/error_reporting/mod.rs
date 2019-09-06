@@ -1136,12 +1136,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if let Some((expected, found)) = expected_found {
             match (terr, is_simple_error, expected == found) {
                 (&TypeError::Sorts(ref values), false, true) => {
+                    let sort_string = | a_type: Ty<'tcx> |
+                        if let ty::Opaque(def_id, _) = a_type.sty {
+                            format!(" (opaque type at {})", self.tcx.sess.source_map()
+                                .mk_substr_filename(self.tcx.def_span(def_id)))
+                        } else {
+                            format!(" ({})", a_type.sort_string(self.tcx))
+                        };
                     diag.note_expected_found_extra(
                         &"type",
                         expected,
                         found,
-                        &format!(" ({})", values.expected.sort_string(self.tcx)),
-                        &format!(" ({})", values.found.sort_string(self.tcx)),
+                        &sort_string(values.expected),
+                        &sort_string(values.found),
                     );
                 }
                 (_, false, _) => {
@@ -1627,7 +1634,7 @@ impl<'tcx> ObligationCause<'tcx> {
             MainFunctionType => Error0580("main function has wrong type"),
             StartFunctionType => Error0308("start function has wrong type"),
             IntrinsicType => Error0308("intrinsic has wrong type"),
-            MethodReceiver => Error0308("mismatched method receiver"),
+            MethodReceiver => Error0308("mismatched `self` parameter type"),
 
             // In the case where we have no more specific thing to
             // say, also take a look at the error code, maybe we can

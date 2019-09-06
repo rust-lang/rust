@@ -1354,7 +1354,7 @@ impl EncodeContext<'tcx> {
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
         Entry {
             kind: EntryKind::MacroDef(self.lazy(MacroDef {
-                body: pprust::tokens_to_string(macro_def.body.clone()),
+                body: pprust::tts_to_string(macro_def.body.clone()),
                 legacy: macro_def.legacy,
             })),
             visibility: self.lazy(ty::Visibility::Public),

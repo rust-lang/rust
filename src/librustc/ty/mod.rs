@@ -46,7 +46,7 @@ use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::ExpnId;
-use syntax::symbol::{kw, sym, Symbol, LocalInternedString, InternedString};
+use syntax::symbol::{kw, sym, Symbol, InternedString};
 use syntax_pos::Span;
 
 use smallvec;
@@ -3385,10 +3385,6 @@ impl SymbolName {
         SymbolName {
             name: InternedString::intern(name)
         }
-    }
-
-    pub fn as_str(&self) -> LocalInternedString {
-        self.name.as_str()
     }
 }
 

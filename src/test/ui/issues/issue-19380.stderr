@@ -1,10 +1,11 @@
 error[E0038]: the trait `Qiz` cannot be made into an object
   --> $DIR/issue-19380.rs:11:3
    |
+LL |   fn qiz();
+   |      --- associated function `qiz` has no `self` parameter
+...
 LL |   foos: &'static [&'static (dyn Qiz + 'static)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Qiz` cannot be made into an object
-   |
-   = note: method `qiz` has no receiver
 
 error: aborting due to previous error
 

@@ -1,5 +1,5 @@
 use super::BackendTypes;
-use syntax_pos::symbol::LocalInternedString;
+use syntax_pos::symbol::Symbol;
 use rustc::hir::def_id::DefId;
 use rustc::ty::layout::Align;
 
@@ -12,8 +12,8 @@ pub trait StaticBuilderMethods: BackendTypes {
     fn get_static(&mut self, def_id: DefId) -> Self::Value;
     fn static_panic_msg(
         &mut self,
-        msg: Option<LocalInternedString>,
-        filename: LocalInternedString,
+        msg: Option<Symbol>,
+        filename: Symbol,
         line: Self::Value,
         col: Self::Value,
         kind: &str,

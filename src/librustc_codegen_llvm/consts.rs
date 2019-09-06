@@ -11,12 +11,11 @@ use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
     Pointer, ErrorHandled, GlobalId};
 use rustc::mir::mono::MonoItem;
 use rustc::hir::Node;
-use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;
-use syntax::symbol::sym;
-use syntax_pos::symbol::LocalInternedString;
 use rustc::ty::{self, Ty, Instance};
 use rustc_codegen_ssa::traits::*;
+use syntax::symbol::{Symbol, sym};
+use syntax_pos::Span;
 
 use rustc::ty::layout::{self, Size, Align, LayoutOf};
 
@@ -122,10 +121,11 @@ fn check_and_apply_linkage(
     cx: &CodegenCx<'ll, 'tcx>,
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
-    sym: LocalInternedString,
+    sym: Symbol,
     span: Span
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
+    let sym = sym.as_str();
     if let Some(linkage) = attrs.linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
@@ -221,7 +221,7 @@ impl CodegenCx<'ll, 'tcx> {
                  def_id);
 
         let ty = instance.ty(self.tcx);
-        let sym = self.tcx.symbol_name(instance).as_str();
+        let sym = self.tcx.symbol_name(instance).name.as_symbol();
 
         debug!("get_static: sym={} instance={:?}", sym, instance);
 
@@ -232,11 +232,12 @@ impl CodegenCx<'ll, 'tcx> {
                 Node::Item(&hir::Item {
                     ref attrs, span, node: hir::ItemKind::Static(..), ..
                 }) => {
-                    if self.get_declared_value(&sym[..]).is_some() {
+                    let sym_str = sym.as_str();
+                    if self.get_declared_value(&sym_str).is_some() {
                         span_bug!(span, "Conflicting symbol names for static?");
                     }
 
-                    let g = self.define_global(&sym[..], llty).unwrap();
+                    let g = self.define_global(&sym_str, llty).unwrap();
 
                     if !self.tcx.is_reachable_non_generic(def_id) {
                         unsafe {

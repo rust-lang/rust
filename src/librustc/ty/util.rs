@@ -709,8 +709,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 substs: SubstsRef<'tcx>,
             ) -> Option<Ty<'tcx>> {
                 if self.found_recursion {
-                    None
-                } else if self.seen_opaque_tys.insert(def_id) {
+                    return None;
+                }
+                let substs = substs.fold_with(self);
+                if self.seen_opaque_tys.insert(def_id) {
                     let generic_ty = self.tcx.type_of(def_id);
                     let concrete_ty = generic_ty.subst(self.tcx, substs);
                     let expanded_ty = self.fold_ty(concrete_ty);

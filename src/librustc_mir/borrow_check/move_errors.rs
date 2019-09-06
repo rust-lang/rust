@@ -1,5 +1,3 @@
-use core::unicode::property::Pattern_White_Space;
-
 use rustc::mir::*;
 use rustc::ty;
 use rustc_errors::{DiagnosticBuilder,Applicability};
@@ -526,7 +524,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         let suggestion;
                         let to_remove;
                         if pat_snippet.starts_with("mut")
-                            && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
+                            && pat_snippet["mut".len()..].starts_with(rustc_lexer::is_whitespace)
                         {
                             suggestion = pat_snippet["mut".len()..].trim_start();
                             to_remove = "&mut";

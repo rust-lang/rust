@@ -19,7 +19,7 @@ use crate::astconv::AstConv as _;
 
 use errors::{Applicability, DiagnosticBuilder};
 use syntax::ast;
-use syntax::symbol::{Symbol, LocalInternedString, kw, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax::source_map::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 use rustc::hir;
@@ -1244,7 +1244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {
                 // prevent all specified fields from being suggested
-                let skip_fields = skip_fields.iter().map(|ref x| x.ident.as_str());
+                let skip_fields = skip_fields.iter().map(|ref x| x.ident.name);
                 if let Some(field_name) = Self::suggest_field_name(
                     variant,
                     &field.ident.as_str(),
@@ -1288,11 +1288,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Return an hint about the closest match in field names
     fn suggest_field_name(variant: &'tcx ty::VariantDef,
                           field: &str,
-                          skip: Vec<LocalInternedString>)
+                          skip: Vec<Symbol>)
                           -> Option<Symbol> {
         let names = variant.fields.iter().filter_map(|field| {
             // ignore already set fields and private fields from non-local crates
-            if skip.iter().any(|x| *x == field.ident.as_str()) ||
+            if skip.iter().any(|&x| x == field.ident.name) ||
                (!variant.def_id.is_local() && field.vis != Visibility::Public)
             {
                 None

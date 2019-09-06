@@ -33,7 +33,7 @@ use crate::util::common::time;
 use std::default::Default as StdDefault;
 use syntax::ast;
 use syntax::edition;
-use syntax_pos::{MultiSpan, Span, symbol::{LocalInternedString, Symbol}};
+use syntax_pos::{MultiSpan, Span, symbol::Symbol};
 use errors::DiagnosticBuilder;
 use crate::hir;
 use crate::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -405,7 +405,7 @@ impl LintStore {
     pub fn check_lint_name(
         &self,
         lint_name: &str,
-        tool_name: Option<LocalInternedString>,
+        tool_name: Option<Symbol>,
     ) -> CheckLintNameResult<'_> {
         let complete_name = if let Some(tool_name) = tool_name {
             format!("{}::{}", tool_name, lint_name)

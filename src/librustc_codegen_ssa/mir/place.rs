@@ -30,6 +30,19 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn new_sized(
         llval: V,
         layout: TyLayout<'tcx>,
+    ) -> PlaceRef<'tcx, V> {
+        assert!(!layout.is_unsized());
+        PlaceRef {
+            llval,
+            llextra: None,
+            layout,
+            align: layout.align.abi
+        }
+    }
+
+    pub fn new_sized_aligned(
+        llval: V,
+        layout: TyLayout<'tcx>,
         align: Align,
     ) -> PlaceRef<'tcx, V> {
         assert!(!layout.is_unsized());
@@ -45,14 +58,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         bx: &mut Bx,
         llval: V,
         layout: TyLayout<'tcx>,
-        align: Align,
     ) -> PlaceRef<'tcx, V> {
         assert!(!bx.cx().type_has_metadata(layout.ty));
         PlaceRef {
             llval,
             llextra: None,
             layout,
-            align
+            align: layout.align.abi
         }
     }
 
@@ -64,7 +76,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
         let tmp = bx.alloca(bx.cx().backend_type(layout), name, layout.align.abi);
-        Self::new_sized(tmp, layout, layout.align.abi)
+        Self::new_sized(tmp, layout)
     }
 
     /// Returns a place for an indirect reference to an unsized place.
@@ -482,7 +494,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let llval = bx.cx().const_undef(
                             bx.cx().type_ptr_to(bx.cx().backend_type(layout))
                         );
-                        PlaceRef::new_sized(llval, layout, layout.align.abi)
+                        PlaceRef::new_sized(llval, layout)
                     }
                 }
             }
@@ -498,7 +510,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // with a static that is an extern_type.
                 let layout = cx.layout_of(self.monomorphize(&ty));
                 let static_ = bx.get_static(*def_id);
-                PlaceRef::new_thin_place(bx, static_, layout, layout.align.abi)
+                PlaceRef::new_thin_place(bx, static_, layout)
             },
             mir::PlaceRef {
                 base,

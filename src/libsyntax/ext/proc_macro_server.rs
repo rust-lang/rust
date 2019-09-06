@@ -322,8 +322,7 @@ impl Ident {
     fn is_valid(string: &str) -> bool {
         let mut chars = string.chars();
         if let Some(start) = chars.next() {
-            (start == '_' || start.is_xid_start())
-                && chars.all(|cont| cont == '_' || cont.is_xid_continue())
+            rustc_lexer::is_id_start(start) && chars.all(rustc_lexer::is_id_continue)
         } else {
             false
         }

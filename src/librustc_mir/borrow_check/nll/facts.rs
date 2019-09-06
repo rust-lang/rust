@@ -1,5 +1,5 @@
 use crate::borrow_check::location::{LocationIndex, LocationTable};
-use crate::dataflow::indexes::BorrowIndex;
+use crate::dataflow::indexes::{BorrowIndex, MovePathIndex};
 use polonius_engine::AllFacts as PoloniusAllFacts;
 use polonius_engine::Atom;
 use rustc::mir::Local;
@@ -11,7 +11,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex, Local>;
+crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>;
 
 crate trait AllFactsExt {
     /// Returns `true` if there is a need to gather `AllFacts` given the
@@ -58,14 +58,17 @@ impl AllFactsExt for AllFacts {
                 cfg_edge,
                 killed,
                 outlives,
-                region_live_at,
                 invalidates,
                 var_used,
                 var_defined,
                 var_drop_used,
                 var_uses_region,
                 var_drops_region,
-                var_initialized_on_exit,
+                child,
+                path_belongs_to_var,
+                initialized_at,
+                moved_out_at,
+                path_accessed_at,
             ])
         }
         Ok(())
@@ -79,6 +82,12 @@ impl Atom for BorrowIndex {
 }
 
 impl Atom for LocationIndex {
+    fn index(self) -> usize {
+        Idx::index(self)
+    }
+}
+
+impl Atom for MovePathIndex {
     fn index(self) -> usize {
         Idx::index(self)
     }

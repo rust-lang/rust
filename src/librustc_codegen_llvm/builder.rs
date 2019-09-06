@@ -5,7 +5,6 @@ use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use syntax::symbol::LocalInternedString;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind, RealPredicate};
 use rustc_codegen_ssa::MemFlags;
 use libc::{c_uint, c_char};
@@ -24,6 +23,7 @@ use std::ffi::CStr;
 use std::ops::{Deref, Range};
 use std::ptr;
 use std::iter::TrustedLen;
+use syntax::symbol::Symbol;
 
 // All Builders must have an llfn associated with them
 #[must_use]
@@ -561,7 +561,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(&mut body_bx,
-            PlaceRef::new_sized(current, cg_elem.layout, align));
+            PlaceRef::new_sized_aligned(current, cg_elem.layout, align));
 
         let next = body_bx.inbounds_gep(current, &[self.const_usize(1)]);
         body_bx.br(header_bx.llbb());
@@ -1082,8 +1082,8 @@ impl StaticBuilderMethods for Builder<'a, 'll, 'tcx> {
 
     fn static_panic_msg(
         &mut self,
-        msg: Option<LocalInternedString>,
-        filename: LocalInternedString,
+        msg: Option<Symbol>,
+        filename: Symbol,
         line: Self::Value,
         col: Self::Value,
         kind: &str,

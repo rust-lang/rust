@@ -54,7 +54,7 @@ fn main() {
     // LLVM are compiled the same way, but for us that's typically the case.
     //
     // We *want* detect this cross compiling situation by asking llvm-config
-    // what it's host-target is. If that's not the TARGET, then we're cross
+    // what its host-target is. If that's not the TARGET, then we're cross
     // compiling. Unfortunately `llvm-config` seems either be buggy, or we're
     // misconfiguring it, because the `i686-pc-windows-gnu` build of LLVM will
     // report itself with a `--host-target` of `x86_64-pc-windows-gnu`. This
@@ -62,7 +62,7 @@ fn main() {
     // havoc ensues.
     //
     // In any case, if we're cross compiling, this generally just means that we
-    // can't trust all the output of llvm-config becaues it might be targeted
+    // can't trust all the output of llvm-config because it might be targeted
     // for the host rather than the target. As a result a bunch of blocks below
     // are gated on `if !is_crossed`
     let target = env::var("TARGET").expect("TARGET was not set");
@@ -166,7 +166,7 @@ fn main() {
 
     let (llvm_kind, llvm_link_arg) = detect_llvm_link();
 
-    // Link in all LLVM libraries, if we're uwring the "wrong" llvm-config then
+    // Link in all LLVM libraries, if we're using the "wrong" llvm-config then
     // we don't pick up system libs because unfortunately they're for the host
     // of llvm-config, not the target that we're attempting to link.
     let mut cmd = Command::new(&llvm_config);

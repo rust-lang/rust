@@ -186,7 +186,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             });
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
-            let name = cstore.crate_name_untracked(cnum).as_str();
+            let name = cstore.crate_name_untracked(cnum).as_interned_str();
             let disambiguator = cstore.crate_disambiguator_untracked(cnum).to_fingerprint();
             let hash = cstore.crate_hash_untracked(cnum);
             (name, disambiguator, hash)

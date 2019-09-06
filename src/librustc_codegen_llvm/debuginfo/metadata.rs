@@ -2251,7 +2251,7 @@ pub fn create_global_var_metadata(
         None
     } else {
         let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id));
-        Some(SmallCStr::new(&linkage_name.as_str()))
+        Some(SmallCStr::new(&linkage_name.name.as_str()))
     };
 
     let global_align = cx.align_of(variable_type);
