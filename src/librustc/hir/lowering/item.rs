@@ -718,7 +718,7 @@ impl LoweringContext<'_> {
                         AnonymousLifetimeMode::PassThrough,
                         |this, _| {
                             (
-                                // Disallow impl Trait in foreign items
+                                // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(fdec, None, false, None),
                                 this.lower_fn_params_to_names(fdec),
                             )
@@ -732,7 +732,7 @@ impl LoweringContext<'_> {
                         self.lower_ty(t, ImplTraitContext::disallowed()), self.lower_mutability(m))
                 }
                 ForeignItemKind::Ty => hir::ForeignItemKind::Type,
-                ForeignItemKind::Macro(_) => panic!("shouldn't exist here"),
+                ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
             },
             vis: self.lower_visibility(&i.vis, None),
             span: i.span,

@@ -1,22 +1,20 @@
-use std::{fmt, env};
+use super::{RawConst, Pointer, CheckInAllocMsg, ScalarMaybeUndef};
 
 use crate::hir;
 use crate::hir::map::definitions::DefPathData;
 use crate::mir;
 use crate::ty::{self, Ty, layout};
 use crate::ty::layout::{Size, Align, LayoutError};
-use rustc_target::spec::abi::Abi;
-use rustc_macros::HashStable;
-
-use super::{RawConst, Pointer, CheckInAllocMsg, ScalarMaybeUndef};
+use crate::ty::query::TyCtxtAt;
 
 use backtrace::Backtrace;
-
-use crate::ty::query::TyCtxtAt;
 use errors::DiagnosticBuilder;
-
+use rustc_macros::HashStable;
+use rustc_target::spec::abi::Abi;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
+
+use std::{fmt, env};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -582,7 +580,7 @@ pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
 
 impl fmt::Display for InterpError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Forward `Display` to `Debug`
+        // Forward `Display` to `Debug`.
         write!(f, "{:?}", self)
     }
 }

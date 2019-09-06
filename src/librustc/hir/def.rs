@@ -1,15 +1,17 @@
+use self::Namespace::*;
+
 use crate::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use crate::hir;
+use crate::ty;
 use crate::util::nodemap::DefIdMap;
+
 use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use rustc_macros::HashStable;
-use crate::hir;
-use crate::ty;
-use std::fmt::Debug;
 
-use self::Namespace::*;
+use std::fmt::Debug;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
@@ -115,7 +117,7 @@ impl DefKind {
         }
     }
 
-    /// An English article for the def.
+    /// Gets an English article for the definition.
     pub fn article(&self) -> &'static str {
         match *self {
             DefKind::AssocTy
@@ -134,18 +136,22 @@ pub enum Res<Id = hir::HirId> {
     Def(DefKind, DefId),
 
     // Type namespace
+
     PrimTy(hir::PrimTy),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
+
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Local(Id),
 
     // Macro namespace
+
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
 
     // All namespaces
+
     Err,
 }
 
@@ -330,7 +336,7 @@ impl NonMacroAttrKind {
 }
 
 impl<Id> Res<Id> {
-    /// Return the `DefId` of this `Def` if it has an id, else panic.
+    /// Return the `DefId` of this `Def` if it has an ID, else panic.
     pub fn def_id(&self) -> DefId
     where
         Id: Debug,
@@ -340,7 +346,7 @@ impl<Id> Res<Id> {
         })
     }
 
-    /// Return `Some(..)` with the `DefId` of this `Res` if it has a id, else `None`.
+    /// Return `Some(..)` with the `DefId` of this `Res` if it has a ID, else `None`.
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
             Res::Def(_, id) => Some(id),
@@ -379,7 +385,7 @@ impl<Id> Res<Id> {
         }
     }
 
-    /// An English article for the res.
+    /// Gets an English article for the `Res`.
     pub fn article(&self) -> &'static str {
         match *self {
             Res::Def(kind, _) => kind.article(),

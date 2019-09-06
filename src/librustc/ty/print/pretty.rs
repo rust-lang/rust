@@ -8,10 +8,11 @@ use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, UnpackedKind};
 use crate::ty::layout::{Integer, IntegerExt, Size};
 use crate::mir::interpret::{ConstValue, sign_extend, Scalar, truncate};
-use syntax::ast;
+
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_target::spec::abi::Abi;
+use syntax::ast;
 use syntax::attr::{SignedInt, UnsignedInt};
 use syntax::symbol::{kw, InternedString};
 
@@ -194,7 +195,7 @@ pub trait PrettyPrinter<'tcx>:
         value.skip_binder().print(self)
     }
 
-    /// Print comma-separated elements.
+    /// Prints comma-separated elements.
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = Self::Error>,
@@ -209,14 +210,14 @@ pub trait PrettyPrinter<'tcx>:
         Ok(self)
     }
 
-    /// Print `<...>` around what `f` prints.
+    /// Prints `<...>` around what `f` prints.
     fn generic_delimiters(
         self,
         f: impl FnOnce(Self) -> Result<Self, Self::Error>,
     ) -> Result<Self, Self::Error>;
 
-    /// Return `true` if the region should be printed in
-    /// optional positions, e.g. `&'a T` or `dyn Tr + 'b`.
+    /// Returns `true` if the region should be printed in
+    /// optional positions, e.g., `&'a T` or `dyn Tr + 'b`.
     /// This is typically the case for all non-`'_` regions.
     fn region_should_not_be_omitted(
         &self,
@@ -226,7 +227,7 @@ pub trait PrettyPrinter<'tcx>:
     // Defaults (should not be overriden):
 
     /// If possible, this returns a global path resolving to `def_id` that is visible
-    /// from at least one local module and returns true. If the crate defining `def_id` is
+    /// from at least one local module, and returns `true`. If the crate defining `def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
     fn try_print_visible_def_path(
         self,
@@ -267,11 +268,11 @@ pub trait PrettyPrinter<'tcx>:
             // In local mode, when we encounter a crate other than
             // LOCAL_CRATE, execution proceeds in one of two ways:
             //
-            // 1. for a direct dependency, where user added an
+            // 1. For a direct dependency, where user added an
             //    `extern crate` manually, we put the `extern
             //    crate` as the parent. So you wind up with
             //    something relative to the current crate.
-            // 2. for an extern inferred from a path or an indirect crate,
+            // 2. For an extern inferred from a path or an indirect crate,
             //    where there is no explicit `extern crate`, we just prepend
             //    the crate name.
             match self.tcx().extern_crate(def_id) {
@@ -304,13 +305,13 @@ pub trait PrettyPrinter<'tcx>:
         let mut cur_def_key = self.tcx().def_key(def_id);
         debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
 
-        // For a constructor we want the name of its parent rather than <unnamed>.
+        // For a constructor, we want the name of its parent rather than <unnamed>.
         match cur_def_key.disambiguated_data.data {
             DefPathData::Ctor => {
                 let parent = DefId {
                     krate: def_id.krate,
                     index: cur_def_key.parent
-                        .expect("DefPathData::Ctor/VariantData missing a parent"),
+                        .expect("`DefPathData::Ctor` / `VariantData` missing a parent"),
                 };
 
                 cur_def_key = self.tcx().def_key(parent);
@@ -630,7 +631,7 @@ pub trait PrettyPrinter<'tcx>:
                         sep = ", ";
                     }
                 } else {
-                    // cross-crate closure types should only be
+                    // Cross-crate closure types should only be
                     // visible in codegen bug reports, I imagine.
                     p!(write("@{:?}", did));
                     let mut sep = " ";
@@ -673,7 +674,7 @@ pub trait PrettyPrinter<'tcx>:
                         sep = ", ";
                     }
                 } else {
-                    // cross-crate closure types should only be
+                    // Cross-crate closure types should only be
                     // visible in codegen bug reports, I imagine.
                     p!(write("@{:?}", did));
                     let mut sep = " ";
@@ -1092,35 +1093,38 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         }
 
         let key = self.tcx.def_key(def_id);
-        if let DefPathData::Impl = key.disambiguated_data.data {
-            // Always use types for non-local impls, where types are always
-            // available, and filename/line-number is mostly uninteresting.
-            let use_types =
-                !def_id.is_local() || {
-                    // Otherwise, use filename/line-number if forced.
-                    let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
-                    !force_no_types
-                };
+        match key.disambiguated_data.data {
+            DefPathData::Impl => {
+                // Always use types for non-local impls, where types are always
+                // available, and filename/line-number is mostly uninteresting.
+                let use_types =
+                    !def_id.is_local() || {
+                        // Otherwise, use filename/line-number if forced.
+                        let force_no_types = FORCE_IMPL_FILENAME_LINE.with(|f| f.get());
+                        !force_no_types
+                    };
 
-            if !use_types {
-                // If no type info is available, fall back to
-                // pretty printing some span information. This should
-                // only occur very early in the compiler pipeline.
-                let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
-                let span = self.tcx.def_span(def_id);
+                if !use_types {
+                    // If no type info is available, fall back to
+                    // pretty-printing some span information. This should
+                    // only occur very early in the compiler pipeline.
+                    let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
+                    let span = self.tcx.def_span(def_id);
 
-                self = self.print_def_path(parent_def_id, &[])?;
+                    self = self.print_def_path(parent_def_id, &[])?;
 
-                // HACK(eddyb) copy of `path_append` to avoid
-                // constructing a `DisambiguatedDefPathData`.
-                if !self.empty_path {
-                    write!(self, "::")?;
+                    // HACK(eddyb) copy of `path_append` to avoid
+                    // constructing a `DisambiguatedDefPathData`.
+                    if !self.empty_path {
+                        write!(self, "::")?;
+                    }
+                    write!(self, "<impl at {:?}>", span)?;
+                    self.empty_path = false;
+
+                    return Ok(self);
                 }
-                write!(self, "<impl at {:?}>", span)?;
-                self.empty_path = false;
-
-                return Ok(self);
             }
+            _ => {}
         }
 
         self.default_print_def_path(def_id, substs)
@@ -1173,6 +1177,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         }
         Ok(self)
     }
+
     fn path_qualified(
         mut self,
         self_ty: Ty<'tcx>,
@@ -1201,6 +1206,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         self.empty_path = false;
         Ok(self)
     }
+
     fn path_append(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
@@ -1238,6 +1244,7 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 
         Ok(self)
     }
+
     fn path_generic_args(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
