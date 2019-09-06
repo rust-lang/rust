@@ -12,7 +12,7 @@ use ra_ide_api::{
     SourceRootId,
 };
 use ra_project_model::ProjectWorkspace;
-use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask};
+use ra_vfs::{LineEndings, RootEntry, Vfs, VfsChange, VfsFile, VfsRoot, VfsTask, Watch};
 use ra_vfs_glob::{Glob, RustPackageFilterBuilder};
 use relative_path::RelativePathBuf;
 
@@ -60,6 +60,7 @@ impl WorldState {
         workspaces: Vec<ProjectWorkspace>,
         lru_capacity: Option<usize>,
         exclude_globs: &[Glob],
+        watch: Watch,
         options: Options,
         feature_flags: FeatureFlags,
     ) -> WorldState {
@@ -85,7 +86,7 @@ impl WorldState {
         }
         let (task_sender, task_receiver) = unbounded();
         let task_sender = Box::new(move |t| task_sender.send(t).unwrap());
-        let (mut vfs, vfs_roots) = Vfs::new(roots, task_sender);
+        let (mut vfs, vfs_roots) = Vfs::new(roots, task_sender, watch);
         let roots_to_scan = vfs_roots.len();
         for r in vfs_roots {
             let vfs_root_path = vfs.root2path(r);

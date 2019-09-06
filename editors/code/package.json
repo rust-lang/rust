@@ -205,6 +205,11 @@
                     "default": [],
                     "description": "Paths to exclude from analysis"
                 },
+                "rust-analyzer.useClientWatching": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "client provided file watching instead of notify watching."
+                },
                 "rust-analyzer.cargo-watch.arguments": {
                     "type": "string",
                     "description": "`cargo-watch` arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",

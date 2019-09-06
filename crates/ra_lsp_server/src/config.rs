@@ -15,6 +15,8 @@ pub struct ServerConfig {
     pub publish_decorations: bool,
 
     pub exclude_globs: Vec<String>,
+    #[serde(deserialize_with = "nullable_bool_false")]
+    pub use_client_watching: bool,
 
     pub lru_capacity: Option<usize>,
 
@@ -31,6 +33,7 @@ impl Default for ServerConfig {
         ServerConfig {
             publish_decorations: false,
             exclude_globs: Vec::new(),
+            use_client_watching: false,
             lru_capacity: None,
             with_sysroot: true,
             feature_flags: FxHashMap::default(),
