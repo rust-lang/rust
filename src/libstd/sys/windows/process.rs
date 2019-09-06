@@ -19,7 +19,7 @@ use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
-use crate::sys_common::process::{CommandEnv, EnvKey};
+use crate::sys_common::process::CommandEnv;
 use crate::borrow::Borrow;
 
 use libc::{c_void, EXIT_SUCCESS, EXIT_FAILURE};
@@ -30,29 +30,27 @@ use libc::{c_void, EXIT_SUCCESS, EXIT_FAILURE};
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 #[doc(hidden)]
-pub struct WindowsEnvKey(OsString);
+pub struct EnvKey(OsString);
 
-impl From<OsString> for WindowsEnvKey {
+impl From<OsString> for EnvKey {
     fn from(k: OsString) -> Self {
         let mut buf = k.into_inner().into_inner();
         buf.make_ascii_uppercase();
-        WindowsEnvKey(FromInner::from_inner(FromInner::from_inner(buf)))
+        EnvKey(FromInner::from_inner(FromInner::from_inner(buf)))
     }
 }
 
-impl From<WindowsEnvKey> for OsString {
-    fn from(k: WindowsEnvKey) -> Self { k.0 }
+impl From<EnvKey> for OsString {
+    fn from(k: EnvKey) -> Self { k.0 }
 }
 
-impl Borrow<OsStr> for WindowsEnvKey {
+impl Borrow<OsStr> for EnvKey {
     fn borrow(&self) -> &OsStr { &self.0 }
 }
 
-impl AsRef<OsStr> for WindowsEnvKey {
+impl AsRef<OsStr> for EnvKey {
     fn as_ref(&self) -> &OsStr { &self.0 }
 }
-
-impl EnvKey for WindowsEnvKey {}
 
 
 fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
@@ -66,7 +64,7 @@ fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
 pub struct Command {
     program: OsString,
     args: Vec<OsString>,
-    env: CommandEnv<WindowsEnvKey>,
+    env: CommandEnv,
     cwd: Option<OsString>,
     flags: u32,
     detach: bool, // not currently exposed in std::process
@@ -110,7 +108,7 @@ impl Command {
     pub fn arg(&mut self, arg: &OsStr) {
         self.args.push(arg.to_os_string())
     }
-    pub fn env_mut(&mut self) -> &mut CommandEnv<WindowsEnvKey> {
+    pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }
     pub fn cwd(&mut self, dir: &OsStr) {
@@ -498,7 +496,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     }
 }
 
-fn make_envp(maybe_env: Option<BTreeMap<WindowsEnvKey, OsString>>)
+fn make_envp(maybe_env: Option<BTreeMap<EnvKey, OsString>>)
              -> io::Result<(*mut c_void, Vec<u16>)> {
     // On Windows we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
