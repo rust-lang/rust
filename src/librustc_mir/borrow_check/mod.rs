@@ -164,8 +164,8 @@ fn do_mir_borrowck<'a, 'tcx>(
         };
 
     let mdpe = MoveDataParamEnv {
-        move_data: move_data,
-        param_env: param_env,
+        move_data,
+        param_env,
     };
 
     let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
