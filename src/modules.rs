@@ -442,7 +442,7 @@ fn parse_inner_attributes<'a>(parser: &mut parser::Parser<'a>) -> PResult<'a, Ve
             }
             TokenKind::DocComment(s) => {
                 // we need to get the position of this token before we bump.
-                let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(), s, parser.token.span);
+                let attr = attr::mk_sugared_doc_attr(s, parser.token.span);
                 if attr.style == ast::AttrStyle::Inner {
                     attrs.push(attr);
                     parser.bump();
@@ -478,7 +478,7 @@ fn parse_mod_items<'a>(parser: &mut parser::Parser<'a>, inner_lo: Span) -> PResu
 fn is_cfg_if(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::Mac(ref mac) => {
-            if let Some(first_segment) = mac.node.path.segments.first() {
+            if let Some(first_segment) = mac.path.segments.first() {
                 if first_segment.ident.name == Symbol::intern("cfg_if") {
                     return true;
                 }

@@ -8,7 +8,7 @@ use syntax::ast::{
     VisibilityKind,
 };
 use syntax::ptr;
-use syntax::source_map::{BytePos, Span, NO_EXPANSION};
+use syntax::source_map::{BytePos, Span, SyntaxContext};
 use syntax::symbol::{sym, Symbol};
 use syntax_pos::ExpnId;
 use unicode_width::UnicodeWidthStr;
@@ -335,7 +335,7 @@ macro_rules! source {
 }
 
 pub(crate) fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
-    Span::new(lo, hi, NO_EXPANSION)
+    Span::new(lo, hi, SyntaxContext::root())
 }
 
 // Returns `true` if the given span does not intersect with file lines.

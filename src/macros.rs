@@ -199,7 +199,7 @@ pub(crate) fn rewrite_macro(
 ) -> Option<String> {
     let should_skip = context
         .skip_context
-        .skip_macro(&context.snippet(mac.node.path.span).to_owned());
+        .skip_macro(&context.snippet(mac.path.span).to_owned());
     if should_skip {
         None
     } else {
@@ -235,7 +235,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
         {
             parser.bump();
             let macro_arg =
-                MacroArg::Keyword(ast::Ident::with_empty_ctxt(keyword), parser.prev_span);
+                MacroArg::Keyword(ast::Ident::with_dummy_span(keyword), parser.prev_span);
             return Some(macro_arg);
         }
     }
@@ -259,7 +259,7 @@ fn rewrite_macro_inner(
 
     let original_style = macro_style(mac, context);
 
-    let macro_name = rewrite_macro_name(context, &mac.node.path, extra_ident);
+    let macro_name = rewrite_macro_name(context, &mac.path, extra_ident);
 
     let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) && !is_nested_macro {
         DelimToken::Bracket
@@ -267,7 +267,7 @@ fn rewrite_macro_inner(
         original_style
     };
 
-    let ts: TokenStream = mac.node.stream();
+    let ts: TokenStream = mac.stream();
     let has_comment = contains_comment(context.snippet(mac.span));
     if ts.is_empty() && !has_comment {
         return match style {
@@ -1190,8 +1190,8 @@ fn next_space(tok: &TokenKind) -> SpaceState {
 /// when the macro is not an instance of `try!` (or parsing the inner expression
 /// failed).
 pub(crate) fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
-    if &mac.node.path.to_string() == "try" {
-        let ts: TokenStream = mac.node.tts.clone();
+    if &mac.path.to_string() == "try" {
+        let ts: TokenStream = mac.tts.clone();
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
 
         Some(ast::Expr {
@@ -1532,7 +1532,7 @@ fn rewrite_macro_with_items(
     Some(result)
 }
 
-const RUST_KW: [Symbol; 60] = [
+const RUST_KW: [Symbol; 59] = [
     kw::PathRoot,
     kw::DollarCrate,
     kw::Underscore,
@@ -1591,6 +1591,5 @@ const RUST_KW: [Symbol; 60] = [
     kw::Auto,
     kw::Catch,
     kw::Default,
-    kw::Existential,
     kw::Union,
 ];

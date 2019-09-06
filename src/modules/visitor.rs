@@ -54,7 +54,7 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
         // extern crate cfg_if;
         // cfg_if! {..}
         // ```
-        match mac.node.path.segments.first() {
+        match mac.path.segments.first() {
             Some(first_segment) => {
                 if first_segment.ident.name != Symbol::intern("cfg_if") {
                     return Err("Expected cfg_if");
@@ -65,11 +65,8 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
             }
         };
 
-        let mut parser = stream_to_parser_with_base_dir(
-            self.parse_sess,
-            mac.node.tts.clone(),
-            self.base_dir.clone(),
-        );
+        let mut parser =
+            stream_to_parser_with_base_dir(self.parse_sess, mac.tts.clone(), self.base_dir.clone());
         parser.cfg_mods = false;
         let mut process_if_cfg = true;
 

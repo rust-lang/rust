@@ -11,8 +11,8 @@ use crate::config::{BraceStyle, Config};
 use crate::coverage::transform_missing_snippet;
 use crate::items::{
     format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
-    rewrite_associated_impl_type, rewrite_associated_type, rewrite_existential_impl_type,
-    rewrite_existential_type, rewrite_extern_crate, rewrite_type_alias, FnBraceStyle, FnSig,
+    rewrite_associated_impl_type, rewrite_associated_type, rewrite_extern_crate,
+    rewrite_opaque_impl_type, rewrite_opaque_type, rewrite_type_alias, FnBraceStyle, FnSig,
     StaticParts, StructParts,
 };
 use crate::macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
@@ -97,10 +97,19 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     fn visit_stmt(&mut self, stmt: &Stmt<'_>) {
         debug!(
-            "visit_stmt: {:?} {:?}",
+            "visit_stmt: {:?} {:?} `{}`",
             self.source_map.lookup_char_pos(stmt.span().lo()),
-            self.source_map.lookup_char_pos(stmt.span().hi())
+            self.source_map.lookup_char_pos(stmt.span().hi()),
+            self.snippet(stmt.span()),
         );
+
+        // https://github.com/rust-lang/rust/issues/63679.
+        let is_all_semicolons =
+            |snippet: &str| snippet.chars().all(|c| c.is_whitespace() || c == ';');
+        if is_all_semicolons(&self.snippet(stmt.span())) {
+            self.last_pos = stmt.span().hi();
+            return;
+        }
 
         match stmt.as_ast_node().node {
             ast::StmtKind::Item(ref item) => {
@@ -468,7 +477,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         Some(&inner_attrs),
                     )
                 }
-                ast::ItemKind::Ty(ref ty, ref generics) => {
+                ast::ItemKind::TyAlias(ref ty, ref generics) => {
                     let rewrite = rewrite_type_alias(
                         &self.get_context(),
                         self.block_indent,
@@ -479,8 +488,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     );
                     self.push_rewrite(item.span, rewrite);
                 }
-                ast::ItemKind::Existential(ref generic_bounds, ref generics) => {
-                    let rewrite = rewrite_existential_type(
+                ast::ItemKind::OpaqueTy(ref generic_bounds, ref generics) => {
+                    let rewrite = rewrite_opaque_type(
                         &self.get_context(),
                         self.block_indent,
                         item.ident,
@@ -576,7 +585,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
             }
             ast::ImplItemKind::Const(..) => self.visit_static(&StaticParts::from_impl_item(ii)),
-            ast::ImplItemKind::Type(ref ty) => {
+            ast::ImplItemKind::TyAlias(ref ty) => {
                 let rewrite = rewrite_associated_impl_type(
                     ii.ident,
                     ii.defaultness,
@@ -587,8 +596,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 );
                 self.push_rewrite(ii.span, rewrite);
             }
-            ast::ImplItemKind::Existential(ref generic_bounds) => {
-                let rewrite = rewrite_existential_impl_type(
+            ast::ImplItemKind::OpaqueTy(ref generic_bounds) => {
+                let rewrite = rewrite_opaque_impl_type(
                     &self.get_context(),
                     ii.ident,
                     &ii.generics,

@@ -9,8 +9,8 @@ impl<T> IntoIterator for SafeVec<T> {
     type IntoIter = self::IntoIter<T>;
     type Item = T;
 
-    existential type E: Trait;
-    existential type F: Trait;
+    type E = impl Trait;
+    type F = impl Trait;
 
     const AnotherConst: i32 = 100;
     const SomeConst: i32 = 100;

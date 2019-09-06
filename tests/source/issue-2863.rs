@@ -1,7 +1,7 @@
 // rustfmt-reorder_impl_items: true
 
 impl<T> IntoIterator for SafeVec<T> {
-    existential type F: Trait;
+    type F = impl Trait;
     type IntoIter = self::IntoIter<T>;
     type Item = T;
     // comment on foo()
@@ -19,7 +19,7 @@ impl<T> IntoIterator for SafeVec<T> {
     fn foo6() {println!("hello, world");}
     fn foo7() {println!("hello, world");}
     type BarFoo = u32;
-    existential type E: Trait;
+    type E = impl Trait;
     const AnotherConst: i32 = 100;
     fn foo8() {println!("hello, world");}
 }

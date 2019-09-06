@@ -473,8 +473,8 @@ impl<'a> FmtVisitor<'a> {
         let discr_ident_lens: Vec<usize> = enum_def
             .variants
             .iter()
-            .filter(|var| var.node.disr_expr.is_some())
-            .map(|var| rewrite_ident(&self.get_context(), var.node.ident).len())
+            .filter(|var| var.disr_expr.is_some())
+            .map(|var| rewrite_ident(&self.get_context(), var.ident).len())
             .collect();
         // cut the list at the point of longest discrim shorter than the threshold
         // All of the discrims under the threshold will get padded, and all above - left as is.
@@ -491,8 +491,8 @@ impl<'a> FmtVisitor<'a> {
                 "}",
                 ",",
                 |f| {
-                    if !f.node.attrs.is_empty() {
-                        f.node.attrs[0].span.lo()
+                    if !f.attrs.is_empty() {
+                        f.attrs[0].span.lo()
                     } else {
                         f.span.lo()
                     }
@@ -533,8 +533,8 @@ impl<'a> FmtVisitor<'a> {
         one_line_width: usize,
         pad_discrim_ident_to: usize,
     ) -> Option<String> {
-        if contains_skip(&field.node.attrs) {
-            let lo = field.node.attrs[0].span.lo();
+        if contains_skip(&field.attrs) {
+            let lo = field.attrs[0].span.lo();
             let span = mk_sp(lo, field.span.hi());
             return Some(self.snippet(span).to_owned());
         }
@@ -542,25 +542,24 @@ impl<'a> FmtVisitor<'a> {
         let context = self.get_context();
         // 1 = ','
         let shape = self.shape().sub_width(1)?;
-        let attrs_str = field.node.attrs.rewrite(&context, shape)?;
+        let attrs_str = field.attrs.rewrite(&context, shape)?;
         let lo = field
-            .node
             .attrs
             .last()
             .map_or(field.span.lo(), |attr| attr.span.hi());
         let span = mk_sp(lo, field.span.lo());
 
-        let variant_body = match field.node.data {
+        let variant_body = match field.data {
             ast::VariantData::Tuple(..) | ast::VariantData::Struct(..) => format_struct(
                 &context,
                 &StructParts::from_variant(field),
                 self.block_indent,
                 Some(one_line_width),
             )?,
-            ast::VariantData::Unit(..) => rewrite_ident(&context, field.node.ident).to_owned(),
+            ast::VariantData::Unit(..) => rewrite_ident(&context, field.ident).to_owned(),
         };
 
-        let variant_body = if let Some(ref expr) = field.node.disr_expr {
+        let variant_body = if let Some(ref expr) = field.disr_expr {
             let lhs = format!("{:1$} =", variant_body, pad_discrim_ident_to);
             rewrite_assign_rhs_with(
                 &context,
@@ -585,27 +584,27 @@ impl<'a> FmtVisitor<'a> {
                 buffer.push((self.buffer.clone(), item.clone()));
                 self.buffer.clear();
             }
-            // type -> existential -> const -> macro -> method
+            // type -> opaque -> const -> macro -> method
             use crate::ast::ImplItemKind::*;
             fn need_empty_line(a: &ast::ImplItemKind, b: &ast::ImplItemKind) -> bool {
                 match (a, b) {
-                    (Type(..), Type(..))
+                    (TyAlias(..), TyAlias(..))
                     | (Const(..), Const(..))
-                    | (Existential(..), Existential(..)) => false,
+                    | (OpaqueTy(..), OpaqueTy(..)) => false,
                     _ => true,
                 }
             }
 
             buffer.sort_by(|(_, a), (_, b)| match (&a.node, &b.node) {
-                (Type(..), Type(..))
+                (TyAlias(..), TyAlias(..))
                 | (Const(..), Const(..))
                 | (Macro(..), Macro(..))
-                | (Existential(..), Existential(..)) => a.ident.as_str().cmp(&b.ident.as_str()),
+                | (OpaqueTy(..), OpaqueTy(..)) => a.ident.as_str().cmp(&b.ident.as_str()),
                 (Method(..), Method(..)) => a.span.lo().cmp(&b.span.lo()),
-                (Type(..), _) => Ordering::Less,
-                (_, Type(..)) => Ordering::Greater,
-                (Existential(..), _) => Ordering::Less,
-                (_, Existential(..)) => Ordering::Greater,
+                (TyAlias(..), _) => Ordering::Less,
+                (_, TyAlias(..)) => Ordering::Greater,
+                (OpaqueTy(..), _) => Ordering::Less,
+                (_, OpaqueTy(..)) => Ordering::Greater,
                 (Const(..), _) => Ordering::Less,
                 (_, Const(..)) => Ordering::Greater,
                 (Macro(..), _) => Ordering::Less,
@@ -920,9 +919,9 @@ impl<'a> StructParts<'a> {
     fn from_variant(variant: &'a ast::Variant) -> Self {
         StructParts {
             prefix: "",
-            ident: variant.node.ident,
+            ident: variant.ident,
             vis: &DEFAULT_VISIBILITY,
-            def: &variant.node.data,
+            def: &variant.data,
             generics: None,
             span: variant.span,
         }
@@ -1517,7 +1516,7 @@ pub(crate) fn rewrite_type_alias(
     rewrite_type_item(context, indent, "type", " =", ident, ty, generics, vis)
 }
 
-pub(crate) fn rewrite_existential_type(
+pub(crate) fn rewrite_opaque_type(
     context: &RewriteContext<'_>,
     indent: Indent,
     ident: ast::Ident,
@@ -1528,8 +1527,8 @@ pub(crate) fn rewrite_existential_type(
     rewrite_type_item(
         context,
         indent,
-        "existential type",
-        ":",
+        "type",
+        " =",
         ident,
         generic_bounds,
         generics,
@@ -1786,15 +1785,42 @@ pub(crate) fn rewrite_associated_type(
     }
 }
 
-pub(crate) fn rewrite_existential_impl_type(
+struct OpaqueType<'a> {
+    bounds: &'a ast::GenericBounds,
+}
+
+impl<'a> Rewrite for OpaqueType<'a> {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        let shape = shape.offset_left(5)?; // `impl `
+        self.bounds
+            .rewrite(context, shape)
+            .map(|s| format!("impl {}", s))
+    }
+}
+
+pub(crate) fn rewrite_opaque_impl_type(
     context: &RewriteContext<'_>,
     ident: ast::Ident,
     generics: &ast::Generics,
     generic_bounds: &ast::GenericBounds,
     indent: Indent,
 ) -> Option<String> {
-    rewrite_associated_type(ident, None, generics, Some(generic_bounds), context, indent)
-        .map(|s| format!("existential {}", s))
+    let ident_str = rewrite_ident(context, ident);
+    // 5 = "type "
+    let generics_shape = Shape::indented(indent, context.config).offset_left(5)?;
+    let generics_str = rewrite_generics(context, ident_str, generics, generics_shape)?;
+    let prefix = format!("type {} =", generics_str);
+    let rhs = OpaqueType {
+        bounds: generic_bounds,
+    };
+
+    rewrite_assign_rhs(
+        context,
+        &prefix,
+        &rhs,
+        Shape::indented(indent, context.config).sub_width(1)?,
+    )
+    .map(|s| s + ";")
 }
 
 pub(crate) fn rewrite_associated_impl_type(
@@ -1877,7 +1903,7 @@ fn get_missing_arg_comments(
     (comment_before_colon, comment_after_colon)
 }
 
-impl Rewrite for ast::Arg {
+impl Rewrite for ast::Param {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         if let Some(ref explicit_self) = self.to_self() {
             rewrite_explicit_self(context, explicit_self)
@@ -1941,7 +1967,7 @@ fn rewrite_explicit_self(
     }
 }
 
-pub(crate) fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
+pub(crate) fn span_lo_for_arg(arg: &ast::Param) -> BytePos {
     if is_named_arg(arg) {
         arg.pat.span.lo()
     } else {
@@ -1949,7 +1975,7 @@ pub(crate) fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
     }
 }
 
-pub(crate) fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Arg) -> BytePos {
+pub(crate) fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Param) -> BytePos {
     match arg.ty.node {
         ast::TyKind::Infer if context.snippet(arg.ty.span) == "_" => arg.ty.span.hi(),
         ast::TyKind::Infer if is_named_arg(arg) => arg.pat.span.hi(),
@@ -1957,7 +1983,7 @@ pub(crate) fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Arg) -> B
     }
 }
 
-pub(crate) fn is_named_arg(arg: &ast::Arg) -> bool {
+pub(crate) fn is_named_arg(arg: &ast::Param) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
         ident.name != symbol::kw::Invalid
     } else {
@@ -2349,7 +2375,7 @@ impl WhereClauseOption {
 
 fn rewrite_args(
     context: &RewriteContext<'_>,
-    args: &[ast::Arg],
+    args: &[ast::Param],
     one_line_budget: usize,
     multi_line_budget: usize,
     indent: Indent,

@@ -1,15 +1,15 @@
-// Existential type.
+// Opaque type.
 
-    #![feature(existential_type)]
+    #![feature(type_alias_impl_trait)]
 
-pub existential type Adder<F, T>
+pub type Adder<F, T>
 where
     T: Clone,
     F: Copy
-    : Fn(T) -> T;
+    = impl Fn(T) -> T;
 
-pub existential type Adderrr<T>: Fn(  T  ) -> T;
+pub type Adderrr<T> = impl Fn(  T  ) -> T;
 
 impl Foo for Bar {
-existential type E  : Trait;
+type E  = impl Trait;
 }

@@ -1316,8 +1316,8 @@ pub(crate) fn can_be_overflowed_expr(
             context.config.overflow_delimited_expr()
                 || (context.use_block_indent() && args_len == 1)
         }
-        ast::ExprKind::Mac(ref macro_) => {
-            match (macro_.node.delim, context.config.overflow_delimited_expr()) {
+        ast::ExprKind::Mac(ref mac) => {
+            match (mac.delim, context.config.overflow_delimited_expr()) {
                 (ast::MacDelimiter::Bracket, true) | (ast::MacDelimiter::Brace, true) => true,
                 _ => context.use_block_indent() && args_len == 1,
             }

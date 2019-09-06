@@ -1,13 +1,13 @@
 use syntax::ast::{self, BindingMode, FieldPat, Pat, PatKind, RangeEnd, RangeSyntax};
 use syntax::ptr;
-use syntax::source_map::{self, BytePos, Span};
+use syntax::source_map::{BytePos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, FindUncommented};
 use crate::config::lists::*;
 use crate::expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
 use crate::lists::{
-    itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape, struct_lit_tactic,
-    write_list,
+    definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
+    struct_lit_tactic, write_list, ListFormatting, Separator,
 };
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::overflow;
@@ -51,12 +51,39 @@ fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
         ast::PatKind::Box(ref p) | ast::PatKind::Ref(ref p, _) | ast::PatKind::Paren(ref p) => {
             is_short_pattern_inner(&*p)
         }
+        PatKind::Or(ref pats) => pats.iter().all(|p| is_short_pattern_inner(p)),
     }
 }
 
 impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self.node {
+            PatKind::Or(ref pats) => {
+                let pat_items = itemize_list(
+                    context.snippet_provider,
+                    pats.iter(),
+                    "",
+                    "|",
+                    |pat| pat.span().lo(),
+                    |pat| pat.span().hi(),
+                    |pat| pat.rewrite(context, shape),
+                    self.span.lo(),
+                    self.span.hi(),
+                    false,
+                );
+                let pat_vec: Vec<_> = pat_items.collect();
+                let tactic = definitive_tactic(
+                    &pat_vec,
+                    ListTactic::HorizontalVertical,
+                    Separator::VerticalBar,
+                    shape.width,
+                );
+                let fmt = ListFormatting::new(shape, context.config)
+                    .tactic(tactic)
+                    .trailing_separator(SeparatorTactic::Never)
+                    .separator(" |");
+                write_list(&pat_vec, &fmt)
+            }
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
             PatKind::Ident(binding_mode, ident, ref sub_pat) => {
                 let (prefix, mutability) = match binding_mode {
@@ -154,7 +181,7 @@ impl Rewrite for Pat {
 
 fn rewrite_struct_pat(
     path: &ast::Path,
-    fields: &[source_map::Spanned<ast::FieldPat>],
+    fields: &[ast::FieldPat],
     ellipsis: bool,
     span: Span,
     context: &RewriteContext<'_>,
@@ -180,14 +207,14 @@ fn rewrite_struct_pat(
         terminator,
         ",",
         |f| {
-            if f.node.attrs.is_empty() {
+            if f.attrs.is_empty() {
                 f.span.lo()
             } else {
-                f.node.attrs.first().unwrap().span.lo()
+                f.attrs.first().unwrap().span.lo()
             }
         },
         |f| f.span.hi(),
-        |f| f.node.rewrite(context, v_shape),
+        |f| f.rewrite(context, v_shape),
         context.snippet_provider.span_after(span, "{"),
         span.hi(),
         false,

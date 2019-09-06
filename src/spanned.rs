@@ -104,7 +104,7 @@ impl Spanned for ast::Arm {
     }
 }
 
-impl Spanned for ast::Arg {
+impl Spanned for ast::Param {
     fn span(&self) -> Span {
         if crate::items::is_named_arg(self) {
             mk_sp(self.pat.span.lo(), self.ty.span.hi())
