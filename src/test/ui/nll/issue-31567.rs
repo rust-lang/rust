@@ -2,8 +2,6 @@
 // causing region relations not to be enforced at all the places where
 // they have to be enforced.
 
-#![feature(nll)]
-
 struct VecWrapper<'a>(&'a mut S);
 
 struct S(Box<u32>);
