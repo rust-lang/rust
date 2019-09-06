@@ -430,13 +430,13 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
         match self {
             PointerOutOfBounds { ptr, msg, allocation_size } => {
                 write!(f, "{} failed: pointer must be in-bounds at offset {}, \
-                          but is outside bounds of allocation {} which has size {}",
+                           but is outside bounds of allocation {} which has size {}",
                     msg, ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
             },
             ValidationFailure(ref err) => {
                 write!(f, "type validation failed: {}", err)
             }
-            NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
+            NoMirFor(ref func) => write!(f, "no MIR for `{}`", func),
             FunctionAbiMismatch(caller_abi, callee_abi) =>
                 write!(f, "tried to call a function with ABI {:?} using caller ABI {:?}",
                     callee_abi, caller_abi),
@@ -451,9 +451,9 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             FunctionArgCountMismatch =>
                 write!(f, "tried to call a function with incorrect number of arguments"),
             ReallocatedWrongMemoryKind(ref old, ref new) =>
-                write!(f, "tried to reallocate memory from {} to {}", old, new),
+                write!(f, "tried to reallocate memory from `{}` to `{}`", old, new),
             DeallocatedWrongMemoryKind(ref old, ref new) =>
-                write!(f, "tried to deallocate {} memory but gave {} as the kind", old, new),
+                write!(f, "tried to deallocate `{}` memory but gave `{}` as the kind", old, new),
             InvalidChar(c) =>
                 write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
             AlignmentCheckFailed { required, has } =>
@@ -462,7 +462,7 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             TypeNotPrimitive(ty) =>
                 write!(f, "expected primitive type, got {}", ty),
             PathNotFound(ref path) =>
-                write!(f, "Cannot find path {:?}", path),
+                write!(f, "cannot find path {:?}", path),
             IncorrectAllocationInformation(size, size2, align, align2) =>
                 write!(f, "incorrect alloc info: expected size {} and align {}, \
                            got size {} and align {}",
@@ -525,7 +525,7 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
             InvalidBoolOp(_) =>
                 write!(f, "invalid boolean operation"),
             UnterminatedCString(_) =>
-                write!(f, "attempted to get length of a null terminated string, but no null \
+                write!(f, "attempted to get length of a null-terminated string, but no null \
                     found before end of allocation"),
             ReadUndefBytes(_) =>
                 write!(f, "attempted to read undefined bytes"),

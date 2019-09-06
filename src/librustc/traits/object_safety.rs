@@ -368,7 +368,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     match self.layout_of(param_env.and(ty)) {
                         Ok(layout) => &layout.abi,
                         Err(err) => bug!(
-                            "Error: {}\n while computing layout for type {:?}", err, ty
+                            "error: {}\n while computing layout for type {:?}", err, ty
                         )
                     }
                 };
@@ -384,7 +384,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         self.sess.delay_span_bug(
                             self.def_span(method.def_id),
                             &format!(
-                                "Receiver when Self = () should have a Scalar ABI, found {:?}",
+                                "receiver when `Self = ()` should have a Scalar ABI; found {:?}",
                                 abi
                             ),
                         );
@@ -406,7 +406,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         self.sess.delay_span_bug(
                             self.def_span(method.def_id),
                             &format!(
-                                "Receiver when Self = {} should have a ScalarPair ABI, found {:?}",
+                                "receiver when `Self = {}` should have a ScalarPair ABI; \
+                                 found {:?}",
                                 trait_object_ty, abi
                             ),
                         );

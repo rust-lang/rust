@@ -748,7 +748,7 @@ It is not allowed to use or capture an uninitialized variable. For example:
 ```compile_fail,E0381
 fn main() {
     let x: i32;
-    let y = x; // error, use of possibly uninitialized variable
+    let y = x; // error, use of possibly-uninitialized variable
 }
 ```
 

@@ -668,7 +668,7 @@ class RustBuild(object):
     def update_submodule(self, module, checked_out, recorded_submodules):
         module_path = os.path.join(self.rust_root, module)
 
-        if checked_out != None:
+        if checked_out is not None:
             default_encoding = sys.getdefaultencoding()
             checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
             if recorded_submodules[module] == checked_out:

@@ -533,8 +533,8 @@ pub fn error_to_const_error<'mir, 'tcx>(
 
 pub fn note_on_undefined_behavior_error() -> &'static str {
     "The rules on what exactly is undefined behavior aren't clear, \
-    so this check might be overzealous. Please open an issue on the rust compiler \
-    repository if you believe it should not be considered undefined behavior"
+     so this check might be overzealous. Please open an issue on the rustc \
+     repository if you believe it should not be considered undefined behavior."
 }
 
 fn validate_and_turn_into_const<'tcx>(

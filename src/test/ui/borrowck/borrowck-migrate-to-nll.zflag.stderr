@@ -1,11 +1,11 @@
 warning[E0502]: cannot borrow `*block.current` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-migrate-to-nll.rs:28:21
+  --> $DIR/borrowck-migrate-to-nll.rs:29:21
    |
 LL |     let x = &mut block;
    |             ---------- mutable borrow occurs here
 LL |     let p: &'a u8 = &*block.current;
    |                     ^^^^^^^^^^^^^^^ immutable borrow occurs here
-LL |     // (use `x` and `p` so enabling NLL doesn't assign overly short lifetimes)
+...
 LL |     drop(x);
    |          - mutable borrow later used here
    |
