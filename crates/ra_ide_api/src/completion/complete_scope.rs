@@ -6,46 +6,48 @@ use rustc_hash::FxHashMap;
 use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
-    if ctx.is_trivial_path {
-        let names = ctx.analyzer.all_names(ctx.db);
-        names.into_iter().for_each(|(name, res)| acc.add_resolution(ctx, name.to_string(), &res));
+    if !ctx.is_trivial_path {
+        return;
+    }
 
-        // auto-import
-        // We fetch ident from the original file, because we need to pre-filter auto-imports
-        if ast::NameRef::cast(ctx.token.parent()).is_some() {
-            let import_resolver = ImportResolver::new();
-            let import_names = import_resolver.all_names(ctx.token.text());
-            import_names.into_iter().for_each(|(name, path)| {
-                let edit = {
-                    let mut builder = TextEditBuilder::default();
-                    builder.replace(ctx.source_range(), name.to_string());
-                    auto_import::auto_import_text_edit(
-                        &ctx.token.parent(),
-                        &ctx.token.parent(),
-                        &path,
-                        &mut builder,
-                    );
-                    builder.finish()
-                };
+    let names = ctx.analyzer.all_names(ctx.db);
+    names.into_iter().for_each(|(name, res)| acc.add_resolution(ctx, name.to_string(), &res));
 
-                // Hack: copied this check form conv.rs beacause auto import can produce edits
-                // that invalidate assert in conv_with.
-                if edit
-                    .as_atoms()
-                    .iter()
-                    .filter(|atom| !ctx.source_range().is_subrange(&atom.delete))
-                    .all(|atom| ctx.source_range().intersection(&atom.delete).is_none())
-                {
-                    CompletionItem::new(
-                        CompletionKind::Reference,
-                        ctx.source_range(),
-                        build_import_label(&name, &path),
-                    )
-                    .text_edit(edit)
-                    .add_to(acc);
-                }
-            });
-        }
+    // auto-import
+    // We fetch ident from the original file, because we need to pre-filter auto-imports
+    if ast::NameRef::cast(ctx.token.parent()).is_some() {
+        let import_resolver = ImportResolver::new();
+        let import_names = import_resolver.all_names(ctx.token.text());
+        import_names.into_iter().for_each(|(name, path)| {
+            let edit = {
+                let mut builder = TextEditBuilder::default();
+                builder.replace(ctx.source_range(), name.to_string());
+                auto_import::auto_import_text_edit(
+                    &ctx.token.parent(),
+                    &ctx.token.parent(),
+                    &path,
+                    &mut builder,
+                );
+                builder.finish()
+            };
+
+            // Hack: copied this check form conv.rs beacause auto import can produce edits
+            // that invalidate assert in conv_with.
+            if edit
+                .as_atoms()
+                .iter()
+                .filter(|atom| !ctx.source_range().is_subrange(&atom.delete))
+                .all(|atom| ctx.source_range().intersection(&atom.delete).is_none())
+            {
+                CompletionItem::new(
+                    CompletionKind::Reference,
+                    ctx.source_range(),
+                    build_import_label(&name, &path),
+                )
+                .text_edit(edit)
+                .add_to(acc);
+            }
+        });
     }
 }
 
