@@ -5204,3 +5204,29 @@ public:
 char Enzyme::ID = 0;
 
 static RegisterPass<Enzyme> X("enzyme", "Enzyme Pass");
+
+FunctionPass *createEnzymePass() {
+  return new Enzyme();
+}
+
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
+#include <llvm/IR/Value.h>
+
+#include "llvm/Transforms/Scalar.h"
+#include "llvm-c/Initialization.h"
+#include "llvm-c/Transforms/Scalar.h"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
+#include "llvm/Analysis/Passes.h"
+#include "llvm/Analysis/ScopedNoAliasAA.h"
+#include "llvm/Analysis/TypeBasedAliasAnalysis.h"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/InitializePasses.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Scalar/SimpleLoopUnswitch.h"
+
+extern "C" void AddEnzymePass(LLVMPassManagerRef PM) {
+    unwrap(PM)->add(createEnzymePass());
+}
