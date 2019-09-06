@@ -537,9 +537,9 @@ impl<'a> ExtCtxt<'a> {
         let err_expr = self.expr(sp, ast::ExprKind::Ret(Some(err_inner_expr)));
 
         // `Ok(__try_var) => __try_var`
-        let ok_arm = self.arm(sp, vec![ok_pat], binding_expr);
+        let ok_arm = self.arm(sp, ok_pat, binding_expr);
         // `Err(__try_var) => return Err(__try_var)`
-        let err_arm = self.arm(sp, vec![err_pat], err_expr);
+        let err_arm = self.arm(sp, err_pat, err_expr);
 
         // `match head { Ok() => ..., Err() => ... }`
         self.expr_match(sp, head, vec![ok_arm, err_arm])
@@ -606,10 +606,10 @@ impl<'a> ExtCtxt<'a> {
         self.pat_tuple_struct(span, path, vec![pat])
     }
 
-    pub fn arm(&self, span: Span, pats: Vec<P<ast::Pat>>, expr: P<ast::Expr>) -> ast::Arm {
+    pub fn arm(&self, span: Span, pat: P<ast::Pat>, expr: P<ast::Expr>) -> ast::Arm {
         ast::Arm {
             attrs: vec![],
-            pats,
+            pat,
             guard: None,
             body: expr,
             span,
@@ -618,7 +618,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn arm_unreachable(&self, span: Span) -> ast::Arm {
-        self.arm(span, vec![self.pat_wild(span)], self.expr_unreachable(span))
+        self.arm(span, self.pat_wild(span), self.expr_unreachable(span))
     }
 
     pub fn expr_match(&self, span: Span, arg: P<ast::Expr>, arms: Vec<ast::Arm>) -> P<Expr> {

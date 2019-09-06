@@ -95,11 +95,9 @@ pub fn cs_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> P<
                     cx.expr_call_global(span, cmp_path.clone(), args)
                 };
 
-                let eq_arm = cx.arm(span,
-                                    vec![cx.pat_path(span, equals_path.clone())],
-                                    old);
+                let eq_arm = cx.arm(span, cx.pat_path(span, equals_path.clone()), old);
                 let neq_arm = cx.arm(span,
-                                     vec![cx.pat_ident(span, test_id)],
+                                     cx.pat_ident(span, test_id),
                                      cx.expr_ident(span, test_id));
 
                 cx.expr_match(span, new, vec![eq_arm, neq_arm])

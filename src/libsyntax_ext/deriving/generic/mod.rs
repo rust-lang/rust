@@ -1071,7 +1071,7 @@ impl<'a> MethodDef<'a> {
         for (arg_expr, pat) in self_args.iter().zip(patterns) {
             body = cx.expr_match(trait_.span,
                                  arg_expr.clone(),
-                                 vec![cx.arm(trait_.span, vec![pat.clone()], body)])
+                                 vec![cx.arm(trait_.span, pat.clone(), body)])
         }
 
         body
@@ -1311,7 +1311,7 @@ impl<'a> MethodDef<'a> {
                                                              nonself_args,
                                                              &substructure);
 
-                cx.arm(sp, vec![single_pat], arm_expr)
+                cx.arm(sp, single_pat, arm_expr)
             })
             .collect();
 
@@ -1337,7 +1337,7 @@ impl<'a> MethodDef<'a> {
             _ => None,
         };
         if let Some(arm) = default {
-            match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], arm));
+            match_arms.push(cx.arm(sp, cx.pat_wild(sp), arm));
         }
 
         // We will usually need the catch-all after matching the
