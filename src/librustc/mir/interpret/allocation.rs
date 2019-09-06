@@ -130,6 +130,34 @@ impl<Tag> Allocation<Tag> {
     }
 }
 
+impl Allocation<()> {
+    /// Add Tag and Extra fields
+    pub fn retag<T, E>(
+        self,
+        mut tagger: impl FnMut(AllocId) -> T,
+        extra: E,
+    ) -> Allocation<T, E> {
+        Allocation {
+            bytes: self.bytes,
+            size: self.size,
+            relocations: Relocations::from_presorted(
+                self.relocations.iter()
+                    // The allocations in the relocations (pointers stored *inside* this allocation)
+                    // all get the base pointer tag.
+                    .map(|&(offset, ((), alloc))| {
+                        let tag = tagger(alloc);
+                        (offset, (tag, alloc))
+                    })
+                    .collect()
+            ),
+            undef_mask: self.undef_mask,
+            align: self.align,
+            mutability: self.mutability,
+            extra,
+        }
+    }
+}
+
 /// Raw accessors. Provide access to otherwise private bytes.
 impl<Tag, Extra> Allocation<Tag, Extra> {
     pub fn len(&self) -> usize {
