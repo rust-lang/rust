@@ -60,7 +60,7 @@ def get_codepoints(f):
         yield Codepoint(codepoint, class_)
         prev_codepoint = codepoint
 
-    if class_first != None:
+    if class_first is not None:
         raise ValueError("Missing Last after First")
 
     for c in range(prev_codepoint + 1, NUM_CODEPOINTS):
