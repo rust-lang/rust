@@ -4,6 +4,9 @@ use build_helper::sanitizer_lib_boilerplate;
 use cmake::Config;
 
 fn main() {
+    if env::var("RUSTC_BUILD_SANITIZERS") != Ok("1".to_string()) {
+        return;
+    }
     if let Some(llvm_config) = env::var_os("LLVM_CONFIG") {
         build_helper::restore_library_path();
 
