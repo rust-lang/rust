@@ -244,6 +244,7 @@ pub fn collect<'tcx>(tcx: TyCtxt<'tcx>) -> LanguageItems {
 
 language_item_table! {
 //  Variant name,                Name,                 Method name,             Target;
+    BoolImplItem,                "bool",               bool_impl,               Target::Impl;
     CharImplItem,                "char",               char_impl,               Target::Impl;
     StrImplItem,                 "str",                str_impl,                Target::Impl;
     SliceImplItem,               "slice",              slice_impl,              Target::Impl;

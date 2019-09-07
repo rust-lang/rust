@@ -1,3 +1,4 @@
+#![feature(bool_to_option)]
 #![feature(bound_cloned)]
 #![feature(box_syntax)]
 #![feature(cell_update)]
@@ -40,6 +41,7 @@ mod any;
 mod array;
 mod ascii;
 mod atomic;
+mod bool;
 mod cell;
 mod char;
 mod clone;
