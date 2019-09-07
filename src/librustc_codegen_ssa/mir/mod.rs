@@ -518,19 +518,19 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 PassMode::Ignore(IgnoreMode::CVarArgs) => {}
                 PassMode::Direct(_) => {
                     let llarg = bx.get_param(llarg_idx);
-                    bx.set_value_name(llarg, &name);
+                    bx.set_var_name(llarg, &name);
                     llarg_idx += 1;
                     return local(
                         OperandRef::from_immediate_or_packed_pair(bx, llarg, arg.layout));
                 }
                 PassMode::Pair(..) => {
-                    let a = bx.get_param(llarg_idx);
-                    bx.set_value_name(a, &(name.clone() + ".0"));
-                    llarg_idx += 1;
+                    let (a, b) = (bx.get_param(llarg_idx), bx.get_param(llarg_idx + 1));
+                    llarg_idx += 2;
 
-                    let b = bx.get_param(llarg_idx);
-                    bx.set_value_name(b, &(name + ".1"));
-                    llarg_idx += 1;
+                    // FIXME(eddyb) these are scalar components,
+                    // maybe extract the high-level fields?
+                    bx.set_var_name(a, format_args!("{}.0", name));
+                    bx.set_var_name(b, format_args!("{}.1", name));
 
                     return local(OperandRef {
                         val: OperandValue::Pair(a, b),
@@ -546,7 +546,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             // already put it in a temporary alloca and gave it up.
             // FIXME: lifetimes
             let llarg = bx.get_param(llarg_idx);
-            bx.set_value_name(llarg, &name);
+            bx.set_var_name(llarg, &name);
             llarg_idx += 1;
             PlaceRef::new_sized(llarg, arg.layout)
         } else if arg.is_unsized_indirect() {

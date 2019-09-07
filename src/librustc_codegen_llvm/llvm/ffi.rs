@@ -806,6 +806,7 @@ extern "C" {
     pub fn LLVMRustRemoveFunctionAttributes(Fn: &Value, index: c_uint, attr: Attribute);
 
     // Operations on parameters
+    pub fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
     pub fn LLVMCountParams(Fn: &Value) -> c_uint;
     pub fn LLVMGetParam(Fn: &Value, Index: c_uint) -> &Value;
 
@@ -818,6 +819,7 @@ extern "C" {
     pub fn LLVMDeleteBasicBlock(BB: &BasicBlock);
 
     // Operations on instructions
+    pub fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
     pub fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
 
     // Operations on call sites
