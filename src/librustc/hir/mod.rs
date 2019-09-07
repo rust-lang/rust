@@ -1259,19 +1259,30 @@ pub struct Local {
 }
 
 /// Represents a single arm of a `match` expression, e.g.
-/// `<pats> (if <guard>) => <body>`.
+/// `<pat> (if <guard>) => <body>`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct Arm {
     #[stable_hasher(ignore)]
     pub hir_id: HirId,
     pub span: Span,
     pub attrs: HirVec<Attribute>,
-    /// Multiple patterns can be combined with `|`
-    pub pats: HirVec<P<Pat>>,
+    /// If this pattern and the optional guard matches, then `body` is evaluated.
+    pub pat: P<Pat>,
     /// Optional guard clause.
     pub guard: Option<Guard>,
     /// The expression the arm evaluates to if this arm matches.
     pub body: P<Expr>,
+}
+
+impl Arm {
+    // HACK(or_patterns; Centril | dlrobertson): Remove this and
+    // correctly handle each case in which this method is used.
+    pub fn top_pats_hack(&self) -> &[P<Pat>] {
+        match &self.pat.node {
+            PatKind::Or(pats) => pats,
+            _ => std::slice::from_ref(&self.pat),
+        }
+    }
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
