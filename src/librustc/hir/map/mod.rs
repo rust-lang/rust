@@ -5,10 +5,15 @@ pub use self::definitions::{
 };
 
 use crate::dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
-
+use crate::hir::*;
+use crate::hir::DefKind;
 use crate::hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId};
-
+use crate::hir::itemlikevisit::ItemLikeVisitor;
+use crate::hir::print::Nested;
 use crate::middle::cstore::CrateStoreDyn;
+use crate::ty::query::Providers;
+use crate::util::nodemap::FxHashMap;
+use crate::util::common::time;
 
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
@@ -18,15 +23,7 @@ use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
-use crate::hir::*;
-use crate::hir::DefKind;
-use crate::hir::itemlikevisit::ItemLikeVisitor;
-use crate::hir::print::Nested;
-use crate::util::nodemap::FxHashMap;
-use crate::util::common::time;
-
 use std::result::Result::Err;
-use crate::ty::query::Providers;
 
 pub mod blocks;
 mod collector;
@@ -627,7 +624,7 @@ impl<'hir> Map<'hir> {
             .unwrap_or(hir_id)
     }
 
-    /// Check if the node is an argument. An argument is a local variable whose
+    /// Checks if the node is an argument. An argument is a local variable whose
     /// immediate parent is an item or a closure.
     pub fn is_argument(&self, id: HirId) -> bool {
         match self.find(id) {
@@ -733,7 +730,7 @@ impl<'hir> Map<'hir> {
     /// ```
     /// fn foo(x: usize) -> bool {
     ///     if x == 1 {
-    ///         true  // `get_return_block` gets passed the `id` corresponding
+    ///         true  // If `get_return_block` gets passed the `id` corresponding
     ///     } else {  // to this, it will return `foo`'s `HirId`.
     ///         false
     ///     }
@@ -743,7 +740,7 @@ impl<'hir> Map<'hir> {
     /// ```
     /// fn foo(x: usize) -> bool {
     ///     loop {
-    ///         true  // `get_return_block` gets passed the `id` corresponding
+    ///         true  // If `get_return_block` gets passed the `id` corresponding
     ///     }         // to this, it will return `None`.
     ///     false
     /// }
@@ -994,9 +991,9 @@ impl<'hir> Map<'hir> {
         self.map.iter().enumerate().filter_map(|(i, local_map)| {
             local_map.as_ref().map(|m| (i, m))
         }).flat_map(move |(array_index, local_map)| {
-            // Iterate over each valid entry in the local map
+            // Iterate over each valid entry in the local map.
             local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
-                // Reconstruct the HirId based on the 3 indices we used to find it
+                // Reconstruct the `HirId` based on the 3 indices we used to find it.
                 HirId {
                     owner: DefIndex::from(array_index),
                     local_id: i,
@@ -1207,7 +1204,7 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
         definitions,
     };
 
-    time(sess, "validate hir map", || {
+    time(sess, "validate HIR map", || {
         hir_id_validator::check_crate(&map);
     });
 
@@ -1247,9 +1244,9 @@ impl<'a> print::State<'a> {
             Node::Pat(a)          => self.print_pat(&a),
             Node::Arm(a)          => self.print_arm(&a),
             Node::Block(a)        => {
-                // containing cbox, will be closed by print-block at }
+                // Containing cbox, will be closed by print-block at `}`.
                 self.cbox(print::INDENT_UNIT);
-                // head-ibox, will be closed by print-block after {
+                // Head-ibox, will be closed by print-block after `{`.
                 self.ibox(0);
                 self.print_block(&a)
             }
@@ -1257,8 +1254,8 @@ impl<'a> print::State<'a> {
             Node::Visibility(a)   => self.print_visibility(&a),
             Node::GenericParam(_) => bug!("cannot print Node::GenericParam"),
             Node::Field(_)        => bug!("cannot print StructField"),
-            // these cases do not carry enough information in the
-            // hir_map to reconstruct their full structure for pretty
+            // These cases do not carry enough information in the
+            // `hir_map` to reconstruct their full structure for pretty
             // printing.
             Node::Ctor(..)        => bug!("cannot print isolated Ctor"),
             Node::Local(a)        => self.print_local_decl(&a),
@@ -1273,8 +1270,8 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
     let id_str = if include_id { &id_str[..] } else { "" };
 
     let path_str = || {
-        // This functionality is used for debugging, try to use TyCtxt to get
-        // the user-friendly path, otherwise fall back to stringifying DefPath.
+        // This functionality is used for debugging, try to use `TyCtxt` to get
+        // the user-friendly path, otherwise fall back to stringifying `DefPath`.
         crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
                 let def_id = map.local_def_id(id);

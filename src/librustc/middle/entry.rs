@@ -16,17 +16,17 @@ struct EntryContext<'a, 'tcx> {
 
     map: &'a hir_map::Map<'tcx>,
 
-    // The top-level function called 'main'
+    /// The top-level function called 'main'.
     main_fn: Option<(HirId, Span)>,
 
-    // The function that has attribute named 'main'
+    /// The function that has attribute named 'main'.
     attr_main_fn: Option<(HirId, Span)>,
 
-    // The function that has the attribute 'start' on it
+    /// The function that has the attribute 'start' on it.
     start_fn: Option<(HirId, Span)>,
 
-    // The functions that one might think are 'main' but aren't, e.g.
-    // main functions not defined at the top level. For diagnostics.
+    /// The functions that one might think are 'main' but aren't, e.g.
+    /// main functions not defined at the top level. For diagnostics.
     non_main_fns: Vec<(HirId, Span)> ,
 }
 
@@ -39,11 +39,11 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, _trait_item: &'tcx TraitItem) {
-        // entry fn is never a trait item
+        // Entry fn is never a trait item.
     }
 
     fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem) {
-        // entry fn is never an impl item
+        // Entry fn is never a trait item.
     }
 }
 
@@ -54,7 +54,7 @@ fn entry_fn(tcx: TyCtxt<'_>, cnum: CrateNum) -> Option<(DefId, EntryFnType)> {
         *ty == config::CrateType::Executable
     });
     if !any_exe {
-        // No need to find a main function
+        // No need to find a main function.
         return None;
     }
 
@@ -148,7 +148,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
     } else if let Some((hir_id, _)) = visitor.main_fn {
         Some((tcx.hir().local_def_id(hir_id), EntryFnType::Main))
     } else {
-        // No main function
+        // There is no main function.
         let mut err = struct_err!(tcx.sess, E0601,
             "`main` function not found in crate `{}`", tcx.crate_name(LOCAL_CRATE));
         if !visitor.non_main_fns.is_empty() {

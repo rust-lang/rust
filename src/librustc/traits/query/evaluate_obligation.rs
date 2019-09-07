@@ -1,7 +1,8 @@
 use crate::infer::InferCtxt;
 use crate::infer::canonical::OriginalQueryValues;
-use crate::traits::{EvaluationResult, PredicateObligation, SelectionContext,
-             TraitQueryMode, OverflowError};
+use crate::traits::{
+    EvaluationResult, PredicateObligation, SelectionContext, TraitQueryMode, OverflowError,
+};
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)

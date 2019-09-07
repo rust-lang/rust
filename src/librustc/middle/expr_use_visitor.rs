@@ -596,7 +596,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::StmtKind::Item(_) => {
-                // we don't visit nested items in this visitor,
+                // We don't visit nested items in this visitor,
                 // only the fn body we were given.
             }
 

@@ -6,29 +6,27 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
 
-use crate::ich::{StableHashingContext, NodeIdHashingMode};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
-use crate::ty;
-
-use std::mem;
-use std::fmt;
-use rustc_macros::HashStable;
-use syntax::source_map;
-use syntax_pos::{Span, DUMMY_SP};
-use crate::ty::{DefIdTree, TyCtxt};
-use crate::ty::query::Providers;
-
 use crate::hir;
 use crate::hir::Node;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
-use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
-                                           StableHasherResult};
+use crate::ich::{StableHashingContext, NodeIdHashingMode};
+use crate::util::nodemap::{FxHashMap, FxHashSet};
+use crate::ty::{self, DefIdTree, TyCtxt};
+use crate::ty::query::Providers;
 
-/// Scope represents a statically-describable scope that can be
-/// used to bound the lifetime/region for values.
+use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use rustc_macros::HashStable;
+use syntax::source_map;
+use syntax_pos::{Span, DUMMY_SP};
+
+use std::fmt;
+use std::mem;
+
+/// Represents a statically-describable scope that can be used to
+/// bound the lifetime/region for values.
 ///
 /// `Node(node_id)`: Any AST node that has any scope at all has the
 /// `Node(node_id)` scope. Other variants represent special cases not
@@ -225,7 +223,7 @@ pub struct ScopeTree {
     /// have lifetime parameters free in this body.
     root_parent: Option<hir::HirId>,
 
-    /// `parent_map` maps from a scope ID to the enclosing scope id;
+    /// Maps from a scope ID to the enclosing scope id;
     /// this is usually corresponding to the lexical nesting, though
     /// in the case of closures the parent scope is the innermost
     /// conditional expression or repeating block. (Note that the
@@ -233,17 +231,17 @@ pub struct ScopeTree {
     /// the closure itself.)
     parent_map: FxHashMap<Scope, (Scope, ScopeDepth)>,
 
-    /// `var_map` maps from a variable or binding ID to the block in
-    /// which that variable is declared.
+    /// Maps from a variable or binding ID to the block in which that
+    /// variable is declared.
     var_map: FxHashMap<hir::ItemLocalId, Scope>,
 
-    /// maps from a `NodeId` to the associated destruction scope (if any)
+    /// Maps from a `NodeId` to the associated destruction scope (if any).
     destruction_scopes: FxHashMap<hir::ItemLocalId, Scope>,
 
-    /// `rvalue_scopes` includes entries for those expressions whose cleanup scope is
-    /// larger than the default. The map goes from the expression id
-    /// to the cleanup scope id. For rvalues not present in this
-    /// table, the appropriate cleanup scope is the innermost
+    /// `rvalue_scopes` includes entries for those expressions whose
+    /// cleanup scope is larger than the default. The map goes from the
+    /// expression ID to the cleanup scope id. For rvalues not present in
+    /// this table, the appropriate cleanup scope is the innermost
     /// enclosing statement, conditional expression, or repeating
     /// block (see `terminating_scopes`).
     /// In constants, None is used to indicate that certain expressions
@@ -318,7 +316,7 @@ pub struct ScopeTree {
     ///     4. By `2.` and `3.`, `D` is *statically* storage-dead at `U`,
     ///     QED.
     ///
-    /// I don't think this property relies on `3.` in an essential way - it
+    /// This property ought to not on (3) in an essential way -- it
     /// is probably still correct even if we have "unrestricted" terminating
     /// scopes. However, why use the complicated proof when a simple one
     /// works?
@@ -341,20 +339,20 @@ pub struct ScopeTree {
 
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct YieldData {
-    /// `Span` of the yield.
+    /// The `Span` of the yield.
     pub span: Span,
-    /// The number of expressions and patterns appearing before the `yield` in the body + 1.
+    /// The number of expressions and patterns appearing before the `yield` in the body plus one.
     pub expr_and_pat_count: usize,
     pub source: hir::YieldSource,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Context {
-    /// the root of the current region tree. This is typically the id
+    /// The root of the current region tree. This is typically the id
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
     /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in infer::region_constraints for more
+    /// the README in `infer::region_constraints` for more
     /// details.
     root_id: Option<hir::ItemLocalId>,
 
@@ -369,15 +367,15 @@ pub struct Context {
 struct RegionResolutionVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 
-    // The number of expressions and patterns visited in the current body
+    // The number of expressions and patterns visited in the current body.
     expr_and_pat_count: usize,
     // When this is `true`, we record the `Scopes` we encounter
     // when processing a Yield expression. This allows us to fix
     // up their indices.
     pessimistic_yield: bool,
-    // Stores scopes when pessimistic_yield is true.
+    // Stores scopes when `pessimistic_yield` is `true`.
     fixup_scopes: Vec<Scope>,
-    // Generated scope tree:
+    // The generated scope tree.
     scope_tree: ScopeTree,
 
     cx: Context,
@@ -411,7 +409,7 @@ struct ExprLocatorVisitor {
     expr_and_pat_count: usize,
 }
 
-// This visitor has to have the same visit_expr calls as RegionResolutionVisitor
+// This visitor has to have the same `visit_expr` calls as `RegionResolutionVisitor`
 // since `expr_count` is compared against the results there.
 impl<'tcx> Visitor<'tcx> for ExprLocatorVisitor {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
@@ -456,7 +454,7 @@ impl<'tcx> ScopeTree {
             assert!(prev.is_none());
         }
 
-        // record the destruction scopes for later so we can query them
+        // Record the destruction scopes for later so we can query them.
         if let ScopeData::Destruction = child.data {
             self.destruction_scopes.insert(child.item_local_id(), child);
         }
@@ -478,7 +476,7 @@ impl<'tcx> ScopeTree {
         self.destruction_scopes.get(&n).cloned()
     }
 
-    /// Records that `sub_closure` is defined within `sup_closure`. These ids
+    /// Records that `sub_closure` is defined within `sup_closure`. These IDs
     /// should be the ID of the block that is the fn body, which is
     /// also the root of the region hierarchy for that fn.
     fn record_closure_parent(&mut self,
@@ -505,14 +503,14 @@ impl<'tcx> ScopeTree {
         self.rvalue_scopes.insert(var, lifetime);
     }
 
+    /// Returns the narrowest scope that encloses `id`, if any.
     pub fn opt_encl_scope(&self, id: Scope) -> Option<Scope> {
-        //! Returns the narrowest scope that encloses `id`, if any.
         self.parent_map.get(&id).cloned().map(|(p, _)| p)
     }
 
+    /// Returns the narrowest scope that encloses `id`, if any.
     #[allow(dead_code)] // used in cfg
     pub fn encl_scope(&self, id: Scope) -> Scope {
-        //! Returns the narrowest scope that encloses `id`, if any.
         self.opt_encl_scope(id).unwrap()
     }
 
@@ -522,16 +520,15 @@ impl<'tcx> ScopeTree {
             bug!("no enclosing scope for id {:?}", var_id))
     }
 
+    /// Returns the scope when the temp created by `expr_id` will be cleaned up.
     pub fn temporary_scope(&self, expr_id: hir::ItemLocalId) -> Option<Scope> {
-        //! Returns the scope when temp created by expr_id will be cleaned up
-
-        // check for a designated rvalue scope
+        // Check for a designated rvalue scope.
         if let Some(&s) = self.rvalue_scopes.get(&expr_id) {
             debug!("temporary_scope({:?}) = {:?} [custom]", expr_id, s);
             return s;
         }
 
-        // else, locate the innermost terminating scope
+        // Otherwise, locate the innermost terminating scope
         // if there's one. Static items, for instance, won't
         // have an enclosing scope, hence no scope will be
         // returned.
@@ -552,9 +549,8 @@ impl<'tcx> ScopeTree {
         return None;
     }
 
+    /// Returns the lifetime of the variable `id`.
     pub fn var_region(&self, id: hir::ItemLocalId) -> ty::RegionKind {
-        //! Returns the lifetime of the variable `id`.
-
         let scope = ty::ReScope(self.var_scope(id));
         debug!("var_region({:?}) = {:?}", id, scope);
         scope
@@ -589,7 +585,7 @@ impl<'tcx> ScopeTree {
         return true;
     }
 
-    /// Returns the ID of the innermost containing body
+    /// Returns the ID of the innermost containing body.
     pub fn containing_body(&self, mut scope: Scope) -> Option<hir::ItemLocalId> {
         loop {
             if let ScopeData::CallSite = scope.data {

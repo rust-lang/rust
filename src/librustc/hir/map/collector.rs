@@ -340,7 +340,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     /// their outer items.
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
-        panic!("visit_nested_xxx must be manually implemented in this visitor")
+        panic!("`visit_nested_xxx` must be manually implemented in this visitor");
     }
 
     fn visit_nested_item(&mut self, item: ItemId) {

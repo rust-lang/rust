@@ -5,8 +5,10 @@ use crate::hir;
 use crate::hir::map::DefPathHash;
 use crate::hir::def_id::{DefId, LocalDefId, CrateNum, CRATE_DEF_INDEX};
 use crate::ich::{StableHashingContext, NodeIdHashingMode, Fingerprint};
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
-                                           StableHasher, StableHasherResult};
+
+use rustc_data_structures::stable_hasher::{
+    HashStable, ToStableHashKey, StableHasher, StableHasherResult,
+};
 use smallvec::SmallVec;
 use std::mem;
 use syntax::ast;
@@ -82,9 +84,9 @@ for hir::ItemLocalId {
     }
 }
 
-// The following implementations of HashStable for ItemId, TraitItemId, and
-// ImplItemId deserve special attention. Normally we do not hash NodeIds within
-// the HIR, since they just signify a HIR nodes own path. But ItemId et al
+// The following implementations of HashStable for `ItemId`, `TraitItemId`, and
+// `ImplItemId` deserve special attention. Normally we do not hash `NodeId`s within
+// the HIR, since they just signify a HIR nodes own path. But `ItemId` et al
 // are used when another item in the HIR is *referenced* and we certainly
 // want to pick up on a reference changing its target, so we hash the NodeIds
 // in "DefPath Mode".
@@ -130,7 +132,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
         })
     }
 }
-
 
 impl_stable_hash_for!(struct ast::Label {
     ident
@@ -241,7 +242,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
     }
 }
 
-impl_stable_hash_for!(enum ::syntax::ast::CrateSugar {
+impl_stable_hash_for!(enum ast::CrateSugar {
     JustCrate,
     PubCrate,
 });
@@ -365,8 +366,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::def_id::DefIndex {
     }
 }
 
-impl<'a> ToStableHashKey<StableHashingContext<'a>>
-for hir::def_id::DefIndex {
+impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::def_id::DefIndex {
     type KeyType = DefPathHash;
 
     #[inline]
