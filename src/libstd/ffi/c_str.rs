@@ -599,7 +599,11 @@ impl CString {
     /// ```
     #[stable(feature = "into_boxed_c_str", since = "1.20.0")]
     pub fn into_boxed_c_str(self) -> Box<CStr> {
-        unsafe { Box::from_raw(Box::into_raw(self.into_inner()) as *mut CStr) }
+        let ptr: *mut [u8] = Box::into_raw(self.into_inner());
+        // SAFETY: Casting away the length information is fine as `CStr`'s length computation works
+        // by counting the elements up to the first null. Since this `CString` must be null
+        // terminated, the `CStr` can properly compute its length
+        unsafe { Box::from_raw(ptr as *mut CStr) }
     }
 
     /// Bypass "move out of struct which implements [`Drop`] trait" restriction.
