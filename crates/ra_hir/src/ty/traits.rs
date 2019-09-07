@@ -96,6 +96,21 @@ pub struct TraitEnvironment {
     pub predicates: Vec<GenericPredicate>,
 }
 
+impl TraitEnvironment {
+    /// Returns trait refs with the given self type which are supposed to hold
+    /// in this trait env. E.g. if we are in `foo<T: SomeTrait>()`, this will
+    /// find that `T: SomeTrait` if we call it for `T`.
+    pub(crate) fn trait_predicates_for_self_ty<'a>(
+        &'a self,
+        ty: &'a Ty,
+    ) -> impl Iterator<Item = &'a TraitRef> + 'a {
+        self.predicates.iter().filter_map(move |pred| match pred {
+            GenericPredicate::Implemented(tr) if tr.self_ty() == ty => Some(tr),
+            _ => None,
+        })
+    }
+}
+
 /// Something (usually a goal), along with an environment.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct InEnvironment<T> {

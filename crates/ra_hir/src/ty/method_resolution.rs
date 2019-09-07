@@ -212,7 +212,13 @@ fn iterate_trait_method_candidates<T>(
     // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
     let env = lower::trait_env(db, resolver);
     // if ty is `impl Trait` or `dyn Trait`, the trait doesn't need to be in scope
-    let traits = ty.value.inherent_trait().into_iter().chain(resolver.traits_in_scope(db));
+    let inherent_trait = ty.value.inherent_trait().into_iter();
+    // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
+    let traits_from_env = env
+        .trait_predicates_for_self_ty(&ty.value)
+        .map(|tr| tr.trait_)
+        .flat_map(|t| t.all_super_traits(db));
+    let traits = inherent_trait.chain(traits_from_env).chain(resolver.traits_in_scope(db));
     'traits: for t in traits {
         let data = t.trait_data(db);
 

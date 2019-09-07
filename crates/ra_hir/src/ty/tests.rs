@@ -3660,8 +3660,7 @@ fn test<T: foo::Trait>(x: T) {
 }
 "#,
     );
-    // FIXME should be u32
-    assert_eq!(t, "{unknown}");
+    assert_eq!(t, "u32");
 }
 
 #[test]
@@ -3673,8 +3672,8 @@ mod foo {
         fn foo(&self) -> u32 {}
     }
 }
-trait Trait1: SuperTrait {}
-trait Trait2 where Self: SuperTrait {}
+trait Trait1: foo::SuperTrait {}
+trait Trait2 where Self: foo::SuperTrait {}
 
 fn test<T: Trait1, U: Trait2>(x: T, y: U) {
     x.foo();
@@ -3684,13 +3683,13 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
         @r###"
     [50; 54) 'self': &Self
     [63; 65) '{}': ()
-    [172; 173) 'x': T
-    [178; 179) 'y': U
-    [184; 213) '{     ...o(); }': ()
-    [190; 191) 'x': T
-    [190; 197) 'x.foo()': {unknown}
-    [203; 204) 'y': U
-    [203; 210) 'y.foo()': {unknown}
+    [182; 183) 'x': T
+    [188; 189) 'y': U
+    [194; 223) '{     ...o(); }': ()
+    [200; 201) 'x': T
+    [200; 207) 'x.foo()': {unknown}
+    [213; 214) 'y': U
+    [213; 220) 'y.foo()': {unknown}
     "###
     );
 }

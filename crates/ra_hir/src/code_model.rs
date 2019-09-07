@@ -847,16 +847,22 @@ impl Trait {
             .collect()
     }
 
-    /// Returns an iterator over the whole super trait hierarchy (not including
-    /// the trait itself). (This iterator may be infinite in case of circular
-    /// super trait dependencies, which are possible in malformed code.)
+    /// Returns an iterator over the whole super trait hierarchy (including the
+    /// trait itself).
     pub fn all_super_traits<'a>(
         self,
         db: &'a impl HirDatabase,
     ) -> impl Iterator<Item = Trait> + 'a {
-        self.direct_super_traits(db).into_iter().flat_map(move |t| {
+        self.all_super_traits_inner(db).unique()
+    }
+
+    fn all_super_traits_inner<'a>(
+        self,
+        db: &'a impl HirDatabase,
+    ) -> impl Iterator<Item = Trait> + 'a {
+        iter::once(self).chain(self.direct_super_traits(db).into_iter().flat_map(move |t| {
             iter::once(t).chain(Box::new(t.all_super_traits(db)) as Box<dyn Iterator<Item = Trait>>)
-        })
+        }))
     }
 
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
@@ -876,10 +882,7 @@ impl Trait {
         db: &impl HirDatabase,
         name: &Name,
     ) -> Option<TypeAlias> {
-        iter::once(self)
-            .chain(self.all_super_traits(db))
-            .unique()
-            .find_map(|t| t.associated_type_by_name(db, name))
+        self.all_super_traits(db).find_map(|t| t.associated_type_by_name(db, name))
     }
 
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
