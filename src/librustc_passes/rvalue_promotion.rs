@@ -503,7 +503,7 @@ fn check_expr_kind<'a, 'tcx>(
             // Compute the most demanding borrow from all the arms'
             // patterns and set that on the discriminator.
             let mut mut_borrow = false;
-            for pat in hirvec_arm.iter().flat_map(|arm| &arm.pats) {
+            for pat in hirvec_arm.iter().flat_map(|arm| arm.top_pats_hack()) {
                 mut_borrow = v.remove_mut_rvalue_borrow(pat);
             }
             if mut_borrow {

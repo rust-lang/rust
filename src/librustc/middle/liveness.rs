@@ -456,7 +456,7 @@ fn visit_local<'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local) {
 }
 
 fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm) {
-    for pat in &arm.pats {
+    for pat in arm.top_pats_hack() {
         add_from_pat(ir, pat);
     }
     intravisit::walk_arm(ir, arm);
@@ -1080,7 +1080,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     // the same bindings, and we also consider the first pattern to be
                     // the "authoritative" set of ids
                     let arm_succ =
-                        self.define_bindings_in_arm_pats(arm.pats.first().map(|p| &**p),
+                        self.define_bindings_in_arm_pats(arm.top_pats_hack().first().map(|p| &**p),
                                                          guard_succ);
                     self.merge_from_succ(ln, arm_succ, first_merge);
                     first_merge = false;
@@ -1422,7 +1422,7 @@ fn check_arm<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, arm: &'tcx hir::Arm) {
     // patterns so the suggestions to prefix with underscores will apply to those too.
     let mut vars: BTreeMap<String, (LiveNode, Variable, HirId, Vec<Span>)> = Default::default();
 
-    for pat in &arm.pats {
+    for pat in arm.top_pats_hack() {
         this.arm_pats_bindings(Some(&*pat), |this, ln, var, sp, id| {
             let name = this.ir.variable_name(var);
             vars.entry(name)

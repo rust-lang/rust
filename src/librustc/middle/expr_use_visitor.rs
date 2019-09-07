@@ -779,14 +779,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
     fn arm_move_mode(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm) -> TrackMatchMode {
         let mut mode = Unknown;
-        for pat in &arm.pats {
+        for pat in arm.top_pats_hack() {
             self.determine_pat_move_mode(discr_cmt.clone(), &pat, &mut mode);
         }
         mode
     }
 
     fn walk_arm(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &hir::Arm, mode: MatchMode) {
-        for pat in &arm.pats {
+        for pat in arm.top_pats_hack() {
             self.walk_pat(discr_cmt.clone(), &pat, mode);
         }
 

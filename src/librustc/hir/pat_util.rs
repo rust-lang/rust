@@ -170,7 +170,7 @@ impl hir::Arm {
         // for #42640 (default match binding modes).
         //
         // See #44848.
-        self.pats.iter()
+        self.top_pats_hack().iter()
                  .filter_map(|pat| pat.contains_explicit_ref_binding())
                  .max_by_key(|m| match *m {
                     hir::MutMutable => 1,

@@ -58,11 +58,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // collection into `Vec`), so we get types for all bindings.
         let all_arm_pats_diverge: Vec<_> = arms.iter().map(|arm| {
             let mut all_pats_diverge = Diverges::WarnedAlways;
-            for p in &arm.pats {
-                self.diverges.set(Diverges::Maybe);
-                self.check_pat_top(&p, discrim_ty, Some(discrim.span));
-                all_pats_diverge &= self.diverges.get();
-            }
+            self.diverges.set(Diverges::Maybe);
+            self.check_pat_top(&arm.pat, discrim_ty, Some(discrim.span));
+            all_pats_diverge &= self.diverges.get();
 
             // As discussed with @eddyb, this is for disabling unreachable_code
             // warnings on patterns (they're now subsumed by unreachable_patterns

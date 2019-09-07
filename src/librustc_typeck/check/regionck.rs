@@ -488,7 +488,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
         // see above
-        for p in &arm.pats {
+        for p in arm.top_pats_hack() {
             self.constrain_bindings_in_pat(p);
         }
         intravisit::walk_arm(self, arm);
@@ -1069,7 +1069,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let discr_cmt = Rc::new(ignore_err!(self.with_mc(|mc| mc.cat_expr(discr))));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
-            for root_pat in &arm.pats {
+            for root_pat in arm.top_pats_hack() {
                 self.link_pattern(discr_cmt.clone(), &root_pat);
             }
         }

@@ -137,7 +137,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
     ) {
         for arm in arms {
             // First, check legality of move bindings.
-            self.check_patterns(arm.guard.is_some(), &arm.pats);
+            self.check_patterns(arm.guard.is_some(), &arm.top_pats_hack());
 
             // Second, if there is a guard on each arm, make sure it isn't
             // assigning or borrowing anything mutably.
@@ -146,7 +146,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             }
 
             // Third, perform some lints.
-            for pat in &arm.pats {
+            for pat in arm.top_pats_hack() {
                 check_for_bindings_named_same_as_variants(self, pat);
             }
         }
@@ -156,7 +156,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
-                arm.pats.iter().map(|pat| {
+                arm.top_pats_hack().iter().map(|pat| {
                     let mut patcx = PatternContext::new(self.tcx,
                                                         self.param_env.and(self.identity_substs),
                                                         self.tables);
