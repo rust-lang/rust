@@ -240,7 +240,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, bool /* recovered */> {
         fn tokens_to_string(tokens: &[TokenType]) -> String {
             let mut i = tokens.iter();
-            // This might be a sign we need a connect method on Iterator.
+            // This might be a sign we need a connect method on `Iterator`.
             let b = i.next()
                      .map_or(String::new(), |t| t.to_string());
             i.enumerate().fold(b, |mut b, (i, a)| {
@@ -301,7 +301,7 @@ impl<'a> Parser<'a> {
             );
         }
         let sp = if self.token == token::Eof {
-            // This is EOF, don't want to point at the following char, but rather the last token
+            // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_span
         } else {
             label_sp
@@ -317,9 +317,9 @@ impl<'a> Parser<'a> {
         }
 
         let is_semi_suggestable = expected.iter().any(|t| match t {
-            TokenType::Token(token::Semi) => true, // we expect a `;` here
+            TokenType::Token(token::Semi) => true, // We expect a `;` here.
             _ => false,
-        }) && ( // a `;` would be expected before the current keyword
+        }) && ( // A `;` would be expected before the current keyword.
             self.token.is_keyword(kw::Break) ||
             self.token.is_keyword(kw::Continue) ||
             self.token.is_keyword(kw::For) ||
@@ -541,16 +541,16 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Produce an error if comparison operators are chained (RFC #558).
-    /// We only need to check lhs, not rhs, because all comparison ops
-    /// have same precedence and are left-associative
+    /// Produces an error if comparison operators are chained (RFC #558).
+    /// We only need to check the LHS, not the RHS, because all comparison ops
+    /// have same precedence and are left-associative.
     crate fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) -> PResult<'a, ()> {
         debug_assert!(outer_op.is_comparison(),
                       "check_no_chained_comparison: {:?} is not comparison",
                       outer_op);
         match lhs.node {
             ExprKind::Binary(op, _, _) if op.node.is_comparison() => {
-                // respan to include both operators
+                // Respan to include both operators.
                 let op_span = op.span.to(self.token.span);
                 let mut err = self.struct_span_err(
                     op_span,
@@ -691,9 +691,9 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Try to recover from associated item paths like `[T]::AssocItem`/`(T, U)::AssocItem`.
-    /// Attempt to convert the base expression/pattern/type into a type, parse the `::AssocItem`
-    /// tail, and combine them into a `<Ty>::AssocItem` expression/pattern/type.
+    /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
+    /// Attempts to convert the base expression/pattern/type into a type, parses the `::AssocItem`
+    /// tail, and combines them into a `<Ty>::AssocItem` expression/pattern/type.
     crate fn maybe_recover_from_bad_qpath<T: RecoverQPath>(
         &mut self,
         base: P<T>,
@@ -708,8 +708,8 @@ impl<'a> Parser<'a> {
         Ok(base)
     }
 
-    /// Given an already parsed `Ty` parse the `::AssocItem` tail and
-    /// combine them into a `<Ty>::AssocItem` expression/pattern/type.
+    /// Given an already parsed `Ty`, parses the `::AssocItem` tail and
+    /// combines them into a `<Ty>::AssocItem` expression/pattern/type.
     crate fn maybe_recover_from_bad_qpath_stage_2<T: RecoverQPath>(
         &mut self,
         ty_span: Span,
@@ -730,7 +730,7 @@ impl<'a> Parser<'a> {
         self.diagnostic()
             .struct_span_err(path.span, "missing angle brackets in associated item path")
             .span_suggestion(
-                // this is a best-effort recovery
+                // This is a best-effort recovery.
                 path.span,
                 "try",
                 format!("<{}>::{}", ty_str, path),
@@ -738,7 +738,7 @@ impl<'a> Parser<'a> {
             )
             .emit();
 
-        let path_span = ty_span.shrink_to_hi(); // use an empty path since `position` == 0
+        let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
         Ok(P(T::recovered(
             Some(QSelf {
                 ty,
@@ -761,8 +761,8 @@ impl<'a> Parser<'a> {
             if !items.is_empty() {
                 let previous_item = &items[items.len() - 1];
                 let previous_item_kind_name = match previous_item.node {
-                    // say "braced struct" because tuple-structs and
-                    // braceless-empty-struct declarations do take a semicolon
+                    // Say "braced struct" because tuple-structs and
+                    // braceless-empty-struct declarations do take a semicolon.
                     ItemKind::Struct(..) => Some("braced struct"),
                     ItemKind::Enum(..) => Some("enum"),
                     ItemKind::Trait(..) => Some("trait"),
@@ -783,7 +783,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Create a `DiagnosticBuilder` for an unexpected token `t` and try to recover if it is a
+    /// Creates a `DiagnosticBuilder` for an unexpected token `t` and tries to recover if it is a
     /// closing delimiter.
     pub fn unexpected_try_recover(
         &mut self,
@@ -841,7 +841,7 @@ impl<'a> Parser<'a> {
         extern_sp: Span,
     ) -> PResult<'a, ()> {
         if self.token != token::Semi {
-            // this might be an incorrect fn definition (#62109)
+            // This might be an incorrect fn definition (#62109).
             let parser_snapshot = self.clone();
             match self.parse_inner_attrs_and_block() {
                 Ok((_, body)) => {
@@ -871,7 +871,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Consume alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
+    /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
     crate fn parse_incorrect_await_syntax(
         &mut self,
@@ -924,7 +924,7 @@ impl<'a> Parser<'a> {
         sp
     }
 
-    /// If encountering `future.await()`, consume and emit error.
+    /// If encountering `future.await()`, consumes and emits an error.
     crate fn recover_from_await_method_call(&mut self) {
         if self.token == token::OpenDelim(token::Paren) &&
             self.look_ahead(1, |t| t == &token::CloseDelim(token::Paren))
@@ -944,7 +944,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Recover a situation like `for ( $pat in $expr )`
+    /// Recovers a situation like `for ( $pat in $expr )`
     /// and suggest writing `for $pat in $expr` instead.
     ///
     /// This should be called before parsing the `$block`.
@@ -1010,7 +1010,7 @@ impl<'a> Parser<'a> {
             Ok(x) => x,
             Err(mut err) => {
                 err.emit();
-                // recover from parse error
+                // Recover from parse error.
                 self.consume_block(delim);
                 self.mk_expr(lo.to(self.prev_span), ExprKind::Err, ThinVec::new())
             }
@@ -1023,7 +1023,7 @@ impl<'a> Parser<'a> {
         mut err: DiagnosticBuilder<'a>,
     ) -> PResult<'a, bool> {
         let mut pos = None;
-        // we want to use the last closing delim that would apply
+        // We want to use the last closing delim that would apply.
         for (i, unmatched) in self.unclosed_delims.iter().enumerate().rev() {
             if tokens.contains(&token::CloseDelim(unmatched.expected_delim))
                 && Some(self.token.span) > unmatched.unclosed_span
@@ -1041,7 +1041,7 @@ impl<'a> Parser<'a> {
                 let unmatched = self.unclosed_delims.remove(pos);
                 let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
 
-                 // We want to suggest the inclusion of the closing delimiter where it makes
+                // We want to suggest the inclusion of the closing delimiter where it makes
                 // the most sense, which is immediately after the last token:
                 //
                 //  {foo(bar {}}
@@ -1067,7 +1067,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Recover from `pub` keyword in places where it seems _reasonable_ but isn't valid.
+    /// Recovers from `pub` keyword in places where it seems _reasonable_ but isn't valid.
     crate fn eat_bad_pub(&mut self) {
         if self.token.is_keyword(kw::Pub) {
             match self.parse_visibility(false) {
@@ -1082,21 +1082,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // Eat tokens until we can be relatively sure we reached the end of the
-    // statement. This is something of a best-effort heuristic.
-    //
-    // We terminate when we find an unmatched `}` (without consuming it).
+    /// Eats tokens until we can be relatively sure we reached the end of the
+    /// statement. This is something of a best-effort heuristic.
+    ///
+    /// We terminate when we find an unmatched `}` (without consuming it).
     crate fn recover_stmt(&mut self) {
         self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore)
     }
 
-    // If `break_on_semi` is `Break`, then we will stop consuming tokens after
-    // finding (and consuming) a `;` outside of `{}` or `[]` (note that this is
-    // approximate - it can mean we break too early due to macros, but that
-    // should only lead to sub-optimal recovery, not inaccurate parsing).
-    //
-    // If `break_on_block` is `Break`, then we will stop consuming tokens
-    // after finding (and consuming) a brace-delimited block.
+    /// If `break_on_semi` is `Break`, then we will stop consuming tokens after
+    /// finding (and consuming) a `;` outside of `{}` or `[]` (note that this is
+    /// approximate -- it can mean we break too early due to macros, but that
+    /// should only lead to sub-optimal recovery, not inaccurate parsing).
+    ///
+    /// If `break_on_block` is `Break`, then we will stop consuming tokens
+    /// after finding (and consuming) a brace-delimited block.
     crate fn recover_stmt_(&mut self, break_on_semi: SemiColonMode, break_on_block: BlockMode) {
         let mut brace_depth = 0;
         let mut bracket_depth = 0;
