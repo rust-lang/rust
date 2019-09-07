@@ -18,7 +18,7 @@ use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{FloatTy, IntTy, LitIntType, LitKind, UintTy};
 use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
-use syntax::symbol::sym;
+use syntax::symbol::{sym, Symbol};
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
@@ -253,7 +253,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         );
                         return; // don't recurse into the type
                     }
-                } else if match_def_path(cx, def_id, &paths::VEC) {
+                } else if cx.tcx.is_diagnostic_item(Symbol::intern("vec_type"), def_id) {
                     if_chain! {
                         // Get the _ part of Vec<_>
                         if let Some(ref last) = last_path_segment(qpath).args;

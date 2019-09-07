@@ -1,7 +1,7 @@
 use crate::utils::ptr::get_spans;
 use crate::utils::{
     get_trait_def_id, implements_trait, is_copy, is_self, match_type, multispan_sugg, paths, snippet, snippet_opt,
-    span_lint_and_then,
+    span_lint_and_then, is_type_diagnostic_item,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -19,7 +19,7 @@ use rustc_target::spec::abi::Abi;
 use std::borrow::Cow;
 use syntax::ast::Attribute;
 use syntax::errors::DiagnosticBuilder;
-use syntax_pos::Span;
+use syntax_pos::{Span, Symbol};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for functions taking arguments by value, but not
@@ -221,7 +221,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                         let deref_span = spans_need_deref.get(&canonical_id);
                         if_chain! {
-                            if match_type(cx, ty, &paths::VEC);
+                            if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type"));
                             if let Some(clone_spans) =
                                 get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")]);
                             if let TyKind::Path(QPath::Resolved(_, ref path)) = input.node;

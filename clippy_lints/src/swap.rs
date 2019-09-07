@@ -1,6 +1,7 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq,
+    differing_macro_contexts, match_type, is_type_diagnostic_item, paths, snippet,
+    span_lint_and_then, walk_ptrs_ty, SpanlessEq,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -9,6 +10,7 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use syntax_pos::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for manual swapping.
@@ -107,7 +109,7 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
 
                                 if matches!(ty.sty, ty::Slice(_)) ||
                                     matches!(ty.sty, ty::Array(_, _)) ||
-                                    match_type(cx, ty, &paths::VEC) ||
+                                    is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) ||
                                     match_type(cx, ty, &paths::VEC_DEQUE) {
                                         return Some((lhs1, idx1, idx2));
                                 }

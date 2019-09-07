@@ -1,7 +1,8 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
 use crate::utils::ptr::get_spans;
-use crate::utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
+use crate::utils::{match_qpath, is_type_diagnostic_item, match_type, paths, snippet_opt, 
+                   span_lint, span_lint_and_then, walk_ptrs_hir_ty};
 use if_chain::if_chain;
 use rustc::hir::QPath;
 use rustc::hir::*;
@@ -11,7 +12,7 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::borrow::Cow;
 use syntax::source_map::Span;
-use syntax_pos::MultiSpan;
+use syntax_pos::{MultiSpan, Symbol};
 
 declare_clippy_lint! {
     /// **What it does:** This lint checks for function arguments of type `&String`
@@ -148,7 +149,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: HirId, opt_body_id: 
 
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
         if let ty::Ref(_, ty, MutImmutable) = ty.sty {
-            if match_type(cx, ty, &paths::VEC) {
+            if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) {
                 let mut ty_snippet = None;
                 if_chain! {
                     if let TyKind::Path(QPath::Resolved(_, ref path)) = walk_ptrs_hir_ty(arg).node;

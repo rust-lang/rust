@@ -11,7 +11,7 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
-use crate::utils::{sext, sugg};
+use crate::utils::{sext, sugg, is_type_diagnostic_item};
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;
@@ -23,7 +23,7 @@ use std::iter::{once, Iterator};
 use std::mem;
 use syntax::ast;
 use syntax::source_map::Span;
-use syntax_pos::BytePos;
+use syntax_pos::{BytePos, Symbol};
 
 use crate::utils::paths;
 use crate::utils::{
@@ -795,7 +795,7 @@ fn is_slice_like<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'_>) -> bool {
         _ => false,
     };
 
-    is_slice || match_type(cx, ty, &paths::VEC) || match_type(cx, ty, &paths::VEC_DEQUE)
+    is_slice || is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) || match_type(cx, ty, &paths::VEC_DEQUE)
 }
 
 fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> Option<FixedOffsetVar> {
@@ -1950,7 +1950,7 @@ fn is_ref_iterable_type(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
     // will allow further borrows afterwards
     let ty = cx.tables.expr_ty(e);
     is_iterable_array(ty, cx) ||
-    match_type(cx, ty, &paths::VEC) ||
+    is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
     match_type(cx, ty, &paths::HASHMAP) ||
     match_type(cx, ty, &paths::HASHSET) ||

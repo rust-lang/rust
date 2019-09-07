@@ -130,6 +130,14 @@ pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     }
 }
 
+/// Checks if the type is equal to a diagnostic item
+pub fn is_type_diagnostic_item(cx: &LateContext<'_, '_>, ty: Ty<'_>, diag_item: Symbol) -> bool {
+    match ty.sty {
+        ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(diag_item, adt.did),
+        _ => false,
+    }
+}
+
 /// Checks if the method call given in `expr` belongs to the given trait.
 pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) -> bool {
     let def_id = cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
