@@ -1,5 +1,7 @@
 //! lint on missing cargo common metadata
 
+use std::path::PathBuf;
+
 use crate::utils::span_lint;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -47,6 +49,10 @@ fn is_empty_str(value: &Option<String>) -> bool {
     value.as_ref().map_or(true, String::is_empty)
 }
 
+fn is_empty_path(value: &Option<PathBuf>) -> bool {
+    value.as_ref().and_then(|x| x.to_str()).map_or(true, str::is_empty)
+}
+
 fn is_empty_vec(value: &[String]) -> bool {
     // This works because empty iterators return true
     value.iter().all(std::string::String::is_empty)
@@ -72,8 +78,8 @@ impl EarlyLintPass for CargoCommonMetadata {
                 missing_warning(cx, &package, "package.description");
             }
 
-            if is_empty_str(&package.license) {
-                missing_warning(cx, &package, "package.license");
+            if is_empty_str(&package.license) && is_empty_path(&package.license_file) {
+                missing_warning(cx, &package, "either package.license or package.license_file");
             }
 
             if is_empty_str(&package.repository) {
