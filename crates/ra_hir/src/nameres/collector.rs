@@ -525,8 +525,10 @@ where
     fn collect(&mut self, items: &[raw::RawItem]) {
         // Prelude module is always considered to be `#[macro_use]`.
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
-            tested_by!(prelude_is_macro_use);
-            self.def_collector.import_all_macros_exported(prelude_module);
+            if prelude_module.krate != self.def_collector.def_map.krate {
+                tested_by!(prelude_is_macro_use);
+                self.def_collector.import_all_macros_exported(prelude_module);
+            }
         }
 
         // This should be processed eagerly instead of deferred to resolving.

@@ -248,3 +248,32 @@ fn prelude_is_macro_use() {
    ⋮Baz: t v
     "###);
 }
+
+#[test]
+fn prelude_cycle() {
+    let map = def_map(
+        "
+        //- /lib.rs
+        #[prelude_import]
+        use self::prelude::*;
+
+        declare_mod!();
+
+        mod prelude {
+            macro_rules! declare_mod {
+                () => (mod foo {})
+            }
+        }
+        ",
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮foo: t
+        ⋮prelude: t
+        ⋮
+        ⋮crate::prelude
+        ⋮declare_mod: m
+        ⋮
+        ⋮crate::foo
+    "###);
+}
