@@ -146,22 +146,19 @@ where
             self.def_map.exported_macros.insert(name.clone(), macro_id);
         }
         self.update(module_id, None, &[(name.clone(), def)]);
-        self.define_textual_macro(module_id, name.clone(), macro_id);
+        self.define_legacy_macro(module_id, name.clone(), macro_id);
     }
 
-    /// Define a macro in current textual scope.
+    /// Define a legacy textual scoped macro in module
     ///
-    /// We use a map `textual_macros` to store all textual macros visable per module.
-    /// It will clone all macros from parent textual scope, whose definition is prior to
+    /// We use a map `legacy_macros` to store all legacy textual scoped macros visable per module.
+    /// It will clone all macros from parent legacy scope, whose definition is prior to
     /// the definition of current module.
-    /// And also, `macro_use` on a module will import all textual macros visable inside to
-    /// current textual scope, with possible shadowing.
-    fn define_textual_macro(&mut self, module_id: CrateModuleId, name: Name, macro_id: MacroDefId) {
+    /// And also, `macro_use` on a module will import all legacy macros visable inside to
+    /// current legacy scope, with possible shadowing.
+    fn define_legacy_macro(&mut self, module_id: CrateModuleId, name: Name, macro_id: MacroDefId) {
         // Always shadowing
-        self.def_map.modules[module_id]
-            .scope
-            .textual_macros
-            .insert(name, MacroDef { id: macro_id });
+        self.def_map.modules[module_id].scope.legacy_macros.insert(name, MacroDef { id: macro_id });
     }
 
     /// Import macros from `#[macro_use] extern crate`.
@@ -194,7 +191,7 @@ where
     fn import_all_macros_exported(&mut self, current_module_id: CrateModuleId, module: Module) {
         let item_map = self.db.crate_def_map(module.krate);
         for (name, &macro_id) in &item_map.exported_macros {
-            self.define_textual_macro(current_module_id, name.clone(), macro_id);
+            self.define_legacy_macro(current_module_id, name.clone(), macro_id);
         }
     }
 
@@ -578,7 +575,7 @@ where
                 }
                 .collect(&*items);
                 if *is_macro_use {
-                    self.import_all_textual_macros(module_id);
+                    self.import_all_legacy_macros(module_id);
                 }
             }
             // out of line module, resolve, parse and recurse
@@ -605,7 +602,7 @@ where
                         }
                         .collect(raw_items.items());
                         if *is_macro_use {
-                            self.import_all_textual_macros(module_id);
+                            self.import_all_legacy_macros(module_id);
                         }
                     }
                     Err(candidate) => self.def_collector.def_map.diagnostics.push(
@@ -631,7 +628,7 @@ where
         modules[res].parent = Some(self.module_id);
         modules[res].declaration = Some(declaration);
         modules[res].definition = definition;
-        modules[res].scope.textual_macros = modules[self.module_id].scope.textual_macros.clone();
+        modules[res].scope.legacy_macros = modules[self.module_id].scope.legacy_macros.clone();
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
             def: PerNs::types(
@@ -685,10 +682,10 @@ where
 
         let ast_id = mac.ast_id.with_file_id(self.file_id);
 
-        // Case 2: try to resolve in textual scope and expand macro_rules, triggering
+        // Case 2: try to resolve in legacy scope and expand macro_rules, triggering
         // recursive item collection.
         if let Some(macro_def) = mac.path.as_ident().and_then(|name| {
-            self.def_collector.def_map[self.module_id].scope.get_textual_macro(&name)
+            self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
         }) {
             let def = macro_def.id;
             let macro_call_id = MacroCallLoc { def, ast_id }.id(self.def_collector.db);
@@ -706,10 +703,10 @@ where
         self.def_collector.unexpanded_macros.push((self.module_id, ast_id, path));
     }
 
-    fn import_all_textual_macros(&mut self, module_id: CrateModuleId) {
-        let macros = self.def_collector.def_map[module_id].scope.textual_macros.clone();
+    fn import_all_legacy_macros(&mut self, module_id: CrateModuleId) {
+        let macros = self.def_collector.def_map[module_id].scope.legacy_macros.clone();
         for (name, macro_) in macros {
-            self.def_collector.define_textual_macro(self.module_id, name.clone(), macro_.id);
+            self.def_collector.define_legacy_macro(self.module_id, name.clone(), macro_.id);
         }
     }
 }

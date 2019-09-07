@@ -279,7 +279,7 @@ fn prelude_cycle() {
 }
 
 #[test]
-fn plain_macros_are_textual_scoped() {
+fn plain_macros_are_legacy_textual_scoped() {
     let map = def_map(
         r#"
         //- /main.rs

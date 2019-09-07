@@ -2804,7 +2804,7 @@ fn main() {
 }
 
 #[test]
-fn infer_textual_scoped_macros_expanded() {
+fn infer_legacy_textual_scoped_macros_expanded() {
     assert_snapshot!(
         infer(r#"
 struct Foo(Vec<i32>);
