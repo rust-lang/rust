@@ -612,9 +612,6 @@ impl Handler {
         db.set_span(sp);
         db
     }
-    pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.span_bug(sp, &format!("unimplemented {}", msg));
-    }
     pub fn failure(&self, msg: &str) {
         DiagnosticBuilder::new(self, FailureNote, msg).emit()
     }
@@ -647,9 +644,6 @@ impl Handler {
         let mut db = DiagnosticBuilder::new(self, Bug, msg);
         db.emit();
         panic!(ExplicitBug);
-    }
-    pub fn unimpl(&self, msg: &str) -> ! {
-        self.bug(&format!("unimplemented {}", msg));
     }
 
     fn bump_err_count(&self) {

@@ -365,12 +365,6 @@ impl Session {
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
-    pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_unimpl(sp, msg)
-    }
-    pub fn unimpl(&self, msg: &str) -> ! {
-        self.diagnostic().unimpl(msg)
-    }
 
     pub fn buffer_lint<S: Into<MultiSpan>>(
         &self,
