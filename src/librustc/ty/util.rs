@@ -996,6 +996,24 @@ impl<'tcx> ty::TyS<'tcx> {
         debug!("is_type_representable: {:?} is {:?}", self, r);
         r
     }
+
+    /// Peel off all reference types in this type until there are none left.
+    ///
+    /// This method is idempotent, i.e. `ty.peel_refs().peel_refs() == ty.peel_refs()`.
+    ///
+    /// # Examples
+    ///
+    /// - `u8` -> `u8`
+    /// - `&'a mut u8` -> `u8`
+    /// - `&'a &'b u8` -> `u8`
+    /// - `&'a *const &'b u8 -> *const &'b u8`
+    pub fn peel_refs(&'tcx self) -> Ty<'tcx> {
+        let mut ty = self;
+        while let Ref(_, inner_ty, _) = ty.sty {
+            ty = inner_ty;
+        }
+        ty
+    }
 }
 
 fn is_copy_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
