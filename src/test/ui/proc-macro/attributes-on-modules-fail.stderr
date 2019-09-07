@@ -1,12 +1,3 @@
-error[E0658]: custom attributes cannot be applied to modules
-  --> $DIR/attributes-on-modules-fail.rs:6:1
-   |
-LL | #[identity_attr]
-   | ^^^^^^^^^^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
-   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
-
 error: `derive` may only be applied to structs, enums and unions
   --> $DIR/attributes-on-modules-fail.rs:16:1
    |
@@ -31,11 +22,20 @@ LL |     mod inner;
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
 
-error[E0658]: custom attributes cannot be applied to modules
-  --> $DIR/attributes-on-modules-fail.rs:22:1
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/attributes-on-modules-fail.rs:33:9
    |
-LL | #[empty_attr]
-   | ^^^^^^^^^^^^^
+LL |         mod inner;
+   |         ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/attributes-on-modules-fail.rs:42:5
+   |
+LL |     mod inner;
+   |     ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable

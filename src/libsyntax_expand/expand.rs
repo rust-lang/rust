@@ -717,13 +717,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
         let kind = match item {
-            Annotatable::Item(item) => match &item.kind {
-                ItemKind::Mod(m) if m.inline => "modules",
-                _ => return,
-            },
-            Annotatable::TraitItem(_) | Annotatable::ImplItem(_) | Annotatable::ForeignItem(_) => {
-                return;
-            }
+            Annotatable::Item(_)
+            | Annotatable::TraitItem(_)
+            | Annotatable::ImplItem(_)
+            | Annotatable::ForeignItem(_) => return,
             Annotatable::Stmt(_) => "statements",
             Annotatable::Expr(_) => "expressions",
             Annotatable::Arm(..)
