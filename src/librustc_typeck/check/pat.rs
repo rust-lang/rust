@@ -1098,22 +1098,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn error_scrutinee_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {
         struct_span_err!(
-            self.tcx.sess, span, E0527,
-            "pattern requires {} elements but array has {}",
-            min_len, size
+            self.tcx.sess,
+            span,
+            E0527,
+            "pattern requires {} element{} but array has {}",
+            min_len,
+            if min_len != 1 { "s" } else { "" },
+            size,
         )
-        .span_label(span, format!("expected {} elements", size))
+        .span_label(span, format!("expected {} element{}", size, if size != 1 { "s" } else { "" }))
         .emit();
     }
 
     fn error_scrutinee_with_rest_inconsistent_length(&self, span: Span, min_len: u64, size: u64) {
         struct_span_err!(
-            self.tcx.sess, span, E0528,
-            "pattern requires at least {} elements but array has {}",
-            min_len, size
-        )
-        .span_label(span, format!("pattern cannot match array of {} elements", size))
-        .emit();
+            self.tcx.sess,
+            span,
+            E0528,
+            "pattern requires at least {} element{} but array has {}",
+            min_len,
+            if min_len != 1 { "s" } else { "" },
+            size,
+        ).span_label(
+            span,
+            format!(
+                "pattern cannot match array of {} element{}",
+                size,
+                if size != 1 { "s" } else { "" },
+            ),
+        ).emit();
     }
 
     fn error_scrutinee_unfixed_length(&self, span: Span) {
