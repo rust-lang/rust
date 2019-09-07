@@ -119,17 +119,18 @@ fn main() {
         cmd.arg(format!("-Cdebuginfo={}", debuginfo_level));
     }
 
-    if env::var_os("RUSTC_DENY_WARNINGS").is_some() &&
-       env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
+    if env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
         // When extending this list, add the new lints to the RUSTFLAGS of the
         // build_bootstrap function of src/bootstrap/bootstrap.py as well as
         // some code doesn't go through this `rustc` wrapper.
-        cmd.arg("-Dwarnings");
-        cmd.arg("-Drust_2018_idioms");
-        cmd.arg("-Dunused_lifetimes");
+        cmd.arg("-Wrust_2018_idioms");
+        cmd.arg("-Wunused_lifetimes");
         if use_internal_lints(crate_name) {
             cmd.arg("-Zunstable-options");
-            cmd.arg("-Drustc::internal");
+            cmd.arg("-Wrustc::internal");
+        }
+        if env::var_os("RUSTC_DENY_WARNINGS").is_some() {
+            cmd.arg("-Dwarnings");
         }
     }
 
