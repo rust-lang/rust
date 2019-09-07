@@ -17,5 +17,8 @@ pub fn mini_macro(_: TokenStream) -> TokenStream {
                 println!("{}", items[i]);
             }
         }
+        fn line_wrapper() {
+            println!("{}", line!());
+        }
     )
 }
