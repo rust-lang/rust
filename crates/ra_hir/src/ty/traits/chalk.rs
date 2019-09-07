@@ -314,7 +314,8 @@ impl ToChalk for Arc<super::TraitEnvironment> {
                 // for env, we just ignore errors
                 continue;
             }
-            clauses.push(pred.clone().to_chalk(db).cast());
+            let program_clause: chalk_ir::ProgramClause = pred.clone().to_chalk(db).cast();
+            clauses.push(program_clause.into_from_env_clause());
         }
         chalk_ir::Environment::new().add_clauses(clauses)
     }
