@@ -1,9 +1,11 @@
 //! List of the active feature gates.
 
+use super::{State, Feature};
+
 use crate::edition::Edition;
 use crate::symbol::{Symbol, sym};
+
 use syntax_pos::Span;
-use super::{State, Feature};
 
 macro_rules! set {
     ($field: ident) => {{
@@ -37,9 +39,9 @@ macro_rules! declare_features {
         /// A set of features to be used by later passes.
         #[derive(Clone)]
         pub struct Features {
-            /// `#![feature]` attrs for language features, for error reporting
+            /// `#![feature]` attrs for language features, for error reporting.
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
-            /// `#![feature]` attrs for non-language (library) features
+            /// `#![feature]` attrs for non-language (library) features.
             pub declared_lib_features: Vec<(Symbol, Span)>,
             $(
                 $(#[doc = $doc])*
@@ -66,11 +68,11 @@ macro_rules! declare_features {
 }
 
 impl Feature {
-    /// Set this feature in `Features`. Panics if called on a non-active feature.
+    /// Sets this feature in `Features`. Panics if called on a non-active feature.
     pub fn set(&self, features: &mut Features, span: Span) {
         match self.state {
             State::Active { set } => set(features, span),
-            _ => panic!("Called `set` on feature `{}` which is not `active`", self.name)
+            _ => panic!("called `set` on feature `{}` which is not `active`", self.name)
         }
     }
 }
@@ -119,12 +121,6 @@ declare_features! (
     /// below (it has to be checked before expansion possibly makes
     /// macros disappear).
     (active, allow_internal_unsafe, "1.0.0", None, None),
-
-    /// Allows using the macros:
-    /// + `__diagnostic_used`
-    /// + `__register_diagnostic`
-    /// +`__build_diagnostic_array`
-    (active, rustc_diagnostic_macros, "1.0.0", None, None),
 
     /// Allows using `#[rustc_const_unstable(feature = "foo", ..)]` which
     /// lets a function to be `const` when opted into with `#![feature(foo)]`.
@@ -478,7 +474,7 @@ declare_features! (
     (active, precise_pointer_size_matching, "1.32.0", Some(56354), None),
 
     /// Allows relaxing the coherence rules such that
-    /// `impl<T> ForeignTrait<LocalType> for ForeignType<T> is permitted.
+    /// `impl<T> ForeignTrait<LocalType> for ForeignType<T>` is permitted.
     (active, re_rebalance_coherence, "1.32.0", Some(55437), None),
 
     /// Allows using `#[ffi_returns_twice]` on foreign functions.
@@ -520,7 +516,7 @@ declare_features! (
     /// Allows `async || body` closures.
     (active, async_closure, "1.37.0", Some(62290), None),
 
-    /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests
+    /// Allows the use of `#[cfg(doctest)]`; set when rustdoc is collecting doctests.
     (active, cfg_doctest, "1.37.0", Some(62210), None),
 
     /// Allows `[x; N]` where `x` is a constant (RFC 2203).
@@ -529,7 +525,7 @@ declare_features! (
     /// Allows `impl Trait` to be used inside type aliases (RFC 2515).
     (active, type_alias_impl_trait, "1.38.0", Some(63063), None),
 
-    /// Allows the use of or-patterns, e.g. `0 | 1`.
+    /// Allows the use of or-patterns (e.g., `0 | 1`).
     (active, or_patterns, "1.38.0", Some(54883), None),
 
     // -------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-/// This module provides linkage between rustc::middle::graph and
+/// This module provides linkage between `rustc::middle::graph` and
 /// libgraphviz traits.
 
 use crate::cfg;
@@ -12,7 +12,7 @@ pub struct LabelledCFG<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub cfg: &'a cfg::CFG,
     pub name: String,
-    /// `labelled_edges` controls whether we emit labels on the edges
+    /// `labelled_edges` controls whether we emit labels on the edges.
     pub labelled_edges: bool,
 }
 
@@ -25,12 +25,12 @@ impl<'a, 'tcx> LabelledCFG<'a, 'tcx> {
         };
         let s = self.tcx.hir().node_to_string(hir_id);
 
-        // Replacing newlines with \\l causes each line to be left-aligned,
+        // Replacing newlines with `\\l` causes each line to be left-aligned,
         // improving presentation of (long) pretty-printed expressions.
         if s.contains("\n") {
             let mut s = s.replace("\n", "\\l");
             // Apparently left-alignment applies to the line that precedes
-            // \l, not the line that follows; so, add \l at end of string
+            // `\l`, not the line that follows; so, add `\l` at end of string
             // if not already present, ensuring last line gets left-aligned
             // as well.
             let mut last_two: Vec<_> =
@@ -109,8 +109,7 @@ impl<'a> dot::GraphWalk<'a> for &'a cfg::CFG {
     }
 }
 
-impl<'a, 'hir> dot::GraphWalk<'a> for LabelledCFG<'a, 'hir>
-{
+impl<'a, 'hir> dot::GraphWalk<'a> for LabelledCFG<'a, 'hir> {
     type Node = Node<'a>;
     type Edge = Edge<'a>;
     fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> { self.cfg.nodes() }

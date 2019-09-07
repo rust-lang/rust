@@ -27,7 +27,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Cache {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _: &mut StableHashingContext<'a>,
                                           _: &mut StableHasher<W>) {
-        // do nothing
+        // Do nothing.
     }
 }
 

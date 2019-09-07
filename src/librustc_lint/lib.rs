@@ -15,7 +15,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 

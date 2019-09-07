@@ -79,12 +79,12 @@ pub struct Session {
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (PathBuf, bool),
 
-    // FIXME: lint_store and buffered_lints are not thread-safe,
-    // but are only used in a single thread
+    // FIXME: `lint_store` and `buffered_lints` are not thread-safe,
+    // but are only used in a single thread.
     pub lint_store: RwLock<lint::LintStore>,
     pub buffered_lints: Lock<Option<lint::LintBuffer>>,
 
-    /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
+    /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
@@ -92,11 +92,11 @@ pub struct Session {
     pub plugin_attributes: Lock<Vec<(Symbol, AttributeType)>>,
     pub crate_types: Once<Vec<config::CrateType>>,
     pub dependency_formats: Once<dependency_format::Dependencies>,
-    /// The crate_disambiguator is constructed out of all the `-C metadata`
+    /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
-    /// rustc_codegen_llvm::back::symbol_names module for more information.
+    /// `rustc_codegen_llvm::back::symbol_names` module for more information.
     pub crate_disambiguator: Once<CrateDisambiguator>,
 
     features: Once<feature_gate::Features>,
@@ -111,7 +111,7 @@ pub struct Session {
     /// The maximum number of stackframes allowed in const eval.
     pub const_eval_stack_frame_limit: usize,
 
-    /// The metadata::creader module may inject an allocator/panic_runtime
+    /// The `metadata::creader` module may inject an allocator/`panic_runtime`
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
     pub allocator_kind: Once<Option<AllocatorKind>>,
@@ -130,7 +130,7 @@ pub struct Session {
     /// Used by `-Z profile-queries` in `util::common`.
     pub profile_channel: Lock<Option<mpsc::Sender<ProfileQueriesMsg>>>,
 
-    /// Used by -Z self-profile
+    /// Used by `-Z self-profile`.
     pub self_profiling: Option<Arc<SelfProfiler>>,
 
     /// Some measurements that are being gathered during compilation.
@@ -187,16 +187,16 @@ pub struct PerfStats {
     pub normalize_projection_ty: AtomicUsize,
 }
 
-/// Enum to support dispatch of one-time diagnostics (in Session.diag_once)
+/// Enum to support dispatch of one-time diagnostics (in `Session.diag_once`).
 enum DiagnosticBuilderMethod {
     Note,
     SpanNote,
     SpanSuggestion(String), // suggestion
-                            // add more variants as needed to support one-time diagnostics
+                            // Add more variants as needed to support one-time diagnostics.
 }
 
-/// Diagnostic message ID—used by `Session.one_time_diagnostics` to avoid
-/// emitting the same message more than once
+/// Diagnostic message ID, used by `Session.one_time_diagnostics` to avoid
+/// emitting the same message more than once.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticMessageId {
     ErrorId(u16), // EXXXX error code as integer
@@ -408,7 +408,7 @@ impl Session {
             Some(next) => {
                 self.next_node_id.set(ast::NodeId::from_usize(next));
             }
-            None => bug!("Input too large, ran out of node ids!"),
+            None => bug!("input too large; ran out of node-IDs!"),
         }
 
         id
@@ -440,11 +440,11 @@ impl Session {
                     diag_builder.note(message);
                 }
                 DiagnosticBuilderMethod::SpanNote => {
-                    let span = span_maybe.expect("span_note needs a span");
+                    let span = span_maybe.expect("`span_note` needs a span");
                     diag_builder.span_note(span, message);
                 }
                 DiagnosticBuilderMethod::SpanSuggestion(suggestion) => {
-                    let span = span_maybe.expect("span_suggestion_* needs a span");
+                    let span = span_maybe.expect("`span_suggestion_*` needs a span");
                     diag_builder.span_suggestion(
                         span,
                         message,
@@ -688,7 +688,7 @@ impl Session {
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
         // "mcount" function relies on stack pointer.
-        // See https://sourceware.org/binutils/docs/gprof/Implementation.html
+        // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
         if self.instrument_mcount() {
             true
         } else if let Some(x) = self.opts.cg.force_frame_pointers {
@@ -699,7 +699,7 @@ impl Session {
     }
 
     /// Returns the symbol name for the registrar function,
-    /// given the crate Svh and the function DefIndex.
+    /// given the crate `Svh` and the function `DefIndex`.
     pub fn generate_plugin_registrar_symbol(&self, disambiguator: CrateDisambiguator) -> String {
         format!(
             "__rustc_plugin_registrar_{}__",
@@ -719,7 +719,7 @@ impl Session {
             &self.sysroot,
             self.opts.target_triple.triple(),
             &self.opts.search_paths,
-            // target_tlib_path==None means it's the same as host_tlib_path.
+            // `target_tlib_path == None` means it's the same as `host_tlib_path`.
             self.target_tlib_path.as_ref().unwrap_or(&self.host_tlib_path),
             kind,
         )
@@ -779,12 +779,12 @@ impl Session {
         if let IncrCompSession::Active { .. } = *incr_comp_session {
         } else {
             bug!(
-                "Trying to finalize IncrCompSession `{:?}`",
+                "trying to finalize `IncrCompSession` `{:?}`",
                 *incr_comp_session
-            )
+            );
         }
 
-        // Note: This will also drop the lock file, thus unlocking the directory
+        // Note: this will also drop the lock file, thus unlocking the directory.
         *incr_comp_session = IncrCompSession::Finalized {
             session_directory: new_directory_path,
         };
@@ -800,13 +800,15 @@ impl Session {
             } => session_directory.clone(),
             IncrCompSession::InvalidBecauseOfErrors { .. } => return,
             _ => bug!(
-                "Trying to invalidate IncrCompSession `{:?}`",
+                "trying to invalidate `IncrCompSession` `{:?}`",
                 *incr_comp_session
             ),
         };
 
-        // Note: This will also drop the lock file, thus unlocking the directory
-        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
+        // Note: this will also drop the lock file, thus unlocking the directory.
+        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors {
+            session_directory,
+        };
     }
 
     pub fn incr_comp_session_dir(&self) -> cell::Ref<'_, PathBuf> {
@@ -815,8 +817,8 @@ impl Session {
             incr_comp_session,
             |incr_comp_session| match *incr_comp_session {
                 IncrCompSession::NotInitialized => bug!(
-                    "Trying to get session directory from IncrCompSession `{:?}`",
-                    *incr_comp_session
+                    "trying to get session directory from `IncrCompSession`: {:?}",
+                    *incr_comp_session,
                 ),
                 IncrCompSession::Active {
                     ref session_directory,
@@ -1185,7 +1187,10 @@ fn build_session_(
     );
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);
 
-    let p_s = parse::ParseSess::with_span_handler(span_diagnostic, source_map);
+    let parse_sess = parse::ParseSess::with_span_handler(
+        span_diagnostic,
+        source_map,
+    );
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
         None => filesearch::get_or_default_sysroot(),
@@ -1214,7 +1219,7 @@ fn build_session_(
     let print_fuel = AtomicU64::new(0);
 
     let working_dir = env::current_dir().unwrap_or_else(|e|
-        p_s.span_diagnostic
+        parse_sess.span_diagnostic
             .fatal(&format!("Current directory is invalid: {}", e))
             .raise()
     );
@@ -1232,7 +1237,7 @@ fn build_session_(
         opts: sopts,
         host_tlib_path,
         target_tlib_path,
-        parse_sess: p_s,
+        parse_sess,
         sysroot,
         local_crate_source_file,
         working_dir,

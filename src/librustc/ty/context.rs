@@ -7,7 +7,7 @@ use crate::session::Session;
 use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
 use crate::middle;
-use crate::hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
+use crate::hir::{self, TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
 use crate::hir::def::{Res, DefKind, Export};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use crate::hir::map as hir_map;
@@ -45,15 +45,16 @@ use crate::ty::CanonicalPolyFnSig;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
+
 use errors::DiagnosticBuilder;
-use smallvec::SmallVec;
-use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
-                                           StableHasher, StableHasherResult,
-                                           StableVec};
 use arena::SyncDroplessArena;
+use smallvec::SmallVec;
+use rustc_data_structures::stable_hasher::{
+    HashStable, StableHasher, StableHasherResult, StableVec, hash_stable_hashmap,
+};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -74,8 +75,6 @@ use syntax::feature_gate;
 use syntax::symbol::{Symbol, InternedString, kw, sym};
 use syntax_pos::Span;
 
-use crate::hir;
-
 pub struct AllArenas {
     pub interner: SyncDroplessArena,
 }
@@ -91,10 +90,10 @@ impl AllArenas {
 type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
-    /// The arena that types, regions, etc are allocated from
+    /// The arena that types, regions, etc. are allocated from.
     arena: &'tcx SyncDroplessArena,
 
-    /// Specifically use a speedy hash algorithm for these hash sets,
+    /// Specifically use a speedy hash algorithm for these hash sets, since
     /// they're accessed quite often.
     type_: InternedSet<'tcx, TyS<'tcx>>,
     type_list: InternedSet<'tcx, List<Ty<'tcx>>>,
@@ -129,7 +128,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         }
     }
 
-    /// Intern a type
+    /// Interns a type.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
     fn intern_ty(&self,
@@ -143,7 +142,6 @@ impl<'tcx> CtxtInterners<'tcx> {
                 flags: flags.flags,
                 outer_exclusive_binder: flags.outer_exclusive_binder,
             };
-
 
             Interned(self.arena.alloc(ty_struct))
         }).0
@@ -1025,7 +1023,7 @@ pub struct GlobalCtxt<'tcx> {
 
     hir_map: hir_map::Map<'tcx>,
 
-    /// A map from DefPathHash -> DefId. Includes DefIds from the local crate
+    /// A map from `DefPathHash` -> `DefId`. Includes `DefId`s from the local crate
     /// as well as all upstream crates. Only populated in incremental mode.
     pub def_path_hash_to_def_id: Option<FxHashMap<DefPathHash, DefId>>,
 
@@ -1124,9 +1122,9 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    /// Allocates a byte or string literal for `mir::interpret`, read-only
+    /// Allocates a read-only byte or string literal for `mir::interpret`.
     pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
-        // create an allocation that just contains these bytes
+        // Create an allocation that just contains these bytes.
         let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes);
         let alloc = self.intern_const_alloc(alloc);
         self.alloc_map.lock().create_memory_alloc(alloc)
@@ -1346,7 +1344,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Converts a `DefId` into its fully expanded `DefPath` (every
-    /// `DefId` is really just an interned def-path).
+    /// `DefId` is really just an interned `DefPath`).
     ///
     /// Note that if `id` is not local to this crate, the result will
     ///  be a non-local `DefPath`.
@@ -1402,6 +1400,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.cstore.metadata_encoding_version().to_vec()
     }
 
+    pub fn encode_metadata(self)-> EncodedMetadata {
+        self.cstore.encode_metadata(self)
+    }
+
     // Note that this is *untracked* and should only be used within the query
     // system if the result is otherwise tracked through queries
     pub fn crate_data_as_rc_any(self, cnum: CrateNum) -> Lrc<dyn Any> {
@@ -1446,25 +1448,25 @@ impl<'tcx> TyCtxt<'tcx> {
         self.queries.on_disk_cache.serialize(self.global_tcx(), encoder)
     }
 
-    /// If true, we should use the AST-based borrowck (we may *also* use
+    /// If `true`, we should use the AST-based borrowck (we may *also* use
     /// the MIR-based borrowck).
     pub fn use_ast_borrowck(self) -> bool {
         self.borrowck_mode().use_ast()
     }
 
-    /// If true, we should use the MIR-based borrow check, but also
-    /// fall back on the AST borrow check if the MIR-based one errors.
+    /// If `true`, we should use the MIR-based borrowck, but also
+    /// fall back on the AST borrowck if the MIR-based one errors.
     pub fn migrate_borrowck(self) -> bool {
         self.borrowck_mode().migrate()
     }
 
-    /// If true, make MIR codegen for `match` emit a temp that holds a
+    /// If `true`, make MIR codegen for `match` emit a temp that holds a
     /// borrow of the input to the match expression.
     pub fn generate_borrow_of_any_match_input(&self) -> bool {
         self.emit_read_for_match()
     }
 
-    /// If true, make MIR codegen for `match` emit FakeRead
+    /// If `true`, make MIR codegen for `match` emit FakeRead
     /// statements (which simulate the maximal effect of executing the
     /// patterns in a match arm).
     pub fn emit_read_for_match(&self) -> bool {
@@ -1517,7 +1519,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    // This method returns the DefId and the BoundRegion corresponding to the given region.
+    // Returns the `DefId` and the `BoundRegion` corresponding to the given region.
     pub fn is_suitable_region(&self, region: Region<'tcx>) -> Option<FreeRegionInfo> {
         let (suitable_region_binding_scope, bound_region) = match *region {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
@@ -1550,18 +1552,18 @@ impl<'tcx> TyCtxt<'tcx> {
         &self,
         scope_def_id: DefId,
     ) -> Option<Ty<'tcx>> {
-        // HACK: `type_of_def_id()` will fail on these (#55796), so return None
+        // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
         let hir_id = self.hir().as_local_hir_id(scope_def_id).unwrap();
         match self.hir().get(hir_id) {
             Node::Item(item) => {
                 match item.node {
-                    ItemKind::Fn(..) => { /* type_of_def_id() will work */ }
+                    ItemKind::Fn(..) => { /* `type_of_def_id()` will work */ }
                     _ => {
                         return None;
                     }
                 }
             }
-            _ => { /* type_of_def_id() will work or panic */ }
+            _ => { /* `type_of_def_id()` will work or panic */ }
         }
 
         let ret_ty = self.type_of(scope_def_id);
@@ -1579,7 +1581,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    // Here we check if the bound region is in Impl Item.
+    // Checks if the bound region is in Impl Item.
     pub fn is_bound_region_in_impl_item(
         &self,
         suitable_region_binding_scope: DefId,
@@ -1599,23 +1601,15 @@ impl<'tcx> TyCtxt<'tcx> {
         false
     }
 
-    /// Determine whether identifiers in the assembly have strict naming rules.
+    /// Determines whether identifiers in the assembly have strict naming rules.
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(&self) -> bool {
-        self.gcx.sess.target.target.arch.contains("nvptx")
-    }
-}
-
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn encode_metadata(self)
-        -> EncodedMetadata
-    {
-        self.cstore.encode_metadata(self)
+        self.sess.target.target.arch.contains("nvptx")
     }
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
-    /// Call the closure with a local `TyCtxt` using the given arena.
+    /// Calls the closure with a local `TyCtxt` using the given arena.
     /// `interners` is a slot passed so we can create a CtxtInterners
     /// with the same lifetime as `arena`.
     pub fn enter_local<F, R>(&'tcx self, f: F) -> R
@@ -1651,7 +1645,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
 /// It would be more efficient if `TypedArena` provided a way to
 /// determine whether the address is in the allocated range.
 ///
-/// None is returned if the value or one of the components is not part
+/// `None` is returned if the value or one of the components is not part
 /// of the provided context.
 /// For `Ty`, `None` can be returned if either the type interner doesn't
 /// contain the `TyKind` key or if the address of the interned
@@ -1661,7 +1655,6 @@ pub trait Lift<'tcx>: fmt::Debug {
     type Lifted: fmt::Debug + 'tcx;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted>;
 }
-
 
 macro_rules! nop_lift {
     ($ty:ty => $lifted:ty) => {
@@ -1709,7 +1702,7 @@ nop_list_lift!{Predicate<'a> => Predicate<'tcx>}
 nop_list_lift!{CanonicalVarInfo => CanonicalVarInfo}
 nop_list_lift!{ProjectionKind => ProjectionKind}
 
-// this is the impl for `&'a InternalSubsts<'a>`
+// This is the impl for `&'a InternalSubsts<'a>`.
 nop_list_lift!{Kind<'a> => Kind<'tcx>}
 
 pub mod tls {
@@ -1732,43 +1725,43 @@ pub mod tls {
     use rustc_rayon_core as rayon_core;
 
     /// This is the implicit state of rustc. It contains the current
-    /// TyCtxt and query. It is updated when creating a local interner or
-    /// executing a new query. Whenever there's a TyCtxt value available
-    /// you should also have access to an ImplicitCtxt through the functions
+    /// `TyCtxt` and query. It is updated when creating a local interner or
+    /// executing a new query. Whenever there's a `TyCtxt` value available
+    /// you should also have access to an `ImplicitCtxt` through the functions
     /// in this module.
     #[derive(Clone)]
     pub struct ImplicitCtxt<'a, 'tcx> {
-        /// The current TyCtxt. Initially created by `enter_global` and updated
-        /// by `enter_local` with a new local interner
+        /// The current `TyCtxt`. Initially created by `enter_global` and updated
+        /// by `enter_local` with a new local interner.
         pub tcx: TyCtxt<'tcx>,
 
-        /// The current query job, if any. This is updated by JobOwner::start in
-        /// ty::query::plumbing when executing a query
+        /// The current query job, if any. This is updated by `JobOwner::start` in
+        /// `ty::query::plumbing` when executing a query.
         pub query: Option<Lrc<query::QueryJob<'tcx>>>,
 
         /// Where to store diagnostics for the current query job, if any.
-        /// This is updated by JobOwner::start in ty::query::plumbing when executing a query
+        /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
         pub diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
 
         /// Used to prevent layout from recursing too deeply.
         pub layout_depth: usize,
 
         /// The current dep graph task. This is used to add dependencies to queries
-        /// when executing them
+        /// when executing them.
         pub task_deps: Option<&'a Lock<TaskDeps>>,
     }
 
-    /// Sets Rayon's thread local variable which is preserved for Rayon jobs
+    /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
     /// to `value` during the call to `f`. It is restored to its previous value after.
-    /// This is used to set the pointer to the new ImplicitCtxt.
+    /// This is used to set the pointer to the new `ImplicitCtxt`.
     #[cfg(parallel_compiler)]
     #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         rayon_core::tlv::with(value, f)
     }
 
-    /// Gets Rayon's thread local variable which is preserved for Rayon jobs.
-    /// This is used to get the pointer to the current ImplicitCtxt.
+    /// Gets Rayon's thread-local variable, which is preserved for Rayon jobs.
+    /// This is used to get the pointer to the current `ImplicitCtxt`.
     #[cfg(parallel_compiler)]
     #[inline]
     fn get_tlv() -> usize {
@@ -1777,13 +1770,13 @@ pub mod tls {
 
     #[cfg(not(parallel_compiler))]
     thread_local! {
-        /// A thread local variable which stores a pointer to the current ImplicitCtxt.
+        /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
         static TLV: Cell<usize> = Cell::new(0);
     }
 
     /// Sets TLV to `value` during the call to `f`.
     /// It is restored to its previous value after.
-    /// This is used to set the pointer to the new ImplicitCtxt.
+    /// This is used to set the pointer to the new `ImplicitCtxt`.
     #[cfg(not(parallel_compiler))]
     #[inline]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
@@ -1793,14 +1786,14 @@ pub mod tls {
         f()
     }
 
-    /// This is used to get the pointer to the current ImplicitCtxt.
+    /// Gets the pointer to the current `ImplicitCtxt`.
     #[cfg(not(parallel_compiler))]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
     }
 
     /// This is a callback from libsyntax as it cannot access the implicit state
-    /// in librustc otherwise
+    /// in librustc otherwise.
     fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_opt(|tcx| {
             if let Some(tcx) = tcx {
@@ -1825,7 +1818,7 @@ pub mod tls {
         })
     }
 
-    /// Sets up the callbacks from libsyntax on the current thread
+    /// Sets up the callbacks from libsyntax on the current thread.
     pub fn with_thread_locals<F, R>(f: F) -> R
         where F: FnOnce() -> R
     {
@@ -1850,7 +1843,7 @@ pub mod tls {
         })
     }
 
-    /// Sets `context` as the new current ImplicitCtxt for the duration of the function `f`
+    /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
     #[inline]
     pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> R
     where
@@ -1861,19 +1854,19 @@ pub mod tls {
         })
     }
 
-    /// Enters GlobalCtxt by setting up libsyntax callbacks and
-    /// creating a initial TyCtxt and ImplicitCtxt.
-    /// This happens once per rustc session and TyCtxts only exists
+    /// Enters `GlobalCtxt` by setting up libsyntax callbacks and
+    /// creating a initial `TyCtxt` and `ImplicitCtxt`.
+    /// This happens once per rustc session and `TyCtxt`s only exists
     /// inside the `f` function.
     pub fn enter_global<'tcx, F, R>(gcx: &'tcx GlobalCtxt<'tcx>, f: F) -> R
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        // Update GCX_PTR to indicate there's a GlobalCtxt available
+        // Update `GCX_PTR` to indicate there's a `GlobalCtxt` available.
         GCX_PTR.with(|lock| {
             *lock.lock() = gcx as *const _ as usize;
         });
-        // Set GCX_PTR back to 0 when we exit
+        // Set `GCX_PTR` back to 0 when we exit.
         let _on_drop = OnDrop(move || {
             GCX_PTR.with(|lock| *lock.lock() = 0);
         });
@@ -1894,12 +1887,12 @@ pub mod tls {
     }
 
     scoped_thread_local! {
-        /// Stores a pointer to the GlobalCtxt if one is available.
-        /// This is used to access the GlobalCtxt in the deadlock handler given to Rayon.
+        /// Stores a pointer to the `GlobalCtxt` if one is available.
+        /// This is used to access the `GlobalCtxt` in the deadlock handler given to Rayon.
         pub static GCX_PTR: Lock<usize>
     }
 
-    /// Creates a TyCtxt and ImplicitCtxt based on the GCX_PTR thread local.
+    /// Creates a `TyCtxt` and `ImplicitCtxt` based on the `GCX_PTR` thread local.
     /// This is used in the deadlock handler.
     pub unsafe fn with_global<F, R>(f: F) -> R
     where
@@ -1921,7 +1914,7 @@ pub mod tls {
         enter_context(&icx, |_| f(tcx))
     }
 
-    /// Allows access to the current ImplicitCtxt in a closure if one is available
+    /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
     #[inline]
     pub fn with_context_opt<F, R>(f: F) -> R
     where
@@ -1931,16 +1924,16 @@ pub mod tls {
         if context == 0 {
             f(None)
         } else {
-            // We could get a ImplicitCtxt pointer from another thread.
-            // Ensure that ImplicitCtxt is Sync
+            // We could get a `ImplicitCtxt` pointer from another thread.
+            // Ensure that `ImplicitCtxt` is `Sync`.
             sync::assert_sync::<ImplicitCtxt<'_, '_>>();
 
             unsafe { f(Some(&*(context as *const ImplicitCtxt<'_, '_>))) }
         }
     }
 
-    /// Allows access to the current ImplicitCtxt.
-    /// Panics if there is no ImplicitCtxt available
+    /// Allows access to the current `ImplicitCtxt`.
+    /// Panics if there is no `ImplicitCtxt` available.
     #[inline]
     pub fn with_context<F, R>(f: F) -> R
     where
@@ -1949,11 +1942,11 @@ pub mod tls {
         with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
     }
 
-    /// Allows access to the current ImplicitCtxt whose tcx field has the same global
-    /// interner as the tcx argument passed in. This means the closure is given an ImplicitCtxt
-    /// with the same 'tcx lifetime as the TyCtxt passed in.
-    /// This will panic if you pass it a TyCtxt which has a different global interner from
-    /// the current ImplicitCtxt's tcx field.
+    /// Allows access to the current `ImplicitCtxt` whose tcx field has the same global
+    /// interner as the tcx argument passed in. This means the closure is given an `ImplicitCtxt`
+    /// with the same `'tcx` lifetime as the `TyCtxt` passed in.
+    /// This will panic if you pass it a `TyCtxt` which has a different global interner from
+    /// the current `ImplicitCtxt`'s `tcx` field.
     #[inline]
     pub fn with_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
     where
@@ -1968,8 +1961,8 @@ pub mod tls {
         })
     }
 
-    /// Allows access to the TyCtxt in the current ImplicitCtxt.
-    /// Panics if there is no ImplicitCtxt available
+    /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.
+    /// Panics if there is no `ImplicitCtxt` available.
     #[inline]
     pub fn with<F, R>(f: F) -> R
     where
@@ -1978,8 +1971,8 @@ pub mod tls {
         with_context(|context| f(context.tcx))
     }
 
-    /// Allows access to the TyCtxt in the current ImplicitCtxt.
-    /// The closure is passed None if there is no ImplicitCtxt available
+    /// Allows access to the `TyCtxt` in the current `ImplicitCtxt`.
+    /// The closure is passed None if there is no `ImplicitCtxt` available.
     #[inline]
     pub fn with_opt<F, R>(f: F) -> R
     where
@@ -1991,7 +1984,7 @@ pub mod tls {
 
 macro_rules! sty_debug_print {
     ($ctxt: expr, $($variant: ident),*) => {{
-        // curious inner module to allow variant names to be used as
+        // Curious inner module to allow variant names to be used as
         // variable names.
         #[allow(non_snake_case)]
         mod inner {
@@ -2265,9 +2258,9 @@ slice_interners!(
     projs: _intern_projs(ProjectionKind)
 );
 
-// This isn't a perfect fit: CanonicalVarInfo slices are always
+// This isn't a perfect fit: `CanonicalVarInfo` slices are always
 // allocated in the global arena, so this `intern_method!` macro is
-// overly general.  But we just return false for the code that checks
+// overly general. However, we just return `false` for the code that checks
 // whether they belong in the thread-local arena, so no harm done, and
 // seems better than open-coding the rest.
 intern_method! {
@@ -2366,7 +2359,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_adt(self, def: &'tcx AdtDef, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        // take a copy of substs so that we own the vectors inside
+        // Take a copy of substs so that we own the vectors inside.
         self.mk_ty(Adt(def, substs))
     }
 

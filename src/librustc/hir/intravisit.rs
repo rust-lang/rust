@@ -31,11 +31,13 @@
 //! This order consistency is required in a few places in rustc, for
 //! example generator inference, and possibly also HIR borrowck.
 
-use syntax::ast::{Ident, Name, Attribute};
-use syntax_pos::Span;
+use super::itemlikevisit::DeepVisitor;
+
 use crate::hir::*;
 use crate::hir::map::Map;
-use super::itemlikevisit::DeepVisitor;
+
+use syntax::ast::{Ident, Name, Attribute};
+use syntax_pos::Span;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
@@ -139,7 +141,7 @@ impl<'this, 'tcx> NestedVisitorMap<'this, 'tcx> {
 /// explicitly, you need to override each method. (And you also need
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
-pub trait Visitor<'v> : Sized {
+pub trait Visitor<'v>: Sized {
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
@@ -162,8 +164,8 @@ pub trait Visitor<'v> : Sized {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'v>;
 
     /// Invoked when a nested item is encountered. By default does
-    /// nothing unless you override `nested_visit_map` to return
-    /// `Some(_)`, in which case it will walk the item. **You probably
+    /// nothing unless you override `nested_visit_map` to return other than
+    /// `None`, in which case it will walk the item. **You probably
     /// don't want to override this method** -- instead, override
     /// `nested_visit_map` or use the "shallow" or "deep" visit
     /// patterns described on `itemlikevisit::ItemLikeVisitor`. The only
@@ -201,8 +203,8 @@ pub trait Visitor<'v> : Sized {
 
     /// Invoked to visit the body of a function, method or closure. Like
     /// visit_nested_item, does nothing by default unless you override
-    /// `nested_visit_map` to return `Some(_)`, in which case it will walk the
-    /// body.
+    /// `nested_visit_map` to return other htan `None`, in which case it will walk
+    /// the body.
     fn visit_nested_body(&mut self, id: BodyId) {
         let opt_body = self.nested_visit_map().intra().map(|map| map.body(id));
         if let Some(body) = opt_body {
@@ -603,7 +605,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_lifetime(lifetime);
             visitor.visit_ty(&mutable_type.ty)
         }
-        TyKind::Never => {},
+        TyKind::Never => {}
         TyKind::Tup(ref tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }

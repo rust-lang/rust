@@ -79,7 +79,7 @@ const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 pub struct LoweringContext<'a> {
     crate_root: Option<Symbol>,
 
-    /// Used to assign ids to HIR nodes that do not directly correspond to an AST node.
+    /// Used to assign IDs to HIR nodes that do not directly correspond to AST nodes.
     sess: &'a Session,
 
     cstore: &'a dyn CrateStore,
@@ -126,7 +126,7 @@ pub struct LoweringContext<'a> {
     /// lifetime definitions in the corresponding impl or function generics.
     lifetimes_to_define: Vec<(Span, ParamName)>,
 
-    /// Whether or not in-band lifetimes are being collected. This is used to
+    /// `true` if in-band lifetimes are being collected. This is used to
     /// indicate whether or not we're in a place where new lifetimes will result
     /// in in-band lifetime definitions, such a function or an impl header,
     /// including implicit lifetimes from `impl_header_lifetime_elision`.
@@ -154,13 +154,13 @@ pub struct LoweringContext<'a> {
 }
 
 pub trait Resolver {
-    /// Obtain resolution for a `NodeId` with a single resolution.
+    /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
 
-    /// Obtain per-namespace resolutions for `use` statement with the given `NoedId`.
+    /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
     fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
 
-    /// Obtain resolution for a label with the given `NodeId`.
+    /// Obtains resolution for a label with the given `NodeId`.
     fn get_label_res(&mut self, id: NodeId) -> Option<NodeId>;
 
     /// We must keep the set of definitions up to date as we add nodes that weren't in the AST.
@@ -699,7 +699,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
         res.map_id(|id| {
             self.lower_node_id_generic(id, |_| {
-                panic!("expected node_id to be lowered already for res {:#?}", res)
+                panic!("expected `NodeId` to be lowered already for res {:#?}", res);
             })
         })
     }
@@ -1364,7 +1364,7 @@ impl<'a> LoweringContext<'a> {
                     }
                 }
             }
-            TyKind::Mac(_) => bug!("`TyMac` should have been expanded by now."),
+            TyKind::Mac(_) => bug!("`TyMac` should have been expanded by now"),
             TyKind::CVarArgs => {
                 // Create the implicit lifetime of the "spoofed" `VaListImpl`.
                 let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
@@ -2999,7 +2999,7 @@ impl<'a> LoweringContext<'a> {
             }
             StmtKind::Expr(ref e) => hir::StmtKind::Expr(P(self.lower_expr(e))),
             StmtKind::Semi(ref e) => hir::StmtKind::Semi(P(self.lower_expr(e))),
-            StmtKind::Mac(..) => panic!("Shouldn't exist here"),
+            StmtKind::Mac(..) => panic!("shouldn't exist here"),
         };
         smallvec![hir::Stmt {
             hir_id: self.lower_node_id(s.id),
@@ -3187,7 +3187,7 @@ impl<'a> LoweringContext<'a> {
 
         hir::Path {
             span,
-            res: res.map_id(|_| panic!("unexpected node_id")),
+            res: res.map_id(|_| panic!("unexpected `NodeId`")),
             segments: segments.into(),
         }
     }

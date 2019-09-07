@@ -14,7 +14,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(libc)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(optin_builtin_traits)]
 #![feature(concat_idents)]
 #![feature(link_args)]
@@ -256,7 +255,7 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn diagnostics(&self) -> &[(&'static str, &'static str)] {
-        &DIAGNOSTICS
+        &error_codes::DIAGNOSTICS
     }
 
     fn target_features(&self, sess: &Session) -> Vec<Symbol> {
@@ -425,5 +424,3 @@ impl Drop for ModuleLlvm {
         }
     }
 }
-
-__build_diagnostic_array! { librustc_codegen_llvm, DIAGNOSTICS }

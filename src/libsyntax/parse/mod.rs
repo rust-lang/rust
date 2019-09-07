@@ -8,17 +8,16 @@ use crate::parse::parser::Parser;
 use crate::parse::parser::emit_unclosed_delims;
 use crate::parse::token::TokenKind;
 use crate::tokenstream::{TokenStream, TokenTree};
-use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust;
 use crate::symbol::Symbol;
 
 use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock, Once};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use syntax_pos::edition::Edition;
 use syntax_pos::hygiene::ExpnId;
 
-use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -64,8 +63,6 @@ pub struct ParseSess {
     pub missing_fragment_specifiers: Lock<FxHashSet<Span>>,
     /// Places where raw identifiers were used. This is used for feature-gating raw identifiers.
     pub raw_identifier_spans: Lock<Vec<Span>>,
-    /// The registered diagnostics codes.
-    crate registered_diagnostics: Lock<ErrorMap>,
     /// Used to determine and report recursive module inclusions.
     included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
@@ -81,25 +78,26 @@ pub struct ParseSess {
 impl ParseSess {
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
         let cm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = Handler::with_tty_emitter(ColorConfig::Auto,
-                                                true,
-                                                None,
-                                                Some(cm.clone()));
+        let handler = Handler::with_tty_emitter(
+            ColorConfig::Auto,
+            true,
+            None,
+            Some(cm.clone()),
+        );
         ParseSess::with_span_handler(handler, cm)
     }
 
-    pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> ParseSess {
-        ParseSess {
+    pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
+        Self {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
             config: FxHashSet::default(),
+            edition: ExpnId::root().expn_data().edition,
             missing_fragment_specifiers: Lock::new(FxHashSet::default()),
             raw_identifier_spans: Lock::new(Vec::new()),
-            registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
-            edition: ExpnId::root().expn_data().edition,
             ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
             injected_crate_name: Once::new(),
             gated_spans: GatedSpans::default(),
@@ -155,17 +153,17 @@ pub struct Directory<'a> {
 #[derive(Copy, Clone)]
 pub enum DirectoryOwnership {
     Owned {
-        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`
+        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`.
         relative: Option<ast::Ident>,
     },
     UnownedViaBlock,
     UnownedViaMod(bool /* legacy warnings? */),
 }
 
-// a bunch of utility functions of the form parse_<thing>_from_<source>
+// A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
 // uses a HOF to parse anything, and <source> includes file and
-// source_str.
+// `source_str`.
 
 pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'a, ast::Crate> {
     let mut parser = new_parser_from_file(sess, input);
@@ -219,14 +217,13 @@ pub fn maybe_new_parser_from_source_str(sess: &ParseSess, name: FileName, source
     Ok(parser)
 }
 
-/// Creates a new parser, handling errors as appropriate
-/// if the file doesn't exist
+/// Creates a new parser, handling errors as appropriate if the file doesn't exist.
 pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path) -> Parser<'a> {
     source_file_to_parser(sess, file_to_source_file(sess, path, None))
 }
 
-/// Creates a new parser, returning buffered diagnostics if the file doesn't
-/// exist or from lexing the initial token stream.
+/// Creates a new parser, returning buffered diagnostics if the file doesn't exist,
+/// or from lexing the initial token stream.
 pub fn maybe_new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path)
     -> Result<Parser<'a>, Vec<Diagnostic>> {
     let file = try_file_to_source_file(sess, path, None).map_err(|db| vec![db])?;
@@ -234,8 +231,8 @@ pub fn maybe_new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path)
 }
 
 /// Given a session, a crate config, a path, and a span, add
-/// the file at the given path to the source_map, and return a parser.
-/// On an error, use the given span as the source of the problem.
+/// the file at the given path to the `source_map`, and returns a parser.
+/// On an error, uses the given span as the source of the problem.
 pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
                                     path: &Path,
                                     directory_ownership: DirectoryOwnership,
@@ -247,13 +244,13 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
     p
 }
 
-/// Given a source_file and config, return a parser
+/// Given a `source_file` and config, returns a parser.
 fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic,
                      maybe_source_file_to_parser(sess, source_file))
 }
 
-/// Given a source_file and config, return a parser. Returns any buffered errors from lexing the
+/// Given a `source_file` and config, return a parser. Returns any buffered errors from lexing the
 /// initial token stream.
 fn maybe_source_file_to_parser(
     sess: &ParseSess,
@@ -270,14 +267,14 @@ fn maybe_source_file_to_parser(
     Ok(parser)
 }
 
-// must preserve old name for now, because quote! from the *existing*
-// compiler expands into it
+// Must preserve old name for now, because `quote!` from the *existing*
+// compiler expands into it.
 pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser<'_> {
     stream_to_parser(sess, tts.into_iter().collect(), crate::MACRO_ARGUMENTS)
 }
 
 
-// base abstractions
+// Base abstractions
 
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's source_map and return the new source_file or
@@ -296,7 +293,7 @@ fn try_file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a session and a path and an optional span (for error reporting),
-/// add the path to the session's `source_map` and return the new `source_file`.
+/// adds the path to the session's `source_map` and returns the new `source_file`.
 fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
                    -> Lrc<SourceFile> {
     match try_file_to_source_file(sess, path, spanopt) {
@@ -308,7 +305,7 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     }
 }
 
-/// Given a source_file, produces a sequence of token trees.
+/// Given a `source_file`, produces a sequence of token trees.
 pub fn source_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
@@ -352,7 +349,7 @@ pub fn maybe_file_to_stream(
     }
 }
 
-/// Given stream and the `ParseSess`, produces a parser.
+/// Given a stream and the `ParseSess`, produces a parser.
 pub fn stream_to_parser<'a>(
     sess: &'a ParseSess,
     stream: TokenStream,
@@ -361,7 +358,7 @@ pub fn stream_to_parser<'a>(
     Parser::new(sess, stream, None, true, false, subparser_name)
 }
 
-/// Given stream, the `ParseSess` and the base directory, produces a parser.
+/// Given a stream, the `ParseSess` and the base directory, produces a parser.
 ///
 /// Use this function when you are creating a parser from the token stream
 /// and also care about the current working directory of the parser (e.g.,

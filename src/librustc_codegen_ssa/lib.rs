@@ -4,7 +4,6 @@
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(libc)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 #![feature(in_band_lifetimes)]
@@ -35,8 +34,6 @@ use rustc_data_structures::svh::Svh;
 use rustc::middle::cstore::{LibSource, CrateSource, NativeLibrary};
 use syntax_pos::symbol::Symbol;
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
 mod error_codes;
 
 pub mod common;
@@ -158,5 +155,3 @@ pub struct CodegenResults {
     pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,
 }
-
-__build_diagnostic_array! { librustc_codegen_ssa, DIAGNOSTICS }
