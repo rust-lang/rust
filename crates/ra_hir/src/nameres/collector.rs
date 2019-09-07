@@ -631,7 +631,6 @@ where
         modules[res].parent = Some(self.module_id);
         modules[res].declaration = Some(declaration);
         modules[res].definition = definition;
-        // Cloning immutable map is lazy and fast
         modules[res].scope.textual_macros = modules[self.module_id].scope.textual_macros.clone();
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
@@ -708,8 +707,6 @@ where
     }
 
     fn import_all_textual_macros(&mut self, module_id: CrateModuleId) {
-        // `clone()` is needed here to avoid mutable borrow `self.def_collector` when first borrow is alive
-        // Cloning immutable map is lazy and fast
         let macros = self.def_collector.def_map[module_id].scope.textual_macros.clone();
         for (name, macro_) in macros {
             self.def_collector.define_textual_macro(self.module_id, name.clone(), macro_.id);

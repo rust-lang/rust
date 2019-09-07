@@ -54,7 +54,6 @@ mod mod_resolution;
 #[cfg(test)]
 mod tests;
 
-use std::hash::BuildHasherDefault;
 use std::sync::Arc;
 
 use once_cell::sync::Lazy;
@@ -62,7 +61,7 @@ use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_db::{Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::ast;
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::tested_by;
 
 use crate::{
@@ -73,8 +72,6 @@ use crate::{
     nameres::diagnostics::DefDiagnostic,
     AstId, BuiltinType, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
 };
-
-pub(crate) type ImmFxHashMap<K, V> = im::HashMap<K, V, BuildHasherDefault<FxHasher>>;
 
 pub(crate) use self::raw::{ImportSourceMap, RawItems};
 
@@ -142,7 +139,7 @@ pub(crate) struct ModuleData {
 pub struct ModuleScope {
     items: FxHashMap<Name, Resolution>,
     macros: FxHashMap<Name, MacroDef>,
-    textual_macros: ImmFxHashMap<Name, MacroDef>,
+    textual_macros: FxHashMap<Name, MacroDef>,
 }
 
 static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
