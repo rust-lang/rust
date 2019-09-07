@@ -1453,7 +1453,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         match self.resolver.resolve_path_segments(self.db, &into_iter_path).into_fully_resolved() {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, name::ITEM)?)
+                Some(trait_.associated_type_by_name(self.db, &name::ITEM)?)
             }
             _ => None,
         }
@@ -1471,7 +1471,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         match self.resolver.resolve_path_segments(self.db, &ops_try_path).into_fully_resolved() {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, name::OK)?)
+                Some(trait_.associated_type_by_name(self.db, &name::OK)?)
             }
             _ => None,
         }
@@ -1493,7 +1493,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             .into_fully_resolved()
         {
             PerNs { types: Some(Def(Trait(trait_))), .. } => {
-                Some(trait_.associated_type_by_name(self.db, name::OUTPUT)?)
+                Some(trait_.associated_type_by_name(self.db, &name::OUTPUT)?)
             }
             _ => None,
         }

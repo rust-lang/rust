@@ -314,7 +314,8 @@ impl ToChalk for Arc<super::TraitEnvironment> {
                 // for env, we just ignore errors
                 continue;
             }
-            clauses.push(pred.clone().to_chalk(db).cast());
+            let program_clause: chalk_ir::ProgramClause = pred.clone().to_chalk(db).cast();
+            clauses.push(program_clause.into_from_env_clause());
         }
         chalk_ir::Environment::new().add_clauses(clauses)
     }
@@ -636,7 +637,7 @@ pub(crate) fn impl_datum_query(
             _ => None,
         })
         .filter_map(|t| {
-            let assoc_ty = trait_.associated_type_by_name(db, t.name(db))?;
+            let assoc_ty = trait_.associated_type_by_name(db, &t.name(db))?;
             let ty = db.type_for_def(t.into(), crate::Namespace::Types).subst(&bound_vars);
             Some(chalk_rust_ir::AssociatedTyValue {
                 impl_id,

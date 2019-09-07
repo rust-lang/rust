@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use ra_syntax::{
-    ast::{self, NameOwner},
+    ast::{self, NameOwner, TypeAscriptionOwner},
     AstNode,
 };
 
-use crate::{type_ref::TypeRef, AsName, Name};
+use crate::{name, type_ref::TypeRef, AsName, Name};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
@@ -76,8 +76,16 @@ impl Path {
 
             match segment.kind()? {
                 ast::PathSegmentKind::Name(name) => {
-                    let args =
-                        segment.type_arg_list().and_then(GenericArgs::from_ast).map(Arc::new);
+                    let args = segment
+                        .type_arg_list()
+                        .and_then(GenericArgs::from_ast)
+                        .or_else(|| {
+                            GenericArgs::from_fn_like_path_ast(
+                                segment.param_list(),
+                                segment.ret_type(),
+                            )
+                        })
+                        .map(Arc::new);
                     let segment = PathSegment { name: name.as_name(), args_and_bindings: args };
                     segments.push(segment);
                 }
@@ -179,6 +187,34 @@ impl GenericArgs {
                 let type_ref = TypeRef::from_ast_opt(assoc_type_arg.type_ref());
                 bindings.push((name, type_ref));
             }
+        }
+        if args.is_empty() && bindings.is_empty() {
+            None
+        } else {
+            Some(GenericArgs { args, has_self_type: false, bindings })
+        }
+    }
+
+    /// Collect `GenericArgs` from the parts of a fn-like path, i.e. `Fn(X, Y)
+    /// -> Z` (which desugars to `Fn<(X, Y), Output=Z>`).
+    pub(crate) fn from_fn_like_path_ast(
+        params: Option<ast::ParamList>,
+        ret_type: Option<ast::RetType>,
+    ) -> Option<GenericArgs> {
+        let mut args = Vec::new();
+        let mut bindings = Vec::new();
+        if let Some(params) = params {
+            let mut param_types = Vec::new();
+            for param in params.params() {
+                let type_ref = TypeRef::from_ast_opt(param.ascribed_type());
+                param_types.push(type_ref);
+            }
+            let arg = GenericArg::Type(TypeRef::Tuple(param_types));
+            args.push(arg);
+        }
+        if let Some(ret_type) = ret_type {
+            let type_ref = TypeRef::from_ast_opt(ret_type.type_ref());
+            bindings.push((name::OUTPUT, type_ref))
         }
         if args.is_empty() && bindings.is_empty() {
             None

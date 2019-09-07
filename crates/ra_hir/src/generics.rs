@@ -87,11 +87,15 @@ impl GenericParams {
                 // traits get the Self type as an implicit first type parameter
                 generics.params.push(GenericParam { idx: start, name: SELF_TYPE, default: None });
                 generics.fill(&it.source(db).ast, start + 1);
+                // add super traits as bounds on Self
+                // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
+                let self_param = TypeRef::Path(SELF_TYPE.into());
+                generics.fill_bounds(&it.source(db).ast, self_param);
             }
             GenericDef::TypeAlias(it) => generics.fill(&it.source(db).ast, start),
             // Note that we don't add `Self` here: in `impl`s, `Self` is not a
             // type-parameter, but rather is a type-alias for impl's target
-            // type, so this is handled by the resovler.
+            // type, so this is handled by the resolver.
             GenericDef::ImplBlock(it) => generics.fill(&it.source(db).ast, start),
             GenericDef::EnumVariant(_) => {}
         }
@@ -108,6 +112,14 @@ impl GenericParams {
         }
     }
 
+    fn fill_bounds(&mut self, node: &impl ast::TypeBoundsOwner, type_ref: TypeRef) {
+        for bound in
+            node.type_bound_list().iter().flat_map(|type_bound_list| type_bound_list.bounds())
+        {
+            self.add_where_predicate_from_bound(bound, type_ref.clone());
+        }
+    }
+
     fn fill_params(&mut self, params: ast::TypeParamList, start: u32) {
         for (idx, type_param) in params.type_params().enumerate() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
@@ -117,13 +129,7 @@ impl GenericParams {
             self.params.push(param);
 
             let type_ref = TypeRef::Path(name.into());
-            for bound in type_param
-                .type_bound_list()
-                .iter()
-                .flat_map(|type_bound_list| type_bound_list.bounds())
-            {
-                self.add_where_predicate_from_bound(bound, type_ref.clone());
-            }
+            self.fill_bounds(&type_param, type_ref);
         }
     }
 

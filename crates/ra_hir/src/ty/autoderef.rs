@@ -8,7 +8,7 @@ use std::iter::successors;
 use log::{info, warn};
 
 use super::{traits::Solution, Canonical, Ty, TypeWalk};
-use crate::{HasGenericParams, HirDatabase, Name, Resolver};
+use crate::{name, HasGenericParams, HirDatabase, Resolver};
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
@@ -42,7 +42,7 @@ fn deref_by_trait(
         crate::lang_item::LangItemTarget::Trait(t) => t,
         _ => return None,
     };
-    let target = deref_trait.associated_type_by_name(db, Name::target())?;
+    let target = deref_trait.associated_type_by_name(db, &name::TARGET)?;
 
     if target.generic_params(db).count_params_including_parent() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
