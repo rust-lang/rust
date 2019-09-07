@@ -1,11 +1,12 @@
 use crate::cfg::*;
-use rustc_data_structures::graph::implementation as graph;
-use rustc::middle::region;
-use rustc::ty::{self, TyCtxt};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::def_id::DefId;
 use rustc::hir::ptr::P;
+use rustc::middle::region;
+use rustc::ty::{self, TyCtxt};
+
+use rustc_data_structures::graph::implementation as graph;
 
 struct CFGBuilder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -19,15 +20,15 @@ struct CFGBuilder<'a, 'tcx> {
 
 #[derive(Copy, Clone)]
 struct BlockScope {
-    block_expr_id: hir::ItemLocalId, // id of breakable block expr node
+    block_expr_id: hir::ItemLocalId, // ID of breakable block expr node
     break_index: CFGIndex, // where to go on `break`
 }
 
 #[derive(Copy, Clone)]
 struct LoopScope {
-    loop_id: hir::ItemLocalId,     // id of loop/while node
+    loop_id: hir::ItemLocalId, // ID of `loop`/`while` node
     continue_index: CFGIndex, // where to go on a `loop`
-    break_index: CFGIndex,    // where to go on a `break`
+    break_index: CFGIndex, // where to go on a `break`
 }
 
 pub(super) fn construct(tcx: TyCtxt<'_>, body: &hir::Body) -> CFG {
@@ -103,9 +104,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let init_exit = self.opt_expr(&local.init, pred);
                 self.pat(&local.pat, init_exit)
             }
-            hir::StmtKind::Item(_) => {
-                pred
-            }
+            hir::StmtKind::Item(_) => pred,
             hir::StmtKind::Expr(ref expr) |
             hir::StmtKind::Semi(ref expr) => {
                 self.expr(&expr, pred)
@@ -154,12 +153,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn pats_all<'b, I: Iterator<Item=&'b P<hir::Pat>>>(
+    /// Handles case where all of the patterns must match.
+    fn pats_all<'b, I: Iterator<Item = &'b P<hir::Pat>>>(
         &mut self,
         pats: I,
-        pred: CFGIndex
+        pred: CFGIndex,
     ) -> CFGIndex {
-        //! Handles case where all of the patterns must match.
         pats.fold(pred, |pred, pat| self.pat(&pat, pred))
     }
 
@@ -185,15 +184,15 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 // Note that `break` and `loop` statements
                 // may cause additional edges.
 
-                let loopback = self.add_dummy_node(&[pred]);              // 1
-                let expr_exit = self.add_ast_node(expr.hir_id.local_id, &[]);          // 2
+                let loopback = self.add_dummy_node(&[pred]); // 1
+                let expr_exit = self.add_ast_node(expr.hir_id.local_id, &[]); // 2
                 self.loop_scopes.push(LoopScope {
                     loop_id: expr.hir_id.local_id,
                     continue_index: loopback,
                     break_index: expr_exit,
                 });
-                let body_exit = self.block(&body, loopback);           // 3
-                self.add_contained_edge(body_exit, loopback);            // 4
+                let body_exit = self.block(&body, loopback); // 3
+                self.add_contained_edge(body_exit, loopback); // 4
                 self.loop_scopes.pop();
                 expr_exit
             }
@@ -217,9 +216,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //    v 3  v 4
                 //   [..exit..]
                 //
-                let l_exit = self.expr(&l, pred);                      // 1
-                let r_exit = self.expr(&r, l_exit);                    // 2
-                self.add_ast_node(expr.hir_id.local_id, &[l_exit, r_exit])            // 3,4
+                let l_exit = self.expr(&l, pred); // 1
+                let r_exit = self.expr(&r, l_exit); // 2
+                self.add_ast_node(expr.hir_id.local_id, &[l_exit, r_exit]) // 3,4
             }
 
             hir::ExprKind::Ret(ref v) => {
@@ -313,11 +312,13 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn call<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
-            call_expr: &hir::Expr,
-            pred: CFGIndex,
-            func_or_rcvr: &hir::Expr,
-            args: I) -> CFGIndex {
+    fn call<'b, I: Iterator<Item = &'b hir::Expr>>(
+        &mut self,
+        call_expr: &hir::Expr,
+        pred: CFGIndex,
+        func_or_rcvr: &hir::Expr,
+        args: I,
+    ) -> CFGIndex {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
         let m = self.tcx.hir().get_module_parent(call_expr.hir_id);
@@ -328,33 +329,38 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         }
     }
 
-    fn exprs<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
-                                             exprs: I,
-                                             pred: CFGIndex) -> CFGIndex {
-        //! Constructs graph for `exprs` evaluated in order
+    /// Constructs graph for `exprs` evaluated in order.
+    fn exprs<'b, I: Iterator<Item = &'b hir::Expr>>(
+        &mut self,
+        exprs: I,
+        pred: CFGIndex,
+    ) -> CFGIndex {
         exprs.fold(pred, |p, e| self.expr(e, p))
     }
 
-    fn opt_expr(&mut self,
-                opt_expr: &Option<P<hir::Expr>>,
-                pred: CFGIndex) -> CFGIndex {
-        //! Constructs graph for `opt_expr` evaluated, if Some
+    /// Constructs graph for `opt_expr` evaluated, if `Some`.
+    fn opt_expr(
+        &mut self,
+        opt_expr: &Option<P<hir::Expr>>,
+        pred: CFGIndex,
+    ) -> CFGIndex {
         opt_expr.iter().fold(pred, |p, e| self.expr(&e, p))
     }
 
-    fn straightline<'b, I: Iterator<Item=&'b hir::Expr>>(&mut self,
-                    expr: &hir::Expr,
-                    pred: CFGIndex,
-                    subexprs: I) -> CFGIndex {
-        //! Handles case of an expression that evaluates `subexprs` in order
-
+    /// Handles case of an expression that evaluates `subexprs` in order.
+    fn straightline<'b, I: Iterator<Item = &'b hir::Expr>>(
+        &mut self,
+        expr: &hir::Expr,
+        pred: CFGIndex,
+        subexprs: I,
+    ) -> CFGIndex {
         let subexprs_exit = self.exprs(subexprs, pred);
         self.add_ast_node(expr.hir_id.local_id, &[subexprs_exit])
     }
 
     fn match_(&mut self, id: hir::ItemLocalId, discr: &hir::Expr,
               arms: &[hir::Arm], pred: CFGIndex) -> CFGIndex {
-        // The CFG for match expression is quite complex, so no ASCII
+        // The CFG for match expressions is quite complex, so no ASCII
         // art for it (yet).
         //
         // The CFG generated below matches roughly what MIR contains.
@@ -369,13 +375,13 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         //
         // What is going on is explained in further comments.
 
-        // Visit the discriminant expression
+        // Visit the discriminant expression.
         let discr_exit = self.expr(discr, pred);
 
         // Add a node for the exit of the match expression as a whole.
         let expr_exit = self.add_ast_node(id, &[]);
 
-        // Keep track of the previous guard expressions
+        // Keep track of the previous guard expressions.
         let mut prev_guard = None;
         let match_scope = region::Scope { id, data: region::ScopeData::Node };
 
@@ -388,12 +394,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 // Visit the pattern, coming from the discriminant exit
                 let mut pat_exit = self.pat(&pat, discr_exit);
 
-                // If there is a guard expression, handle it here
+                // If there is a guard expression, handle it here.
                 if let Some(ref guard) = arm.guard {
                     // Add a dummy node for the previous guard
-                    // expression to target
+                    // expression to target.
                     let guard_start = self.add_dummy_node(&[pat_exit]);
-                    // Visit the guard expression
+                    // Visit the guard expression.
                     let guard_exit = match guard {
                         hir::Guard::If(ref e) => (&**e, self.expr(e, guard_start)),
                     };
@@ -407,24 +413,23 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         self.add_exiting_edge(prev_guard, prev_index, match_scope, guard_start);
                     }
 
-                    // Push the guard onto the list of previous guards
+                    // Push the guard onto the list of previous guards.
                     prev_guard = Some(guard_exit);
 
-                    // Update the exit node for the pattern
+                    // Update the exit node for the pattern.
                     pat_exit = guard_exit.1;
                 }
 
-                // Add an edge from the exit of this pattern to the
-                // exit of the arm
+                // Add an edge from the exit of this pattern to the exit of the arm.
                 self.add_contained_edge(pat_exit, bindings_exit);
             }
 
-            // Visit the body of this arm
+            // Visit the body of this arm.
             let body_exit = self.expr(&arm.body, bindings_exit);
 
             let arm_exit = self.add_ast_node(arm.hir_id.local_id, &[body_exit]);
 
-            // Link the body to the exit of the expression
+            // Link the body to the exit of the expression.
             self.add_contained_edge(arm_exit, expr_exit);
         }
 
@@ -451,18 +456,22 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         node
     }
 
-    fn add_contained_edge(&mut self,
-                          source: CFGIndex,
-                          target: CFGIndex) {
+    fn add_contained_edge(
+        &mut self,
+        source: CFGIndex,
+        target: CFGIndex,
+    ) {
         let data = CFGEdgeData {exiting_scopes: vec![] };
         self.graph.add_edge(source, target, data);
     }
 
-    fn add_exiting_edge(&mut self,
-                        from_expr: &hir::Expr,
-                        from_index: CFGIndex,
-                        target_scope: region::Scope,
-                        to_index: CFGIndex) {
+    fn add_exiting_edge(
+        &mut self,
+        from_expr: &hir::Expr,
+        from_index: CFGIndex,
+        target_scope: region::Scope,
+        to_index: CFGIndex,
+    ) {
         let mut data = CFGEdgeData { exiting_scopes: vec![] };
         let mut scope = region::Scope {
             id: from_expr.hir_id.local_id,
@@ -476,9 +485,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         self.graph.add_edge(from_index, to_index, data);
     }
 
-    fn add_returning_edge(&mut self,
-                          _from_expr: &hir::Expr,
-                          from_index: CFGIndex) {
+    fn add_returning_edge(
+        &mut self,
+        _from_expr: &hir::Expr,
+        from_index: CFGIndex,
+    ) {
         let data = CFGEdgeData {
             exiting_scopes: self.loop_scopes.iter()
                                             .rev()
@@ -488,11 +499,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         self.graph.add_edge(from_index, self.fn_exit, data);
     }
 
-    fn find_scope_edge(&self,
-                  expr: &hir::Expr,
-                  destination: hir::Destination,
-                  scope_cf_kind: ScopeCfKind) -> (region::Scope, CFGIndex) {
-
+    fn find_scope_edge(
+        &self,
+        expr: &hir::Expr,
+        destination: hir::Destination,
+        scope_cf_kind: ScopeCfKind,
+    ) -> (region::Scope, CFGIndex) {
         match destination.target_id {
             Ok(loop_id) => {
                 for b in &self.breakable_block_scopes {
@@ -519,7 +531,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         });
                     }
                 }
-                span_bug!(expr.span, "no scope for id {}", loop_id);
+                span_bug!(expr.span, "no scope for ID {}", loop_id);
             }
             Err(err) => span_bug!(expr.span, "scope error: {}",  err),
         }

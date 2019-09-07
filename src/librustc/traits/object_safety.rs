@@ -130,13 +130,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// We say a method is *vtable safe* if it can be invoked on a trait
-    /// object.  Note that object-safe traits can have some
-    /// non-vtable-safe methods, so long as they require `Self:Sized` or
-    /// otherwise ensure that they cannot be used when `Self=Trait`.
+    /// object. Note that object-safe traits can have some
+    /// non-vtable-safe methods, so long as they require `Self: Sized` or
+    /// otherwise ensure that they cannot be used when `Self = Trait`.
     pub fn is_vtable_safe_method(self, trait_def_id: DefId, method: &ty::AssocItem) -> bool {
         debug_assert!(self.generics_of(trait_def_id).has_self);
         debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
-        // Any method that has a `Self : Sized` requisite can't be called.
+        // Any method that has a `Self: Sized` bound cannot be called.
         if self.generics_require_sized_self(method.def_id) {
             return false;
         }
@@ -350,15 +350,15 @@ impl<'tcx> TyCtxt<'tcx> {
             &sig.map_bound(|sig| sig.inputs()[0]),
         );
 
-        // until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
+        // Until `unsized_locals` is fully implemented, `self: Self` can't be dispatched on.
         // However, this is already considered object-safe. We allow it as a special case here.
         // FIXME(mikeyhew) get rid of this `if` statement once `receiver_is_dispatchable` allows
-        // `Receiver: Unsize<Receiver[Self => dyn Trait]>`
+        // `Receiver: Unsize<Receiver[Self => dyn Trait]>`.
         if receiver_ty != self.types.self_param {
             if !self.receiver_is_dispatchable(method, receiver_ty) {
                 return Some(MethodViolationCode::UndispatchableReceiver);
             } else {
-                // sanity check to make sure the receiver actually has the layout of a pointer
+                // Do sanity check to make sure the receiver actually has the layout of a pointer.
 
                 use crate::ty::layout::Abi;
 
@@ -373,7 +373,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 };
 
-                // e.g., Rc<()>
+                // e.g., `Rc<()>`
                 let unit_receiver_ty = self.receiver_for_self_ty(
                     receiver_ty, self.mk_unit(), method.def_id
                 );
@@ -395,7 +395,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     trait_def_id, self.mk_region(ty::ReStatic)
                 );
 
-                // e.g., Rc<dyn Trait>
+                // e.g., `Rc<dyn Trait>`
                 let trait_object_receiver = self.receiver_for_self_ty(
                     receiver_ty, trait_object_ty, method.def_id
                 );
@@ -419,8 +419,8 @@ impl<'tcx> TyCtxt<'tcx> {
         None
     }
 
-    /// Performs a type substitution to produce the version of receiver_ty when `Self = self_ty`
-    /// e.g., for receiver_ty = `Rc<Self>` and self_ty = `Foo`, returns `Rc<Foo>`.
+    /// Performs a type substitution to produce the version of `receiver_ty` when `Self = self_ty`.
+    /// For example, for `receiver_ty = Rc<Self>` and `self_ty = Foo`, returns `Rc<Foo>`.
     fn receiver_for_self_ty(
         self,
         receiver_ty: Ty<'tcx>,

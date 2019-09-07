@@ -1321,13 +1321,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         if !value.needs_infer() {
-            return value.clone(); // avoid duplicated subst-folding
+            return value.clone(); // Avoid duplicated subst-folding.
         }
         let mut r = resolve::OpportunisticVarResolver::new(self);
         value.fold_with(&mut r)
     }
 
-    /// Returns first unresolved variable contained in `T`. In the
+    /// Returns the first unresolved variable contained in `T`. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than
@@ -1462,7 +1462,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let copy_def_id = self.tcx.require_lang_item(lang_items::CopyTraitLangItem, None);
 
-        // this can get called from typeck (by euv), and moves_by_default
+        // This can get called from typeck (by euv), and `moves_by_default`
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
@@ -1482,7 +1482,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         closure_kind_ty.to_opt_closure_kind()
     }
 
-    /// Obtain the signature of a closure. For closures, unlike
+    /// Obtains the signature of a closure. For closures, unlike
     /// `tcx.fn_sig(def_id)`, this method will work during the
     /// type-checking of the enclosing function and return the closure
     /// signature in its partially inferred state.

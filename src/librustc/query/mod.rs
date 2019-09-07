@@ -17,7 +17,6 @@ use crate::traits::query::{
 use std::borrow::Cow;
 use syntax_pos::symbol::InternedString;
 
-
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -854,7 +853,7 @@ rustc_queries! {
             desc { "calculating the lang items map" }
         }
 
-        /// Returns all diagnostic items defined in all crates
+        /// Returns all diagnostic items defined in all crates.
         query all_diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
             eval_always
             desc { "calculating the diagnostic items map" }
@@ -865,7 +864,7 @@ rustc_queries! {
             desc { "calculating the lang items defined in a crate" }
         }
 
-        /// Returns the diagnostic items defined in a crate
+        /// Returns the diagnostic items defined in a crate.
         query diagnostic_items(_: CrateNum) -> &'tcx FxHashMap<Symbol, DefId> {
             desc { "calculating the diagnostic items map in a crate" }
         }

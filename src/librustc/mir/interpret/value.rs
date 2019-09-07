@@ -91,7 +91,7 @@ impl<'tcx> ConstValue<'tcx> {
 /// of a simple value or a pointer into another `Allocation`
 #[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
-pub enum Scalar<Tag=(), Id=AllocId> {
+pub enum Scalar<Tag = (), Id = AllocId> {
     /// The raw bytes of a simple value.
     Raw {
         /// The first `size` bytes of `data` are the value.
@@ -359,7 +359,7 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline(always)]
     pub fn assert_bits(self, target_size: Size) -> u128 {
-        self.to_bits(target_size).expect("Expected Raw bits but got a Pointer")
+        self.to_bits(target_size).expect("expected Raw bits but got a Pointer")
     }
 
     /// Do not call this method!  Use either `assert_ptr` or `force_ptr`.
@@ -374,7 +374,7 @@ impl<'tcx, Tag> Scalar<Tag> {
 
     #[inline(always)]
     pub fn assert_ptr(self) -> Pointer<Tag> {
-        self.to_ptr().expect("Expected a Pointer but got Raw bits")
+        self.to_ptr().expect("expected a Pointer but got Raw bits")
     }
 
     /// Do not call this method!  Dispatch based on the type instead.
@@ -482,8 +482,8 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, RustcEncodable, RustcDecodable)]
+pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
 }

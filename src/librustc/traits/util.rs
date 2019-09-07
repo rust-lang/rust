@@ -512,7 +512,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     (impl_trait_ref, impl_obligations)
 }
 
-/// See `super::obligations_for_generics`
+/// See [`super::obligations_for_generics`].
 pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
                                      recursion_depth: usize,
                                      param_env: ty::ParamEnv<'tcx>,
@@ -562,7 +562,7 @@ impl<'tcx> TyCtxt<'tcx> {
         predicate_for_trait_ref(cause, param_env, trait_ref, recursion_depth)
     }
 
-    /// Cast a trait reference into a reference to one of its super
+    /// Casts a trait reference into a reference to one of its super
     /// traits; returns `None` if `target_trait_def_id` is not a
     /// supertrait.
     pub fn upcast_choices(self,
@@ -571,7 +571,7 @@ impl<'tcx> TyCtxt<'tcx> {
                           -> Vec<ty::PolyTraitRef<'tcx>>
     {
         if source_trait_ref.def_id() == target_trait_def_id {
-            return vec![source_trait_ref]; // shorcut the most common case
+            return vec![source_trait_ref]; // Shortcut the most common case.
         }
 
         supertraits(self, source_trait_ref)

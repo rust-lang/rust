@@ -875,12 +875,12 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             if expn_data.def_site.is_dummy() {
-                // dummy span for the def_site means it's an external macro
+                // Dummy span for the `def_site` means it's an external macro.
                 return true;
             }
             match sess.source_map().span_to_snippet(expn_data.def_site) {
                 Ok(code) => !code.starts_with("macro_rules"),
-                // no snippet = external macro or compiler-builtin expansion
+                // No snippet means external macro or compiler-builtin expansion.
                 Err(_) => true,
             }
         }
@@ -888,7 +888,7 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     }
 }
 
-/// Returns whether `span` originates in a derive macro's expansion
+/// Returns `true` if `span` originates in a derive-macro's expansion.
 pub fn in_derive_expansion(span: Span) -> bool {
     if let ExpnKind::Macro(MacroKind::Derive, _) = span.ctxt().outer_expn_data().kind {
         return true;
