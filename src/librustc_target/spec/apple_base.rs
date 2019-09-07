@@ -54,24 +54,24 @@ pub fn macos_llvm_target(arch: &str) -> String {
 
 pub fn sysroot(sdk: &str) -> Result<String, String> {
     let actual_sdk_path = sdk_path(sdk)?;
-    // Like Clang, allow the SDKROOT environment variable used by Xcode to define the sysroot
+    // Like Clang, allow the `SDKROOT` environment variable used by Xcode to define the sysroot.
     if let Some(sdk_root) = env::var("SDKROOT").ok() {
         let sdk_root_p = Path::new(&sdk_root);
-        // Ignore SDKROOT if it's not a valid path
+        // Ignore `SDKROOT` if it's not a valid path.
         if !sdk_root_p.is_absolute() || sdk_root_p == Path::new("/") || !sdk_root_p.exists() {
             return Ok(actual_sdk_path);
         }
-        // Ignore SDKROOT if it's clearly set for the wrong platform, which may occur when we're
-        // compiling a custom build script while targeting iOS for example
-        match sdk {
+        // Ignore `SDKROOT` if it's clearly set for the wrong platform, which may occur when we're
+        // compiling a custom build script while targeting iOS for example.
+        return Ok(match sdk {
             "iphoneos" if sdk_root.contains("iPhoneSimulator.platform")
-                || sdk_root.contains("MacOSX.platform") => return Ok(actual_sdk_path),
+                || sdk_root.contains("MacOSX.platform") => actual_sdk_path,
             "iphonesimulator" if sdk_root.contains("iPhoneOS.platform")
-                || sdk_root.contains("MacOSX.platform") => return Ok(actual_sdk_path),
+                || sdk_root.contains("MacOSX.platform") => actual_sdk_path,
             "macosx" | "macosx10.15" if sdk_root.contains("iPhoneOS.platform")
-                || sdk_root.contains("iPhoneSimulator.platform") => return Ok(actual_sdk_path),
-            _ => return Ok(sdk_root),
-        }
+                || sdk_root.contains("iPhoneSimulator.platform") => actual_sdk_path,
+            _ => sdk_root,
+        })
     }
     Ok(actual_sdk_path)
 }
