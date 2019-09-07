@@ -26,7 +26,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
     let msg_id = fx
         .module
         .declare_data(
-            &(symbol_name.as_str().to_string() + msg),
+            &(symbol_name.name.as_str().to_string() + msg),
             Linkage::Local,
             false,
             None,

@@ -322,7 +322,7 @@ fn trans_mono_item<'clif, 'tcx, B: Backend + 'static>(
     match mono_item {
         MonoItem::Fn(inst) => {
             let _inst_guard =
-                PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).as_str()));
+                PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).name.as_str()));
             debug_assert!(!inst.substs.needs_infer());
             let _mir_guard = PrintOnPanic(|| {
                 match inst.def {

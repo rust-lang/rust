@@ -103,7 +103,7 @@ pub fn get_function_name_and_sig<'tcx>(
         unimpl!("Variadic function definitions are not yet supported");
     }
     let sig = clif_sig_from_fn_sig(tcx, fn_sig, false);
-    (tcx.symbol_name(inst).as_str().to_string(), sig)
+    (tcx.symbol_name(inst).name.as_str().to_string(), sig)
 }
 
 /// Instance must be monomorphized
@@ -371,10 +371,10 @@ pub fn codegen_terminator_call<'tcx>(
         let instance =
             ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
 
-        if fx.tcx.symbol_name(instance).as_str().starts_with("llvm.") {
+        if fx.tcx.symbol_name(instance).name.as_str().starts_with("llvm.") {
             crate::llvm_intrinsics::codegen_llvm_intrinsic_call(
                 fx,
-                &fx.tcx.symbol_name(instance).as_str(),
+                &fx.tcx.symbol_name(instance).name.as_str(),
                 substs,
                 args,
                 destination,

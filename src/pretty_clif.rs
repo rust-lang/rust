@@ -76,7 +76,7 @@ impl CommentWriter {
     pub fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
         CommentWriter {
             global_comments: vec![
-                format!("symbol {}", tcx.symbol_name(instance).as_str()),
+                format!("symbol {}", tcx.symbol_name(instance).name.as_str()),
                 format!("instance {:?}", instance),
                 format!(
                     "sig {:?}",
@@ -205,7 +205,7 @@ pub fn write_clif_file<'tcx>(
 ) {
     use std::io::Write;
 
-    let symbol_name = tcx.symbol_name(instance).as_str();
+    let symbol_name = tcx.symbol_name(instance).name.as_str();
     let clif_file_name = format!(
         "{}/{}__{}.{}.clif",
         concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif"),

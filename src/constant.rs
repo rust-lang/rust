@@ -206,7 +206,7 @@ fn data_id_for_static(
     linkage: Linkage,
 ) -> DataId {
     let instance = Instance::mono(tcx, def_id);
-    let symbol_name = tcx.symbol_name(instance).as_str();
+    let symbol_name = tcx.symbol_name(instance).name.as_str();
     let ty = instance.ty(tcx);
     let is_mutable = if tcx.is_mutable_static(def_id) {
         true
@@ -318,19 +318,19 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
 
         let mut data_ctx = DataContext::new();
 
-        let mut bytes = alloc.bytes.to_vec();
+        let mut bytes = alloc.inspect_with_undef_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         // The machO backend of faerie doesn't align data objects correctly unless we do this.
         while bytes.len() as u64 % 16 != 0 {
             bytes.push(0xde);
         }
         data_ctx.define(bytes.into_boxed_slice());
 
-        for &(offset, (_tag, reloc)) in alloc.relocations.iter() {
+        for &(offset, (_tag, reloc)) in alloc.relocations().iter() {
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
                 let ptr_size = tcx.data_layout.pointer_size;
-                let bytes = &alloc.bytes[offset..offset + ptr_size.bytes() as usize];
+                let bytes = &alloc.inspect_with_undef_and_ptr_outside_interpreter(offset..offset + ptr_size.bytes() as usize);
                 read_target_uint(endianness, bytes).unwrap()
             };
 
