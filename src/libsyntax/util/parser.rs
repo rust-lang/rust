@@ -69,7 +69,7 @@ pub enum Fixity {
 
 impl AssocOp {
     /// Creates a new AssocOP from a token
-    pub fn from_token(t: &Token) -> Option<AssocOp> {
+    crate fn from_token(t: &Token) -> Option<AssocOp> {
         use AssocOp::*;
         match t.kind {
             token::BinOpEq(k) => Some(AssignOp(k)),
