@@ -161,6 +161,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Warn for non-block expressions with diverging children.
         match expr.node {
             ExprKind::Block(..) | ExprKind::Loop(..) | ExprKind::Match(..) => {},
+            ExprKind::Call(ref callee, _) =>
+                self.warn_if_unreachable(expr.hir_id, callee.span, "call"),
+            ExprKind::MethodCall(_, ref span, _) =>
+                self.warn_if_unreachable(expr.hir_id, *span, "call"),
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression"),
         }
 
