@@ -35,16 +35,19 @@ fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
 
     let arch_name = arch.to_string();
 
-    let sdk_root = super::apple_base::sysroot(sdk_name)?;
-
     let mut args = LinkArgs::new();
-    args.insert(LinkerFlavor::Gcc,
-                vec!["-arch".to_string(),
-                     arch_name.to_string(),
-                     "-isysroot".to_string(),
-                     sdk_root.clone(),
-                     "-Wl,-syslibroot".to_string(),
-                     sdk_root]);
+    args.insert(LinkerFlavor::Gcc, vec!["-arch".to_string(), arch_name.to_string()]);
+    if let Some(sdk_root) = super::apple_base::sysroot(sdk_name)? {
+        args.insert(
+            LinkerFlavor::Gcc,
+            vec![
+                "-isysroot".to_string(),
+                sdk_root.clone(),
+                "-Wl,-syslibroot".to_string(),
+                sdk_root
+            ],
+        );
+    }
 
     Ok(args)
 }
