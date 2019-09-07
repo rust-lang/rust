@@ -1,4 +1,4 @@
-use errors::{Diagnostic, DiagnosticBuilder};
+use errors::Diagnostic;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -819,7 +819,7 @@ impl DepGraph {
             let handle = tcx.sess.diagnostic();
 
             for diagnostic in diagnostics {
-                DiagnosticBuilder::new_diagnostic(handle, diagnostic).emit();
+                handle.emit_diagnostic(&diagnostic);
             }
 
             // Mark the node as green now that diagnostics are emitted

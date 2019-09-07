@@ -742,12 +742,11 @@ impl Handler {
         self.taught_diagnostics.borrow_mut().insert(code.clone())
     }
 
-    pub fn force_print_db(&self, mut db: DiagnosticBuilder<'_>) {
+    pub fn force_print_diagnostic(&self, db: Diagnostic) {
         self.emitter.borrow_mut().emit_diagnostic(&db);
-        db.cancel();
     }
 
-    fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
+    pub fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
         if diagnostic.cancelled() {
             return;
         }
