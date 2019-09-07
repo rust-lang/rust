@@ -268,13 +268,10 @@ fn prelude_cycle() {
     );
     assert_snapshot!(map, @r###"
         ⋮crate
-        ⋮foo: t
         ⋮prelude: t
         ⋮
         ⋮crate::prelude
         ⋮declare_mod: m
-        ⋮
-        ⋮crate::foo
     "###);
 }
 
