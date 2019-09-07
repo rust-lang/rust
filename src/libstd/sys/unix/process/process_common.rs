@@ -1,19 +1,27 @@
 use crate::os::unix::prelude::*;
 
-use crate::ffi::{OsString, OsStr, CString, CStr};
+use crate::ffi::{OsString, OsStr, CString};
 use crate::fmt;
 use crate::io;
 use crate::ptr;
 use crate::sys::fd::FileDesc;
-use crate::sys::fs::{File, OpenOptions};
+use crate::sys::fs::File;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys_common::process::CommandEnv;
 use crate::collections::BTreeMap;
 
+#[cfg(not(target_os = "fuchsia"))]
+use {
+    crate::ffi::CStr,
+    crate::sys::fs::OpenOptions,
+};
+
 use libc::{c_int, gid_t, uid_t, c_char, EXIT_SUCCESS, EXIT_FAILURE};
 
 cfg_if::cfg_if! {
-    if #[cfg(target_os = "redox")] {
+    if #[cfg(target_os = "fuchsia")] {
+        // fuchsia doesn't have /dev/null
+    } else if #[cfg(target_os = "redox")] {
         const DEV_NULL: &'static str = "null:\0";
     } else {
         const DEV_NULL: &'static str = "/dev/null\0";
@@ -107,6 +115,11 @@ pub enum ChildStdio {
     Inherit,
     Explicit(c_int),
     Owned(FileDesc),
+
+    // On Fuchsia, null stdio is the default, so we simply don't specify
+    // any actions at the time of spawning.
+    #[cfg(target_os = "fuchsia")]
+    Null,
 }
 
 pub enum Stdio {
@@ -325,6 +338,7 @@ impl Stdio {
                 Ok((ChildStdio::Owned(theirs.into_fd()), Some(ours)))
             }
 
+            #[cfg(not(target_os = "fuchsia"))]
             Stdio::Null => {
                 let mut opts = OpenOptions::new();
                 opts.read(readable);
@@ -334,6 +348,11 @@ impl Stdio {
                 };
                 let fd = File::open_c(&path, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
+            }
+
+            #[cfg(target_os = "fuchsia")]
+            Stdio::Null => {
+                Ok((ChildStdio::Null, None))
             }
         }
     }
@@ -357,6 +376,9 @@ impl ChildStdio {
             ChildStdio::Inherit => None,
             ChildStdio::Explicit(fd) => Some(fd),
             ChildStdio::Owned(ref fd) => Some(fd.raw()),
+
+            #[cfg(target_os = "fuchsia")]
+            ChildStdio::Null => None,
         }
     }
 }

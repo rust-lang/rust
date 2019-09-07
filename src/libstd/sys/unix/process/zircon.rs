@@ -2,8 +2,9 @@
 
 use crate::convert::TryInto;
 use crate::io;
+use crate::i64;
+use crate::mem::MaybeUninit;
 use crate::os::raw::c_char;
-use crate::u64;
 
 use libc::{c_int, c_void, size_t};
 
@@ -14,8 +15,8 @@ pub type zx_status_t = i32;
 
 pub const ZX_HANDLE_INVALID: zx_handle_t = 0;
 
-pub type zx_time_t = u64;
-pub const ZX_TIME_INFINITE : zx_time_t = u64::MAX;
+pub type zx_time_t = i64;
+pub const ZX_TIME_INFINITE : zx_time_t = i64::MAX;
 
 pub type zx_signals_t = u32;
 
@@ -120,8 +121,11 @@ pub struct fdio_spawn_action_t {
 extern {
     pub fn fdio_spawn_etc(job: zx_handle_t, flags: u32, path: *const c_char,
                           argv: *const *const c_char, envp: *const *const c_char,
-                          action_count: u64, actions: *const fdio_spawn_action_t,
+                          action_count: size_t, actions: *const fdio_spawn_action_t,
                           process: *mut zx_handle_t, err_msg: *mut c_char) -> zx_status_t;
+
+    pub fn fdio_fd_clone(fd: c_int, out_handle: *mut zx_handle_t) -> zx_status_t;
+    pub fn fdio_fd_create(handle: zx_handle_t, fd: *mut c_int) -> zx_status_t;
 }
 
 // fdio_spawn_etc flags
