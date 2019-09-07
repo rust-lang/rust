@@ -12,7 +12,6 @@ rustc-hash = "1.0"
 parking_lot = "0.9.0"
 ena = "0.13"
 once_cell = "1.0.1"
-itertools = "0.8.0"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_arena = { path = "../ra_arena" }

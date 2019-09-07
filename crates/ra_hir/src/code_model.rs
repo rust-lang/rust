@@ -1,10 +1,7 @@
 pub(crate) mod src;
 pub(crate) mod docs;
 
-use std::iter;
 use std::sync::Arc;
-
-use itertools::Itertools;
 
 use ra_db::{CrateId, Edition, FileId, SourceRootId};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
@@ -849,20 +846,23 @@ impl Trait {
 
     /// Returns an iterator over the whole super trait hierarchy (including the
     /// trait itself).
-    pub fn all_super_traits<'a>(
-        self,
-        db: &'a impl HirDatabase,
-    ) -> impl Iterator<Item = Trait> + 'a {
-        self.all_super_traits_inner(db).unique()
-    }
-
-    fn all_super_traits_inner<'a>(
-        self,
-        db: &'a impl HirDatabase,
-    ) -> impl Iterator<Item = Trait> + 'a {
-        iter::once(self).chain(self.direct_super_traits(db).into_iter().flat_map(move |t| {
-            iter::once(t).chain(Box::new(t.all_super_traits(db)) as Box<dyn Iterator<Item = Trait>>)
-        }))
+    pub fn all_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
+        // we need to take care a bit here to avoid infinite loops in case of cycles
+        // (i.e. if we have `trait A: B; trait B: A;`)
+        let mut result = vec![self];
+        let mut i = 0;
+        while i < result.len() {
+            let t = result[i];
+            // yeah this is quadratic, but trait hierarchies should be flat
+            // enough that this doesn't matter
+            for tt in t.direct_super_traits(db) {
+                if !result.contains(&tt) {
+                    result.push(tt);
+                }
+            }
+            i += 1;
+        }
+        result
     }
 
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
@@ -882,7 +882,7 @@ impl Trait {
         db: &impl HirDatabase,
         name: &Name,
     ) -> Option<TypeAlias> {
-        self.all_super_traits(db).find_map(|t| t.associated_type_by_name(db, name))
+        self.all_super_traits(db).into_iter().find_map(|t| t.associated_type_by_name(db, name))
     }
 
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {

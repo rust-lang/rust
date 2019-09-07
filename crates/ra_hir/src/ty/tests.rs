@@ -3695,6 +3695,27 @@ fn test<T: Trait1, U: Trait2>(x: T, y: U) {
 }
 
 #[test]
+fn super_trait_cycle() {
+    // This just needs to not crash
+    assert_snapshot!(
+        infer(r#"
+trait A: B {}
+trait B: A {}
+
+fn test<T: A>(x: T) {
+    x.foo();
+}
+"#),
+        @r###"
+    [44; 45) 'x': T
+    [50; 66) '{     ...o(); }': ()
+    [56; 57) 'x': T
+    [56; 63) 'x.foo()': {unknown}
+    "###
+    );
+}
+
+#[test]
 fn super_trait_assoc_type_bounds() {
     assert_snapshot!(
         infer(r#"
