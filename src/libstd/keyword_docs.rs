@@ -32,10 +32,55 @@ mod as_keyword { }
 #[doc(keyword = "break")]
 //
 /// Exit early from a loop.
+/// 
+/// Sometimes, during the execution of a `loop`, `for` or `while` loop it is desirable to end the 
+/// loop without preforming any more iterations. This is common in scenarios where additional 
+/// iterations would be redundant, such as linear searches, or when an exit condition must be 
+/// checked in the middle or at the end of an iteration (similar to a C-style do-while block).
+/// 
+/// ```rust
+/// let numbers: Vec<i32> = vec![-2, 9, 4, 6];
+/// for x in numbers.iter() {
+///     if x == &4 {
+///         println!("Contains 4!");
+///         break;
+///     } 
+///     println!("Not 4. Found {}", x);
+/// }
+/// ```
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// By default, `break` will only end execution of the innermost loop. However, in applications 
+/// with nested loops, labels can be used to specify which loop should be terminated.
+/// 
+/// ```rust
+/// 'outer: loop {
+///     println!("In the outer loop!");
+///     'inner: loop {
+///         println!("In the inner loop!");
+///         break 'outer;
+///     }
+///     unreachable!();
+/// }
+/// ```
+/// 
+/// `break` can also be to return a value from a `loop`, `for` or `while` block. To ensure type
+/// safety, all returned values must be of the same type.
+/// 
+/// ```rust
+/// let mut x = 3;
+/// let result = loop {
+///     if x > 11 {
+///         break x;
+///     }
+///     x = x * x;
+/// };
+/// assert_eq!(81, result);
+/// ```
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// For more detail on `break`, see the [Rust Book] or the [Reference].
+/// 
+/// [Rust Book]: ../book/ch03-05-control-flow.html?#repetition-with-loops
+/// [Reference]: ../reference/expressions/loop-expr.html
 mod break_keyword { }
 
 #[doc(keyword = "const")]
