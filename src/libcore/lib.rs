@@ -198,7 +198,6 @@ pub mod borrow;
 pub mod any;
 pub mod array;
 pub mod ascii;
-pub mod bool;
 pub mod sync;
 pub mod cell;
 pub mod char;
@@ -228,6 +227,7 @@ pub mod task;
 pub mod alloc;
 
 // note: does not need to be public
+mod bool;
 mod tuple;
 mod unit;
 
