@@ -1394,7 +1394,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
             Box::new(JsonEmitter::basic(pretty, json_rendered, false)),
     };
     let handler = errors::Handler::with_emitter(true, None, emitter);
-    handler.emit(&MultiSpan::new(), msg, errors::Level::Fatal);
+    handler.struct_fatal(msg).emit();
     errors::FatalError.raise();
 }
 
@@ -1408,7 +1408,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
             Box::new(JsonEmitter::basic(pretty, json_rendered, false)),
     };
     let handler = errors::Handler::with_emitter(true, None, emitter);
-    handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
+    handler.struct_warn(msg).emit();
 }
 
 pub type CompileResult = Result<(), ErrorReported>;

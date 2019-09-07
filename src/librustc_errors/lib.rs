@@ -539,7 +539,8 @@ impl Handler {
     }
 
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> FatalError {
-        self.emit(&sp.into(), msg, Fatal);
+        self.emit_diagnostic(Diagnostic::new(Fatal, msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
         FatalError
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(&self,
@@ -547,11 +548,13 @@ impl Handler {
                                                     msg: &str,
                                                     code: DiagnosticId)
                                                     -> FatalError {
-        self.emit_with_code(&sp.into(), msg, code, Fatal);
+        self.emit_diagnostic(Diagnostic::new_with_code(Fatal, Some(code), msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
         FatalError
     }
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        self.emit(&sp.into(), msg, Error);
+        self.emit_diagnostic(Diagnostic::new(Error, msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
     }
     pub fn mut_span_err<S: Into<MultiSpan>>(&self,
                                             sp: S,
@@ -562,16 +565,20 @@ impl Handler {
         result
     }
     pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
-        self.emit_with_code(&sp.into(), msg, code, Error);
+        self.emit_diagnostic(Diagnostic::new_with_code(Error, Some(code), msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        self.emit(&sp.into(), msg, Warning);
+        self.emit_diagnostic(Diagnostic::new(Warning, msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
     }
     pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
-        self.emit_with_code(&sp.into(), msg, code, Warning);
+        self.emit_diagnostic(Diagnostic::new_with_code(Warning, Some(code), msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
     }
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.emit(&sp.into(), msg, Bug);
+        self.emit_diagnostic(Diagnostic::new(Bug, msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
         panic!(ExplicitBug);
     }
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
@@ -590,10 +597,12 @@ impl Handler {
         self.delayed_span_bugs.borrow_mut().push(diagnostic);
     }
     pub fn span_bug_no_panic<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        self.emit(&sp.into(), msg, Bug);
+        self.emit_diagnostic(Diagnostic::new(Bug, msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
     }
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
-        self.emit(&sp.into(), msg, Note);
+        self.emit_diagnostic(Diagnostic::new(Note, msg).set_span(sp));
+        self.abort_if_errors_and_should_abort();
     }
     pub fn span_note_diag(&self,
                           sp: Span,
@@ -701,31 +710,15 @@ impl Handler {
         }
     }
 
-    pub fn abort_if_errors(&self) {
-        if self.has_errors() {
+    pub fn abort_if_errors_and_should_abort(&self) {
+        if self.has_errors() && !self.continue_after_error.load(SeqCst) {
             FatalError.raise();
         }
     }
-    pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
-        if lvl == Warning && !self.flags.can_emit_warnings {
-            return;
-        }
-        let mut db = DiagnosticBuilder::new(self, lvl, msg);
-        db.set_span(msp.clone());
-        db.emit();
-        if !self.continue_after_error.load(SeqCst) {
-            self.abort_if_errors();
-        }
-    }
-    pub fn emit_with_code(&self, msp: &MultiSpan, msg: &str, code: DiagnosticId, lvl: Level) {
-        if lvl == Warning && !self.flags.can_emit_warnings {
-            return;
-        }
-        let mut db = DiagnosticBuilder::new_with_code(self, lvl, Some(code), msg);
-        db.set_span(msp.clone());
-        db.emit();
-        if !self.continue_after_error.load(SeqCst) {
-            self.abort_if_errors();
+
+    pub fn abort_if_errors(&self) {
+        if self.has_errors() {
+            FatalError.raise();
         }
     }
 
@@ -744,6 +737,10 @@ impl Handler {
 
     pub fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
         if diagnostic.cancelled() {
+            return;
+        }
+
+        if diagnostic.level == Warning && !self.flags.can_emit_warnings {
             return;
         }
 
