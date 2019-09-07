@@ -1007,6 +1007,7 @@ dependencies = [
  "chalk-solve 0.1.0 (git+https://github.com/rust-lang/chalk.git)",
  "ena 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "insta 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lalrpop-intern 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",

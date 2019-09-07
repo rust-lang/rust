@@ -1,7 +1,10 @@
 pub(crate) mod src;
 pub(crate) mod docs;
 
+use std::iter;
 use std::sync::Arc;
+
+use itertools::Itertools;
 
 use ra_db::{CrateId, Edition, FileId, SourceRootId};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
@@ -820,7 +823,43 @@ impl Trait {
         self.trait_data(db).items().to_vec()
     }
 
-    pub fn associated_type_by_name(self, db: &impl DefDatabase, name: Name) -> Option<TypeAlias> {
+    fn direct_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
+        let resolver = self.resolver(db);
+        // returning the iterator directly doesn't easily work because of
+        // lifetime problems, but since there usually shouldn't be more than a
+        // few direct traits this should be fine (we could even use some kind of
+        // SmallVec if performance is a concern)
+        self.generic_params(db)
+            .where_predicates
+            .iter()
+            .filter_map(|pred| match &pred.type_ref {
+                TypeRef::Path(p) if p.as_ident() == Some(&crate::name::SELF_TYPE) => {
+                    pred.bound.as_path()
+                }
+                _ => None,
+            })
+            .filter_map(|path| {
+                match resolver.resolve_path_without_assoc_items(db, path).take_types() {
+                    Some(crate::Resolution::Def(ModuleDef::Trait(t))) => Some(t),
+                    _ => None,
+                }
+            })
+            .collect()
+    }
+
+    /// Returns an iterator over the whole super trait hierarchy (not including
+    /// the trait itself). (This iterator may be infinite in case of circular
+    /// super trait dependencies, which are possible in malformed code.)
+    pub fn all_super_traits<'a>(
+        self,
+        db: &'a impl HirDatabase,
+    ) -> impl Iterator<Item = Trait> + 'a {
+        self.direct_super_traits(db).into_iter().flat_map(move |t| {
+            iter::once(t).chain(Box::new(t.all_super_traits(db)) as Box<dyn Iterator<Item = Trait>>)
+        })
+    }
+
+    pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
         let trait_data = self.trait_data(db);
         trait_data
             .items()
@@ -829,7 +868,18 @@ impl Trait {
                 TraitItem::TypeAlias(t) => Some(*t),
                 _ => None,
             })
-            .find(|t| t.name(db) == name)
+            .find(|t| &t.name(db) == name)
+    }
+
+    pub fn associated_type_by_name_including_super_traits(
+        self,
+        db: &impl HirDatabase,
+        name: &Name,
+    ) -> Option<TypeAlias> {
+        iter::once(self)
+            .chain(self.all_super_traits(db))
+            .unique()
+            .find_map(|t| t.associated_type_by_name(db, name))
     }
 
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {

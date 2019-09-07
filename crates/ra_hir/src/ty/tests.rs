@@ -3720,11 +3720,11 @@ fn test() {
     [157; 160) '{t}': T
     [158; 159) 't': T
     [259; 280) '{     ...S)); }': ()
-    [265; 269) 'get2': fn get2<{unknown}, S<{unknown}>>(T) -> U
-    [265; 277) 'get2(set(S))': {unknown}
-    [270; 273) 'set': fn set<S<{unknown}>>(T) -> T
-    [270; 276) 'set(S)': S<{unknown}>
-    [274; 275) 'S': S<{unknown}>
+    [265; 269) 'get2': fn get2<u64, S<u64>>(T) -> U
+    [265; 277) 'get2(set(S))': u64
+    [270; 273) 'set': fn set<S<u64>>(T) -> T
+    [270; 276) 'set(S)': S<u64>
+    [274; 275) 'S': S<u64>
     "###
     );
 }

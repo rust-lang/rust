@@ -38,11 +38,6 @@ impl Name {
         Name::new(idx.to_string().into())
     }
 
-    // Needed for Deref
-    pub(crate) fn target() -> Name {
-        Name::new("Target".into())
-    }
-
     // There's should be no way to extract a string out of `Name`: `Name` in the
     // future, `Name` will include hygiene information, and you can't encode
     // hygiene into a String.
@@ -123,6 +118,7 @@ pub(crate) const FUTURE_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6,
 pub(crate) const RESULT_MOD: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"result"));
 pub(crate) const RESULT_TYPE: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Result"));
 pub(crate) const OUTPUT: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Output"));
+pub(crate) const TARGET: Name = Name::new(SmolStr::new_inline_from_ascii(6, b"Target"));
 
 fn resolve_name(text: &SmolStr) -> SmolStr {
     let raw_start = "r#";

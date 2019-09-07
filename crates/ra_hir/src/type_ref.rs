@@ -150,4 +150,11 @@ impl TypeBound {
             ast::TypeBoundKind::ForType(_) | ast::TypeBoundKind::Lifetime(_) => TypeBound::Error,
         }
     }
+
+    pub fn as_path(&self) -> Option<&Path> {
+        match self {
+            TypeBound::Path(p) => Some(p),
+            _ => None,
+        }
+    }
 }

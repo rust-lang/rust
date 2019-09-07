@@ -636,7 +636,7 @@ pub(crate) fn impl_datum_query(
             _ => None,
         })
         .filter_map(|t| {
-            let assoc_ty = trait_.associated_type_by_name(db, t.name(db))?;
+            let assoc_ty = trait_.associated_type_by_name(db, &t.name(db))?;
             let ty = db.type_for_def(t.into(), crate::Namespace::Types).subst(&bound_vars);
             Some(chalk_rust_ir::AssociatedTyValue {
                 impl_id,

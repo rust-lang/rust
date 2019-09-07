@@ -132,14 +132,16 @@ impl Ty {
             if let Some(remaining_index) = remaining_index {
                 if remaining_index == path.segments.len() - 1 {
                     let segment = &path.segments[remaining_index];
-                    let associated_ty =
-                        match trait_ref.trait_.associated_type_by_name(db, segment.name.clone()) {
-                            Some(t) => t,
-                            None => {
-                                // associated type not found
-                                return Ty::Unknown;
-                            }
-                        };
+                    let associated_ty = match trait_ref
+                        .trait_
+                        .associated_type_by_name_including_super_traits(db, &segment.name)
+                    {
+                        Some(t) => t,
+                        None => {
+                            // associated type not found
+                            return Ty::Unknown;
+                        }
+                    };
                     // FIXME handle type parameters on the segment
                     Ty::Projection(ProjectionTy { associated_ty, parameters: trait_ref.substs })
                 } else {
@@ -387,10 +389,11 @@ fn assoc_type_bindings_from_type_bound<'a>(
         .flat_map(|segment| segment.args_and_bindings.iter())
         .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
         .map(move |(name, type_ref)| {
-            let associated_ty = match trait_ref.trait_.associated_type_by_name(db, name.clone()) {
-                None => return GenericPredicate::Error,
-                Some(t) => t,
-            };
+            let associated_ty =
+                match trait_ref.trait_.associated_type_by_name_including_super_traits(db, &name) {
+                    None => return GenericPredicate::Error,
+                    Some(t) => t,
+                };
             let projection_ty =
                 ProjectionTy { associated_ty, parameters: trait_ref.substs.clone() };
             let ty = Ty::from_hir(db, resolver, type_ref);
