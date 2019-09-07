@@ -3736,7 +3736,7 @@ fn fn_trait() {
 trait FnOnce<Args> {
     type Output;
 
-    fn call_once(self, args: Args) -> Self::Output;
+    fn call_once(self, args: Args) -> <Self as FnOnce<Args>>::Output;
 }
 
 fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
@@ -3746,13 +3746,13 @@ fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
         @r###"
     [57; 61) 'self': Self
     [63; 67) 'args': Args
-    [132; 133) 'f': F
-    [138; 166) '{     ...2)); }': ()
-    [144; 145) 'f': F
-    [144; 163) 'f.call...1, 2))': {unknown}
-    [156; 162) '(1, 2)': (i32, i32)
-    [157; 158) '1': i32
-    [160; 161) '2': i32
+    [150; 151) 'f': F
+    [156; 184) '{     ...2)); }': ()
+    [162; 163) 'f': F
+    [162; 181) 'f.call...1, 2))': {unknown}
+    [174; 180) '(1, 2)': (u32, u64)
+    [175; 176) '1': u32
+    [178; 179) '2': u64
     "###
     );
 }
