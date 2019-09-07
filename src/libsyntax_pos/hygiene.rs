@@ -360,7 +360,7 @@ impl SyntaxContext {
     }
 
     /// Extend a syntax context with a given expansion and transparency.
-    pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
+    crate fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
         HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
     }
 
@@ -550,7 +550,7 @@ impl Span {
     /// The returned span belongs to the created expansion and has the new properties,
     /// but its location is inherited from the current span.
     pub fn fresh_expansion(self, expn_data: ExpnData) -> Span {
-        self.fresh_expansion_with_transparency(expn_data, Transparency::SemiTransparent)
+        self.fresh_expansion_with_transparency(expn_data, Transparency::Transparent)
     }
 
     pub fn fresh_expansion_with_transparency(
@@ -639,8 +639,9 @@ pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
     /// Expansion produced by a macro.
-    /// FIXME: Some code injected by the compiler before HIR lowering also gets this kind.
     Macro(MacroKind, Symbol),
+    /// Transform done by the compiler on the AST.
+    AstPass(AstPass),
     /// Desugaring done by the compiler during HIR lowering.
     Desugaring(DesugaringKind)
 }
@@ -650,6 +651,7 @@ impl ExpnKind {
         match *self {
             ExpnKind::Root => kw::PathRoot,
             ExpnKind::Macro(_, descr) => descr,
+            ExpnKind::AstPass(kind) => Symbol::intern(kind.descr()),
             ExpnKind::Desugaring(kind) => Symbol::intern(kind.descr()),
         }
     }
@@ -679,6 +681,26 @@ impl MacroKind {
         match self {
             MacroKind::Attr => "an",
             _ => "a",
+        }
+    }
+}
+
+/// The kind of AST transform.
+#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+pub enum AstPass {
+    StdImports,
+    TestHarness,
+    ProcMacroHarness,
+    PluginMacroDefs,
+}
+
+impl AstPass {
+    fn descr(self) -> &'static str {
+        match self {
+            AstPass::StdImports => "standard library imports",
+            AstPass::TestHarness => "test harness",
+            AstPass::ProcMacroHarness => "proc macro harness",
+            AstPass::PluginMacroDefs => "plugin macro definitions",
         }
     }
 }

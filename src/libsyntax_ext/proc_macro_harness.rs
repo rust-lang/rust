@@ -3,8 +3,7 @@ use std::mem;
 use smallvec::smallvec;
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax::source_map::{ExpnData, ExpnKind, respan};
-use syntax::ext::base::{ExtCtxt, MacroKind};
+use syntax::ext::base::ExtCtxt;
 use syntax::ext::expand::{AstFragment, ExpansionConfig};
 use syntax::ext::proc_macro::is_proc_macro_attr;
 use syntax::parse::ParseSess;
@@ -12,6 +11,7 @@ use syntax::ptr::P;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::hygiene::AstPass;
 
 struct ProcMacroDerive {
     trait_name: ast::Name,
@@ -308,8 +308,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
 // Creates a new module which looks like:
 //
-//      #[doc(hidden)]
-//      mod $gensym {
+//      const _: () = {
 //          extern crate proc_macro;
 //
 //          use proc_macro::bridge::client::ProcMacro;
@@ -327,32 +326,30 @@ fn mk_decls(
     custom_attrs: &[ProcMacroDef],
     custom_macros: &[ProcMacroDef],
 ) -> P<ast::Item> {
-    let span = DUMMY_SP.fresh_expansion(ExpnData::allow_unstable(
-        ExpnKind::Macro(MacroKind::Attr, sym::proc_macro), DUMMY_SP, cx.parse_sess.edition,
-        [sym::rustc_attrs, sym::proc_macro_internals][..].into(),
-    ));
+    let expn_id = cx.resolver.expansion_for_ast_pass(
+        DUMMY_SP,
+        AstPass::ProcMacroHarness,
+        &[sym::rustc_attrs, sym::proc_macro_internals],
+        None,
+    );
+    let span = DUMMY_SP.with_def_site_ctxt(expn_id);
 
-    let hidden = cx.meta_list_item_word(span, sym::hidden);
-    let doc = cx.meta_list(span, sym::doc, vec![hidden]);
-    let doc_hidden = cx.attribute(doc);
-
-    let proc_macro = Ident::with_dummy_span(sym::proc_macro);
+    let proc_macro = Ident::new(sym::proc_macro, span);
     let krate = cx.item(span,
                         proc_macro,
                         Vec::new(),
                         ast::ItemKind::ExternCrate(None));
 
-    let bridge = Ident::from_str("bridge");
-    let client = Ident::from_str("client");
-    let proc_macro_ty = Ident::from_str("ProcMacro");
-    let custom_derive = Ident::from_str("custom_derive");
-    let attr = Ident::from_str("attr");
-    let bang = Ident::from_str("bang");
-    let crate_kw = Ident::with_dummy_span(kw::Crate);
+    let bridge = Ident::from_str_and_span("bridge", span);
+    let client = Ident::from_str_and_span("client", span);
+    let proc_macro_ty = Ident::from_str_and_span("ProcMacro", span);
+    let custom_derive = Ident::from_str_and_span("custom_derive", span);
+    let attr = Ident::from_str_and_span("attr", span);
+    let bang = Ident::from_str_and_span("bang", span);
 
     let decls = {
         let local_path = |sp: Span, name| {
-            cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![crate_kw, name]))
+            cx.expr_path(cx.path(sp.with_ctxt(span.ctxt()), vec![name]))
         };
         let proc_macro_ty_method_path = |method| cx.expr_path(cx.path(span, vec![
             proc_macro, bridge, client, proc_macro_ty, method,
@@ -381,7 +378,7 @@ fn mk_decls(
 
     let decls_static = cx.item_static(
         span,
-        Ident::from_str("_DECLS"),
+        Ident::from_str_and_span("_DECLS", span),
         cx.ty_rptr(span,
             cx.ty(span, ast::TyKind::Slice(
                 cx.ty_path(cx.path(span,
@@ -392,22 +389,22 @@ fn mk_decls(
     ).map(|mut i| {
         let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);
         i.attrs.push(cx.attribute(attr));
-        i.vis = respan(span, ast::VisibilityKind::Public);
         i
     });
 
-    let module = cx.item_mod(
+    let block = cx.expr_block(cx.block(
         span,
-        span,
-        ast::Ident::from_str("decls").gensym(),
-        vec![doc_hidden],
-        vec![krate, decls_static],
-    ).map(|mut i| {
-        i.vis = respan(span, ast::VisibilityKind::Public);
-        i
-    });
+        vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)],
+    ));
 
-    // Integrate the new module into existing module structures.
-    let module = AstFragment::Items(smallvec![module]);
-    cx.monotonic_expander().fully_expand_fragment(module).make_items().pop().unwrap()
+    let anon_constant = cx.item_const(
+        span,
+        ast::Ident::new(kw::Underscore, span),
+        cx.ty(span, ast::TyKind::Tup(Vec::new())),
+        block,
+    );
+
+    // Integrate the new item into existing module structures.
+    let items = AstFragment::Items(smallvec![anon_constant]);
+    cx.monotonic_expander().fully_expand_fragment(items).make_items().pop().unwrap()
 }

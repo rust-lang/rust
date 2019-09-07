@@ -880,6 +880,10 @@ pub struct Resolver<'a> {
     /// There will be an anonymous module created around `g` with the ID of the
     /// entry block for `f`.
     block_map: NodeMap<Module<'a>>,
+    /// A fake module that contains no definition and no prelude. Used so that
+    /// some AST passes can generate identifiers that only resolve to local or
+    /// language items.
+    empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
     extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
     binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
@@ -914,6 +918,7 @@ pub struct Resolver<'a> {
     non_macro_attrs: [Lrc<SyntaxExtension>; 2],
     macro_defs: FxHashMap<ExpnId, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
+    ast_transform_scopes: FxHashMap<ExpnId, Module<'a>>,
     unused_macros: NodeMap<Span>,
     proc_macro_stubs: NodeSet,
     /// Traces collected during macro resolution and validated when it's complete.
@@ -1081,6 +1086,21 @@ impl<'a> Resolver<'a> {
             no_implicit_prelude: attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
             ..ModuleData::new(None, root_module_kind, root_def_id, ExpnId::root(), krate.span)
         });
+        let empty_module_kind = ModuleKind::Def(
+            DefKind::Mod,
+            root_def_id,
+            kw::Invalid,
+        );
+        let empty_module = arenas.alloc_module(ModuleData {
+            no_implicit_prelude: true,
+            ..ModuleData::new(
+                Some(graph_root),
+                empty_module_kind,
+                root_def_id,
+                ExpnId::root(),
+                DUMMY_SP,
+            )
+        });
         let mut module_map = FxHashMap::default();
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
 
@@ -1140,10 +1160,12 @@ impl<'a> Resolver<'a> {
             label_res_map: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
+            empty_module,
             module_map,
             block_map: Default::default(),
             extern_module_map: FxHashMap::default(),
             binding_parent_modules: FxHashMap::default(),
+            ast_transform_scopes: FxHashMap::default(),
 
             glob_map: Default::default(),
 
