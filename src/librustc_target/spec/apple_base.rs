@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, io, path::Path, process::Command};
 
 use crate::spec::{LinkArgs, TargetOptions};
 
@@ -50,4 +50,47 @@ fn macos_deployment_target() -> (u32, u32) {
 pub fn macos_llvm_target(arch: &str) -> String {
     let (major, minor) = macos_deployment_target();
     format!("{}-apple-macosx{}.{}.0", arch, major, minor)
+}
+
+pub fn sysroot(sdk: &str) -> Result<String, String> {
+    let actual_sdk_path = sdk_path(sdk)?;
+    // Like Clang, allow the SDKROOT environment variable used by Xcode to define the sysroot
+    if let Some(sdk_root) = env::var("SDKROOT").ok() {
+        let sdk_root_p = Path::new(&sdk_root);
+        // Ignore SDKROOT if it's not a valid path
+        if !sdk_root_p.is_absolute() || sdk_root_p == Path::new("/") || !sdk_root_p.exists() {
+            return Ok(actual_sdk_path);
+        }
+        // Ignore SDKROOT if it's clearly set for the wrong platform, which may occur when we're
+        // compiling a custom build script while targeting iOS for example
+        match sdk {
+            "iphoneos" if sdk_root.contains("iPhoneSimulator.platform")
+                || sdk_root.contains("MacOSX.platform") => return Ok(actual_sdk_path),
+            "iphonesimulator" if sdk_root.contains("iPhoneOS.platform")
+                || sdk_root.contains("MacOSX.platform") => return Ok(actual_sdk_path),
+            "macosx" | "macosx10.15" if sdk_root.contains("iPhoneOS.platform")
+                || sdk_root.contains("iPhoneSimulator.platform") => return Ok(actual_sdk_path),
+            _ => return Ok(sdk_root),
+        }
+    }
+    Ok(actual_sdk_path)
+}
+
+fn sdk_path(sdk_name: &str) -> Result<String, String> {
+    let res =
+        Command::new("xcrun").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
+            |output| {
+                if output.status.success() {
+                    Ok(String::from_utf8(output.stdout).unwrap())
+                } else {
+                    let error = String::from_utf8(output.stderr);
+                    let error = format!("process exit with error: {}", error.unwrap());
+                    Err(io::Error::new(io::ErrorKind::Other, &error[..]))
+                }
+            },
+        );
+    match res {
+        Ok(output) => Ok(output.trim().to_string()),
+        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e)),
+    }
 }

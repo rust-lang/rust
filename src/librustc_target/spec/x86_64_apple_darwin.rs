@@ -1,11 +1,21 @@
 use crate::spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
+    let sysroot = super::apple_base::sysroot("macosx")?;
     let mut base = super::apple_base::opts();
     base.cpu = "core2".to_string();
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.eliminate_frame_pointer = false;
-    base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
+    base.pre_link_args.insert(
+        LinkerFlavor::Gcc,
+        vec![
+            "-m64".to_string(),
+            "-isysroot".to_string(),
+            sysroot.clone(),
+            "-Wl,-syslibroot".to_string(),
+            sysroot,
+        ],
+    );
     base.stack_probes = true;
 
     // Clang automatically chooses a more specific target based on

@@ -1,7 +1,3 @@
-use std::env;
-use std::io;
-use std::path::Path;
-use std::process::Command;
 use crate::spec::{LinkArgs, LinkerFlavor, TargetOptions};
 
 use Arch::*;
@@ -30,42 +26,6 @@ impl Arch {
     }
 }
 
-pub fn get_sdk_root(sdk_name: &str) -> Result<String, String> {
-    // Following what clang does
-    // (https://github.com/llvm/llvm-project/blob/
-    // 296a80102a9b72c3eda80558fb78a3ed8849b341/clang/lib/Driver/ToolChains/Darwin.cpp#L1661-L1678)
-    // to allow the SDK path to be set. (For clang, xcrun sets
-    // SDKROOT; for rustc, the user or build system can set it, or we
-    // can fall back to checking for xcrun on PATH.)
-    if let Some(sdkroot) = env::var("SDKROOT").ok() {
-        let sdkroot_path = Path::new(&sdkroot);
-        if sdkroot_path.is_absolute() && sdkroot_path != Path::new("/") && sdkroot_path.exists() {
-            return Ok(sdkroot);
-        }
-    }
-    let res = Command::new("xcrun")
-                      .arg("--show-sdk-path")
-                      .arg("-sdk")
-                      .arg(sdk_name)
-                      .output()
-                      .and_then(|output| {
-                          if output.status.success() {
-                              Ok(String::from_utf8(output.stdout).unwrap())
-                          } else {
-                              let error = String::from_utf8(output.stderr);
-                              let error = format!("process exit with error: {}",
-                                                  error.unwrap());
-                              Err(io::Error::new(io::ErrorKind::Other,
-                                                 &error[..]))
-                          }
-                      });
-
-    match res {
-        Ok(output) => Ok(output.trim().to_string()),
-        Err(e) => Err(format!("failed to get {} SDK path: {}", sdk_name, e))
-    }
-}
-
 fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
     let sdk_name = match arch {
         Armv7 | Armv7s | Arm64 => "iphoneos",
@@ -75,7 +35,7 @@ fn build_pre_link_args(arch: Arch) -> Result<LinkArgs, String> {
 
     let arch_name = arch.to_string();
 
-    let sdk_root = get_sdk_root(sdk_name)?;
+    let sdk_root = super::apple_base::sysroot(sdk_name)?;
 
     let mut args = LinkArgs::new();
     args.insert(LinkerFlavor::Gcc,
