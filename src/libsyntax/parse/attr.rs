@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
     /// PATH
     /// PATH `=` TOKEN_TREE
     /// The delimiters or `=` are still put into the resulting token stream.
-    crate fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
+    pub fn parse_meta_item_unrestricted(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
         let meta = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
                 Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
