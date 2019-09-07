@@ -67,6 +67,14 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
             ty::Dynamic(ref data, ..) if data.principal_def_id().is_some() => {
                 self.check_def_id(item, data.principal_def_id().unwrap());
             }
+            ty::Bool => {
+                self.check_primitive_impl(def_id,
+                                          lang_items.bool_impl(),
+                                          None,
+                                          "bool",
+                                          "bool",
+                                          item.span);
+            }
             ty::Char => {
                 self.check_primitive_impl(def_id,
                                           lang_items.char_impl(),

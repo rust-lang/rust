@@ -227,6 +227,7 @@ pub mod task;
 pub mod alloc;
 
 // note: does not need to be public
+mod bool;
 mod tuple;
 mod unit;
 

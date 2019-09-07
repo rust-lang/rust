@@ -435,7 +435,12 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(INDIRECT_STRUCTURAL_MATCH),
             reference: "issue #62411 <https://github.com/rust-lang/rust/issues/62411>",
             edition: None,
-        }
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(SOFT_UNSTABLE),
+            reference: "issue #64266 <https://github.com/rust-lang/rust/issues/64266>",
+            edition: None,
+        },
         ]);
 
     // Register renamed and removed lints.
