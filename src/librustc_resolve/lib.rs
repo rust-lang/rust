@@ -1644,7 +1644,7 @@ impl<'a> Resolver<'a> {
         }
 
         if let ModuleKind::Block(..) = module.kind {
-            return Some(module.parent.unwrap());
+            return Some(module.parent.unwrap().nearest_item_scope());
         }
 
         None
