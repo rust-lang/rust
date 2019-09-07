@@ -154,21 +154,8 @@ pub struct Stability {
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: u32 },
+    Unstable { reason: Option<Symbol>, issue: u32, is_soft: bool },
     Stable { since: Symbol },
-}
-
-impl Stability {
-    pub fn unstable(feature: Symbol, reason: Option<Symbol>, issue: u32) -> Stability {
-        Stability {
-            level: StabilityLevel::Unstable { reason, issue },
-            feature,
-            rustc_depr: None,
-            const_stability: None,
-            promotable: false,
-            allow_const_fn_ptr: false,
-        }
-    }
 }
 
 impl StabilityLevel {
@@ -356,19 +343,27 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     let mut feature = None;
                     let mut reason = None;
                     let mut issue = None;
+                    let mut is_soft = false;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
                             match mi.name_or_empty() {
                                 sym::feature => if !get(mi, &mut feature) { continue 'outer },
                                 sym::reason => if !get(mi, &mut reason) { continue 'outer },
                                 sym::issue => if !get(mi, &mut issue) { continue 'outer },
+                                sym::soft => {
+                                    if !mi.is_word() {
+                                        let msg = "`soft` should not have any arguments";
+                                        sess.span_diagnostic.span_err(mi.span, msg);
+                                    }
+                                    is_soft = true;
+                                }
                                 _ => {
                                     handle_errors(
                                         sess,
                                         meta.span(),
                                         AttrError::UnknownMetaItem(
                                             mi.path.to_string(),
-                                            &["feature", "reason", "issue"]
+                                            &["feature", "reason", "issue", "soft"]
                                         ),
                                     );
                                     continue 'outer
@@ -400,7 +395,8 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                                       "incorrect 'issue'");
                                             continue
                                         }
-                                    }
+                                    },
+                                    is_soft,
                                 },
                                 feature,
                                 rustc_depr: None,
