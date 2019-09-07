@@ -1,7 +1,5 @@
 //! The various pretty-printing routines.
 
-use rustc::cfg;
-use rustc::cfg::graphviz::LabelledCFG;
 use rustc::hir;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks;
@@ -14,6 +12,7 @@ use rustc::util::common::ErrorReported;
 use rustc_interface::util::ReplaceBodyWithLoop;
 use rustc_ast_borrowck as borrowck;
 use rustc_ast_borrowck::graphviz as borrowck_dot;
+use rustc_ast_borrowck::cfg::{self, graphviz::LabelledCFG};
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast;
