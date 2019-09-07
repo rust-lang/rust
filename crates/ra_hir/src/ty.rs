@@ -16,7 +16,10 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use crate::{db::HirDatabase, type_ref::Mutability, Adt, GenericParams, Name, Trait, TypeAlias};
+use crate::{
+    db::HirDatabase, expr::ExprId, type_ref::Mutability, Adt, DefWithBody, GenericParams, Name,
+    Trait, TypeAlias,
+};
 use display::{HirDisplay, HirFormatter};
 
 pub(crate) use autoderef::autoderef;
@@ -100,6 +103,12 @@ pub enum TypeCtor {
     /// couldn't find a better representation.  In that case, we generate
     /// an **application type** like `(Iterator::Item)<T>`.
     AssociatedType(TypeAlias),
+
+    /// The type of a specific closure.
+    ///
+    /// The closure signature is stored in a `FnPtr` type in the first type
+    /// parameter.
+    Closure { def: DefWithBody, expr: ExprId },
 }
 
 /// A nominal type with (maybe 0) type parameters. This might be a primitive
@@ -481,6 +490,10 @@ impl Ty {
                     let sig = db.callable_item_signature(def);
                     Some(sig.subst(&a_ty.parameters))
                 }
+                TypeCtor::Closure { .. } => {
+                    let sig_param = &a_ty.parameters[0];
+                    sig_param.callable_sig(db)
+                }
                 _ => None,
             },
             _ => None,
@@ -719,6 +732,14 @@ impl HirDisplay for ApplicationTy {
                     f.write_joined(&*self.parameters.0, ", ")?;
                     write!(f, ">")?;
                 }
+            }
+            TypeCtor::Closure { .. } => {
+                let sig = self.parameters[0]
+                    .callable_sig(f.db)
+                    .expect("first closure parameter should contain signature");
+                write!(f, "|")?;
+                f.write_joined(sig.params(), ", ")?;
+                write!(f, "| -> {}", sig.ret().display(f.db))?;
             }
         }
         Ok(())

@@ -885,18 +885,32 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Lambda { body, args, arg_types } => {
                 assert_eq!(args.len(), arg_types.len());
 
+                let mut sig_tys = Vec::new();
+
                 for (arg_pat, arg_type) in args.iter().zip(arg_types.iter()) {
                     let expected = if let Some(type_ref) = arg_type {
                         self.make_ty(type_ref)
                     } else {
                         Ty::Unknown
                     };
-                    self.infer_pat(*arg_pat, &expected, BindingMode::default());
+                    let arg_ty = self.infer_pat(*arg_pat, &expected, BindingMode::default());
+                    sig_tys.push(arg_ty);
                 }
 
-                // FIXME: infer lambda type etc.
-                let _body_ty = self.infer_expr(*body, &Expectation::none());
-                Ty::Unknown
+                // add return type
+                let ret_ty = self.new_type_var();
+                sig_tys.push(ret_ty.clone());
+                let sig_ty = Ty::apply(
+                    TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
+                    sig_tys.into(),
+                );
+                let closure_ty = Ty::apply_one(
+                    TypeCtor::Closure { def: self.body.owner(), expr: tgt_expr },
+                    sig_ty,
+                );
+
+                self.infer_expr(*body, &Expectation::has_type(ret_ty));
+                closure_ty
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());

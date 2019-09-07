@@ -571,6 +571,10 @@ pub(crate) fn struct_datum_query(
                 type_alias.krate(db) != Some(krate),
             )
         }
+        TypeCtor::Closure { def, .. } => {
+            let upstream = def.krate(db) != Some(krate);
+            (1, vec![], upstream)
+        }
     };
     let flags = chalk_rust_ir::StructFlags {
         upstream,
