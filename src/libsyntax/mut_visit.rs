@@ -1,10 +1,10 @@
-//! A MutVisitor represents an AST modification; it accepts an AST piece and
-//! and mutates it in place. So, for instance, macro expansion is a MutVisitor
+//! A `MutVisitor` represents an AST modification; it accepts an AST piece and
+//! and mutates it in place. So, for instance, macro expansion is a `MutVisitor`
 //! that walks over an AST and modifies it.
 //!
-//! Note: using a MutVisitor (other than the MacroExpander MutVisitor) on
+//! Note: using a `MutVisitor` (other than the `MacroExpander` `MutVisitor`) on
 //! an AST before macro expansion is probably a bad idea. For instance,
-//! a MutVisitor renaming item names in a module will miss all of those
+//! a `MutVisitor` renaming item names in a module will miss all of those
 //! that are created by the expansion of a macro.
 
 use crate::ast::*;
@@ -614,7 +614,7 @@ pub fn noop_visit_tts<T: MutVisitor>(TokenStream(tts): &mut TokenStream, vis: &m
     })
 }
 
-// Apply ident visitor if it's an ident, apply other visits to interpolated nodes.
+// Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
 // In practice the ident part is not actually used by specific visitors right now,
 // but there's a test below checking that it works.
 pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
@@ -625,7 +625,7 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             vis.visit_ident(&mut ident);
             *name = ident.name;
             *span = ident.span;
-            return; // avoid visiting the span for the second time
+            return; // Avoid visiting the span for the second time.
         }
         token::Interpolated(nt) => {
             let mut nt = Lrc::make_mut(nt);
@@ -636,28 +636,28 @@ pub fn noop_visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
     vis.visit_span(span);
 }
 
-/// Apply visitor to elements of interpolated nodes.
+/// Applies the visitor to elements of interpolated nodes.
 //
 // N.B., this can occur only when applying a visitor to partially expanded
 // code, where parsed pieces have gotten implanted ito *other* macro
 // invocations. This is relevant for macro hygiene, but possibly not elsewhere.
 //
 // One problem here occurs because the types for flat_map_item, flat_map_stmt,
-// etc. allow the visitor to return *multiple* items; this is a problem for the
+// etc., allow the visitor to return *multiple* items; this is a problem for the
 // nodes here, because they insist on having exactly one piece. One solution
 // would be to mangle the MutVisitor trait to include one-to-many and
 // one-to-one versions of these entry points, but that would probably confuse a
 // lot of people and help very few. Instead, I'm just going to put in dynamic
 // checks. I think the performance impact of this will be pretty much
-// nonexistent. The danger is that someone will apply a MutVisitor to a
+// nonexistent. The danger is that someone will apply a `MutVisitor` to a
 // partially expanded node, and will be confused by the fact that their
-// "flat_map_item" or "flat_map_stmt" isn't getting called on NtItem or NtStmt
+// `flat_map_item` or `flat_map_stmt` isn't getting called on `NtItem` or `NtStmt`
 // nodes. Hopefully they'll wind up reading this comment, and doing something
 // appropriate.
 //
-// BTW, design choice: I considered just changing the type of, e.g., NtItem to
+// BTW, design choice: I considered just changing the type of, e.g., `NtItem` to
 // contain multiple items, but decided against it when I looked at
-// parse_item_or_view_item and tried to figure out what I would do with
+// `parse_item_or_view_item` and tried to figure out what I would do with
 // multiple items there....
 pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut T) {
     match nt {
@@ -1014,7 +1014,7 @@ pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
     });
 }
 
-// Mutate one item into possibly many items.
+// Mutates one item into possibly many items.
 pub fn noop_flat_map_item<T: MutVisitor>(mut item: P<Item>, visitor: &mut T)
                                          -> SmallVec<[P<Item>; 1]> {
     let Item { ident, attrs, id, node, vis, span, tokens: _ } = item.deref_mut();
@@ -1224,7 +1224,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr,
         ExprKind::Paren(expr) => {
             vis.visit_expr(expr);
 
-            // Nodes that are equal modulo `Paren` sugar no-ops should have the same ids.
+            // Nodes that are equal modulo `Paren` sugar no-ops should have the same IDs.
             *id = expr.id;
             vis.visit_span(span);
             visit_thin_attrs(attrs, vis);
