@@ -43,17 +43,17 @@ use std::{thread, panic};
 
 pub fn diagnostics_registry() -> Registry {
     let mut all_errors = Vec::new();
-    all_errors.extend_from_slice(&rustc::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_typeck::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_typeck::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_resolve::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_privacy::error_codes::DIAGNOSTICS);
     // FIXME: need to figure out a way to get these back in here
     // all_errors.extend_from_slice(get_codegen_backend(sess).diagnostics());
-    all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_passes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_plugin::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_mir::DIAGNOSTICS);
-    all_errors.extend_from_slice(&syntax::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_metadata::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_passes::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_plugin::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_mir::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&syntax::error_codes::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }

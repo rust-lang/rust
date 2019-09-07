@@ -113,7 +113,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
 
         // Emit special messages for unresolved `Self` and `self`.
         if is_self_type(path, ns) {
-            __diagnostic_used!(E0411);
+            syntax::diagnostic_used!(E0411);
             err.code(DiagnosticId::Error("E0411".into()));
             err.span_label(span, format!("`Self` is only available in impls, traits, \
                                           and type definitions"));
@@ -122,7 +122,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         if is_self_value(path, ns) {
             debug!("smart_resolve_path_fragment: E0424, source={:?}", source);
 
-            __diagnostic_used!(E0424);
+            syntax::diagnostic_used!(E0424);
             err.code(DiagnosticId::Error("E0424".into()));
             err.span_label(span, match source {
                 PathSource::Pat => {

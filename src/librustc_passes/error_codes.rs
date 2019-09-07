@@ -1,6 +1,4 @@
-use syntax::{register_diagnostics, register_long_diagnostics};
-
-register_long_diagnostics! {
+syntax::register_diagnostics! {
 /*
 E0014: r##"
 Constants can only be initialized by a constant value or, in a future
@@ -320,10 +318,8 @@ async fn foo() {}
 ```
 
 Switch to the Rust 2018 edition to use `async fn`.
-"##
-}
-
-register_diagnostics! {
+"##,
+;
     E0226, // only a single explicit lifetime bound is permitted
     E0472, // asm! is unsupported on this target
     E0561, // patterns aren't allowed in function pointer types

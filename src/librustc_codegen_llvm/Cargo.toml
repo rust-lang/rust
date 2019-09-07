@@ -11,11 +11,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
-cc = "1.0.1" # Used to locate MSVC
-num_cpus = "1.0"
-tempfile = "3.0"
 rustc_llvm = { path = "../librustc_llvm" }
-memmap = "0.6"
 
 [features]
 # This is used to convince Cargo to separately cache builds of `rustc_codegen_llvm`

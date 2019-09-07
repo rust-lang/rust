@@ -120,12 +120,6 @@ declare_features! (
     /// macros disappear).
     (active, allow_internal_unsafe, "1.0.0", None, None),
 
-    /// Allows using the macros:
-    /// + `__diagnostic_used`
-    /// + `__register_diagnostic`
-    /// +`__build_diagnostic_array`
-    (active, rustc_diagnostic_macros, "1.0.0", None, None),
-
     /// Allows using `#[rustc_const_unstable(feature = "foo", ..)]` which
     /// lets a function to be `const` when opted into with `#![feature(foo)]`.
     (active, rustc_const_unstable, "1.0.0", None, None),

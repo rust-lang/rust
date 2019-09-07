@@ -298,18 +298,18 @@ impl<'a> PathSource<'a> {
     }
 
     fn error_code(self, has_unexpected_resolution: bool) -> &'static str {
-        __diagnostic_used!(E0404);
-        __diagnostic_used!(E0405);
-        __diagnostic_used!(E0412);
-        __diagnostic_used!(E0422);
-        __diagnostic_used!(E0423);
-        __diagnostic_used!(E0425);
-        __diagnostic_used!(E0531);
-        __diagnostic_used!(E0532);
-        __diagnostic_used!(E0573);
-        __diagnostic_used!(E0574);
-        __diagnostic_used!(E0575);
-        __diagnostic_used!(E0576);
+        syntax::diagnostic_used!(E0404);
+        syntax::diagnostic_used!(E0405);
+        syntax::diagnostic_used!(E0412);
+        syntax::diagnostic_used!(E0422);
+        syntax::diagnostic_used!(E0423);
+        syntax::diagnostic_used!(E0425);
+        syntax::diagnostic_used!(E0531);
+        syntax::diagnostic_used!(E0532);
+        syntax::diagnostic_used!(E0573);
+        syntax::diagnostic_used!(E0574);
+        syntax::diagnostic_used!(E0575);
+        syntax::diagnostic_used!(E0576);
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => "E0404",
             (PathSource::Trait(_), false) => "E0405",

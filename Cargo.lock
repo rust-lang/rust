@@ -3129,11 +3129,7 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
- "cc",
- "memmap",
- "num_cpus",
  "rustc_llvm",
- "tempfile",
 ]
 
 [[package]]

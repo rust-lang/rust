@@ -2,7 +2,6 @@
 
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 
 #![recursion_limit="256"]
 
@@ -31,7 +30,7 @@ use syntax_pos::Span;
 use std::{cmp, fmt, mem};
 use std::marker::PhantomData;
 
-mod error_codes;
+pub mod error_codes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -2035,5 +2034,3 @@ fn check_private_in_public(tcx: TyCtxt<'_>, krate: CrateNum) {
     };
     krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
 }
-
-__build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

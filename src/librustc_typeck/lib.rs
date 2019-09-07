@@ -65,7 +65,6 @@ This API is completely unstable and subject to change.
 #![feature(exhaustive_patterns)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(never_type)]
 #![feature(inner_deref)]
@@ -78,9 +77,7 @@ This API is completely unstable and subject to change.
 
 #[macro_use] extern crate rustc;
 
-// N.B., this module needs to be declared first so diagnostics are
-// registered before they are used.
-mod error_codes;
+pub mod error_codes;
 
 mod astconv;
 mod check;
@@ -389,5 +386,3 @@ pub fn hir_trait_to_predicates<'tcx>(
 
     bounds
 }
-
-__build_diagnostic_array! { librustc_typeck, DIAGNOSTICS }

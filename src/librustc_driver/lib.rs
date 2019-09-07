@@ -9,7 +9,6 @@
 #![feature(box_syntax)]
 #![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
 #![feature(no_debug)]
 #![feature(integer_atomics)]
