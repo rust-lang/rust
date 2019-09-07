@@ -679,6 +679,7 @@ fn primitive_impl(cx: &DocContext<'_>, path_str: &str) -> Option<DefId> {
         "f32" => tcx.lang_items().f32_impl(),
         "f64" => tcx.lang_items().f64_impl(),
         "str" => tcx.lang_items().str_impl(),
+        "bool" => tcx.lang_items().bool_impl(),
         "char" => tcx.lang_items().char_impl(),
         _ => None,
     }
