@@ -390,7 +390,15 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {
     Root,
     Macro(kind, descr),
+    AstPass(kind),
     Desugaring(kind)
+});
+
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::AstPass {
+    StdImports,
+    TestHarness,
+    ProcMacroHarness,
+    PluginMacroDefs,
 });
 
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {

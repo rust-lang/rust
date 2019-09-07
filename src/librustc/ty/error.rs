@@ -200,7 +200,9 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Array(_, n) => {
                 let n = tcx.lift_to_global(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
-                    Some(n) => format!("array of {} elements", n).into(),
+                    Some(n) => {
+                        format!("array of {} element{}", n, if n != 1 { "s" } else { "" }).into()
+                    }
                     None => "array".into(),
                 }
             }

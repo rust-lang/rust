@@ -8,6 +8,7 @@ use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
 use crate::Namespace::*;
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
+use rustc::hir::def_id;
 use rustc::middle::stability;
 use rustc::{ty, lint, span_bug};
 use syntax::ast::{self, NodeId, Ident};
@@ -25,6 +26,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
+use syntax_pos::hygiene::AstPass;
 
 type Res = def::Res<NodeId>;
 
@@ -95,16 +97,6 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.session.next_node_id()
     }
 
-    fn get_module_scope(&mut self, id: NodeId) -> ExpnId {
-        let expn_id = ExpnId::fresh(Some(ExpnData::default(
-            ExpnKind::Macro(MacroKind::Attr, sym::test_case), DUMMY_SP, self.session.edition()
-        )));
-        let module = self.module_map[&self.definitions.local_def_id(id)];
-        self.invocation_parent_scopes.insert(expn_id, ParentScope::module(module));
-        self.definitions.set_invocation_parent(expn_id, module.def_id().unwrap().index);
-        expn_id
-    }
-
     fn resolve_dollar_crates(&mut self) {
         hygiene::update_dollar_crate_names(|ctxt| {
             let ident = Ident::new(kw::DollarCrate, DUMMY_SP.with_ctxt(ctxt));
@@ -134,6 +126,37 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.session.span_err(ident.span,
                                   &format!("built-in macro `{}` was already defined", ident));
         }
+    }
+
+    // Create a new Expansion with a definition site of the provided module, or
+    // a fake empty `#[no_implicit_prelude]` module if no module is provided.
+    fn expansion_for_ast_pass(
+        &mut self,
+        call_site: Span,
+        pass: AstPass,
+        features: &[Symbol],
+        parent_module_id: Option<NodeId>,
+    ) -> ExpnId {
+        let expn_id = ExpnId::fresh(Some(ExpnData::allow_unstable(
+            ExpnKind::AstPass(pass),
+            call_site,
+            self.session.edition(),
+            features.into(),
+        )));
+
+        let parent_scope = if let Some(module_id) = parent_module_id {
+            let parent_def_id = self.definitions.local_def_id(module_id);
+            self.definitions.add_parent_module_of_macro_def(expn_id, parent_def_id);
+            self.module_map[&parent_def_id]
+        } else {
+            self.definitions.add_parent_module_of_macro_def(
+                expn_id,
+                def_id::DefId::local(def_id::CRATE_DEF_INDEX),
+            );
+            self.empty_module
+        };
+        self.ast_transform_scopes.insert(expn_id, parent_scope);
+        expn_id
     }
 
     fn resolve_imports(&mut self) {

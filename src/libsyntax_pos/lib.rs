@@ -442,6 +442,7 @@ impl Span {
                 let (pre, post) = match expn_data.kind {
                     ExpnKind::Root => break,
                     ExpnKind::Desugaring(..) => ("desugaring of ", ""),
+                    ExpnKind::AstPass(..) => ("", ""),
                     ExpnKind::Macro(macro_kind, _) => match macro_kind {
                         MacroKind::Bang => ("", "!"),
                         MacroKind::Attr => ("#[", "]"),
@@ -511,6 +512,25 @@ impl Span {
         Span::new(span.lo + BytePos::from_usize(inner.start),
                   span.lo + BytePos::from_usize(inner.end),
                   span.ctxt)
+    }
+
+    /// Equivalent of `Span::def_site` from the proc macro API,
+    /// except that the location is taken from the `self` span.
+    pub fn with_def_site_ctxt(self, expn_id: ExpnId) -> Span {
+        self.with_ctxt_from_mark(expn_id, Transparency::Opaque)
+    }
+
+    /// Equivalent of `Span::call_site` from the proc macro API,
+    /// except that the location is taken from the `self` span.
+    pub fn with_call_site_ctxt(&self, expn_id: ExpnId) -> Span {
+        self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
+    }
+
+    /// Span with a context reproducing `macro_rules` hygiene (hygienic locals, unhygienic items).
+    /// FIXME: This should be eventually replaced either with `with_def_site_ctxt` (preferably),
+    /// or with `with_call_site_ctxt` (where necessary).
+    pub fn with_legacy_ctxt(&self, expn_id: ExpnId) -> Span {
+        self.with_ctxt_from_mark(expn_id, Transparency::SemiTransparent)
     }
 
     /// Produces a span with the same location as `self` and context produced by a macro with the

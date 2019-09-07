@@ -291,7 +291,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 &format!(
                     "{} positional argument{} in format string, but {}",
                     count,
-                    if count > 1 { "s" } else { "" },
+                    if count != 1 { "s" } else { "" },
                     self.describe_num_args(),
                 ),
             );

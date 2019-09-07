@@ -4,7 +4,7 @@
 use crate::dataflow::{DataFlowContext, BitwiseOperator, DataFlowOperator, KillFrom};
 
 use crate::borrowck::*;
-use rustc::cfg;
+use crate::cfg;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 

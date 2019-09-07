@@ -345,8 +345,13 @@ impl LockstepIterSize {
                 LockstepIterSize::Constraint(r_len, _) if l_len == r_len => self,
                 LockstepIterSize::Constraint(r_len, r_id) => {
                     let msg = format!(
-                        "meta-variable `{}` repeats {} times, but `{}` repeats {} times",
-                        l_id, l_len, r_id, r_len
+                        "meta-variable `{}` repeats {} time{}, but `{}` repeats {} time{}",
+                        l_id,
+                        l_len,
+                        if l_len != 1 { "s" } else { "" },
+                        r_id,
+                        r_len,
+                        if r_len != 1 { "s" } else { "" },
                     );
                     LockstepIterSize::Contradiction(msg)
                 }

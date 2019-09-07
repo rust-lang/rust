@@ -808,6 +808,7 @@ fn copy_src_dirs(builder: &Builder<'_>, src_dirs: &[&str], exclude_dirs: &[&str]
             "llvm-project/lld", "llvm-project\\lld",
             "llvm-project/lldb", "llvm-project\\lldb",
             "llvm-project/llvm", "llvm-project\\llvm",
+            "llvm-project/compiler-rt", "llvm-project\\compiler-rt",
         ];
         if spath.contains("llvm-project") && !spath.ends_with("llvm-project")
             && !LLVM_PROJECTS.iter().any(|path| spath.contains(path))

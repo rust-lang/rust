@@ -126,7 +126,8 @@ impl<'a> Resolver<'a> {
     crate fn macro_def_scope(&mut self, expn_id: ExpnId) -> Module<'a> {
         let def_id = match self.macro_defs.get(&expn_id) {
             Some(def_id) => *def_id,
-            None => return self.graph_root,
+            None => return self.ast_transform_scopes.get(&expn_id)
+                .unwrap_or(&self.graph_root),
         };
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]

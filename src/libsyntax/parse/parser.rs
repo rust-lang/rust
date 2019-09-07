@@ -132,7 +132,7 @@ pub struct Parser<'a> {
     /// into modules, and sub-parsers have new values for this name.
     pub root_module_name: Option<String>,
     crate expected_tokens: Vec<TokenType>,
-    crate token_cursor: TokenCursor,
+    token_cursor: TokenCursor,
     desugar_doc_comments: bool,
     /// `true` we should configure out of line modules as we parse.
     pub cfg_mods: bool,
@@ -161,19 +161,19 @@ impl<'a> Drop for Parser<'a> {
 }
 
 #[derive(Clone)]
-crate struct TokenCursor {
-    crate frame: TokenCursorFrame,
-    crate stack: Vec<TokenCursorFrame>,
+struct TokenCursor {
+    frame: TokenCursorFrame,
+    stack: Vec<TokenCursorFrame>,
 }
 
 #[derive(Clone)]
-crate struct TokenCursorFrame {
-    crate delim: token::DelimToken,
-    crate span: DelimSpan,
-    crate open_delim: bool,
-    crate tree_cursor: tokenstream::Cursor,
-    crate close_delim: bool,
-    crate last_token: LastToken,
+struct TokenCursorFrame {
+    delim: token::DelimToken,
+    span: DelimSpan,
+    open_delim: bool,
+    tree_cursor: tokenstream::Cursor,
+    close_delim: bool,
+    last_token: LastToken,
 }
 
 /// This is used in `TokenCursorFrame` above to track tokens that are consumed

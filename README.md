@@ -32,6 +32,7 @@ or reading the [rustc guide][rustcguidebuild].
    * `cmake` 3.4.3 or later
    * `curl`
    * `git`
+   * `ssl` which comes in `libssl-dev` or `openssl-devel`
 
 2. Clone the [source] with `git`:
 
@@ -55,6 +56,8 @@ or reading the [rustc guide][rustcguidebuild].
     It is recommended that if you plan to use the Rust build system to create
     an installation (using `./x.py install`) that you set the `prefix` value
     in the `[install]` section to a directory that you have write permissions.
+
+    Create install directory if you are not installing in default directory
 
 4. Build and install:
 

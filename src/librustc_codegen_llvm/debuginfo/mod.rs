@@ -32,7 +32,7 @@ use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, Variable
 
 use libc::c_uint;
 use std::cell::RefCell;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
@@ -224,8 +224,37 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         gdb::insert_reference_to_gdb_debug_scripts_section_global(self)
     }
 
-    fn set_value_name(&mut self, value: &'ll Value, name: &str) {
-        let cname = SmallCStr::new(name);
+    fn set_var_name(&mut self, value: &'ll Value, name: impl ToString) {
+        // Avoid wasting time if LLVM value names aren't even enabled.
+        if self.sess().fewer_names() {
+            return;
+        }
+
+        // Only function parameters and instructions are local to a function,
+        // don't change the name of anything else (e.g. globals).
+        let param_or_inst = unsafe {
+            llvm::LLVMIsAArgument(value).is_some() ||
+            llvm::LLVMIsAInstruction(value).is_some()
+        };
+        if !param_or_inst {
+            return;
+        }
+
+        let old_name = unsafe {
+            CStr::from_ptr(llvm::LLVMGetValueName(value))
+        };
+        match old_name.to_str() {
+            Ok("") => {}
+            Ok(_) => {
+                // Avoid replacing the name if it already exists.
+                // While we could combine the names somehow, it'd
+                // get noisy quick, and the usefulness is dubious.
+                return;
+            }
+            Err(_) => return,
+        }
+
+        let cname = CString::new(name.to_string()).unwrap();
         unsafe {
             llvm::LLVMSetValueName(value, cname.as_ptr());
         }
