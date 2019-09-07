@@ -18,6 +18,7 @@ fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         false,
         false,
         None,
+        false,
     );
     ParseSess::with_span_handler(Handler::with_emitter(true, None, Box::new(emitter)), sm)
 }

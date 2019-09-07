@@ -383,7 +383,8 @@ impl Handler {
                                       cm: Option<Lrc<SourceMapperDyn>>,
                                       flags: HandlerFlags)
                                       -> Handler {
-        let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false, false, None));
+        let emitter = Box::new(EmitterWriter::stderr(
+            color_config, cm, false, false, None, flags.external_macro_backtrace));
         Handler::with_emitter_and_flags(emitter, flags)
     }
 

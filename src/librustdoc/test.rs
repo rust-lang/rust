@@ -401,7 +401,7 @@ pub fn make_test(s: &str,
         // Any errors in parsing should also appear when the doctest is compiled for real, so just
         // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
         let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None);
+        let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
         // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
         let handler = Handler::with_emitter(false, None, box emitter);
         let sess = ParseSess::with_span_handler(handler, cm);

@@ -1196,6 +1196,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
         false,
         false,
         None,
+        false,
     ));
     let handler = errors::Handler::with_emitter(true, None, emitter);
 

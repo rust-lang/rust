@@ -22,7 +22,7 @@ use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
 use rustc::util::profiling::SelfProfiler;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
-use rustc_errors::{Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
+use rustc_errors::{Handler, Level, FatalError, DiagnosticId};
 use rustc_errors::emitter::{Emitter};
 use rustc_target::spec::MergeFunctions;
 use syntax::attr;
@@ -1725,7 +1725,7 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit_diagnostic(&mut self, db: &rustc_errors::Diagnostic) {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msg: db.message(),
             code: db.code.clone(),
