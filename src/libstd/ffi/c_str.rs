@@ -137,7 +137,7 @@ pub struct CString {
 ///
 /// Note that this structure is `repr(C)` and is can be
 /// placed in the signatures of FFI functions. A `&CStr` is equivalent to `*const c_char`,
-/// but offers a much richer API
+/// but offers a richer API.
 ///
 /// # Examples
 ///
@@ -204,8 +204,8 @@ extern "C" {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for CStr {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        // we also hash a trailing zero in order to make CStr and CString produce the same hash
-        // for the same string
+        // We also hash a trailing zero to make `CStr` and `CString` produce the same hash
+        // for the same string.
         self.to_bytes_with_nul().hash(state);
     }
 }
@@ -1136,7 +1136,7 @@ impl CStr {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes_with_nul(&self) -> &[u8] {
-        // safety: safe references to `CStr` can only exist if they point to a memory location
+        // SAFETY: safe references to `CStr` can only exist if they point to a memory location
         // that is terminated by a `\0`.
         unsafe {
             let len = sys::strlen(self as *const CStr as *const c_char);
