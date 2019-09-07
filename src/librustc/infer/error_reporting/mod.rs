@@ -1119,7 +1119,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Some((expected, found)) => Some((expected, found)),
                     None => {
                         // Derived error. Cancel the emitter.
-                        self.tcx.sess.diagnostic().cancel(diag);
+                        diag.cancel();
                         return;
                     }
                 };

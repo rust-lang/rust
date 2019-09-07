@@ -520,10 +520,6 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 
-    pub fn cancel(&self, err: &mut DiagnosticBuilder<'_>) {
-        err.cancel();
-    }
-
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
             let s = match (self.err_count(), self.flags.treat_err_as_bug.unwrap_or(0)) {

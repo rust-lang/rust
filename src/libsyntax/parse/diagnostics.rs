@@ -197,10 +197,6 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
-    crate fn cancel(&self, err: &mut DiagnosticBuilder<'_>) {
-        self.sess.span_diagnostic.cancel(err)
-    }
-
     crate fn diagnostic(&self) -> &'a errors::Handler {
         &self.sess.span_diagnostic
     }
@@ -426,15 +422,13 @@ impl<'a> Parser<'a> {
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     crate fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
-        let handler = self.diagnostic();
-
         if let Err(ref mut err) = self.parse_seq_to_before_tokens(
             kets,
             SeqSep::none(),
             TokenExpectType::Expect,
             |p| Ok(p.parse_token_tree()),
         ) {
-            handler.cancel(err);
+            err.cancel();
         }
     }
 
