@@ -589,7 +589,7 @@ impl Handler {
     }
     fn delay_as_bug(&self, diagnostic: Diagnostic) {
         if self.flags.report_delayed_bugs {
-            DiagnosticBuilder::new_diagnostic(self, diagnostic.clone()).emit();
+            self.emit_diagnostic(&diagnostic);
         }
         self.delayed_span_bugs.borrow_mut().push(diagnostic);
     }
@@ -747,8 +747,10 @@ impl Handler {
         db.cancel();
     }
 
-    fn emit_db(&self, db: &DiagnosticBuilder<'_>) {
-        let diagnostic = &**db;
+    fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
+        if diagnostic.cancelled() {
+            return;
+        }
 
         TRACK_DIAGNOSTICS.with(|track_diagnostics| {
             track_diagnostics.get()(diagnostic);
@@ -768,12 +770,12 @@ impl Handler {
         // Only emit the diagnostic if we haven't already emitted an equivalent
         // one:
         if self.emitted_diagnostics.borrow_mut().insert(diagnostic_hash) {
-            self.emitter.borrow_mut().emit_diagnostic(db);
-            if db.is_error() {
+            self.emitter.borrow_mut().emit_diagnostic(diagnostic);
+            if diagnostic.is_error() {
                 self.deduplicated_err_count.fetch_add(1, SeqCst);
             }
         }
-        if db.is_error() {
+        if diagnostic.is_error() {
             self.bump_err_count();
         }
     }

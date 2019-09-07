@@ -99,17 +99,9 @@ impl<'a> DerefMut for DiagnosticBuilder<'a> {
 }
 
 impl<'a> DiagnosticBuilder<'a> {
-    pub fn handler(&self) -> &'a Handler{
-        self.0.handler
-    }
-
     /// Emit the diagnostic.
     pub fn emit(&mut self) {
-        if self.cancelled() {
-            return;
-        }
-
-        self.0.handler.emit_db(&self);
+        self.0.handler.emit_diagnostic(&self);
         self.cancel();
     }
 
