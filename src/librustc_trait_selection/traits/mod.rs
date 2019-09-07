@@ -462,24 +462,24 @@ fn substitute_normalize_and_test_predicates<'tcx>(
     result
 }
 
-/// Given a trait `trait_ref`, iterates the vtable entries
-/// that come from `trait_ref`, including its supertraits.
+/// Given a trait `trait_ref`, iterates the vtable entries that come from `trait_ref`, including its
+/// supertraits, and returns them per-trait.
 #[inline] // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
 fn vtable_methods<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>] {
+) -> &'tcx [&'tcx [Option<(DefId, SubstsRef<'tcx>)>]] {
     debug!("vtable_methods({:?})", trait_ref);
 
-    tcx.arena.alloc_from_iter(supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
+    tcx.arena.alloc_from_iter(supertraits(tcx, trait_ref).map(move |trait_ref| {
         let trait_methods = tcx
             .associated_items(trait_ref.def_id())
             .in_definition_order()
             .filter(|item| item.kind == ty::AssocKind::Fn);
 
-        // Now list each method's DefId and InternalSubsts (for within its trait).
-        // If the method can never be called from this object, produce None.
-        trait_methods.map(move |trait_method| {
+        // Now, list each method's `DefId` and `InternalSubsts` (for within its trait).
+        // If the method can never be called from this object, produce `None`.
+        &*tcx.arena.alloc_from_iter(trait_methods.map(move |trait_method| {
             debug!("vtable_methods: trait_method={:?}", trait_method);
             let def_id = trait_method.def_id;
 
@@ -516,7 +516,7 @@ fn vtable_methods<'tcx>(
             }
 
             Some((def_id, substs))
-        })
+        }))
     }))
 }
 

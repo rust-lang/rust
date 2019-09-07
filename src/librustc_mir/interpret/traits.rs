@@ -56,7 +56,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable = self.memory.allocate(
-            ptr_size * u64::try_from(methods.len()).unwrap().checked_add(3).unwrap(),
+            // Compute size of vtable, including 3 entries per supertrait for (drop, size, align)
+            // metadata.
+            ptr_size * (
+                methods
+                    .iter()
+                    .map(|l| u64::try_from(methods.len()).unwrap().checked_add(3).unwrap())
+                    .sum()
+            ),
             ptr_align,
             MemoryKind::Vtable,
         );
@@ -76,21 +83,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let drop = Instance::resolve_drop_in_place(*tcx, ty);
         let drop = self.memory.create_fn_alloc(FnVal::Instance(drop));
 
-        // No need to do any alignment checks on the memory accesses below, because we know the
-        // allocation is correctly aligned, as we created it above. Also. we're only offsetting
-        // by multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
-        write_ptr(&mut self.memory, Scalar::Ptr(drop).into())?;
-        write_ptr(&mut self.memory, Scalar::from_uint(size, ptr_size).into())?;
-        write_ptr(&mut self.memory, Scalar::from_uint(align, ptr_size).into())?;
+        for trait_methods in methods.iter() {
+            // No need to do any alignment checks on the memory accesses below, because we know the
+            // allocation is correctly aligned, as we created it above. Also. we're only offsetting
+            // by multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
+            write_ptr(&mut self.memory, Scalar::Ptr(drop).into())?;
+            write_ptr(&mut self.memory, Scalar::from_uint(size, ptr_size).into())?;
+            write_ptr(&mut self.memory, Scalar::from_uint(align, ptr_size).into())?;
 
-        for method in methods.iter() {
-            if let Some((def_id, substs)) = *method {
-                // Resolve for vtable; insert shims where needed.
-                let instance =
-                    ty::Instance::resolve_for_vtable(*tcx, self.param_env, def_id, substs)
-                        .ok_or_else(|| err_inval!(TooGeneric))?;
-                let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                write_ptr(&mut self.memory, Scalar::Ptr(fn_ptr).into())?;
+            for method in trait_methods.iter() {
+                if let Some((def_id, substs)) = *method {
+                    // Resolve for vtable; insert shims where needed.
+                    let instance =
+                        ty::Instance::resolve_for_vtable(*tcx, self.param_env, def_id, substs)
+                            .ok_or_else(|| err_inval!(TooGeneric))?;
+                    let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
+                    write_ptr(&mut self.memory, Scalar::Ptr(fn_ptr).into())?;
+                }
             }
         }
 

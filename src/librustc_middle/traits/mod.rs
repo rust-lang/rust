@@ -681,6 +681,6 @@ pub enum MethodViolationCode {
     /// e.g., `fn foo<A>()`
     Generic,
 
-    /// the method's receiver (`self` argument) can't be dispatched on
+    /// The method's receiver (`self` argument) cannot be dispatched on.
     UndispatchableReceiver,
 }

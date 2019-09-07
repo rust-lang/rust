@@ -657,8 +657,9 @@ rustc_queries! {
     }
 
     Other {
-        query vtable_methods(key: ty::PolyTraitRef<'tcx>)
-                            -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>] {
+        query vtable_methods(
+            key: ty::PolyTraitRef<'tcx>
+        ) -> &'tcx [&'tcx [Option<(DefId, SubstsRef<'tcx>)>]] {
             desc { |tcx| "finding all methods for trait {}", tcx.def_path_str(key.def_id()) }
         }
     }

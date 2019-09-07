@@ -85,17 +85,21 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
         (&[]).iter()
     };
 
-    let methods = methods.cloned().map(|opt_mth| {
-        opt_mth.map_or(nullptr, |(def_id, substs)| {
-            cx.get_fn_addr(
-                ty::Instance::resolve_for_vtable(
-                    cx.tcx(),
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    substs,
+    // Resolve instances for each method in the vtable.
+    // Preserve nested (per-supertrait) structure of list of methods.
+    let methods = methods.cloned().map(|trait_methods| {
+        trait_methods.into_iter().map(|opt_meth| {
+            opt_meth.map_or(nullptr, |(def_id, substs)| {
+                cx.get_fn_addr(
+                    ty::Instance::resolve_for_vtable(
+                        cx.tcx(),
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        substs,
+                    )
+                    .unwrap(),
                 )
-                .unwrap(),
-            )
+            })
         })
     });
 
@@ -104,15 +108,20 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     // If you touch this code, be sure to also make the corresponding changes to
     // `get_vtable` in `rust_mir/interpret/traits.rs`.
     // /////////////////////////////////////////////////////////////////////////////////////////////
-    let components: Vec<_> = [
+    let metadata = [
         cx.get_fn_addr(Instance::resolve_drop_in_place(cx.tcx(), ty)),
         cx.const_usize(layout.size.bytes()),
         cx.const_usize(layout.align.abi.bytes()),
-    ]
-    .iter()
-    .cloned()
-    .chain(methods)
-    .collect();
+    ];
+    let mut components: Vec<_> = methods
+        .flat_map(|trait_methods| {
+            // Insert copy of metadata before methods for the current (super)trait.
+            metadata.iter().cloned().chain(trait_methods)
+        })
+        .collect();
+    if components.is_empty() {
+        components.extend(&metadata);
+    }
 
     let vtable_const = cx.const_struct(&components, false);
     let align = cx.data_layout().pointer_align.abi;

@@ -1855,24 +1855,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("assemble_candidates_for_unsizing(source={:?}, target={:?})", source, target);
 
         let may_apply = match (&source.kind, &target.kind) {
-            // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
+            // `dyn TraitA + Kx + 'a` -> `dyn TraitB + Ky + 'b` (upcasts)
             (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
-                // Upcasts permit two things:
+                // Upcasts permit three things:
                 //
-                // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
-                // 2. Tightening the region bound, e.g., `Foo + 'a` to `Foo + 'b` if `'a: 'b`
+                // 1. Moving from a subtrait to a supertrait, e.g., `Foo` to `Bar` where `Foo: Bar`.
+                // 2. Dropping auto traits, e.g., `Foo + Send` to `Foo`.
+                // 3. Tightening the region bound, e.g., `Foo + 'a` to `Foo + 'b` if `'a: 'b`.
                 //
-                // Note that neither of these changes requires any
-                // change at runtime. Eventually this will be
-                // generalized.
-                //
-                // We always upcast when we can because of reason
-                // #2 (region bounds).
-                data_a.principal_def_id() == data_b.principal_def_id()
-                    && data_b
-                        .auto_traits()
-                        // All of a's auto traits need to be in b's auto traits.
-                        .all(|b| data_a.auto_traits().any(|a| a == b))
+                // We always upcast when we can because of reason 3 (region bounds).
+
+                // All of a's auto traits need to be in b's auto traits.
+                data_b.auto_traits()
+                  .all(|b| data_a.auto_traits().any(|a| a == b))
             }
 
             // `T` -> `Trait`
@@ -2710,7 +2705,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // we pass over, we sum up the set of number of vtable
             // entries, so that we can compute the offset for the selected
             // trait.
-            vtable_base = nonmatching.map(|t| super::util::count_own_vtable_entries(tcx, t)).sum();
+            vtable_base = nonmatching
+                // Skip 3 entries in vtable per supertrait for `(drop, size, align)` metadata.
+                .map(|trait_ref|
+                    u64::try_from(tcx.count_own_vtable_entries(trait_ref)).unwrap().checked_add(3).unwrap()
+                )
+                .sum();
         }
 
         VtableObjectData { upcast_trait_ref: upcast_trait_ref.unwrap(), vtable_base, nested }
@@ -2925,10 +2925,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("confirm_builtin_unsize_candidate(source={:?}, target={:?})", source, target);
 
+        let cause = ObligationCause::new(
+            obligation.cause.span,
+            obligation.cause.body_id,
+            ObjectCastObligation(target),
+        );
+
+        let predicate_to_obligation = |predicate| {
+            Obligation::with_depth(
+                cause.clone(),
+                obligation.recursion_depth + 1,
+                obligation.param_env,
+                predicate,
+            )
+        };
+
         let mut nested = vec![];
         match (&source.kind, &target.kind) {
-            // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
+            // `dyn TraitA + Kx + 'a` -> `dyn TraitB + Ky + 'b` (upcasts)
+            (&ty::Dynamic(ref data_a, region_a), &ty::Dynamic(ref data_b, region_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
                 let existential_predicates = data_a.map_bound(|data_a| {
                     let iter = data_a
@@ -2939,8 +2954,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         .chain(data_b.auto_traits().map(ty::ExistentialPredicate::AutoTrait));
                     tcx.mk_existential_predicates(iter)
                 });
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
+                let source_ty = tcx.mk_dynamic(existential_predicates, region_b);
 
+                /*
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
                 //
@@ -2960,21 +2976,36 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
-                    .eq(target, source_trait) // FIXME -- see below
+                    .eq(target, source_ty) // FIXME -- see above
                     .map_err(|_| Unimplemented)?;
                 nested.extend(obligations);
+                */
 
-                // Register one obligation for 'a: 'b.
-                let cause = ObligationCause::new(
-                    obligation.cause.span,
-                    obligation.cause.body_id,
-                    ObjectCastObligation(target),
+                // Register obligations for `dyn TraitA1 [TraitA2...]: TraitB1 [TraitB2...]`.
+                nested.extend(
+                    data_b.iter()
+                        // HACK(alexreg | nikomatsakis): we handle auto traits specially here
+                        // because of cases like like `dyn Foo + Send + 'a` ->
+                        // `dyn Foo + Send + 'b`, which requires proving the obligation
+                        // `dyn Foo + Send: Send`. This is unfortunately ambiguous under the
+                        // current trait solver model: it holds both because `Send` is a supertrait
+                        // of `Foo + Send` and because there's an automatic impl of `Send` for the
+                        // trait object.
+                        .filter(|predicate| {
+                            match predicate.skip_binder() {
+                                ty::ExistentialPredicate::AutoTrait(did) =>
+                                    !data_a.auto_traits().any(|did_a| did_a == *did),
+                                _ => true,
+                            }
+                        })
+                        .map(|predicate|
+                            predicate_to_obligation(predicate.with_self_ty(tcx, source_ty))
+                        ),
                 );
-                let outlives = ty::OutlivesPredicate(r_a, r_b);
-                nested.push(Obligation::with_depth(
-                    cause,
-                    obligation.recursion_depth + 1,
-                    obligation.param_env,
+
+                // Register an obligation for `'a: 'b`.
+                let outlives = ty::OutlivesPredicate(region_a, region_b);
+                nested.push(predicate_to_obligation(
                     ty::Binder::bind(outlives).to_predicate(),
                 ));
             }
@@ -2985,21 +3016,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));
                 }
-
-                let cause = ObligationCause::new(
-                    obligation.cause.span,
-                    obligation.cause.body_id,
-                    ObjectCastObligation(target),
-                );
-
-                let predicate_to_obligation = |predicate| {
-                    Obligation::with_depth(
-                        cause.clone(),
-                        obligation.recursion_depth + 1,
-                        obligation.param_env,
-                        predicate,
-                    )
-                };
 
                 // Create obligations:
                 //  - Casting `T` to `Trait`

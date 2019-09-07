@@ -20,7 +20,7 @@ use crate::back::write::{
 use crate::common::{IntPredicate, RealPredicate, TypeKind};
 use crate::meth;
 use crate::mir;
-use crate::mir::operand::OperandValue;
+use crate::mir::operand::{OperandRef, OperandValue};
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
@@ -219,6 +219,57 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
+}
+
+/// Coerces `op` to `dst.ty`. `op` may be a fat pointer.
+pub fn coerce_ptr_unsized<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    op: OperandRef<'tcx, Bx::Value>,
+    dst: TyLayout<'tcx>,
+) -> OperandValue<Bx::Value> {
+    assert!(bx.cx().is_backend_scalar_pair(dst));
+    let src = op.layout;
+    let (base, info) = match op.val {
+        OperandValue::Pair(base, info) => {
+            // Fat-ptr to fat-ptr unsize (e.g., `&'a fmt::Debug + Send` => `&'a fmt::Debug`).
+            // We always need to `pointercast` the base to ensure the types match up.
+            // In some cases, e.g., `&'a Bar` => `&'a Foo` where `Bar: Foo`, we also need to
+            // modify the info (i.e., the pointer to the vtable), by offsetting into the
+            // existing vtable. See the `get_vtable` fn in `meth.rs` for more details of vtable
+            // layout.
+
+            let base = bx.pointercast(
+                base,
+                bx.cx().scalar_pair_element_backend_type(dst, 0, true),
+            );
+            let info = match (&src.ty.kind, &dst.ty.kind) {
+                (&ty::Ref(_, a, _),
+                 &ty::Ref(_, b, _)) |
+                (&ty::Ref(_, a, _),
+                 &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) |
+                (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
+                 &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
+                    unsized_info(bx, a, b, Some(info))
+                }
+                (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
+                    assert_eq!(def_a, def_b);
+                    unsized_info(bx, src.ty, dst.ty, Some(info))
+                }
+                _ => bug!("coerce_ptr_unsized: called on bad types"),
+            };
+            (base, info)
+        }
+        OperandValue::Immediate(base) => {
+            unsize_thin_ptr(bx, base, src.ty, dst.ty)
+        }
+        OperandValue::Ref(..) => {
+            bug!(
+                "coerce_ptr_unsized: unexpected by-ref operand {:?}",
+                op
+            );
+        }
+    };
+    OperandValue::Pair(base, info)
 }
 
 /// Coerces `src`, which is a reference to a value of type `src_ty`,

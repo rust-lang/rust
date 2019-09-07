@@ -886,10 +886,9 @@ fn create_mono_items_for_vtable_methods<'tcx>(
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());
 
-            // Walk all methods of the trait, including those of its supertraits
+            // Walk all methods of the trait, including those of its supertraits.
             let methods = tcx.vtable_methods(poly_trait_ref);
             let methods = methods
-                .iter()
                 .cloned()
                 .filter_map(|method| method)
                 .map(|(def_id, substs)| {
