@@ -269,7 +269,7 @@ pub struct FunctionCx<'clif, 'tcx, B: Backend + 'static> {
     pub instance: Instance<'tcx>,
     pub mir: &'tcx Body<'tcx>,
 
-    pub bcx: FunctionBuilder<'clif>,
+    pub bcx: FunctionBuilder,
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
 

@@ -14,8 +14,8 @@ crate-type = ["dylib"]
 cranelift = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-module = { git = "https://github.com/CraneStation/cranelift.git" }
 cranelift-faerie = { git = "https://github.com/CraneStation/cranelift.git" }
-target-lexicon = "0.4.0"
-faerie = "0.10.2"
+target-lexicon = "0.8.1"
+faerie = "0.11.0"
 
 #goblin = "0.0.17"
 ar = "0.8.0"
@@ -27,12 +27,6 @@ gimli = { git = "https://github.com/gimli-rs/gimli.git" }
 indexmap = "1.0.2"
 object = "0.12.0"
 libloading = "0.5.1"
-
-[patch."https://github.com/CraneStation/cranelift.git"]
-cranelift = { git = "https://github.com/bjorn3/cretonne.git", branch = "do_not_remove_cg_clif_i128" }
-cranelift-module = { git = "https://github.com/bjorn3/cretonne.git", branch = "do_not_remove_cg_clif_i128" }
-cranelift-simplejit = { git = "https://github.com/bjorn3/cretonne.git", branch = "do_not_remove_cg_clif_i128" }
-cranelift-faerie = { git = "https://github.com/bjorn3/cretonne.git", branch = "do_not_remove_cg_clif_i128" }
 
 # Uncomment to use local checkout of cranelift
 #[patch."https://github.com/CraneStation/cranelift.git"]
