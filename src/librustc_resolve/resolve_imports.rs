@@ -673,6 +673,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             self.throw_unresolved_import_error(errors.clone(), None);
         }
 
+        for import in &self.r.indeterminate_imports {
+            // Consider erroneous imports used to avoid duplicate diagnostics.
+            self.r.used_imports.insert((import.id, TypeNS));
+        }
         // Report unresolved imports only if no hard error was already reported
         // to avoid generating multiple errors on the same import.
         if !has_errors {
@@ -839,6 +843,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                          true, directive.span, directive.crate_lint());
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
         directive.vis.set(orig_vis);
+        if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
+            // Consider erroneous imports used to avoid duplicate diagnostics.
+            self.r.used_imports.insert((directive.id, TypeNS));
+        }
         let module = match path_res {
             PathResult::Module(module) => {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
