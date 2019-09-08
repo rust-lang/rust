@@ -158,7 +158,7 @@ pub fn take_hook() -> Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send> {
 
 fn default_hook(info: &PanicInfo<'_>) {
     #[cfg(feature = "backtrace")]
-    use crate::sys_common::backtrace;
+    use crate::sys_common::{backtrace as backtrace_mod};
 
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
@@ -167,9 +167,9 @@ fn default_hook(info: &PanicInfo<'_>) {
         let panics = update_panic_count(0);
 
         if panics >= 2 {
-            Some(backtrace::PrintFormat::Full)
+            Some(backtrace::PrintFmt::Full)
         } else {
-            backtrace::log_enabled()
+            backtrace_mod::log_enabled()
         }
     };
 
@@ -197,7 +197,7 @@ fn default_hook(info: &PanicInfo<'_>) {
             static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
             if let Some(format) = log_backtrace {
-                let _ = backtrace::print(err, format);
+                let _ = backtrace_mod::print(err, format);
             } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
                 let _ = writeln!(err, "note: run with `RUST_BACKTRACE=1` \
                                        environment variable to display a backtrace.");
