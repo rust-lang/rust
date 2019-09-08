@@ -2585,7 +2585,7 @@ pub trait Iterator {
     /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (x * x).cmp(&y)), Ordering::Equal);
     /// assert_eq!(xs.iter().cmp_by(&ys, |&x, &y| (2 * x).cmp(&y)), Ordering::Greater);
     /// ```
-    #[unstable(feature = "iter_order_by", issue = "0")]
+    #[unstable(feature = "iter_order_by", issue = "64295")]
     fn cmp_by<I, F>(mut self, other: I, mut cmp: F) -> Ordering
     where
         Self: Sized,
@@ -2668,7 +2668,7 @@ pub trait Iterator {
     ///     Some(Ordering::Greater)
     /// );
     /// ```
-    #[unstable(feature = "iter_order_by", issue = "0")]
+    #[unstable(feature = "iter_order_by", issue = "64295")]
     fn partial_cmp_by<I, F>(mut self, other: I, mut partial_cmp: F) -> Option<Ordering>
     where
         Self: Sized,
@@ -2733,7 +2733,7 @@ pub trait Iterator {
     ///
     /// assert!(xs.iter().eq_by(&ys, |&x, &y| x * x == y));
     /// ```
-    #[unstable(feature = "iter_order_by", issue = "0")]
+    #[unstable(feature = "iter_order_by", issue = "64295")]
     fn eq_by<I, F>(mut self, other: I, mut eq: F) -> bool
     where
         Self: Sized,
