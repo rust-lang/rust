@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         llvm: [llvm-6.0-dev, llvm-7-dev]
-        os: [ubuntu-latest, ubuntu-18.04, ubuntu-16.04]
+        os: [ubuntu-18.04]
     
     steps:
     - uses: actions/checkout@v1
