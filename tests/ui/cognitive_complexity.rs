@@ -87,7 +87,7 @@ fn main() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn kaboom() {
     let n = 0;
     'a: for i in 0..20 {
@@ -133,17 +133,19 @@ fn bloo() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+// Short circuiting operations don't increase the complexity of a function.
+// Note that the minimum complexity of a function is 1.
+#[clippy::cognitive_complexity = "1"]
 fn lots_of_short_circuits() -> bool {
     true && false && true && false && true && false && true
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn lots_of_short_circuits2() -> bool {
     true || false || true || false || true || false || true
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn baa() {
     let x = || match 99 {
         0 => 0,
@@ -161,7 +163,7 @@ fn baa() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn bar() {
     match 99 {
         0 => println!("hi"),
@@ -170,7 +172,7 @@ fn bar() {
 }
 
 #[test]
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 /// Tests are usually complex but simple at the same time. `clippy::cognitive_complexity` used to
 /// give lots of false-positives in tests.
 fn dont_warn_on_tests() {
@@ -180,7 +182,7 @@ fn dont_warn_on_tests() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn barr() {
     match 99 {
         0 => println!("hi"),
@@ -190,7 +192,7 @@ fn barr() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn barr2() {
     match 99 {
         0 => println!("hi"),
@@ -206,7 +208,7 @@ fn barr2() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn barrr() {
     match 99 {
         0 => println!("hi"),
@@ -216,7 +218,7 @@ fn barrr() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn barrr2() {
     match 99 {
         0 => println!("hi"),
@@ -232,7 +234,7 @@ fn barrr2() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn barrrr() {
     match 99 {
         0 => println!("hi"),
@@ -242,7 +244,7 @@ fn barrrr() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn barrrr2() {
     match 99 {
         0 => println!("hi"),
@@ -258,7 +260,7 @@ fn barrrr2() {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn cake() {
     if 4 == 5 {
         println!("yea");
@@ -268,7 +270,7 @@ fn cake() {
     println!("whee");
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 pub fn read_file(input_path: &str) -> String {
     use std::fs::File;
     use std::io::{Read, Write};
@@ -299,20 +301,20 @@ pub fn read_file(input_path: &str) -> String {
 
 enum Void {}
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn void(void: Void) {
     if true {
         match void {}
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn mcarton_sees_all() {
     panic!("meh");
     panic!("möh");
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn try_() -> Result<i32, &'static str> {
     match 5 {
         5 => Ok(5),
@@ -320,7 +322,7 @@ fn try_() -> Result<i32, &'static str> {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn try_again() -> Result<i32, &'static str> {
     let _ = Ok(42)?;
     let _ = Ok(43)?;
@@ -336,7 +338,7 @@ fn try_again() -> Result<i32, &'static str> {
     }
 }
 
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn early() -> Result<i32, &'static str> {
     return Ok(5);
     return Ok(5);
@@ -350,7 +352,7 @@ fn early() -> Result<i32, &'static str> {
 }
 
 #[rustfmt::skip]
-#[clippy::cognitive_complexity = "0"]
+#[clippy::cognitive_complexity = "1"]
 fn early_ret() -> i32 {
     let a = if true { 42 } else { return 0; };
     let a = if a < 99 { 42 } else { return 0; };
