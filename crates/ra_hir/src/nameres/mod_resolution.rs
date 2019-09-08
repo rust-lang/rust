@@ -6,7 +6,7 @@ use ra_db::{FileId, SourceRoot};
 use ra_syntax::SmolStr;
 use relative_path::RelativePathBuf;
 
-use crate::{DefDatabase, HirFileId, Name};
+use crate::{db::DefDatabase, HirFileId, Name};
 
 #[derive(Clone, Copy)]
 pub(super) struct ParentModule<'a> {

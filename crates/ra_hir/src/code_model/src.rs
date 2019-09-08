@@ -4,9 +4,10 @@ use ra_syntax::{
 };
 
 use crate::{
-    ids::AstItemDef, AstDatabase, Const, DefDatabase, Either, Enum, EnumVariant, FieldSource,
-    Function, HasBody, HirDatabase, HirFileId, MacroDef, Module, ModuleSource, Static, Struct,
-    StructField, Trait, TypeAlias, Union,
+    db::{AstDatabase, DefDatabase, HirDatabase},
+    ids::AstItemDef,
+    Const, Either, Enum, EnumVariant, FieldSource, Function, HasBody, HirFileId, MacroDef, Module,
+    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

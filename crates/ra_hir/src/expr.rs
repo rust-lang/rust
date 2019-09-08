@@ -9,10 +9,11 @@ use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashMap;
 
 use crate::{
+    db::HirDatabase,
     path::GenericArgs,
     ty::primitive::{UncertainFloatTy, UncertainIntTy},
     type_ref::{Mutability, TypeRef},
-    DefWithBody, Either, HasSource, HirDatabase, Name, Path, Resolver, Source,
+    DefWithBody, Either, HasSource, Name, Path, Resolver, Source,
 };
 
 pub use self::scope::ExprScopes;

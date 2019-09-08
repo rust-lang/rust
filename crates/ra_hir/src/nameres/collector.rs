@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
+    db::DefDatabase,
     either::Either,
     ids::{AstItemDef, LocationCtx, MacroCallId, MacroCallLoc, MacroDefId, MacroFileKind},
     name::MACRO_RULES,
@@ -13,8 +14,8 @@ use crate::{
         raw, CrateDefMap, CrateModuleId, ItemOrMacro, ModuleData, ModuleDef, PerNs,
         ReachedFixedPoint, Resolution, ResolveMode,
     },
-    AstId, Const, DefDatabase, Enum, Function, HirFileId, MacroDef, Module, Name, Path, Static,
-    Struct, Trait, TypeAlias, Union,
+    AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, Static, Struct, Trait,
+    TypeAlias, Union,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -699,7 +700,7 @@ mod tests {
     use ra_db::SourceDatabase;
 
     use super::*;
-    use crate::{mock::MockDatabase, Crate, DefDatabase};
+    use crate::{db::DefDatabase, mock::MockDatabase, Crate};
     use ra_arena::Arena;
     use rustc_hash::FxHashSet;
 

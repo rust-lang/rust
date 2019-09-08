@@ -9,12 +9,13 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
+    db::HirDatabase,
     name::{AsName, Name, SELF_PARAM},
     path::GenericArgs,
     ty::primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
     type_ref::TypeRef,
-    DefWithBody, Either, HirDatabase, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path,
-    Resolver, Source,
+    DefWithBody, Either, HirFileId, MacroCallLoc, MacroFileKind, Mutability, Path, Resolver,
+    Source,
 };
 
 use super::{

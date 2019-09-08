@@ -8,8 +8,8 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    AsName, AstDatabase, AstIdMap, DefDatabase, Either, FileAstId, HirFileId, ModuleSource, Name,
-    Path,
+    db::{AstDatabase, DefDatabase},
+    AsName, AstIdMap, Either, FileAstId, HirFileId, ModuleSource, Name, Path,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).

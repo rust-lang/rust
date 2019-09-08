@@ -8,7 +8,10 @@ use ra_db::{salsa, FileId};
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, Parse, SyntaxNode};
 
-use crate::{AstDatabase, AstId, DefDatabase, FileAstId, InternDatabase, Module, Source};
+use crate::{
+    db::{AstDatabase, DefDatabase, InternDatabase},
+    AstId, FileAstId, Module, Source,
+};
 
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
 /// can think of id as a pointer (but without a lifetime) or a file descriptor

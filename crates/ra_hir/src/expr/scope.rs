@@ -4,8 +4,9 @@ use ra_arena::{impl_arena_id, Arena, RawId};
 use rustc_hash::FxHashMap;
 
 use crate::{
+    db::HirDatabase,
     expr::{Body, Expr, ExprId, Pat, PatId, Statement},
-    DefWithBody, HirDatabase, Name,
+    DefWithBody, Name,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

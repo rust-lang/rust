@@ -18,6 +18,7 @@ use ra_syntax::{
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
+    db::HirDatabase,
     expr::{
         self,
         scope::{ExprScopes, ScopeId},
@@ -27,9 +28,8 @@ use crate::{
     name,
     path::{PathKind, PathSegment},
     ty::method_resolution::implements_trait,
-    AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HasBody, HirDatabase,
-    HirFileId, MacroDef, Module, ModuleDef, Name, Path, PerNs, Resolution, Resolver, Static,
-    Struct, Trait, Ty,
+    AsName, AstId, Const, Crate, DefWithBody, Either, Enum, Function, HasBody, HirFileId, MacroDef,
+    Module, ModuleDef, Name, Path, PerNs, Resolution, Resolver, Static, Struct, Trait, Ty,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.

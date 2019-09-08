@@ -14,6 +14,7 @@ use super::{
 };
 use crate::{
     adt::VariantDef,
+    db::HirDatabase,
     generics::HasGenericParams,
     generics::{GenericDef, WherePredicate},
     nameres::Namespace,
@@ -21,8 +22,8 @@ use crate::{
     resolve::{Resolution, Resolver},
     ty::AdtDef,
     type_ref::{TypeBound, TypeRef},
-    BuiltinType, Const, Enum, EnumVariant, Function, HirDatabase, ModuleDef, Path, Static, Struct,
-    StructField, Trait, TypeAlias, Union,
+    BuiltinType, Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField,
+    Trait, TypeAlias, Union,
 };
 
 impl Ty {
