@@ -9,13 +9,13 @@
 
 #![allow(irrefutable_let_patterns)]
 
-enum Enum<T> { TSVariant(T), SVariant { v: T }, UVariant }
+enum Enum<T> { TSVariant(T), SVariant { _v: T }, UVariant }
 type Alias<T> = Enum<T>;
 type AliasFixed = Enum<()>;
 
 macro_rules! is_variant {
     (TSVariant, $expr:expr) => (is_variant!(@check TSVariant, (_), $expr));
-    (SVariant, $expr:expr) => (is_variant!(@check SVariant, { v: _ }, $expr));
+    (SVariant, $expr:expr) => (is_variant!(@check SVariant, { _v: _ }, $expr));
     (UVariant, $expr:expr) => (is_variant!(@check UVariant, {}, $expr));
     (@check $variant:ident, $matcher:tt, $expr:expr) => (
         assert!(if let Enum::$variant::<()> $matcher = $expr { true } else { false },
@@ -37,14 +37,14 @@ fn main() {
 
     // Struct variant
 
-    is_variant!(SVariant, Enum::SVariant { v: () });
-    is_variant!(SVariant, Enum::SVariant::<()> { v: () });
-    is_variant!(SVariant, Enum::<()>::SVariant { v: () });
+    is_variant!(SVariant, Enum::SVariant { _v: () });
+    is_variant!(SVariant, Enum::SVariant::<()> { _v: () });
+    is_variant!(SVariant, Enum::<()>::SVariant { _v: () });
 
-    is_variant!(SVariant, Alias::SVariant { v: () });
-    is_variant!(SVariant, Alias::<()>::SVariant { v: () });
+    is_variant!(SVariant, Alias::SVariant { _v: () });
+    is_variant!(SVariant, Alias::<()>::SVariant { _v: () });
 
-    is_variant!(SVariant, AliasFixed::SVariant { v: () });
+    is_variant!(SVariant, AliasFixed::SVariant { _v: () });
 
     // Unit variant
 

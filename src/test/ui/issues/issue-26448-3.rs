@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 pub struct Item {
     _inner: &'static str,

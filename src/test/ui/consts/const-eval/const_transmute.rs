@@ -1,6 +1,7 @@
 // run-pass
 
 #![feature(const_fn_union)]
+#![allow(dead_code)]
 
 #[repr(C)]
 union Transmute<T: Copy, U: Copy> {

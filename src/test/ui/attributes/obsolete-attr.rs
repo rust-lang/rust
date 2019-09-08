@@ -1,4 +1,4 @@
-// Obsolete attributes fall back to feature gated custom attributes.
+// Obsolete attributes fall back to unstable custom attributes.
 
 #[ab_isize="stdcall"] extern {}
 //~^ ERROR cannot find attribute macro `ab_isize` in this scope
