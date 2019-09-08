@@ -6,6 +6,8 @@
 // parameters (used or unused) are not dropped until the async fn is cancelled.
 // This file is mostly copy-pasted from drop-order-for-async-fn-parameters.rs
 
+#![allow(unused_variables)]
+
 extern crate arc_wake;
 
 use arc_wake::ArcWake;
@@ -43,7 +45,7 @@ struct NeverReady;
 
 impl Future for NeverReady {
     type Output = ();
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         Poll::Pending
     }
 }

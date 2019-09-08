@@ -1,0 +1,8 @@
+warning: unreachable block in `if` expression
+  --> $DIR/protect-precedences.rs:13:41
+   |
+LL |         if let _ = return true && false {};
+   |                                         ^^
+   |
+   = note: `#[warn(unreachable_code)]` on by default
+

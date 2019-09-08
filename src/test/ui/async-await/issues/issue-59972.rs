@@ -4,7 +4,7 @@
 
 // run-pass
 
-// compile-flags: --edition=2018
+// compile-flags: --edition=2018 -Aunused
 
 pub enum Uninhabited { }
 

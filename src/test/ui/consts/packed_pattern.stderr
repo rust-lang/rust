@@ -1,0 +1,8 @@
+warning: unreachable pattern
+  --> $DIR/packed_pattern.rs:16:9
+   |
+LL |         FOO => unreachable!(),
+   |         ^^^
+   |
+   = note: `#[warn(unreachable_patterns)]` on by default
+
