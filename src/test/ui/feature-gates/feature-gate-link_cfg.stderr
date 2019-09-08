@@ -1,4 +1,4 @@
-error[E0658]: is feature gated
+error[E0658]: is unstable
   --> $DIR/feature-gate-link_cfg.rs:1:1
    |
 LL | #[link(name = "foo", cfg(foo))]
