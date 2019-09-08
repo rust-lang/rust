@@ -463,21 +463,7 @@ fn check_exhaustive<'tcx>(
         pats.iter().map(|w| w.single_pattern()).collect()
     };
 
-    const LIMIT: usize = 3;
-    let joined_patterns = match witnesses.len() {
-        0 => bug!(),
-        1 => format!("`{}`", witnesses[0]),
-        2..=LIMIT => {
-            let (tail, head) = witnesses.split_last().unwrap();
-            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
-            format!("`{}` and `{}`", head.join("`, `"), tail)
-        }
-        _ => {
-            let (head, tail) = witnesses.split_at(LIMIT);
-            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
-            format!("`{}` and {} more", head.join("`, `"), tail.len())
-        }
-    };
+    let joined_patterns = joined_uncovered_patterns(&witnesses);
 
     let mut err = create_e0004(cx.tcx.sess, sp, format!(
         "non-exhaustive patterns: {} not covered",
@@ -499,6 +485,24 @@ fn check_exhaustive<'tcx>(
     err.help("ensure that all possible cases are being handled, \
                 possibly by adding wildcards or more match arms");
     err.emit();
+}
+
+fn joined_uncovered_patterns(witnesses: &[&Pattern<'_>]) -> String {
+    const LIMIT: usize = 3;
+    match witnesses.len() {
+        0 => bug!(),
+        1 => format!("`{}`", witnesses[0]),
+        2..=LIMIT => {
+            let (tail, head) = witnesses.split_last().unwrap();
+            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
+            format!("`{}` and `{}`", head.join("`, `"), tail)
+        }
+        _ => {
+            let (head, tail) = witnesses.split_at(LIMIT);
+            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
+            format!("`{}` and {} more", head.join("`, `"), tail.len())
+        }
+    }
 }
 
 fn adt_defined_here(cx: &mut MatchCheckCtxt<'_, '_>, ty: Ty<'_>, err: &mut DiagnosticBuilder<'_>) {
