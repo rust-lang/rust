@@ -18,6 +18,100 @@ use crate::clean::{self, PrimitiveType};
 use crate::html::item_type::ItemType;
 use crate::html::render::{self, cache, CURRENT_DEPTH};
 
+pub trait Print {
+    fn print(self, buffer: &mut Buffer);
+}
+
+impl<F> Print for F
+    where F: FnOnce(&mut Buffer),
+{
+    fn print(self, buffer: &mut Buffer) {
+        (self)(buffer)
+    }
+}
+
+impl Print for String {
+    fn print(self, buffer: &mut Buffer) {
+        buffer.write_str(&self);
+    }
+}
+
+impl Print for &'_ str {
+    fn print(self, buffer: &mut Buffer) {
+        buffer.write_str(self);
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Buffer {
+    for_html: bool,
+    buffer: String,
+}
+
+impl Buffer {
+    crate fn empty_from(v: &Buffer) -> Buffer {
+        Buffer {
+            for_html: v.for_html,
+            buffer: String::new(),
+        }
+    }
+
+    crate fn html() -> Buffer {
+        Buffer {
+            for_html: true,
+            buffer: String::new(),
+        }
+    }
+
+    crate fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
+
+    crate fn into_inner(self) -> String {
+        self.buffer
+    }
+
+    crate fn insert_str(&mut self, idx: usize, s: &str) {
+        self.buffer.insert_str(idx, s);
+    }
+
+    crate fn push_str(&mut self, s: &str) {
+        self.buffer.push_str(s);
+    }
+
+    // Intended for consumption by write! and writeln! (std::fmt) but without
+    // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
+    // import).
+    crate fn write_str(&mut self, s: &str) {
+        self.buffer.push_str(s);
+    }
+
+    // Intended for consumption by write! and writeln! (std::fmt) but without
+    // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
+    // import).
+    crate fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
+        use fmt::Write;
+        self.buffer.write_fmt(v).unwrap();
+    }
+
+    crate fn to_display<T: Print>(mut self, t: T) -> String {
+        t.print(&mut self);
+        self.into_inner()
+    }
+
+    crate fn with_formatter<T: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result>(&mut self, t: T) {
+        self.from_display(display_fn(move |f| (t)(f)));
+    }
+
+    crate fn from_display<T: std::fmt::Display>(&mut self, t: T) {
+        if self.for_html {
+            write!(self, "{}", t);
+        } else {
+            write!(self, "{:#}", t);
+        }
+    }
+}
+
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
 #[derive(Copy, Clone)]
@@ -200,11 +294,11 @@ impl<'a> fmt::Display for WhereClause<'a> {
                 }
                 &clean::WherePredicate::RegionPredicate { ref lifetime, ref bounds } => {
                     clause.push_str(&format!("{}: {}",
-                                             lifetime,
-                                             bounds.iter()
-                                                   .map(|b| b.to_string())
-                                                   .collect::<Vec<_>>()
-                                                   .join(" + ")));
+                                                lifetime,
+                                                bounds.iter()
+                                                    .map(|b| b.to_string())
+                                                    .collect::<Vec<_>>()
+                                                    .join(" + ")));
                 }
                 &clean::WherePredicate::EqPredicate { ref lhs, ref rhs } => {
                     if f.alternate() {
@@ -778,9 +872,9 @@ impl fmt::Display for clean::Impl {
 
 // The difference from above is that trait is not hyperlinked.
 pub fn fmt_impl_for_trait_page(i: &clean::Impl,
-                               f: &mut fmt::Formatter<'_>,
-                               use_absolute: bool) -> fmt::Result {
-    fmt_impl(i, f, false, use_absolute)
+                               f: &mut Buffer,
+                               use_absolute: bool) {
+    f.with_formatter(|f| fmt_impl(i, f, false, use_absolute))
 }
 
 impl fmt::Display for clean::Arguments {
