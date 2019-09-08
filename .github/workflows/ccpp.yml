@@ -17,10 +17,10 @@ jobs:
     - name: install llvm ${{ matrix.llvm }}
       run: sudo apt-get install -y --no-install-recommends build-essential ${{ matrix.llvm }} cmake
     - name: mkdir
-      run: cd enzyme && mkdir build
+      run: cd enzyme && mkdir build && cd build
     - name: cmake
       run: cmake ..
     - name: make
       run: make
-    - name: make check
-      run: make check
+    - name: make check-enzyme
+      run: make check-enzyme

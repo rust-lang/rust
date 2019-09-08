@@ -2,7 +2,7 @@
 
 #config.llvm_src_root = "@LLVM_SOURCE_DIR@"
 config.llvm_obj_root = "@LLVM_BINARY_DIR@"
-config.llvm_tools_dir = "@LLVM_TOOLS_DIR@"
+config.llvm_tools_dir = "@LLVM_TOOLS_BINARY_DIR@"
 config.llvm_libs_dir = "@LLVM_LIBS_DIR@"
 config.enzyme_obj_root = "@ENZYME_BINARY_DIR@"
 config.target_triple = "@TARGET_TRIPLE@"

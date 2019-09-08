@@ -335,12 +335,12 @@ bool isIntASecretFloat(Value* val) {
 
         if (pointerUse && !floatingUse) return false; 
         if (!pointerUse && floatingUse) return true;
-        inst->getParent()->getParent()->dump();
+        llvm::errs() << *inst->getParent()->getParent() << "\n";
         llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << "\n";
         assert(0 && "ambiguous unsure if constant or not");
     }
 
-    val->dump();
+    llvm::errs() << *val << "\n";
     assert(0 && "unsure if constant or not");
 }
 /*
@@ -1070,8 +1070,8 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
 
   
   if (llvm::verifyFunction(*NewF, &llvm::errs())) {
-    NewF->dump();
-    report_fatal_error("function failed verification");
+      llvm::errs() << *NewF << "\n";
+      report_fatal_error("function failed verification");
   }
  cache[F] = NewF;
  return NewF;
@@ -1475,13 +1475,13 @@ public:
     assert(originst);
     auto f = originalToNewFn.find(originst);
     if (f == originalToNewFn.end()) {
-        originst->dump();
+        llvm::errs() << *originst << "\n";
     }
     assert(f != originalToNewFn.end());
     if (f->second == nullptr) {
-        oldFunc->dump();
-        newFunc->dump();
-        originst->dump();
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        llvm::errs() << *originst << "\n";
     }
     assert(f->second);
     return f->second;
@@ -1490,7 +1490,7 @@ public:
     for(auto v: originalToNewFn) {
         if (v.second == newinst) return const_cast<Value*>(v.first);
     }
-    newinst->dump();
+    llvm::errs() << *newinst << "\n";
     assert(0 && "could not invert new inst");
     report_fatal_error("could not invert new inst");
   }
@@ -1596,14 +1596,19 @@ public:
     invertedPointers[call] = anti;
      
     if (tape == nullptr) {
-        Value *nargs[] = {
-            bb.CreateBitCast(anti,Type::getInt8PtrTy(call->getContext())),
-            ConstantInt::get(Type::getInt8Ty(call->getContext()), 0),
-            bb.CreateZExtOrTrunc(call->getArgOperand(0), Type::getInt64Ty(call->getContext())),
-            ConstantInt::getFalse(call->getContext())
-        };
+        auto dst_arg = bb.CreateBitCast(anti,Type::getInt8PtrTy(call->getContext()));
+        auto val_arg = ConstantInt::get(Type::getInt8Ty(call->getContext()), 0);
+        auto len_arg = bb.CreateZExtOrTrunc(call->getArgOperand(0), Type::getInt64Ty(call->getContext()));
+        auto volatile_arg = ConstantInt::getFalse(call->getContext());
 
-        Type *tys[] = {nargs[0]->getType(), nargs[2]->getType()};
+#if LLVM_VERSION_MAJOR == 6
+        auto align_arg = ConstantInt::get(Type::getInt8Ty(call->getContext()), 0);
+        Value *nargs[] = { dst_arg, val_arg, len_arg, align_arg, volatile_arg };
+#else
+        Value *nargs[] = { dst_arg, val_arg, len_arg, volatile_arg };
+#endif
+
+        Type *tys[] = {dst_arg->getType(), len_arg->getType()};
 
         auto memset = cast<CallInst>(bb.CreateCall(Intrinsic::getDeclaration(newFunc->getParent(), Intrinsic::memset, tys), nargs));
         //memset->addParamAttr(0, Attribute::getWithAlignment(Context, inst->getAlignment()));
@@ -1692,10 +1697,10 @@ public:
 
         if (malloc && !isa<UndefValue>(malloc)) {
             if (malloc->getType() != ret->getType()) {
-                oldFunc->dump();
-                newFunc->dump();
-                malloc->dump();
-                ret->dump();
+                llvm::errs() << *oldFunc << "\n";
+                llvm::errs() << *newFunc << "\n";
+                llvm::errs() << *malloc << "\n";
+                llvm::errs() << *ret << "\n";
             }
             assert(malloc->getType() == ret->getType());
 			
@@ -1810,10 +1815,10 @@ public:
                 }
             }
             if (scopeFrees.find(malloc) != scopeFrees.end())
-                scopeFrees[malloc]->dump();
+                llvm::errs() << scopeFrees[malloc] << "\n";
             assert(scopeFrees.find(malloc) == scopeFrees.end());
             if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end())
-                lastScopeAlloc[malloc]->dump();
+                llvm::errs() << lastScopeAlloc[malloc] << "\n";
             assert(lastScopeAlloc.find(malloc) == lastScopeAlloc.end());
             cast<Instruction>(malloc)->replaceAllUsesWith(ret);
             auto n = malloc->getName();
@@ -1906,8 +1911,8 @@ public:
             return BB;
         }
     }
-    newFunc->dump();
-    BB2.dump();
+    llvm::errs() << *newFunc << "\n";
+    llvm::errs() << BB2 << "\n";
     report_fatal_error("could not find original block for given reverse block");
   }
  
@@ -2346,10 +2351,10 @@ endCheck:
             if (!isChildLoop) {
                 llvm::errs() << "manually performing lcssa for instruction" << *inst << " in block " << BuilderM.GetInsertBlock()->getName() << "\n";
                 if (!DT.dominates(inst, forwardBlock)) {
-                    this->newFunc->dump();
-                    forwardBlock->dump();
-                    BuilderM.GetInsertBlock()->dump();
-                    inst->dump();
+                    llvm::errs() << *this->newFunc << "\n";
+                    llvm::errs() << *forwardBlock << "\n";
+                    llvm::errs() << *BuilderM.GetInsertBlock() << "\n";
+                    llvm::errs() << *inst << "\n";
                 }
                 assert(DT.dominates(inst, forwardBlock));
                 IRBuilder<> lcssa(&lc.exit->front());
@@ -2382,7 +2387,7 @@ endCheck:
             return val;
         }
         if (!isa<Instruction>(val)) {
-            val->dump();
+            llvm::errs() << *val << "\n";
         }
 
         auto inst = cast<Instruction>(val);
@@ -2490,9 +2495,9 @@ endCheck:
       if(isConstantValue(val)) {
         dumpSet(this->originalInstructions);
         if (auto arg = dyn_cast<Instruction>(val)) {
-            arg->getParent()->getParent()->dump();
+            llvm::errs() << *arg->getParent()->getParent() << "\n";
         }
-        val->dump();
+        llvm::errs() << *val << "\n";
       }
       assert(!isConstantValue(val));
       auto M = BuilderM.GetInsertBlock()->getParent()->getParent();
@@ -2504,13 +2509,13 @@ endCheck:
 
       if (auto arg = dyn_cast<GlobalVariable>(val)) {
           if (!hasMetadata(arg, "enzyme_shadow")) {
-              arg->dump();
+              llvm::errs() << *arg << "\n";
               report_fatal_error("cannot compute with global variable that doesn't have marked shadow global");
           }
           auto md = arg->getMetadata("enzyme_shadow");
           if (!isa<MDTuple>(md)) {
-              arg->dump();
-              md->dump();
+              llvm::errs() << *arg << "\n";
+              llvm::errs() << *md << "\n";
               report_fatal_error("cannot compute with global variable that doesn't have marked shadow global (metadata incorrect type)");
           }
           auto md2 = cast<MDTuple>(md);
@@ -2565,10 +2570,19 @@ endCheck:
             AllocaInst* antialloca = bb.CreateAlloca(inst->getAllocatedType(), inst->getType()->getPointerAddressSpace(), inst->getArraySize(), inst->getName()+"'ipa");
             invertedPointers[val] = antialloca;
             antialloca->setAlignment(inst->getAlignment());
-            Value *args[] = {bb.CreateBitCast(antialloca,Type::getInt8PtrTy(val->getContext())), ConstantInt::get(Type::getInt8Ty(val->getContext()), 0), bb.CreateNUWMul(
-            bb.CreateZExtOrTrunc(inst->getArraySize(),Type::getInt64Ty(val->getContext())),
-                ConstantInt::get(Type::getInt64Ty(val->getContext()), M->getDataLayout().getTypeAllocSizeInBits(inst->getAllocatedType())/8 ) ), ConstantInt::getFalse(val->getContext()) };
-            Type *tys[] = {args[0]->getType(), args[2]->getType()};
+            
+            auto dst_arg = bb.CreateBitCast(antialloca,Type::getInt8PtrTy(val->getContext()));
+            auto val_arg = ConstantInt::get(Type::getInt8Ty(val->getContext()), 0);
+            auto len_arg = bb.CreateNUWMul(bb.CreateZExtOrTrunc(inst->getArraySize(),Type::getInt64Ty(val->getContext())), ConstantInt::get(Type::getInt64Ty(val->getContext()), M->getDataLayout().getTypeAllocSizeInBits(inst->getAllocatedType())/8 ) );
+            auto volatile_arg = ConstantInt::getFalse(val->getContext());
+
+#if LLVM_VERSION_MAJOR == 6
+            auto align_arg = ConstantInt::get(Type::getInt8Ty(val->getContext()), antialloca->getAlignment());
+            Value *args[] = { dst_arg, val_arg, len_arg, align_arg, volatile_arg };
+#else
+            Value *args[] = { dst_arg, val_arg, len_arg, volatile_arg };
+#endif
+            Type *tys[] = {dst_arg->getType(), len_arg->getType()};
             auto memset = cast<CallInst>(bb.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
             memset->addParamAttr(0, Attribute::getWithAlignment(inst->getContext(), inst->getAlignment()));
             memset->addParamAttr(0, Attribute::NonNull);
@@ -2668,12 +2682,12 @@ private:
 public:
   Value* diffe(Value* val, IRBuilder<> &BuilderM) {
       if (val->getType()->isPointerTy()) {
-        newFunc->dump();
-        val->dump();
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *val << "\n";
       }
       if (isConstantValue(val)) {
-        newFunc->dump();
-        val->dump();
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *val << "\n";
       }
       assert(!val->getType()->isPointerTy());
       assert(!val->getType()->isVoidTy());
@@ -2682,12 +2696,12 @@ public:
 
   void addToDiffe(Value* val, Value* dif, IRBuilder<> &BuilderM) {
       if (val->getType()->isPointerTy()) {
-        newFunc->dump();
-        val->dump();
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *val << "\n";
       }
       if (isConstantValue(val)) {
-        newFunc->dump();
-        val->dump();
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *val << "\n";
       }
       assert(!val->getType()->isPointerTy());
       assert(!isConstantValue(val));
@@ -2715,6 +2729,10 @@ public:
   }
 
   void setDiffe(Value* val, Value* toset, IRBuilder<> &BuilderM) {
+      if (isConstantValue(val)) {
+          llvm::errs() << *newFunc << "\n";
+          llvm::errs() << *val << "\n";
+      }
       assert(!isConstantValue(val));
       BuilderM.CreateStore(toset, getDifferential(val));
   }
@@ -2839,8 +2857,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
     if (constant_args.size() == 0 && hasMetadata(todiff, "enzyme_augment")) {
       auto md = todiff->getMetadata("enzyme_augment");
       if (!isa<MDTuple>(md)) {
-          todiff->dump();
-          md->dump();
+          llvm::errs() << *todiff << "\n";
+          llvm::errs() << *md << "\n";
           report_fatal_error("unknown augment for noninvertible function -- metadata incorrect");
       }
       auto md2 = cast<MDTuple>(md);
@@ -3167,8 +3185,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   }
 
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
-    gutils->newFunc->dump();
-    report_fatal_error("function failed verification");
+      llvm::errs() << *gutils->newFunc << "\n";
+      report_fatal_error("function failed verification");
   }
 
   std::vector<Type*> RetTypes;
@@ -3318,8 +3336,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   }
 
   if (llvm::verifyFunction(*NewF, &llvm::errs())) {
-    NewF->dump();
-    report_fatal_error("augmented function failed verification");
+      llvm::errs() << *NewF << "\n";
+      report_fatal_error("augmented function failed verification");
   }
 
   SmallVector<User*,4> fnusers;
@@ -3338,7 +3356,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
   delete gutils;
   if (autodiff_print)
-    NewF->dump();
+    llvm::errs() << *NewF << "\n";
   return std::pair<Function*,StructType*>(NewF, recursive ? tapeType : nullptr);
 }
   
@@ -3618,8 +3636,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
       auto md = todiff->getMetadata("enzyme_gradient");
       if (!isa<MDTuple>(md)) {
-          todiff->dump();
-          md->dump();
+          llvm::errs() << *todiff << "\n";
+          llvm::errs() << *md << "\n";
           report_fatal_error("unknown gradient for noninvertible function -- metadata incorrect");
       }
       auto md2 = cast<MDTuple>(md);
@@ -3639,8 +3657,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       } else if (foundcalled->arg_size() == res.first.size()) {
         res.first.push_back(StructType::get(todiff->getContext(), {}));
       } else {
-        foundcalled->dump();
-        assert(0 && "bad type for custom gradient");
+          llvm::errs() << *foundcalled << "\n";
+          assert(0 && "bad type for custom gradient");
       }
 
       auto st = dyn_cast<StructType>(foundcalled->getReturnType());
@@ -3666,8 +3684,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         if (!hasTape) {
             args.pop_back();
         }
-        NewF->dump();
-        foundcalled->dump();
+        llvm::errs() << *NewF << "\n";
+        llvm::errs() << *foundcalled << "\n";
         auto cal = bb.CreateCall(foundcalled, args);
         cal->setCallingConv(foundcalled->getCallingConv());
         Value* val = cal;
@@ -3678,7 +3696,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             } else if (res.second.size() == 1 && res.second[0] == val->getType()) {
                 val = bb.CreateInsertValue(ut, cal, {0u});
             } else {
-                foundcalled->dump();
+                llvm::errs() << *foundcalled << "\n";
                 assert(0 && "illegal type for reverse");
             }
         }
@@ -3760,10 +3778,6 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     };
 
     auto setDiffe = [&](Value* val, Value* toset) -> void {
-      if (gutils->isConstantValue(val)) {
-        gutils->newFunc->dump();
-        val->dump();
-      }
       gutils->setDiffe(val, toset, Builder2);
     };
 
@@ -3928,9 +3942,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             auto ptx = invertPointer(op->getOperand(0));
             SmallVector<Value*, 4> args;
             args.push_back(ptx);
-            args.push_back(lookup(op->getOperand(1)));
-            args.push_back(lookup(op->getOperand(2)));
-            args.push_back(lookup(op->getOperand(3)));
+            for(int i=1; i<op->getNumOperands(); i++) {
+                args.push_back(lookup(op->getOperand(i)));
+            }
 
             Type *tys[] = {args[0]->getType(), args[2]->getType()};
             auto cal = Builder2.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args);
@@ -4791,8 +4805,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   }
 
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
-    gutils->newFunc->dump();
-    report_fatal_error("function failed verification");
+      llvm::errs() << *gutils->newFunc << "\n";
+      report_fatal_error("function failed verification");
   }
 
   optimizeIntermediate(gutils, topLevel, gutils->newFunc);
