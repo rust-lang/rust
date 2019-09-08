@@ -202,6 +202,24 @@ LL | /// ```text
    |     ^^^^^^^
 
 error: unknown start of token: \
+ --> <doctest>:1:1
+  |
+1 | \____/
+  | ^
+
+warning: could not parse code block as Rust code
+  --> $DIR/invalid-syntax.rs:82:9
+   |
+LL | ///     \____/
+   |         ^^^^^^
+
+error: unknown start of token: \
+ --> <rustdoc-highlighting>:1:1
+  |
+1 | \____/
+  | ^
+
+error: unknown start of token: \
  --> <rustdoc-highlighting>:1:1
   |
 1 | \_
