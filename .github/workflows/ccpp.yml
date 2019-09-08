@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: install llvm ${{ matrix.llvm }}
-      run: apt-get install -y --no-install-recommends build-essential llvm-${{ matrix.llvm }}-dev cmake
+      run: sudo apt-get install -y --no-install-recommends build-essential llvm-${{ matrix.llvm }}-dev cmake
     - name: mkdir
       run: cd enzyme && mkdir build
     - name: cmake
