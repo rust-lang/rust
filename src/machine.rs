@@ -248,7 +248,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             None => tcx.item_name(def_id).as_str(),
         };
 
-        let alloc = match link_name.get() {
+        let alloc = match &*link_name {
             "__cxa_thread_atexit_impl" => {
                 // This should be all-zero, pointer-sized.
                 let size = tcx.data_layout.pointer_size;
@@ -280,40 +280,25 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         } else {
             let (stacks, base_tag) = Stacks::new_allocation(
                 id,
-                Size::from_bytes(alloc.bytes.len() as u64),
+                alloc.size,
                 Rc::clone(&memory_extra.stacked_borrows),
                 kind,
             );
             (Some(stacks), base_tag)
         };
-        if kind != MiriMemoryKind::Static.into() {
-            assert!(alloc.relocations.is_empty(), "Only statics can come initialized with inner pointers");
-            // Now we can rely on the inner pointers being static, too.
-        }
         let mut stacked_borrows = memory_extra.stacked_borrows.borrow_mut();
-        let alloc: Allocation<Tag, Self::AllocExtra> = Allocation {
-            bytes: alloc.bytes,
-            relocations: Relocations::from_presorted(
-                alloc.relocations.iter()
-                    // The allocations in the relocations (pointers stored *inside* this allocation)
-                    // all get the base pointer tag.
-                    .map(|&(offset, ((), alloc))| {
-                        let tag = if !memory_extra.validate {
-                            Tag::Untagged
-                        } else {
-                            stacked_borrows.static_base_ptr(alloc)
-                        };
-                        (offset, (tag, alloc))
-                    })
-                    .collect()
-            ),
-            undef_mask: alloc.undef_mask,
-            align: alloc.align,
-            mutability: alloc.mutability,
-            extra: AllocExtra {
+        let alloc: Allocation<Tag, Self::AllocExtra> = alloc.retag(
+            |alloc| if !memory_extra.validate {
+                Tag::Untagged
+            } else {
+                // Only statics may already contain pointers at this point
+                assert_eq!(kind, MiriMemoryKind::Static.into());
+                stacked_borrows.static_base_ptr(alloc)
+            },
+            AllocExtra {
                 stacked_borrows: stacks,
             },
-        };
+        );
         (Cow::Owned(alloc), base_tag)
     }
 
