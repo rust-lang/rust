@@ -9,17 +9,17 @@ jobs:
     
     strategy:
       matrix:
-        llvm: [llvm-6.0-dev, llvm-7-dev]
+        llvm: [llvm-6.0, llvm-7]
         os: [ubuntu-18.04]
     
     steps:
     - uses: actions/checkout@v1
     - name: install llvm ${{ matrix.llvm }}
-      run: sudo apt-get install -y --no-install-recommends build-essential ${{ matrix.llvm }} cmake
+      run: sudo apt-get install -y --no-install-recommends build-essential ${{ matrix.llvm }}-dev cmake
     - name: mkdir
       run: cd enzyme && mkdir build
     - name: cmake
-      run: cd enzyme/build && cmake ..
+      run: cd enzyme/build && cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/${{ matrix.llvm }}/build/utils/lit/lit.py
     - name: make
       run: cd enzyme/build && make
     - name: make check-enzyme
