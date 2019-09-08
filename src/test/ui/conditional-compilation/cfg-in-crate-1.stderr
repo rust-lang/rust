@@ -1,6 +1,8 @@
 error[E0601]: `main` function not found in crate `cfg_in_crate_1`
+  --> $DIR/cfg-in-crate-1.rs:3:1
    |
-   = note: consider adding a `main` function to `$DIR/cfg-in-crate-1.rs`
+LL | #![cfg(bar)]
+   | ^^^^^^^^^^^^ consider adding a `main` function to `$DIR/cfg-in-crate-1.rs`
 
 error: aborting due to previous error
 

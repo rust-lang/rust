@@ -1,6 +1,8 @@
 error[E0601]: `main` function not found in crate `missing_main`
+  --> $DIR/missing-main.rs:2:1
    |
-   = note: consider adding a `main` function to `$DIR/missing-main.rs`
+LL | fn mian() { }
+   | ^^^^^^^^^^^^^ consider adding a `main` function to `$DIR/missing-main.rs`
 
 error: aborting due to previous error
 
