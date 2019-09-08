@@ -1,0 +1,26 @@
+name: Enzyme CI
+
+on: [push]
+
+jobs:
+  build:
+    name: Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }}
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        llvm: [6, 7]
+        os: [ubuntu-latest, ubuntu-18.04, ubuntu-16.04]
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: install llvm ${{ matrix.llvm }}
+      run: apt-install -y llvm-${{ matrix.llvm }}-dev cmake
+    - name: mkdir
+      run: cd enzyme && mkdir build
+    - name: cmake
+      run: cmake ..
+    - name: make
+      run: make
+    - name: make check
+      run: make check
