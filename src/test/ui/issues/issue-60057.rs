@@ -15,3 +15,5 @@ impl A {
         }
     }
 }
+
+fn main() {}
