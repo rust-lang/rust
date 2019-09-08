@@ -1,4 +1,4 @@
-//! `ra_assits` crate provides a bunch of code assists, also known as code
+//! `ra_assists` crate provides a bunch of code assists, also known as code
 //! actions (in LSP) or intentions (in IntelliJ).
 //!
 //! An assist is a micro-refactoring, which is automatically activated in
