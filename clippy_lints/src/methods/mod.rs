@@ -1377,6 +1377,7 @@ fn lint_or_fun_call<'a, 'tcx>(
 
             let mut finder = FunCallFinder { cx: &cx, found: false };
             if { finder.visit_expr(&arg); finder.found };
+            if !contains_return(&arg);
 
             let self_ty = cx.tables.expr_ty(self_expr);
 
@@ -2190,28 +2191,6 @@ fn lint_option_and_then_some(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &
     const LINT_MSG: &str = "using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`";
     const NO_OP_MSG: &str = "using `Option.and_then(Some)`, which is a no-op";
 
-    // Searches an return expressions in `y` in `_.and_then(|x| Some(y))`, which we don't lint
-    struct RetCallFinder {
-        found: bool,
-    }
-
-    impl<'tcx> intravisit::Visitor<'tcx> for RetCallFinder {
-        fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-            if self.found {
-                return;
-            }
-            if let hir::ExprKind::Ret(..) = &expr.node {
-                self.found = true;
-            } else {
-                intravisit::walk_expr(self, expr);
-            }
-        }
-
-        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
-            intravisit::NestedVisitorMap::None
-        }
-    }
-
     let ty = cx.tables.expr_ty(&args[0]);
     if !match_type(cx, ty, &paths::OPTION) {
         return;
@@ -2229,9 +2208,7 @@ fn lint_option_and_then_some(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &
                 then {
                     let inner_expr = &some_args[0];
 
-                    let mut finder = RetCallFinder { found: false };
-                    finder.visit_expr(inner_expr);
-                    if finder.found {
+                    if contains_return(inner_expr) {
                         return;
                     }
 
@@ -2987,4 +2964,32 @@ fn is_bool(ty: &hir::Ty) -> bool {
     } else {
         false
     }
+}
+
+// Returns `true` if `expr` contains a return expression
+fn contains_return(expr: &hir::Expr) -> bool {
+    struct RetCallFinder {
+        found: bool,
+    }
+
+    impl<'tcx> intravisit::Visitor<'tcx> for RetCallFinder {
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+            if self.found {
+                return;
+            }
+            if let hir::ExprKind::Ret(..) = &expr.node {
+                self.found = true;
+            } else {
+                intravisit::walk_expr(self, expr);
+            }
+        }
+
+        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+            intravisit::NestedVisitorMap::None
+        }
+    }
+
+    let mut visitor = RetCallFinder{ found: false };
+    visitor.visit_expr(expr);
+    visitor.found
 }

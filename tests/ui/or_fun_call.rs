@@ -99,4 +99,16 @@ fn test_or_with_ctors() {
         .or(Some(Bar(b, Duration::from_secs(2))));
 }
 
+
+// Issue 4514 - early return
+fn f() -> Option<()> {
+    let a = Some(1);
+    let b = 1i32;
+
+    let _ = a.unwrap_or(b.checked_mul(3)?.min(240));
+
+    Some(())
+}
+
+
 fn main() {}
