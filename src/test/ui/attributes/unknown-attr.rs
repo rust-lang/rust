@@ -1,4 +1,4 @@
-// Unknown attributes fall back to feature gated custom attributes.
+// Unknown attributes fall back to unstable custom attributes.
 
 #![feature(custom_inner_attributes)]
 
