@@ -205,26 +205,24 @@ pub struct LocalTableInContext<'a, V> {
 fn validate_hir_id_for_typeck_tables(local_id_root: Option<DefId>,
                                      hir_id: hir::HirId,
                                      mut_access: bool) {
-    if cfg!(debug_assertions) {
-        if let Some(local_id_root) = local_id_root {
-            if hir_id.owner != local_id_root.index {
-                ty::tls::with(|tcx| {
-                    bug!("node {} with HirId::owner {:?} cannot be placed in \
-                          TypeckTables with local_id_root {:?}",
-                         tcx.hir().node_to_string(hir_id),
-                         DefId::local(hir_id.owner),
-                         local_id_root)
-                });
-            }
-        } else {
-            // We use "Null Object" TypeckTables in some of the analysis passes.
-            // These are just expected to be empty and their `local_id_root` is
-            // `None`. Therefore we cannot verify whether a given `HirId` would
-            // be a valid key for the given table. Instead we make sure that
-            // nobody tries to write to such a Null Object table.
-            if mut_access {
-                bug!("access to invalid TypeckTables")
-            }
+    if let Some(local_id_root) = local_id_root {
+        if hir_id.owner != local_id_root.index {
+            ty::tls::with(|tcx| {
+                bug!("node {} with HirId::owner {:?} cannot be placed in \
+                        TypeckTables with local_id_root {:?}",
+                        tcx.hir().node_to_string(hir_id),
+                        DefId::local(hir_id.owner),
+                        local_id_root)
+            });
+        }
+    } else {
+        // We use "Null Object" TypeckTables in some of the analysis passes.
+        // These are just expected to be empty and their `local_id_root` is
+        // `None`. Therefore we cannot verify whether a given `HirId` would
+        // be a valid key for the given table. Instead we make sure that
+        // nobody tries to write to such a Null Object table.
+        if mut_access {
+            bug!("access to invalid TypeckTables")
         }
     }
 }
