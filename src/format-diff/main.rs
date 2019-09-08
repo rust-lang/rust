@@ -58,10 +58,8 @@ impl From<io::Error> for FormatDiffError {
 #[derive(StructOpt, Debug)]
 #[structopt(
     name = "rustfmt-format-diff",
-    author = "",
-    about = "",
-    raw(setting = "AppSettings::DisableVersion"),
-    raw(setting = "AppSettings::NextLineHelp")
+    setting = AppSettings::DisableVersion,
+    setting = AppSettings::NextLineHelp
 )]
 pub struct Opts {
     /// Skip the smallest prefix containing NUMBER slashes
@@ -78,7 +76,7 @@ pub struct Opts {
         short = "f",
         long = "filter",
         value_name = "PATTERN",
-        raw(default_value = "DEFAULT_PATTERN")
+        default_value = DEFAULT_PATTERN
     )]
     filter: String,
 }

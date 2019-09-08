@@ -96,7 +96,7 @@ impl Spanned for ast::Ty {
 impl Spanned for ast::Arm {
     fn span(&self) -> Span {
         let lo = if self.attrs.is_empty() {
-            self.pats[0].span.lo()
+            self.pat.span.lo()
         } else {
             self.attrs[0].span.lo()
         };

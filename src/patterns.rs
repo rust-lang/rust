@@ -7,7 +7,7 @@ use crate::config::lists::*;
 use crate::expr::{can_be_overflowed_expr, rewrite_unary_prefix, wrap_struct_field};
 use crate::lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
-    struct_lit_tactic, write_list, ListFormatting, Separator,
+    struct_lit_tactic, write_list, ListFormatting, ListItem, Separator,
 };
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::overflow;
@@ -59,30 +59,32 @@ impl Rewrite for Pat {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self.node {
             PatKind::Or(ref pats) => {
-                let pat_items = itemize_list(
-                    context.snippet_provider,
-                    pats.iter(),
-                    "",
-                    "|",
-                    |pat| pat.span().lo(),
-                    |pat| pat.span().hi(),
-                    |pat| pat.rewrite(context, shape),
-                    self.span.lo(),
-                    self.span.hi(),
-                    false,
-                );
-                let pat_vec: Vec<_> = pat_items.collect();
-                let tactic = definitive_tactic(
-                    &pat_vec,
-                    ListTactic::HorizontalVertical,
-                    Separator::VerticalBar,
-                    shape.width,
-                );
+                let pat_strs = pats
+                    .iter()
+                    .map(|p| p.rewrite(context, shape))
+                    .collect::<Option<Vec<_>>>()?;
+
+                let use_mixed_layout = pats
+                    .iter()
+                    .zip(pat_strs.iter())
+                    .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
+                let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
+                let tactic = if use_mixed_layout {
+                    DefinitiveListTactic::Mixed
+                } else {
+                    definitive_tactic(
+                        &items,
+                        ListTactic::HorizontalVertical,
+                        Separator::VerticalBar,
+                        shape.width,
+                    )
+                };
                 let fmt = ListFormatting::new(shape, context.config)
                     .tactic(tactic)
-                    .trailing_separator(SeparatorTactic::Never)
-                    .separator(" |");
-                write_list(&pat_vec, &fmt)
+                    .separator(" |")
+                    .separator_place(context.config.binop_separator())
+                    .ends_with_newline(false);
+                write_list(&items, &fmt)
             }
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
             PatKind::Ident(binding_mode, ident, ref sub_pat) => {

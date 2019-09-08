@@ -3,8 +3,6 @@ use std::fmt;
 use std::io;
 use std::io::Write;
 
-use diff;
-
 use crate::config::{Color, Config, Verbosity};
 
 #[derive(Debug, PartialEq)]

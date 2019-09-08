@@ -16,13 +16,12 @@ use crate::config::lists::*;
 use crate::config::{Config, ControlBraceStyle, IndentStyle, Version};
 use crate::lists::{
     definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
-    struct_lit_tactic, write_list, ListFormatting, ListItem, Separator,
+    struct_lit_tactic, write_list, ListFormatting, Separator,
 };
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::matches::rewrite_match;
 use crate::overflow::{self, IntoOverflowableItem, OverflowableItem};
 use crate::pairs::{rewrite_all_pairs, rewrite_pair, PairParts};
-use crate::patterns::is_short_pattern;
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
@@ -31,8 +30,8 @@ use crate::string::{rewrite_string, StringFormat};
 use crate::types::{rewrite_path, PathContext};
 use crate::utils::{
     colon_spaces, contains_skip, count_newlines, first_line_ends_with, inner_attributes,
-    last_line_extendable, last_line_width, mk_sp, outer_attributes, ptr_vec_to_ref_vec,
-    semicolon_for_expr, unicode_str_width, wrap_str,
+    last_line_extendable, last_line_width, mk_sp, outer_attributes, semicolon_for_expr,
+    unicode_str_width, wrap_str,
 };
 use crate::vertical::rewrite_with_alignment;
 use crate::visitor::FmtVisitor;
@@ -587,7 +586,7 @@ struct ControlFlow<'a> {
     block: &'a ast::Block,
     else_block: Option<&'a ast::Expr>,
     label: Option<ast::Label>,
-    pats: Vec<&'a ast::Pat>,
+    pat: Option<&'a ast::Pat>,
     keyword: &'a str,
     matcher: &'a str,
     connector: &'a str,
@@ -597,10 +596,10 @@ struct ControlFlow<'a> {
     span: Span,
 }
 
-fn extract_pats_and_cond(expr: &ast::Expr) -> (Vec<&ast::Pat>, &ast::Expr) {
+fn extract_pats_and_cond(expr: &ast::Expr) -> (Option<&ast::Pat>, &ast::Expr) {
     match expr.node {
-        ast::ExprKind::Let(ref pats, ref cond) => (ptr_vec_to_ref_vec(pats), cond),
-        _ => (vec![], expr),
+        ast::ExprKind::Let(ref pat, ref cond) => (Some(pat), cond),
+        _ => (None, expr),
     }
 }
 
@@ -608,10 +607,10 @@ fn extract_pats_and_cond(expr: &ast::Expr) -> (Vec<&ast::Pat>, &ast::Expr) {
 fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<'_>> {
     match expr.node {
         ast::ExprKind::If(ref cond, ref if_block, ref else_block) => {
-            let (pats, cond) = extract_pats_and_cond(cond);
+            let (pat, cond) = extract_pats_and_cond(cond);
             Some(ControlFlow::new_if(
                 cond,
-                pats,
+                pat,
                 if_block,
                 else_block.as_ref().map(|e| &**e),
                 expr_type == ExprType::SubExpression,
@@ -626,34 +625,34 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
             Some(ControlFlow::new_loop(block, label, expr.span))
         }
         ast::ExprKind::While(ref cond, ref block, label) => {
-            let (pats, cond) = extract_pats_and_cond(cond);
-            Some(ControlFlow::new_while(pats, cond, block, label, expr.span))
+            let (pat, cond) = extract_pats_and_cond(cond);
+            Some(ControlFlow::new_while(pat, cond, block, label, expr.span))
         }
         _ => None,
     }
 }
 
-fn choose_matcher(pats: &[&ast::Pat]) -> &'static str {
-    if pats.is_empty() { "" } else { "let" }
+fn choose_matcher(pat: Option<&ast::Pat>) -> &'static str {
+    pat.map_or("", |_| "let")
 }
 
 impl<'a> ControlFlow<'a> {
     fn new_if(
         cond: &'a ast::Expr,
-        pats: Vec<&'a ast::Pat>,
+        pat: Option<&'a ast::Pat>,
         block: &'a ast::Block,
         else_block: Option<&'a ast::Expr>,
         allow_single_line: bool,
         nested_if: bool,
         span: Span,
     ) -> ControlFlow<'a> {
-        let matcher = choose_matcher(&pats);
+        let matcher = choose_matcher(pat);
         ControlFlow {
             cond: Some(cond),
             block,
             else_block,
             label: None,
-            pats,
+            pat,
             keyword: "if",
             matcher,
             connector: " =",
@@ -669,7 +668,7 @@ impl<'a> ControlFlow<'a> {
             block,
             else_block: None,
             label,
-            pats: vec![],
+            pat: None,
             keyword: "loop",
             matcher: "",
             connector: "",
@@ -680,19 +679,19 @@ impl<'a> ControlFlow<'a> {
     }
 
     fn new_while(
-        pats: Vec<&'a ast::Pat>,
+        pat: Option<&'a ast::Pat>,
         cond: &'a ast::Expr,
         block: &'a ast::Block,
         label: Option<ast::Label>,
         span: Span,
     ) -> ControlFlow<'a> {
-        let matcher = choose_matcher(&pats);
+        let matcher = choose_matcher(pat);
         ControlFlow {
             cond: Some(cond),
             block,
             else_block: None,
             label,
-            pats,
+            pat,
             keyword: "while",
             matcher,
             connector: " =",
@@ -714,7 +713,7 @@ impl<'a> ControlFlow<'a> {
             block,
             else_block: None,
             label,
-            pats: vec![pat],
+            pat: Some(pat),
             keyword: "for",
             matcher: "",
             connector: " in",
@@ -790,10 +789,10 @@ impl<'a> ControlFlow<'a> {
         shape: Shape,
         offset: usize,
     ) -> Option<String> {
-        debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, self.pats, expr);
+        debug!("rewrite_pat_expr {:?} {:?} {:?}", shape, self.pat, expr);
 
         let cond_shape = shape.offset_left(offset)?;
-        if !self.pats.is_empty() {
+        if !self.pat.is_none() {
             let matcher = if self.matcher.is_empty() {
                 self.matcher.to_owned()
             } else {
@@ -802,7 +801,11 @@ impl<'a> ControlFlow<'a> {
             let pat_shape = cond_shape
                 .offset_left(matcher.len())?
                 .sub_width(self.connector.len())?;
-            let pat_string = rewrite_multiple_patterns(context, &self.pats, pat_shape)?;
+            let pat_string = if let Some(pat) = self.pat {
+                pat.rewrite(context, pat_shape)?
+            } else {
+                "".to_owned()
+            };
             let result = format!("{}{}{}", matcher, pat_string, self.connector);
             return rewrite_assign_rhs(context, result, expr, cond_shape);
         }
@@ -906,10 +909,10 @@ impl<'a> ControlFlow<'a> {
             context
                 .snippet_provider
                 .span_after(mk_sp(lo, self.span.hi()), self.keyword.trim()),
-            if self.pats.is_empty() {
+            if self.pat.is_none() {
                 cond_span.lo()
             } else if self.matcher.is_empty() {
-                self.pats[0].span.lo()
+                self.pat.unwrap().span.lo()
             } else {
                 context
                     .snippet_provider
@@ -1143,39 +1146,6 @@ pub(crate) fn is_unsafe_block(block: &ast::Block) -> bool {
     } else {
         false
     }
-}
-
-pub(crate) fn rewrite_multiple_patterns(
-    context: &RewriteContext<'_>,
-    pats: &[&ast::Pat],
-    shape: Shape,
-) -> Option<String> {
-    let pat_strs = pats
-        .iter()
-        .map(|p| p.rewrite(context, shape))
-        .collect::<Option<Vec<_>>>()?;
-
-    let use_mixed_layout = pats
-        .iter()
-        .zip(pat_strs.iter())
-        .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
-    let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
-    let tactic = if use_mixed_layout {
-        DefinitiveListTactic::Mixed
-    } else {
-        definitive_tactic(
-            &items,
-            ListTactic::HorizontalVertical,
-            Separator::VerticalBar,
-            shape.width,
-        )
-    };
-    let fmt = ListFormatting::new(shape, context.config)
-        .tactic(tactic)
-        .separator(" |")
-        .separator_place(context.config.binop_separator())
-        .ends_with_newline(false);
-    write_list(&items, &fmt)
 }
 
 pub(crate) fn rewrite_literal(

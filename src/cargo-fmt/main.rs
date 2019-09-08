@@ -20,7 +20,6 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(
     bin_name = "cargo fmt",
-    author = "",
     about = "This utility formats all bin and lib files of \
              the current crate using rustfmt."
 )]
@@ -51,7 +50,7 @@ pub struct Opts {
 
     /// Options passed to rustfmt
     // 'raw = true' to make `--` explicit.
-    #[structopt(name = "rustfmt_options", raw(raw = "true"))]
+    #[structopt(name = "rustfmt_options", raw(true))]
     rustfmt_options: Vec<String>,
 
     /// Format all packages (only usable in workspaces)

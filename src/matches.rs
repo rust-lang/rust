@@ -10,7 +10,7 @@ use crate::config::lists::*;
 use crate::config::{Config, ControlBraceStyle, IndentStyle, Version};
 use crate::expr::{
     format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line, rewrite_cond,
-    rewrite_multiple_patterns, ExprType, RhsTactics,
+    ExprType, RhsTactics,
 };
 use crate::lists::{itemize_list, write_list, ListFormatting};
 use crate::rewrite::{Rewrite, RewriteContext};
@@ -19,7 +19,7 @@ use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
     contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,
-    ptr_vec_to_ref_vec, semicolon_for_expr, trimmed_last_line_width, unicode_str_width,
+    semicolon_for_expr, trimmed_last_line_width, unicode_str_width,
 };
 
 /// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
@@ -161,7 +161,7 @@ fn collect_beginning_verts(
     let mut beginning_verts = Vec::with_capacity(arms.len());
     let mut lo = context.snippet_provider.span_after(span, "{");
     for arm in arms {
-        let hi = arm.pats[0].span.lo();
+        let hi = arm.pat.span.lo();
         let missing_span = mk_sp(lo, hi);
         beginning_verts.push(context.snippet_provider.opt_span_before(missing_span, "|"));
         lo = arm.span().hi();
@@ -225,10 +225,7 @@ fn rewrite_match_arm(
                 arm_comma(context.config, body, is_last),
             ));
         }
-        let missing_span = mk_sp(
-            arm.attrs[arm.attrs.len() - 1].span.hi(),
-            arm.pats[0].span.lo(),
-        );
+        let missing_span = mk_sp(arm.attrs[arm.attrs.len() - 1].span.hi(), arm.pat.span.lo());
         (missing_span, arm.attrs.rewrite(context, shape)?)
     } else {
         (mk_sp(arm.span().lo(), arm.span().lo()), String::new())
@@ -237,7 +234,7 @@ fn rewrite_match_arm(
     // Patterns
     // 5 = ` => {`
     let pat_shape = shape.sub_width(5)?;
-    let pats_str = rewrite_multiple_patterns(context, &ptr_vec_to_ref_vec(&arm.pats), pat_shape)?;
+    let pats_str = arm.pat.rewrite(context, pat_shape)?;
 
     // Guard
     let block_like_pat = trimmed_last_line_width(&pats_str) <= context.config.tab_spaces();
@@ -259,7 +256,7 @@ fn rewrite_match_arm(
         false,
     )?;
 
-    let arrow_span = mk_sp(arm.pats.last().unwrap().span.hi(), arm.body.span().lo());
+    let arrow_span = mk_sp(arm.pat.span.hi(), arm.body.span().lo());
     rewrite_match_body(
         context,
         &arm.body,

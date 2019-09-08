@@ -1,7 +1,5 @@
 use std::borrow::Cow;
 
-use bytecount;
-
 use rustc_target::spec::abi;
 use syntax::ast::{
     self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,

@@ -39,19 +39,19 @@ pub fn is_config_value(attr: &syn::Attribute) -> bool {
 }
 
 fn is_attr_name_value(attr: &syn::Attribute, name: &str) -> bool {
-    attr.interpret_meta().map_or(false, |meta| match meta {
-        syn::Meta::NameValue(syn::MetaNameValue { ref ident, .. }) if ident == name => true,
+    attr.parse_meta().ok().map_or(false, |meta| match meta {
+        syn::Meta::NameValue(syn::MetaNameValue { ref path, .. }) if path.is_ident(name) => true,
         _ => false,
     })
 }
 
 fn get_name_value_str_lit(attr: &syn::Attribute, name: &str) -> Option<String> {
-    attr.interpret_meta().and_then(|meta| match meta {
+    attr.parse_meta().ok().and_then(|meta| match meta {
         syn::Meta::NameValue(syn::MetaNameValue {
-            ref ident,
+            ref path,
             lit: syn::Lit::Str(ref lit_str),
             ..
-        }) if ident == name => Some(lit_str.value()),
+        }) if path.is_ident(name) => Some(lit_str.value()),
         _ => None,
     })
 }
