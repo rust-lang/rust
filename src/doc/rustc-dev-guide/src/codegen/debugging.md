@@ -40,7 +40,7 @@ hard to replicate manually and means that LLVM is called multiple times in
 parallel.  If you can get away with it (i.e. if it doesn't make your bug
 disappear), passing `-C codegen-units=1` to rustc will make debugging easier.
 
-To rustc to generate LLVM IR, you need to pass the `--emit=llvm-ir` flag. If
+For rustc to generate LLVM IR, you need to pass the `--emit=llvm-ir` flag. If
 you are building via cargo, use the `RUSTFLAGS` environment variable (e.g.
 `RUSTFLAGS='--emit=llvm-ir'`). This causes rustc to spit out LLVM IR into the
 target directory.
