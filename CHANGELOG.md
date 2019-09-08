@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [1.4.8] 2019-09-08
+
+### Changed
+
+- Update `rustc-ap-*` crates to 583.0.0.
+
 ## [1.4.7] 2019-09-06
 
 ### Added
