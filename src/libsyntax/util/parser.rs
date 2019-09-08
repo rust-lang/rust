@@ -242,7 +242,7 @@ pub const PREC_POSTFIX: i8 = 60;
 pub const PREC_PAREN: i8 = 99;
 pub const PREC_FORCE_PAREN: i8 = 100;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ExprPrecedence {
     Closure,
     Break,
