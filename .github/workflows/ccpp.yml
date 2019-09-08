@@ -9,7 +9,7 @@ jobs:
     
     strategy:
       matrix:
-        llvm: [6, 7]
+        llvm: [6.0, 7]
         os: [ubuntu-latest, ubuntu-18.04, ubuntu-16.04]
     
     steps:
