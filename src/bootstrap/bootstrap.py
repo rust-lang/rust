@@ -523,6 +523,10 @@ class RustBuild(object):
         'value2'
         >>> rb.get_toml('key', 'c') is None
         True
+
+        >>> rb.config_toml = 'key1 = true'
+        >>> rb.get_toml("key1")
+        'true'
         """
 
         cur_section = None
@@ -571,6 +575,12 @@ class RustBuild(object):
 
         >>> RustBuild.get_string('    "devel"   ')
         'devel'
+        >>> RustBuild.get_string("    'devel'   ")
+        'devel'
+        >>> RustBuild.get_string('devel') is None
+        True
+        >>> RustBuild.get_string('    "devel   ')
+        ''
         """
         start = line.find('"')
         if start != -1:
@@ -822,13 +832,13 @@ def bootstrap(help_triggered):
     except (OSError, IOError):
         pass
 
-    match = re.search(r'\nverbose = (\d+)', build.config_toml)
-    if match is not None:
-        build.verbose = max(build.verbose, int(match.group(1)))
+    config_verbose = build.get_toml('verbose', 'build')
+    if config_verbose is not None:
+        build.verbose = max(build.verbose, int(config_verbose))
 
-    build.use_vendored_sources = '\nvendor = true' in build.config_toml
+    build.use_vendored_sources = build.get_toml('vendor', 'build') == 'true'
 
-    build.use_locked_deps = '\nlocked-deps = true' in build.config_toml
+    build.use_locked_deps = build.get_toml('locked-deps', 'build') == 'true'
 
     build.check_vendored_status()
 
