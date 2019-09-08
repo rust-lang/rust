@@ -7,8 +7,10 @@ use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_syntax::ast::{self, NameOwner, StructKind, TypeAscriptionOwner};
 
 use crate::{
-    type_ref::TypeRef, AsName, AstDatabase, Crate, DefDatabase, Enum, EnumVariant, FieldSource,
-    HasSource, HirDatabase, Name, Source, Struct, StructField, Union,
+    db::{AstDatabase, DefDatabase, HirDatabase},
+    type_ref::TypeRef,
+    AsName, Crate, Enum, EnumVariant, FieldSource, HasSource, Name, Source, Struct, StructField,
+    Union,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

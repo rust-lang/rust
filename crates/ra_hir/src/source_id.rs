@@ -7,7 +7,7 @@ use std::{
 use ra_arena::{impl_arena_id, Arena, RawId};
 use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr};
 
-use crate::{AstDatabase, HirFileId};
+use crate::{db::AstDatabase, HirFileId};
 
 /// `AstId` points to an AST node in any file.
 ///

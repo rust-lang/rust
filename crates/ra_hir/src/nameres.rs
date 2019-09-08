@@ -65,9 +65,12 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::tested_by;
 
 use crate::{
-    diagnostics::DiagnosticSink, either::Either, ids::MacroDefId,
-    nameres::diagnostics::DefDiagnostic, AstDatabase, AstId, BuiltinType, Crate, DefDatabase,
-    HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
+    db::{AstDatabase, DefDatabase},
+    diagnostics::DiagnosticSink,
+    either::Either,
+    ids::MacroDefId,
+    nameres::diagnostics::DefDiagnostic,
+    AstId, BuiltinType, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
 };
 
 pub(crate) use self::raw::{ImportSourceMap, RawItems};
@@ -516,9 +519,10 @@ mod diagnostics {
     use relative_path::RelativePathBuf;
 
     use crate::{
+        db::{AstDatabase, DefDatabase},
         diagnostics::{DiagnosticSink, UnresolvedModule},
         nameres::CrateModuleId,
-        AstDatabase, AstId, DefDatabase,
+        AstId,
     };
 
     #[derive(Debug, PartialEq, Eq)]

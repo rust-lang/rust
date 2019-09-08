@@ -9,6 +9,7 @@ use rustc_hash::FxHashMap;
 
 use super::{autoderef, lower, Canonical, InEnvironment, TraitEnvironment, TraitRef};
 use crate::{
+    db::HirDatabase,
     generics::HasGenericParams,
     impl_block::{ImplBlock, ImplId, ImplItem},
     nameres::CrateModuleId,
@@ -16,7 +17,7 @@ use crate::{
     traits::TraitItem,
     ty::primitive::{FloatBitness, UncertainFloatTy, UncertainIntTy},
     ty::{Ty, TypeCtor},
-    Crate, Function, HirDatabase, Module, Name, Trait,
+    Crate, Function, Module, Name, Trait,
 };
 
 /// This is used as a key for indexing impls.

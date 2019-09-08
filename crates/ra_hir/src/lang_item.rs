@@ -4,8 +4,8 @@ use std::sync::Arc;
 use ra_syntax::{ast::AttrsOwner, SmolStr};
 
 use crate::{
-    AstDatabase, Crate, DefDatabase, Enum, Function, HasSource, HirDatabase, ImplBlock, Module,
-    ModuleDef, Static, Struct, Trait,
+    db::{AstDatabase, DefDatabase, HirDatabase},
+    Crate, Enum, Function, HasSource, ImplBlock, Module, ModuleDef, Static, Struct, Trait,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

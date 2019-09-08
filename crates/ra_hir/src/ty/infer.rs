@@ -35,6 +35,7 @@ use super::{
 use crate::{
     adt::VariantDef,
     code_model::{ModuleDef::Trait, TypeAlias},
+    db::HirDatabase,
     diagnostics::DiagnosticSink,
     expr::{
         self, Array, BinaryOp, BindingAnnotation, Body, Expr, ExprId, Literal, Pat, PatId,
@@ -50,8 +51,8 @@ use crate::{
     },
     ty::infer::diagnostics::InferenceDiagnostic,
     type_ref::{Mutability, TypeRef},
-    AdtDef, ConstData, DefWithBody, FnData, Function, HasBody, HirDatabase, ImplItem, ModuleDef,
-    Name, Path, StructField,
+    AdtDef, ConstData, DefWithBody, FnData, Function, HasBody, ImplItem, ModuleDef, Name, Path,
+    StructField,
 };
 
 mod unify;
@@ -1614,9 +1615,10 @@ impl Expectation {
 
 mod diagnostics {
     use crate::{
+        db::HirDatabase,
         diagnostics::{DiagnosticSink, NoSuchField},
         expr::ExprId,
-        Function, HasSource, HirDatabase,
+        Function, HasSource,
     };
 
     #[derive(Debug, PartialEq, Eq, Clone)]

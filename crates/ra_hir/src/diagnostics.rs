@@ -3,7 +3,7 @@ use std::{any::Any, fmt};
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, TextRange};
 use relative_path::RelativePathBuf;
 
-use crate::{HirDatabase, HirFileId, Name, Source};
+use crate::{db::HirDatabase, HirFileId, Name, Source};
 
 /// Diagnostic defines hir API for errors and warnings.
 ///

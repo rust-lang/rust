@@ -49,7 +49,6 @@ mod code_model;
 mod marks;
 
 use crate::{
-    db::{AstDatabase, DefDatabase, HirDatabase, InternDatabase},
     ids::MacroFileKind,
     name::AsName,
     resolve::Resolver,

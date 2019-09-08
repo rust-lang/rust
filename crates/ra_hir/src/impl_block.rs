@@ -9,13 +9,13 @@ use ra_syntax::{
 
 use crate::{
     code_model::{Module, ModuleSource},
+    db::{AstDatabase, DefDatabase, HirDatabase},
     generics::HasGenericParams,
     ids::LocationCtx,
     resolve::Resolver,
     ty::Ty,
     type_ref::TypeRef,
-    AstDatabase, Const, DefDatabase, Function, HasSource, HirDatabase, HirFileId, Source, TraitRef,
-    TypeAlias,
+    Const, Function, HasSource, HirFileId, Source, TraitRef, TypeAlias,
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]

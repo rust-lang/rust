@@ -6,8 +6,10 @@ use std::sync::Arc;
 use ra_syntax::ast::{self, NameOwner};
 
 use crate::{
-    ids::LocationCtx, name::AsName, AstDatabase, Const, DefDatabase, Function, HasSource, Module,
-    Name, Trait, TypeAlias,
+    db::{AstDatabase, DefDatabase},
+    ids::LocationCtx,
+    name::AsName,
+    Const, Function, HasSource, Module, Name, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

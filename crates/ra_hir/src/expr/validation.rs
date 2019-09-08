@@ -5,12 +5,13 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     adt::AdtDef,
+    db::HirDatabase,
     diagnostics::{DiagnosticSink, MissingFields, MissingOkInTailExpr},
     expr::AstPtr,
     name,
     path::{PathKind, PathSegment},
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
-    Function, HirDatabase, ModuleDef, Name, Path, PerNs, Resolution,
+    Function, ModuleDef, Name, Path, PerNs, Resolution,
 };
 
 use super::{Expr, ExprId, RecordLitField};

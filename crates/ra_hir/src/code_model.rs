@@ -8,6 +8,7 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     adt::{EnumVariantId, StructFieldId, VariantDef},
+    db::{AstDatabase, DefDatabase, HirDatabase},
     diagnostics::DiagnosticSink,
     expr::{validation::ExprValidator, Body, BodySourceMap},
     generics::HasGenericParams,
@@ -29,7 +30,7 @@ use crate::{
     },
     type_ref::Mutability,
     type_ref::TypeRef,
-    AsName, AstDatabase, AstId, DefDatabase, Either, HasSource, HirDatabase, Name, Ty,
+    AsName, AstId, Either, HasSource, Name, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
