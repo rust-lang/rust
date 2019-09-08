@@ -9,13 +9,13 @@ jobs:
     
     strategy:
       matrix:
-        llvm: [6.0, 7]
+        llvm: [llvm-6.0-dev, llvm-7-dev]
         os: [ubuntu-latest, ubuntu-18.04, ubuntu-16.04]
     
     steps:
     - uses: actions/checkout@v1
     - name: install llvm ${{ matrix.llvm }}
-      run: sudo apt-get install -y --no-install-recommends build-essential llvm-${{ matrix.llvm }}-dev cmake
+      run: sudo apt-get install -y --no-install-recommends build-essential ${{ matrix.llvm }} cmake
     - name: mkdir
       run: cd enzyme && mkdir build
     - name: cmake
