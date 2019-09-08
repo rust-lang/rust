@@ -16,7 +16,7 @@ jobs:
     - name: update ubuntu
       run: sudo apt-get update -y
     - name: install llvm ${{ matrix.llvm }}
-      run: sudo apt-get install -y --no-install-recommends build-essential ${{ matrix.llvm }}-dev ${{ matrix.llvm }}-tools cmake
+      run: sudo apt-get install -y --no-install-recommends build-essential ${{ matrix.llvm }}-tools cmake
     - uses: actions/checkout@v1
     - name: mkdir
       run: cd enzyme && mkdir build
