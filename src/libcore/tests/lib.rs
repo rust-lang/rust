@@ -33,6 +33,7 @@
 #![feature(const_fn)]
 #![feature(iter_partition_in_place)]
 #![feature(iter_is_partitioned)]
+#![feature(iter_order_by)]
 
 extern crate test;
 
