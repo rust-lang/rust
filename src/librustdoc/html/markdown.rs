@@ -931,7 +931,10 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                             is_fenced = true;
                             previous_offset + fence_idx
                         }
-                        None => offset,
+                        None => {
+                            is_fenced = false;
+                            offset
+                        }
                     };
                 }
             }
