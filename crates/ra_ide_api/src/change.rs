@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc, time};
 
 use ra_db::{
     salsa::{Database, Durability, SweepStrategy},
-    CrateGraph, FileId, SourceDatabase, SourceRoot, SourceRootId,
+    CrateGraph, CrateId, FileId, SourceDatabase, SourceRoot, SourceRootId,
 };
 use ra_prof::{memory_usage, profile, Bytes};
 use ra_syntax::SourceFile;
@@ -11,7 +11,7 @@ use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    db::RootDatabase,
+    db::{DebugData, RootDatabase},
     status::syntax_tree_stats,
     symbol_index::{SymbolIndex, SymbolsDatabase},
 };
@@ -23,6 +23,7 @@ pub struct AnalysisChange {
     files_changed: Vec<(FileId, Arc<String>)>,
     libraries_added: Vec<LibraryData>,
     crate_graph: Option<CrateGraph>,
+    debug_data: DebugData,
 }
 
 impl fmt::Debug for AnalysisChange {
@@ -82,6 +83,14 @@ impl AnalysisChange {
 
     pub fn set_crate_graph(&mut self, graph: CrateGraph) {
         self.crate_graph = Some(graph);
+    }
+
+    pub fn set_debug_crate_name(&mut self, crate_id: CrateId, name: String) {
+        self.debug_data.crate_names.insert(crate_id, name);
+    }
+
+    pub fn set_debug_root_path(&mut self, source_root_id: SourceRootId, path: String) {
+        self.debug_data.root_paths.insert(source_root_id, path);
     }
 }
 
@@ -200,6 +209,8 @@ impl RootDatabase {
         if let Some(crate_graph) = change.crate_graph {
             self.set_crate_graph_with_durability(Arc::new(crate_graph), Durability::HIGH)
         }
+
+        Arc::make_mut(&mut self.debug_data).merge(change.debug_data)
     }
 
     fn apply_root_change(&mut self, root_id: SourceRootId, root_change: RootChange) {

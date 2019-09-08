@@ -5,6 +5,7 @@ use ra_syntax::{ast, Parse, SmolStr, SyntaxNode};
 
 use crate::{
     adt::{EnumData, StructData},
+    debug::HirDebugDatabase,
     generics::{GenericDef, GenericParams},
     ids,
     impl_block::{ImplBlock, ImplSourceMap, ModuleImplBlocks},
@@ -83,7 +84,7 @@ pub trait AstDatabase: InternDatabase {
 // This database uses `AstDatabase` internally,
 #[salsa::query_group(DefDatabaseStorage)]
 #[salsa::requires(AstDatabase)]
-pub trait DefDatabase: InternDatabase {
+pub trait DefDatabase: InternDatabase + HirDebugDatabase {
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;
 

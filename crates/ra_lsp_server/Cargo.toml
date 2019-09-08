@@ -18,6 +18,7 @@ parking_lot = "0.9.0"
 jod-thread = "0.1.0"
 ra_vfs = "0.4.0"
 ra_syntax = { path = "../ra_syntax" }
+ra_db = { path = "../ra_db" }
 ra_text_edit = { path = "../ra_text_edit" }
 ra_ide_api = { path = "../ra_ide_api" }
 lsp-server = "0.2.0"

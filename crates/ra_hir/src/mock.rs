@@ -2,13 +2,14 @@ use std::{panic, sync::Arc};
 
 use parking_lot::Mutex;
 use ra_db::{
-    salsa, CrateGraph, Edition, FileId, FilePosition, SourceDatabase, SourceRoot, SourceRootId,
+    salsa, CrateGraph, CrateId, Edition, FileId, FilePosition, SourceDatabase, SourceRoot,
+    SourceRootId,
 };
 use relative_path::RelativePathBuf;
 use rustc_hash::FxHashMap;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
-use crate::{db, diagnostics::DiagnosticSink};
+use crate::{db, debug::HirDebugHelper, diagnostics::DiagnosticSink};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
@@ -24,9 +25,21 @@ pub struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
     runtime: salsa::Runtime<MockDatabase>,
     files: FxHashMap<String, FileId>,
+    crate_names: Arc<FxHashMap<CrateId, String>>,
+    file_paths: Arc<FxHashMap<FileId, String>>,
 }
 
 impl panic::RefUnwindSafe for MockDatabase {}
+
+impl HirDebugHelper for MockDatabase {
+    fn crate_name(&self, krate: CrateId) -> Option<String> {
+        self.crate_names.get(&krate).cloned()
+    }
+
+    fn file_path(&self, file_id: FileId) -> Option<String> {
+        self.file_paths.get(&file_id).cloned()
+    }
+}
 
 impl MockDatabase {
     pub fn with_files(fixture: &str) -> MockDatabase {
@@ -62,6 +75,7 @@ impl MockDatabase {
         for (crate_name, (crate_root, edition, _)) in graph.0.iter() {
             let crate_root = self.file_id_of(&crate_root);
             let crate_id = crate_graph.add_crate_root(crate_root, *edition);
+            Arc::make_mut(&mut self.crate_names).insert(crate_id, crate_name.clone());
             ids.insert(crate_name, crate_id);
         }
         for (crate_name, (_, _, deps)) in graph.0.iter() {
@@ -151,8 +165,11 @@ impl MockDatabase {
         let is_crate_root = rel_path == "lib.rs" || rel_path == "/main.rs";
 
         let file_id = FileId(self.files.len() as u32);
+
         let prev = self.files.insert(path.to_string(), file_id);
         assert!(prev.is_none(), "duplicate files in the text fixture");
+        Arc::make_mut(&mut self.file_paths).insert(file_id, path.to_string());
+
         let text = Arc::new(text.to_string());
         self.set_file_text(file_id, text);
         self.set_file_relative_path(file_id, rel_path.clone());
@@ -200,6 +217,8 @@ impl Default for MockDatabase {
             events: Default::default(),
             runtime: salsa::Runtime::default(),
             files: FxHashMap::default(),
+            crate_names: Default::default(),
+            file_paths: Default::default(),
         };
         db.set_crate_graph(Default::default());
         db
@@ -213,6 +232,8 @@ impl salsa::ParallelDatabase for MockDatabase {
             runtime: self.runtime.snapshot(self),
             // only the root database can be used to get file_id by path.
             files: FxHashMap::default(),
+            file_paths: Arc::clone(&self.file_paths),
+            crate_names: Arc::clone(&self.crate_names),
         })
     }
 }
