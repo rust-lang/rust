@@ -1540,6 +1540,16 @@ public:
     lastScopeAlloc.erase(I);
     scopeFrees.erase(I);
     SE.eraseValueFromMap(I);
+    originalToNewFn.erase(I);
+    eraser:
+    for(auto v: originalToNewFn) {
+        if (v.second == I) {
+            originalToNewFn.erase(v.first);
+            goto eraser;        
+        }
+    }
+    I->dump();
+    assert(I->use_empty());
     I->eraseFromParent();
   }
 
@@ -1914,6 +1924,13 @@ public:
     llvm::errs() << BB2 << "\n";
     report_fatal_error("could not find original block for given reverse block");
   }
+
+  void forceContexts() {
+    LoopContext lc;
+    for(auto BB : originalBlocks) {
+        getContext(BB, lc);
+    }
+  }
  
   bool getContext(BasicBlock* BB, LoopContext& loopContext) {
     return getContextM(BB, loopContext, this->loopContexts, this->LI, this->SE, this->DT, *this);
@@ -1968,7 +1985,7 @@ public:
 
           if (originalInstructions.find(inst) == originalInstructions.end()) continue;
 
-          if (!isa<TerminatorInst>(inst) && this->isConstantInstruction(inst)) {
+          if (!(isa<BranchInst>(inst) || isa<ReturnInst>(inst)) && this->isConstantInstruction(inst)) {
             if (inst->getNumUses() == 0) {
                 erase(inst);
 			    continue;
@@ -2150,6 +2167,7 @@ endCheck:
     }
 
     void ensureLookupCached(Instruction* inst, bool shouldFree=true) {
+        inst->dump();
         if (scopeMap.find(inst) != scopeMap.end()) return;
 
         LoopContext lc;
@@ -2249,10 +2267,10 @@ endCheck:
                 
                 auto ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(tbuild.CreateLoad(scopeMap[inst]), Type::getInt8PtrTy(outermostPreheader->getContext())), tbuild.GetInsertBlock()));
                 ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-                scopeFrees[inst] = ci;
                 if (ci->getParent()==nullptr) {
                     tbuild.Insert(ci);
                 }
+                scopeFrees[inst] = ci;
             }
 
             auto pn = dyn_cast<PHINode>(inst);
@@ -2904,6 +2922,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   cachedfinished[tup] = false;
   llvm::errs() << "function with differential return " << todiff->getName() << " " << differentialReturn << "\n";
 
+  gutils->forceContexts();
   gutils->forceAugmentedReturns();
 
   for(BasicBlock* BB: gutils->originalBlocks) {
@@ -3713,6 +3732,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, returnValue ? ReturnType::ArgsWithReturn : ReturnType::Args, differentialReturn, additionalArg);
   cachedfunctions[tup] = gutils->newFunc;
 
+  gutils->forceContexts(); 
+  gutils->forceAugmentedReturns();
+
   Argument* additionalValue = nullptr;
   if (additionalArg) {
     auto v = gutils->newFunc->arg_end();
@@ -3733,17 +3755,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   if (returnValue && differentialReturn) {
 	retAlloca = IRBuilder<>(&gutils->newFunc->getEntryBlock().front()).CreateAlloca(todiff->getReturnType(), nullptr, "toreturn");
   }
-  
-
-  // Force loop canonicalization everywhere
-  for(BasicBlock* BB: gutils->originalBlocks) {
-    LoopContext loopContext;
-    gutils->getContext(BB, loopContext);
-  }
 
   std::map<ReturnInst*,StoreInst*> replacedReturns;
 
-  gutils->forceAugmentedReturns();
 
   for(BasicBlock* BB: gutils->originalBlocks) {
 
@@ -3941,7 +3955,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             auto ptx = invertPointer(op->getOperand(0));
             SmallVector<Value*, 4> args;
             args.push_back(ptx);
-            for(int i=1; i<op->getNumArgOperands(); i++) {
+            for(unsigned i=1; i<op->getNumArgOperands(); i++) {
                 args.push_back(lookup(op->getOperand(i)));
             }
 
@@ -4393,7 +4407,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
                 
                 if (usesInst) {
                     bool modref = false;
-                    auto start = &*iter;
+                    //auto start = &*iter;
                     if (mri != ModRefInfo::NoModRef) {
                         modref = true;
                         /*
@@ -4971,6 +4985,7 @@ static bool lowerAutodiffIntrinsic(Function &F, TargetLibraryInfo &TLI, AAResult
 }
 
 PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils &gutils) {
+    { SCEVExpander(SE, L->getHeader()->getParent()->getParent()->getDataLayout(), "ad"); }
 
   BasicBlock* Header = L->getHeader();
   Module* M = Header->getParent()->getParent();
@@ -4979,15 +4994,15 @@ PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &
   PHINode *CanonicalIV;
 
   {
-
-  CanonicalIV = SCEVExpander(SE, DL, "ad").getOrInsertCanonicalInductionVariable(L, Ty);
+  SCEVExpander Exp(SE, DL, "ad");
+  CanonicalIV = Exp.getOrInsertCanonicalInductionVariable(L, Ty);
   assert (CanonicalIV && "canonicalizing IV");
   //DEBUG(dbgs() << "Canonical induction variable " << *CanonicalIV << "\n");
 
   SmallVector<WeakTrackingVH, 16> DeadInst0;
-  SCEVExpander(SE, DL, "ad").replaceCongruentIVs(L, &DT, DeadInst0);
+  Exp.replaceCongruentIVs(L, &DT, DeadInst0);
   for (WeakTrackingVH V : DeadInst0) {
-      DeadInsts.push_back(cast<Instruction>(V));
+      //DeadInsts.push_back(cast<Instruction>(V));
   }
   }
   

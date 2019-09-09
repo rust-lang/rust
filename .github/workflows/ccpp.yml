@@ -11,6 +11,7 @@ jobs:
       fail-fast: false
       matrix:
         llvm: ["6.0", "7", "8"]
+        build: ["Release", "RelWithDebInfo", "Debug"]
         os: [ubuntu-18.04]
     
     steps:
@@ -24,7 +25,7 @@ jobs:
     - name: mkdir
       run: cd enzyme && mkdir build
     - name: cmake
-      run: cd enzyme/build && cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/llvm-${{ matrix.llvm }}/build/utils/lit/lit.py
+      run: cd enzyme/build && cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/llvm-${{ matrix.llvm }}/build/utils/lit/lit.py -DCMAKE_BUILD_TYPE=${{ matrix.build }}
     - name: make
       run: cd enzyme/build && make
     - name: make check-enzyme
