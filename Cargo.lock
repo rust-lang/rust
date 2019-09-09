@@ -3225,21 +3225,21 @@ checksum = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
 
 [[package]]
 name = "rustc-std-workspace-alloc"
-version = "1.0.0"
+version = "1.99.0"
 dependencies = [
  "alloc",
 ]
 
 [[package]]
 name = "rustc-std-workspace-core"
-version = "1.0.0"
+version = "1.99.0"
 dependencies = [
  "core",
 ]
 
 [[package]]
 name = "rustc-std-workspace-std"
-version = "1.0.0"
+version = "1.99.0"
 dependencies = [
  "std",
 ]
