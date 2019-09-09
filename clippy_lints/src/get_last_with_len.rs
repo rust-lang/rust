@@ -1,6 +1,6 @@
 //! lint on using `x.get(x.len() - 1)` instead of `x.last()`
 
-use crate::utils::{match_type, paths, snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
+use crate::utils::{is_type_diagnostic_item, snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 use if_chain::if_chain;
 use rustc::hir::{BinOpKind, Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for GetLastWithLen {
             // Argument 0 (the struct we're calling the method on) is a vector
             if let Some(struct_calling_on) = args.get(0);
             let struct_ty = cx.tables.expr_ty(struct_calling_on);
-            if match_type(cx, struct_ty, &paths::VEC);
+            if is_type_diagnostic_item(cx, struct_ty, Symbol::intern("vec_type"));
 
             // Argument to "get" is a subtraction
             if let Some(get_index_arg) = args.get(1);
