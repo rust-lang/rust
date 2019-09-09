@@ -31,7 +31,7 @@ use syntax::ast::{Name, Ident};
 use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
+use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::expand::AstFragment;
 use syntax::ext::hygiene::ExpnId;
@@ -580,7 +580,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     }
 
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &Item) {
+    fn build_reduced_graph_for_item(&mut self, item: &'b Item) {
         let parent_scope = &self.parent_scope;
         let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
@@ -716,12 +716,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
-            ItemKind::Enum(ref enum_definition, _) => {
-                let module_kind = ModuleKind::Def(
-                    DefKind::Enum,
-                    self.r.definitions.local_def_id(item.id),
-                    ident.name,
-                );
+            ItemKind::Enum(_, _) => {
+                let def_id = self.r.definitions.local_def_id(item.id);
+                self.r.variant_vis.insert(def_id, vis);
+                let module_kind = ModuleKind::Def(DefKind::Enum, def_id, ident.name);
                 let module = self.r.new_module(parent,
                                              module_kind,
                                              parent.normal_ancestor_id,
@@ -729,10 +727,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                              item.span);
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
-
-                for variant in &(*enum_definition).variants {
-                    self.build_reduced_graph_for_variant(variant, vis);
-                }
             }
 
             ItemKind::TraitAlias(..) => {
@@ -815,38 +809,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
             ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
         }
-    }
-
-    // Constructs the reduced graph for one variant. Variants exist in the
-    // type and value namespaces.
-    fn build_reduced_graph_for_variant(&mut self, variant: &Variant, vis: ty::Visibility) {
-        let parent = self.parent_scope.module;
-        let expn_id = self.parent_scope.expansion;
-        let ident = variant.ident;
-
-        // Define a name in the type namespace.
-        let def_id = self.r.definitions.local_def_id(variant.id);
-        let res = Res::Def(DefKind::Variant, def_id);
-        self.r.define(parent, ident, TypeNS, (res, vis, variant.span, expn_id));
-
-        // If the variant is marked as non_exhaustive then lower the visibility to within the
-        // crate.
-        let mut ctor_vis = vis;
-        let has_non_exhaustive = attr::contains_name(&variant.attrs, sym::non_exhaustive);
-        if has_non_exhaustive && vis == ty::Visibility::Public {
-            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
-        }
-
-        // Define a constructor name in the value namespace.
-        // Braced variants, unlike structs, generate unusable names in
-        // value namespace, they are reserved for possible future use.
-        // It's ok to use the variant's id as a ctor id since an
-        // error will be reported on any use of such resolution anyway.
-        let ctor_node_id = variant.data.ctor_id().unwrap_or(variant.id);
-        let ctor_def_id = self.r.definitions.local_def_id(ctor_node_id);
-        let ctor_kind = CtorKind::from_ast(&variant.data);
-        let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
-        self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -1188,7 +1150,6 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
             ItemKind::Mod(..) => self.contains_macro_use(&item.attrs),
             _ => false,
         };
-
         let orig_current_module = self.parent_scope.module;
         let orig_current_legacy_scope = self.parent_scope.legacy;
         self.build_reduced_graph_for_item(item);
@@ -1270,5 +1231,93 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
             self.r.builtin_attrs.push((attr.path.segments[0].ident, self.parent_scope));
         }
         visit::walk_attribute(self, attr);
+    }
+
+    fn visit_arm(&mut self, arm: &'b ast::Arm) {
+        if arm.is_placeholder {
+            self.visit_invoc(arm.id);
+        } else {
+            visit::walk_arm(self, arm);
+        }
+    }
+
+    fn visit_field(&mut self, f: &'b ast::Field) {
+        if f.is_placeholder {
+            self.visit_invoc(f.id);
+        } else {
+            visit::walk_field(self, f);
+        }
+    }
+
+    fn visit_field_pattern(&mut self, fp: &'b ast::FieldPat) {
+        if fp.is_placeholder {
+            self.visit_invoc(fp.id);
+        } else {
+            visit::walk_field_pattern(self, fp);
+        }
+    }
+
+    fn visit_generic_param(&mut self, param: &'b ast::GenericParam) {
+        if param.is_placeholder {
+            self.visit_invoc(param.id);
+        } else {
+            visit::walk_generic_param(self, param);
+        }
+    }
+
+    fn visit_param(&mut self, p: &'b ast::Param) {
+        if p.is_placeholder {
+            self.visit_invoc(p.id);
+        } else {
+            visit::walk_param(self, p);
+        }
+    }
+
+    fn visit_struct_field(&mut self, sf: &'b ast::StructField) {
+        if sf.is_placeholder {
+            self.visit_invoc(sf.id);
+        } else {
+            visit::walk_struct_field(self, sf);
+        }
+    }
+
+    // Constructs the reduced graph for one variant. Variants exist in the
+    // type and value namespaces.
+    fn visit_variant(&mut self, variant: &'b ast::Variant) {
+        if variant.is_placeholder {
+            self.visit_invoc(variant.id);
+            return;
+        }
+
+        let parent = self.parent_scope.module;
+        let vis = self.r.variant_vis[&parent.def_id().expect("enum without def-id")];
+        let expn_id = self.parent_scope.expansion;
+        let ident = variant.ident;
+
+        // Define a name in the type namespace.
+        let def_id = self.r.definitions.local_def_id(variant.id);
+        let res = Res::Def(DefKind::Variant, def_id);
+        self.r.define(parent, ident, TypeNS, (res, vis, variant.span, expn_id));
+
+        // If the variant is marked as non_exhaustive then lower the visibility to within the
+        // crate.
+        let mut ctor_vis = vis;
+        let has_non_exhaustive = attr::contains_name(&variant.attrs, sym::non_exhaustive);
+        if has_non_exhaustive && vis == ty::Visibility::Public {
+            ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+        }
+
+        // Define a constructor name in the value namespace.
+        // Braced variants, unlike structs, generate unusable names in
+        // value namespace, they are reserved for possible future use.
+        // It's ok to use the variant's id as a ctor id since an
+        // error will be reported on any use of such resolution anyway.
+        let ctor_node_id = variant.data.ctor_id().unwrap_or(variant.id);
+        let ctor_def_id = self.r.definitions.local_def_id(ctor_node_id);
+        let ctor_kind = CtorKind::from_ast(&variant.data);
+        let ctor_res = Res::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
+        self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
+
+        visit::walk_variant(self, variant);
     }
 }

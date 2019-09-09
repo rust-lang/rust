@@ -1193,7 +1193,8 @@ impl<'a> Parser<'a> {
             ty: t,
             pat,
             span,
-            id: DUMMY_NODE_ID
+            id: DUMMY_NODE_ID,
+            is_placeholder: false,
         })
     }
 
@@ -1455,6 +1456,7 @@ impl<'a> Parser<'a> {
             body: expr,
             span: lo.to(hi),
             id: DUMMY_NODE_ID,
+            is_placeholder: false,
         })
     }
 
@@ -1611,6 +1613,7 @@ impl<'a> Parser<'a> {
                         is_shorthand: false,
                         attrs: ThinVec::new(),
                         id: DUMMY_NODE_ID,
+                        is_placeholder: false,
                     });
                 }
             }
@@ -1697,6 +1700,7 @@ impl<'a> Parser<'a> {
             is_shorthand,
             attrs: attrs.into(),
             id: DUMMY_NODE_ID,
+            is_placeholder: false,
         })
     }
 

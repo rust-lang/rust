@@ -1620,6 +1620,7 @@ impl<'a> TraitDef<'a> {
                             id: ast::DUMMY_NODE_ID,
                             span: pat.span.with_ctxt(self.span.ctxt()),
                             pat,
+                            is_placeholder: false
                         }
                     })
                     .collect();

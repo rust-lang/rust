@@ -1,0 +1,32 @@
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/attrs-resolution-errors.rs:2:5
+   |
+LL |     #[test]
+   |     ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/attrs-resolution-errors.rs:8:5
+   |
+LL |     #[test]
+   |     ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/attrs-resolution-errors.rs:23:13
+   |
+LL |             #[test] bar
+   |             ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/attrs-resolution-errors.rs:30:9
+   |
+LL |         #[test]
+   |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/attrs-resolution-errors.rs:36:9
+   |
+LL |         #[test]
+   |         ^^^^^^^
+
+error: aborting due to 5 previous errors
+

@@ -29,7 +29,14 @@ crate fn dummy_arg(ident: Ident) -> Param {
         span: ident.span,
         id: ast::DUMMY_NODE_ID
     };
-    Param { attrs: ThinVec::default(), id: ast::DUMMY_NODE_ID, pat, span: ident.span, ty: P(ty) }
+    Param {
+        attrs: ThinVec::default(),
+        id: ast::DUMMY_NODE_ID,
+        pat,
+        span: ident.span,
+        ty: P(ty),
+        is_placeholder: false,
+    }
 }
 
 pub enum Error {

@@ -49,7 +49,8 @@ impl<'a> Parser<'a> {
             bounds,
             kind: GenericParamKind::Type {
                 default,
-            }
+            },
+            is_placeholder: false
         })
     }
 
@@ -66,7 +67,8 @@ impl<'a> Parser<'a> {
             bounds: Vec::new(),
             kind: GenericParamKind::Const {
                 ty,
-            }
+            },
+            is_placeholder: false
         })
     }
 
@@ -90,6 +92,7 @@ impl<'a> Parser<'a> {
                     attrs: attrs.into(),
                     bounds,
                     kind: ast::GenericParamKind::Lifetime,
+                    is_placeholder: false
                 });
             } else if self.check_keyword(kw::Const) {
                 // Parse const parameter.

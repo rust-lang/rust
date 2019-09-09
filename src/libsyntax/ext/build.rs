@@ -166,7 +166,8 @@ impl<'a> ExtCtxt<'a> {
             bounds,
             kind: ast::GenericParamKind::Type {
                 default,
-            }
+            },
+            is_placeholder: false
         }
     }
 
@@ -207,6 +208,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: attrs.into(),
             bounds,
             kind: ast::GenericParamKind::Lifetime,
+            is_placeholder: false
         }
     }
 
@@ -404,6 +406,7 @@ impl<'a> ExtCtxt<'a> {
             is_shorthand: false,
             attrs: ThinVec::new(),
             id: ast::DUMMY_NODE_ID,
+            is_placeholder: false,
         }
     }
     pub fn expr_struct(
@@ -614,6 +617,7 @@ impl<'a> ExtCtxt<'a> {
             body: expr,
             span,
             id: ast::DUMMY_NODE_ID,
+            is_placeholder: false,
         }
     }
 
@@ -701,6 +705,7 @@ impl<'a> ExtCtxt<'a> {
             pat: arg_pat,
             span,
             ty,
+            is_placeholder: false,
         }
     }
 
@@ -774,6 +779,7 @@ impl<'a> ExtCtxt<'a> {
                 vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
+                is_placeholder: false,
             }
         }).collect();
 
@@ -790,6 +796,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             ident,
             span,
+            is_placeholder: false,
         }
     }
 
