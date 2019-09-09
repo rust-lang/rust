@@ -111,9 +111,6 @@ fn main() {
             cmd.arg("-Zunstable-options");
             cmd.arg("-Wrustc::internal");
         }
-        if env::var_os("RUSTC_DENY_WARNINGS").is_some() {
-            cmd.arg("-Dwarnings");
-        }
     }
 
     if let Some(target) = target {

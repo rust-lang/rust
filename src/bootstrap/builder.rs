@@ -1055,8 +1055,8 @@ impl<'a> Builder<'a> {
 
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
 
-        if self.config.deny_warnings {
-            cargo.env("RUSTC_DENY_WARNINGS", "1");
+        if self.config.deny_warnings && !mode.is_tool() {
+            rustflags.arg("-Dwarnings");
         }
 
         // Throughout the build Cargo can execute a number of build scripts
