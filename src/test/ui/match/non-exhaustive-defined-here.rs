@@ -15,8 +15,14 @@ enum E {
     //~^ not covered
     //~| not covered
     //~| not covered
+    //~| not covered
+    //~| not covered
+    //~| not covered
     C
     //~^ not covered
+    //~| not covered
+    //~| not covered
+    //~| not covered
     //~| not covered
     //~| not covered
 }
@@ -27,7 +33,7 @@ fn by_val(e: E) {
         E::A => {}
     }
 
-    let E::A = e; //~ ERROR refutable pattern in local binding: `B` not covered
+    let E::A = e; //~ ERROR refutable pattern in local binding: `B` and `C` not covered
 }
 
 fn by_ref_once(e: &E) {
@@ -35,7 +41,7 @@ fn by_ref_once(e: &E) {
         E::A => {}
     }
 
-    let E::A = e; //~ ERROR refutable pattern in local binding: `&B` not covered
+    let E::A = e; //~ ERROR refutable pattern in local binding: `&B` and `&C` not covered
 }
 
 fn by_ref_thrice(e: & &mut &E) {
@@ -43,7 +49,8 @@ fn by_ref_thrice(e: & &mut &E) {
         E::A => {}
     }
 
-    let E::A = e; //~ ERROR refutable pattern in local binding: `&&mut &B` not covered
+    let E::A = e;
+    //~^ ERROR refutable pattern in local binding: `&&mut &B` and `&&mut &C` not covered
 }
 
 enum Opt {

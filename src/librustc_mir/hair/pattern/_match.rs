@@ -517,9 +517,9 @@ struct PatternContext<'tcx> {
 pub struct Witness<'tcx>(Vec<Pattern<'tcx>>);
 
 impl<'tcx> Witness<'tcx> {
-    pub fn single_pattern(&self) -> &Pattern<'tcx> {
+    pub fn single_pattern(self) -> Pattern<'tcx> {
         assert_eq!(self.0.len(), 1);
-        &self.0[0]
+        self.0.into_iter().next().unwrap()
     }
 
     fn push_wild_constructor<'a>(

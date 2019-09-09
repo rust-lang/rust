@@ -1,4 +1,4 @@
-use super::_match::{MatchCheckCtxt, Matrix, Witness, expand_pattern, is_useful};
+use super::_match::{MatchCheckCtxt, Matrix, expand_pattern, is_useful};
 use super::_match::Usefulness::*;
 use super::_match::WitnessPreference::*;
 
@@ -276,26 +276,26 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 expand_pattern(cx, pattern)
             ]].into_iter().collect();
 
-            let witness = match check_not_useful(cx, pattern_ty, &pats) {
+            let witnesses = match check_not_useful(cx, pattern_ty, &pats) {
                 Ok(_) => return,
-                Err((witness, _)) => witness,
+                Err(err) => err,
             };
 
-            let pattern_string = witness[0].single_pattern().to_string();
+            let joined_patterns = joined_uncovered_patterns(&witnesses);
             let mut err = struct_span_err!(
                 self.tcx.sess, pat.span, E0005,
-                "refutable pattern in {}: `{}` not covered",
-                origin, pattern_string
+                "refutable pattern in {}: {} not covered",
+                origin, joined_patterns
             );
-            err.span_label(pat.span, match pat.node {
-                PatKind::Path(hir::QPath::Resolved(None, ref path))
-                        if path.segments.len() == 1 && path.segments[0].args.is_none() => {
+            err.span_label(pat.span, match &pat.node {
+                PatKind::Path(hir::QPath::Resolved(None, path))
+                    if path.segments.len() == 1 && path.segments[0].args.is_none() => {
                     format!("interpreted as {} {} pattern, not new variable",
                             path.res.article(), path.res.descr())
                 }
-                _ => format!("pattern `{}` not covered", pattern_string),
+                _ => pattern_not_convered_label(&witnesses, &joined_patterns),
             });
-            adt_defined_here(cx, pattern_ty.peel_refs(), &mut err);
+            adt_defined_here(cx, &mut err, pattern_ty, &witnesses);
             err.emit();
         });
     }
@@ -437,11 +437,15 @@ fn check_not_useful(
     cx: &mut MatchCheckCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
     matrix: &Matrix<'_, 'tcx>,
-) -> Result<(), (Vec<Witness<'tcx>>, Pattern<'tcx>)> {
+) -> Result<(), Vec<Pattern<'tcx>>> {
     let wild_pattern = Pattern { ty, span: DUMMY_SP, kind: box PatternKind::Wild };
     match is_useful(cx, matrix, &[&wild_pattern], ConstructWitness) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
-        UsefulWithWitness(pats) => Err((pats, wild_pattern)),
+        UsefulWithWitness(pats) => Err(if pats.is_empty() {
+            vec![wild_pattern]
+        } else {
+            pats.into_iter().map(|w| w.single_pattern()).collect()
+        }),
         Useful => bug!(),
     }
 }
@@ -452,42 +456,26 @@ fn check_exhaustive<'tcx>(
     sp: Span,
     matrix: &Matrix<'_, 'tcx>,
 ) {
-    let (pats, wild_pattern) = match check_not_useful(cx, scrut_ty, matrix) {
+    let witnesses = match check_not_useful(cx, scrut_ty, matrix) {
         Ok(_) => return,
         Err(err) => err,
     };
 
-    let witnesses = if pats.is_empty() {
-        vec![&wild_pattern]
-    } else {
-        pats.iter().map(|w| w.single_pattern()).collect()
-    };
-
     let joined_patterns = joined_uncovered_patterns(&witnesses);
-
-    let mut err = create_e0004(cx.tcx.sess, sp, format!(
-        "non-exhaustive patterns: {} not covered",
-        joined_patterns,
-    ));
-    err.span_label(sp, match witnesses.len() {
-        1 => format!("pattern {} not covered", joined_patterns),
-        _ => format!("patterns {} not covered", joined_patterns),
-    });
-    // point at the definition of non-covered enum variants
-    let scrut_ty = scrut_ty.peel_refs();
-    adt_defined_here(cx, scrut_ty, &mut err);
-    let patterns = witnesses.iter().map(|p| (**p).clone()).collect::<Vec<Pattern<'_>>>();
-    if patterns.len() < 4 {
-        for sp in maybe_point_at_variant(scrut_ty, &patterns) {
-            err.span_label(sp, "not covered");
-        }
-    }
-    err.help("ensure that all possible cases are being handled, \
-                possibly by adding wildcards or more match arms");
-    err.emit();
+    let mut err = create_e0004(
+        cx.tcx.sess, sp,
+        format!("non-exhaustive patterns: {} not covered", joined_patterns),
+    );
+    err.span_label(sp, pattern_not_convered_label(&witnesses, &joined_patterns));
+    adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
+    err.help(
+        "ensure that all possible cases are being handled, \
+        possibly by adding wildcards or more match arms"
+    )
+    .emit();
 }
 
-fn joined_uncovered_patterns(witnesses: &[&Pattern<'_>]) -> String {
+fn joined_uncovered_patterns(witnesses: &[Pattern<'_>]) -> String {
     const LIMIT: usize = 3;
     match witnesses {
         [] => bug!(),
@@ -504,10 +492,30 @@ fn joined_uncovered_patterns(witnesses: &[&Pattern<'_>]) -> String {
     }
 }
 
-fn adt_defined_here(cx: &mut MatchCheckCtxt<'_, '_>, ty: Ty<'_>, err: &mut DiagnosticBuilder<'_>) {
+fn pattern_not_convered_label(witnesses: &[Pattern<'_>], joined_patterns: &str) -> String {
+    match witnesses.len() {
+        1 => format!("pattern {} not covered", joined_patterns),
+        _ => format!("patterns {} not covered", joined_patterns),
+    }
+}
+
+/// Point at the definition of non-covered `enum` variants.
+fn adt_defined_here(
+    cx: &MatchCheckCtxt<'_, '_>,
+    err: &mut DiagnosticBuilder<'_>,
+    ty: Ty<'_>,
+    witnesses: &[Pattern<'_>],
+) {
+    let ty = ty.peel_refs();
     if let ty::Adt(def, _) = ty.sty {
         if let Some(sp) = cx.tcx.hir().span_if_local(def.did) {
             err.span_label(sp, format!("`{}` defined here", ty));
+        }
+
+        if witnesses.len() < 4 {
+            for sp in maybe_point_at_variant(ty, &witnesses) {
+                err.span_label(sp, "not covered");
+            }
         }
     }
 }
