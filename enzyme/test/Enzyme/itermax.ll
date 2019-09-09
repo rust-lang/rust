@@ -114,7 +114,7 @@ attributes #2 = { nounwind }
 ; CHECK: [[thelabel:invertfor.body.for.body_crit_edge]]:    
 ; CHECK-NEXT:   %"cond.i'de.0" = phi double [ %diffecond.i12, %[[thelabel]] ], [ 1.000000e+00, %invertfor.cond.cleanup ]
 ; CHECK-NEXT:   %"'de.1" = phi double [ %[[added:.+]], %[[thelabel]] ], [ 0.000000e+00, %invertfor.cond.cleanup ]
-; CHECK-NEXT:   %"indvar'phi.in" = phi i64 [ %"indvar'phi", %[[thelabel]], [ %n, %invertfor.cond.cleanup ] 
+; CHECK-NEXT:   %"indvar'phi.in" = phi i64 [ %"indvar'phi", %[[thelabel]] ], [ %n, %invertfor.cond.cleanup ] 
 ; CHECK-NEXT:   %"indvar'phi" = add i64 %"indvar'phi.in", -1
 ; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr i1, i1* %cmp.i_mdyncache.0, i64 %"indvar'phi"
 ; CHECK-NEXT:   %[[toselect:.+]] = load i1, i1* %[[cmpcache]]
