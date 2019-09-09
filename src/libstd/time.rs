@@ -63,16 +63,23 @@ pub use core::time::Duration;
 /// # Underlying System calls
 /// Currently, the following system calls are being used to get the current time using `now()`:
 ///
-/// |  Platform |               System call                        |
-/// |:---------:|:------------------------------------------------:|
-/// | Cloud ABI | [clock_time_get (Monotonic Clock)](https://github.com/NuxiNL/cloudabi/blob/master/cloudabi.txt) |
-/// |    SGX    | Not implemented                                  |
-/// |    UNIX   | [mach_absolute_time](https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/services/services.html)                           |
-/// |  VXWorks  | [clock_gettime (Monotonic Clock)](https://linux.die.net/man/3/clock_gettime)                                |
-/// |    WASI   | [__wasi_clock_time_get (Monotonic Clock)](https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-api.md#clock_time_get)      |
-/// |  Windows  | [QueryPerformanceCounter] |
+/// |  Platform |               System call                                            |
+/// |:---------:|:--------------------------------------------------------------------:|
+/// | Cloud ABI | [clock_time_get (Monotonic Clock)]                                   |
+/// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
+/// | UNIX      | [clock_time_get (Monotonic Clock)]                                   |
+/// | Darwin    | [mach_absolute_time]                                                 |
+/// | VXWorks   | [clock_gettime (Monotonic Clock)]                                    |
+/// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
+/// | Windows   | [QueryPerformanceCounter]                                            |
 
-[QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
+/// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
+/// [`insecure_time` usercall]: https://edp.fortanix.com/docs/api/fortanix_sgx_abi/struct.Usercalls.html#method.insecure_time
+/// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
+/// [__wasi_clock_time_get (Monotonic Clock)]: https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-api.md#clock_time_get
+/// [clock_gettime (Monotonic Clock)]: https://linux.die.net/man/3/clock_gettime
+/// [mach_absolute_time]: https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/services/services.html
+/// [clock_time_get (Monotonic Clock)]: https://github.com/NuxiNL/cloudabi/blob/master/cloudabi.txt
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
@@ -135,14 +142,21 @@ pub struct Instant(time::Instant);
 /// # Underlying System calls
 /// Currently, the following system calls are being used to get the current time using `now()`:
 ///
-/// |  Platform |               System call                        |
-/// |:---------:|:------------------------------------------------:|
-/// | Cloud ABI | [clock_time_get (Realtime Clock)](https://github.com/NuxiNL/cloudabi/blob/master/cloudabi.txt) |
-/// |    SGX    | Not implemented                                  |
-/// |    UNIX   | [gettimeofday](http://man7.org/linux/man-pages/man2/gettimeofday.2.html)                           |
-/// |  VXWorks  | [clock_gettime (Realtime Clock)](https://linux.die.net/man/3/clock_gettime)                                |
-/// |    WASI   | [__wasi_clock_time_get (Realtime Clock)](https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-api.md#clock_time_get)      |
-/// |  Windows  | [GetSystemTimeAsFileTime](https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime)                      |
+/// |  Platform |               System call                                            |
+/// |:---------:|:--------------------------------------------------------------------:|
+/// | Cloud ABI | [clock_time_get (Realtime Clock)]                                    |
+/// | SGX       | [`insecure_time` usercall]. More information on [timekeeping in SGX] |
+/// | UNIX      | [clock_gettime (Realtime Clock)]                                     |
+/// | DARWIN    | [gettimeofday]                                                       |
+/// | VXWorks   | [clock_gettime (Realtime Clock)]                                     |
+/// | WASI      | [__wasi_clock_time_get (Realtime Clock)]                             |
+/// | Windows   | [GetSystemTimeAsFileTime]                                            |
+///
+/// [clock_time_get (Realtime Clock)]: https://github.com/NuxiNL/cloudabi/blob/master/cloudabi.txt
+/// [gettimeofday]: http://man7.org/linux/man-pages/man2/gettimeofday.2.html
+/// [clock_gettime (Realtime Clock)]: https://linux.die.net/man/3/clock_gettime
+/// [__wasi_clock_time_get (Realtime Clock)]: https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-api.md#clock_time_get
+/// [GetSystemTimeAsFileTime]: https://docs.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemtimeasfiletime
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///
