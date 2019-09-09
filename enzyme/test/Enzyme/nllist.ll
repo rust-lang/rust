@@ -196,8 +196,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %add.i = shl i64 %times, 3
 ; CHECK-NEXT:   %mul.i = add i64 %add.i, 8
-; CHECK-NEXT:   %0 = add nuw i64 %n, 1
-; CHECK-NEXT:   %mallocsize.i = mul i64 %0, 8
+; CHECK-NEXT:   %0 = shl i64 %n, 3
+; CHECK-NEXT:   %mallocsize.i = add i64 %0, 8
 ; CHECK-NEXT:   %[[mallocforcall2p:.+]] = call noalias nonnull i8* @malloc(i64 %mallocsize.i) #4
 ; CHECK-NEXT:   %"call2'mi_malloccache.i" = bitcast i8* %[[mallocforcall2p]] to i8**
 ; CHECK-NEXT:   %[[mallocforcall2:.+]] = call noalias nonnull i8* @malloc(i64 %mallocsize.i) #4
@@ -218,7 +218,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %"call'mi.i" = call noalias i8* @malloc(i64 16) #4
 ; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %indvars.iv30.i
 ; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"call'mi.i", i8 0, i64 16, i1 false) #4
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, i1 false) #4
 ; CHECK-NEXT:   %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
 ; CHECK-NEXT:   %4 = bitcast i8* %next.i to %struct.n**
 ; CHECK-NEXT:   %"next'ipg.i" = getelementptr i8, i8* %"call'mi.i", i64 8
@@ -231,7 +231,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %"call2'mi.i" = call noalias i8* @malloc(i64 %mul.i) #4
 ; CHECK-NEXT:   %[[call2pgep:.+]] = getelementptr i8*, i8** %"call2'mi_malloccache.i", i64 %indvars.iv30.i
 ; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[call2pgep]]
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"call2'mi.i", i8 0, i64 %mul.i, i1 false) #4
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call2'mi.i", i8 0, i64 %mul.i, i1 false) #4
 ; CHECK-NEXT:   %7 = bitcast i8* %call.i to i8**
 ; CHECK-NEXT:   %[[thatipc:.+]] = bitcast i8* %"call'mi.i" to i8**
 ; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[thatipc]]
@@ -264,7 +264,7 @@ attributes #4 = { nounwind }
 
 ; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body8.i
 ; CHECK-NEXT:   %[[lcssa:.+]] = phi double [ %[[faddloop:.+]], %invertfor.body8.i ]
-; CHECK-NEXT:   %[[loadcall2p:.+]] = load i8*, i8** %[[midcall2pgep:.+]]
+; CHECK-NEXT:   %[[loadcall2p:.+]] = load i8*, i8** %[[midcall2pgep:[0-9]+]]
 ; CHECK-NEXT:   call void @free(i8* nonnull %[[loadcall2p:.+]]) #4
 ; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr i8*, i8** %call2_malloccache.i, i64 %"indvars.iv30'phi.i"
 ; CHECK-NEXT:   %[[call2ptr:.+]] = load i8*, i8** %[[call2gep]]
@@ -275,28 +275,28 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %"indvars.iv30'phi.i"
 ; CHECK-NEXT:   %[[callptr:.+]] = load i8*, i8** %[[callgep]]
 ; CHECK-NEXT:   call void @free(i8* %[[callptr]]) #4
-; CHECK-NEXT:   %[[cmpne:.+]] = icmp ne i64 %"indvars.iv30'phi.i", 0
-; CHECK-NEXT:   br i1 %[[cmpne]], label %invertfor.cond.cleanup7.i, label %diffelist_creator.exit
+; CHECK-NEXT:   %[[cmpne:.+]] = icmp eq i64 %"indvars.iv30'phi.i", 0
+; CHECK-NEXT:   br i1 %[[cmpne]], label %diffelist_creator.exit, label %invertfor.cond.cleanup7.i
 
 ; CHECK: invertfor.cond.cleanup7.i:                        ; preds = %invertfor.body.i, %invertfor.cond.cleanup.i
 ; CHECK-NEXT:   %"x'de.0.i" = phi double [ 0.000000e+00, %invertfor.cond.cleanup.i ], [ %[[lcssa]], %invertfor.body.i ]
 ; CHECK-NEXT:   %"indvars.iv30'phi.i" = phi i64 [ %n, %invertfor.cond.cleanup.i ], [ %[[iv7sub:.+]], %invertfor.body.i ]
-; CHECK-NEXT:   %[[iv7sub]] = sub i64 %"indvars.iv30'phi.i", 1
+; CHECK-NEXT:   %[[iv7sub]] = add i64 %"indvars.iv30'phi.i", -1
 ; CHECK-NEXT:   %[[midcall2pgep]] = getelementptr i8*, i8** %"call2'mi_malloccache.i", i64 %"indvars.iv30'phi.i"
+; CHECK-NEXT:   %[[precast:.+]] = bitcast i8** %[[midcall2pgep]] to double**
 ; CHECK-NEXT:   br label %invertfor.body8.i
 
 ; CHECK: invertfor.body8.i:                                ; preds = %invertfor.body8.i, %invertfor.cond.cleanup7.i
 ; CHECK-NEXT:   %"x'de.1.i" = phi double [ %"x'de.0.i", %invertfor.cond.cleanup7.i ], [ %[[faddloop]], %invertfor.body8.i ]
 ; CHECK-NEXT:   %"indvars.iv'phi.i" = phi i64 [ %times, %invertfor.cond.cleanup7.i ], [ %[[idxsub:.+]], %invertfor.body8.i ]
-; CHECK-NEXT:   %[[idxsub]] = sub i64 %"indvars.iv'phi.i", 1
-; CHECK-NEXT:   %[[loadloop:.+]] = load i8*, i8** %[[midcall2pgep]]
-; CHECK-NEXT:   %[[loopcast:.+]] = bitcast i8* %24 to double*
-; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %[[loopcast]], i64 %"indvars.iv'phi.i"
+; CHECK-NEXT:   %[[idxsub]] = add i64 %"indvars.iv'phi.i", -1
+; CHECK-NEXT:   %[[loadloop:.+]] = load double*, double** %[[precast]]
+; CHECK-NEXT:   %"arrayidx'ipg.i" = getelementptr double, double* %[[loadloop]], i64 %"indvars.iv'phi.i"
 ; CHECK-NEXT:   %[[looparray:.+]] = load double, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg.i"
 ; CHECK-NEXT:   %[[faddloop]] = fadd fast double %"x'de.1.i", %[[looparray]]
-; CHECK-NEXT:   %[[loopcmpne:.+]] = icmp ne i64 %"indvars.iv'phi.i", 0
-; CHECK-NEXT:   br i1 %[[loopcmpne]], label %invertfor.body8.i, label %invertfor.body.i
+; CHECK-NEXT:   %[[loopcmpne:.+]] = icmp eq i64 %"indvars.iv'phi.i", 0
+; CHECK-NEXT:   br i1 %[[loopcmpne]], label %invertfor.body.i, label %invertfor.body8.i 
 
 ; CHECK: diffelist_creator.exit:                           ; preds = %invertfor.body.i
 ; CHECK-NEXT:   %[[retval:.+]] = phi double [ %.lcssa, %invertfor.body.i ]
@@ -316,60 +316,60 @@ attributes #4 = { nounwind }
 
 ; CHECK: for.cond1.preheader.preheader:                    ; preds = %entry
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 8)
-; CHECK-NEXT:   %[[castmalloc:.+]] = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   br label %for.cond1.preheader
 
 ; CHECK: for.cond1.preheader:
-; CHECK-NEXT:   %[[phirealloc:.+]] = phi double** [ %[[castmalloc]], %for.cond1.preheader.preheader ], [ %5, %for.cond.cleanup4 ]
-; CHECK-NEXT:   %0 = phi i64 [ %2, %for.cond.cleanup4 ], [ 0, %for.cond1.preheader.preheader ]
-; CHECK-NEXT:   %1 = phi %struct.n* [ %"'ipl", %for.cond.cleanup4 ], [ %"node'", %for.cond1.preheader.preheader ]
-; CHECK-NEXT:   %val.020 = phi %struct.n* [ %7, %for.cond.cleanup4 ], [ %node, %for.cond1.preheader.preheader ]
-; CHECK-NEXT:   %"values'ipg" = getelementptr %struct.n, %struct.n* %1, i64 0, i32 0
+; CHECK-NEXT:   %[[phirealloc:.+]] = phi i8* [ %malloccall, %for.cond1.preheader.preheader ], [ %[[postrealloc:.+]], %for.cond.cleanup4 ]
+; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ 0, %for.cond1.preheader.preheader ], [ %[[postidx:.+]], %for.cond.cleanup4 ] 
+; CHECK-NEXT:   %[[valstruct:.+]] = phi %struct.n* [ %"node'", %for.cond1.preheader.preheader ], [ %"'ipl", %for.cond.cleanup4 ] 
+; CHECK-NEXT:   %val.020 = phi %struct.n* [ %node, %for.cond1.preheader.preheader ], [ %[[nextstruct:.+]], %for.cond.cleanup4 ]
+; CHECK-NEXT:   %"values'ipg" = getelementptr %struct.n, %struct.n* %[[valstruct]], i64 0, i32 0
 ; CHECK-NEXT:   %"'ipl1" = load double*, double** %"values'ipg", align 8
-; CHECK-NEXT:   %2 = add nuw i64 %0, 1
-; CHECK-NEXT:   %3 = bitcast double** %[[phirealloc]] to i8*
-; CHECK-NEXT:   %4 = mul nuw i64 8, %2
-; CHECK-NEXT:   %[[postrealloc:.+]] = call i8* @realloc(i8* %3, i64 %4)
-; CHECK-NEXT:   %5 = bitcast i8* %[[postrealloc]] to double**
-; CHECK-NEXT:   %6 = getelementptr double*, double** %5, i64 %0
-; CHECK-NEXT:   store double* %"'ipl1", double** %6
+; CHECK-NEXT:   %[[shl:.+]] = shl i64 %[[preidx]], 3
+; CHECK-NEXT:   %[[added:.+]] = add i64 %3, 8
+; CHECK-NEXT:   %[[postrealloc]] = call i8* @realloc(i8* %[[phirealloc]], i64 %[[added]])
+; CHECK-NEXT:   %[[todoublep:.+]] = bitcast i8* %[[postrealloc]] to double**
+; CHECK-NEXT:   %[[cache:.+]] = getelementptr double*, double** %[[todoublep]], i64 %[[preidx]]
+; CHECK-NEXT:   store double* %"'ipl1", double** %[[cache]]
+; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
 ; CHECK-NEXT:   br label %for.body5
 
 ; CHECK: for.cond.cleanup4:                                ; preds = %for.body5
 ; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.020, i64 0, i32 1
-; CHECK-NEXT:   %"next'ipg" = getelementptr %struct.n, %struct.n* %1, i64 0, i32 1
+; CHECK-NEXT:   %"next'ipg" = getelementptr %struct.n, %struct.n* %[[valstruct]], i64 0, i32 1
 ; CHECK-NEXT:   %"'ipl" = load %struct.n*, %struct.n** %"next'ipg", align 8
-; CHECK-NEXT:   %7 = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
-; CHECK-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %7, null
+; CHECK-NEXT:   %[[nextstruct]] = load %struct.n*, %struct.n** %next, align 8, !tbaa !7
+; CHECK-NEXT:   %[[mycmp:.+]] = icmp eq %struct.n* %[[nextstruct]], null
 ; CHECK-NEXT:   br i1 %[[mycmp]], label %invertfor.cond.cleanup.loopexit, label %for.cond1.preheader
 
 ; CHECK: for.body5:                                        ; preds = %for.body5, %for.cond1.preheader
 ; CHECK-NEXT:   %indvars.iv = phi i64 [ 0, %for.cond1.preheader ], [ %indvars.iv.next, %for.body5 ]
-; CHECK-NEXT:   %8 = icmp ult i64 %indvars.iv, %times
+; CHECK-NEXT:   %[[cond:.+]] = icmp ult i64 %indvars.iv, %times
 ; CHECK-NEXT:   %indvars.iv.next = add nuw i64 %indvars.iv, 1
-; CHECK-NEXT:   br i1 %8, label %for.body5, label %for.cond.cleanup4
+; CHECK-NEXT:   br i1 %[[cond]], label %for.body5, label %for.cond.cleanup4
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.cond.cleanup, %invertfor.cond1.preheader.preheader
 ; CHECK-NEXT:   ret {} undef
 
 ; CHECK: invertfor.cond1.preheader.preheader:              ; preds = %invertfor.cond1.preheader
-; CHECK-NEXT:   %9 = bitcast double** %[[invertcache:.+]] to i8*
-; CHECK-NEXT:   tail call void @free(i8* nonnull %9)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[invertraw:.+]])
 ; CHECK-NEXT:   br label %invertentry
 
 ; CHECK: invertfor.cond1.preheader:                        ; preds = %invertfor.body5
-; CHECK-NEXT:   %[[lcssahere:.+]] = phi double [ %21, %invertfor.body5 ]
-; CHECK-NEXT:   %10 = icmp ne i64 %"'phi", 0
-; CHECK-NEXT:   br i1 %10, label %invertfor.cond.cleanup4, label %invertfor.cond1.preheader.preheader
+; CHECK-NEXT:   %[[lcssahere:.+]] = phi double [ %[[seladd:.+]], %invertfor.body5 ]
+; CHECK-NEXT:   %[[icmp:.+]] = icmp ne i64 %"'phi", 0
+; CHECK-NEXT:   br i1 %[[icmp]], label %invertfor.cond.cleanup4, label %invertfor.cond1.preheader.preheader
 
 ; CHECK: invertfor.cond.cleanup.loopexit:
-; CHECK-NEXT: %"'ipl1_realloccache.lcssa" = phi i8* [ %"'ipl1_realloccache", %for.cond.cleanup4 ]
-; CHECK-NEXT: %.lcssa3 = phi i64 [ %0, %for.cond.cleanup4 ]
-; CHECK-NEXT: %11 = bitcast i8* %"'ipl1_realloccache.lcssa" to double**
+; CHECK-NEXT: %[[iplcssa4:.+]] = phi i8* [ %"'ipl1_realloccache", %for.cond.cleanup4 ]
+; CHECK-NEXT: %.lcssa3 = phi i64 [ %[[preidx]], %for.cond.cleanup4 ]
+; CHECK-NEXT: %[[iplcssa:.+]] = phi i8* [ %"'ipl1_realloccache", %for.cond.cleanup4 ]
+; CHECK-NEXT: %[[lcssacast:.+]] = bitcast i8* %[[iplcssa4]] to double**
 ; CHECK-NEXT: br label %invertfor.cond.cleanup
 
 ; CHECK: invertfor.cond.cleanup:                           
-; CHECK-NEXT:   %[[invertcache]] = phi double** [ undef, %entry ], [ %11, %invertfor.cond.cleanup.loopexit ]
+; CHECK-NEXT:   %[[invertraw]] = phi i8* [ undef, %entry ], [ %[[iplcssa]], %invertfor.cond.cleanup.loopexit ]
+; CHECK-NEXT:   %[[invertcache:.+]] = phi double** [ undef, %entry ], [ %[[lcssacast]], %invertfor.cond.cleanup.loopexit ]
 ; CHECK-NEXT:   %_cache.0 = phi i64 [ undef, %entry ], [ %.lcssa3, %invertfor.cond.cleanup.loopexit ]
 ; CHECK-NEXT:   br i1 %cmp18, label %invertentry, label %invertfor.cond.cleanup4.preheader
 
@@ -378,23 +378,23 @@ attributes #4 = { nounwind }
 
 ; CHECK: invertfor.cond.cleanup4:
 ; CHECK-NEXT:   %"add.lcssa'de.0" = phi double [ %.lcssa, %invertfor.cond1.preheader ], [ %differeturn, %invertfor.cond.cleanup4.preheader ]
-; CHECK-NEXT:   %"'phi" = phi i64 [ %12, %invertfor.cond1.preheader ], [ %_cache.0, %invertfor.cond.cleanup4.preheader ]
-; CHECK-NEXT:   %12 = sub i64 %"'phi", 1
-; CHECK-NEXT:   %13 = fadd fast double 0.000000e+00, %"add.lcssa'de.0"
-; CHECK-NEXT:   %14 = getelementptr double*, double** %[[invertcache]], i64 %"'phi"
+; CHECK-NEXT:   %"'phi" = phi i64 [ %[[isub:.+]], %invertfor.cond1.preheader ], [ %_cache.0, %invertfor.cond.cleanup4.preheader ]
+; CHECK-NEXT:   %[[isub]] = add i64 %"'phi", -1
+; CHECK-NEXT:   %[[addcssa:.+]] = fadd fast double 0.000000e+00, %"add.lcssa'de.0"
+; CHECK-NEXT:   %[[toload:.+]] = getelementptr double*, double** %[[invertcache]], i64 %"'phi"
 ; CHECK-NEXT:   br label %invertfor.body5
 
 ; CHECK: invertfor.body5:                                  ; preds = %invertfor.body5, %invertfor.cond.cleanup4
-; CHECK-NEXT:   %"sum.019'de.1" = phi double [ 0.000000e+00, %invertfor.cond.cleanup4 ], [ %[[seladd:.+]], %invertfor.body5 ]
+; CHECK-NEXT:   %"sum.019'de.1" = phi double [ 0.000000e+00, %invertfor.cond.cleanup4 ], [ %[[seladd]], %invertfor.body5 ]
 ; CHECK-NEXT:   %"indvars.iv'phi" = phi i64 [ %times, %invertfor.cond.cleanup4 ], [ %[[idxsub:.+]], %invertfor.body5 ]
-; CHECK-NEXT:   %[[idxsub]] = sub i64 %"indvars.iv'phi", 1
-; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %14
+; CHECK-NEXT:   %[[idxsub]] = add i64 %"indvars.iv'phi", -1
+; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %[[toload]]
 ; CHECK-NEXT:   %"arrayidx'ipg" = getelementptr double, double* %[[loadediv]], i64 %"indvars.iv'phi"
 ; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %"arrayidx'ipg"
-; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %13
+; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %[[addcssa:.+]]
 ; CHECK-NEXT:   store double %[[arraytostore]], double* %"arrayidx'ipg"
 ; CHECK-NEXT:   %[[endcond:.+]] = icmp ne i64 %"indvars.iv'phi", 0
-; CHECK-NEXT:   %[[selected:.+]] = select i1 %[[endcond]], double 0.000000e+00, double %13
+; CHECK-NEXT:   %[[selected:.+]] = select i1 %[[endcond]], double 0.000000e+00, double %[[addcssa]]
 ; CHECK-NEXT:   %[[seladd]] = fadd fast double %"sum.019'de.1", %[[selected]]
 ; CHECK-NEXT:   br i1 %[[endcond]], label %invertfor.body5, label %invertfor.cond1.preheader
 ; CHECK-NEXT: }

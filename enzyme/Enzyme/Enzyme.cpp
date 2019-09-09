@@ -90,6 +90,8 @@
 #include "llvm/Analysis/LazyValueInfo.h"
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
 
+#include "llvm/IR/InstrTypes.h"
+
 using namespace llvm;
 #ifdef DEBUG_TYPE
 #undef DEBUG_TYPE
@@ -133,13 +135,9 @@ std::string tostring(DIFFE_TYPE t) {
 }
 
 static inline FastMathFlags getFast() {
-#if LLVM_VERSION_MAJOR > 7
-    return FastMathFlags::getFast();
-#else
     FastMathFlags f;
     f.set();
     return f;
-#endif
 }
 
 Instruction *getNextNonDebugInstruction(Instruction* Z) {
