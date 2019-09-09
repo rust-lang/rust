@@ -3007,7 +3007,7 @@ impl<T, U> Into<U> for T where U: From<T> {}
 fn test() { S2.into()<|>; }
 "#,
     );
-    assert_eq!(t, "S1");
+    assert_eq!(t, "{unknown}");
 }
 
 #[test]
@@ -3024,7 +3024,7 @@ impl<T, U: From<T>> Into<U> for T {}
 fn test() { S2.into()<|>; }
 "#,
     );
-    assert_eq!(t, "S1");
+    assert_eq!(t, "{unknown}");
 }
 
 #[test]
@@ -3066,7 +3066,7 @@ impl<B, C> Trait for S<B, C> where C: FnX, B: SendX {}
 fn test() { (S {}).method()<|>; }
 "#,
     );
-    assert_eq!(t, "{unknown}");
+    assert_eq!(t, "()");
 }
 
 #[test]
@@ -3546,11 +3546,11 @@ fn test(x: Trait, y: &Trait) -> u64 {
     [129; 132) 'bar': fn bar() -> {unknown}
     [129; 134) 'bar()': {unknown}
     [140; 141) 'x': {unknown}
-    [140; 147) 'x.foo()': {unknown}
+    [140; 147) 'x.foo()': u64
     [153; 154) 'y': &{unknown}
-    [153; 160) 'y.foo()': {unknown}
+    [153; 160) 'y.foo()': u64
     [166; 167) 'z': {unknown}
-    [166; 173) 'z.foo()': {unknown}
+    [166; 173) 'z.foo()': u64
     "###
     );
 }
