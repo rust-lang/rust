@@ -82,6 +82,7 @@
 #include "llvm/Analysis/MemorySSA.h"
 #include "llvm/Transforms/Scalar/CorrelatedValuePropagation.h"
 #include "llvm/Transforms/Scalar/LoopIdiomRecognize.h"
+#include "llvm/Transforms/Scalar/IndVarSimplify.h"
 
 #include "llvm/Analysis/BasicAliasAnalysis.h"
 #include "llvm/Analysis/GlobalsModRef.h"
@@ -792,47 +793,8 @@ enum class ReturnType {
     ArgsWithReturn, Args, TapeAndReturns
 };
 
-Function* preprocessForClone(Function *F, AAResults &AA) {
- static std::map<Function*,Function*> cache;
- if (cache.find(F) != cache.end()) return cache[F];
- // Create the new function...
- Function *NewF = Function::Create(F->getFunctionType(), F->getLinkage(), "preprocess_" + F->getName(), F->getParent());
- 
- ValueToValueMapTy VMap;
- for (auto i=F->arg_begin(), j=NewF->arg_begin(); i != F->arg_end(); ) {
-     VMap[i] = j;
-     j->setName(i->getName());
-     i++;
-     j++;
- }
-
- SmallVector <ReturnInst*,4> Returns;
- CloneFunctionInto(NewF, F, VMap, F->getSubprogram() != nullptr, Returns, "",
-                   nullptr);
- NewF->setAttributes(F->getAttributes());
-
- if (true) {
-    FunctionAnalysisManager AM;
- AM.registerPass([] { return AAManager(); });
- AM.registerPass([] { return ScalarEvolutionAnalysis(); });
- AM.registerPass([] { return AssumptionAnalysis(); });
- AM.registerPass([] { return TargetLibraryAnalysis(); });
- AM.registerPass([] { return DominatorTreeAnalysis(); });
- AM.registerPass([] { return MemoryDependenceAnalysis(); });
- AM.registerPass([] { return LoopAnalysis(); });
- AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-
-#if LLVM_VERSION_MAJOR > 6
- AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-
-    LoopSimplifyPass().run(*NewF, AM);
-
- }
-
-  int count = 0;
-  if(autodiff_inline) {
-      llvm::errs() << "running inlining process\n";
+void forceRecursiveInlining(Function *NewF, const Function* F) {
+   int count = 0;
    remover:
      SmallPtrSet<Instruction*, 10> originalInstructions;
      for (inst_iterator I = inst_begin(NewF), E = inst_end(NewF); I != E; ++I) {
@@ -863,33 +825,83 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
         else
           goto remover;
      }
+}
+
+Function* preprocessForClone(Function *F, AAResults &AA) {
+ static std::map<Function*,Function*> cache;
+ if (cache.find(F) != cache.end()) return cache[F];
+
+ Function *NewF = Function::Create(F->getFunctionType(), F->getLinkage(), "preprocess_" + F->getName(), F->getParent());
+ 
+ ValueToValueMapTy VMap;
+ for (auto i=F->arg_begin(), j=NewF->arg_begin(); i != F->arg_end(); ) {
+     VMap[i] = j;
+     j->setName(i->getName());
+     i++;
+     j++;
  }
 
- if (autodiff_inline) {
- DominatorTree DT(*NewF);
- AssumptionCache AC(*NewF);
- promoteMemoryToRegister(*NewF, DT, AC);
+ SmallVector <ReturnInst*,4> Returns;
+ CloneFunctionInto(NewF, F, VMap, F->getSubprogram() != nullptr, Returns, "",
+                   nullptr);
+ NewF->setAttributes(F->getAttributes());
 
- {
-     FunctionAnalysisManager AM;
-     AM.registerPass([] { return AAManager(); });
-     AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-     AM.registerPass([] { return AssumptionAnalysis(); });
-     AM.registerPass([] { return TargetLibraryAnalysis(); });
-     AM.registerPass([] { return TargetIRAnalysis(); });
-     AM.registerPass([] { return MemorySSAAnalysis(); });
-     AM.registerPass([] { return DominatorTreeAnalysis(); });
-     AM.registerPass([] { return MemoryDependenceAnalysis(); });
-     AM.registerPass([] { return LoopAnalysis(); });
-     AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+ if (true) {
+    FunctionAnalysisManager AM;
+ AM.registerPass([] { return LoopAnalysis(); });
+ AM.registerPass([] { return DominatorTreeAnalysis(); });
+ AM.registerPass([] { return ScalarEvolutionAnalysis(); });
+ AM.registerPass([] { return AssumptionAnalysis(); });
+
+ /*
+ AM.registerPass([] { return AAManager(); });
+ AM.registerPass([] { return TargetLibraryAnalysis(); });
+ AM.registerPass([] { return MemoryDependenceAnalysis(); });
+ AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+
 #if LLVM_VERSION_MAJOR > 6
  AM.registerPass([] { return PhiValuesAnalysis(); });
 #endif
-     AM.registerPass([] { return LazyValueAnalysis(); });
+#if LLVM_VERSION_MAJOR >= 8
+ AM.registerPass([] { return LoopInfoAnalysis(); });
+#endif
+*/
 
- GVN().run(*NewF, AM);
+    LoopSimplifyPass().run(*NewF, AM);
 
- SROA().run(*NewF, AM);
+ }
+
+  if(autodiff_inline) {
+      llvm::errs() << "running inlining process\n";
+      forceRecursiveInlining(NewF, F);
+
+      {
+         DominatorTree DT(*NewF);
+         AssumptionCache AC(*NewF);
+         promoteMemoryToRegister(*NewF, DT, AC);
+      }
+
+      {
+         FunctionAnalysisManager AM;
+         AM.registerPass([] { return AAManager(); });
+         AM.registerPass([] { return ScalarEvolutionAnalysis(); });
+         AM.registerPass([] { return AssumptionAnalysis(); });
+         AM.registerPass([] { return TargetLibraryAnalysis(); });
+         AM.registerPass([] { return TargetIRAnalysis(); });
+         AM.registerPass([] { return MemorySSAAnalysis(); });
+         AM.registerPass([] { return DominatorTreeAnalysis(); });
+         AM.registerPass([] { return MemoryDependenceAnalysis(); });
+         AM.registerPass([] { return LoopAnalysis(); });
+         AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
+#if LLVM_VERSION_MAJOR > 6
+        AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
+         AM.registerPass([] { return LazyValueAnalysis(); });
+
+        GVN().run(*NewF, AM);
+
+        SROA().run(*NewF, AM);
+      }
  }
 
  bool repeat = false;
@@ -947,20 +959,20 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
      AM.registerPass([] { return PhiValuesAnalysis(); });
 #endif
      AM.registerPass([] { return LazyValueAnalysis(); });
- InstCombinePass().run(*NewF, AM);
+     InstCombinePass().run(*NewF, AM);
 #if LLVM_VERSION_MAJOR > 6
- InstSimplifyPass().run(*NewF, AM);
+     InstSimplifyPass().run(*NewF, AM);
 #endif
- InstCombinePass().run(*NewF, AM);
- 
- EarlyCSEPass(/*memoryssa*/true).run(*NewF, AM);
- 
- GVN().run(*NewF, AM);
- SROA().run(*NewF, AM);
+     InstCombinePass().run(*NewF, AM);
+     
+     EarlyCSEPass(/*memoryssa*/true).run(*NewF, AM);
+     
+     GVN().run(*NewF, AM);
+     SROA().run(*NewF, AM);
 
- CorrelatedValuePropagationPass().run(*NewF, AM);
+     CorrelatedValuePropagationPass().run(*NewF, AM);
 
- DCEPass().run(*NewF, AM);
+     DCEPass().run(*NewF, AM);
  }
 
  do {
@@ -1021,8 +1033,7 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
      DSEPass().run(*NewF, AM);
  }
 
- }
-
+ {
     FunctionAnalysisManager AM;
      AM.registerPass([] { return AAManager(); });
      AM.registerPass([] { return ScalarEvolutionAnalysis(); });
@@ -1058,21 +1069,23 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
  ScopedNoAliasAA sa;
  auto saa = new ScopedNoAliasAAResult(sa.run(*NewF, AM));
  AA.addAAResult(*saa);
- 
  if (autodiff_inline) {
      createFunctionToLoopPassAdaptor(LoopIdiomRecognizePass()).run(*NewF, AM);
  }
+ DSEPass().run(*NewF, AM);   
+ LoopSimplifyPass().run(*NewF, AM);
 
+ }
+ 
   if (autodiff_print)
       llvm::errs() << "after simplification :\n" << *NewF << "\n";
-
   
   if (llvm::verifyFunction(*NewF, &llvm::errs())) {
       llvm::errs() << *NewF << "\n";
       report_fatal_error("function failed verification");
   }
- cache[F] = NewF;
- return NewF;
+  cache[F] = NewF;
+  return NewF;
 }
 
 Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, ValueToValueMapTy& ptrInputs, const std::set<unsigned>& constant_args, SmallPtrSetImpl<Value*> &constants, SmallPtrSetImpl<Value*> &nonconstant, SmallPtrSetImpl<Value*> &returnvals, ReturnType returnValue, bool differentialReturn, Twine name, ValueToValueMapTy *VMapO, bool diffeReturnArg, llvm::Type* additionalArg = nullptr) {
@@ -1250,13 +1263,13 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, ValueToValueMapT
 #include "llvm/IR/CFG.h"
 class GradientUtils;
 
-PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils &gutils);
+PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils *gutils);
 
 /// \brief Replace the latch of the loop to check that IV is always less than or
 /// equal to the limit.
 ///
 /// This method assumes that the loop has a single loop latch.
-Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution &SE, BasicBlock* ExitBlock, GradientUtils &gutils);
+Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution &SE, BasicBlock* ExitBlock, GradientUtils *gutils);
 
 bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
           if (available.count(val)) return false;
@@ -1548,6 +1561,42 @@ public:
             goto eraser;        
         }
     }
+    for(auto v: lastScopeAlloc) {
+        if (v.second == I) {
+            v.first->dump();
+            I->dump();
+            assert(0 && "erasing something in lastScopeAlloc map");
+        }
+    }
+    for(auto v: scopeMap) {
+        if (v.second == I) {
+            newFunc->dump();
+            dumpScope();
+            v.first->dump();
+            I->dump();
+            assert(0 && "erasing something in scope map");
+        }
+    }
+    for(auto v: scopeFrees) {
+        if (v.second == I) {
+            v.first->dump();
+            I->dump();
+            assert(0 && "erasing something in scopeFrees map");
+        }
+    }
+    for(auto v: invertedPointers) {
+        if (v.second == I) {
+            newFunc->dump();
+            dumpPointers();
+            v.first->dump();
+            I->dump();
+            assert(0 && "erasing something in invertedPointers map");
+        }
+    }
+    if (!I->use_empty()) {
+        newFunc->dump();
+        I->dump();
+    }
     assert(I->use_empty());
     I->eraseFromParent();
   }
@@ -1630,6 +1679,7 @@ public:
   T* addMalloc(IRBuilder<> &BuilderQ, T* malloc) {
     if (tape) {
         Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {tapeidx}));
+        Instruction* origret = ret;
         tapeidx++;
 
         if (ret->getType()->isEmptyTy()) {
@@ -1721,7 +1771,7 @@ public:
 
                 if (!inLoop) {
                     std::vector<User*> users;
-                    for( auto u : scopeMap[malloc]->users()) {
+                    for (auto u : scopeMap[malloc]->users()) {
                         users.push_back(u);
                     }
                     for( auto u : users) {
@@ -1734,8 +1784,12 @@ public:
                             assert(0 && "illegal use for out of loop scopeMap");
                         }
                     }
-                    erase(cast<Instruction>(scopeMap[malloc]));
+                    
+                    {
+                    Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
                     scopeMap.erase(malloc);
+                    erase(preerase);
+                    }
                 } else {
                     std::vector<User*> users;
                     for( auto u : scopeMap[malloc]->users()) {
@@ -1756,7 +1810,7 @@ public:
                                 Instruction* u2 = dyn_cast<Instruction>(u0);
                                 if (u2 == nullptr) continue;
                                 if (auto ci = dyn_cast<CastInst>(u2)) {
-                                    if (ci->hasOneUse() == 1)
+                                    if (ci->hasOneUse())
                                         u2 = cast<Instruction>(*ci->user_begin());
                                 }
                                 llvm::errs() << " found use in " << *u2 << "\n";
@@ -1777,60 +1831,57 @@ public:
                             if (li->getNumUses() == 0) erase(li);
                         } else if (auto si = dyn_cast<StoreInst>(u)) {
                             Instruction* u2 = cast<Instruction>(si->getValueOperand());
+                            erase(si);
+                            
+                            u2->replaceAllUsesWith(origret);
+                            
                             if (auto ci = dyn_cast<CastInst>(u2)) {
                                 u2 = cast<Instruction>(ci->getOperand(0));
-                            }
-                            if (auto cali = dyn_cast<CallInst>(u2)) {
-                                auto called = cali->getCalledFunction();
-                                if (called == nullptr) continue;
-                                if (!(called->getName() == "malloc" || called->getName() == "realloc")) continue;
-                                if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && (lastScopeAlloc[malloc] == cali || lastScopeAlloc[malloc] == si->getValueOperand()))
+                                if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && (lastScopeAlloc[malloc] == ci || lastScopeAlloc[malloc] == origret))
                                     lastScopeAlloc.erase(malloc);
-                                Value* vak = si->getValueOperand();
-                                erase(si);
-                                if (auto ci = dyn_cast<CastInst>(vak)) {
-                                    erase(ci);
-                                }
-                                if (cali != vak)
-                                    erase(cali);
-                                continue;
+                                erase(ci);
                             }
-                            erase(si);
-                        } else if (auto cali = dyn_cast<CallInst>(u)) {
+
+                            auto cali = cast<CallInst>(u2);
                             auto called = cali->getCalledFunction();
-                            if (called == nullptr) continue;
-                            if (!(called->getName() == "free" || called->getName() == "realloc")) continue;
-                            if (scopeFrees.find(malloc) != scopeFrees.end() && scopeFrees[malloc] == cali)
-                                scopeFrees.erase(malloc);
-                            if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == cali)
+                            assert(called);
+                            assert(called->getName() == "malloc" || called->getName() == "realloc");
+                            
+                            if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && (lastScopeAlloc[malloc] == cali))
                                 lastScopeAlloc.erase(malloc);
                             erase(cali);
+                            continue;
                         } else {
                             assert(0 && "illegal use for scopeMap");
                         }
                         //TODO consider realloc/free
                     }
                     
-                    erase(cast<Instruction>(scopeMap[malloc]));
+                    {
+                    Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
+                    scopeMap.erase(malloc);
+                    erase(preerase);
+                    }
                     
                     if (op0) {
                         if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == op0)
                             lastScopeAlloc.erase(malloc);
                         erase(op0);
                     }
-
-                    scopeMap.erase(malloc);
                 }
             }
-            if (scopeFrees.find(malloc) != scopeFrees.end())
-                llvm::errs() << scopeFrees[malloc] << "\n";
+            if (scopeFrees.find(malloc) != scopeFrees.end()) {
+                newFunc->dump();
+                llvm::errs() << *scopeFrees[malloc] << "\n";
+            }
             assert(scopeFrees.find(malloc) == scopeFrees.end());
-            if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end())
-                llvm::errs() << lastScopeAlloc[malloc] << "\n";
+            if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end()) {
+                newFunc->dump();
+                llvm::errs() << *lastScopeAlloc[malloc] << "\n";
+            }
             assert(lastScopeAlloc.find(malloc) == lastScopeAlloc.end());
             cast<Instruction>(malloc)->replaceAllUsesWith(ret);
             auto n = malloc->getName();
-            originalInstructions.erase(cast<Instruction>(malloc));
             erase(cast<Instruction>(malloc));
             ret->setName(n);
         }
@@ -4982,7 +5033,12 @@ static bool lowerAutodiffIntrinsic(Function &F, TargetLibraryInfo &TLI, AAResult
   return Changed;
 }
 
-PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils &gutils) {
+PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &DT, GradientUtils *gutils) {
+    //PHINode* pn = L->getCanonicalInductionVariable();
+    //assert( pn && "canonical IV");
+    //return pn;
+
+    
     { SCEVExpander(SE, L->getHeader()->getParent()->getParent()->getDataLayout(), "ad"); }
 
   BasicBlock* Header = L->getHeader();
@@ -5005,13 +5061,14 @@ PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &
   }
   
   for (Instruction* I : DeadInsts) {
-    gutils.erase(I);
+    if (gutils) gutils->erase(I);
   } 
 
   return CanonicalIV;
+  
 }
 
-Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution &SE, BasicBlock* ExitBlock, GradientUtils &gutils) {
+Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution &SE, BasicBlock* ExitBlock, GradientUtils *gutils) {
   Value *NewCondition;
   BasicBlock *Header = L->getHeader();
   BasicBlock *Latch = L->getLoopLatch();
@@ -5034,11 +5091,11 @@ Value* canonicalizeLoopLatch(PHINode *IV, Value *Limit, Loop* L, ScalarEvolution
 
   // Erase the old conditional branch.
   Value *OldCond = LatchBr->getCondition();
-  gutils.erase(LatchBr);
+  if (gutils) gutils->erase(LatchBr);
   
   if (!OldCond->hasNUsesOrMore(1))
     if (Instruction *OldCondInst = dyn_cast<Instruction>(OldCond)) {
-      gutils.erase(OldCondInst);
+      if (gutils) gutils->erase(OldCondInst);
     }
   
 
@@ -5122,7 +5179,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 
 		if (SE.getCouldNotCompute() != Limit) {
 
-        	CanonicalIV = canonicalizeIVs(Limit->getType(), L, SE, DT, gutils);
+        	CanonicalIV = canonicalizeIVs(Limit->getType(), L, SE, DT, &gutils);
         	if (!CanonicalIV) {
                 report_fatal_error("Couldn't get canonical IV.");
         	}
@@ -5138,10 +5195,11 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
                                             Preheader->getTerminator());
 
         	// Canonicalize the loop latch.
-			canonicalizeLoopLatch(CanonicalIV, LimitVar, L, SE, ExitBlock, gutils);
+			canonicalizeLoopLatch(CanonicalIV, LimitVar, L, SE, ExitBlock, &gutils);
 
 			loopContext.dynamic = false;
 		} else {
+          
           //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
           llvm::errs() << "SE could not compute loop limit.\n";
 
