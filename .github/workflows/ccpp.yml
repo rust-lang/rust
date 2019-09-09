@@ -14,7 +14,7 @@ jobs:
     
     steps:
     - name: update ubuntu
-      run: sudo apt-get update -y && sudo apt-get remove -y llvm* libllvm* libgl* php*
+      run: sudo apt-get update -y && sudo apt-get remove -y llvm* libllvm* libgl* php* mono* msbuild* libmono*
     - name: install llvm ${{ matrix.llvm }}
       run: sudo apt-get install -y --no-install-recommends build-essential ${{ matrix.llvm }}-tools ${{ matrix.llvm }}-dev cmake
     - uses: actions/checkout@v1
