@@ -3943,7 +3943,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
             auto ptx = invertPointer(op->getOperand(0));
             SmallVector<Value*, 4> args;
             args.push_back(ptx);
-            for(int i=1; i<op->getNumOperands(); i++) {
+            for(int i=1; i<op->getNumArgOperands(); i++) {
                 args.push_back(lookup(op->getOperand(i)));
             }
 
