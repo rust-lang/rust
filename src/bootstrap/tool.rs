@@ -234,10 +234,6 @@ pub fn prepare_tool_cargo(
     let dir = builder.src.join(path);
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
-    // We don't want to build tools dynamically as they'll be running across
-    // stages and such and it's just easier if they're not dynamically linked.
-    cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
-
     if source_type == SourceType::Submodule {
         cargo.env("RUSTC_EXTERNAL_TOOL", "1");
     }

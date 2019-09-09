@@ -1227,6 +1227,16 @@ impl<'a> Builder<'a> {
 
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
+        // When we build Rust dylibs they're all intended for intermediate
+        // usage, so make sure we pass the -Cprefer-dynamic flag instead of
+        // linking all deps statically into the dylib.
+        match mode {
+            Mode::Std | Mode::Rustc | Mode::Codegen => {
+                rustflags.arg("-Cprefer-dynamic");
+            }
+            _ => {}
+        }
+
         Cargo {
             command: cargo,
             rustflags,

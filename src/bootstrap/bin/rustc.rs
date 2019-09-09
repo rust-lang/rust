@@ -89,13 +89,6 @@ fn main() {
             cmd.arg("--sysroot").arg(&sysroot);
         }
 
-        // When we build Rust dylibs they're all intended for intermediate
-        // usage, so make sure we pass the -Cprefer-dynamic flag instead of
-        // linking all deps statically into the dylib.
-        if env::var_os("RUSTC_NO_PREFER_DYNAMIC").is_none() {
-            cmd.arg("-Cprefer-dynamic");
-        }
-
         // If we're compiling specifically the `panic_abort` crate then we pass
         // the `-C panic=abort` option. Note that we do not do this for any
         // other crate intentionally as this is the only crate for now that we
