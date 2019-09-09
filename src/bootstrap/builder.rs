@@ -820,6 +820,7 @@ impl<'a> Builder<'a> {
             rustflags.env("RUSTFLAGS_NOT_BOOTSTRAP");
         } else {
             rustflags.env("RUSTFLAGS_BOOTSTRAP");
+            rustflags.arg("--cfg=bootstrap");
         }
 
         match mode {

@@ -76,21 +76,6 @@ fn main() {
         }
     }
 
-    // Non-zero stages must all be treated uniformly to avoid problems when attempting to uplift
-    // compiler libraries and such from stage 1 to 2.
-    //
-    // FIXME: the fact that core here is excluded is due to core_arch from our stdarch submodule
-    // being broken on the beta compiler with bootstrap passed, so this is a temporary workaround
-    // (we've just snapped, so there are no cfg(bootstrap) related annotations in core).
-    if stage == "0" {
-        if crate_name != Some("core") {
-            cmd.arg("--cfg").arg("bootstrap");
-        } else {
-            // NOTE(eddyb) see FIXME above, except now we need annotations again in core.
-            cmd.arg("--cfg").arg("boostrap_stdarch_ignore_this");
-        }
-    }
-
     // Print backtrace in case of ICE
     if env::var("RUSTC_BACKTRACE_ON_ICE").is_ok() && env::var("RUST_BACKTRACE").is_err() {
         cmd.env("RUST_BACKTRACE", "1");

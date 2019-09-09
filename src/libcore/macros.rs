@@ -1236,9 +1236,9 @@ pub(crate) mod builtin {
     pub macro test($item:item) { /* compiler built-in */ }
 
     /// Attribute macro applied to a function to turn it into a benchmark test.
-    #[cfg_attr(not(boostrap_stdarch_ignore_this), unstable(soft, feature = "test", issue = "50297",
+    #[cfg_attr(not(bootstrap), unstable(soft, feature = "test", issue = "50297",
                reason = "`bench` is a part of custom test frameworks which are unstable"))]
-    #[cfg_attr(boostrap_stdarch_ignore_this, unstable(feature = "test", issue = "50297",
+    #[cfg_attr(bootstrap, unstable(feature = "test", issue = "50297",
                reason = "`bench` is a part of custom test frameworks which are unstable"))]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
