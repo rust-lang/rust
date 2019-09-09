@@ -184,7 +184,7 @@
 # default.
 #extended = false
 
-# Installs chosen set of extended tools if enables. By default builds all.
+# Installs chosen set of extended tools if enabled. By default builds all.
 # If chosen tool failed to build the installation fails.
 #tools = ["cargo", "rls", "clippy", "rustfmt", "analysis", "src"]
 
