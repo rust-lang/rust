@@ -1,6 +1,6 @@
 use if_chain::if_chain;
 use rustc::hir;
-use rustc::hir::def::{CtorKind, DefKind, Res};
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
@@ -239,7 +239,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         if path.segments.last().expect(SEGMENTS_MSG).ident.name != kw::SelfUpper {
             if self.item_path.res == path.res {
                 span_use_self_lint(self.cx, path, None);
-            } else if let Res::Def(DefKind::Ctor(def::CtorOf::Struct, CtorKind::Fn), ctor_def_id) = path.res {
+            } else if let Res::Def(DefKind::Ctor(def::CtorOf::Struct, _), ctor_def_id) = path.res {
                 if self.item_path.res.opt_def_id() == self.cx.tcx.parent(ctor_def_id) {
                     span_use_self_lint(self.cx, path, None);
                 }

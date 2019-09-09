@@ -121,19 +121,25 @@ LL |         fn mul(self, rhs: Bad) -> Bad {
    |                                   ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:202:56
+  --> $DIR/use_self.rs:117:13
+   |
+LL |             Bad
+   |             ^^^ help: use the applicable keyword: `Self`
+
+error: unnecessary structure name repetition
+  --> $DIR/use_self.rs:199:56
    |
 LL |         fn bad(foos: &[Self]) -> impl Iterator<Item = &Foo> {
    |                                                        ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:217:13
+  --> $DIR/use_self.rs:214:13
    |
 LL |             TS(0)
    |             ^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:225:25
+  --> $DIR/use_self.rs:222:25
    |
 LL |             fn new() -> Foo {
    |                         ^^^ help: use the applicable keyword: `Self`
@@ -142,7 +148,7 @@ LL |         use_self_expand!(); // Should lint in local macros
    |         ------------------- in this macro invocation
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:226:17
+  --> $DIR/use_self.rs:223:17
    |
 LL |                 Foo {}
    |                 ^^^ help: use the applicable keyword: `Self`
@@ -151,64 +157,64 @@ LL |         use_self_expand!(); // Should lint in local macros
    |         ------------------- in this macro invocation
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:261:21
+  --> $DIR/use_self.rs:258:21
    |
 LL |         fn baz() -> Foo {
    |                     ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:262:13
+  --> $DIR/use_self.rs:259:13
    |
 LL |             Foo {}
    |             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:249:29
+  --> $DIR/use_self.rs:246:29
    |
 LL |                 fn bar() -> Bar {
    |                             ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:250:21
+  --> $DIR/use_self.rs:247:21
    |
 LL |                     Bar { foo: Foo {} }
    |                     ^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:279:21
+  --> $DIR/use_self.rs:276:21
    |
 LL |             let _ = Enum::B(42);
    |                     ^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:280:21
+  --> $DIR/use_self.rs:277:21
    |
 LL |             let _ = Enum::C { field: true };
    |                     ^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:281:21
+  --> $DIR/use_self.rs:278:21
    |
 LL |             let _ = Enum::A;
    |                     ^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:312:13
+  --> $DIR/use_self.rs:309:13
    |
 LL |             nested::A::fun_1();
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:313:13
+  --> $DIR/use_self.rs:310:13
    |
 LL |             nested::A::A;
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
 error: unnecessary structure name repetition
-  --> $DIR/use_self.rs:315:13
+  --> $DIR/use_self.rs:312:13
    |
 LL |             nested::A {};
    |             ^^^^^^^^^ help: use the applicable keyword: `Self`
 
-error: aborting due to 34 previous errors
+error: aborting due to 35 previous errors
 
