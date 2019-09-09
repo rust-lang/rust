@@ -356,14 +356,6 @@ fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
     }
 }
 
-fn is_non_enumerable_trait(db: &impl HirDatabase, trait_: Trait) -> bool {
-    let name = trait_.name(db).unwrap_or_else(crate::Name::missing).to_string();
-    match &*name {
-        "Sized" => true,
-        _ => false,
-    }
-}
-
 fn convert_where_clauses(
     db: &impl HirDatabase,
     def: GenericDef,
@@ -503,7 +495,7 @@ pub(crate) fn trait_datum_query(
     let flags = chalk_rust_ir::TraitFlags {
         auto: trait_.is_auto(db),
         upstream: trait_.module(db).krate(db) != Some(krate),
-        non_enumerable: is_non_enumerable_trait(db, trait_),
+        non_enumerable: true,
         // FIXME set these flags correctly
         marker: false,
         fundamental: false,
