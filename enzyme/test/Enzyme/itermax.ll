@@ -108,12 +108,13 @@ attributes #2 = { nounwind }
 ; CHECK: invertfor.cond.cleanup:         
 ; CHECK-NEXT:   %[[tofree]] = phi i8* [ undef, %entry ], [ %malloccall, %for.body.for.body_crit_edge ]
 ; CHECK-NEXT:   %cmp.i_mdyncache.0 = phi i1* [ undef, %entry ], [ %cmp.i_malloccache, %for.body.for.body_crit_edge ]
-; CHECK-NEXT:   br i1 %exitcond11, label %invertentry, label %invertfor.body.for.body_crit_edge
+; CHECK-NEXT:   br i1 %exitcond11, label %invertentry, label %{{invertfor\.(body\.for\.body_crit_edge|cond\.cleanup\.loopexit)}}
 
-; CHECK: invertfor.body.for.body_crit_edge:    
-; CHECK-NEXT:   %"cond.i'de.0" = phi double [ %diffecond.i12, %invertfor.body.for.body_crit_edge ], [ 1.000000e+00, %invertfor.cond.cleanup ]
-; CHECK-NEXT:   %"'de.1" = phi double [ %[[added:.+]], %invertfor.body.for.body_crit_edge ], [ 0.000000e+00, %invertfor.cond.cleanup ]
-; CHECK-NEXT:   %"indvar'phi.in" = phi i64 [ %"indvar'phi", %invertfor.body.for.body_crit_edge ], [ %n, %invertfor.cond.cleanup ] 
+
+; CHECK: [[thelabel:invertfor.body.for.body_crit_edge]]:    
+; CHECK-NEXT:   %"cond.i'de.0" = phi double [ %diffecond.i12, %[[thelabel]] ], [ 1.000000e+00, %invertfor.cond.cleanup ]
+; CHECK-NEXT:   %"'de.1" = phi double [ %[[added:.+]], %[[thelabel]] ], [ 0.000000e+00, %invertfor.cond.cleanup ]
+; CHECK-NEXT:   %"indvar'phi.in" = phi i64 [ %"indvar'phi", %[[thelabel]], [ %n, %invertfor.cond.cleanup ] 
 ; CHECK-NEXT:   %"indvar'phi" = add i64 %"indvar'phi.in", -1
 ; CHECK-NEXT:   %[[cmpcache:.+]] = getelementptr i1, i1* %cmp.i_mdyncache.0, i64 %"indvar'phi"
 ; CHECK-NEXT:   %[[toselect:.+]] = load i1, i1* %[[cmpcache]]
@@ -126,5 +127,5 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %[[lcmp:.+]] = icmp ne i64 %"indvar'phi", 0
 ; CHECK-NEXT:   %[[tadd:.+]] = select i1 %[[lcmp]], double 0.000000e+00, double %diffecond.i12
 ; CHECK-NEXT:   %[[added]] = fadd fast double %"'de.1", %[[tadd]]
-; CHECK-NEXT:   br i1 %[[lcmp]], label %invertfor.body.for.body_crit_edge, label %invertfor.body.for.body_crit_edge.preheader
+; CHECK-NEXT:   br i1 %[[lcmp]], label %[[thelabel]], label %invertfor.body.for.body_crit_edge.preheader
 ; CHECK-NEXT: }

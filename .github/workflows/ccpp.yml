@@ -10,14 +10,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: [llvm-6.0, llvm-7, llvm-8]
+        llvm: ["6.0", "7", "8"]
         os: [ubuntu-18.04]
     
     steps:
+    - name: add llvm 
+      run: sudo add-apt-repository 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-${{ matrix.llvm }} main'
     - name: update ubuntu
       run: sudo apt-get update -y && sudo apt-get remove -y llvm* libllvm* libgl* php* mono* msbuild* libmono*
     - name: install llvm
-      run: sudo apt-get install -y --no-install-recommends build-essential ${{ matrix.llvm }}-tools ${{ matrix.llvm }}-dev cmake
+      run: sudo apt-get install -y --no-install-recommends build-essential llvm-${{ matrix.llvm }}-tools llvm-${{ matrix.llvm }}-dev cmake
     - uses: actions/checkout@v1
     - name: mkdir
       run: cd enzyme && mkdir build

@@ -185,7 +185,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[callgep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %indvars.iv.i
 ; CHECK-NEXT:   store i8* %call.i, i8** %[[callgep]]
 ; CHECK-NEXT:   %"call'mi.i" = call i8* @_Znwm(i64 16) #10
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, i1 false) #5
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #5
 ; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %indvars.iv.i
 ; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   %5 = bitcast i8* %call.i to %class.node*
@@ -232,7 +232,7 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal {} @diffe_Z8sum_listPK4node(%class.node* noalias readonly %node, %class.node* %"node'", double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}{} @diffe_Z8sum_listPK4node(%class.node* noalias readonly %node, %class.node* %"node'", double %[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[cmp:.+]] = icmp eq %class.node* %node, null
 ; CHECK-NEXT:   br i1 %[[cmp]], label %invertfor.end, label %for.body.preheader

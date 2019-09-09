@@ -101,7 +101,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  %[[callcachegep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %indvars.iv.i
 ; CHECK-NEXT:  store i8* %call.i, i8** %[[callcachegep]]
 ; CHECK-NEXT:  %"call'mi.i" = call noalias i8* @malloc(i64 16) #4
-; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, i1 false) #4
+; CHECK-NEXT:  call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:  %[[callpcachegep:.+]] = getelementptr i8*, i8** %[[callpcache]], i64 %indvars.iv.i
 ; CHECK-NEXT:  store i8* %"call'mi.i", i8** %[[callpcachegep]]
 ; CHECK-NEXT:  %5 = bitcast i8* %call.i to %struct.n*
@@ -146,7 +146,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  ret double %[[add]]
 
 
-; CHECK: define internal {} @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}{} @diffesum_list(%struct.n* noalias readonly %node, %struct.n* %"node'", double %[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp6 = icmp eq %struct.n* %node, null
 ; CHECK-NEXT:   br i1 %cmp6, label %invertfor.cond.cleanup, label %for.body
