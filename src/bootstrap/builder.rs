@@ -1055,8 +1055,16 @@ impl<'a> Builder<'a> {
 
         cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
 
-        if self.config.deny_warnings && !mode.is_tool() {
-            rustflags.arg("-Dwarnings");
+        if !mode.is_tool() {
+            // When extending this list, add the new lints to the RUSTFLAGS of the
+            // build_bootstrap function of src/bootstrap/bootstrap.py as well as
+            // some code doesn't go through this `rustc` wrapper.
+            rustflags.arg("-Wrust_2018_idioms");
+            rustflags.arg("-Wunused_lifetimes");
+
+            if self.config.deny_warnings {
+                rustflags.arg("-Dwarnings");
+            }
         }
 
         // Throughout the build Cargo can execute a number of build scripts
