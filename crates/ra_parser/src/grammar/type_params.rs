@@ -156,7 +156,10 @@ fn is_where_predicate(p: &mut Parser) -> bool {
 }
 
 fn is_where_clause_end(p: &mut Parser) -> bool {
-    p.current() == T!['{'] || p.current() == T![;] || p.current() == T![=]
+    match p.current() {
+        T!['{'] | T![;] | T![=] => true,
+        _ => false,
+    }
 }
 
 fn where_predicate(p: &mut Parser) {

@@ -125,7 +125,7 @@ pub(crate) mod fragments {
         let m = p.start();
 
         while !p.at(EOF) {
-            if p.current() == T![;] {
+            if p.at(T![;]) {
                 p.bump();
                 continue;
             }
