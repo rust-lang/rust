@@ -1548,7 +1548,6 @@ public:
             goto eraser;        
         }
     }
-    I->dump();
     assert(I->use_empty());
     I->eraseFromParent();
   }
@@ -2167,7 +2166,6 @@ endCheck:
     }
 
     void ensureLookupCached(Instruction* inst, bool shouldFree=true) {
-        inst->dump();
         if (scopeMap.find(inst) != scopeMap.end()) return;
 
         LoopContext lc;
