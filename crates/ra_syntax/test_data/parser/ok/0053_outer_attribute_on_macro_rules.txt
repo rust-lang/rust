@@ -1,0 +1,37 @@
+SOURCE_FILE@[0; 65)
+  MACRO_CALL@[0; 64)
+    COMMENT@[0; 13) "/// Some docs"
+    WHITESPACE@[13; 14) "\n"
+    ATTR@[14; 29)
+      POUND@[14; 15) "#"
+      TOKEN_TREE@[15; 29)
+        L_BRACK@[15; 16) "["
+        IDENT@[16; 28) "macro_export"
+        R_BRACK@[28; 29) "]"
+    WHITESPACE@[29; 30) "\n"
+    PATH@[30; 41)
+      PATH_SEGMENT@[30; 41)
+        NAME_REF@[30; 41)
+          IDENT@[30; 41) "macro_rules"
+    EXCL@[41; 42) "!"
+    WHITESPACE@[42; 43) " "
+    NAME@[43; 46)
+      IDENT@[43; 46) "foo"
+    WHITESPACE@[46; 47) " "
+    TOKEN_TREE@[47; 64)
+      L_CURLY@[47; 48) "{"
+      WHITESPACE@[48; 53) "\n    "
+      TOKEN_TREE@[53; 55)
+        L_PAREN@[53; 54) "("
+        R_PAREN@[54; 55) ")"
+      WHITESPACE@[55; 56) " "
+      EQ@[56; 57) "="
+      R_ANGLE@[57; 58) ">"
+      WHITESPACE@[58; 59) " "
+      TOKEN_TREE@[59; 61)
+        L_CURLY@[59; 60) "{"
+        R_CURLY@[60; 61) "}"
+      SEMI@[61; 62) ";"
+      WHITESPACE@[62; 63) "\n"
+      R_CURLY@[63; 64) "}"
+  WHITESPACE@[64; 65) "\n"
