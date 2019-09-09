@@ -126,7 +126,7 @@ pub(crate) mod fragments {
 
         while !p.at(EOF) {
             if p.at(T![;]) {
-                p.bump_any();
+                p.bump(T![;]);
                 continue;
             }
 
@@ -179,7 +179,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
     match p.current() {
         T![pub] => {
             let m = p.start();
-            p.bump_any();
+            p.bump(T![pub]);
             if p.at(T!['(']) {
                 match p.nth(1) {
                     // test crate_visibility

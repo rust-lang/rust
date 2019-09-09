@@ -170,6 +170,12 @@ impl<'t> Parser<'t> {
         }
     }
 
+    /// Advances the parser by one token, asserting that it is exactly the expected token
+    pub(crate) fn bump(&mut self, expected: SyntaxKind) {
+        debug_assert!(self.nth(0) == expected);
+        self.bump_any()
+    }
+
     /// Advances the parser by one token, remapping its kind.
     /// This is useful to create contextual keywords from
     /// identifiers. For example, the lexer creates an `union`
