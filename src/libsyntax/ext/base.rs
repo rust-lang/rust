@@ -35,6 +35,13 @@ pub enum Annotatable {
     ForeignItem(P<ast::ForeignItem>),
     Stmt(P<ast::Stmt>),
     Expr(P<ast::Expr>),
+    Arm(ast::Arm),
+    Field(ast::Field),
+    FieldPat(ast::FieldPat),
+    GenericParam(ast::GenericParam),
+    Param(ast::Param),
+    StructField(ast::StructField),
+    Variant(ast::Variant),
 }
 
 impl HasAttrs for Annotatable {
@@ -46,6 +53,13 @@ impl HasAttrs for Annotatable {
             Annotatable::ForeignItem(ref foreign_item) => &foreign_item.attrs,
             Annotatable::Stmt(ref stmt) => stmt.attrs(),
             Annotatable::Expr(ref expr) => &expr.attrs,
+            Annotatable::Arm(ref arm) => &arm.attrs,
+            Annotatable::Field(ref field) => &field.attrs,
+            Annotatable::FieldPat(ref fp) => &fp.attrs,
+            Annotatable::GenericParam(ref gp) => &gp.attrs,
+            Annotatable::Param(ref p) => &p.attrs,
+            Annotatable::StructField(ref sf) => &sf.attrs,
+            Annotatable::Variant(ref v) => &v.attrs(),
         }
     }
 
@@ -57,6 +71,13 @@ impl HasAttrs for Annotatable {
             Annotatable::ForeignItem(foreign_item) => foreign_item.visit_attrs(f),
             Annotatable::Stmt(stmt) => stmt.visit_attrs(f),
             Annotatable::Expr(expr) => expr.visit_attrs(f),
+            Annotatable::Arm(arm) => arm.visit_attrs(f),
+            Annotatable::Field(field) => field.visit_attrs(f),
+            Annotatable::FieldPat(fp) => fp.visit_attrs(f),
+            Annotatable::GenericParam(gp) => gp.visit_attrs(f),
+            Annotatable::Param(p) => p.visit_attrs(f),
+            Annotatable::StructField(sf) => sf.visit_attrs(f),
+            Annotatable::Variant(v) => v.visit_attrs(f),
         }
     }
 }
@@ -70,6 +91,13 @@ impl Annotatable {
             Annotatable::ForeignItem(ref foreign_item) => foreign_item.span,
             Annotatable::Stmt(ref stmt) => stmt.span,
             Annotatable::Expr(ref expr) => expr.span,
+            Annotatable::Arm(ref arm) => arm.span,
+            Annotatable::Field(ref field) => field.span,
+            Annotatable::FieldPat(ref fp) => fp.pat.span,
+            Annotatable::GenericParam(ref gp) => gp.ident.span,
+            Annotatable::Param(ref p) => p.span,
+            Annotatable::StructField(ref sf) => sf.span,
+            Annotatable::Variant(ref v) => v.span,
         }
     }
 
@@ -81,6 +109,13 @@ impl Annotatable {
             Annotatable::ForeignItem(foreign_item) => visitor.visit_foreign_item(foreign_item),
             Annotatable::Stmt(stmt) => visitor.visit_stmt(stmt),
             Annotatable::Expr(expr) => visitor.visit_expr(expr),
+            Annotatable::Arm(arm) => visitor.visit_arm(arm),
+            Annotatable::Field(field) => visitor.visit_field(field),
+            Annotatable::FieldPat(fp) => visitor.visit_field_pattern(fp),
+            Annotatable::GenericParam(gp) => visitor.visit_generic_param(gp),
+            Annotatable::Param(p) => visitor.visit_param(p),
+            Annotatable::StructField(sf) =>visitor.visit_struct_field(sf),
+            Annotatable::Variant(v) => visitor.visit_variant(v),
         }
     }
 
@@ -133,6 +168,55 @@ impl Annotatable {
         match self {
             Annotatable::Expr(expr) => expr,
             _ => panic!("expected expression"),
+        }
+    }
+
+    pub fn expect_arm(self) -> ast::Arm {
+        match self {
+            Annotatable::Arm(arm) => arm,
+            _ => panic!("expected match arm")
+        }
+    }
+
+    pub fn expect_field(self) -> ast::Field {
+        match self {
+            Annotatable::Field(field) => field,
+            _ => panic!("expected field")
+        }
+    }
+
+    pub fn expect_field_pattern(self) -> ast::FieldPat {
+        match self {
+            Annotatable::FieldPat(fp) => fp,
+            _ => panic!("expected field pattern")
+        }
+    }
+
+    pub fn expect_generic_param(self) -> ast::GenericParam {
+        match self {
+            Annotatable::GenericParam(gp) => gp,
+            _ => panic!("expected generic parameter")
+        }
+    }
+
+    pub fn expect_param(self) -> ast::Param {
+        match self {
+            Annotatable::Param(param) => param,
+            _ => panic!("expected parameter")
+        }
+    }
+
+    pub fn expect_struct_field(self) -> ast::StructField {
+        match self {
+            Annotatable::StructField(sf) => sf,
+            _ => panic!("expected struct field")
+        }
+    }
+
+    pub fn expect_variant(self) -> ast::Variant {
+        match self {
+            Annotatable::Variant(v) => v,
+            _ => panic!("expected variant")
         }
     }
 
@@ -325,6 +409,34 @@ pub trait MacResult {
     fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
         None
     }
+
+    fn make_arms(self: Box<Self>) -> Option<SmallVec<[ast::Arm; 1]>> {
+        None
+    }
+
+    fn make_fields(self: Box<Self>) -> Option<SmallVec<[ast::Field; 1]>> {
+        None
+    }
+
+    fn make_field_patterns(self: Box<Self>) -> Option<SmallVec<[ast::FieldPat; 1]>> {
+        None
+    }
+
+    fn make_generic_params(self: Box<Self>) -> Option<SmallVec<[ast::GenericParam; 1]>> {
+        None
+    }
+
+    fn make_params(self: Box<Self>) -> Option<SmallVec<[ast::Param; 1]>> {
+        None
+    }
+
+    fn make_struct_fields(self: Box<Self>) -> Option<SmallVec<[ast::StructField; 1]>> {
+        None
+    }
+
+    fn make_variants(self: Box<Self>) -> Option<SmallVec<[ast::Variant; 1]>> {
+        None
+    }
 }
 
 macro_rules! make_MacEager {
@@ -497,6 +609,34 @@ impl MacResult for DummyResult {
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {
         Some(DummyResult::raw_ty(self.span, self.is_error))
+    }
+
+    fn make_arms(self: Box<DummyResult>) -> Option<SmallVec<[ast::Arm; 1]>> {
+       Some(SmallVec::new())
+    }
+
+    fn make_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::Field; 1]>> {
+        Some(SmallVec::new())
+    }
+
+    fn make_field_patterns(self: Box<DummyResult>) -> Option<SmallVec<[ast::FieldPat; 1]>> {
+        Some(SmallVec::new())
+    }
+
+    fn make_generic_params(self: Box<DummyResult>) -> Option<SmallVec<[ast::GenericParam; 1]>> {
+        Some(SmallVec::new())
+    }
+
+    fn make_params(self: Box<DummyResult>) -> Option<SmallVec<[ast::Param; 1]>> {
+        Some(SmallVec::new())
+    }
+
+    fn make_struct_fields(self: Box<DummyResult>) -> Option<SmallVec<[ast::StructField; 1]>> {
+        Some(SmallVec::new())
+    }
+
+    fn make_variants(self: Box<DummyResult>) -> Option<SmallVec<[ast::Variant; 1]>> {
+        Some(SmallVec::new())
     }
 }
 

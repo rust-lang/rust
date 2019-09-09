@@ -882,6 +882,7 @@ impl<'a> Parser<'a> {
             attrs: attrs.into(),
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
+            is_placeholder: false,
         })
     }
 

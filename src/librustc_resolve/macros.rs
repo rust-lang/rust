@@ -16,7 +16,7 @@ use syntax::attr::StabilityLevel;
 use syntax::edition::Edition;
 use syntax::ext::base::{self, InvocationRes, Indeterminate, SpecialDerives};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
-use syntax::ext::expand::{AstFragment, Invocation, InvocationKind};
+use syntax::ext::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use syntax::ext::hygiene::{self, ExpnId, ExpnData, ExpnKind};
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
@@ -223,6 +223,26 @@ impl<'a> base::Resolver for Resolver<'a> {
             self.macro_defs.insert(invoc_id, def_id);
             let normal_module_def_id = self.macro_def_scope(invoc_id).normal_ancestor_id;
             self.definitions.add_parent_module_of_macro_def(invoc_id, normal_module_def_id);
+        }
+
+        match invoc.fragment_kind {
+            AstFragmentKind::Arms
+                | AstFragmentKind::Fields
+                | AstFragmentKind::FieldPats
+                | AstFragmentKind::GenericParams
+                | AstFragmentKind::Params
+                | AstFragmentKind::StructFields
+                | AstFragmentKind::Variants =>
+            {
+                if let Res::Def(..) = res {
+                    self.session.span_err(
+                        span,
+                        "expected an inert attribute, found an attribute macro"
+                    );
+                    return Ok(InvocationRes::Single(self.dummy_ext(kind)));
+                }
+            },
+            _ => {}
         }
 
         Ok(InvocationRes::Single(ext))
