@@ -164,10 +164,6 @@ fn main() {
         } else {
             cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
         }
-
-        if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
-            cmd.arg("--remap-path-prefix").arg(&map);
-        }
     } else {
         // Override linker if necessary.
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
