@@ -386,6 +386,23 @@ fn test_iterator_step_by_nth_overflow() {
 }
 
 #[test]
+fn test_iterator_step_by_nth_try_fold() {
+    let mut it = (0..).step_by(10);
+    assert_eq!(it.try_fold(0, i8::checked_add), None);
+    assert_eq!(it.next(), Some(60));
+    assert_eq!(it.try_fold(0, i8::checked_add), None);
+    assert_eq!(it.next(), Some(90));
+
+    let mut it = (100..).step_by(10);
+    assert_eq!(it.try_fold(50, i8::checked_add), None);
+    assert_eq!(it.next(), Some(110));
+
+    let mut it = (100..=100).step_by(10);
+    assert_eq!(it.next(), Some(100));
+    assert_eq!(it.try_fold(0, i8::checked_add), Some(0));
+}
+
+#[test]
 fn test_iterator_step_by_nth_back() {
     let mut it = (0..16).step_by(5);
     assert_eq!(it.nth_back(0), Some(15));
@@ -408,6 +425,24 @@ fn test_iterator_step_by_nth_back() {
     assert_eq!(it().nth_back(3), Some(0));
     assert_eq!(it().nth_back(4), None);
     assert_eq!(it().nth_back(42), None);
+}
+
+#[test]
+fn test_iterator_step_by_nth_try_rfold() {
+    let mut it = (0..100).step_by(10);
+    assert_eq!(it.try_rfold(0, i8::checked_add), None);
+    assert_eq!(it.next_back(), Some(70));
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.try_rfold(0, i8::checked_add), None);
+    assert_eq!(it.next_back(), Some(30));
+
+    let mut it = (0..100).step_by(10);
+    assert_eq!(it.try_rfold(50, i8::checked_add), None);
+    assert_eq!(it.next_back(), Some(80));
+
+    let mut it = (100..=100).step_by(10);
+    assert_eq!(it.next_back(), Some(100));
+    assert_eq!(it.try_fold(0, i8::checked_add), Some(0));
 }
 
 #[test]
