@@ -3,6 +3,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::env;
+use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
 use std::hash::Hash;
@@ -682,7 +683,7 @@ impl<'a> Builder<'a> {
 
     /// Adds the compiler's directory of dynamic libraries to `cmd`'s dynamic
     /// library lookup path.
-    pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Command) {
+    pub fn add_rustc_lib_path(&self, compiler: Compiler, cmd: &mut Cargo) {
         // Windows doesn't need dylib path munging because the dlls for the
         // compiler live next to the compiler and the system will find them
         // automatically.
@@ -690,7 +691,7 @@ impl<'a> Builder<'a> {
             return;
         }
 
-        add_lib_path(vec![self.rustc_libdir(compiler)], cmd);
+        add_lib_path(vec![self.rustc_libdir(compiler)], &mut cmd.command);
     }
 
     /// Gets a path to the compiler specified.
@@ -752,7 +753,7 @@ impl<'a> Builder<'a> {
         mode: Mode,
         target: Interned<String>,
         cmd: &str,
-    ) -> Command {
+    ) -> Cargo {
         let mut cargo = Command::new(&self.initial_cargo);
         let out_dir = self.stage_out(compiler, mode);
 
@@ -1225,9 +1226,10 @@ impl<'a> Builder<'a> {
 
         self.ci_env.force_coloring_in_ci(&mut cargo);
 
-        cargo.env("RUSTFLAGS", &rustflags.0);
-
-        cargo
+        Cargo {
+            command: cargo,
+            rustflags,
+        }
     }
 
     /// Ensure that a given step is built, returning its output. This will
@@ -1328,6 +1330,7 @@ impl<'a> Builder<'a> {
 #[cfg(test)]
 mod tests;
 
+#[derive(Debug)]
 struct Rustflags(String);
 
 impl Rustflags {
@@ -1362,5 +1365,39 @@ impl Rustflags {
         }
         self.0.push_str(arg);
         self
+    }
+}
+
+#[derive(Debug)]
+pub struct Cargo {
+    command: Command,
+    rustflags: Rustflags,
+}
+
+impl Cargo {
+    pub fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Cargo {
+        self.command.arg(arg.as_ref());
+        self
+    }
+
+    pub fn args<I, S>(&mut self, args: I) -> &mut Cargo
+        where I: IntoIterator<Item=S>, S: AsRef<OsStr>
+    {
+        for arg in args {
+            self.arg(arg.as_ref());
+        }
+        self
+    }
+
+    pub fn env(&mut self, key: impl AsRef<OsStr>, value: impl AsRef<OsStr>) -> &mut Cargo {
+        self.command.env(key.as_ref(), value.as_ref());
+        self
+    }
+}
+
+impl From<Cargo> for Command {
+    fn from(mut cargo: Cargo) -> Command {
+        cargo.command.env("RUSTFLAGS", &cargo.rustflags.0);
+        cargo.command
     }
 }
