@@ -1,5 +1,5 @@
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/arbitrary-self-types-not-object-safe.rs:34:13
+  --> $DIR/arbitrary-self-types-not-object-safe.rs:33:13
    |
 LL |     fn foo(self: &Rc<Self>) -> usize;
    |        --- method `foo`'s `self` parameter cannot be dispatched on
