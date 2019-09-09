@@ -67,7 +67,6 @@ use test_utils::tested_by;
 use crate::{
     db::{AstDatabase, DefDatabase},
     diagnostics::DiagnosticSink,
-    either::Either,
     ids::MacroDefId,
     nameres::diagnostics::DefDiagnostic,
     AstId, BuiltinType, Crate, HirFileId, MacroDef, Module, ModuleDef, Name, Path, PathKind, Trait,
@@ -105,8 +104,6 @@ pub struct CrateDefMap {
     /// However, do we want to put it as a global variable?
     poison_macros: FxHashSet<MacroDefId>,
 
-    exported_macros: FxHashMap<Name, MacroDefId>,
-
     diagnostics: Vec<DefDiagnostic>,
 }
 
@@ -138,12 +135,6 @@ pub(crate) struct ModuleData {
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
     items: FxHashMap<Name, Resolution>,
-    /// Macros in current module scoped
-    ///
-    /// This scope works exactly the same way that item scoping does.
-    /// Macro invocation with quantified path will search in it.
-    /// See details below.
-    macros: FxHashMap<Name, MacroDef>,
     /// Macros visable in current module in legacy textual scope
     ///
     /// For macros invoked by an unquatified identifier like `bar!()`, `legacy_macros` will be searched in first.
@@ -152,6 +143,10 @@ pub struct ModuleScope {
     /// and only normal scoped `macros` will be searched in.
     ///
     /// Note that this automatically inherit macros defined textually before the definition of module itself.
+    ///
+    /// Module scoped macros will be inserted into `items` instead of here.
+    // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
+    // be all resolved to the last one defined if shadowing happens.
     legacy_macros: FxHashMap<Name, MacroDef>,
 }
 
@@ -164,34 +159,42 @@ static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
         .collect()
 });
 
+/// Legacy macros can only be accessed through special methods like `get_legacy_macros`.
+/// Other methods will only resolve values, types and module scoped macros only.
 impl ModuleScope {
     pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a Name, &'a Resolution)> + 'a {
         //FIXME: shadowing
         self.items.iter().chain(BUILTIN_SCOPE.iter())
     }
+
+    /// Iterate over all module scoped macros
+    pub fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDef)> + 'a {
+        self.items
+            .iter()
+            .filter_map(|(name, res)| res.def.get_macros().map(|macro_| (name, macro_)))
+    }
+
+    /// Iterate over all legacy textual scoped macros visable at the end of the module
+    pub fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDef)> + 'a {
+        self.legacy_macros.iter().map(|(name, def)| (name, *def))
+    }
+
+    /// Get a name from current module scope, legacy macros are not included
     pub fn get(&self, name: &Name) -> Option<&Resolution> {
         self.items.get(name).or_else(|| BUILTIN_SCOPE.get(name))
     }
+
     pub fn traits<'a>(&'a self) -> impl Iterator<Item = Trait> + 'a {
         self.items.values().filter_map(|r| match r.def.take_types() {
             Some(ModuleDef::Trait(t)) => Some(t),
             _ => None,
         })
     }
-    /// It resolves in module scope. Textual scoped macros are ignored here.
-    fn get_item_or_macro(&self, name: &Name) -> Option<ItemOrMacro> {
-        match (self.get(name), self.macros.get(name)) {
-            (Some(item), _) if !item.def.is_none() => Some(Either::A(item.def)),
-            (_, Some(macro_)) => Some(Either::B(*macro_)),
-            _ => None,
-        }
-    }
+
     fn get_legacy_macro(&self, name: &Name) -> Option<MacroDef> {
         self.legacy_macros.get(name).copied()
     }
 }
-
-type ItemOrMacro = Either<PerNs<ModuleDef>, MacroDef>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Resolution {
@@ -201,20 +204,26 @@ pub struct Resolution {
     pub import: Option<ImportId>,
 }
 
+impl Resolution {
+    pub(crate) fn from_macro(macro_: MacroDef) -> Self {
+        Resolution { def: PerNs::macros(macro_), import: None }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct ResolvePathResult {
-    resolved_def: ItemOrMacro,
+    resolved_def: PerNs<ModuleDef>,
     segment_index: Option<usize>,
     reached_fixedpoint: ReachedFixedPoint,
 }
 
 impl ResolvePathResult {
     fn empty(reached_fixedpoint: ReachedFixedPoint) -> ResolvePathResult {
-        ResolvePathResult::with(Either::A(PerNs::none()), reached_fixedpoint, None)
+        ResolvePathResult::with(PerNs::none(), reached_fixedpoint, None)
     }
 
     fn with(
-        resolved_def: ItemOrMacro,
+        resolved_def: PerNs<ModuleDef>,
         reached_fixedpoint: ReachedFixedPoint,
         segment_index: Option<usize>,
     ) -> ResolvePathResult {
@@ -232,21 +241,6 @@ enum ResolveMode {
 enum ReachedFixedPoint {
     Yes,
     No,
-}
-
-/// helper function for select item or macro to use
-fn or(left: ItemOrMacro, right: ItemOrMacro) -> ItemOrMacro {
-    match (left, right) {
-        (Either::A(s), Either::A(o)) => Either::A(s.or(o)),
-        (Either::B(s), _) => Either::B(s),
-        (Either::A(s), Either::B(o)) => {
-            if !s.is_none() {
-                Either::A(s)
-            } else {
-                Either::B(o)
-            }
-        }
-    }
 }
 
 impl CrateDefMap {
@@ -269,7 +263,6 @@ impl CrateDefMap {
                 root,
                 modules,
                 poison_macros: FxHashSet::default(),
-                exported_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };
@@ -328,16 +321,6 @@ impl CrateDefMap {
         path: &Path,
     ) -> (PerNs<ModuleDef>, Option<usize>) {
         let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
-        (res.resolved_def.a().unwrap_or_else(PerNs::none), res.segment_index)
-    }
-
-    pub(crate) fn resolve_path_with_macro(
-        &self,
-        db: &impl DefDatabase,
-        original_module: CrateModuleId,
-        path: &Path,
-    ) -> (ItemOrMacro, Option<usize>) {
-        let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
     }
 
@@ -351,13 +334,13 @@ impl CrateDefMap {
         path: &Path,
     ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
-        let mut curr_per_ns: ItemOrMacro = match path.kind {
+        let mut curr_per_ns: PerNs<ModuleDef> = match path.kind {
             PathKind::Crate => {
-                Either::A(PerNs::types(Module { krate: self.krate, module_id: self.root }.into()))
+                PerNs::types(Module { krate: self.krate, module_id: self.root }.into())
             }
-            PathKind::Self_ => Either::A(PerNs::types(
-                Module { krate: self.krate, module_id: original_module }.into(),
-            )),
+            PathKind::Self_ => {
+                PerNs::types(Module { krate: self.krate, module_id: original_module }.into())
+            }
             // plain import or absolute path in 2015: crate-relative with
             // fallback to extern prelude (with the simplification in
             // rust-lang/rust#57745)
@@ -379,11 +362,11 @@ impl CrateDefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in module", segment);
-                self.resolve_name_in_module_with_macro(db, original_module, &segment.name)
+                self.resolve_name_in_module(db, original_module, &segment.name)
             }
             PathKind::Super => {
                 if let Some(p) = self.modules[original_module].parent {
-                    Either::A(PerNs::types(Module { krate: self.krate, module_id: p }.into()))
+                    PerNs::types(Module { krate: self.krate, module_id: p }.into())
                 } else {
                     log::debug!("super path in root module");
                     return ResolvePathResult::empty(ReachedFixedPoint::Yes);
@@ -397,7 +380,7 @@ impl CrateDefMap {
                 };
                 if let Some(def) = self.extern_prelude.get(&segment.name) {
                     log::debug!("absolute path {:?} resolved to crate {:?}", path, def);
-                    Either::A(PerNs::types(*def))
+                    PerNs::types(*def)
                 } else {
                     return ResolvePathResult::empty(ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
                 }
@@ -405,7 +388,7 @@ impl CrateDefMap {
         };
 
         for (i, segment) in segments {
-            let curr = match curr_per_ns.as_ref().a().and_then(|m| m.as_ref().take_types()) {
+            let curr = match curr_per_ns.as_ref().take_types() {
                 Some(r) => r,
                 None => {
                     // we still have path segments left, but the path so far
@@ -425,8 +408,7 @@ impl CrateDefMap {
                             Path { segments: path.segments[i..].to_vec(), kind: PathKind::Self_ };
                         log::debug!("resolving {:?} in other crate", path);
                         let defp_map = db.crate_def_map(module.krate);
-                        let (def, s) =
-                            defp_map.resolve_path_with_macro(db, module.module_id, &path);
+                        let (def, s) = defp_map.resolve_path(db, module.module_id, &path);
                         return ResolvePathResult::with(
                             def,
                             ReachedFixedPoint::Yes,
@@ -434,8 +416,9 @@ impl CrateDefMap {
                         );
                     }
 
-                    match self[module.module_id].scope.get_item_or_macro(&segment.name) {
-                        Some(res) => res,
+                    // Since it is a quantified path here, it should not contains legacy macros
+                    match self[module.module_id].scope.get(&segment.name) {
+                        Some(res) => res.def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment.name);
                             return ResolvePathResult::empty(ReachedFixedPoint::No);
@@ -446,10 +429,10 @@ impl CrateDefMap {
                     // enum variant
                     tested_by!(can_import_enum_variant);
                     match e.variant(db, &segment.name) {
-                        Some(variant) => Either::A(PerNs::both(variant.into(), variant.into())),
+                        Some(variant) => PerNs::both(variant.into(), variant.into()),
                         None => {
                             return ResolvePathResult::with(
-                                Either::A(PerNs::types((*e).into())),
+                                PerNs::types((*e).into()),
                                 ReachedFixedPoint::Yes,
                                 Some(i),
                             );
@@ -466,7 +449,7 @@ impl CrateDefMap {
                     );
 
                     return ResolvePathResult::with(
-                        Either::A(PerNs::types(*s)),
+                        PerNs::types(*s),
                         ReachedFixedPoint::Yes,
                         Some(i),
                     );
@@ -476,14 +459,12 @@ impl CrateDefMap {
         ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None)
     }
 
-    fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> ItemOrMacro {
-        let from_crate_root = self[self.root]
-            .scope
-            .get_item_or_macro(name)
-            .unwrap_or_else(|| Either::A(PerNs::none()));
+    fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
+        let from_crate_root =
+            self[self.root].scope.get(name).map_or_else(PerNs::none, |res| res.def);
         let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
-        or(from_crate_root, Either::A(from_extern_prelude))
+        from_crate_root.or(from_extern_prelude)
     }
 
     pub(crate) fn resolve_name_in_module(
@@ -492,47 +473,38 @@ impl CrateDefMap {
         module: CrateModuleId,
         name: &Name,
     ) -> PerNs<ModuleDef> {
-        self.resolve_name_in_module_with_macro(db, module, name).a().unwrap_or_else(PerNs::none)
-    }
-
-    fn resolve_name_in_module_with_macro(
-        &self,
-        db: &impl DefDatabase,
-        module: CrateModuleId,
-        name: &Name,
-    ) -> ItemOrMacro {
         // Resolve in:
-        //  - legacy scope
+        //  - legacy scope of macro
         //  - current module / scope
         //  - extern prelude
         //  - std prelude
-        let from_legacy_macro = self[module]
-            .scope
-            .get_legacy_macro(name)
-            .map_or_else(|| Either::A(PerNs::none()), Either::B);
-        let from_scope =
-            self[module].scope.get_item_or_macro(name).unwrap_or_else(|| Either::A(PerNs::none()));
+        let from_legacy_macro =
+            self[module].scope.get_legacy_macro(name).map_or_else(PerNs::none, PerNs::macros);
+        let from_scope = self[module].scope.get(name).map_or_else(PerNs::none, |res| res.def);
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
         let from_prelude = self.resolve_in_prelude(db, name);
 
-        or(from_legacy_macro, or(from_scope, or(Either::A(from_extern_prelude), from_prelude)))
+        from_legacy_macro.or(from_scope).or(from_extern_prelude).or(from_prelude)
     }
 
     fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {
         self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it))
     }
 
-    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> ItemOrMacro {
+    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs<ModuleDef> {
         if let Some(prelude) = self.prelude {
-            let resolution = if prelude.krate == self.krate {
-                self[prelude.module_id].scope.get_item_or_macro(name)
+            let keep;
+            let def_map = if prelude.krate == self.krate {
+                self
             } else {
-                db.crate_def_map(prelude.krate)[prelude.module_id].scope.get_item_or_macro(name)
+                // Extend lifetime
+                keep = db.crate_def_map(prelude.krate);
+                &keep
             };
-            resolution.unwrap_or_else(|| Either::A(PerNs::none()))
+            def_map[prelude.module_id].scope.get(name).map_or_else(PerNs::none, |res| res.def)
         } else {
-            Either::A(PerNs::none())
+            PerNs::none()
         }
     }
 }

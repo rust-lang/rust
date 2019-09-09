@@ -21,7 +21,6 @@ fn macro_rules_are_globally_visible() {
    ⋮crate
    ⋮Foo: t v
    ⋮nested: t
-   ⋮structs: m
    ⋮
    ⋮crate::nested
    ⋮Bar: t v
@@ -47,7 +46,6 @@ fn macro_rules_can_define_modules() {
     );
     assert_snapshot!(map, @r###"
    ⋮crate
-   ⋮m: m
    ⋮n1: t
    ⋮
    ⋮crate::n1
@@ -133,7 +131,6 @@ fn unexpanded_macro_should_expand_by_fixedpoint_loop() {
    ⋮crate
    ⋮Foo: t v
    ⋮bar: m
-   ⋮baz: m
    ⋮foo: m
     "###);
 }
@@ -271,7 +268,6 @@ fn prelude_cycle() {
         ⋮prelude: t
         ⋮
         ⋮crate::prelude
-        ⋮declare_mod: m
     "###);
 }
 
@@ -345,7 +341,6 @@ fn plain_macros_are_legacy_textual_scoped() {
    ⋮Ok: t v
    ⋮OkAfter: t v
    ⋮OkShadowStop: t v
-   ⋮foo: m
    ⋮m1: t
    ⋮m2: t
    ⋮m3: t
@@ -354,28 +349,132 @@ fn plain_macros_are_legacy_textual_scoped() {
    ⋮ok_double_macro_use_shadow: v
    ⋮
    ⋮crate::m7
-   ⋮baz: m
    ⋮
    ⋮crate::m1
-   ⋮bar: m
    ⋮
    ⋮crate::m5
    ⋮m6: t
    ⋮
    ⋮crate::m5::m6
-   ⋮foo: m
    ⋮
    ⋮crate::m2
    ⋮
    ⋮crate::m3
    ⋮OkAfterInside: t v
    ⋮OkMacroUse: t v
-   ⋮foo: m
    ⋮m4: t
    ⋮ok_shadow: v
    ⋮
    ⋮crate::m3::m4
-   ⋮bar: m
    ⋮ok_shadow_deep: v
+    "###);
+}
+
+#[test]
+fn type_value_macro_live_in_different_scopes() {
+    let map = def_map(
+        "
+        //- /main.rs
+        #[macro_export]
+        macro_rules! foo {
+            ($x:ident) => { type $x = (); }
+        }
+
+        foo!(foo);
+        use foo as bar;
+
+        use self::foo as baz;
+        fn baz() {}
+        ",
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮bar: t m
+        ⋮baz: t v m
+        ⋮foo: t m
+    "###);
+}
+
+#[test]
+fn macro_use_can_be_aliased() {
+    let map = def_map_with_crate_graph(
+        "
+        //- /main.rs
+        #[macro_use]
+        extern crate foo;
+
+        foo!(Direct);
+        bar!(Alias);
+
+        //- /lib.rs
+        use crate::foo as bar;
+
+        mod m {
+            #[macro_export]
+            macro_rules! foo {
+                ($x:ident) => { struct $x; }
+            }
+        }
+        ",
+        crate_graph! {
+            "main": ("/main.rs", ["foo"]),
+            "foo": ("/lib.rs", []),
+        },
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮Alias: t v
+        ⋮Direct: t v
+        ⋮foo: t
+    "###);
+}
+
+#[test]
+fn path_quantified_macros() {
+    let map = def_map(
+        "
+        //- /main.rs
+        macro_rules! foo {
+            ($x:ident) => { struct $x; }
+        }
+
+        crate::foo!(NotResolved);
+
+        crate::bar!(OkCrate);
+        bar!(OkPlain);
+        alias1!(NotHere);
+        m::alias1!(OkAliasPlain);
+        m::alias2!(OkAliasSuper);
+        m::alias3!(OkAliasCrate);
+        not_found!(NotFound);
+
+        mod m {
+            #[macro_export]
+            macro_rules! bar {
+                ($x:ident) => { struct $x; }
+            }
+
+            pub use bar as alias1;
+            pub use super::bar as alias2;
+            pub use crate::bar as alias3;
+            pub use self::bar as not_found;
+        }
+        ",
+    );
+    assert_snapshot!(map, @r###"
+        ⋮crate
+        ⋮OkAliasCrate: t v
+        ⋮OkAliasPlain: t v
+        ⋮OkAliasSuper: t v
+        ⋮OkCrate: t v
+        ⋮OkPlain: t v
+        ⋮bar: m
+        ⋮m: t
+        ⋮
+        ⋮crate::m
+        ⋮alias1: m
+        ⋮alias2: m
+        ⋮alias3: m
+        ⋮not_found: _
     "###);
 }

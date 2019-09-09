@@ -2838,6 +2838,64 @@ fn main() {
     );
 }
 
+#[test]
+fn infer_path_quantified_macros_expanded() {
+    assert_snapshot!(
+        infer(r#"
+#[macro_export]
+macro_rules! foo {
+    () => { 42i32 }
+}
+
+mod m {
+    pub use super::foo as bar;
+}
+
+fn main() {
+    let x = crate::foo!();
+    let y = m::bar!();
+}
+"#),
+        @r###"
+    ![0; 5) '42i32': i32
+    ![0; 5) '42i32': i32
+    [111; 164) '{     ...!(); }': ()
+    [121; 122) 'x': i32
+    [148; 149) 'y': i32
+    "###
+    );
+}
+
+#[test]
+fn infer_type_value_macro_having_same_name() {
+    assert_snapshot!(
+        infer(r#"
+#[macro_export]
+macro_rules! foo {
+    () => {
+        mod foo {
+            pub use super::foo;
+        }
+    };
+    ($x:tt) => {
+        $x
+    };
+}
+
+foo!();
+
+fn foo() {
+    let foo = foo::foo!(42i32);
+}
+"#),
+        @r###"
+    ![0; 5) '42i32': i32
+    [171; 206) '{     ...32); }': ()
+    [181; 184) 'foo': i32
+    "###
+    );
+}
+
 #[ignore]
 #[test]
 fn method_resolution_trait_before_autoref() {

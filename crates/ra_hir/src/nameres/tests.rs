@@ -12,8 +12,7 @@ use test_utils::covers;
 
 use crate::{
     mock::{CrateGraphFixture, MockDatabase},
-    nameres::Resolution,
-    Crate, Either,
+    Crate,
 };
 
 use super::*;
@@ -37,33 +36,36 @@ fn render_crate_def_map(map: &CrateDefMap) -> String {
         *buf += path;
         *buf += "\n";
 
-        let items = map.modules[module].scope.items.iter().map(|(name, it)| (name, Either::A(it)));
-        let macros = map.modules[module].scope.macros.iter().map(|(name, m)| (name, Either::B(m)));
-        let mut entries = items.chain(macros).collect::<Vec<_>>();
-
+        let mut entries = map.modules[module]
+            .scope
+            .items
+            .iter()
+            .map(|(name, res)| (name, res.def))
+            .collect::<Vec<_>>();
         entries.sort_by_key(|(name, _)| *name);
+
         for (name, res) in entries {
-            match res {
-                Either::A(it) => {
-                    *buf += &format!("{}: {}\n", name, dump_resolution(it));
-                }
-                Either::B(_) => {
-                    *buf += &format!("{}: m\n", name);
-                }
+            *buf += &format!("{}:", name);
+
+            if res.types.is_some() {
+                *buf += " t";
             }
+            if res.values.is_some() {
+                *buf += " v";
+            }
+            if res.macros.is_some() {
+                *buf += " m";
+            }
+            if res.is_none() {
+                *buf += " _";
+            }
+
+            *buf += "\n";
         }
+
         for (name, child) in map.modules[module].children.iter() {
             let path = path.to_string() + &format!("::{}", name);
             go(buf, map, &path, *child);
-        }
-    }
-
-    fn dump_resolution(resolution: &Resolution) -> &'static str {
-        match (resolution.def.types.is_some(), resolution.def.values.is_some()) {
-            (true, true) => "t v",
-            (true, false) => "t",
-            (false, true) => "v",
-            (false, false) => "_",
         }
     }
 }
