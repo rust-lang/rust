@@ -36,7 +36,7 @@ pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
         // }
         if p.at(T![...]) || p.at(T![..=]) || p.at(T![..]) {
             let m = lhs.precede(p);
-            p.bump();
+            p.bump_any();
             atom_pat(p, recovery_set);
             m.complete(p, RANGE_PAT);
         }
@@ -100,7 +100,7 @@ fn literal_pat(p: &mut Parser) -> CompletedMarker {
     assert!(is_literal_pat_start(p));
     let m = p.start();
     if p.at(T![-]) {
-        p.bump();
+        p.bump_any();
     }
     expressions::literal(p);
     m.complete(p, LITERAL_PAT)
@@ -140,7 +140,7 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
 // }
 fn tuple_pat_fields(p: &mut Parser) {
     assert!(p.at(T!['(']));
-    p.bump();
+    p.bump_any();
     pat_list(p, T![')']);
     p.expect(T![')']);
 }
@@ -155,10 +155,10 @@ fn tuple_pat_fields(p: &mut Parser) {
 fn record_field_pat_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
-            T![..] => p.bump(),
+            T![..] => p.bump_any(),
             IDENT if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
             T![box] => {
@@ -182,7 +182,7 @@ fn record_field_pat(p: &mut Parser) {
 
     let m = p.start();
     name(p);
-    p.bump();
+    p.bump_any();
     pattern(p);
     m.complete(p, RECORD_FIELD_PAT);
 }
@@ -192,7 +192,7 @@ fn record_field_pat(p: &mut Parser) {
 fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![_]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     m.complete(p, PLACEHOLDER_PAT)
 }
 
@@ -204,7 +204,7 @@ fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
 fn ref_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![&]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     p.eat(T![mut]);
     pattern(p);
     m.complete(p, REF_PAT)
@@ -228,7 +228,7 @@ fn tuple_pat(p: &mut Parser) -> CompletedMarker {
 fn slice_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T!['[']));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     pat_list(p, T![']']);
     p.expect(T![']']);
     m.complete(p, SLICE_PAT)
@@ -237,7 +237,7 @@ fn slice_pat(p: &mut Parser) -> CompletedMarker {
 fn pat_list(p: &mut Parser, ket: SyntaxKind) {
     while !p.at(EOF) && !p.at(ket) {
         match p.current() {
-            T![..] => p.bump(),
+            T![..] => p.bump_any(),
             _ => {
                 if !p.at_ts(PATTERN_FIRST) {
                     p.error("expected a pattern");
@@ -281,7 +281,7 @@ fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
 fn box_pat(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![box]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     pattern(p);
     m.complete(p, BOX_PAT)
 }

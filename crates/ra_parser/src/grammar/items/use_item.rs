@@ -2,7 +2,7 @@ use super::*;
 
 pub(super) fn use_item(p: &mut Parser, m: Marker) {
     assert!(p.at(T![use]));
-    p.bump();
+    p.bump_any();
     use_tree(p);
     p.expect(T![;]);
     m.complete(p, USE_ITEM);
@@ -28,15 +28,15 @@ fn use_tree(p: &mut Parser) {
         // use ::*;
         // use some::path::{*};
         // use some::path::{::*};
-        (T![*], _) => p.bump(),
+        (T![*], _) => p.bump_any(),
         (T![::], T![*]) => {
             // Parse `use ::*;`, which imports all from the crate root in Rust 2015
             // This is invalid inside a use_tree_list, (e.g. `use some::path::{::*}`)
             // but still parses and errors later: ('crate root in paths can only be used in start position')
             // FIXME: Add this error (if not out of scope)
             // In Rust 2018, it is always invalid (see above)
-            p.bump();
-            p.bump();
+            p.bump_any();
+            p.bump_any();
         }
         // Open a use tree list
         // Handles cases such as `use {some::path};` or `{inner::path}` in
@@ -49,7 +49,7 @@ fn use_tree(p: &mut Parser) {
         // use ::{{{crate::export}}}; // Nonsensical but perfectly legal nestnig
         (T!['{'], _) | (T![::], T!['{']) => {
             if p.at(T![::]) {
-                p.bump();
+                p.bump_any();
             }
             use_tree_list(p);
         }
@@ -81,10 +81,10 @@ fn use_tree(p: &mut Parser) {
                     opt_alias(p);
                 }
                 T![::] => {
-                    p.bump();
+                    p.bump_any();
                     match p.current() {
                         T![*] => {
-                            p.bump();
+                            p.bump_any();
                         }
                         // test use_tree_list_after_path
                         // use crate::{Item};
@@ -114,7 +114,7 @@ fn use_tree(p: &mut Parser) {
 pub(crate) fn use_tree_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     while !p.at(EOF) && !p.at(T!['}']) {
         use_tree(p);
         if !p.at(T!['}']) {
