@@ -170,10 +170,6 @@ fn main() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
-    if env::var_os("RUSTC_PARALLEL_COMPILER").is_some() {
-        cmd.arg("--cfg").arg("parallel_compiler");
-    }
-
     if verbose > 1 {
         eprintln!(
             "rustc command: {:?}={:?} {:?}",

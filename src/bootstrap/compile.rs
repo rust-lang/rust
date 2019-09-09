@@ -480,7 +480,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo) {
         cargo.env("CFG_DEFAULT_LINKER", s);
     }
     if builder.config.rustc_parallel {
-        cargo.env("RUSTC_PARALLEL_COMPILER", "1");
+        cargo.rustflag("--cfg=parallel_compiler");
     }
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
