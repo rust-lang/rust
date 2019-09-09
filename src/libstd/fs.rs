@@ -2002,20 +2002,17 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// use std::{fs, io};
 ///
 /// fn main() -> io::Result<()> {
-///     // The order in which `read_dir` returns entries is not guaranteed. If reproducible
-///     // ordering is required the entries should be explicitly sorted.
 ///     let mut entries = fs::read_dir(".")?
 ///         .map(|res| res.map(|e| e.path()))
 ///         .collect::<Result<Vec<_>, io::Error>>()?;
 ///
-///     // println!(
-///     //     "Entries before sorting (may or may not be sorted already): {:?}",
-///     //     entries
-///     // );
+///     // The order in which `read_dir` returns entries is not guaranteed. If reproducible
+///     // ordering is required the entries should be explicitly sorted.
 ///
 ///     entries.sort();
 ///
-///     // println!("Entries after sorting: {:?}", entries);
+///     // The entries have now been sorted by their path.
+///
 ///     Ok(())
 /// }
 /// ```
