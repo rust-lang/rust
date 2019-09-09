@@ -122,7 +122,7 @@ fn test_runner(_tests: &[&()]) {
     std::env::set_var("MIRI_ENV_VAR_TEST", "0");
 
     run_pass_miri(false);
-    // FIXME: hashmap ICEs with optimizations run_pass_miri(true);
+    run_pass_miri(true);
 
     compile_fail_miri(false);
     compile_fail_miri(true);
