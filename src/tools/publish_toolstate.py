@@ -35,7 +35,7 @@ MAINTAINERS = {
     'book': {'carols10cents', 'steveklabnik'},
     'nomicon': {'frewsxcv', 'Gankra'},
     'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
-    'rust-by-example': {'steveklabnik', 'marioidival', 'projektir'},
+    'rust-by-example': {'steveklabnik', 'marioidival'},
     'embedded-book': {
         'adamgreig', 'andre-richter', 'jamesmunns', 'korken89',
         'ryankurte', 'thejpster', 'therealprof',
