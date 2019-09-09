@@ -429,6 +429,9 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
         (TypableDef::Const(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::Static(_), Namespace::Types) => Ty::Unknown,
         (TypableDef::BuiltinType(_), Namespace::Values) => Ty::Unknown,
+
+        // Macro is not typeable
+        (_, Namespace::Macro) => Ty::Unknown,
     }
 }
 

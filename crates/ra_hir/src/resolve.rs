@@ -6,7 +6,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     code_model::Crate,
     db::HirDatabase,
-    either::Either,
     expr::{
         scope::{ExprScopes, ScopeId},
         PatId,
@@ -126,7 +125,7 @@ impl Resolver {
         let mut resolution = PerNs::none();
         for scope in self.scopes.iter().rev() {
             resolution = resolution.or(scope.resolve_name(db, name));
-            if resolution.is_both() {
+            if resolution.is_all() {
                 return resolution;
             }
         }
@@ -139,10 +138,7 @@ impl Resolver {
         path: &Path,
     ) -> Option<MacroDef> {
         let (item_map, module) = self.module()?;
-        match item_map.resolve_path_with_macro(db, module, path) {
-            (Either::B(macro_def), None) => Some(macro_def),
-            _ => None,
-        }
+        item_map.resolve_path(db, module, path).0.get_macros()
     }
 
     /// Returns the resolved path segments
@@ -190,6 +186,9 @@ impl Resolver {
                 }
                 if current.values.is_none() {
                     current.values = res.values;
+                }
+                if current.macros.is_none() {
+                    current.macros = res.macros;
                 }
             });
         }
@@ -312,6 +311,9 @@ impl Scope {
                 // );
                 m.crate_def_map[m.module_id].scope.entries().for_each(|(name, res)| {
                     f(name.clone(), res.def.map(Resolution::Def));
+                });
+                m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
+                    f(name.clone(), PerNs::macros(macro_));
                 });
                 m.crate_def_map.extern_prelude().iter().for_each(|(name, def)| {
                     f(name.clone(), PerNs::types(Resolution::Def(*def)));
