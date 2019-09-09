@@ -774,7 +774,17 @@ impl<'a> Builder<'a> {
 
         cargo
             .env("CARGO_TARGET_DIR", out_dir)
-            .arg(cmd);
+            .arg(cmd)
+            .arg("-Zconfig-profile");
+
+        let profile_var = |name: &str| {
+            let profile = if self.config.rust_optimize {
+                "RELEASE"
+            } else {
+                "DEV"
+            };
+            format!("CARGO_PROFILE_{}_{}", profile, name)
+        };
 
         // See comment in librustc_llvm/build.rs for why this is necessary, largely llvm-config
         // needs to not accidentally link to libLLVM in stage0/lib.
@@ -1190,7 +1200,7 @@ impl<'a> Builder<'a> {
         match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
             (Mode::Std, Some(n), _) |
             (_, _, Some(n)) => {
-                cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
+                cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
             }
             _ => {
                 // Don't set anything

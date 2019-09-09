@@ -165,10 +165,6 @@ fn main() {
             cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
         }
 
-        if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
-            cmd.arg("-C").arg(format!("codegen-units={}", s));
-        }
-
         if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
             cmd.arg("--remap-path-prefix").arg(&map);
         }
