@@ -995,7 +995,7 @@ impl<'a> Builder<'a> {
             Mode::ToolBootstrap | Mode::ToolStd |
             Mode::ToolRustc => self.config.rust_debuginfo_level_tools,
         };
-        cargo.env("RUSTC_DEBUGINFO_LEVEL", debuginfo_level.to_string());
+        cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
 
         if !mode.is_tool() {
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");

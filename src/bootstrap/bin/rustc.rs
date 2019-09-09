@@ -97,10 +97,6 @@ fn main() {
         cmd.env("RUST_BACKTRACE", "1");
     }
 
-    if let Ok(debuginfo_level) = env::var("RUSTC_DEBUGINFO_LEVEL") {
-        cmd.arg(format!("-Cdebuginfo={}", debuginfo_level));
-    }
-
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,
