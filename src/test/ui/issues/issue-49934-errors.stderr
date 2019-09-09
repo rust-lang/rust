@@ -1,0 +1,26 @@
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-49934-errors.rs:1:8
+   |
+LL | fn foo<#[derive(Debug)] T>() {
+   |        ^^^^^^^^^^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/issue-49934-errors.rs:1:17
+   |
+LL | fn foo<#[derive(Debug)] T>() {
+   |                 ^^^^^
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/issue-49934-errors.rs:5:9
+   |
+LL |         #[derive(Debug)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/issue-49934-errors.rs:5:18
+   |
+LL |         #[derive(Debug)]
+   |                  ^^^^^
+
+error: aborting due to 4 previous errors
+

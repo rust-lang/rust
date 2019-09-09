@@ -952,6 +952,10 @@ pub struct Resolver<'a> {
 
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
+
+    /// Stores enum visibilities to properly build a reduced graph
+    /// when visiting the correspondent variants.
+    variant_vis: DefIdMap<ty::Visibility>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1214,6 +1218,7 @@ impl<'a> Resolver<'a> {
                 features.declared_lib_features.iter().map(|(feat, ..)| *feat)
                     .chain(features.declared_lang_features.iter().map(|(feat, ..)| *feat))
                     .collect(),
+            variant_vis: Default::default()
         }
     }
 

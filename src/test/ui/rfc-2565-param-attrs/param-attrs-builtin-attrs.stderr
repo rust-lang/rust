@@ -1,3 +1,51 @@
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:7:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:23:5
+   |
+LL |     #[test] a: u32,
+   |     ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:38:5
+   |
+LL |     #[test] a: u32,
+   |     ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:58:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:79:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:98:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:117:9
+   |
+LL |         #[test] a: i32,
+   |         ^^^^^^^
+
+error: expected an inert attribute, found an attribute macro
+  --> $DIR/param-attrs-builtin-attrs.rs:134:9
+   |
+LL |         #[test] a: u32,
+   |         ^^^^^^^
+
 error: documentation comments cannot be applied to function parameters
   --> $DIR/param-attrs-builtin-attrs.rs:5:9
    |
@@ -262,78 +310,5 @@ error: allow, cfg, cfg_attr, deny, forbid, and warn are the only allowed built-i
 LL |         #[no_mangle] b: i32
    |         ^^^^^^^^^^^^
 
-error[E0658]: the attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/param-attrs-builtin-attrs.rs:7:9
-   |
-LL |         #[test] a: i32,
-   |         ^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
-
-error[E0658]: the attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/param-attrs-builtin-attrs.rs:23:5
-   |
-LL |     #[test] a: u32,
-   |     ^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
-
-error[E0658]: the attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/param-attrs-builtin-attrs.rs:38:5
-   |
-LL |     #[test] a: u32,
-   |     ^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
-
-error[E0658]: the attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/param-attrs-builtin-attrs.rs:58:9
-   |
-LL |         #[test] a: i32,
-   |         ^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
-
-error[E0658]: the attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/param-attrs-builtin-attrs.rs:79:9
-   |
-LL |         #[test] a: i32,
-   |         ^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
-
-error[E0658]: the attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/param-attrs-builtin-attrs.rs:98:9
-   |
-LL |         #[test] a: i32,
-   |         ^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
-
-error[E0658]: the attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/param-attrs-builtin-attrs.rs:117:9
-   |
-LL |         #[test] a: i32,
-   |         ^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
-
-error[E0658]: the attribute `test` is currently unknown to the compiler and may have meaning added to it in the future
-  --> $DIR/param-attrs-builtin-attrs.rs:134:9
-   |
-LL |         #[test] a: u32,
-   |         ^^^^^^^
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
-   = help: add `#![feature(custom_attribute)]` to the crate attributes to enable
-
 error: aborting due to 52 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

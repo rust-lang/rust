@@ -1575,6 +1575,7 @@ impl<'a> Parser<'a> {
                 data: struct_def,
                 disr_expr,
                 span: vlo.to(self.prev_span),
+                is_placeholder: false,
             };
             variants.push(vr);
 
@@ -1730,6 +1731,7 @@ impl<'a> Parser<'a> {
                 id: DUMMY_NODE_ID,
                 ty,
                 attrs,
+                is_placeholder: false,
             })
         }).map(|(r, _)| r)
     }
@@ -1821,6 +1823,7 @@ impl<'a> Parser<'a> {
             id: DUMMY_NODE_ID,
             ty,
             attrs,
+            is_placeholder: false,
         })
     }
 
