@@ -1,4 +1,24 @@
-use std::{cell::Cell, fmt};
+//! printf debugging infrastructure for rust-analyzer.
+//!
+//! When you print a hir type, like a module, using `eprintln!("{:?}", module)`,
+//! you usually get back a numeric ID, which doesn't tell you much:
+//! `Module(92)`.
+//!
+//! This module adds convenience `debug` methods to various types, which resolve
+//! the id to a human-readable location info:
+//!
+//! ```not_rust
+//! eprintln!("{:?}", module.debug(db));
+//! =>
+//! Module { name: collections, path: "liballoc/collections/mod.rs" }
+//! ```
+//!
+//! Note that to get this info, we might need to execute queries! So
+//!
+//! * don't use the `debug` methods for logging
+//! * when debugging, be aware that interference is possible.
+
+use std::fmt;
 
 use ra_db::{CrateId, FileId};
 
@@ -50,15 +70,14 @@ impl<DB: HirDebugHelper> HirDebugDatabase for DB {
     }
 }
 
-fn debug_fn(f: impl FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Debug {
-    struct DebugFn<F>(Cell<Option<F>>);
+fn debug_fn(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Debug {
+    struct DebugFn<F>(F);
 
-    impl<F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result> fmt::Debug for DebugFn<F> {
+    impl<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result> fmt::Debug for DebugFn<F> {
         fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let f = self.0.take().unwrap();
-            f(fmt)
+            (&self.0)(fmt)
         }
     }
 
-    DebugFn(Cell::new(Some(f)))
+    DebugFn(f)
 }
