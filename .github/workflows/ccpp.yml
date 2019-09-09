@@ -24,7 +24,7 @@ jobs:
     - name: mkdir
       run: cd enzyme && mkdir build
     - name: cmake
-      run: cd enzyme/build && cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/${{ matrix.llvm }}/build/utils/lit/lit.py
+      run: cd enzyme/build && cmake .. -DLLVM_EXTERNAL_LIT=/usr/lib/${{ matrix.llvm }}/build/utils/lit/lit
     - name: make
       run: cd enzyme/build && make
     - name: make check-enzyme
