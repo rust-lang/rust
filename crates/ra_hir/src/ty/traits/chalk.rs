@@ -478,7 +478,7 @@ pub(crate) fn trait_datum_query(
             associated_ty_ids: Vec::new(),
             where_clauses: Vec::new(),
             flags: chalk_rust_ir::TraitFlags {
-                non_enumerable: false,
+                non_enumerable: true,
                 auto: false,
                 marker: false,
                 upstream: true,
