@@ -1,13 +1,6 @@
 //! Run-time feature detection for Aarch64 on FreeBSD.
 
-use crate::detect::{Feature, cache};
-use super::super::aarch64::detect_features;
-
-/// Performs run-time feature detection.
-#[inline]
-pub fn check_for(x: Feature) -> bool {
-    cache::test(x as u32, detect_features)
-}
+pub use super::super::aarch64::detect_features;
 
 #[cfg(test)]
 mod tests {

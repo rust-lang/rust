@@ -90,4 +90,9 @@ cfg_if! {
         mod os;
     }
 }
-pub use self::os::check_for;
+
+/// Performs run-time feature detection.
+#[inline]
+pub fn check_for(x: Feature) -> bool {
+    cache::test(x as u32, self::os::detect_features)
+}

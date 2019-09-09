@@ -1,9 +1,7 @@
 //! Other operating systems
 
-use crate::detect::Feature;
+use crate::detect::cache;
 
-/// Performs run-time feature detection.
-#[inline]
-pub fn check_for(_x: Feature) -> bool {
-    false
+pub(crate) fn detect_features() -> cache::Initializer {
+    cache::Initializer::default()
 }

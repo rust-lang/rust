@@ -3,13 +3,7 @@
 use crate::detect::{Feature, cache};
 use super::{auxvec};
 
-/// Performs run-time feature detection.
-#[inline]
-pub fn check_for(x: Feature) -> bool {
-    cache::test(x as u32, detect_features)
-}
-
-fn detect_features() -> cache::Initializer {
+pub(crate) fn detect_features() -> cache::Initializer {
     let mut value = cache::Initializer::default();
     let enable_feature = |value: &mut cache::Initializer, f, enable| {
         if enable {

@@ -9,12 +9,6 @@ use crate::mem;
 
 use crate::detect::{Feature, cache, bit};
 
-/// Performs run-time feature detection.
-#[inline]
-pub fn check_for(x: Feature) -> bool {
-    cache::test(x as u32, detect_features)
-}
-
 /// Run-time feature detection on x86 works by using the CPUID instruction.
 ///
 /// The [CPUID Wikipedia page][wiki_cpuid] contains
@@ -31,7 +25,7 @@ pub fn check_for(x: Feature) -> bool {
 /// [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 #[allow(clippy::similar_names)]
-fn detect_features() -> cache::Initializer {
+pub(crate) fn detect_features() -> cache::Initializer {
     let mut value = cache::Initializer::default();
 
     // If the x86 CPU does not support the CPUID instruction then it is too
