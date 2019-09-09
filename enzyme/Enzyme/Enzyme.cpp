@@ -853,20 +853,9 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
  AM.registerPass([] { return ScalarEvolutionAnalysis(); });
  AM.registerPass([] { return AssumptionAnalysis(); });
 
- /*
- AM.registerPass([] { return AAManager(); });
- AM.registerPass([] { return TargetLibraryAnalysis(); });
- AM.registerPass([] { return MemoryDependenceAnalysis(); });
- AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
-
-#if LLVM_VERSION_MAJOR > 6
- AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
 #if LLVM_VERSION_MAJOR >= 8
- AM.registerPass([] { return LoopInfoAnalysis(); });
+ AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
-*/
-
     LoopSimplifyPass().run(*NewF, AM);
 
  }
@@ -891,8 +880,6 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
          AM.registerPass([] { return MemorySSAAnalysis(); });
          AM.registerPass([] { return DominatorTreeAnalysis(); });
          AM.registerPass([] { return MemoryDependenceAnalysis(); });
-         AM.registerPass([] { return LoopAnalysis(); });
-         AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
 #if LLVM_VERSION_MAJOR > 6
         AM.registerPass([] { return PhiValuesAnalysis(); });
 #endif
@@ -957,6 +944,9 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
 #if LLVM_VERSION_MAJOR > 6
      AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
+#if LLVM_VERSION_MAJOR >= 8
+ AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
      AM.registerPass([] { return LazyValueAnalysis(); });
      InstCombinePass().run(*NewF, AM);
@@ -1028,6 +1018,9 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
 #if LLVM_VERSION_MAJOR > 6
      AM.registerPass([] { return PhiValuesAnalysis(); });
 #endif
+#if LLVM_VERSION_MAJOR >= 8
+ AM.registerPass([] { return PassInstrumentationAnalysis(); });
+#endif
      AM.registerPass([] { return LazyValueAnalysis(); });
  
      DSEPass().run(*NewF, AM);
@@ -1047,6 +1040,9 @@ Function* preprocessForClone(Function *F, AAResults &AA) {
      AM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
 #if LLVM_VERSION_MAJOR > 6
      AM.registerPass([] { return PhiValuesAnalysis(); });
+#endif
+#if LLVM_VERSION_MAJOR >= 8
+ AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
      AM.registerPass([] { return LazyValueAnalysis(); });
     LoopAnalysisManager LAM;
