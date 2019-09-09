@@ -2,7 +2,7 @@ use crate::utils::*;
 use matches::matches;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -72,6 +72,9 @@ const COMPLEX_BLOCK_MESSAGE: &str = "in an 'if' condition, avoid complex blocks 
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if in_external_macro(cx.sess(), expr.span) {
+            return;
+        }
         if let Some((check, then, _)) = higher::if_block(&expr) {
             if let ExprKind::Block(block, _) = &check.node {
                 if block.rules == DefaultBlock {

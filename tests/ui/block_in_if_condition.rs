@@ -103,3 +103,15 @@ fn macro_in_closure() {
         unimplemented!()
     }
 }
+
+fn block_in_assert() {
+    let opt = Some(42);
+    assert!(opt
+        .as_ref()
+        .and_then(|val| {
+            let mut v = val * 2;
+            v -= 1;
+            Some(v * 3)
+        })
+        .is_some());
+}
