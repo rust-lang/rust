@@ -3,6 +3,13 @@
 #![warn(clippy::unseparated_literal_suffix)]
 #![allow(dead_code)]
 
+#[macro_use]
+extern crate clippy_mini_macro_test;
+
+// Test for proc-macro attribute
+#[derive(ClippyMiniMacroTest)]
+struct Foo;
+
 macro_rules! lit_from_macro {
     () => {
         42usize

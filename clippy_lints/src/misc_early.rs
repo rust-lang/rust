@@ -430,15 +430,13 @@ impl EarlyLintPass for MiscEarlyLints {
 
 impl MiscEarlyLints {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
-        // The `line!()` macro is compiler built-in and a special case for these lints.
+        // We test if first character in snippet is a number, because the snippet could be an expansion
+        // from a built-in macro like `line!()` or a proc-macro like `#[wasm_bindgen]`.
+        // Note that this check also covers special case that `line!()` is eagerly expanded by compiler.
+        // See <https://github.com/rust-lang/rust-clippy/issues/4507> for a regression.
+        // FIXME: Find a better way to detect those cases.
         let lit_snip = match snippet_opt(cx, lit.span) {
-            Some(snip) => {
-                // The snip could be empty in case of expand from procedure macro
-                if snip.is_empty() || snip.contains('!') {
-                    return;
-                }
-                snip
-            },
+            Some(snip) if snip.chars().next().map_or(false, |c| c.is_digit(10)) => snip,
             _ => return,
         };
 
