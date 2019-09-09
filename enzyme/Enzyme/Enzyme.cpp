@@ -133,7 +133,7 @@ std::string tostring(DIFFE_TYPE t) {
 }
 
 static inline FastMathFlags getFast() {
-#if LLVM_VERSION_MAJOR > 6
+#if LLVM_VERSION_MAJOR > 7
     return FastMathFlags::getFast();
 #else
     FastMathFlags f;
