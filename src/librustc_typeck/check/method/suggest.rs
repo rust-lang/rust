@@ -425,6 +425,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "private field"
                         };
                         err.span_label(item_name.span, format!("{}, not a method", field_kind));
+                    } else if lev_candidate.is_none() && static_sources.is_empty() {
+                        err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
+                        self.tcx.sess.trait_methods_not_found.borrow_mut().insert(orig_span);
                     }
                 } else {
                     err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));

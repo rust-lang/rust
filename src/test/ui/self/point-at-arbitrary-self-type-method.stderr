@@ -8,7 +8,7 @@ LL |     fn foo(self: Box<Self>) {}
    |        --- the method is available for `std::boxed::Box<A>` here
 ...
 LL |     A.foo();
-   |       ^^^
+   |       ^^^ method not found in `A`
 
 error: aborting due to previous error
 
