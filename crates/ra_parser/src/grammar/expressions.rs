@@ -197,7 +197,7 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
         //     struct S {};
         // }
 
-        if p.current() == T![;] {
+        if p.at(T![;]) {
             p.bump();
             continue;
         }
@@ -302,7 +302,7 @@ fn expr_bp(
             newly_dollar_open = false;
         }
 
-        let is_range = p.current() == T![..] || p.current() == T![..=];
+        let is_range = p.at(T![..]) || p.at(T![..=]);
         let (op_bp, op) = current_op(p);
         if op_bp < bp {
             break;
