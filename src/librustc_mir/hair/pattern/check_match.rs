@@ -489,17 +489,16 @@ fn check_exhaustive<'tcx>(
 
 fn joined_uncovered_patterns(witnesses: &[&Pattern<'_>]) -> String {
     const LIMIT: usize = 3;
-    match witnesses.len() {
-        0 => bug!(),
-        1 => format!("`{}`", witnesses[0]),
-        2..=LIMIT => {
-            let (tail, head) = witnesses.split_last().unwrap();
-            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
+    match witnesses {
+        [] => bug!(),
+        [witness] => format!("`{}`", witness),
+        [head @ .., tail] if head.len() < LIMIT => {
+            let head: Vec<_> = head.iter().map(<_>::to_string).collect();
             format!("`{}` and `{}`", head.join("`, `"), tail)
         }
         _ => {
             let (head, tail) = witnesses.split_at(LIMIT);
-            let head: Vec<_> = head.iter().map(|w| w.to_string()).collect();
+            let head: Vec<_> = head.iter().map(<_>::to_string).collect();
             format!("`{}` and {} more", head.join("`, `"), tail.len())
         }
     }
