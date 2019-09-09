@@ -1,15 +1,13 @@
 //! calculate cognitive complexity and warn about overly complex functions
 
-use rustc::cfg::CFG;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::ty;
 use rustc::{declare_tool_lint, impl_lint_pass};
 use syntax::ast::Attribute;
 use syntax::source_map::Span;
 
-use crate::utils::{is_allowed, match_type, paths, span_help_and_lint, LimitStack};
+use crate::utils::{match_type, paths, span_help_and_lint, LimitStack};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for methods with high cognitive complexity.
@@ -46,30 +44,11 @@ impl CognitiveComplexity {
             return;
         }
 
-        let cfg = CFG::new(cx.tcx, body);
         let expr = &body.value;
-        let n = cfg.graph.len_nodes() as u64;
-        let e = cfg.graph.len_edges() as u64;
-        if e + 2 < n {
-            // the function has unreachable code, other lints should catch this
-            return;
-        }
-        let cc = e + 2 - n;
-        let mut helper = CCHelper {
-            match_arms: 0,
-            divergence: 0,
-            short_circuits: 0,
-            returns: 0,
-            cx,
-        };
+
+        let mut helper = CCHelper { cc: 1, returns: 0 };
         helper.visit_expr(expr);
-        let CCHelper {
-            match_arms,
-            divergence,
-            short_circuits,
-            returns,
-            ..
-        } = helper;
+        let CCHelper { cc, returns } = helper;
         let ret_ty = cx.tables.node_type(expr.hir_id);
         let ret_adjust = if match_type(cx, ret_ty, &paths::RESULT) {
             returns
@@ -78,36 +57,23 @@ impl CognitiveComplexity {
             (returns / 2)
         };
 
-        if cc + divergence < match_arms + short_circuits {
-            report_cc_bug(
+        let mut rust_cc = cc;
+        // prevent degenerate cases where unreachable code contains `return` statements
+        if rust_cc >= ret_adjust {
+            rust_cc -= ret_adjust;
+        }
+        if rust_cc > self.limit.limit() {
+            span_help_and_lint(
                 cx,
-                cc,
-                match_arms,
-                divergence,
-                short_circuits,
-                ret_adjust,
+                COGNITIVE_COMPLEXITY,
                 span,
-                body.id().hir_id,
+                &format!(
+                    "the function has a cognitive complexity of ({}/{})",
+                    rust_cc,
+                    self.limit.limit()
+                ),
+                "you could split it up into multiple smaller functions",
             );
-        } else {
-            let mut rust_cc = cc + divergence - match_arms - short_circuits;
-            // prevent degenerate cases where unreachable code contains `return` statements
-            if rust_cc >= ret_adjust {
-                rust_cc -= ret_adjust;
-            }
-            if rust_cc > self.limit.limit() {
-                span_help_and_lint(
-                    cx,
-                    COGNITIVE_COMPLEXITY,
-                    span,
-                    &format!(
-                        "the function has a cognitive complexity of ({}/{})",
-                        rust_cc,
-                        self.limit.limit()
-                    ),
-                    "you could split it up into multiple smaller functions",
-                );
-            }
         }
     }
 }
@@ -136,99 +102,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CognitiveComplexity {
     }
 }
 
-struct CCHelper<'a, 'tcx> {
-    match_arms: u64,
-    divergence: u64,
+struct CCHelper {
+    cc: u64,
     returns: u64,
-    short_circuits: u64, // && and ||
-    cx: &'a LateContext<'a, 'tcx>,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for CCHelper {
     fn visit_expr(&mut self, e: &'tcx Expr) {
+        walk_expr(self, e);
         match e.node {
             ExprKind::Match(_, ref arms, _) => {
-                walk_expr(self, e);
                 let arms_n: u64 = arms.iter().map(|arm| arm.pats.len() as u64).sum();
                 if arms_n > 1 {
-                    self.match_arms += arms_n - 2;
+                    self.cc += 1;
                 }
-            },
-            ExprKind::Call(ref callee, _) => {
-                walk_expr(self, e);
-                let ty = self.cx.tables.node_type(callee.hir_id);
-                match ty.sty {
-                    ty::FnDef(..) | ty::FnPtr(_) => {
-                        let sig = ty.fn_sig(self.cx.tcx);
-                        if sig.skip_binder().output().sty == ty::Never {
-                            self.divergence += 1;
-                        }
-                    },
-                    _ => (),
-                }
-            },
-            ExprKind::Closure(.., _) => (),
-            ExprKind::Binary(op, _, _) => {
-                walk_expr(self, e);
-                match op.node {
-                    BinOpKind::And | BinOpKind::Or => self.short_circuits += 1,
-                    _ => (),
-                }
+                self.cc += arms.iter().filter(|arm| arm.guard.is_some()).count() as u64;
             },
             ExprKind::Ret(_) => self.returns += 1,
-            _ => walk_expr(self, e),
+            _ => {},
         }
     }
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::None
-    }
-}
-
-#[cfg(feature = "debugging")]
-#[allow(clippy::too_many_arguments)]
-fn report_cc_bug(
-    _: &LateContext<'_, '_>,
-    cc: u64,
-    narms: u64,
-    div: u64,
-    shorts: u64,
-    returns: u64,
-    span: Span,
-    _: HirId,
-) {
-    span_bug!(
-        span,
-        "Clippy encountered a bug calculating cognitive complexity: cc = {}, arms = {}, \
-         div = {}, shorts = {}, returns = {}. Please file a bug report.",
-        cc,
-        narms,
-        div,
-        shorts,
-        returns
-    );
-}
-#[cfg(not(feature = "debugging"))]
-#[allow(clippy::too_many_arguments)]
-fn report_cc_bug(
-    cx: &LateContext<'_, '_>,
-    cc: u64,
-    narms: u64,
-    div: u64,
-    shorts: u64,
-    returns: u64,
-    span: Span,
-    id: HirId,
-) {
-    if !is_allowed(cx, COGNITIVE_COMPLEXITY, id) {
-        cx.sess().span_note_without_error(
-            span,
-            &format!(
-                "Clippy encountered a bug calculating cognitive complexity \
-                 (hide this message with `#[allow(cognitive_complexity)]`): \
-                 cc = {}, arms = {}, div = {}, shorts = {}, returns = {}. \
-                 Please file a bug report.",
-                cc, narms, div, shorts, returns
-            ),
-        );
     }
 }
