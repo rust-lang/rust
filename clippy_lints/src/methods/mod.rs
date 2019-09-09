@@ -16,18 +16,17 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast;
 use syntax::source_map::Span;
-use syntax::symbol::{sym, LocalInternedString};
+use syntax::symbol::{sym, Symbol, LocalInternedString};
 
-use crate::utils::sugg;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
-    is_ctor_function, is_expn_of, iter_input_pats, last_path_segment, match_def_path, match_qpath, match_trait_method,
-    match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path,
-    snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg,
-    span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    is_ctor_function, is_expn_of, is_type_diagnostic_item, iter_input_pats, last_path_segment, match_def_path,
+    match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, remove_blocks,
+    return_ty, same_tys, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite,
+    span_lint, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth,
+    SpanlessEq, sugg, paths, span_help_and_lint
 };
-use crate::utils::{paths, span_help_and_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `.unwrap()` calls on `Option`s.
@@ -1765,7 +1764,7 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, source: &hir:
 
 fn lint_iter_cloned_collect<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_args: &'tcx [hir::Expr]) {
     if_chain! {
-        if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC);
+        if is_type_diagnostic_item(cx, cx.tables.expr_ty(expr), Symbol::intern("vec_type"));
         if let Some(slice) = derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0]));
         if let Some(to_replace) = expr.span.trim_start(slice.span.source_callsite());
 
@@ -1875,7 +1874,7 @@ fn lint_iter_nth<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, iter_ar
     let mut_str = if is_mut { "_mut" } else { "" };
     let caller_type = if derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
         "slice"
-    } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &paths::VEC) {
+    } else if is_type_diagnostic_item(cx, cx.tables.expr_ty(&iter_args[0]), Symbol::intern("vec_type")) {
         "Vec"
     } else if match_type(cx, cx.tables.expr_ty(&iter_args[0]), &paths::VEC_DEQUE) {
         "VecDeque"
@@ -1908,7 +1907,7 @@ fn lint_get_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, get_a
     let caller_type = if derefs_to_slice(cx, &get_args[0], expr_ty).is_some() {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "slice"
-    } else if match_type(cx, expr_ty, &paths::VEC) {
+    } else if is_type_diagnostic_item(cx, expr_ty, Symbol::intern("vec_type")) {
         needs_ref = get_args_str.parse::<usize>().is_ok();
         "Vec"
     } else if match_type(cx, expr_ty, &paths::VEC_DEQUE) {
