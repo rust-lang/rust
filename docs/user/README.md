@@ -109,7 +109,7 @@ to load path and require it in `init.el`
 * Run `:CocInstall coc-rust-analyzer` to install [coc-rust-analyzer], this extension implemented _most_ of the features supported in the VSCode extension:
   - same configurations as VSCode extension, `rust-analyzer.raLspServerPath`, `rust-analyzer.enableCargoWatchOnStartup` etc.
   - same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.startCargoWatch` etc.
-  - highlighting and inlay_hints is not implemented yet
+  - highlighting and inlay_hints are not implemented yet
 
 [coc.nvim]: https://github.com/neoclide/coc.nvim
 [coc-vim-conf]: https://github.com/neoclide/coc.nvim/#example-vim-configuration
