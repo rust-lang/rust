@@ -1,5 +1,5 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-struct-async.rs:13:52
+  --> $DIR/ref-struct-async.rs:12:52
    |
 LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |                                                    ^^^^
@@ -7,7 +7,7 @@ LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:14:9
+  --> $DIR/ref-struct-async.rs:13:9
    |
 LL |     async fn ref_Struct(self: &Struct, f: &u32) -> &u32 {
    |                               -
@@ -18,7 +18,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-struct-async.rs:17:61
+  --> $DIR/ref-struct-async.rs:16:61
    |
 LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
    |                                                             ^^^^
@@ -26,7 +26,7 @@ LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:18:9
+  --> $DIR/ref-struct-async.rs:17:9
    |
 LL |     async fn box_ref_Struct(self: Box<&Struct>, f: &u32) -> &u32 {
    |                                       -
@@ -37,7 +37,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-struct-async.rs:21:61
+  --> $DIR/ref-struct-async.rs:20:61
    |
 LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
    |                                                             ^^^^
@@ -45,7 +45,7 @@ LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:22:9
+  --> $DIR/ref-struct-async.rs:21:9
    |
 LL |     async fn pin_ref_Struct(self: Pin<&Struct>, f: &u32) -> &u32 {
    |                                       -
@@ -56,7 +56,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-struct-async.rs:25:70
+  --> $DIR/ref-struct-async.rs:24:70
    |
 LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
    |                                                                      ^^^^
@@ -64,7 +64,7 @@ LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:26:9
+  --> $DIR/ref-struct-async.rs:25:9
    |
 LL |     async fn box_box_ref_Struct(self: Box<Box<&Struct>>, f: &u32) -> &u32 {
    |                                               -
@@ -75,7 +75,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'_` but it is returning data with lifetime `'_`
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ref-struct-async.rs:29:66
+  --> $DIR/ref-struct-async.rs:28:66
    |
 LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
    |                                                                  ^^^^
@@ -83,7 +83,7 @@ LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
    = note: hidden type `impl std::future::Future` captures lifetime '_#15r
 
 error: lifetime may not live long enough
-  --> $DIR/ref-struct-async.rs:30:9
+  --> $DIR/ref-struct-async.rs:29:9
    |
 LL |     async fn box_pin_Struct(self: Box<Pin<&Struct>>, f: &u32) -> &u32 {
    |                                           -

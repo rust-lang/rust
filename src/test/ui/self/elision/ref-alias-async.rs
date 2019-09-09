@@ -1,7 +1,6 @@
 // edition:2018
 // check-pass
 
-#![feature(arbitrary_self_types)]
 #![allow(non_snake_case)]
 
 use std::pin::Pin;

@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self.rs:12:9
+  --> $DIR/ref-mut-self.rs:11:9
    |
 LL |     fn ref_self(&mut self, f: &u32) -> &u32 {
    |                               ----     ----
@@ -9,7 +9,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self.rs:18:9
+  --> $DIR/ref-mut-self.rs:17:9
    |
 LL |     fn ref_Self(self: &mut Self, f: &u32) -> &u32 {
    |                                     ----     ----
@@ -19,7 +19,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self.rs:22:9
+  --> $DIR/ref-mut-self.rs:21:9
    |
 LL |     fn box_ref_Self(self: Box<&mut Self>, f: &u32) -> &u32 {
    |                                              ----     ----
@@ -29,7 +29,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self.rs:26:9
+  --> $DIR/ref-mut-self.rs:25:9
    |
 LL |     fn pin_ref_Self(self: Pin<&mut Self>, f: &u32) -> &u32 {
    |                                              ----     ----
@@ -39,7 +39,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self.rs:30:9
+  --> $DIR/ref-mut-self.rs:29:9
    |
 LL |     fn box_box_ref_Self(self: Box<Box<&mut Self>>, f: &u32) -> &u32 {
    |                                                       ----     ----
@@ -49,7 +49,7 @@ LL |         f
    |         ^ ...but data from `f` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/ref-mut-self.rs:34:9
+  --> $DIR/ref-mut-self.rs:33:9
    |
 LL |     fn box_pin_ref_Self(self: Box<Pin<&mut Self>>, f: &u32) -> &u32 {
    |                                                       ----     ----
