@@ -1,4 +1,3 @@
-#![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![allow(clippy::similar_names)]
 #![allow(clippy::single_match_else)]
