@@ -493,10 +493,7 @@ fn joined_uncovered_patterns(witnesses: &[Pattern<'_>]) -> String {
 }
 
 fn pattern_not_convered_label(witnesses: &[Pattern<'_>], joined_patterns: &str) -> String {
-    match witnesses.len() {
-        1 => format!("pattern {} not covered", joined_patterns),
-        _ => format!("patterns {} not covered", joined_patterns),
-    }
+    format!("pattern{} {} not covered", rustc_errors::pluralise!(witnesses.len()), joined_patterns)
 }
 
 /// Point at the definition of non-covered `enum` variants.
