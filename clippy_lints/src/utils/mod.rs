@@ -48,6 +48,7 @@ use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::{kw, Symbol};
 
 use crate::reexport::*;
+use crate::consts::{constant, Constant};
 
 /// Returns `true` if the two spans come from differing expansions (i.e., one is
 /// from a macro and one isn't).
@@ -667,6 +668,22 @@ pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
         }
     }
     inner(ty, 0)
+}
+
+/// Checks whether the given expression is a constant integer of the given value.
+/// unlike `is_integer_literal`, this version does const folding 
+pub fn is_integer_const(cx: &LateContext<'_, '_>, e: &Expr, value: u128) -> bool {
+    if is_integer_literal(e, value) {
+        return true;
+    }
+    let map = cx.tcx.hir();
+    let parent_item = map.get_parent_item(e.hir_id);
+    if let Some((Constant::Int(v), _)) = map.maybe_body_owned_by(parent_item)
+            .and_then(|body_id| constant(cx, cx.tcx.body_tables(body_id), e)) {
+        value == v
+    } else {
+        false
+    }
 }
 
 /// Checks whether the given expression is a constant literal of the given value.

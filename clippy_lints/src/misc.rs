@@ -12,7 +12,7 @@ use syntax::source_map::{ExpnKind, Span};
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    get_item_name, get_parent_expr, implements_trait, in_constant, is_integer_literal, iter_input_pats,
+    get_item_name, get_parent_expr, implements_trait, in_constant, is_integer_const, iter_input_pats,
     last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then,
     span_lint_hir_and_then, walk_ptrs_ty, SpanlessEq,
 };
@@ -388,7 +388,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                         );
                         db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
                     });
-                } else if op == BinOpKind::Rem && is_integer_literal(right, 1) {
+                } else if op == BinOpKind::Rem && is_integer_const(cx, right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
                 }
             },

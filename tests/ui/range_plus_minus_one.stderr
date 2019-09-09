@@ -50,5 +50,11 @@ error: an inclusive range would be more readable
 LL |     let _ = (f() + 1)..(f() + 1);
    |             ^^^^^^^^^^^^^^^^^^^^ help: use: `((f() + 1)..=f())`
 
-error: aborting due to 8 previous errors
+error: an inclusive range would be more readable
+  --> $DIR/range_plus_minus_one.rs:37:14
+   |
+LL |     for _ in 1..ONE + ONE {}
+   |              ^^^^^^^^^^^^ help: use: `1..=ONE`
+
+error: aborting due to 9 previous errors
 
