@@ -39,6 +39,14 @@ if (!DOMTokenList.prototype.remove) {
     };
 }
 
+function getSearchInput() {
+    return document.getElementsByClassName("search-input")[0];
+}
+
+function getSearchElement() {
+    return document.getElementById("search");
+}
+
 (function() {
     "use strict";
 
@@ -71,7 +79,7 @@ if (!DOMTokenList.prototype.remove) {
                      "derive",
                      "traitalias"];
 
-    var search_input = document.getElementsByClassName("search-input")[0];
+    var search_input = getSearchInput();
 
     // On the search screen, so you remain on the last tab you opened.
     //
@@ -158,7 +166,7 @@ if (!DOMTokenList.prototype.remove) {
         // If we're in mobile mode, we should add the sidebar in any case.
         hideSidebar();
         var elem;
-        var search = document.getElementById("search");
+        var search = getSearchElement();
         var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
             from = parseInt(match[1], 10);
@@ -250,7 +258,12 @@ if (!DOMTokenList.prototype.remove) {
         return String.fromCharCode(c);
     }
 
+    function getHelpElement() {
+        return document.getElementById("help");
+    }
+
     function displayHelp(display, ev, help) {
+        var help = help ? help : getHelpElement();
         if (display === true) {
             if (hasClass(help, "hidden")) {
                 ev.preventDefault();
@@ -264,9 +277,10 @@ if (!DOMTokenList.prototype.remove) {
         }
     }
 
-    function handleEscape(ev, help) {
+    function handleEscape(ev) {
+        var help = getHelpElement();
+        var search = getSearchElement();
         hideModal();
-        var search = document.getElementById("search");
         if (hasClass(help, "hidden") === false) {
             displayHelp(false, ev, help);
         } else if (hasClass(search, "hidden") === false) {
@@ -284,22 +298,21 @@ if (!DOMTokenList.prototype.remove) {
             return;
         }
 
-        var help = document.getElementById("help");
         if (document.activeElement.tagName === "INPUT") {
             switch (getVirtualKey(ev)) {
             case "Escape":
-                handleEscape(ev, help);
+                handleEscape(ev);
                 break;
             }
         } else {
             switch (getVirtualKey(ev)) {
             case "Escape":
-                handleEscape(ev, help);
+                handleEscape(ev);
                 break;
 
             case "s":
             case "S":
-                displayHelp(false, ev, help);
+                displayHelp(false, ev);
                 hideModal();
                 ev.preventDefault();
                 focusSearchBar();
@@ -314,7 +327,7 @@ if (!DOMTokenList.prototype.remove) {
             case "?":
                 if (ev.shiftKey) {
                     hideModal();
-                    displayHelp(true, ev, help);
+                    displayHelp(true, ev);
                 }
                 break;
             }
@@ -1281,9 +1294,7 @@ if (!DOMTokenList.prototype.remove) {
                 } else if (e.which === 16) { // shift
                     // Does nothing, it's just to avoid losing "focus" on the highlighted element.
                 } else if (e.which === 27) { // escape
-                    removeClass(actives[currentTab][0], "highlighted");
-                    search_input.value = "";
-                    defocusSearchBar();
+                    handleEscape(e);
                 } else if (actives[currentTab].length > 0) {
                     removeClass(actives[currentTab][0], "highlighted");
                 }
@@ -1434,7 +1445,7 @@ if (!DOMTokenList.prototype.remove) {
                 ret_others[0] + ret_in_args[0] + ret_returned[0] + "</div>";
 
             addClass(main, "hidden");
-            var search = document.getElementById("search");
+            var search = getSearchElement();
             removeClass(search, "hidden");
             search.innerHTML = output;
             var tds = search.getElementsByTagName("td");
@@ -1644,7 +1655,7 @@ if (!DOMTokenList.prototype.remove) {
                     if (hasClass(main, "content")) {
                         removeClass(main, "hidden");
                     }
-                    var search_c = document.getElementById("search");
+                    var search_c = getSearchElement();
                     if (hasClass(search_c, "content")) {
                         addClass(search_c, "hidden");
                     }
@@ -1691,7 +1702,7 @@ if (!DOMTokenList.prototype.remove) {
                         if (hasClass(main, "content")) {
                             removeClass(main, "hidden");
                         }
-                        var search_c = document.getElementById("search");
+                        var search_c = getSearchElement();
                         if (hasClass(search_c, "content")) {
                             addClass(search_c, "hidden");
                         }
@@ -2460,7 +2471,7 @@ if (!DOMTokenList.prototype.remove) {
     var params = getQueryStringParams();
     if (params && params.search) {
         addClass(main, "hidden");
-        var search = document.getElementById("search");
+        var search = getSearchElement();
         removeClass(search, "hidden");
         search.innerHTML = "<h3 style=\"text-align: center;\">Loading search results...</h3>";
     }
@@ -2545,10 +2556,10 @@ if (!DOMTokenList.prototype.remove) {
 
 // Sets the focus on the search bar at the top of the page
 function focusSearchBar() {
-    document.getElementsByClassName("search-input")[0].focus();
+    getSearchInput().focus();
 }
 
 // Removes the focus from the search bar
 function defocusSearchBar() {
-    document.getElementsByClassName("search-input")[0].blur();
+    getSearchInput().blur();
 }
