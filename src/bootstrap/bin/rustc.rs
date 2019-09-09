@@ -115,12 +115,18 @@ fn main() {
 
         // The compiler builtins are pretty sensitive to symbols referenced in
         // libcore and such, so we never compile them with debug assertions.
+        //
+        // FIXME(rust-lang/cargo#7253) we should be doing this in `builder.rs`
+        // with env vars instead of doing it here in this script.
         if crate_name == Some("compiler_builtins") {
             cmd.arg("-C").arg("debug-assertions=no");
         } else {
             cmd.arg("-C").arg(format!("debug-assertions={}", debug_assertions));
         }
     } else {
+        // FIXME(rust-lang/cargo#5754) we shouldn't be using special env vars
+        // here, but rather Cargo should know what flags to pass rustc itself.
+
         // Override linker if necessary.
         if let Ok(host_linker) = env::var("RUSTC_HOST_LINKER") {
             cmd.arg(format!("-Clinker={}", host_linker));
