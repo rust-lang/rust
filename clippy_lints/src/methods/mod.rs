@@ -1988,7 +1988,7 @@ fn derefs_to_slice<'a, 'tcx>(
         match ty.sty {
             ty::Slice(_) => true,
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
-            ty::Adt(..) => match_type(cx, ty, &paths::VEC),
+            ty::Adt(..) => is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")),
             ty::Array(_, size) => size.eval_usize(cx.tcx, cx.param_env) < 32,
             ty::Ref(_, inner, _) => may_slice(cx, inner),
             _ => false,

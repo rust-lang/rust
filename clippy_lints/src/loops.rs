@@ -2399,7 +2399,7 @@ fn check_needless_collect<'a, 'tcx>(expr: &'tcx Expr, cx: &LateContext<'a, 'tcx>
         if let Some(GenericArg::Type(ref ty)) = generic_args.args.get(0);
         then {
             let ty = cx.tables.node_type(ty.hir_id);
-            if match_type(cx, ty, &paths::VEC) ||
+            if is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) ||
                 match_type(cx, ty, &paths::VEC_DEQUE) ||
                 match_type(cx, ty, &paths::BTREEMAP) ||
                 match_type(cx, ty, &paths::HASHMAP) {
