@@ -123,6 +123,10 @@ pub struct Obligation<'tcx, T> {
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
+// `PredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(PredicateObligation<'_>, 136);
+
 /// The reason why we incurred this obligation; used for error reporting.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ObligationCause<'tcx> {
@@ -268,6 +272,10 @@ pub enum ObligationCauseCode<'tcx> {
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
 }
+
+// `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(ObligationCauseCode<'_>, 56);
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DerivedObligationCause<'tcx> {
