@@ -13,9 +13,8 @@ pub(super) fn use_item(p: &mut Parser, m: Marker) {
 /// so handles both `some::path::{inner::path}` and `inner::path` in
 /// `use some::path::{inner::path};`
 fn use_tree(p: &mut Parser) {
-    let la = p.nth(1);
     let m = p.start();
-    match (p.current(), la) {
+    match p.current() {
         // Finish the use_tree for cases of e.g.
         // `use some::path::{self, *};` or `use *;`
         // This does not handle cases such as `use some::path::*`
@@ -28,15 +27,15 @@ fn use_tree(p: &mut Parser) {
         // use ::*;
         // use some::path::{*};
         // use some::path::{::*};
-        (T![*], _) => p.bump_any(),
-        (T![::], T![*]) => {
+        T![*] => p.bump(T![*]),
+        T![:] if p.at(T![::]) && p.nth(2) == T![*] => {
             // Parse `use ::*;`, which imports all from the crate root in Rust 2015
             // This is invalid inside a use_tree_list, (e.g. `use some::path::{::*}`)
             // but still parses and errors later: ('crate root in paths can only be used in start position')
             // FIXME: Add this error (if not out of scope)
             // In Rust 2018, it is always invalid (see above)
-            p.bump_any();
-            p.bump_any();
+            p.bump(T![::]);
+            p.bump(T![*]);
         }
         // Open a use tree list
         // Handles cases such as `use {some::path};` or `{inner::path}` in
@@ -47,10 +46,11 @@ fn use_tree(p: &mut Parser) {
         // use {path::from::root}; // Rust 2015
         // use ::{some::arbritrary::path}; // Rust 2015
         // use ::{{{crate::export}}}; // Nonsensical but perfectly legal nestnig
-        (T!['{'], _) | (T![::], T!['{']) => {
-            if p.at(T![::]) {
-                p.bump_any();
-            }
+        T!['{'] => {
+            use_tree_list(p);
+        }
+        T![:] if p.at(T![::]) && p.nth(2) == T!['{'] => {
+            p.bump(T![::]);
             use_tree_list(p);
         }
         // Parse a 'standard' path.
@@ -80,8 +80,8 @@ fn use_tree(p: &mut Parser) {
                     // use Trait as _;
                     opt_alias(p);
                 }
-                T![::] => {
-                    p.bump_any();
+                T![:] if p.at(T![::]) => {
+                    p.bump(T![::]);
                     match p.current() {
                         T![*] => {
                             p.bump_any();

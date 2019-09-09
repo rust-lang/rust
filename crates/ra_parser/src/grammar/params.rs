@@ -80,7 +80,7 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
     match flavor {
         Flavor::OptionalType | Flavor::Normal => {
             patterns::pattern(p);
-            if p.at(T![:]) || flavor.type_required() {
+            if p.at(T![:]) && !p.at(T![::]) || flavor.type_required() {
                 types::ascription(p)
             }
         }
@@ -96,10 +96,11 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
             // trait Foo {
             //     fn bar(_: u64, mut x: i32);
             // }
-            if (la0 == IDENT || la0 == T![_]) && la1 == T![:]
+            if (la0 == IDENT || la0 == T![_]) && la1 == T![:] && !p.nth_at(1, T![::])
                 || la0 == T![mut] && la1 == IDENT && la2 == T![:]
-                || la0 == T![&] && la1 == IDENT && la2 == T![:]
-                || la0 == T![&] && la1 == T![mut] && la2 == IDENT && la3 == T![:]
+                || la0 == T![&]
+                    && (la1 == IDENT && la2 == T![:] && !p.nth_at(2, T![::])
+                        || la1 == T![mut] && la2 == IDENT && la3 == T![:] && !p.nth_at(3, T![::]))
             {
                 patterns::pattern(p);
                 types::ascription(p);

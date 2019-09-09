@@ -210,7 +210,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
         //
         // test crate_keyword_path
         // fn foo() { crate::foo(); }
-        T![crate] if p.nth(1) != T![::] => {
+        T![crate] if !p.nth_at(1, T![::]) => {
             let m = p.start();
             p.bump_any();
             m.complete(p, VISIBILITY);
@@ -245,7 +245,7 @@ fn abi(p: &mut Parser) {
 fn opt_fn_ret_type(p: &mut Parser) -> bool {
     if p.at(T![->]) {
         let m = p.start();
-        p.bump_any();
+        p.bump(T![->]);
         types::type_(p);
         m.complete(p, RET_TYPE);
         true
