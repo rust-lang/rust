@@ -5,11 +5,6 @@ use super::_match::WitnessPreference::*;
 use super::{Pattern, PatternContext, PatternError, PatternKind};
 
 use rustc::middle::borrowck::SignalledError;
-use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
-use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
-use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::mem_categorization::cmt_;
-use rustc::middle::region;
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -36,9 +31,7 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) -> SignalledError {
 
     let mut visitor = MatchVisitor {
         tcx,
-        body_owner: def_id,
         tables: tcx.body_tables(body_id),
-        region_scope_tree: &tcx.region_scope_tree(def_id),
         param_env: tcx.param_env(def_id),
         identity_substs: InternalSubsts::identity_for_item(tcx, def_id),
         signalled_error: SignalledError::NoErrorsSeen,
@@ -53,11 +46,9 @@ fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBu
 
 struct MatchVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    body_owner: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     identity_substs: SubstsRef<'tcx>,
-    region_scope_tree: &'a region::ScopeTree,
     signalled_error: SignalledError,
 }
 
@@ -151,11 +142,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Second, if there is a guard on each arm, make sure it isn't
             // assigning or borrowing anything mutably.
-            if let Some(ref guard) = arm.guard {
+            if arm.guard.is_some() {
                 self.signalled_error = SignalledError::SawSomeError;
-                if !self.tcx.features().bind_by_move_pattern_guards {
-                    check_for_mutation_in_guard(self, &guard);
-                }
             }
 
             // Third, perform some lints.
@@ -582,19 +570,10 @@ fn check_legality_of_move_bindings(
                              "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
-        } else if has_guard {
-            if !cx.tcx.features().bind_by_move_pattern_guards {
-                let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
-                                            "cannot bind by-move into a pattern guard");
-                err.span_label(p.span, "moves value into pattern guard");
-                if cx.tcx.sess.opts.unstable_features.is_nightly_build() {
-                    err.help("add `#![feature(bind_by_move_pattern_guards)]` to the \
-                            crate attributes to enable");
-                }
-                err.emit();
+        } else if !has_guard {
+            if let Some(_by_ref_span) = by_ref_span {
+                span_vec.push(p.span);
             }
-        } else if let Some(_by_ref_span) = by_ref_span {
-            span_vec.push(p.span);
         }
     };
 
@@ -633,67 +612,6 @@ fn check_legality_of_move_bindings(
             err.span_label(*span, "by-move pattern here");
         }
         err.emit();
-    }
-}
-
-/// Ensures that a pattern guard doesn't borrow by mutable reference or assign.
-//
-// FIXME: this should be done by borrowck.
-fn check_for_mutation_in_guard(cx: &MatchVisitor<'_, '_>, guard: &hir::Guard) {
-    let mut checker = MutationChecker {
-        cx,
-    };
-    match guard {
-        hir::Guard::If(expr) =>
-            ExprUseVisitor::new(&mut checker,
-                                cx.tcx,
-                                cx.body_owner,
-                                cx.param_env,
-                                cx.region_scope_tree,
-                                cx.tables,
-                                None).walk_expr(expr),
-    };
-}
-
-struct MutationChecker<'a, 'tcx> {
-    cx: &'a MatchVisitor<'a, 'tcx>,
-}
-
-impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
-    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: euv::MatchMode) {}
-    fn consume(&mut self, _: hir::HirId, _: Span, _: &cmt_<'_>, _: ConsumeMode) {}
-    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'_>, _: ConsumeMode) {}
-    fn borrow(&mut self,
-              _: hir::HirId,
-              span: Span,
-              _: &cmt_<'_>,
-              _: ty::Region<'tcx>,
-              kind:ty:: BorrowKind,
-              _: LoanCause) {
-        match kind {
-            ty::MutBorrow => {
-                let mut err = struct_span_err!(self.cx.tcx.sess, span, E0301,
-                          "cannot mutably borrow in a pattern guard");
-                err.span_label(span, "borrowed mutably in pattern guard");
-                if self.cx.tcx.sess.opts.unstable_features.is_nightly_build() {
-                    err.help("add `#![feature(bind_by_move_pattern_guards)]` to the \
-                              crate attributes to enable");
-                }
-                err.emit();
-            }
-            ty::ImmBorrow | ty::UniqueImmBorrow => {}
-        }
-    }
-    fn decl_without_init(&mut self, _: hir::HirId, _: Span) {}
-    fn mutate(&mut self, _: hir::HirId, span: Span, _: &cmt_<'_>, mode: MutateMode) {
-        match mode {
-            MutateMode::JustWrite | MutateMode::WriteAndRead => {
-                struct_span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")
-                    .span_label(span, "assignment in pattern guard")
-                    .emit();
-            }
-            MutateMode::Init => {}
-        }
     }
 }
 

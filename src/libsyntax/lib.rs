@@ -7,7 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
-#![feature(bind_by_move_pattern_guards)]
+#![cfg_attr(bootstrap, feature(bind_by_move_pattern_guards))]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_transmute)]

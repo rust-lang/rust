@@ -157,81 +157,6 @@ match x {
 See also the error E0303.
 "##,
 
-E0008: r##"
-Names bound in match arms retain their type in pattern guards. As such, if a
-name is bound by move in a pattern, it should also be moved to wherever it is
-referenced in the pattern guard code. Doing so however would prevent the name
-from being available in the body of the match arm. Consider the following:
-
-```compile_fail,E0008
-match Some("hi".to_string()) {
-    Some(s) if s.len() == 0 => {}, // use s.
-    _ => {},
-}
-```
-
-The variable `s` has type `String`, and its use in the guard is as a variable of
-type `String`. The guard code effectively executes in a separate scope to the
-body of the arm, so the value would be moved into this anonymous scope and
-therefore becomes unavailable in the body of the arm.
-
-The problem above can be solved by using the `ref` keyword.
-
-```
-match Some("hi".to_string()) {
-    Some(ref s) if s.len() == 0 => {},
-    _ => {},
-}
-```
-
-Though this example seems innocuous and easy to solve, the problem becomes clear
-when it encounters functions which consume the value:
-
-```compile_fail,E0008
-struct A{}
-
-impl A {
-    fn consume(self) -> usize {
-        0
-    }
-}
-
-fn main() {
-    let a = Some(A{});
-    match a {
-        Some(y) if y.consume() > 0 => {}
-        _ => {}
-    }
-}
-```
-
-In this situation, even the `ref` keyword cannot solve it, since borrowed
-content cannot be moved. This problem cannot be solved generally. If the value
-can be cloned, here is a not-so-specific solution:
-
-```
-#[derive(Clone)]
-struct A{}
-
-impl A {
-    fn consume(self) -> usize {
-        0
-    }
-}
-
-fn main() {
-    let a = Some(A{});
-    match a{
-        Some(ref y) if y.clone().consume() > 0 => {}
-        _ => {}
-    }
-}
-```
-
-If the value will be consumed in the pattern guard, using its clone will not
-move its ownership, so the code works.
-"##,
-
 E0009: r##"
 In a pattern, all values that don't implement the `Copy` trait have to be bound
 the same way. The goal here is to avoid binding simultaneously by-move and
@@ -475,13 +400,15 @@ for item in xs {
 "##,
 
 E0301: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Mutable borrows are not allowed in pattern guards, because matching cannot have
 side effects. Side effects could alter the matched object or the environment
 on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if mutable
 borrows were allowed:
 
-```compile_fail,E0301
+```compile_fail,E0596
 match Some(()) {
     None => { },
     option if option.take().is_none() => {
@@ -493,13 +420,15 @@ match Some(()) {
 "##,
 
 E0302: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
 Assignments are not allowed in pattern guards, because matching cannot have
 side effects. Side effects could alter the matched object or the environment
 on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if assignments
 were allowed:
 
-```compile_fail,E0302
+```compile_fail,E0594
 match Some(()) {
     None => { },
     option if { option = None; false } => { },
@@ -1989,7 +1918,6 @@ When matching on a variable it cannot be mutated in the match guards, as this
 could cause the match to be non-exhaustive:
 
 ```compile_fail,E0510
-#![feature(bind_by_move_pattern_guards)]
 let mut x = Some(0);
 match x {
     None => (),
@@ -2451,6 +2379,7 @@ There are some known bugs that trigger this message.
 
 ;
 
+//  E0008, // cannot bind by-move into a pattern guard
 //  E0298, // cannot compare constants
 //  E0299, // mismatched types between arms
 //  E0471, // constant evaluation error (in pattern)

@@ -4,8 +4,6 @@
 
 // run-pass
 
-#![feature(bind_by_move_pattern_guards)]
-
 use std::sync::mpsc::channel;
 
 fn main() {

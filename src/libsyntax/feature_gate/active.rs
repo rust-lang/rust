@@ -461,9 +461,6 @@ declare_features! (
     /// Allows non-builtin attributes in inner attribute position.
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
 
-    /// Allows mixing bind-by-move in patterns and references to those identifiers in guards.
-    (active, bind_by_move_pattern_guards, "1.30.0", Some(15287), None),
-
     /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (active, impl_trait_in_bindings, "1.30.0", Some(63065), None),
 
