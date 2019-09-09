@@ -44,7 +44,7 @@ pub(super) fn ascription(p: &mut Parser) {
 fn paren_or_tuple_type(p: &mut Parser) {
     assert!(p.at(T!['(']));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     let mut n_types: u32 = 0;
     let mut trailing_comma: bool = false;
     while !p.at(EOF) && !p.at(T![')']) {
@@ -79,20 +79,20 @@ fn paren_or_tuple_type(p: &mut Parser) {
 fn never_type(p: &mut Parser) {
     assert!(p.at(T![!]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     m.complete(p, NEVER_TYPE);
 }
 
 fn pointer_type(p: &mut Parser) {
     assert!(p.at(T![*]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
 
     match p.current() {
         // test pointer_type_mut
         // type M = *mut ();
         // type C = *mut ();
-        T![mut] | T![const] => p.bump(),
+        T![mut] | T![const] => p.bump_any(),
         _ => {
             // test_err pointer_type_no_mutability
             // type T = *();
@@ -110,21 +110,21 @@ fn pointer_type(p: &mut Parser) {
 fn array_or_slice_type(p: &mut Parser) {
     assert!(p.at(T!['[']));
     let m = p.start();
-    p.bump();
+    p.bump_any();
 
     type_(p);
     let kind = match p.current() {
         // test slice_type
         // type T = [()];
         T![']'] => {
-            p.bump();
+            p.bump_any();
             SLICE_TYPE
         }
 
         // test array_type
         // type T = [(); 92];
         T![;] => {
-            p.bump();
+            p.bump_any();
             expressions::expr(p);
             p.expect(T![']']);
             ARRAY_TYPE
@@ -146,7 +146,7 @@ fn array_or_slice_type(p: &mut Parser) {
 fn reference_type(p: &mut Parser) {
     assert!(p.at(T![&]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     p.eat(LIFETIME);
     p.eat(T![mut]);
     type_no_bounds(p);
@@ -158,7 +158,7 @@ fn reference_type(p: &mut Parser) {
 fn placeholder_type(p: &mut Parser) {
     assert!(p.at(T![_]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     m.complete(p, PLACEHOLDER_TYPE);
 }
 
@@ -193,7 +193,7 @@ fn fn_pointer_type(p: &mut Parser) {
 
 pub(super) fn for_binder(p: &mut Parser) {
     assert!(p.at(T![for]));
-    p.bump();
+    p.bump_any();
     if p.at(T![<]) {
         type_params::opt_type_param_list(p);
     } else {
@@ -224,7 +224,7 @@ pub(super) fn for_type(p: &mut Parser) {
 fn impl_trait_type(p: &mut Parser) {
     assert!(p.at(T![impl]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     type_params::bounds_without_colon(p);
     m.complete(p, IMPL_TRAIT_TYPE);
 }
@@ -234,7 +234,7 @@ fn impl_trait_type(p: &mut Parser) {
 fn dyn_trait_type(p: &mut Parser) {
     assert!(p.at(T![dyn ]));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     type_params::bounds_without_colon(p);
     m.complete(p, DYN_TRAIT_TYPE);
 }

@@ -46,7 +46,7 @@ pub(crate) fn block(p: &mut Parser) {
 pub(crate) fn naked_block(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     expr_block_contents(p);
     p.expect(T!['}']);
     m.complete(p, BLOCK);
@@ -153,7 +153,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
     // }
     fn let_stmt(p: &mut Parser, m: Marker, with_semi: StmtWithSemi) {
         assert!(p.at(T![let]));
-        p.bump();
+        p.bump_any();
         patterns::pattern(p);
         if p.at(T![:]) {
             types::ascription(p);
@@ -198,7 +198,7 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
         // }
 
         if p.at(T![;]) {
-            p.bump();
+            p.bump_any();
             continue;
         }
 
@@ -309,7 +309,7 @@ fn expr_bp(
         }
         let m = lhs.precede(p);
         match op {
-            Op::Simple => p.bump(),
+            Op::Simple => p.bump_any(),
             Op::Composite(kind, n) => {
                 p.bump_compound(kind, n);
             }
@@ -338,7 +338,7 @@ fn lhs(
         // }
         T![&] => {
             m = p.start();
-            p.bump();
+            p.bump_any();
             p.eat(T![mut]);
             REF_EXPR
         }
@@ -350,14 +350,14 @@ fn lhs(
         // }
         T![*] | T![!] | T![-] => {
             m = p.start();
-            p.bump();
+            p.bump_any();
             PREFIX_EXPR
         }
         // test full_range_expr
         // fn foo() { xs[..]; }
         T![..] | T![..=] => {
             m = p.start();
-            p.bump();
+            p.bump_any();
             if p.at_ts(EXPR_FIRST) {
                 expr_bp(p, r, 2, dollar_lvl);
             }
@@ -410,8 +410,8 @@ fn postfix_expr(
                 //     x.0().await?.hello();
                 // }
                 let m = lhs.precede(p);
-                p.bump();
-                p.bump();
+                p.bump_any();
+                p.bump_any();
                 m.complete(p, AWAIT_EXPR)
             }
             T![.] => field_expr(p, lhs),
@@ -419,7 +419,7 @@ fn postfix_expr(
             // fn foo() { let x = 1..; }
             T![..] | T![..=] if !EXPR_FIRST.contains(p.nth(1)) => {
                 let m = lhs.precede(p);
-                p.bump();
+                p.bump_any();
                 m.complete(p, RANGE_EXPR)
             }
             T![?] => try_expr(p, lhs),
@@ -453,7 +453,7 @@ fn call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 fn index_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T!['[']));
     let m = lhs.precede(p);
-    p.bump();
+    p.bump_any();
     expr(p);
     p.expect(T![']']);
     m.complete(p, INDEX_EXPR)
@@ -467,7 +467,7 @@ fn index_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth(2) == T![::]));
     let m = lhs.precede(p);
-    p.bump();
+    p.bump_any();
     name_ref(p);
     type_args::opt_type_arg_list(p, true);
     if p.at(T!['(']) {
@@ -493,12 +493,12 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![.]));
     let m = lhs.precede(p);
-    p.bump();
+    p.bump_any();
     if p.at(IDENT) || p.at(INT_NUMBER) {
         name_ref_or_index(p)
     } else if p.at(FLOAT_NUMBER) {
         // FIXME: How to recover and instead parse INT + T![.]?
-        p.bump();
+        p.bump_any();
     } else {
         p.error("expected field name or number")
     }
@@ -512,7 +512,7 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 fn try_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![?]));
     let m = lhs.precede(p);
-    p.bump();
+    p.bump_any();
     m.complete(p, TRY_EXPR)
 }
 
@@ -526,7 +526,7 @@ fn try_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 fn cast_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(T![as]));
     let m = lhs.precede(p);
-    p.bump();
+    p.bump_any();
     // Use type_no_bounds(), because cast expressions are not
     // allowed to have bounds.
     types::type_no_bounds(p);
@@ -536,7 +536,7 @@ fn cast_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 fn arg_list(p: &mut Parser) {
     assert!(p.at(T!['(']));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     while !p.at(T![')']) && !p.at(EOF) {
         if !p.at_ts(EXPR_FIRST) {
             p.error("expected expression");
@@ -585,7 +585,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
 pub(crate) fn record_field_list(p: &mut Parser) {
     assert!(p.at(T!['{']));
     let m = p.start();
-    p.bump();
+    p.bump_any();
     while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
             // test record_literal_field_with_attr
@@ -602,7 +602,7 @@ pub(crate) fn record_field_list(p: &mut Parser) {
                 m.complete(p, RECORD_FIELD);
             }
             T![..] => {
-                p.bump();
+                p.bump_any();
                 expr(p);
             }
             T!['{'] => error_block(p, "expected a field"),

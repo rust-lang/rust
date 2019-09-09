@@ -44,7 +44,7 @@ fn path(p: &mut Parser, mode: Mode) {
         };
         if p.at(T![::]) && !use_tree {
             let path = qual.precede(p);
-            p.bump();
+            p.bump_any();
             path_segment(p, mode, false);
             let path = path.complete(p, PATH);
             qual = path;
@@ -80,7 +80,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
             }
             // test crate_path
             // use crate::foo;
-            T![self] | T![super] | T![crate] => p.bump(),
+            T![self] | T![super] | T![crate] => p.bump_any(),
             _ => {
                 p.err_recover("expected identifier", items::ITEM_RECOVERY_SET);
             }

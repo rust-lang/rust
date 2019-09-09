@@ -93,12 +93,12 @@ pub(crate) mod fragments {
                 // https://doc.rust-lang.org/reference/paths.html#simple-paths
                 // The start of an meta must be a simple path
                 match p.current() {
-                    IDENT | T![::] | T![super] | T![self] | T![crate] => p.bump(),
+                    IDENT | T![::] | T![super] | T![self] | T![crate] => p.bump_any(),
                     T![=] => {
-                        p.bump();
+                        p.bump_any();
                         match p.current() {
-                            c if c.is_literal() => p.bump(),
-                            T![true] | T![false] => p.bump(),
+                            c if c.is_literal() => p.bump_any(),
+                            T![true] | T![false] => p.bump_any(),
                             _ => {}
                         }
                         break;
@@ -126,7 +126,7 @@ pub(crate) mod fragments {
 
         while !p.at(EOF) {
             if p.at(T![;]) {
-                p.bump();
+                p.bump(T![;]);
                 continue;
             }
 
@@ -179,7 +179,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
     match p.current() {
         T![pub] => {
             let m = p.start();
-            p.bump();
+            p.bump(T![pub]);
             if p.at(T!['(']) {
                 match p.nth(1) {
                     // test crate_visibility
@@ -188,13 +188,13 @@ fn opt_visibility(p: &mut Parser) -> bool {
                     // pub(self) struct S;
                     // pub(self) struct S;
                     T![crate] | T![self] | T![super] => {
-                        p.bump();
-                        p.bump();
+                        p.bump_any();
+                        p.bump_any();
                         p.expect(T![')']);
                     }
                     T![in] => {
-                        p.bump();
-                        p.bump();
+                        p.bump_any();
+                        p.bump_any();
                         paths::use_path(p);
                         p.expect(T![')']);
                     }
@@ -212,7 +212,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
         // fn foo() { crate::foo(); }
         T![crate] if p.nth(1) != T![::] => {
             let m = p.start();
-            p.bump();
+            p.bump_any();
             m.complete(p, VISIBILITY);
         }
         _ => return false,
@@ -223,7 +223,7 @@ fn opt_visibility(p: &mut Parser) -> bool {
 fn opt_alias(p: &mut Parser) {
     if p.at(T![as]) {
         let m = p.start();
-        p.bump();
+        p.bump_any();
         if !p.eat(T![_]) {
             name(p);
         }
@@ -234,9 +234,9 @@ fn opt_alias(p: &mut Parser) {
 fn abi(p: &mut Parser) {
     assert!(p.at(T![extern]));
     let abi = p.start();
-    p.bump();
+    p.bump_any();
     match p.current() {
-        STRING | RAW_STRING => p.bump(),
+        STRING | RAW_STRING => p.bump_any(),
         _ => (),
     }
     abi.complete(p, ABI);
@@ -245,7 +245,7 @@ fn abi(p: &mut Parser) {
 fn opt_fn_ret_type(p: &mut Parser) -> bool {
     if p.at(T![->]) {
         let m = p.start();
-        p.bump();
+        p.bump_any();
         types::type_(p);
         m.complete(p, RET_TYPE);
         true
@@ -257,7 +257,7 @@ fn opt_fn_ret_type(p: &mut Parser) -> bool {
 fn name_r(p: &mut Parser, recovery: TokenSet) {
     if p.at(IDENT) {
         let m = p.start();
-        p.bump();
+        p.bump_any();
         m.complete(p, NAME);
     } else {
         p.err_recover("expected a name", recovery);
@@ -271,11 +271,11 @@ fn name(p: &mut Parser) {
 fn name_ref(p: &mut Parser) {
     if p.at(IDENT) {
         let m = p.start();
-        p.bump();
+        p.bump_any();
         m.complete(p, NAME_REF);
     } else if p.at(T![self]) {
         let m = p.start();
-        p.bump();
+        p.bump_any();
         m.complete(p, T![self]);
     } else {
         p.err_and_bump("expected identifier");
@@ -285,7 +285,7 @@ fn name_ref(p: &mut Parser) {
 fn name_ref_or_index(p: &mut Parser) {
     if p.at(IDENT) || p.at(INT_NUMBER) {
         let m = p.start();
-        p.bump();
+        p.bump_any();
         m.complete(p, NAME_REF);
     } else {
         p.err_and_bump("expected identifier");
@@ -296,7 +296,7 @@ fn error_block(p: &mut Parser, message: &str) {
     assert!(p.at(T!['{']));
     let m = p.start();
     p.error(message);
-    p.bump();
+    p.bump_any();
     expressions::expr_block_contents(p);
     p.eat(T!['}']);
     m.complete(p, ERROR);

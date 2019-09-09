@@ -5,13 +5,13 @@ pub(super) fn opt_type_arg_list(p: &mut Parser, colon_colon_required: bool) {
     match (colon_colon_required, p.nth(0), p.nth(1)) {
         (_, T![::], T![<]) => {
             m = p.start();
-            p.bump();
-            p.bump();
+            p.bump_any();
+            p.bump_any();
         }
         (false, T![<], T![=]) => return,
         (false, T![<], _) => {
             m = p.start();
-            p.bump();
+            p.bump_any();
         }
         _ => return,
     };
@@ -32,7 +32,7 @@ fn type_arg(p: &mut Parser) {
     let m = p.start();
     match p.current() {
         LIFETIME => {
-            p.bump();
+            p.bump_any();
             m.complete(p, LIFETIME_ARG);
         }
         // test associated_type_bounds
@@ -44,7 +44,7 @@ fn type_arg(p: &mut Parser) {
         }
         IDENT if p.nth(1) == T![=] => {
             name_ref(p);
-            p.bump();
+            p.bump_any();
             types::type_(p);
             m.complete(p, ASSOC_TYPE_ARG);
         }

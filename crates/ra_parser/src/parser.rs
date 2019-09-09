@@ -148,7 +148,7 @@ impl<'t> Parser<'t> {
     }
 
     /// Advances the parser by one token with composite puncts handled
-    pub(crate) fn bump(&mut self) {
+    pub(crate) fn bump_any(&mut self) {
         let kind = self.nth(0);
         if kind == EOF {
             return;
@@ -168,6 +168,12 @@ impl<'t> Parser<'t> {
                 self.do_bump(kind, 1);
             }
         }
+    }
+
+    /// Advances the parser by one token, asserting that it is exactly the expected token
+    pub(crate) fn bump(&mut self, expected: SyntaxKind) {
+        debug_assert!(self.nth(0) == expected);
+        self.bump_any()
     }
 
     /// Advances the parser by one token, remapping its kind.
@@ -205,7 +211,7 @@ impl<'t> Parser<'t> {
         if !self.at(kind) {
             return false;
         }
-        self.bump();
+        self.bump_any();
         true
     }
 
@@ -231,7 +237,7 @@ impl<'t> Parser<'t> {
         } else {
             let m = self.start();
             self.error(message);
-            self.bump();
+            self.bump_any();
             m.complete(self, ERROR);
         };
     }
