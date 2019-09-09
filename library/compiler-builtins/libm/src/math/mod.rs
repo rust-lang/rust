@@ -6,7 +6,7 @@ macro_rules! force_eval {
     };
 }
 
-#[cfg(not(feature = "checked"))]
+#[cfg(not(debug_assertions))]
 macro_rules! i {
     ($array:expr, $index:expr) => {
         unsafe { *$array.get_unchecked($index) }
@@ -36,7 +36,7 @@ macro_rules! i {
     };
 }
 
-#[cfg(feature = "checked")]
+#[cfg(debug_assertions)]
 macro_rules! i {
     ($array:expr, $index:expr) => {
         *$array.get($index).unwrap()
@@ -60,7 +60,7 @@ macro_rules! i {
 
 macro_rules! llvm_intrinsically_optimized {
     (#[cfg($($clause:tt)*)] $e:expr) => {
-        #[cfg(all(not(feature = "stable"), $($clause)*))]
+        #[cfg(all(feature = "unstable", $($clause)*))]
         {
             if true { // thwart the dead code lint
                 $e

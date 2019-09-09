@@ -205,9 +205,9 @@ pub fn lgammaf_r(mut x: f32) -> (f32, i32) {
                 p2 = 1.0 + y * (V1 + y * (V2 + y * (V3 + y * (V4 + y * V5))));
                 r += -0.5 * y + p1 / p2;
             }
-            #[cfg(feature = "checked")]
+            #[cfg(debug_assertions)]
             _ => unreachable!(),
-            #[cfg(not(feature = "checked"))]
+            #[cfg(not(debug_assertions))]
             _ => {}
         }
     } else if ix < 0x41000000 {
