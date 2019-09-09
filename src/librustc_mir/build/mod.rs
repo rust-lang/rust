@@ -491,6 +491,7 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
 
     // Validate `#[unwind]` syntax regardless of platform-specific panic strategy
     let attrs = &tcx.get_attrs(fn_def_id);
+    let unsafety = &tcx.fn_sig(fn_def_id).skip_binder().unsafety.clone();
     let unwind_attr = attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs);
 
     // We never unwind, so it's not relevant to stop an unwind
@@ -502,9 +503,11 @@ fn should_abort_on_panic(tcx: TyCtxt<'_>, fn_def_id: DefId, abi: Abi) -> bool {
     // This is a special case: some functions have a C abi but are meant to
     // unwind anyway. Don't stop them.
     match unwind_attr {
-        None => false, // FIXME(#58794)
         Some(UnwindAttr::Allowed) => false,
         Some(UnwindAttr::Aborts) => true,
+        // If no `#[unwind]` attribute present unsafe function definitions
+        // are temporarily allowed to unwind:
+        None => unsafety == &rustc::hir::Unsafety::Normal,
     }
 }
 
