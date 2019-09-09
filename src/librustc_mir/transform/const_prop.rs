@@ -312,7 +312,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Rvalue::Use(_) |
             Rvalue::Len(_) |
             Rvalue::Cast(..) |
-            Rvalue::NullaryOp(..) => {
+            Rvalue::NullaryOp(..) |
+            Rvalue::CheckedBinaryOp(..) => {
                 self.use_ecx(source_info, |this| {
                     this.ecx.eval_rvalue_into_place(rvalue, place)?;
                     this.ecx.eval_place_to_op(place, Some(place_layout))
@@ -348,7 +349,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     this.ecx.eval_place_to_op(place, Some(place_layout))
                 })
             }
-            Rvalue::CheckedBinaryOp(op, ref left, ref right) |
             Rvalue::BinaryOp(op, ref left, ref right) => {
                 trace!("rvalue binop {:?} for {:?} and {:?}", op, left, right);
                 let right = self.eval_operand(right, source_info)?;
@@ -403,23 +403,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let (val, overflow, _ty) = self.use_ecx(source_info, |this| {
                     this.ecx.overflowing_binary_op(op, l, r)
                 })?;
-                let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
-                    Immediate::ScalarPair(
-                        val.into(),
-                        Scalar::from_bool(overflow).into(),
-                    )
-                } else {
-                    // We check overflow in debug mode already
-                    // so should only check in release mode.
-                    if !self.tcx.sess.overflow_checks() && overflow {
-                        let err = err_panic!(Overflow(op)).into();
-                        let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
-                        return None;
-                    }
-                    Immediate::Scalar(val.into())
-                };
+                // We check overflow in debug mode already
+                // so should only check in release mode.
+                if !self.tcx.sess.overflow_checks() && overflow {
+                    let err = err_panic!(Overflow(op)).into();
+                    let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
+                    return None;
+                }
                 let res = ImmTy {
-                    imm: val,
+                    imm: Immediate::Scalar(val.into()),
                     layout: place_layout,
                 };
                 Some(res.into())
