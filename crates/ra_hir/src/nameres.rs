@@ -138,7 +138,21 @@ pub(crate) struct ModuleData {
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
     items: FxHashMap<Name, Resolution>,
+    /// Macros in current module scoped
+    ///
+    /// This scope works exactly the same way that item scoping does.
+    /// Macro invocation with quantified path will search in it.
+    /// See details below.
     macros: FxHashMap<Name, MacroDef>,
+    /// Macros visable in current module in legacy textual scope
+    ///
+    /// For macros invoked by an unquatified identifier like `bar!()`, `legacy_macros` will be searched in first.
+    /// If it yields no result, then it turns to module scoped `macros`.
+    /// It macros with name quatified with a path like `crate::foo::bar!()`, `legacy_macros` will be skipped,
+    /// and only normal scoped `macros` will be searched in.
+    ///
+    /// Note that this automatically inherit macros defined textually before the definition of module itself.
+    legacy_macros: FxHashMap<Name, MacroDef>,
 }
 
 static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
@@ -164,12 +178,16 @@ impl ModuleScope {
             _ => None,
         })
     }
+    /// It resolves in module scope. Textual scoped macros are ignored here.
     fn get_item_or_macro(&self, name: &Name) -> Option<ItemOrMacro> {
         match (self.get(name), self.macros.get(name)) {
             (Some(item), _) if !item.def.is_none() => Some(Either::A(item.def)),
             (_, Some(macro_)) => Some(Either::B(*macro_)),
             _ => None,
         }
+    }
+    fn get_legacy_macro(&self, name: &Name) -> Option<MacroDef> {
+        self.legacy_macros.get(name).copied()
     }
 }
 
@@ -484,16 +502,21 @@ impl CrateDefMap {
         name: &Name,
     ) -> ItemOrMacro {
         // Resolve in:
+        //  - legacy scope
         //  - current module / scope
         //  - extern prelude
         //  - std prelude
+        let from_legacy_macro = self[module]
+            .scope
+            .get_legacy_macro(name)
+            .map_or_else(|| Either::A(PerNs::none()), Either::B);
         let from_scope =
             self[module].scope.get_item_or_macro(name).unwrap_or_else(|| Either::A(PerNs::none()));
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
         let from_prelude = self.resolve_in_prelude(db, name);
 
-        or(from_scope, or(Either::A(from_extern_prelude), from_prelude))
+        or(from_legacy_macro, or(from_scope, or(Either::A(from_extern_prelude), from_prelude)))
     }
 
     fn resolve_name_in_extern_prelude(&self, name: &Name) -> PerNs<ModuleDef> {

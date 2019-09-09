@@ -268,12 +268,114 @@ fn prelude_cycle() {
     );
     assert_snapshot!(map, @r###"
         ⋮crate
-        ⋮foo: t
         ⋮prelude: t
         ⋮
         ⋮crate::prelude
         ⋮declare_mod: m
-        ⋮
-        ⋮crate::foo
+    "###);
+}
+
+#[test]
+fn plain_macros_are_legacy_textual_scoped() {
+    let map = def_map(
+        r#"
+        //- /main.rs
+        mod m1;
+        bar!(NotFoundNotMacroUse);
+
+        mod m2 {
+            foo!(NotFoundBeforeInside2);
+        }
+
+        macro_rules! foo {
+            ($x:ident) => { struct $x; }
+        }
+        foo!(Ok);
+
+        mod m3;
+        foo!(OkShadowStop);
+        bar!(NotFoundMacroUseStop);
+
+        #[macro_use]
+        mod m5 {
+            #[macro_use]
+            mod m6 {
+                macro_rules! foo {
+                    ($x:ident) => { fn $x() {} }
+                }
+            }
+        }
+        foo!(ok_double_macro_use_shadow);
+
+        baz!(NotFoundBefore);
+        #[macro_use]
+        mod m7 {
+            macro_rules! baz {
+                ($x:ident) => { struct $x; }
+            }
+        }
+        baz!(OkAfter);
+
+        //- /m1.rs
+        foo!(NotFoundBeforeInside1);
+        macro_rules! bar {
+            ($x:ident) => { struct $x; }
+        }
+
+        //- /m3/mod.rs
+        foo!(OkAfterInside);
+        macro_rules! foo {
+            ($x:ident) => { fn $x() {} }
+        }
+        foo!(ok_shadow);
+
+        #[macro_use]
+        mod m4;
+        bar!(OkMacroUse);
+
+        //- /m3/m4.rs
+        foo!(ok_shadow_deep);
+        macro_rules! bar {
+            ($x:ident) => { struct $x; }
+        }
+        "#,
+    );
+    assert_snapshot!(map, @r###"
+   ⋮crate
+   ⋮Ok: t v
+   ⋮OkAfter: t v
+   ⋮OkShadowStop: t v
+   ⋮foo: m
+   ⋮m1: t
+   ⋮m2: t
+   ⋮m3: t
+   ⋮m5: t
+   ⋮m7: t
+   ⋮ok_double_macro_use_shadow: v
+   ⋮
+   ⋮crate::m7
+   ⋮baz: m
+   ⋮
+   ⋮crate::m1
+   ⋮bar: m
+   ⋮
+   ⋮crate::m5
+   ⋮m6: t
+   ⋮
+   ⋮crate::m5::m6
+   ⋮foo: m
+   ⋮
+   ⋮crate::m2
+   ⋮
+   ⋮crate::m3
+   ⋮OkAfterInside: t v
+   ⋮OkMacroUse: t v
+   ⋮foo: m
+   ⋮m4: t
+   ⋮ok_shadow: v
+   ⋮
+   ⋮crate::m3::m4
+   ⋮bar: m
+   ⋮ok_shadow_deep: v
     "###);
 }

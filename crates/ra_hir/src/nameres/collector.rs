@@ -14,8 +14,8 @@ use crate::{
         raw, CrateDefMap, CrateModuleId, ItemOrMacro, ModuleData, ModuleDef, PerNs,
         ReachedFixedPoint, Resolution, ResolveMode,
     },
-    AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, Static, Struct, Trait,
-    TypeAlias, Union,
+    AstId, Const, Enum, Function, HirFileId, MacroDef, Module, Name, Path, PathKind, Static,
+    Struct, Trait, TypeAlias, Union,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -40,7 +40,6 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
         unexpanded_macros: Vec::new(),
-        global_macro_scope: FxHashMap::default(),
         macro_stack_monitor: MacroStackMonitor::default(),
     };
     collector.collect();
@@ -82,7 +81,6 @@ struct DefCollector<DB> {
     glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
     unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
     unexpanded_macros: Vec<(CrateModuleId, AstId<ast::MacroCall>, Path)>,
-    global_macro_scope: FxHashMap<Name, MacroDefId>,
 
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
     /// To prevent stack overflow, we add a deep counter here for prevent that.
@@ -136,20 +134,6 @@ where
         macro_id: MacroDefId,
         export: bool,
     ) {
-        // macro-by-example in Rust have completely weird name resolution logic,
-        // unlike anything else in the language. We'd don't fully implement yet,
-        // just give a somewhat precise approximation.
-        //
-        // Specifically, we store a set of visible macros in each module, just
-        // like how we do with usual items. This is wrong, however, because
-        // macros can be shadowed and their scopes are mostly unrelated to
-        // modules. To paper over the second problem, we also maintain
-        // `global_macro_scope` which works when we construct `CrateDefMap`, but
-        // is completely ignored in expressions.
-        //
-        // What we should do is that, in CrateDefMap, we should maintain a
-        // separate tower of macro scopes, with ids. Then, for each item in the
-        // module, we need to store it's macro scope.
         let def = Either::B(MacroDef { id: macro_id });
 
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
@@ -162,13 +146,29 @@ where
             self.def_map.exported_macros.insert(name.clone(), macro_id);
         }
         self.update(module_id, None, &[(name.clone(), def)]);
-        self.global_macro_scope.insert(name, macro_id);
+        self.define_legacy_macro(module_id, name.clone(), macro_id);
+    }
+
+    /// Define a legacy textual scoped macro in module
+    ///
+    /// We use a map `legacy_macros` to store all legacy textual scoped macros visable per module.
+    /// It will clone all macros from parent legacy scope, whose definition is prior to
+    /// the definition of current module.
+    /// And also, `macro_use` on a module will import all legacy macros visable inside to
+    /// current legacy scope, with possible shadowing.
+    fn define_legacy_macro(&mut self, module_id: CrateModuleId, name: Name, macro_id: MacroDefId) {
+        // Always shadowing
+        self.def_map.modules[module_id].scope.legacy_macros.insert(name, MacroDef { id: macro_id });
     }
 
     /// Import macros from `#[macro_use] extern crate`.
     ///
     /// They are non-scoped, and will only be inserted into mutable `global_macro_scope`.
-    fn import_macros_from_extern_crate(&mut self, import: &raw::ImportData) {
+    fn import_macros_from_extern_crate(
+        &mut self,
+        current_module_id: CrateModuleId,
+        import: &raw::ImportData,
+    ) {
         log::debug!(
             "importing macros from extern crate: {:?} ({:?})",
             import,
@@ -184,14 +184,14 @@ where
 
         if let Some(ModuleDef::Module(m)) = res.take_types() {
             tested_by!(macro_rules_from_other_crates_are_visible_with_macro_use);
-            self.import_all_macros_exported(m);
+            self.import_all_macros_exported(current_module_id, m);
         }
     }
 
-    fn import_all_macros_exported(&mut self, module: Module) {
+    fn import_all_macros_exported(&mut self, current_module_id: CrateModuleId, module: Module) {
         let item_map = self.db.crate_def_map(module.krate);
         for (name, &macro_id) in &item_map.exported_macros {
-            self.global_macro_scope.insert(name.clone(), macro_id);
+            self.define_legacy_macro(current_module_id, name.clone(), macro_id);
         }
     }
 
@@ -528,7 +528,7 @@ where
         if let Some(prelude_module) = self.def_collector.def_map.prelude {
             if prelude_module.krate != self.def_collector.def_map.krate {
                 tested_by!(prelude_is_macro_use);
-                self.def_collector.import_all_macros_exported(prelude_module);
+                self.def_collector.import_all_macros_exported(self.module_id, prelude_module);
             }
         }
 
@@ -539,7 +539,7 @@ where
             if let raw::RawItem::Import(import_id) = *item {
                 let import = self.raw_items[import_id].clone();
                 if import.is_extern_crate && import.is_macro_use {
-                    self.def_collector.import_macros_from_extern_crate(&import);
+                    self.def_collector.import_macros_from_extern_crate(self.module_id, &import);
                 }
             }
         }
@@ -561,10 +561,11 @@ where
     fn collect_module(&mut self, module: &raw::ModuleData) {
         match module {
             // inline module, just recurse
-            raw::ModuleData::Definition { name, items, ast_id, attr_path } => {
+            raw::ModuleData::Definition { name, items, ast_id, attr_path, is_macro_use } => {
                 let module_id =
                     self.push_child_module(name.clone(), ast_id.with_file_id(self.file_id), None);
                 let parent_module = ParentModule { name, attr_path: attr_path.as_ref() };
+
                 ModCollector {
                     def_collector: &mut *self.def_collector,
                     module_id,
@@ -573,9 +574,12 @@ where
                     parent_module: Some(parent_module),
                 }
                 .collect(&*items);
+                if *is_macro_use {
+                    self.import_all_legacy_macros(module_id);
+                }
             }
             // out of line module, resolve, parse and recurse
-            raw::ModuleData::Declaration { name, ast_id, attr_path } => {
+            raw::ModuleData::Declaration { name, ast_id, attr_path, is_macro_use } => {
                 let ast_id = ast_id.with_file_id(self.file_id);
                 let is_root = self.def_collector.def_map.modules[self.module_id].parent.is_none();
                 match resolve_submodule(
@@ -596,7 +600,10 @@ where
                             raw_items: &raw_items,
                             parent_module: None,
                         }
-                        .collect(raw_items.items())
+                        .collect(raw_items.items());
+                        if *is_macro_use {
+                            self.import_all_legacy_macros(module_id);
+                        }
                     }
                     Err(candidate) => self.def_collector.def_map.diagnostics.push(
                         DefDiagnostic::UnresolvedModule {
@@ -621,6 +628,7 @@ where
         modules[res].parent = Some(self.module_id);
         modules[res].declaration = Some(declaration);
         modules[res].definition = definition;
+        modules[res].scope.legacy_macros = modules[self.module_id].scope.legacy_macros.clone();
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
             def: PerNs::types(
@@ -674,20 +682,32 @@ where
 
         let ast_id = mac.ast_id.with_file_id(self.file_id);
 
-        // Case 2: try to expand macro_rules from this crate, triggering
+        // Case 2: try to resolve in legacy scope and expand macro_rules, triggering
         // recursive item collection.
-        if let Some(macro_id) =
-            mac.path.as_ident().and_then(|name| self.def_collector.global_macro_scope.get(&name))
-        {
-            let def = *macro_id;
+        if let Some(macro_def) = mac.path.as_ident().and_then(|name| {
+            self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
+        }) {
+            let def = macro_def.id;
             let macro_call_id = MacroCallLoc { def, ast_id }.id(self.def_collector.db);
 
             self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, def);
             return;
         }
 
-        // Case 3: path to a macro from another crate, expand during name resolution
-        self.def_collector.unexpanded_macros.push((self.module_id, ast_id, mac.path.clone()))
+        // Case 3: resolve in module scope, expand during name resolution.
+        // We rewrite simple path `macro_name` to `self::macro_name` to force resolve in module scope only.
+        let mut path = mac.path.clone();
+        if path.is_ident() {
+            path.kind = PathKind::Self_;
+        }
+        self.def_collector.unexpanded_macros.push((self.module_id, ast_id, path));
+    }
+
+    fn import_all_legacy_macros(&mut self, module_id: CrateModuleId) {
+        let macros = self.def_collector.def_map[module_id].scope.legacy_macros.clone();
+        for (name, macro_) in macros {
+            self.def_collector.define_legacy_macro(self.module_id, name.clone(), macro_.id);
+        }
     }
 }
 
@@ -715,7 +735,6 @@ mod tests {
             glob_imports: FxHashMap::default(),
             unresolved_imports: Vec::new(),
             unexpanded_macros: Vec::new(),
-            global_macro_scope: FxHashMap::default(),
             macro_stack_monitor: monitor,
         };
         collector.collect();
