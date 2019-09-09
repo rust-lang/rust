@@ -1139,12 +1139,13 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.1.8"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34f33de6f0ae7c9cb5e574502a562e2b512799e32abb801cd1e79ad952b62b49"
+checksum = "473a1265acc8ff1e808cd0a1af8cee3c2ee5200916058a2ca113c29f2d903571"
 dependencies = [
  "cfg-if",
  "libc",
+ "wasi",
 ]
 
 [[package]]
@@ -1571,9 +1572,9 @@ checksum = "b294d6fa9ee409a054354afc4352b0b9ef7ca222c69b8812cbea9e7d2bf3783f"
 
 [[package]]
 name = "libc"
-version = "0.2.61"
+version = "0.2.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c665266eb592905e8503ba3403020f4b8794d26263f412ca33171600eca9a6fa"
+checksum = "34fcd2c08d2f832f376f4173a231990fa5aef4e99fb569867318a227ef4c06ba"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -3232,7 +3233,7 @@ version = "0.0.0"
 dependencies = [
  "graphviz",
  "log",
- "rand 0.6.1",
+ "rand 0.7.0",
  "rustc",
  "rustc_data_structures",
  "rustc_fs_util",
@@ -3848,7 +3849,7 @@ dependencies = [
  "panic_abort",
  "panic_unwind",
  "profiler_builtins",
- "rand 0.6.1",
+ "rand 0.7.0",
  "rustc_asan",
  "rustc_lsan",
  "rustc_msan",
