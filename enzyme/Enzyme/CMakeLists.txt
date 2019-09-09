@@ -2,6 +2,7 @@
 #  set(LLVM_LINK_COMPONENTS Core Support)
 #endif()
 
+if (${LLVM_VERSION_MAJOR} <= 7)
 add_llvm_loadable_module( LLVMEnzyme
     Enzyme.cpp
     #    DEPENDS
@@ -9,3 +10,13 @@ add_llvm_loadable_module( LLVMEnzyme
     #PLUGIN_TOOL
     #opt
   )
+else()
+add_llvm_library( LLVMEnzyme
+    Enzyme.cpp
+    #    DEPENDS
+    #intrinsics_gen
+    #PLUGIN_TOOL
+    #opt
+  )
+
+endif()
