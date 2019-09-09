@@ -125,7 +125,7 @@ pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 // `PredicateObligation` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PredicateObligation<'_>, 120);
+static_assert_size!(PredicateObligation<'_>, 112);
 
 /// The reason why we incurred this obligation; used for error reporting.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -234,11 +234,7 @@ pub enum ObligationCauseCode<'tcx> {
     MatchExpressionArmPattern { span: Span, ty: Ty<'tcx> },
 
     /// Computing common supertype in an if expression
-    IfExpression {
-        then: Span,
-        outer: Option<Span>,
-        semicolon: Option<Span>,
-    },
+    IfExpression(Box<IfExpressionCause>),
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
@@ -270,7 +266,7 @@ pub enum ObligationCauseCode<'tcx> {
 
 // `ObligationCauseCode` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(ObligationCauseCode<'_>, 40);
+static_assert_size!(ObligationCauseCode<'_>, 32);
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct MatchExpressionArmCause<'tcx> {
@@ -279,6 +275,13 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_arms: Vec<Span>,
     pub last_ty: Ty<'tcx>,
     pub discrim_hir_id: hir::HirId,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct IfExpressionCause {
+    pub then: Span,
+    pub outer: Option<Span>,
+    pub semicolon: Option<Span>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

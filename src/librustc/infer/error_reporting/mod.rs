@@ -55,7 +55,8 @@ use crate::hir::def_id::DefId;
 use crate::hir::Node;
 use crate::infer::opaque_types;
 use crate::middle::region;
-use crate::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
+use crate::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
+use crate::traits::{ObligationCauseCode};
 use crate::ty::error::TypeError;
 use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldable};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
@@ -681,7 +682,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
             },
-            ObligationCauseCode::IfExpression { then, outer, semicolon } => {
+            ObligationCauseCode::IfExpression(box IfExpressionCause { then, outer, semicolon }) => {
                 err.span_label(then, "expected because of this");
                 outer.map(|sp| err.span_label(sp, "if and else have incompatible types"));
                 if let Some(sp) = semicolon {
