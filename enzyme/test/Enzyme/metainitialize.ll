@@ -162,7 +162,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret double %4
 ; CHECK-NEXT: }
 
-; CHECK: define internal fastcc void @diffeget(double* nocapture %"x'") unnamed_addr #5 {
+; CHECK: define internal {{(dso_local )?}}fastcc void @diffeget(double* nocapture %"x'") unnamed_addr #5 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[arrayptr:.+]] = getelementptr double, double* %"x'", i64 3
 ; CHECK-NEXT:   %0 = load double, double* %[[arrayptr]], align 8
@@ -171,13 +171,13 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal fastcc i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n) unnamed_addr #0 {
+; CHECK: define internal {{(dso_local )?}}fastcc i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n) unnamed_addr #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %conv = zext i32 %n to i64
 ; CHECK-NEXT:  %mul = shl nuw nsw i64 %conv, 3
 ; CHECK-NEXT:  %call = tail call i8* @malloc(i64 %mul)
 ; CHECK-NEXT:  %"call'mi" = tail call i8* @malloc(i64 %mul)
-; CHECK-NEXT:  tail call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call'mi", i8 0, i64 %mul, i1 false)
+; CHECK-NEXT:  tail call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi", i8 0, i64 %mul, {{(i32 1, )?}}i1 false)
 ; CHECK-NEXT:  %0 = bitcast double** %arrayp to i8**
 ; CHECK-NEXT:  %"'ipc" = bitcast double** %"arrayp'" to i8**
 ; CHECK-NEXT:  store i8* %"call'mi", i8** %"'ipc", align 8
@@ -188,21 +188,21 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:  ret i8* %"call'mi"
 ; CHECK-NEXT:}
 
-; CHECK: define internal fastcc { i8* } @augmented_meta(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n) unnamed_addr #0 {
+; CHECK: define internal {{(dso_local )?}}fastcc { i8* } @augmented_meta(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n) unnamed_addr #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = tail call fastcc i8* @augmented_allocateAndSet(double** %arrayp, double** %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT:   %[[retval:.+]] = insertvalue { i8* } undef, i8* %0, 0
 ; CHECK-NEXT:   ret { i8* } %[[retval]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal fastcc double @diffemeta(i32 %n, { { i8* } } %tapeArg) unnamed_addr #0 {
+; CHECK: define internal {{(dso_local )?}}fastcc double @diffemeta(i32 %n, { { i8* } } %tapeArg) unnamed_addr #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = extractvalue { { i8* } } %tapeArg, 0
 ; CHECK-NEXT:   %1 = tail call fastcc double @diffeallocateAndSet(i32 %n, { i8* } %0)
 ; CHECK-NEXT:   ret double %1
 ; CHECK-NEXT: }
 
-; CHECK: define internal fastcc double @diffeallocateAndSet(i32 %n, { i8* } %tapeArg) unnamed_addr #0 {
+; CHECK: define internal {{(dso_local )?}}fastcc double @diffeallocateAndSet(i32 %n, { i8* } %tapeArg) unnamed_addr #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[callp:.+]] = extractvalue { i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr i8, i8* %[[callp]], i64 24

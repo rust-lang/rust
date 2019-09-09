@@ -48,13 +48,13 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   ret double %1
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffecreate(double %x, double %differeturn)
+; CHECK: define internal {{(dso_local )?}}{ double } @diffecreate(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call { double } @diffeindirect(double (double)* nonnull @square, double (double)* bitcast ({ double } (double, double)* @diffesquare to double (double)*), double %x, double %differeturn)
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffeindirect(double (double)* nocapture %callee, double (double)* %"callee'", double %x, double %differeturn)
+; CHECK: define internal {{(dso_local )?}}{ double } @diffeindirect(double (double)* nocapture %callee, double (double)* %"callee'", double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call fast double %callee(double %x)
 ; CHECK-NEXT:   %0 = bitcast double (double)* %"callee'" to { double } (double, double)*

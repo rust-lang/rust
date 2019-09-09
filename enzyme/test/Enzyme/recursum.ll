@@ -64,7 +64,7 @@ attributes #2 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal double @differecsum.1(double* %x, double* %"x'", i32 %n)
+; CHECK: define internal {{(dso_local )?}}double @differecsum.1(double* %x, double* %"x'", i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   switch i32 %n, label %if.end3 [
 ; CHECK-NEXT:     i32 0, label %invertreturn

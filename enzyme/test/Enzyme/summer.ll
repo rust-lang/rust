@@ -56,58 +56,8 @@ for.body.for.body_crit_edge:                      ; preds = %for.body.for.body_c
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double*, i64)*, ...) #1
 
-; Function Attrs: nounwind uwtable
-define dso_local i32 @main() local_unnamed_addr #2 {
-entry:
-  %xs = alloca [10 x double], align 16
-  %xp = alloca [10 x double], align 16
-  %0 = bitcast [10 x double]* %xs to i8*
-  call void @llvm.lifetime.start.p0i8(i64 80, i8* nonnull %0) #1
-  call void @llvm.memset.p0i8.i64(i8* nonnull align 16 %0, i8 0, i64 80, i1 false)
-  br label %for.body
-
-for.cond.cleanup:                                 ; preds = %for.body
-  %1 = bitcast [10 x double]* %xp to i8*
-  call void @llvm.lifetime.start.p0i8(i64 80, i8* nonnull %1) #1
-  call void @llvm.memset.p0i8.i64(i8* nonnull align 16 %1, i8 0, i64 80, i1 false)
-  %arraydecay = getelementptr inbounds [10 x double], [10 x double]* %xs, i64 0, i64 0
-  %arraydecay1 = getelementptr inbounds [10 x double], [10 x double]* %xp, i64 0, i64 0
-  call void @derivative(double* nonnull %arraydecay, double* nonnull %arraydecay1, i64 10)
-  br label %for.body7
-
-for.body:                                         ; preds = %for.body, %entry
-  %indvars.iv27 = phi i64 [ 0, %entry ], [ %indvars.iv.next28, %for.body ]
-  %2 = trunc i64 %indvars.iv27 to i32
-  %conv = sitofp i32 %2 to double
-  %arrayidx = getelementptr inbounds [10 x double], [10 x double]* %xs, i64 0, i64 %indvars.iv27
-  store double %conv, double* %arrayidx, align 8, !tbaa !2
-  %indvars.iv.next28 = add nuw nsw i64 %indvars.iv27, 1
-  %exitcond29 = icmp eq i64 %indvars.iv.next28, 10
-  br i1 %exitcond29, label %for.cond.cleanup, label %for.body
-
-for.cond.cleanup6:                                ; preds = %for.body7
-  call void @llvm.lifetime.end.p0i8(i64 80, i8* nonnull %1) #1
-  call void @llvm.lifetime.end.p0i8(i64 80, i8* nonnull %0) #1
-  ret i32 0
-
-for.body7:                                        ; preds = %for.body7, %for.cond.cleanup
-  %indvars.iv = phi i64 [ 0, %for.cond.cleanup ], [ %indvars.iv.next, %for.body7 ]
-  %arrayidx9 = getelementptr inbounds [10 x double], [10 x double]* %xs, i64 0, i64 %indvars.iv
-  %3 = load double, double* %arrayidx9, align 8, !tbaa !2
-  %arrayidx11 = getelementptr inbounds [10 x double], [10 x double]* %xp, i64 0, i64 %indvars.iv
-  %4 = load double, double* %arrayidx11, align 8, !tbaa !2
-  %5 = trunc i64 %indvars.iv to i32
-  %call = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([25 x i8], [25 x i8]* @.str, i64 0, i64 0), i32 %5, double %3, i32 %5, double %4)
-  %indvars.iv.next = add nuw nsw i64 %indvars.iv, 1
-  %exitcond = icmp eq i64 %indvars.iv.next, 10
-  br i1 %exitcond, label %for.cond.cleanup6, label %for.body7
-}
-
 ; Function Attrs: argmemonly nounwind
 declare void @llvm.lifetime.start.p0i8(i64, i8* nocapture) #3
-
-; Function Attrs: argmemonly nounwind
-declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1) #3
 
 ; Function Attrs: argmemonly nounwind
 declare void @llvm.lifetime.end.p0i8(i64, i8* nocapture) #3

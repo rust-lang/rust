@@ -85,4 +85,4 @@ attributes #3 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal { double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { double*, {} } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { double*, {} } %tapeArg)

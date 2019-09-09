@@ -132,7 +132,7 @@ attributes #5 = { nounwind }
 !7 = !{!"double", !4, i64 0}
 
 
-; CHECK: define dso_local double @derivative(double %x, i32 %n) local_unnamed_addr #0 {
+; CHECK: define dso_local {{(dso_local )?}}double @derivative(double %x, i32 %n) local_unnamed_addr #0 {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"array'ipa.i" = alloca double*, align 8
 ; CHECK-NEXT:   %array.i = alloca double*, align 8
@@ -151,7 +151,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret double %[[result]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffeget(double* %"x'")
+; CHECK: define internal {{(dso_local )?}}void @diffeget(double* %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr double, double* %"x'", i64 3
 ; CHECK-NEXT:   %0 = load double, double* %[[arrayidx]], align 8
@@ -160,13 +160,13 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** %"arrayp'", double %x, i32 %n)
+; CHECK: define internal {{(dso_local )?}}i8* @augmented_allocateAndSet(double** nocapture %arrayp, double** %"arrayp'", double %x, i32 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %conv = zext i32 %n to i64
 ; CHECK-NEXT:   %mul = shl nuw nsw i64 %conv, 3
 ; CHECK-NEXT:   %call = tail call i8* @malloc(i64 %mul)
 ; CHECK-NEXT:   %"call'mi" = tail call i8* @malloc(i64 %mul)
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"call'mi", i8 0, i64 %mul, i1 false)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call'mi", i8 0, i64 %mul, {{(i32 1, )?}}i1 false)
 ; CHECK-NEXT:   %0 = bitcast double** %arrayp to i8**
 ; CHECK-NEXT:   %"'ipc" = bitcast double** %"arrayp'" to i8**
 ; CHECK-NEXT:   store i8* %"call'mi", i8** %"'ipc", align 8
@@ -177,7 +177,7 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   ret i8* %"call'mi"
 ; CHECK-NEXT: }
 
-; CHECK: define internal double @diffeallocateAndSet({ i8* } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}double @diffeallocateAndSet({ i8* } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[callp:.+]] = extractvalue { i8* } %tapeArg, 0
 ; CHECK-NEXT:   %[[arrayidx:.+]] = getelementptr i8, i8* %[[callp]], i64 24

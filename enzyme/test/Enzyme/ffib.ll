@@ -59,4 +59,4 @@ attributes #3 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal { double } @diffeffib.1(i32 %n
+; CHECK: define internal {{(dso_local )?}}{ double } @diffeffib.1(i32 %n

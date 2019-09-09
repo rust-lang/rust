@@ -21,7 +21,7 @@ declare double @llvm.pow.f64(double, double)
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double, double)*, ...)
 
-; CHECK: define internal { double, double } @diffemax(double %x, double %y, double %[[differet:.+]]) {
+; CHECK: define internal {{(dso_local )?}}{ double, double } @diffemax(double %x, double %y, double %[[differet:.+]]) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[cmp:.+]] = fcmp fast ogt double %x, %y
 ; CHECK-NEXT:   %diffex = select i1 %[[cmp]], double %[[differet]], double 0.000000e+00

@@ -56,7 +56,7 @@ attributes #1 = { nounwind readnone noinline }
 ; CHECK-NEXT:   ret double %"x'de.0.i"
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffef(double %x, double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}{ double } @diffef(double %x, double %[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[result:.+]] = insertvalue { double } undef, double %[[differet]], 0
 ; CHECK-NEXT:   ret { double } %[[result]]

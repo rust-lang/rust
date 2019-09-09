@@ -66,7 +66,7 @@ attributes #4 = { nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal { double } @diffefoo(double %x, double %differeturn)
+; CHECK: define internal {{(dso_local )?}}{ double } @diffefoo(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call { { float, double }, double } @augmented_sub(double %x)
 ; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { float, double }, double } %0, 0
@@ -75,7 +75,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret { double } %[[result]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { float, double }, double } @augmented_sub(double %x)
+; CHECK: define internal {{(dso_local )?}}{ { float, double }, double } @augmented_sub(double %x)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call fast double @read()
 ; CHECK-NEXT:   %mul = fmul fast double %call, %x
@@ -88,7 +88,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   ret { { float, double }, double } %[[insertreturn]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffesub(double %x, double %differeturn, { float, double } %tapeArg)
+; CHECK: define internal {{(dso_local )?}}{ double } @diffesub(double %x, double %differeturn, { float, double } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[readextract:.+]] = extractvalue { float, double } %tapeArg, 1
 ; CHECK-NEXT:   %[[flreadextract:.+]] = extractvalue { float, double } %tapeArg, 0

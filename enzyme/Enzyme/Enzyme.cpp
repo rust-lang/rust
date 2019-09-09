@@ -1541,6 +1541,7 @@ public:
     scopeMap.erase(I);
     lastScopeAlloc.erase(I);
     scopeFrees.erase(I);
+    SE.eraseValueFromMap(I);
     I->eraseFromParent();
   }
 
@@ -1602,7 +1603,7 @@ public:
         auto volatile_arg = ConstantInt::getFalse(call->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-        auto align_arg = ConstantInt::get(Type::getInt8Ty(call->getContext()), 0);
+        auto align_arg = ConstantInt::get(Type::getInt32Ty(call->getContext()), 0);
         Value *nargs[] = { dst_arg, val_arg, len_arg, align_arg, volatile_arg };
 #else
         Value *nargs[] = { dst_arg, val_arg, len_arg, volatile_arg };
@@ -1628,7 +1629,7 @@ public:
             /*
             if (auto inst = dyn_cast<Instruction>(malloc)) {
                 inst->replaceAllUsesWith(UndefValue::get(ret->getType()));
-                inst->eraseFromParent();
+                erase(inst);
             }
             */
             return ret;
@@ -2577,7 +2578,7 @@ endCheck:
             auto volatile_arg = ConstantInt::getFalse(val->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
-            auto align_arg = ConstantInt::get(Type::getInt8Ty(val->getContext()), antialloca->getAlignment());
+            auto align_arg = ConstantInt::get(Type::getInt32Ty(val->getContext()), antialloca->getAlignment());
             Value *args[] = { dst_arg, val_arg, len_arg, align_arg, volatile_arg };
 #else
             Value *args[] = { dst_arg, val_arg, len_arg, volatile_arg };
@@ -4976,20 +4977,23 @@ PHINode* canonicalizeIVs(Type *Ty, Loop *L, ScalarEvolution &SE, DominatorTree &
   BasicBlock* Header = L->getHeader();
   Module* M = Header->getParent()->getParent();
   const DataLayout &DL = M->getDataLayout();
+  SmallVector<Instruction*, 16> DeadInsts;
+  PHINode *CanonicalIV;
 
-  SCEVExpander Exp(SE, DL, "ls");
+  {
 
-  PHINode *CanonicalIV = Exp.getOrInsertCanonicalInductionVariable(L, Ty);
+  CanonicalIV = SCEVExpander(SE, DL, "ad").getOrInsertCanonicalInductionVariable(L, Ty);
   assert (CanonicalIV && "canonicalizing IV");
   //DEBUG(dbgs() << "Canonical induction variable " << *CanonicalIV << "\n");
 
-  SmallVector<WeakTrackingVH, 16> DeadInsts;
-  Exp.replaceCongruentIVs(L, &DT, DeadInsts);
-
+  SmallVector<WeakTrackingVH, 16> DeadInst0;
+  SCEVExpander(SE, DL, "ad").replaceCongruentIVs(L, &DT, DeadInst0);
+  for (WeakTrackingVH V : DeadInst0) {
+      DeadInsts.push_back(cast<Instruction>(V));
+  }
+  }
   
-  for (WeakTrackingVH V : DeadInsts) {
-    //DEBUG(dbgs() << "erasing dead inst " << *V << "\n");
-    Instruction *I = cast<Instruction>(V);
+  for (Instruction* I : DeadInsts) {
     gutils.erase(I);
   } 
 
@@ -5098,11 +5102,13 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         BasicBlock *Latch = L->getLoopLatch();
 
         const SCEV *Limit = SE.getExitCount(L, Latch);
+		SmallVector<PHINode*, 8> IVsToRemove;
         
-		SCEVExpander Exp(SE, Preheader->getParent()->getParent()->getDataLayout(), "ad");
-
 		PHINode *CanonicalIV = nullptr;
 		Value *LimitVar = nullptr;
+
+        {
+
 		if (SE.getCouldNotCompute() != Limit) {
 
         	CanonicalIV = canonicalizeIVs(Limit->getType(), L, SE, DT, gutils);
@@ -5116,6 +5122,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
                                               CanonicalSCEV, Limit) &&
                "Loop backedge is not guarded by canonical comparison with limit.");
         
+		    SCEVExpander Exp(SE, Preheader->getParent()->getParent()->getDataLayout(), "ad");
 			LimitVar = Exp.expandCodeFor(Limit, CanonicalIV->getType(),
                                             Preheader->getTerminator());
 
@@ -5153,7 +5160,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 	
 		// Remove Canonicalizable IV's
 		{
-		  SmallVector<PHINode*, 8> IVsToRemove;
+		  SCEVExpander Exp(SE, Preheader->getParent()->getParent()->getDataLayout(), "ad");
 		  for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
 			PHINode *PN = cast<PHINode>(II);
 			if (PN == CanonicalIV) continue;
@@ -5168,10 +5175,12 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
 			PN->replaceAllUsesWith(NewIV);
 			IVsToRemove.push_back(PN);
 		  }
-		  for (PHINode *PN : IVsToRemove) {
-			//llvm::errs() << "ERASING: " << *PN << "\n";
-			gutils.erase(PN);
-		  }
+		}
+
+        }
+
+		for (PHINode *PN : IVsToRemove) {
+		  gutils.erase(PN);
 		}
 
         //if (SE.getCouldNotCompute() == Limit) {

@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -inline -mem2reg -adce -aggressive-instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -inline -mem2reg -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S | FileCheck %s
 
 ; #include <stdlib.h>
 ; #include <stdio.h>

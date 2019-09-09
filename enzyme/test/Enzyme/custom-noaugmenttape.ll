@@ -57,21 +57,21 @@ attributes #0 = { readnone }
 
 declare double @__enzyme_autodiff(double (double)*, ...)
 
-; CHECK: define internal { double } @diffeadd4(double %x, double %[[differet:.+]])
+; CHECK: define internal {{(dso_local )?}}{ double } @diffeadd4(double %x, double %[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call { {}, double } @fixaugmented_add2(double %x)
 ; CHECK-NEXT:   %1 = call { double } @fixgradient_add2(double %x, double %[[differet]], {} undef)
 ; CHECK-NEXT:   ret { double } %1
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {}, double } @fixaugmented_add2(double %x) {
+; CHECK: define internal {{(dso_local )?}}{ {}, double } @fixaugmented_add2(double %x) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call double @augment_add2(double %x)
 ; CHECK-NEXT:   %1 = insertvalue { {}, double } undef, double %0, 1
 ; CHECK-NEXT:   ret { {}, double } %1
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @fixgradient_add2(double, double, {}) {
+; CHECK: define internal {{(dso_local )?}}{ double } @fixgradient_add2(double, double, {}) {
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %3 = call { double } @gradient_add2(double %0, double %1)
 ; CHECK-NEXT:   ret { double } %3

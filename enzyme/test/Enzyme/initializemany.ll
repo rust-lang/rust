@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -inline -mem2reg -sroa -adce -aggressive-instcombine -instsimplify -correlated-propagation -early-cse-memssa -instcombine -loop-deletion -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -inline -mem2reg -sroa -adce -instcombine -instsimplify -correlated-propagation -early-cse-memssa -instcombine -loop-deletion -simplifycfg -S | FileCheck %s
 
 @.str = private unnamed_addr constant [12 x i8] c"x=%f xp=%f\0A\00", align 1
 
