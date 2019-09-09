@@ -1375,6 +1375,11 @@ pub struct Cargo {
 }
 
 impl Cargo {
+    pub fn rustflag(&mut self, arg: &str) -> &mut Cargo {
+        self.rustflags.arg(arg);
+        self
+    }
+
     pub fn arg(&mut self, arg: impl AsRef<OsStr>) -> &mut Cargo {
         self.command.arg(arg.as_ref());
         self

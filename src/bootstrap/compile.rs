@@ -220,15 +220,19 @@ pub fn std_cargo(builder: &Builder<'_>,
             .arg("--manifest-path")
             .arg(builder.src.join("src/libtest/Cargo.toml"));
 
+        // Help the libc crate compile by assisting it in finding various
+        // sysroot native libraries.
         if target.contains("musl") {
             if let Some(p) = builder.musl_root(target) {
-                cargo.env("MUSL_ROOT", p);
+                let root = format!("native={}/lib", p.to_str().unwrap());
+                cargo.rustflag("-L").rustflag(&root);
             }
         }
 
         if target.ends_with("-wasi") {
             if let Some(p) = builder.wasi_root(target) {
-                cargo.env("WASI_ROOT", p);
+                let root = format!("native={}/lib/wasm32-wasi", p.to_str().unwrap());
+                cargo.rustflag("-L").rustflag(&root);
             }
         }
     }

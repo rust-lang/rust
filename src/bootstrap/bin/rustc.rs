@@ -16,7 +16,6 @@
 //! never get replaced.
 
 use std::env;
-use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
@@ -97,7 +96,7 @@ fn main() {
         cmd.env("RUST_BACKTRACE", "1");
     }
 
-    if let Some(target) = target {
+    if target.is_some() {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,
         // unless one is already set.
@@ -110,23 +109,6 @@ fn main() {
         // linking all deps statically into the dylib.
         if env::var_os("RUSTC_NO_PREFER_DYNAMIC").is_none() {
             cmd.arg("-Cprefer-dynamic");
-        }
-
-        // Help the libc crate compile by assisting it in finding various
-        // sysroot native libraries.
-        if let Some(s) = env::var_os("MUSL_ROOT") {
-            if target.contains("musl") {
-                let mut root = OsString::from("native=");
-                root.push(&s);
-                root.push("/lib");
-                cmd.arg("-L").arg(&root);
-            }
-        }
-        if let Some(s) = env::var_os("WASI_ROOT") {
-            let mut root = OsString::from("native=");
-            root.push(&s);
-            root.push("/lib/wasm32-wasi");
-            cmd.arg("-L").arg(&root);
         }
 
         // If we're compiling specifically the `panic_abort` crate then we pass
