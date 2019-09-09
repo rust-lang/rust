@@ -3990,6 +3990,7 @@ fn test<F: FnOnce(u32, u64) -> u128>(f: F) {
 fn closure_1() {
     assert_snapshot!(
         infer(r#"
+#[lang = "fn_once"]
 trait FnOnce<Args> {
     type Output;
 }
@@ -4000,39 +4001,39 @@ impl<T> Option<T> {
 }
 
 fn test() {
-    let x = Option::Some(1i32);
+    let x = Option::Some(1u32);
     x.map(|v| v + 1);
     x.map(|_v| 1u64);
     let y: Option<i64> = x.map(|_v| 1);
 }
 "#),
         @r###"
-    [128; 132) 'self': Option<T>
-    [134; 135) 'f': F
-    [145; 147) '{}': ()
-    [161; 280) '{     ... 1); }': ()
-    [171; 172) 'x': Option<i32>
-    [175; 187) 'Option::Some': Some<i32>(T) -> Option<T>
-    [175; 193) 'Option...(1i32)': Option<i32>
-    [188; 192) '1i32': i32
-    [199; 200) 'x': Option<i32>
-    [199; 215) 'x.map(...v + 1)': {unknown}
-    [205; 214) '|v| v + 1': |{unknown}| -> i32
-    [206; 207) 'v': {unknown}
-    [209; 210) 'v': {unknown}
-    [209; 214) 'v + 1': i32
-    [213; 214) '1': i32
-    [221; 222) 'x': Option<i32>
-    [221; 237) 'x.map(... 1u64)': {unknown}
-    [227; 236) '|_v| 1u64': |{unknown}| -> u64
-    [228; 230) '_v': {unknown}
-    [232; 236) '1u64': u64
-    [247; 248) 'y': Option<i64>
-    [264; 265) 'x': Option<i32>
-    [264; 277) 'x.map(|_v| 1)': Option<i64>
-    [270; 276) '|_v| 1': |{unknown}| -> i32
-    [271; 273) '_v': {unknown}
-    [275; 276) '1': i32
+    [148; 152) 'self': Option<T>
+    [154; 155) 'f': F
+    [165; 167) '{}': ()
+    [181; 300) '{     ... 1); }': ()
+    [191; 192) 'x': Option<u32>
+    [195; 207) 'Option::Some': Some<u32>(T) -> Option<T>
+    [195; 213) 'Option...(1u32)': Option<u32>
+    [208; 212) '1u32': u32
+    [219; 220) 'x': Option<u32>
+    [219; 235) 'x.map(...v + 1)': {unknown}
+    [225; 234) '|v| v + 1': |u32| -> i32
+    [226; 227) 'v': u32
+    [229; 230) 'v': u32
+    [229; 234) 'v + 1': i32
+    [233; 234) '1': i32
+    [241; 242) 'x': Option<u32>
+    [241; 257) 'x.map(... 1u64)': {unknown}
+    [247; 256) '|_v| 1u64': |u32| -> u64
+    [248; 250) '_v': u32
+    [252; 256) '1u64': u64
+    [267; 268) 'y': Option<i64>
+    [284; 285) 'x': Option<u32>
+    [284; 297) 'x.map(|_v| 1)': Option<i64>
+    [290; 296) '|_v| 1': |u32| -> i32
+    [291; 293) '_v': u32
+    [295; 296) '1': i32
     "###
     );
 }
