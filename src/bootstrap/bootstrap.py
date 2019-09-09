@@ -708,6 +708,14 @@ class RustBuild(object):
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
                 self.get_toml('submodules') == "false":
             return
+
+        # check the existence of 'git' command
+        try:
+            subprocess.check_output(['git', '--version'])
+        except (subprocess.CalledProcessError, OSError):
+            print("error: `git` is not found, please make sure it's installed and in the path.")
+            sys.exit(1)
+
         slow_submodules = self.get_toml('fast-submodules') == "false"
         start_time = time()
         if slow_submodules:
