@@ -1,7 +1,7 @@
 // Validation changes why we fail
 // compile-flags: -Zmiri-disable-validation
 
-// error-pattern: tried to deallocate Stack memory but gave Machine(Rust) as the kind
+// error-pattern: tried to deallocate `Stack` memory but gave `Machine(Rust)` as the kind
 
 fn main() {
     let x = 42;
