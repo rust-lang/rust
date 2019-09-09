@@ -13,6 +13,7 @@ add_llvm_loadable_module( LLVMEnzyme
 else()
 add_llvm_library( LLVMEnzyme
     Enzyme.cpp
+    MODULE
     DEPENDS
     intrinsics_gen
     PLUGIN_TOOL
