@@ -172,24 +172,24 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body
-; CHECK-NEXT:   %[[lcssa:.+]] = phi double [ %10, %invertfor.body ]
+; CHECK-NEXT:   %[[lcssa:.+]] = phi double [ %[[added:.+]], %invertfor.body ]
 ; CHECK-NEXT:   %3 = bitcast i8** %0 to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %3)
 ; CHECK-NEXT:   %4 = insertvalue { double } undef, double %[[lcssa]], 0
 ; CHECK-NEXT:   ret { double } %4
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.body, %entry
-; CHECK-NEXT:   %"x'de.0" = phi double [ 0.000000e+00, %entry ], [ %10, %invertfor.body ]
-; CHECK-NEXT:   %"indvars.iv'phi" = phi i64 [ %2, %entry ], [ %[[sub:.+]], %invertfor.body ]
-; CHECK-NEXT:   %[[sub]] = add i64 %"indvars.iv'phi", -1
-; CHECK-NEXT:   %6 = getelementptr i8*, i8** %0, i64 %"indvars.iv'phi"
-; CHECK-NEXT:   %7 = bitcast i8** %6 to double**
-; CHECK-NEXT:   %8 = load double*, double** %7, align 8
-; CHECK-NEXT:   %9 = load double, double* %8, align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %8, align 8
-; CHECK-NEXT:   %10 = fadd fast double %"x'de.0", %9
-; CHECK-NEXT:   %11 = load i8*, i8** %6, align 8
-; CHECK-NEXT:   tail call void @free(i8* nonnull %11)
-; CHECK-NEXT:   %12 = icmp eq i64 %"indvars.iv'phi", 0
-; CHECK-NEXT:   br i1 %12, label %invertentry, label %invertfor.body
+; CHECK-NEXT:   %"x'de.0" = phi double [ 0.000000e+00, %entry ], [ %[[added]], %invertfor.body ]
+; CHECK-NEXT:   %"indvars.iv'phi.in" = phi i64 [ %wide.trip.count, %entry ], [ %[[sub:.+]], %invertfor.body ]
+; CHECK-NEXT:   %[[sub]] = add i64 %"indvars.iv'phi.in", -1
+; CHECK-NEXT:   %[[geper:.+]] = getelementptr i8*, i8** %0, i64 %"indvars.iv'phi"
+; CHECK-NEXT:   %[[bc:.+]] = bitcast i8** %[[geper]] to double**
+; CHECK-NEXT:   %[[metaload:.+]] = load double*, double** %[[bc]], align 8
+; CHECK-NEXT:   %[[load:.+]] = load double, double* %[[metaload]], align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[metaload]], align 8
+; CHECK-NEXT:   %[[added]] = fadd fast double %"x'de.0", %[[load]]
+; CHECK-NEXT:   %[[tofree:.+]] = load i8*, i8** %[[geper]], align 8
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[tofree]])
+; CHECK-NEXT:   %[[lcmp:.+]] = icmp eq i64 %"indvars.iv'phi", 0
+; CHECK-NEXT:   br i1 %[[lcmp]], label %invertentry, label %invertfor.body
 ; CHECK-NEXT: }

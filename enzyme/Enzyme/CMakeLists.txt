@@ -2,7 +2,7 @@
 #  set(LLVM_LINK_COMPONENTS Core Support)
 #endif()
 
-if (${LLVM_VERSION_MAJOR} <= 7)
+if (${LLVM_VERSION_MAJOR} LESS_EQUAL 7)
 add_llvm_loadable_module( LLVMEnzyme
     Enzyme.cpp
     #    DEPENDS

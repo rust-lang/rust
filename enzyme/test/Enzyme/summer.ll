@@ -93,7 +93,7 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   br i1 %cmp, label %cond.false, label %cond.end
 
 ; CHECK: cond.false:                                       ; preds = %entry
-; CHECK-NEXT:   tail call void @__assert_fail(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.1, i64 0, i64 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.2, i64 0, i64 0), i32 11, i8* getelementptr inbounds ([40 x i8], [40 x i8]* @__PRETTY_FUNCTION__.summer, i64 0, i64 0)) #6
+; CHECK-NEXT:   tail call void @__assert_fail(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.1, i64 0, i64 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.2, i64 0, i64 0), i32 11, i8* getelementptr inbounds ([40 x i8], [40 x i8]* @__PRETTY_FUNCTION__.summer, i64 0, i64 0))
 ; CHECK-NEXT:   unreachable
 
 ; CHECK: cond.end:                                         ; preds = %entry
@@ -102,7 +102,7 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   br i1 %cmp1, label %cond.false3, label %for.body.preheader
 
 ; CHECK: cond.false3:                                      ; preds = %cond.end
-; CHECK-NEXT:   tail call void @__assert_fail(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.4, i64 0, i64 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.2, i64 0, i64 0), i32 13, i8* getelementptr inbounds ([40 x i8], [40 x i8]* @__PRETTY_FUNCTION__.summer, i64 0, i64 0)) #6
+; CHECK-NEXT:   tail call void @__assert_fail(i8* getelementptr inbounds ([7 x i8], [7 x i8]* @.str.4, i64 0, i64 0), i8* getelementptr inbounds ([9 x i8], [9 x i8]* @.str.2, i64 0, i64 0), i32 13, i8* getelementptr inbounds ([40 x i8], [40 x i8]* @__PRETTY_FUNCTION__.summer, i64 0, i64 0))
 ; CHECK-NEXT:   unreachable
 
 ; CHECK: for.body.preheader:                               ; preds = %cond.end
