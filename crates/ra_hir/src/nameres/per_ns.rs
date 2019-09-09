@@ -4,7 +4,8 @@ use crate::MacroDef;
 pub enum Namespace {
     Types,
     Values,
-    Macro,
+    // Note that only type inference uses this enum, and it doesn't care about macros.
+    // Macro,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -79,14 +80,7 @@ impl<T> PerNs<T> {
         }
     }
 
-    pub fn and_then<U>(self, f: impl Fn(T) -> Option<U>) -> PerNs<U> {
-        PerNs {
-            types: self.types.and_then(&f),
-            values: self.values.and_then(&f),
-            macros: self.macros,
-        }
-    }
-
+    /// Map types and values. Leave macros unchanged.
     pub fn map<U>(self, f: impl Fn(T) -> U) -> PerNs<U> {
         PerNs { types: self.types.map(&f), values: self.values.map(&f), macros: self.macros }
     }
