@@ -1067,6 +1067,14 @@ impl<'a> Builder<'a> {
             }
         }
 
+        match mode {
+            Mode::Rustc | Mode::Codegen => {
+                rustflags.arg("-Zunstable-options");
+                rustflags.arg("-Wrustc::internal");
+            }
+            _ => {}
+        }
+
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
         // obtained previously to those build scripts.

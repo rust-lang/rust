@@ -101,13 +101,6 @@ fn main() {
         cmd.arg(format!("-Cdebuginfo={}", debuginfo_level));
     }
 
-    if env::var_os("RUSTC_EXTERNAL_TOOL").is_none() {
-        if use_internal_lints(crate_name) {
-            cmd.arg("-Zunstable-options");
-            cmd.arg("-Wrustc::internal");
-        }
-    }
-
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,
@@ -259,14 +252,6 @@ fn main() {
 
     let code = exec_cmd(&mut cmd).unwrap_or_else(|_| panic!("\n\n failed to run {:?}", cmd));
     std::process::exit(code);
-}
-
-// Rustc crates for which internal lints are in effect.
-fn use_internal_lints(crate_name: Option<&str>) -> bool {
-    crate_name.map_or(false, |crate_name| {
-        crate_name.starts_with("rustc") || crate_name.starts_with("syntax") ||
-        ["arena", "fmt_macros"].contains(&crate_name)
-    })
 }
 
 #[cfg(unix)]
