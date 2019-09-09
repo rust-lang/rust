@@ -20,6 +20,7 @@ macro_rules! impl_froms {
 }
 
 mod either;
+pub mod debug;
 
 pub mod db;
 #[macro_use]

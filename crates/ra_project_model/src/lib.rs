@@ -9,7 +9,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use ra_db::{CrateGraph, Edition, FileId};
+use ra_db::{CrateGraph, CrateId, Edition, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -113,8 +113,12 @@ impl ProjectWorkspace {
         }
     }
 
-    pub fn to_crate_graph(&self, load: &mut dyn FnMut(&Path) -> Option<FileId>) -> CrateGraph {
+    pub fn to_crate_graph(
+        &self,
+        load: &mut dyn FnMut(&Path) -> Option<FileId>,
+    ) -> (CrateGraph, FxHashMap<CrateId, String>) {
         let mut crate_graph = CrateGraph::default();
+        let mut names = FxHashMap::default();
         match self {
             ProjectWorkspace::Json { project } => {
                 let mut crates = FxHashMap::default();
@@ -151,10 +155,9 @@ impl ProjectWorkspace {
                 let mut sysroot_crates = FxHashMap::default();
                 for krate in sysroot.crates() {
                     if let Some(file_id) = load(krate.root(&sysroot)) {
-                        sysroot_crates.insert(
-                            krate,
-                            crate_graph.add_crate_root(file_id, Edition::Edition2018),
-                        );
+                        let crate_id = crate_graph.add_crate_root(file_id, Edition::Edition2018);
+                        sysroot_crates.insert(krate, crate_id);
+                        names.insert(crate_id, krate.name(&sysroot).to_string());
                     }
                 }
                 for from in sysroot.crates() {
@@ -182,6 +185,7 @@ impl ProjectWorkspace {
                         if let Some(file_id) = load(root) {
                             let edition = pkg.edition(&cargo);
                             let crate_id = crate_graph.add_crate_root(file_id, edition);
+                            names.insert(crate_id, pkg.name(&cargo).to_string());
                             if tgt.kind(&cargo) == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);
                                 pkg_to_lib_crate.insert(pkg, crate_id);
@@ -212,7 +216,7 @@ impl ProjectWorkspace {
                     }
                 }
 
-                // Now add a dep ednge from all targets of upstream to the lib
+                // Now add a dep edge from all targets of upstream to the lib
                 // target of downstream.
                 for pkg in cargo.packages() {
                     for dep in pkg.dependencies(&cargo) {
@@ -233,7 +237,7 @@ impl ProjectWorkspace {
                 }
             }
         }
-        crate_graph
+        (crate_graph, names)
     }
 
     pub fn workspace_root_for(&self, path: &Path) -> Option<&Path> {

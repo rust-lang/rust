@@ -92,6 +92,7 @@ impl WorldState {
             let vfs_root_path = vfs.root2path(r);
             let is_local = folder_roots.iter().any(|it| vfs_root_path.starts_with(it));
             change.add_root(SourceRootId(r.0), is_local);
+            change.set_debug_root_path(SourceRootId(r.0), vfs_root_path.display().to_string());
         }
 
         // Create crate graph from all the workspaces
@@ -101,7 +102,11 @@ impl WorldState {
             vfs_file.map(|f| FileId(f.0))
         };
         for ws in workspaces.iter() {
-            crate_graph.extend(ws.to_crate_graph(&mut load));
+            let (graph, crate_names) = ws.to_crate_graph(&mut load);
+            let shift = crate_graph.extend(graph);
+            for (crate_id, name) in crate_names {
+                change.set_debug_crate_name(crate_id.shift(shift), name)
+            }
         }
         change.set_crate_graph(crate_graph);
 

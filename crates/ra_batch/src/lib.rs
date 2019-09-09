@@ -39,7 +39,7 @@ pub fn load_cargo(root: &Path) -> Result<(AnalysisHost, FxHashMap<SourceRootId, 
         sender,
         Watch(false),
     );
-    let crate_graph = ws.to_crate_graph(&mut |path: &Path| {
+    let (crate_graph, _crate_names) = ws.to_crate_graph(&mut |path: &Path| {
         let vfs_file = vfs.load(path);
         log::debug!("vfs file {:?} -> {:?}", path, vfs_file);
         vfs_file.map(vfs_file_to_id)

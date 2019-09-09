@@ -82,6 +82,12 @@ pub struct CyclicDependencies;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
+impl CrateId {
+    pub fn shift(self, amount: u32) -> CrateId {
+        CrateId(self.0 + amount)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Edition {
     Edition2018,
@@ -178,15 +184,19 @@ impl CrateGraph {
 
     /// Extends this crate graph by adding a complete disjoint second crate
     /// graph.
-    pub fn extend(&mut self, other: CrateGraph) {
+    ///
+    /// The ids of the crates in the `other` graph are shifted by the return
+    /// amount.
+    pub fn extend(&mut self, other: CrateGraph) -> u32 {
         let start = self.arena.len() as u32;
         self.arena.extend(other.arena.into_iter().map(|(id, mut data)| {
-            let new_id = CrateId(id.0 + start);
+            let new_id = id.shift(start);
             for dep in &mut data.dependencies {
-                dep.crate_id = CrateId(dep.crate_id.0 + start);
+                dep.crate_id = dep.crate_id.shift(start);
             }
             (new_id, data)
         }));
+        start
     }
 
     fn dfs_find(&self, target: CrateId, from: CrateId, visited: &mut FxHashSet<CrateId>) -> bool {
