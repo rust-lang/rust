@@ -76,8 +76,10 @@ impl RawItems {
             source_map: ImportSourceMap::default(),
         };
         if let Some(node) = db.parse_or_expand(file_id) {
-            if let Some(source_file) = ast::SourceFile::cast(node) {
+            if let Some(source_file) = ast::SourceFile::cast(node.clone()) {
                 collector.process_module(None, source_file);
+            } else if let Some(item_list) = ast::MacroItems::cast(node) {
+                collector.process_module(None, item_list);
             }
         }
         (Arc::new(collector.raw_items), Arc::new(collector.source_map))

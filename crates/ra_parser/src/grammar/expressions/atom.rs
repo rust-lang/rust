@@ -69,6 +69,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
     let done = match p.current() {
         T!['('] => tuple_expr(p),
         T!['['] => array_expr(p),
+        L_DOLLAR => meta_var_expr(p),
         T![|] => lambda_expr(p),
         T![move] if la == T![|] => lambda_expr(p),
         T![async] if la == T![|] || (la == T![move] && p.nth(2) == T![|]) => lambda_expr(p),
@@ -553,4 +554,28 @@ fn box_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
         expr(p);
     }
     m.complete(p, BOX_EXPR)
+}
+
+/// Expression from `$var` macro expansion, wrapped in dollars
+fn meta_var_expr(p: &mut Parser) -> CompletedMarker {
+    assert!(p.at(L_DOLLAR));
+    let m = p.start();
+    p.bump(L_DOLLAR);
+    let (completed, _is_block) =
+        expr_bp(p, Restrictions { forbid_structs: false, prefer_stmt: false }, 1);
+
+    match (completed, p.current()) {
+        (Some(it), R_DOLLAR) => {
+            p.bump(R_DOLLAR);
+            m.abandon(p);
+            it
+        }
+        _ => {
+            while !p.at(R_DOLLAR) {
+                p.bump_any()
+            }
+            p.bump(R_DOLLAR);
+            m.complete(p, ERROR)
+        }
+    }
 }

@@ -70,7 +70,7 @@ pub(crate) fn expand(rules: &MacroRules, invocation: &str) -> tt::Subtree {
 
 pub(crate) fn expand_to_items(rules: &MacroRules, invocation: &str) -> ast::MacroItems {
     let expanded = expand(rules, invocation);
-    token_tree_to_macro_items(&expanded).unwrap().tree()
+    token_tree_to_items(&expanded).unwrap().tree()
 }
 
 #[allow(unused)]
@@ -155,8 +155,8 @@ pub(crate) fn assert_expansion(
     let expected = text_to_tokentree(&expected);
     let (expanded_tree, expected_tree) = match kind {
         MacroKind::Items => {
-            let expanded_tree = token_tree_to_macro_items(&expanded).unwrap().tree();
-            let expected_tree = token_tree_to_macro_items(&expected).unwrap().tree();
+            let expanded_tree = token_tree_to_items(&expanded).unwrap().tree();
+            let expected_tree = token_tree_to_items(&expected).unwrap().tree();
 
             (
                 debug_dump_ignore_spaces(expanded_tree.syntax()).trim().to_string(),
@@ -410,7 +410,7 @@ fn test_expand_to_item_list() {
             ",
     );
     let expansion = expand(&rules, "structs!(Foo, Bar);");
-    let tree = token_tree_to_macro_items(&expansion).unwrap().tree();
+    let tree = token_tree_to_items(&expansion).unwrap().tree();
     assert_eq!(
         format!("{:#?}", tree.syntax()).trim(),
         r#"

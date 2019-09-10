@@ -90,7 +90,7 @@ impl HirFileId {
             })
             .ok()?;
         match macro_file.macro_file_kind {
-            MacroFileKind::Items => Some(Parse::to_syntax(mbe::token_tree_to_ast_item_list(&tt))),
+            MacroFileKind::Items => mbe::token_tree_to_items(&tt).ok().map(Parse::to_syntax),
             MacroFileKind::Expr => mbe::token_tree_to_expr(&tt).ok().map(Parse::to_syntax),
         }
     }

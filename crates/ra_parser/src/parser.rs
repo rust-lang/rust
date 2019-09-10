@@ -5,7 +5,7 @@ use drop_bomb::DropBomb;
 use crate::{
     event::Event,
     ParseError,
-    SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
+    SyntaxKind::{self, EOF, ERROR, L_DOLLAR, R_DOLLAR, TOMBSTONE},
     TokenSet, TokenSource, T,
 };
 
@@ -211,19 +211,26 @@ impl<'t> Parser<'t> {
 
     /// Create an error node and consume the next token.
     pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {
-        if self.at(T!['{']) || self.at(T!['}']) || self.at_ts(recovery) {
+        match self.current() {
+            T!['{'] | T!['}'] | L_DOLLAR | R_DOLLAR => {
+                self.error(message);
+                return;
+            }
+            _ => (),
+        }
+
+        if self.at_ts(recovery) {
             self.error(message);
-        } else {
-            let m = self.start();
-            self.error(message);
-            self.bump_any();
-            m.complete(self, ERROR);
-        };
+            return;
+        }
+
+        let m = self.start();
+        self.error(message);
+        self.bump_any();
+        m.complete(self, ERROR);
     }
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
-        // self.eat_dollars();
-
         for _ in 0..n_raw_tokens {
             self.token_source.bump();
         }
@@ -233,52 +240,6 @@ impl<'t> Parser<'t> {
 
     fn push_event(&mut self, event: Event) {
         self.events.push(event)
-    }
-
-    pub(crate) fn eat_l_dollars(&mut self) -> usize {
-        let mut ate_count = 0;
-        loop {
-            match self.token_source.current().kind {
-                k @ SyntaxKind::L_DOLLAR => {
-                    self.token_source.bump();
-                    self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
-                    ate_count += 1;
-                }
-                _ => {
-                    return ate_count;
-                }
-            }
-        }
-    }
-
-    pub(crate) fn eat_r_dollars(&mut self, max_count: usize) -> usize {
-        let mut ate_count = 0;
-        loop {
-            match self.token_source.current().kind {
-                k @ SyntaxKind::R_DOLLAR => {
-                    self.token_source.bump();
-                    self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
-                    ate_count += 1;
-
-                    if max_count >= ate_count {
-                        return ate_count;
-                    }
-                }
-                _ => {
-                    return ate_count;
-                }
-            }
-        }
-    }
-
-    pub(crate) fn at_l_dollar(&self) -> bool {
-        let kind = self.token_source.current().kind;
-        (kind == SyntaxKind::L_DOLLAR)
-    }
-
-    pub(crate) fn at_r_dollar(&self) -> bool {
-        let kind = self.token_source.current().kind;
-        (kind == SyntaxKind::R_DOLLAR)
     }
 }
 
