@@ -1,10 +1,11 @@
 mod analysis_stats;
 mod analysis_bench;
+mod help;
 
-use std::{error::Error, io::Read};
+use std::{error::Error, fmt::Write, io::Read};
 
-use clap::{App, Arg, SubCommand};
 use flexi_logger::Logger;
+use pico_args::Arguments;
 use ra_ide_api::{file_structure, Analysis};
 use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
@@ -13,77 +14,89 @@ type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 fn main() -> Result<()> {
     Logger::with_env().start()?;
-    let matches = App::new("ra-cli")
-        .setting(clap::AppSettings::SubcommandRequiredElseHelp)
-        .subcommand(SubCommand::with_name("parse").arg(Arg::with_name("no-dump").long("--no-dump")))
-        .subcommand(SubCommand::with_name("symbols"))
-        .subcommand(
-            SubCommand::with_name("highlight")
-                .arg(Arg::with_name("rainbow").short("r").long("rainbow")),
-        )
-        .subcommand(
-            SubCommand::with_name("analysis-stats")
-                .arg(Arg::with_name("verbose").short("v").long("verbose"))
-                .arg(Arg::with_name("memory-usage").long("memory-usage"))
-                .arg(Arg::with_name("only").short("o").takes_value(true))
-                .arg(Arg::with_name("path")),
-        )
-        .subcommand(
-            SubCommand::with_name("analysis-bench")
-                .arg(Arg::with_name("verbose").short("v").long("verbose"))
-                .arg(
-                    Arg::with_name("highlight")
-                        .long("highlight")
-                        .takes_value(true)
-                        .conflicts_with("complete")
-                        .value_name("PATH")
-                        .help("highlight this file"),
-                )
-                .arg(
-                    Arg::with_name("complete")
-                        .long("complete")
-                        .takes_value(true)
-                        .conflicts_with("highlight")
-                        .value_name("PATH:LINE:COLUMN")
-                        .help("compute completions at this location"),
-                )
-                .arg(Arg::with_name("path").value_name("PATH").help("project to analyze")),
-        )
-        .get_matches();
-    match matches.subcommand() {
-        ("parse", Some(matches)) => {
+
+    let subcommand = match std::env::args_os().nth(1) {
+        None => {
+            eprintln!("{}", help::GLOBAL_HELP);
+            return Ok(());
+        }
+        Some(s) => s,
+    };
+    let mut matches = Arguments::from_vec(std::env::args_os().skip(2).collect());
+
+    match &*subcommand.to_string_lossy() {
+        "parse" => {
+            if matches.contains(["-h", "--help"]) {
+                eprintln!("{}", help::PARSE_HELP);
+                return Ok(());
+            }
+            let no_dump = matches.contains("--no-dump");
+            matches.finish().or_else(handle_extra_flags)?;
+
             let _p = profile("parsing");
             let file = file()?;
-            if !matches.is_present("no-dump") {
+            if !no_dump {
                 println!("{:#?}", file.syntax());
             }
             std::mem::forget(file);
         }
-        ("symbols", _) => {
+        "symbols" => {
+            if matches.contains(["-h", "--help"]) {
+                eprintln!("{}", help::SYMBOLS_HELP);
+                return Ok(());
+            }
+            matches.finish().or_else(handle_extra_flags)?;
             let file = file()?;
             for s in file_structure(&file) {
                 println!("{:?}", s);
             }
         }
-        ("highlight", Some(matches)) => {
+        "highlight" => {
+            if matches.contains(["-h", "--help"]) {
+                eprintln!("{}", help::HIGHLIGHT_HELP);
+                return Ok(());
+            }
+            let rainbow_opt = matches.contains(["-r", "--rainbow"]);
+            matches.finish().or_else(handle_extra_flags)?;
             let (analysis, file_id) = Analysis::from_single_file(read_stdin()?);
-            let html = analysis.highlight_as_html(file_id, matches.is_present("rainbow")).unwrap();
+            let html = analysis.highlight_as_html(file_id, rainbow_opt).unwrap();
             println!("{}", html);
         }
-        ("analysis-stats", Some(matches)) => {
-            let verbose = matches.is_present("verbose");
-            let memory_usage = matches.is_present("memory-usage");
-            let path = matches.value_of("path").unwrap_or("");
-            let only = matches.value_of("only");
-            analysis_stats::run(verbose, memory_usage, path.as_ref(), only)?;
+        "analysis-stats" => {
+            if matches.contains(["-h", "--help"]) {
+                eprintln!("{}", help::ANALYSIS_STATS_HELP);
+                return Ok(());
+            }
+            let verbose = matches.contains(["-v", "--verbose"]);
+            let memory_usage = matches.contains("--memory-usage");
+            let path: String = matches.value_from_str("--path")?.unwrap_or_default();
+            let only = matches.value_from_str(["-o", "--only"])?.map(|v: String| v.to_owned());
+            matches.finish().or_else(handle_extra_flags)?;
+            analysis_stats::run(
+                verbose,
+                memory_usage,
+                path.as_ref(),
+                only.as_ref().map(String::as_ref),
+            )?;
         }
-        ("analysis-bench", Some(matches)) => {
-            let verbose = matches.is_present("verbose");
-            let path = matches.value_of("path").unwrap_or("");
-            let op = if let Some(path) = matches.value_of("highlight") {
+        "analysis-bench" => {
+            if matches.contains(["-h", "--help"]) {
+                eprintln!("{}", help::ANALYSIS_BENCH_HELP);
+                return Ok(());
+            }
+            let verbose = matches.contains(["-v", "--verbose"]);
+            let path: String = matches.value_from_str("--path")?.unwrap_or_default();
+            let highlight_path = matches.value_from_str("--highlight")?;
+            let complete_path = matches.value_from_str("--complete")?;
+            if highlight_path.is_some() && complete_path.is_some() {
+                panic!("either --highlight or --complete must be set, not both")
+            }
+            let op = if let Some(path) = highlight_path {
+                let path: String = path;
                 analysis_bench::Op::Highlight { path: path.into() }
-            } else if let Some(path_line_col) = matches.value_of("complete") {
-                let (path_line, column) = rsplit_at_char(path_line_col, ':')?;
+            } else if let Some(path_line_col) = complete_path {
+                let path_line_col: String = path_line_col;
+                let (path_line, column) = rsplit_at_char(path_line_col.as_str(), ':')?;
                 let (path, line) = rsplit_at_char(path_line, ':')?;
                 analysis_bench::Op::Complete {
                     path: path.into(),
@@ -93,11 +106,25 @@ fn main() -> Result<()> {
             } else {
                 panic!("either --highlight or --complete must be set")
             };
+            matches.finish().or_else(handle_extra_flags)?;
             analysis_bench::run(verbose, path.as_ref(), op)?;
         }
-        _ => unreachable!(),
+        _ => eprintln!("{}", help::GLOBAL_HELP),
     }
     Ok(())
+}
+
+fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
+    if let pico_args::Error::UnusedArgsLeft(flags) = e {
+        let mut invalid_flags = String::new();
+        for flag in flags {
+            write!(&mut invalid_flags, "{}, ", flag)?;
+        }
+        let (invalid_flags, _) = invalid_flags.split_at(invalid_flags.len() - 2);
+        Err(format!("Invalid flags: {}", invalid_flags).into())
+    } else {
+        Err(e.to_string().into())
+    }
 }
 
 fn file() -> Result<SourceFile> {

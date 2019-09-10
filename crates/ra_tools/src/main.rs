@@ -1,5 +1,8 @@
-use clap::{App, Arg, SubCommand};
+mod help;
+
+use core::fmt::Write;
 use core::str;
+use pico_args::Arguments;
 use ra_tools::{
     gen_tests, generate_boilerplate, install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt,
     Cmd, Overwrite, Result,
@@ -20,43 +23,93 @@ struct ServerOpt {
 }
 
 fn main() -> Result<()> {
-    let matches = App::new("tasks")
-        .setting(clap::AppSettings::SubcommandRequiredElseHelp)
-        .subcommand(SubCommand::with_name("gen-syntax"))
-        .subcommand(SubCommand::with_name("gen-tests"))
-        .subcommand(
-            SubCommand::with_name("install-ra")
-                .arg(Arg::with_name("server").long("--server"))
-                .arg(Arg::with_name("jemalloc").long("jemalloc"))
-                .arg(Arg::with_name("client-code").long("client-code").conflicts_with("server")),
-        )
-        .alias("install-code")
-        .subcommand(SubCommand::with_name("format"))
-        .subcommand(SubCommand::with_name("format-hook"))
-        .subcommand(SubCommand::with_name("fuzz-tests"))
-        .subcommand(SubCommand::with_name("lint"))
-        .get_matches();
-    match matches.subcommand() {
-        ("install-ra", Some(matches)) => {
+    let subcommand = match std::env::args_os().nth(1) {
+        None => {
+            eprintln!("{}", help::GLOBAL_HELP);
+            return Ok(());
+        }
+        Some(s) => s,
+    };
+    let mut matches = Arguments::from_vec(std::env::args_os().skip(2).collect());
+    let subcommand = &*subcommand.to_string_lossy();
+    match subcommand {
+        "install-ra" | "install-code" => {
+            if matches.contains(["-h", "--help"]) {
+                eprintln!("{}", help::INSTALL_RA_HELP);
+                return Ok(());
+            }
+            let server = matches.contains("--server");
+            let client_code = matches.contains("--client-code");
+            if server && client_code {
+                eprintln!("{}", help::INSTALL_RA_CONFLICT);
+                return Ok(());
+            }
+            let jemalloc = matches.contains("--jemalloc");
+            matches.finish().or_else(handle_extra_flags)?;
             let opts = InstallOpt {
-                client: if matches.is_present("server") { None } else { Some(ClientOpt::VsCode) },
-                server: if matches.is_present("client-code") {
-                    None
-                } else {
-                    Some(ServerOpt { jemalloc: matches.is_present("jemalloc") })
-                },
+                client: if server { None } else { Some(ClientOpt::VsCode) },
+                server: if client_code { None } else { Some(ServerOpt { jemalloc: jemalloc }) },
             };
             install(opts)?
         }
-        ("gen-tests", _) => gen_tests(Overwrite)?,
-        ("gen-syntax", _) => generate_boilerplate(Overwrite)?,
-        ("format", _) => run_rustfmt(Overwrite)?,
-        ("format-hook", _) => install_format_hook()?,
-        ("lint", _) => run_clippy()?,
-        ("fuzz-tests", _) => run_fuzzer()?,
-        _ => unreachable!(),
+        "gen-tests" => {
+            if matches.contains(["-h", "--help"]) {
+                help::print_no_param_subcommand_help(&subcommand);
+                return Ok(());
+            }
+            gen_tests(Overwrite)?
+        }
+        "gen-syntax" => {
+            if matches.contains(["-h", "--help"]) {
+                help::print_no_param_subcommand_help(&subcommand);
+                return Ok(());
+            }
+            generate_boilerplate(Overwrite)?
+        }
+        "format" => {
+            if matches.contains(["-h", "--help"]) {
+                help::print_no_param_subcommand_help(&subcommand);
+                return Ok(());
+            }
+            run_rustfmt(Overwrite)?
+        }
+        "format-hook" => {
+            if matches.contains(["-h", "--help"]) {
+                help::print_no_param_subcommand_help(&subcommand);
+                return Ok(());
+            }
+            install_format_hook()?
+        }
+        "lint" => {
+            if matches.contains(["-h", "--help"]) {
+                help::print_no_param_subcommand_help(&subcommand);
+                return Ok(());
+            }
+            run_clippy()?
+        }
+        "fuzz-tests" => {
+            if matches.contains(["-h", "--help"]) {
+                help::print_no_param_subcommand_help(&subcommand);
+                return Ok(());
+            }
+            run_fuzzer()?
+        }
+        _ => eprintln!("{}", help::GLOBAL_HELP),
     }
     Ok(())
+}
+
+fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
+    if let pico_args::Error::UnusedArgsLeft(flags) = e {
+        let mut invalid_flags = String::new();
+        for flag in flags {
+            write!(&mut invalid_flags, "{}, ", flag)?;
+        }
+        let (invalid_flags, _) = invalid_flags.split_at(invalid_flags.len() - 2);
+        Err(format!("Invalid flags: {}", invalid_flags).into())
+    } else {
+        Err(e.to_string().into())
+    }
 }
 
 fn install(opts: InstallOpt) -> Result<()> {
