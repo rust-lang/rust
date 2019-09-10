@@ -20,8 +20,8 @@ graphviz = { path = "../libgraphviz" }
 cfg-if = "0.1.2"
 crossbeam-utils = { version = "0.6.5", features = ["nightly"] }
 stable_deref_trait = "1.0.0"
-rayon = { version = "0.2.0", package = "rustc-rayon" }
-rayon-core = { version = "0.2.0", package = "rustc-rayon-core" }
+rayon = { version = "0.3.0", package = "rustc-rayon" }
+rayon-core = { version = "0.3.0", package = "rustc-rayon-core" }
 rustc-hash = "1.0.1"
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 rustc_index = { path = "../librustc_index", package = "rustc_index" }
