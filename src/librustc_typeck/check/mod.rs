@@ -1520,31 +1520,25 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
                             (0, _) => ("const", "consts", None),
                             _ => ("type or const", "types or consts", None),
                         };
-                        let mut err = struct_span_err!(
+                        struct_span_err!(
                             tcx.sess,
                             item.span,
                             E0044,
                             "foreign items may not have {} parameters",
                             kinds,
-                        );
-                        err.span_label(
+                        ).span_label(
                             item.span,
                             &format!("can't have {} parameters", kinds),
-                        );
-                        // FIXME: once we start storing spans for type arguments, turn this into a
-                        // suggestion.
-                        err.help(&format!(
-                            "use specialization instead of {} parameters by replacing \
-                            them with concrete {}{}",
-                            kinds,
-                            kinds_pl,
-                            if let Some(egs) = egs {
-                                format!(" like `{}`", egs)
-                            } else {
-                                "".to_string()
-                            },
-                        ));
-                        err.emit();
+                        ).help(
+                            // FIXME: once we start storing spans for type arguments, turn this
+                            // into a suggestion.
+                            &format!(
+                                "replace the {} parameters with concrete {}{}",
+                                kinds,
+                                kinds_pl,
+                                egs.map(|egs| format!(" like `{}`", egs)).unwrap_or_default(),
+                            ),
+                        ).emit();
                     }
 
                     if let hir::ForeignItemKind::Fn(ref fn_decl, _, _) = item.node {
