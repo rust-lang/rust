@@ -134,13 +134,13 @@ use crate::hint::spin_loop;
 /// busy-wait spin-loop without yielding control to the system's scheduler.
 ///
 /// Using a busy-wait spin-loop with `spin_loop_hint` is ideally used in situations where a
-/// contended lock is held by another thread executed on a different CPU or core and where the waiting
-/// times are relatively small. Because entering busy-wait spin-loop does not trigger the system's
-/// scheduler, no overhead for switching threads occurs. However, if the thread holding the
-/// contended lock is running on the same CPU or core, the spin-loop is likely to occupy an entire CPU slice
-/// before switching to the thread that holds the lock. If the contending lock is held by a thread
-/// on the same CPU or core or if the waiting times for acquiring the lock are longer, it is often better to
-/// use [`std::thread::yield_now`].
+/// contended lock is held by another thread executed on a different CPU or core and where the
+/// waiting times are relatively small. Because entering busy-wait spin-loop does not trigger the
+/// system's scheduler, no overhead for switching threads occurs. However, if the thread holding the
+/// contended lock is running on the same CPU or core, the spin-loop is likely to occupy an entire
+/// CPU slice before switching to the thread that holds the lock. If the contending lock is held by
+/// a thread on the same CPU or core or if the waiting times for acquiring the lock are longer, it
+/// is often better to use [`std::thread::yield_now`].
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
