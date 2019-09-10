@@ -14,20 +14,17 @@ const EXPR_FIRST: TokenSet = LHS_FIRST;
 
 pub(super) fn expr(p: &mut Parser) -> BlockLike {
     let r = Restrictions { forbid_structs: false, prefer_stmt: false };
-    let mut dollar_lvl = 0;
-    expr_bp(p, r, 1, &mut dollar_lvl).1
+    expr_bp(p, r, 1).1
 }
 
 pub(super) fn expr_stmt(p: &mut Parser) -> (Option<CompletedMarker>, BlockLike) {
     let r = Restrictions { forbid_structs: false, prefer_stmt: true };
-    let mut dollar_lvl = 0;
-    expr_bp(p, r, 1, &mut dollar_lvl)
+    expr_bp(p, r, 1)
 }
 
 fn expr_no_struct(p: &mut Parser) {
     let r = Restrictions { forbid_structs: true, prefer_stmt: false };
-    let mut dollar_lvl = 0;
-    expr_bp(p, r, 1, &mut dollar_lvl);
+    expr_bp(p, r, 1);
 }
 
 // test block
@@ -257,23 +254,8 @@ fn current_op(p: &Parser) -> (u8, SyntaxKind) {
 }
 
 // Parses expression with binding power of at least bp.
-fn expr_bp(
-    p: &mut Parser,
-    r: Restrictions,
-    mut bp: u8,
-    dollar_lvl: &mut usize,
-) -> (Option<CompletedMarker>, BlockLike) {
-    // `newly_dollar_open` is a flag indicated that dollar is just closed after lhs, e.g.
-    // `$1$ + a`
-    // We use this flag to skip handling it.
-    let mut newly_dollar_open = if p.at_l_dollar() {
-        *dollar_lvl += p.eat_l_dollars();
-        true
-    } else {
-        false
-    };
-
-    let mut lhs = match lhs(p, r, dollar_lvl) {
+fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>, BlockLike) {
+    let mut lhs = match lhs(p, r) {
         Some((lhs, blocklike)) => {
             // test stmt_bin_expr_ambiguity
             // fn foo() {
@@ -289,15 +271,6 @@ fn expr_bp(
     };
 
     loop {
-        if *dollar_lvl > 0 && p.at_r_dollar() {
-            *dollar_lvl -= p.eat_r_dollars(*dollar_lvl);
-            if !newly_dollar_open {
-                // We "pump" bp for make it highest priority
-                bp = 255;
-            }
-            newly_dollar_open = false;
-        }
-
         let is_range = p.at(T![..]) || p.at(T![..=]);
         let (op_bp, op) = current_op(p);
         if op_bp < bp {
@@ -306,7 +279,7 @@ fn expr_bp(
         let m = lhs.precede(p);
         p.bump(op);
 
-        expr_bp(p, r, op_bp + 1, dollar_lvl);
+        expr_bp(p, r, op_bp + 1);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
     (Some(lhs), BlockLike::NotBlock)
@@ -314,11 +287,7 @@ fn expr_bp(
 
 const LHS_FIRST: TokenSet = atom::ATOM_EXPR_FIRST.union(token_set![AMP, STAR, EXCL, DOT, MINUS]);
 
-fn lhs(
-    p: &mut Parser,
-    r: Restrictions,
-    dollar_lvl: &mut usize,
-) -> Option<(CompletedMarker, BlockLike)> {
+fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> {
     let m;
     let kind = match p.current() {
         // test ref_expr
@@ -351,7 +320,7 @@ fn lhs(
                     m = p.start();
                     p.bump(op);
                     if p.at_ts(EXPR_FIRST) {
-                        expr_bp(p, r, 2, dollar_lvl);
+                        expr_bp(p, r, 2);
                     }
                     return Some((m.complete(p, RANGE_EXPR), BlockLike::NotBlock));
                 }
@@ -367,7 +336,7 @@ fn lhs(
             return Some(postfix_expr(p, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block())));
         }
     };
-    expr_bp(p, r, 255, dollar_lvl);
+    expr_bp(p, r, 255);
     Some((m.complete(p, kind), BlockLike::NotBlock))
 }
 
