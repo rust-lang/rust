@@ -227,12 +227,12 @@ pub(crate) fn create_dump_file(
     pass_name: &str,
     disambiguator: &dyn Display,
     source: MirSource<'tcx>,
-) -> io::Result<fs::File> {
+) -> io::Result<io::BufWriter<fs::File>> {
     let file_path = dump_path(tcx, extension, pass_num, pass_name, disambiguator, source);
     if let Some(parent) = file_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::File::create(&file_path)
+    Ok(io::BufWriter::new(fs::File::create(&file_path)?))
 }
 
 /// Write out a human-readable textual representation for the given MIR.
