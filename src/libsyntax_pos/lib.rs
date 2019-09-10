@@ -256,35 +256,16 @@ pub struct MultiSpan {
 
 impl Span {
     #[inline]
-    pub fn lo(self) -> BytePos {
-        self.data().lo
-    }
-    #[inline]
     pub fn with_lo(self, lo: BytePos) -> Span {
         self.data().with_lo(lo)
-    }
-    #[inline]
-    pub fn hi(self) -> BytePos {
-        self.data().hi
     }
     #[inline]
     pub fn with_hi(self, hi: BytePos) -> Span {
         self.data().with_hi(hi)
     }
     #[inline]
-    pub fn ctxt(self) -> SyntaxContext {
-        self.data().ctxt
-    }
-    #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
         self.data().with_ctxt(ctxt)
-    }
-
-    /// Returns `true` if this is a dummy span with any hygienic context.
-    #[inline]
-    pub fn is_dummy(self) -> bool {
-        let span = self.data();
-        span.lo.0 == 0 && span.hi.0 == 0
     }
 
     /// Returns `true` if this span comes from a macro or desugaring.

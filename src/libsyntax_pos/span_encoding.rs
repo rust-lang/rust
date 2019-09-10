@@ -113,6 +113,44 @@ impl Span {
             with_span_interner(|interner| *interner.get(self.base_or_index))
         }
     }
+
+    #[inline]
+    pub fn lo(self) -> BytePos {
+        if self.is_inline() {
+            BytePos(self.base_or_index)
+        } else {
+            with_span_interner(|interner| *interner.get(self.base_or_index)).lo
+        }
+    }
+
+    #[inline]
+    pub fn hi(self) -> BytePos {
+        if self.is_inline() {
+            BytePos(self.base_or_index + self.len_or_tag as u32)
+        } else {
+            with_span_interner(|interner| *interner.get(self.base_or_index)).hi
+        }
+    }
+
+    #[inline]
+    pub fn ctxt(self) -> SyntaxContext {
+        if self.is_inline() {
+            SyntaxContext::from_u32(self.ctxt_or_zero as u32)
+        } else {
+            with_span_interner(|interner| *interner.get(self.base_or_index)).ctxt
+        }
+    }
+
+    /// Returns `true` if this is a dummy span with any hygienic context.
+    #[inline]
+    pub fn is_dummy(self) -> bool {
+        if self.is_inline() {
+            self.base_or_index == 0 && self.len_or_tag == 0
+        } else {
+            let span = with_span_interner(|interner| *interner.get(self.base_or_index));
+            span.lo.0 == 0 && span.hi.0 == 0
+        }
+    }
 }
 
 #[derive(Default)]
