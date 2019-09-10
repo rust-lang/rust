@@ -903,7 +903,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 self.cx.span_lint(IMPROPER_CTYPES,
                                   sp,
                                   &format!("`extern` block uses type `{}` which is not FFI-safe: \
-                                            composed only of PhantomData", ty));
+                                            composed only of `PhantomData`", ty));
             }
             FfiResult::FfiUnsafe { ty: unsafe_ty, reason, help } => {
                 let msg = format!("`extern` block uses type `{}` which is not FFI-safe: {}",

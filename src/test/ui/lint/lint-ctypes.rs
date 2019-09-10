@@ -1,7 +1,7 @@
-#![deny(improper_ctypes)]
 #![feature(rustc_private)]
 
 #![allow(private_in_public)]
+#![deny(improper_ctypes)]
 
 extern crate libc;
 
@@ -55,9 +55,9 @@ extern {
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
     pub fn tuple_type2(p: I32Pair); //~ ERROR uses type `(i32, i32)`
     pub fn zero_size(p: ZeroSize); //~ ERROR struct has no fields
-    pub fn zero_size_phantom(p: ZeroSizeWithPhantomData); //~ ERROR composed only of PhantomData
+    pub fn zero_size_phantom(p: ZeroSizeWithPhantomData); //~ ERROR composed only of `PhantomData`
     pub fn zero_size_phantom_toplevel()
-        -> ::std::marker::PhantomData<bool>; //~ ERROR: composed only of PhantomData
+        -> ::std::marker::PhantomData<bool>; //~ ERROR: composed only of `PhantomData`
     pub fn fn_type(p: RustFn); //~ ERROR function pointer has Rust-specific
     pub fn fn_type2(p: fn()); //~ ERROR function pointer has Rust-specific
     pub fn fn_contained(p: RustBadRet); //~ ERROR: uses type `std::boxed::Box<u32>`
