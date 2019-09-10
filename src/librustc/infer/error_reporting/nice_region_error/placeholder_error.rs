@@ -192,23 +192,28 @@ impl NiceRegionError<'me, 'tcx> {
             vid, sub_placeholder, sup_placeholder, trait_def_id, expected_substs, actual_substs
         );
 
-        let mut err = self.tcx().sess.struct_span_err(
-            cause.span(self.tcx()),
-            &format!(
-                "implementation of `{}` is not general enough",
-                self.tcx().def_path_str(trait_def_id),
-            ),
+        let span = cause.span(self.tcx());
+        let msg = format!(
+            "implementation of `{}` is not general enough",
+            self.tcx().def_path_str(trait_def_id),
+        );
+        let mut err = self.tcx().sess.struct_span_err(span, &msg);
+        err.span_label(
+            self.tcx().def_span(trait_def_id),
+            format!("trait `{}` defined here", self.tcx().def_path_str(trait_def_id)),
         );
 
-        match cause.code {
-            ObligationCauseCode::ItemObligation(def_id) => {
-                err.note(&format!(
-                    "Due to a where-clause on `{}`,",
-                    self.tcx().def_path_str(def_id),
-                ));
-            }
-            _ => (),
-        }
+        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id) = cause.code {
+            err.span_label(span, "doesn't satisfy where-clause");
+            err.span_label(
+                self.tcx().def_span(def_id),
+                &format!("due to a where-clause on `{}`...", self.tcx().def_path_str(def_id)),
+            );
+            true
+        } else {
+            err.span_label(span, &msg);
+            false
+        };
 
         let expected_trait_ref = self.infcx.resolve_vars_if_possible(&ty::TraitRef {
             def_id: trait_def_id,
@@ -295,6 +300,7 @@ impl NiceRegionError<'me, 'tcx> {
             expected_has_vid,
             actual_has_vid,
             any_self_ty_has_vid,
+            leading_ellipsis,
         );
 
         err
@@ -318,6 +324,7 @@ impl NiceRegionError<'me, 'tcx> {
         expected_has_vid: Option<usize>,
         actual_has_vid: Option<usize>,
         any_self_ty_has_vid: bool,
+        leading_ellipsis: bool,
     ) {
         // HACK(eddyb) maybe move this in a more central location.
         #[derive(Copy, Clone)]
@@ -392,13 +399,15 @@ impl NiceRegionError<'me, 'tcx> {
 
             let mut note = if passive_voice {
                 format!(
-                    "`{}` would have to be implemented for the type `{}`",
+                    "{}`{}` would have to be implemented for the type `{}`",
+                    if leading_ellipsis { "..." } else { "" },
                     expected_trait_ref,
                     expected_trait_ref.map(|tr| tr.self_ty()),
                 )
             } else {
                 format!(
-                    "`{}` must implement `{}`",
+                    "{}`{}` must implement `{}`",
+                    if leading_ellipsis { "..." } else { "" },
                     expected_trait_ref.map(|tr| tr.self_ty()),
                     expected_trait_ref,
                 )
@@ -407,20 +416,20 @@ impl NiceRegionError<'me, 'tcx> {
             match (has_sub, has_sup) {
                 (Some(n1), Some(n2)) => {
                     let _ = write!(note,
-                        ", for any two lifetimes `'{}` and `'{}`",
+                        ", for any two lifetimes `'{}` and `'{}`...",
                         std::cmp::min(n1, n2),
                         std::cmp::max(n1, n2),
                     );
                 }
                 (Some(n), _) | (_, Some(n)) => {
                     let _ = write!(note,
-                        ", for any lifetime `'{}`",
+                        ", for any lifetime `'{}`...",
                         n,
                     );
                 }
                 (None, None) => if let Some(n) = expected_has_vid {
                     let _ = write!(note,
-                        ", for some specific lifetime `'{}`",
+                        ", for some specific lifetime `'{}`...",
                         n,
                     );
                 },
@@ -439,13 +448,13 @@ impl NiceRegionError<'me, 'tcx> {
 
             let mut note = if passive_voice {
                 format!(
-                    "but `{}` is actually implemented for the type `{}`",
+                    "...but `{}` is actually implemented for the type `{}`",
                     actual_trait_ref,
                     actual_trait_ref.map(|tr| tr.self_ty()),
                 )
             } else {
                 format!(
-                    "but `{}` actually implements `{}`",
+                    "...but `{}` actually implements `{}`",
                     actual_trait_ref.map(|tr| tr.self_ty()),
                     actual_trait_ref,
                 )
