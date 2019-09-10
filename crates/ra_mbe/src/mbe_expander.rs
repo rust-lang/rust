@@ -81,21 +81,26 @@ struct Bindings {
 
 #[derive(Debug)]
 enum Binding {
-    Simple(tt::TokenTree),
+    Fragment(Fragment),
     Nested(Vec<Binding>),
     Empty,
+}
+
+#[derive(Debug, Clone)]
+enum Fragment {
+    /// token fragments are just copy-pasted into the output
+    Tokens(tt::TokenTree),
+    /// Ast fragments are inserted with fake delimiters, so as to make things
+    /// like `$i * 2` where `$i = 1 + 1` work as expectd.
+    Ast(tt::TokenTree),
 }
 
 impl Bindings {
     fn push_optional(&mut self, name: &SmolStr) {
         // FIXME: Do we have a better way to represent an empty token ?
         // Insert an empty subtree for empty token
-        self.inner.insert(
-            name.clone(),
-            Binding::Simple(
-                tt::Subtree { delimiter: tt::Delimiter::None, token_trees: vec![] }.into(),
-            ),
-        );
+        let tt = tt::Subtree { delimiter: tt::Delimiter::None, token_trees: vec![] }.into();
+        self.inner.insert(name.clone(), Binding::Fragment(Fragment::Tokens(tt)));
     }
 
     fn push_empty(&mut self, name: &SmolStr) {
@@ -106,13 +111,13 @@ impl Bindings {
         self.inner.contains_key(name)
     }
 
-    fn get(&self, name: &SmolStr, nesting: &[usize]) -> Result<&tt::TokenTree, ExpandError> {
+    fn get(&self, name: &SmolStr, nesting: &[usize]) -> Result<&Fragment, ExpandError> {
         let mut b = self.inner.get(name).ok_or_else(|| {
             ExpandError::BindingError(format!("could not find binding `{}`", name))
         })?;
         for &idx in nesting.iter() {
             b = match b {
-                Binding::Simple(_) => break,
+                Binding::Fragment(_) => break,
                 Binding::Nested(bs) => bs.get(idx).ok_or_else(|| {
                     ExpandError::BindingError(format!("could not find nested binding `{}`", name))
                 })?,
@@ -125,7 +130,7 @@ impl Bindings {
             };
         }
         match b {
-            Binding::Simple(it) => Ok(it),
+            Binding::Fragment(it) => Ok(it),
             Binding::Nested(_) => Err(ExpandError::BindingError(format!(
                 "expected simple binding, found nested binding `{}`",
                 name
@@ -195,8 +200,8 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                 crate::Leaf::Var(crate::Var { text, kind }) => {
                     let kind = kind.as_ref().ok_or(ExpandError::UnexpectedToken)?;
                     match match_meta_var(kind.as_str(), input)? {
-                        Some(tt) => {
-                            res.inner.insert(text.clone(), Binding::Simple(tt));
+                        Some(fragment) => {
+                            res.inner.insert(text.clone(), Binding::Fragment(fragment));
                         }
                         None => res.push_optional(text),
                     }
@@ -292,7 +297,7 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
     Ok(res)
 }
 
-fn match_meta_var(kind: &str, input: &mut TtCursor) -> Result<Option<tt::TokenTree>, ExpandError> {
+fn match_meta_var(kind: &str, input: &mut TtCursor) -> Result<Option<Fragment>, ExpandError> {
     let fragment = match kind {
         "path" => Path,
         "expr" => Expr,
@@ -303,7 +308,7 @@ fn match_meta_var(kind: &str, input: &mut TtCursor) -> Result<Option<tt::TokenTr
         "meta" => MetaItem,
         "item" => Item,
         _ => {
-            let binding = match kind {
+            let tt = match kind {
                 "ident" => {
                     let ident = input.eat_ident().ok_or(ExpandError::UnexpectedToken)?.clone();
                     tt::Leaf::from(ident).into()
@@ -321,11 +326,12 @@ fn match_meta_var(kind: &str, input: &mut TtCursor) -> Result<Option<tt::TokenTr
                 },
                 _ => return Err(ExpandError::UnexpectedToken),
             };
-            return Ok(Some(binding));
+            return Ok(Some(Fragment::Tokens(tt)));
         }
     };
-    let binding = input.eat_fragment(fragment).ok_or(ExpandError::UnexpectedToken)?;
-    Ok(Some(binding))
+    let tt = input.eat_fragment(fragment).ok_or(ExpandError::UnexpectedToken)?;
+    let fragment = if kind == "expr" { Fragment::Ast(tt) } else { Fragment::Tokens(tt) };
+    Ok(Some(fragment))
 }
 
 #[derive(Debug)]
@@ -342,7 +348,7 @@ fn expand_subtree(
     let mut buf: Vec<tt::TokenTree> = Vec::new();
     for tt in template.token_trees.iter() {
         let tt = expand_tt(tt, ctx)?;
-        push_tt(&mut buf, tt);
+        push_fragment(&mut buf, tt);
     }
 
     Ok(tt::Subtree { delimiter: template.delimiter, token_trees: buf })
@@ -362,10 +368,7 @@ fn reduce_single_token(mut subtree: tt::Subtree) -> tt::TokenTree {
     }
 }
 
-fn expand_tt(
-    template: &crate::TokenTree,
-    ctx: &mut ExpandCtx,
-) -> Result<tt::TokenTree, ExpandError> {
+fn expand_tt(template: &crate::TokenTree, ctx: &mut ExpandCtx) -> Result<Fragment, ExpandError> {
     let res: tt::TokenTree = match template {
         crate::TokenTree::Subtree(subtree) => expand_subtree(subtree, ctx)?.into(),
         crate::TokenTree::Repeat(repeat) => {
@@ -492,20 +495,24 @@ fn expand_tt(
                     }
                     .into()
                 } else {
-                    let tkn = ctx.bindings.get(&v.text, &ctx.nesting)?.clone();
+                    let fragment = ctx.bindings.get(&v.text, &ctx.nesting)?.clone();
                     ctx.var_expanded = true;
-
-                    if let tt::TokenTree::Subtree(subtree) = tkn {
-                        reduce_single_token(subtree)
-                    } else {
-                        tkn
+                    match fragment {
+                        Fragment::Tokens(tt) => {
+                            if let tt::TokenTree::Subtree(subtree) = tt {
+                                reduce_single_token(subtree)
+                            } else {
+                                tt
+                            }
+                        }
+                        Fragment::Ast(_) => return Ok(fragment),
                     }
                 }
             }
             crate::Leaf::Literal(l) => tt::Leaf::from(tt::Literal { text: l.text.clone() }).into(),
         },
     };
-    Ok(res)
+    Ok(Fragment::Tokens(res))
 }
 
 #[cfg(test)]
@@ -579,10 +586,10 @@ mod tests {
     }
 }
 
-fn push_tt(buf: &mut Vec<tt::TokenTree>, tt: tt::TokenTree) {
-    match tt {
-        tt::TokenTree::Subtree(tt) => push_subtree(buf, tt),
-        _ => buf.push(tt),
+fn push_fragment(buf: &mut Vec<tt::TokenTree>, fragment: Fragment) {
+    match fragment {
+        Fragment::Tokens(tt::TokenTree::Subtree(tt)) => push_subtree(buf, tt),
+        Fragment::Tokens(tt) | Fragment::Ast(tt) => buf.push(tt),
     }
 }
 
