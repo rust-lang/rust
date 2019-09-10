@@ -351,30 +351,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
             Rvalue::BinaryOp(op, ref left, ref right) => {
                 trace!("rvalue binop {:?} for {:?} and {:?}", op, left, right);
-                let right = self.eval_operand(right, source_info)?;
-                let def_id = if self.tcx.is_closure(self.source.def_id()) {
-                    self.tcx.closure_base_def_id(self.source.def_id())
-                } else {
-                    self.source.def_id()
-                };
-                let generics = self.tcx.generics_of(def_id);
-                if generics.requires_monomorphization(self.tcx) {
-                    // FIXME: can't handle code with generics
-                    return None;
-                }
 
                 let r = self.use_ecx(source_info, |this| {
-                    this.ecx.read_immediate(right)
+                    this.ecx.read_immediate(this.ecx.eval_operand(right, None)?)
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
-                    let left_ty = left.ty(&self.local_decls, self.tcx);
-                    let left_bits = self
-                        .tcx
-                        .layout_of(self.param_env.and(left_ty))
-                        .unwrap()
-                        .size
-                        .bits();
-                    let right_size = right.layout.size;
+                    let left_bits = place_layout.size.bits();
+                    let right_size = r.layout.size;
                     let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
                     if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
                         let source_scope_local_data = match self.source_scope_local_data {
@@ -395,26 +378,29 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         return None;
                     }
                 }
-                let left = self.eval_operand(left, source_info)?;
-                let l = self.use_ecx(source_info, |this| {
-                    this.ecx.read_immediate(left)
-                })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
-                let (val, overflow, _ty) = self.use_ecx(source_info, |this| {
-                    this.ecx.overflowing_binary_op(op, l, r)
+                let val = self.use_ecx(source_info, |this| {
+                    let l = this.ecx.read_immediate(this.ecx.eval_operand(left, None)?)?;
+                    let (val, overflow, _ty) = this.ecx.overflowing_binary_op(op, l, r)?;
+
+                    // We check overflow in debug mode already
+                    // so should only check in release mode.
+                    if !this.tcx.sess.overflow_checks() && overflow {
+                        let err = err_panic!(Overflow(op)).into();
+                        return Err(err);
+                    }
+
+                    let val = ImmTy {
+                        imm: Immediate::Scalar(val.into()),
+                        layout: place_layout,
+                    };
+
+                    let dest = this.ecx.eval_place(place)?;
+                    this.ecx.write_immediate(*val, dest)?;
+
+                    Ok(val)
                 })?;
-                // We check overflow in debug mode already
-                // so should only check in release mode.
-                if !self.tcx.sess.overflow_checks() && overflow {
-                    let err = err_panic!(Overflow(op)).into();
-                    let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
-                    return None;
-                }
-                let res = ImmTy {
-                    imm: Immediate::Scalar(val.into()),
-                    layout: place_layout,
-                };
-                Some(res.into())
+                Some(val.into())
             },
         }
     }
