@@ -112,6 +112,12 @@ mod traits {
         }
     }
 
+    impl Clone for Bad {
+        fn clone(&self) -> Self {
+            Bad
+        }
+    }
+
     #[derive(Default)]
     struct Good;
 
@@ -169,15 +175,6 @@ mod traits {
 
         fn vals(_: Self) -> Self {
             Self::default()
-        }
-    }
-
-    // Check that self arg isn't linted
-    impl Clone for Good {
-        fn clone(&self) -> Self {
-            // Note: Not linted and it wouldn't be valid
-            // because "can't use `Self` as a constructor`"
-            Good
         }
     }
 }
