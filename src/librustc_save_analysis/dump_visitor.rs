@@ -283,36 +283,32 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
     ) {
         debug!("process_method: {}:{}", id, ident);
 
-        if let Some(mut method_data) = self.save_ctxt.get_method_data(id, ident, span) {
-            let sig_str = crate::make_signature(&sig.decl, &generics);
-            if body.is_some() {
-                self.nest_tables(
-                    id,
-                    |v| v.process_formals(&sig.decl.inputs, &method_data.qualname),
-                );
+        let hir_id = self.tcx.hir().node_to_hir_id(id);
+        self.nest_tables(id, |v| {
+            if let Some(mut method_data) = v.save_ctxt.get_method_data(id, ident, span) {
+                v.process_formals(&sig.decl.inputs, &method_data.qualname);
+                v.process_generic_params(&generics, &method_data.qualname, id);
+
+                method_data.value = crate::make_signature(&sig.decl, &generics);
+                method_data.sig = sig::method_signature(id, ident, generics, sig, &v.save_ctxt);
+
+                v.dumper.dump_def(&access_from_vis!(v.save_ctxt, vis, hir_id), method_data);
             }
 
-            self.process_generic_params(&generics, &method_data.qualname, id);
+            // walk arg and return types
+            for arg in &sig.decl.inputs {
+                v.visit_ty(&arg.ty);
+            }
 
-            method_data.value = sig_str;
-            method_data.sig = sig::method_signature(id, ident, generics, sig, &self.save_ctxt);
-            let hir_id = self.tcx.hir().node_to_hir_id(id);
-            self.dumper.dump_def(&access_from_vis!(self.save_ctxt, vis, hir_id), method_data);
-        }
+            if let ast::FunctionRetTy::Ty(ref ret_ty) = sig.decl.output {
+                v.visit_ty(ret_ty);
+            }
 
-        // walk arg and return types
-        for arg in &sig.decl.inputs {
-            self.visit_ty(&arg.ty);
-        }
-
-        if let ast::FunctionRetTy::Ty(ref ret_ty) = sig.decl.output {
-            self.visit_ty(ret_ty);
-        }
-
-        // walk the fn body
-        if let Some(body) = body {
-            self.nest_tables(id, |v| v.visit_block(body));
-        }
+            // walk the fn body
+            if let Some(body) = body {
+                v.visit_block(body);
+            }
+        });
     }
 
     fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
@@ -377,26 +373,26 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         ty_params: &'l ast::Generics,
         body: &'l ast::Block,
     ) {
-        if let Some(fn_data) = self.save_ctxt.get_item_data(item) {
-            down_cast_data!(fn_data, DefData, item.span);
-            self.nest_tables(
-                item.id,
-                |v| v.process_formals(&decl.inputs, &fn_data.qualname),
-            );
-            self.process_generic_params(ty_params, &fn_data.qualname, item.id);
-            let hir_id = self.tcx.hir().node_to_hir_id(item.id);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, item, hir_id), fn_data);
-        }
+        let hir_id = self.tcx.hir().node_to_hir_id(item.id);
+        self.nest_tables(item.id, |v| {
+            if let Some(fn_data) = v.save_ctxt.get_item_data(item) {
+                down_cast_data!(fn_data, DefData, item.span);
+                v.process_formals(&decl.inputs, &fn_data.qualname);
+                v.process_generic_params(ty_params, &fn_data.qualname, item.id);
 
-        for arg in &decl.inputs {
-            self.visit_ty(&arg.ty);
-        }
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item, hir_id), fn_data);
+            }
 
-        if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
-            self.visit_ty(&ret_ty);
-        }
+            for arg in &decl.inputs {
+                v.visit_ty(&arg.ty)
+            }
 
-        self.nest_tables(item.id, |v| v.visit_block(&body));
+            if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
+                v.visit_ty(&ret_ty);
+            }
+
+            v.visit_block(&body);
+        });
     }
 
     fn process_static_or_const_item(
