@@ -13,7 +13,7 @@
         "Other"
     ],
     "engines": {
-        "vscode": "^1.36.0"
+        "vscode": "^1.37.0"
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
