@@ -884,7 +884,7 @@ impl<'a, T: ?Sized + 'a> RangeBounds<T> for (Bound<&'a T>, Bound<&'a T>) {
 }
 
 #[stable(feature = "collections_range", since = "1.28.0")]
-impl<T> RangeBounds<T> for RangeFrom<&T> {
+impl<T: ?Sized> RangeBounds<T> for RangeFrom<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(self.start)
     }
@@ -894,7 +894,7 @@ impl<T> RangeBounds<T> for RangeFrom<&T> {
 }
 
 #[stable(feature = "collections_range", since = "1.28.0")]
-impl<T> RangeBounds<T> for RangeTo<&T> {
+impl<T: ?Sized> RangeBounds<T> for RangeTo<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Unbounded
     }
@@ -904,7 +904,7 @@ impl<T> RangeBounds<T> for RangeTo<&T> {
 }
 
 #[stable(feature = "collections_range", since = "1.28.0")]
-impl<T> RangeBounds<T> for Range<&T> {
+impl<T: ?Sized> RangeBounds<T> for Range<&T> {
     fn start_bound(&self) -> Bound<&T> {
         Included(self.start)
     }
