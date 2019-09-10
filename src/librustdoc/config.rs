@@ -86,6 +86,10 @@ pub struct Options {
     /// contains "foo" as a substring
     pub enable_per_target_ignores: bool,
 
+    /// The path to a rustc-like binary to build tests with. If not set, we
+    /// default to loading from $sysroot/bin/rustc.
+    pub test_builder: Option<PathBuf>,
+
     // Options that affect the documentation process
 
     /// The selected default set of passes to use.
@@ -476,6 +480,7 @@ impl Options {
         let generate_search_filter = !matches.opt_present("disable-per-crate-search");
         let persist_doctests = matches.opt_str("persist-doctests").map(PathBuf::from);
         let generate_redirect_pages = matches.opt_present("generate-redirect-pages");
+        let test_builder = matches.opt_str("test-builder").map(PathBuf::from);
         let codegen_options_strs = matches.opt_strs("C");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
@@ -515,6 +520,7 @@ impl Options {
             runtool,
             runtool_args,
             enable_per_target_ignores,
+            test_builder,
             render_options: RenderOptions {
                 output,
                 external_html,
