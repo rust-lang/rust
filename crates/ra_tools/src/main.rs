@@ -23,84 +23,78 @@ struct ServerOpt {
 }
 
 fn main() -> Result<()> {
-    let subcommand = std::env::args_os().nth(1);
-    if subcommand.is_none() {
-        help::print_global_help();
-        return Ok(());
-    }
-    let subcommand = subcommand.unwrap();
+    let subcommand = match std::env::args_os().nth(1) {
+        None => {
+            eprintln!("{}", help::GLOBAL_HELP);
+            return Ok(());
+        }
+        Some(s) => s,
+    };
     let mut matches = Arguments::from_vec(std::env::args_os().skip(2).collect());
     let subcommand = &*subcommand.to_string_lossy();
     match subcommand {
         "install-ra" | "install-code" => {
             if matches.contains(["-h", "--help"]) {
-                help::print_install_ra_help();
+                eprintln!("{}", help::INSTALL_RA_HELP);
                 return Ok(());
-            } else {
-                let server = matches.contains("--server");
-                let client_code = matches.contains("--client-code");
-                if server && client_code {
-                    help::print_install_ra_conflict();
-                    return Ok(());
-                }
-                let jemalloc = matches.contains("--jemalloc");
-                matches.finish().or_else(handle_extra_flags)?;
-                let opts = InstallOpt {
-                    client: if server { None } else { Some(ClientOpt::VsCode) },
-                    server: if client_code { None } else { Some(ServerOpt { jemalloc: jemalloc }) },
-                };
-                install(opts)?
             }
+            let server = matches.contains("--server");
+            let client_code = matches.contains("--client-code");
+            if server && client_code {
+                eprintln!("{}", help::INSTALL_RA_CONFLICT);
+                return Ok(());
+            }
+            let jemalloc = matches.contains("--jemalloc");
+            matches.finish().or_else(handle_extra_flags)?;
+            let opts = InstallOpt {
+                client: if server { None } else { Some(ClientOpt::VsCode) },
+                server: if client_code { None } else { Some(ServerOpt { jemalloc: jemalloc }) },
+            };
+            install(opts)?
         }
         "gen-tests" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
-            } else {
-                gen_tests(Overwrite)?
             }
+            gen_tests(Overwrite)?
         }
         "gen-syntax" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
-            } else {
-                generate_boilerplate(Overwrite)?
             }
+            generate_boilerplate(Overwrite)?
         }
         "format" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
-            } else {
-                run_rustfmt(Overwrite)?
             }
+            run_rustfmt(Overwrite)?
         }
         "format-hook" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
-            } else {
-                install_format_hook()?
             }
+            install_format_hook()?
         }
         "lint" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
-            } else {
-                run_clippy()?
             }
+            run_clippy()?
         }
         "fuzz-tests" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
-            } else {
-                run_fuzzer()?
             }
+            run_fuzzer()?
         }
-        _ => help::print_global_help(),
+        _ => eprintln!("{}", help::GLOBAL_HELP),
     }
     Ok(())
 }
@@ -109,7 +103,7 @@ fn handle_extra_flags(e: pico_args::Error) -> Result<()> {
     if let pico_args::Error::UnusedArgsLeft(flags) = e {
         let mut invalid_flags = String::new();
         for flag in flags {
-            write!(&mut invalid_flags, "{}, ", flag).expect("Error on write");
+            write!(&mut invalid_flags, "{}, ", flag)?;
         }
         let (invalid_flags, _) = invalid_flags.split_at(invalid_flags.len() - 2);
         Err(format!("Invalid flags: {}", invalid_flags).into())

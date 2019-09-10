@@ -1,6 +1,4 @@
-pub fn print_global_help() {
-    println!(
-        "ra-cli
+pub const GLOBAL_HELP: &str = "ra-cli
 
 USAGE:
     ra_cli <SUBCOMMAND>
@@ -13,13 +11,9 @@ SUBCOMMANDS:
     analysis-stats
     highlight
     parse
-    symbols"
-    )
-}
+    symbols";
 
-pub fn print_analysis_bench_help() {
-    println!(
-        "ra_cli-analysis-bench
+pub const ANALYSIS_BENCH_HELP: &str = "ra_cli-analysis-bench
 
 USAGE:
     ra_cli analysis-bench [FLAGS] [OPTIONS] [PATH]
@@ -33,13 +27,9 @@ OPTIONS:
     --highlight <PATH>               Hightlight this file
     
 ARGS:
-    <PATH>    Project to analyse"
-    )
-}
+    <PATH>    Project to analyse";
 
-pub fn print_analysis_stats_help() {
-    println!(
-        "ra-cli-analysis-stats
+pub const ANALYSIS_STATS_HELP: &str = "ra-cli-analysis-stats
 
 USAGE:
     ra_cli analysis-stats [FLAGS] [OPTIONS] [PATH]
@@ -53,44 +43,30 @@ OPTIONS:
     -o <ONLY>
     
 ARGS:
-    <PATH>"
-    )
-}
+    <PATH>";
 
-pub fn print_highlight_help() {
-    println!(
-        "ra-cli-highlight
+pub const HIGHLIGHT_HELP: &str = "ra-cli-highlight
     
 USAGE:
     ra_cli highlight [FLAGS]
     
 FLAGS:
     -h, --help       Prints help information
-    -r, --rainbow"
-    )
-}
+    -r, --rainbow";
 
-pub fn print_symbols_help() {
-    println!(
-        "ra-cli-symbols
+pub const SYMBOLS_HELP: &str = "ra-cli-symbols
     
 USAGE:
     ra_cli highlight [FLAGS]
     
 FLAGS:
-    -h, --help    Prints help inforamtion"
-    )
-}
+    -h, --help    Prints help inforamtion";
 
-pub fn print_parse_help() {
-    println!(
-        "ra-cli-parse
+pub const PARSE_HELP: &str = "ra-cli-parse
     
 USAGE:
     ra_cli parse [FLAGS]
     
 FLAGS:
     -h, --help       Prints help inforamtion
-        --no-dump"
-    )
-}
+        --no-dump";

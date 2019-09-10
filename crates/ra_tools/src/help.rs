@@ -1,6 +1,4 @@
-pub fn print_global_help() {
-    println!(
-        "tasks
+pub const GLOBAL_HELP: &str = "tasks
 
 USAGE:
     ra_tools <SUBCOMMAND>
@@ -15,13 +13,9 @@ SUBCOMMANDS:
     gen-syntax
     gen-tests
     install-ra
-    lint"
-    )
-}
+    lint";
 
-pub fn print_install_ra_help() {
-    println!(
-        "ra_tools-install-ra
+pub const INSTALL_RA_HELP: &str = "ra_tools-install-ra
 
 USAGE:
     ra_tools.exe install-ra [FLAGS]
@@ -30,12 +24,10 @@ FLAGS:
         --client-code
     -h, --help           Prints help information
         --jemalloc
-        --server"
-    )
-}
+        --server";
 
 pub fn print_no_param_subcommand_help(subcommand: &str) {
-    println!(
+    eprintln!(
         "ra_tools-{}
 
 USAGE:
@@ -47,10 +39,7 @@ FLAGS:
     );
 }
 
-pub fn print_install_ra_conflict() {
-    println!(
-        "error: The argument `--server` cannot be used with `--client-code`
+pub const INSTALL_RA_CONFLICT: &str =
+    "error: The argument `--server` cannot be used with `--client-code`
                     
-For more information try --help"
-    )
-}
+For more information try --help";
