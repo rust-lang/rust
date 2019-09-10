@@ -91,20 +91,26 @@ impl Span {
     }
 
     #[inline]
-    pub fn data(self) -> SpanData {
+    fn is_inline(self) -> bool {
         if self.len_or_tag != LEN_TAG {
-            // Inline format.
             debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
+            true
+        } else {
+            debug_assert!(self.ctxt_or_zero == 0);
+            false
+        }
+    }
+
+    #[inline]
+    pub fn data(self) -> SpanData {
+        if self.is_inline() {
             SpanData {
                 lo: BytePos(self.base_or_index),
                 hi: BytePos(self.base_or_index + self.len_or_tag as u32),
                 ctxt: SyntaxContext::from_u32(self.ctxt_or_zero as u32),
             }
         } else {
-            // Interned format.
-            debug_assert!(self.ctxt_or_zero == 0);
-            let index = self.base_or_index;
-            with_span_interner(|interner| *interner.get(index))
+            with_span_interner(|interner| *interner.get(self.base_or_index))
         }
     }
 }
