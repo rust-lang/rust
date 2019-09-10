@@ -587,4 +587,40 @@ mod tests {
 ]"###
         );
     }
+
+    #[test]
+    fn completes_quantified_macros() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                #[macro_export]
+                macro_rules! foo {
+                    () => {}
+                }
+
+                fn main() {
+                    let _ = crate::<|>
+                }
+                "
+            ),
+            @r###"[
+    CompletionItem {
+        label: "foo",
+        source_range: [179; 179),
+        delete: [179; 179),
+        insert: "foo!",
+        kind: Macro,
+        detail: "#[macro_export]\nmacro_rules! foo",
+    },
+    CompletionItem {
+        label: "main",
+        source_range: [179; 179),
+        delete: [179; 179),
+        insert: "main()$0",
+        kind: Function,
+        detail: "fn main()",
+    },
+]"###
+        );
+    }
 }

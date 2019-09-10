@@ -8,7 +8,7 @@ use crate::completion::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
-use crate::display::{const_label, function_label, type_label};
+use crate::display::{const_label, function_label, macro_label, type_label};
 
 impl Completions {
     pub(crate) fn add_field(
@@ -43,8 +43,14 @@ impl Completions {
     ) {
         use hir::ModuleDef::*;
 
+        if let Some(macro_) = resolution.get_macros() {
+            self.add_macro(ctx, Some(local_name.clone()), macro_);
+        }
+
         let def = resolution.as_ref().take_types().or_else(|| resolution.as_ref().take_values());
         let def = match def {
+            // Only insert once if it is just a macro name
+            None if resolution.get_macros().is_some() => return,
             None => {
                 self.add(CompletionItem::new(
                     CompletionKind::Reference,
@@ -96,6 +102,22 @@ impl Completions {
 
     pub(crate) fn add_function(&mut self, ctx: &CompletionContext, func: hir::Function) {
         self.add_function_with_name(ctx, None, func)
+    }
+
+    fn add_macro(&mut self, ctx: &CompletionContext, name: Option<String>, macro_: hir::MacroDef) {
+        let ast_node = macro_.source(ctx.db).ast;
+        if let Some(name) = name {
+            let detail = macro_label(&ast_node);
+
+            let builder =
+                CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
+                    .kind(CompletionItemKind::Macro)
+                    .set_documentation(macro_.docs(ctx.db))
+                    .detail(detail)
+                    .insert_snippet(format!("{}!", name));
+
+            self.add(builder);
+        }
     }
 
     fn add_function_with_name(

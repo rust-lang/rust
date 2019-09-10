@@ -6,6 +6,15 @@ use rustc_hash::FxHashMap;
 use crate::completion::{CompletionContext, CompletionItem, CompletionKind, Completions};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
+    // Show only macros in top level.
+    if ctx.is_new_item {
+        for (name, res) in ctx.analyzer.all_names(ctx.db) {
+            if res.get_macros().is_some() {
+                acc.add_resolution(ctx, name.to_string(), &res.only_macros());
+            }
+        }
+    }
+
     if !ctx.is_trivial_path {
         return;
     }
@@ -530,6 +539,226 @@ mod tests {
         kind: Module,
     },
 ]"#
+        );
+    }
+
+    #[test]
+    fn completes_macros_as_value() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                macro_rules! foo {
+                    () => {}
+                }
+
+                #[macro_use]
+                mod m1 {
+                    macro_rules! bar {
+                        () => {}
+                    }
+                }
+
+                mod m2 {
+                    macro_rules! nope {
+                        () => {}
+                    }
+
+                    #[macro_export]
+                    macro_rules! baz {
+                        () => {}
+                    }
+                }
+
+                fn main() {
+                    let v = <|>
+                }
+                "
+            ),
+            @r##"[
+    CompletionItem {
+        label: "bar",
+        source_range: [252; 252),
+        delete: [252; 252),
+        insert: "bar!",
+        kind: Macro,
+        detail: "macro_rules! bar",
+    },
+    CompletionItem {
+        label: "baz",
+        source_range: [252; 252),
+        delete: [252; 252),
+        insert: "baz!",
+        kind: Macro,
+        detail: "#[macro_export]\nmacro_rules! baz",
+    },
+    CompletionItem {
+        label: "foo",
+        source_range: [252; 252),
+        delete: [252; 252),
+        insert: "foo!",
+        kind: Macro,
+        detail: "macro_rules! foo",
+    },
+    CompletionItem {
+        label: "m1",
+        source_range: [252; 252),
+        delete: [252; 252),
+        insert: "m1",
+        kind: Module,
+    },
+    CompletionItem {
+        label: "m2",
+        source_range: [252; 252),
+        delete: [252; 252),
+        insert: "m2",
+        kind: Module,
+    },
+    CompletionItem {
+        label: "main",
+        source_range: [252; 252),
+        delete: [252; 252),
+        insert: "main()$0",
+        kind: Function,
+        detail: "fn main()",
+    },
+]"##
+        );
+    }
+
+    #[test]
+    fn completes_both_macro_and_value() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                macro_rules! foo {
+                    () => {}
+                }
+
+                fn foo() {
+                    <|>
+                }
+                "
+            ),
+            @r##"[
+    CompletionItem {
+        label: "foo",
+        source_range: [49; 49),
+        delete: [49; 49),
+        insert: "foo!",
+        kind: Macro,
+        detail: "macro_rules! foo",
+    },
+    CompletionItem {
+        label: "foo",
+        source_range: [49; 49),
+        delete: [49; 49),
+        insert: "foo()$0",
+        kind: Function,
+        detail: "fn foo()",
+    },
+]"##
+        );
+    }
+
+    #[test]
+    fn completes_macros_as_type() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                macro_rules! foo {
+                    () => {}
+                }
+
+                fn main() {
+                    let x: <|>
+                }
+                "
+            ),
+            @r##"[
+    CompletionItem {
+        label: "foo",
+        source_range: [57; 57),
+        delete: [57; 57),
+        insert: "foo!",
+        kind: Macro,
+        detail: "macro_rules! foo",
+    },
+    CompletionItem {
+        label: "main",
+        source_range: [57; 57),
+        delete: [57; 57),
+        insert: "main()$0",
+        kind: Function,
+        detail: "fn main()",
+    },
+]"##
+        );
+    }
+
+    #[test]
+    fn completes_macros_as_stmt() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                macro_rules! foo {
+                    () => {}
+                }
+
+                fn main() {
+                    <|>
+                }
+                "
+            ),
+            @r##"[
+    CompletionItem {
+        label: "foo",
+        source_range: [50; 50),
+        delete: [50; 50),
+        insert: "foo!",
+        kind: Macro,
+        detail: "macro_rules! foo",
+    },
+    CompletionItem {
+        label: "main",
+        source_range: [50; 50),
+        delete: [50; 50),
+        insert: "main()$0",
+        kind: Function,
+        detail: "fn main()",
+    },
+]"##
+        );
+    }
+
+    #[test]
+    fn completes_macros_as_item() {
+        assert_debug_snapshot!(
+            do_reference_completion(
+                "
+                //- /main.rs
+                macro_rules! foo {
+                    () => {}
+                }
+
+                fn foo() {}
+
+                <|>
+                "
+            ),
+            @r##"[
+    CompletionItem {
+        label: "foo",
+        source_range: [46; 46),
+        delete: [46; 46),
+        insert: "foo!",
+        kind: Macro,
+        detail: "macro_rules! foo",
+    },
+]"##
         );
     }
 }
