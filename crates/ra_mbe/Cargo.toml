@@ -12,3 +12,7 @@ itertools = "0.8.0"
 rustc-hash = "1.0.0"
 smallvec = "0.6.9"
 log = "0.4.5"
+
+[dev-dependencies]
+test_utils = { path = "../test_utils" }
+

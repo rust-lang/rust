@@ -1,4 +1,5 @@
 use ra_syntax::{ast, AstNode, NodeOrToken};
+use test_utils::assert_eq_text;
 
 use super::*;
 
@@ -152,7 +153,6 @@ pub(crate) fn assert_expansion(
 
     // wrap the given text to a macro call
     let expected = text_to_tokentree(&expected);
-
     let (expanded_tree, expected_tree) = match kind {
         MacroKind::Items => {
             let expanded_tree = token_tree_to_macro_items(&expanded).unwrap().tree();
@@ -178,7 +178,7 @@ pub(crate) fn assert_expansion(
     let expected_tree = expected_tree.replace("C_C__C", "$crate");
     assert_eq!(
         expanded_tree, expected_tree,
-        "left => {}\nright => {}",
+        "\nleft:\n{}\nright:\n{}",
         expanded_tree, expected_tree,
     );
 
@@ -657,6 +657,7 @@ fn test_expr() {
 }
 
 #[test]
+#[ignore]
 fn test_expr_order() {
     let rules = create_rules(
         r#"
@@ -668,8 +669,8 @@ fn test_expr_order() {
 "#,
     );
 
-    assert_eq!(
-        format!("{:#?}", expand_to_items(&rules, "foo! { 1 + 1  }").syntax()).trim(),
+    assert_eq_text!(
+        &format!("{:#?}", expand_to_items(&rules, "foo! { 1 + 1  }").syntax()),
         r#"MACRO_ITEMS@[0; 15)
   FN_DEF@[0; 15)
     FN_KW@[0; 2) "fn"

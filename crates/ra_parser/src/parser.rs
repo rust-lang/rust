@@ -50,29 +50,6 @@ impl<'t> Parser<'t> {
         self.steps.set(steps + 1);
 
         self.token_source.lookahead_nth(n).kind
-
-        // // It is because the Dollar will appear between nth
-        // // Following code skips through it
-        // let mut non_dollars_count = 0;
-        // let mut i = 0;
-
-        // loop {
-        //     let token = self.token_source.lookahead_nth(i);
-        //     let mut kind = token.kind;
-        //     if let Some((composited, step)) = self.is_composite(token, i) {
-        //         kind = composited;
-        //         i += step;
-        //     } else {
-        //         i += 1;
-        //     }
-
-        //     match kind {
-        //         EOF => return EOF,
-        //         SyntaxKind::L_DOLLAR | SyntaxKind::R_DOLLAR => {}
-        //         _ if non_dollars_count == n => return kind,
-        //         _ => non_dollars_count += 1,
-        //     }
-        // }
     }
 
     /// Checks if the current token is `kind`.
@@ -185,25 +162,6 @@ impl<'t> Parser<'t> {
         assert!(self.eat(kind));
     }
 
-    /// Advances the parser by one token unconditionally
-    /// Mainly use in `token_tree` parsing
-    #[allow(unused)]
-    fn bump_raw(&mut self) {
-        let mut kind = self.token_source.current().kind;
-
-        // Skip dollars, do_bump will eat these later
-        let mut i = 0;
-        while kind == SyntaxKind::L_DOLLAR || kind == SyntaxKind::R_DOLLAR {
-            kind = self.token_source.lookahead_nth(i).kind;
-            i += 1;
-        }
-
-        if kind == EOF {
-            return;
-        }
-        self.do_bump(kind, 1);
-    }
-
     /// Advances the parser by one token with composite puncts handled
     pub(crate) fn bump_any(&mut self) {
         let kind = self.nth(0);
@@ -275,21 +233,6 @@ impl<'t> Parser<'t> {
 
     fn push_event(&mut self, event: Event) {
         self.events.push(event)
-    }
-
-    #[allow(unused)]
-    fn eat_dollars(&mut self) {
-        loop {
-            match self.token_source.current().kind {
-                k @ SyntaxKind::L_DOLLAR | k @ SyntaxKind::R_DOLLAR => {
-                    self.token_source.bump();
-                    self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
-                }
-                _ => {
-                    return;
-                }
-            }
-        }
     }
 
     pub(crate) fn eat_l_dollars(&mut self) -> usize {
