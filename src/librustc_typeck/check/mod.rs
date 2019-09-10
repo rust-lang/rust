@@ -1511,20 +1511,39 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
             } else {
                 for item in &m.items {
                     let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
-                    if generics.params.len() - generics.own_counts().lifetimes != 0 {
+                    let own_counts = generics.own_counts();
+                    if generics.params.len() - own_counts.lifetimes != 0 {
+                        let (kinds, kinds_pl, egs) = match (own_counts.types, own_counts.consts) {
+                            (_, 0) => ("type", "types", Some("u32")),
+                            // We don't specify an example value, because we can't generate
+                            // a valid value for any type.
+                            (0, _) => ("const", "consts", None),
+                            _ => ("type or const", "types or consts", None),
+                        };
                         let mut err = struct_span_err!(
                             tcx.sess,
                             item.span,
                             E0044,
-                            "foreign items may not have type parameters"
+                            "foreign items may not have {} parameters",
+                            kinds,
                         );
-                        err.span_label(item.span, "can't have type parameters");
+                        err.span_label(
+                            item.span,
+                            &format!("can't have {} parameters", kinds),
+                        );
                         // FIXME: once we start storing spans for type arguments, turn this into a
                         // suggestion.
-                        err.help(
-                            "use specialization instead of type parameters by replacing them \
-                             with concrete types like `u32`",
-                        );
+                        err.help(&format!(
+                            "use specialization instead of {} parameters by replacing \
+                            them with concrete {}{}",
+                            kinds,
+                            kinds_pl,
+                            if let Some(egs) = egs {
+                                format!(" like `{}`", egs)
+                            } else {
+                                "".to_string()
+                            },
+                        ));
                         err.emit();
                     }
 
