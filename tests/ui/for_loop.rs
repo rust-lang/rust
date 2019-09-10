@@ -275,6 +275,14 @@ fn main() {
     for mid in 1..vec.len() {
         let (_, _) = vec.split_at(mid);
     }
+
+    const ZERO: usize = 0;
+
+    for i in ZERO..vec.len() {
+        if f(&vec[i], &vec[i]) {
+            panic!("at the disco");
+        }
+    }
 }
 
 #[allow(dead_code)]

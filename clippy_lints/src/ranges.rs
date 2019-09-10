@@ -8,7 +8,7 @@ use syntax::source_map::Spanned;
 
 use crate::utils::sugg::Sugg;
 use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
-use crate::utils::{is_integer_literal, paths, snippet, snippet_opt, span_lint, span_lint_and_then};
+use crate::utils::{is_integer_const, paths, snippet, snippet_opt, span_lint, span_lint_and_then};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calling `.step_by(0)` on iterators,
@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
                     if iter_path.ident.name == sym!(iter);
                     // range expression in `.zip()` call: `0..x.len()`
                     if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(cx, zip_arg);
-                    if is_integer_literal(start, 0);
+                    if is_integer_const(cx, start, 0);
                     // `.len()` call
                     if let ExprKind::MethodCall(ref len_path, _, ref len_args) = end.node;
                     if len_path.ident.name == sym!(len) && len_args.len() == 1;
@@ -164,7 +164,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
             end: Some(end),
             limits: RangeLimits::HalfOpen
         }) = higher::range(cx, expr);
-        if let Some(y) = y_plus_one(end);
+        if let Some(y) = y_plus_one(cx, end);
         then {
             let span = if expr.span.from_expansion() {
                 expr.span
@@ -209,7 +209,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
 fn check_inclusive_range_minus_one(cx: &LateContext<'_, '_>, expr: &Expr) {
     if_chain! {
         if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(cx, expr);
-        if let Some(y) = y_minus_one(end);
+        if let Some(y) = y_minus_one(cx, end);
         then {
             span_lint_and_then(
                 cx,
@@ -239,7 +239,7 @@ fn has_step_by(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     get_trait_def_id(cx, &paths::ITERATOR).map_or(false, |iterator_trait| implements_trait(cx, ty, iterator_trait, &[]))
 }
 
-fn y_plus_one(expr: &Expr) -> Option<&Expr> {
+fn y_plus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> {
     match expr.node {
         ExprKind::Binary(
             Spanned {
@@ -248,9 +248,9 @@ fn y_plus_one(expr: &Expr) -> Option<&Expr> {
             ref lhs,
             ref rhs,
         ) => {
-            if is_integer_literal(lhs, 1) {
+            if is_integer_const(cx, lhs, 1) {
                 Some(rhs)
-            } else if is_integer_literal(rhs, 1) {
+            } else if is_integer_const(cx, rhs, 1) {
                 Some(lhs)
             } else {
                 None
@@ -260,7 +260,7 @@ fn y_plus_one(expr: &Expr) -> Option<&Expr> {
     }
 }
 
-fn y_minus_one(expr: &Expr) -> Option<&Expr> {
+fn y_minus_one<'t>(cx: &LateContext<'_, '_>, expr: &'t Expr) -> Option<&'t Expr> {
     match expr.node {
         ExprKind::Binary(
             Spanned {
@@ -268,7 +268,7 @@ fn y_minus_one(expr: &Expr) -> Option<&Expr> {
             },
             ref lhs,
             ref rhs,
-        ) if is_integer_literal(rhs, 1) => Some(lhs),
+        ) if is_integer_const(cx, rhs, 1) => Some(lhs),
         _ => None,
     }
 }

@@ -152,5 +152,17 @@ LL |     for _v in vec.iter().next() {}
    |
    = note: `-D clippy::iter-next-loop` implied by `-D warnings`
 
-error: aborting due to 21 previous errors
+error: the loop variable `i` is only used to index `vec`.
+  --> $DIR/for_loop.rs:281:14
+   |
+LL |     for i in ZERO..vec.len() {
+   |              ^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::needless-range-loop` implied by `-D warnings`
+help: consider using an iterator
+   |
+LL |     for <item> in &vec {
+   |         ^^^^^^    ^^^^
+
+error: aborting due to 22 previous errors
 

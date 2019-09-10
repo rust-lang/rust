@@ -27,7 +27,7 @@ use syntax_pos::{BytePos, Symbol};
 
 use crate::utils::paths;
 use crate::utils::{
-    get_enclosing_block, get_parent_expr, has_iter_method, higher, is_integer_literal, is_refutable, last_path_segment,
+    get_enclosing_block, get_parent_expr, has_iter_method, higher, is_integer_const, is_refutable, last_path_segment,
     match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt, snippet_with_applicability,
     span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq,
 };
@@ -1096,7 +1096,7 @@ fn check_for_loop_range<'a, 'tcx>(
                     return;
                 }
 
-                let starts_at_zero = is_integer_literal(start, 0);
+                let starts_at_zero = is_integer_const(cx, start, 0);
 
                 let skip = if starts_at_zero {
                     String::new()
@@ -2042,7 +2042,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                 match parent.node {
                     ExprKind::AssignOp(op, ref lhs, ref rhs) => {
                         if lhs.hir_id == expr.hir_id {
-                            if op.node == BinOpKind::Add && is_integer_literal(rhs, 1) {
+                            if op.node == BinOpKind::Add && is_integer_const(self.cx, rhs, 1) {
                                 *state = match *state {
                                     VarState::Initial if self.depth == 0 => VarState::IncrOnce,
                                     _ => VarState::DontWarn,
@@ -2094,7 +2094,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                     self.name = Some(ident.name);
 
                     self.state = if let Some(ref init) = local.init {
-                        if is_integer_literal(init, 0) {
+                        if is_integer_const(&self.cx, init, 0) {
                             VarState::Warn
                         } else {
                             VarState::Declared
@@ -2130,7 +2130,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                         self.state = VarState::DontWarn;
                     },
                     ExprKind::Assign(ref lhs, ref rhs) if lhs.hir_id == expr.hir_id => {
-                        self.state = if is_integer_literal(rhs, 0) && self.depth == 0 {
+                        self.state = if is_integer_const(&self.cx, rhs, 0) && self.depth == 0 {
                             VarState::Warn
                         } else {
                             VarState::DontWarn
