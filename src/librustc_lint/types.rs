@@ -859,21 +859,42 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
+    fn emit_ffi_unsafe_type_lint(
+        &mut self,
+        ty: Ty<'tcx>,
+        sp: Span,
+        note: &str,
+        help: Option<&str>,
+    ) {
+        let mut diag = self.cx.struct_span_lint(
+            IMPROPER_CTYPES,
+            sp,
+            &format!("`extern` block uses type `{}`, which is not FFI-safe", ty),
+        );
+        diag.span_label(sp, "not FFI-safe");
+        if let Some(help) = help {
+            diag.help(help);
+        }
+        diag.note(note);
+        if let ty::Adt(def, _) = ty.sty {
+            if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
+                diag.span_note(sp, "type defined here");
+            }
+        }
+        diag.emit();
+    }
+
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
         use crate::rustc::ty::TypeFoldable;
 
-        struct ProhibitOpaqueTypes<'a, 'tcx> {
-            cx: &'a LateContext<'a, 'tcx>,
-            sp: Span,
+        struct ProhibitOpaqueTypes<'tcx> {
+            ty: Option<Ty<'tcx>>,
         };
 
-        impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'tcx> {
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
                 if let ty::Opaque(..) = ty.sty {
-                    self.cx.span_lint(IMPROPER_CTYPES,
-                        self.sp,
-                        &format!("`extern` block uses type `{}` which is not FFI-safe: \
-                                  opaque types have no C equivalent", ty));
+                    self.ty = Some(ty);
                     true
                 } else {
                     ty.super_visit_with(self)
@@ -881,8 +902,19 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        let mut visitor = ProhibitOpaqueTypes { cx: self.cx, sp };
-        ty.visit_with(&mut visitor)
+        let mut visitor = ProhibitOpaqueTypes { ty: None };
+        ty.visit_with(&mut visitor);
+        if let Some(ty) = visitor.ty {
+            self.emit_ffi_unsafe_type_lint(
+                ty,
+                sp,
+                "opaque types have no C equivalent",
+                None,
+            );
+            true
+        } else {
+            false
+        }
     }
 
     fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
@@ -900,24 +932,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
             FfiResult::FfiSafe => {}
             FfiResult::FfiPhantom(ty) => {
-                self.cx.span_lint(IMPROPER_CTYPES,
-                                  sp,
-                                  &format!("`extern` block uses type `{}` which is not FFI-safe: \
-                                            composed only of `PhantomData`", ty));
+                self.emit_ffi_unsafe_type_lint(ty, sp, "composed only of `PhantomData`", None);
             }
-            FfiResult::FfiUnsafe { ty: unsafe_ty, reason, help } => {
-                let msg = format!("`extern` block uses type `{}` which is not FFI-safe: {}",
-                                  unsafe_ty, reason);
-                let mut diag = self.cx.struct_span_lint(IMPROPER_CTYPES, sp, &msg);
-                if let Some(s) = help {
-                    diag.help(s);
-                }
-                if let ty::Adt(def, _) = unsafe_ty.sty {
-                    if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
-                        diag.span_note(sp, "type defined here");
-                    }
-                }
-                diag.emit();
+            FfiResult::FfiUnsafe { ty, reason, help } => {
+                self.emit_ffi_unsafe_type_lint(ty, sp, reason, help);
             }
         }
     }
