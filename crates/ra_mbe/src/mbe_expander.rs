@@ -354,20 +354,6 @@ fn expand_subtree(
     Ok(tt::Subtree { delimiter: template.delimiter, token_trees: buf })
 }
 
-/// Reduce single token subtree to single token
-/// In `tt` matcher case, all tt tokens will be braced by a Delimiter::None
-/// which makes all sort of problems.
-fn reduce_single_token(mut subtree: tt::Subtree) -> tt::TokenTree {
-    if subtree.delimiter != tt::Delimiter::None || subtree.token_trees.len() != 1 {
-        return subtree.into();
-    }
-
-    match subtree.token_trees.pop().unwrap() {
-        tt::TokenTree::Subtree(subtree) => reduce_single_token(subtree),
-        tt::TokenTree::Leaf(token) => token.into(),
-    }
-}
-
 fn expand_tt(template: &crate::TokenTree, ctx: &mut ExpandCtx) -> Result<Fragment, ExpandError> {
     let res: tt::TokenTree = match template {
         crate::TokenTree::Subtree(subtree) => expand_subtree(subtree, ctx)?.into(),
@@ -454,7 +440,7 @@ fn expand_tt(template: &crate::TokenTree, ctx: &mut ExpandCtx) -> Result<Fragmen
 
             // Check if it is a single token subtree without any delimiter
             // e.g {Delimiter:None> ['>'] /Delimiter:None>}
-            reduce_single_token(tt::Subtree { delimiter: tt::Delimiter::None, token_trees: buf })
+            tt::Subtree { delimiter: tt::Delimiter::None, token_trees: buf }.into()
         }
         crate::TokenTree::Leaf(leaf) => match leaf {
             crate::Leaf::Ident(ident) => {
@@ -497,16 +483,7 @@ fn expand_tt(template: &crate::TokenTree, ctx: &mut ExpandCtx) -> Result<Fragmen
                 } else {
                     let fragment = ctx.bindings.get(&v.text, &ctx.nesting)?.clone();
                     ctx.var_expanded = true;
-                    match fragment {
-                        Fragment::Tokens(tt) => {
-                            if let tt::TokenTree::Subtree(subtree) = tt {
-                                reduce_single_token(subtree)
-                            } else {
-                                tt
-                            }
-                        }
-                        Fragment::Ast(_) => return Ok(fragment),
-                    }
+                    return Ok(fragment);
                 }
             }
             crate::Leaf::Literal(l) => tt::Leaf::from(tt::Literal { text: l.text.clone() }).into(),
