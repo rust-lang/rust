@@ -64,7 +64,7 @@ pub unsafe fn unreachable_unchecked() -> ! {
 /// scheduler, no overhead for switching threads occurs. However, if the thread holding the
 /// contended lock is running on the same CPU or core, the spin-loop is likely to occupy an entire CPU slice
 /// before switching to the thread that holds the lock. If the contending lock is held by a thread
-/// on the same CPU or thread or if the waiting times for acquiring the lock are longer, it is often better to
+/// on the same CPU or core or if the waiting times for acquiring the lock are longer, it is often better to
 /// use [`std::thread::yield_now`].
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
