@@ -43,7 +43,7 @@ pub fn render(
     edition: Edition
 ) -> i32 {
     let mut output = options.output;
-    output.push(input.file_stem().unwrap());
+    output.push(input.file_name().unwrap());
     output.set_extension("html");
 
     let mut css = String::new();
