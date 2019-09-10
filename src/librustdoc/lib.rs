@@ -90,7 +90,7 @@ pub fn main() {
         32_000_000 // 32MB on other platforms
     };
     rustc_driver::set_sigpipe_handler();
-    env_logger::init();
+    env_logger::init_from_env("RUSTDOC_LOG");
     let res = std::thread::Builder::new().stack_size(thread_stack_size).spawn(move || {
         get_args().map(|args| main_args(&args)).unwrap_or(1)
     }).unwrap().join().unwrap_or(rustc_driver::EXIT_FAILURE);
