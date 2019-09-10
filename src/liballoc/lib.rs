@@ -171,3 +171,9 @@ pub mod vec;
 mod std {
     pub use core::ops; // RangeFull
 }
+
+#[doc(hidden)]
+#[unstable(feature = "liballoc_internals", issue = "0", reason = "implementation detail")]
+pub mod __export {
+    pub use core::format_args;
+}
