@@ -1,5 +1,3 @@
-// Copyright (c) 2019 Wind River Systems, Inc.
-
 use crate::io::{self, Error, ErrorKind};
 use libc::{self, c_int, c_char};
 use libc::{RTP_ID};

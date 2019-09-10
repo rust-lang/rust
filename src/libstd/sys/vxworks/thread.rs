@@ -1,5 +1,3 @@
-// Copyright (c) 2019 Wind River Systems, Inc.
-
 use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
