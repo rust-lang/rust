@@ -859,7 +859,40 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
+    fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
+        use crate::rustc::ty::TypeFoldable;
+
+        struct ProhibitOpaqueTypes<'a, 'tcx> {
+            cx: &'a LateContext<'a, 'tcx>,
+            sp: Span,
+        };
+
+        impl<'a, 'tcx> ty::fold::TypeVisitor<'tcx> for ProhibitOpaqueTypes<'a, 'tcx> {
+            fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+                if let ty::Opaque(..) = ty.sty {
+                    self.cx.span_lint(IMPROPER_CTYPES,
+                        self.sp,
+                        &format!("`extern` block uses type `{}` which is not FFI-safe: \
+                                  opaque types have no C equivalent", ty));
+                    true
+                } else {
+                    ty.super_visit_with(self)
+                }
+            }
+        }
+
+        let mut visitor = ProhibitOpaqueTypes { cx: self.cx, sp };
+        ty.visit_with(&mut visitor)
+    }
+
     fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
+        // We have to check for opaque types before `normalize_erasing_regions`,
+        // which will replace opaque types with their underlying concrete type.
+        if self.check_for_opaque_ty(sp, ty) {
+            // We've already emitted an error due to an opaque type.
+            return;
+        }
+
         // it is only OK to use this function because extern fns cannot have
         // any generic types right now:
         let ty = self.cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
