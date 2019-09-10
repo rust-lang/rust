@@ -356,6 +356,23 @@ fn opts() -> Vec<RustcOptGroup> {
                       "show-coverage",
                       "calculate percentage of public items with documentation")
         }),
+        unstable("enable-per-target-ignores", |o| {
+            o.optflag("",
+                      "enable-per-target-ignores",
+                      "parse ignore-foo for ignoring doctests on a per-target basis")
+        }),
+        unstable("runtool", |o| {
+            o.optopt("",
+                     "runtool",
+                     "",
+                     "The tool to run tests with when building for a different target than host")
+        }),
+        unstable("runtool-arg", |o| {
+            o.optmulti("",
+                       "runtool-arg",
+                       "",
+                       "One (of possibly many) arguments to pass to the runtool")
+        }),
     ]
 }
 

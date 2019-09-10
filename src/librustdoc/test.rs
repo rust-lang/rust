@@ -1,5 +1,6 @@
 use rustc_data_structures::sync::Lrc;
 use rustc_interface::interface;
+use rustc_target::spec::TargetTriple;
 use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::session::{self, config, DiagnosticOutput};
@@ -22,7 +23,7 @@ use testing;
 
 use crate::clean::Attributes;
 use crate::config::Options;
-use crate::html::markdown::{self, ErrorCodes, LangString};
+use crate::html::markdown::{self, ErrorCodes, LangString, Ignore};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -57,6 +58,7 @@ pub fn run(options: Options) -> i32 {
             ..config::basic_debugging_options()
         },
         edition: options.edition,
+        target_triple: options.target.clone(),
         ..config::Options::default()
     };
 
@@ -82,6 +84,7 @@ pub fn run(options: Options) -> i32 {
 
         let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
         opts.display_warnings |= options.display_warnings;
+        let enable_per_target_ignores = options.enable_per_target_ignores;
         let mut collector = Collector::new(
             compiler.crate_name()?.peek().to_string(),
             options,
@@ -89,6 +92,7 @@ pub fn run(options: Options) -> i32 {
             opts,
             Some(compiler.source_map().clone()),
             None,
+            enable_per_target_ignores,
         );
 
         let mut global_ctxt = compiler.global_ctxt()?.take();
@@ -181,6 +185,9 @@ fn run_test(
     should_panic: bool,
     no_run: bool,
     as_test_harness: bool,
+    runtool: Option<String>,
+    runtool_args: Vec<String>,
+    target: TargetTriple,
     compile_fail: bool,
     mut error_codes: Vec<String>,
     opts: &TestOptions,
@@ -270,6 +277,7 @@ fn run_test(
     if no_run {
         compiler.arg("--emit=metadata");
     }
+    compiler.arg("--target").arg(target.to_string());
 
     compiler.arg("-");
     compiler.stdin(Stdio::piped());
@@ -315,7 +323,15 @@ fn run_test(
     }
 
     // Run the code!
-    let mut cmd = Command::new(output_file);
+    let mut cmd;
+
+    if let Some(tool) = runtool {
+        cmd = Command::new(tool);
+        cmd.arg(output_file);
+        cmd.args(runtool_args);
+    } else {
+        cmd = Command::new(output_file);
+    }
 
     match cmd.output() {
         Err(e) => return Err(TestFailure::ExecutionError(e)),
@@ -603,6 +619,7 @@ pub struct Collector {
 
     options: Options,
     use_headers: bool,
+    enable_per_target_ignores: bool,
     cratename: String,
     opts: TestOptions,
     position: Span,
@@ -612,12 +629,14 @@ pub struct Collector {
 
 impl Collector {
     pub fn new(cratename: String, options: Options, use_headers: bool, opts: TestOptions,
-               source_map: Option<Lrc<SourceMap>>, filename: Option<PathBuf>,) -> Collector {
+               source_map: Option<Lrc<SourceMap>>, filename: Option<PathBuf>,
+               enable_per_target_ignores: bool) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
             options,
             use_headers,
+            enable_per_target_ignores,
             cratename,
             opts,
             position: DUMMY_SP,
@@ -661,12 +680,22 @@ impl Tester for Collector {
         let opts = self.opts.clone();
         let edition = config.edition.unwrap_or(self.options.edition.clone());
         let options = self.options.clone();
+        let runtool = self.options.runtool.clone();
+        let runtool_args = self.options.runtool_args.clone();
+        let target = self.options.target.clone();
+        let target_str = target.to_string();
 
         debug!("creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
-                name: testing::DynTestName(name),
-                ignore: config.ignore,
+                name: testing::DynTestName(name.clone()),
+                ignore: match config.ignore {
+                    Ignore::All => true,
+                    Ignore::None => false,
+                    Ignore::Some(ref ignores) => {
+                        ignores.iter().any(|s| target_str.contains(s))
+                    },
+                },
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
                 allow_fail: config.allow_fail,
@@ -681,6 +710,9 @@ impl Tester for Collector {
                     config.should_panic,
                     config.no_run,
                     config.test_harness,
+                    runtool,
+                    runtool_args,
+                    target,
                     config.compile_fail,
                     config.error_codes,
                     &opts,
@@ -827,7 +859,10 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
-            markdown::find_testable_code(&doc, self.collector, self.codes);
+            markdown::find_testable_code(&doc,
+                                         self.collector,
+                                         self.codes,
+                                         self.collector.enable_per_target_ignores);
         }
 
         nested(self);

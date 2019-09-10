@@ -9,7 +9,7 @@ use rustc::session;
 use rustc::session::config::{CrateType, parse_crate_types_from_list};
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
-                             get_cmd_lint_options, ExternEntry};
+                             get_cmd_lint_options, host_triple, ExternEntry};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
@@ -54,7 +54,7 @@ pub struct Options {
     /// Debugging (`-Z`) options to pass to the compiler.
     pub debugging_options: DebuggingOptions,
     /// The target used to compile the crate against.
-    pub target: Option<TargetTriple>,
+    pub target: TargetTriple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
     /// compiling doctests from the crate.
     pub edition: Edition,
@@ -77,6 +77,14 @@ pub struct Options {
     /// Optional path to persist the doctest executables to, defaults to a
     /// temporary directory if not set.
     pub persist_doctests: Option<PathBuf>,
+    /// Runtool to run doctests with
+    pub runtool: Option<String>,
+    /// Arguments to pass to the runtool
+    pub runtool_args: Vec<String>,
+    /// Whether to allow ignoring doctests on a per-target basis
+    /// For example, using ignore-foo to ignore running the doctest on any target that
+    /// contains "foo" as a substring
+    pub enable_per_target_ignores: bool,
 
     // Options that affect the documentation process
 
@@ -140,6 +148,9 @@ impl fmt::Debug for Options {
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
             .field("render_options", &self.render_options)
+            .field("runtool", &self.runtool)
+            .field("runtool_args", &self.runtool_args)
+            .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .finish()
     }
 }
@@ -414,7 +425,9 @@ impl Options {
             }
         }
 
-        let target = matches.opt_str("target").map(|target| {
+        let target = matches.opt_str("target").map_or(
+            TargetTriple::from_triple(host_triple()),
+            |target| {
             if target.ends_with(".json") {
                 TargetTriple::TargetPath(PathBuf::from(target))
             } else {
@@ -466,6 +479,9 @@ impl Options {
         let codegen_options_strs = matches.opt_strs("C");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
+        let runtool = matches.opt_str("runtool");
+        let runtool_args = matches.opt_strs("runtool-arg");
+        let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -496,6 +512,9 @@ impl Options {
             show_coverage,
             crate_version,
             persist_doctests,
+            runtool,
+            runtool_args,
+            enable_per_target_ignores,
             render_options: RenderOptions {
                 output,
                 external_html,

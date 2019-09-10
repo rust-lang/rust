@@ -199,7 +199,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let ignore;
         let edition;
         if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
-            let parse_result = LangString::parse(&lang, self.check_error_codes);
+            let parse_result = LangString::parse(&lang, self.check_error_codes, false);
             if !parse_result.rust {
                 return Some(Event::Start(Tag::CodeBlock(lang)));
             }
@@ -272,7 +272,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             ))
         });
 
-        let tooltip = if ignore {
+        let tooltip = if ignore != Ignore::None {
             Some(("This example is not tested".to_owned(), "ignore"))
         } else if compile_fail {
             Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
@@ -286,7 +286,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             s.push_str(&highlight::render_with_highlighting(
                 &text,
                 Some(&format!("rust-example-rendered{}",
-                                if ignore { " ignore" }
+                                if ignore != Ignore::None { " ignore" }
                                 else if compile_fail { " compile_fail" }
                                 else if explicit_edition { " edition " }
                                 else { "" })),
@@ -297,7 +297,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             s.push_str(&highlight::render_with_highlighting(
                 &text,
                 Some(&format!("rust-example-rendered{}",
-                                if ignore { " ignore" }
+                                if ignore != Ignore::None { " ignore" }
                                 else if compile_fail { " compile_fail" }
                                 else if explicit_edition { " edition " }
                                 else { "" })),
@@ -551,7 +551,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes: ErrorCodes) {
+pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes: ErrorCodes,
+                                           enable_per_target_ignores: bool) {
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -564,7 +565,7 @@ pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes
                 let block_info = if s.is_empty() {
                     LangString::all_false()
                 } else {
-                    LangString::parse(&*s, error_codes)
+                    LangString::parse(&*s, error_codes, enable_per_target_ignores)
                 };
                 if !block_info.rust {
                     continue;
@@ -607,7 +608,7 @@ pub struct LangString {
     original: String,
     pub should_panic: bool,
     pub no_run: bool,
-    pub ignore: bool,
+    pub ignore: Ignore,
     pub rust: bool,
     pub test_harness: bool,
     pub compile_fail: bool,
@@ -616,13 +617,20 @@ pub struct LangString {
     pub edition: Option<Edition>
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub enum Ignore {
+    All,
+    None,
+    Some(Vec<String>),
+}
+
 impl LangString {
     fn all_false() -> LangString {
         LangString {
             original: String::new(),
             should_panic: false,
             no_run: false,
-            ignore: false,
+            ignore: Ignore::None,
             rust: true,  // NB This used to be `notrust = false`
             test_harness: false,
             compile_fail: false,
@@ -632,11 +640,16 @@ impl LangString {
         }
     }
 
-    fn parse(string: &str, allow_error_code_check: ErrorCodes) -> LangString {
+    fn parse(
+        string: &str,
+        allow_error_code_check: ErrorCodes,
+        enable_per_target_ignores: bool
+    ) -> LangString {
         let allow_error_code_check = allow_error_code_check.as_bool();
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
+        let mut ignores = vec![];
 
         data.original = string.to_owned();
         let tokens = string.split(|c: char|
@@ -651,7 +664,11 @@ impl LangString {
                     seen_rust_tags = seen_other_tags == false;
                 }
                 "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
-                "ignore" => { data.ignore = true; seen_rust_tags = !seen_other_tags; }
+                "ignore" => { data.ignore = Ignore::All; seen_rust_tags = !seen_other_tags; }
+                x if x.starts_with("ignore-") => if enable_per_target_ignores {
+                    ignores.push(x.trim_start_matches("ignore-").to_owned());
+                    seen_rust_tags = !seen_other_tags;
+                }
                 "allow_fail" => { data.allow_fail = true; seen_rust_tags = !seen_other_tags; }
                 "rust" => { data.rust = true; seen_rust_tags = true; }
                 "test_harness" => {
@@ -678,6 +695,10 @@ impl LangString {
                 }
                 _ => { seen_other_tags = true }
             }
+        }
+        // ignore-foo overrides ignore
+        if !ignores.is_empty() {
+            data.ignore = Ignore::Some(ignores);
         }
 
         data.rust &= !seen_other_tags || seen_rust_tags;
@@ -919,7 +940,7 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                 let lang_string = if syntax.is_empty() {
                     LangString::all_false()
                 } else {
-                    LangString::parse(&*syntax, ErrorCodes::Yes)
+                    LangString::parse(&*syntax, ErrorCodes::Yes, false)
                 };
 
                 if lang_string.rust {
