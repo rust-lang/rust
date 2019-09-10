@@ -4,6 +4,8 @@
 //! etc. This is run by default on `make check` and as part of the auto
 //! builders.
 
+#![deny(warnings)]
+
 use tidy::*;
 
 use std::process;
