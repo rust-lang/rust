@@ -1646,7 +1646,14 @@ fn print_fancy_ref(fancy_ref: &FancyNum){
 "##,
 
 E0507: r##"
-You tried to move out of a value which was borrowed. Erroneous code example:
+You tried to move out of a value which was borrowed.
+
+This can also happen when using a type implementing `Fn` or `FnMut`, as neither
+allows moving out of them (they usually represent closures which can be called
+more than once). Much of the text following applies equally well to non-`FnOnce`
+closure bodies.
+
+Erroneous code example:
 
 ```compile_fail,E0507
 use std::cell::RefCell;

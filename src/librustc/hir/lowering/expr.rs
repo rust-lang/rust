@@ -507,14 +507,13 @@ impl LoweringContext<'_> {
 
     /// Desugar `<expr>.await` into:
     /// ```rust
-    /// {
-    ///     let mut pinned = <expr>;
-    ///     loop {
+    /// match <expr> {
+    ///     mut pinned => loop {
     ///         match ::std::future::poll_with_tls_context(unsafe {
-    ///             ::std::pin::Pin::new_unchecked(&mut pinned)
+    ///             <::std::pin::Pin>::new_unchecked(&mut pinned)
     ///         }) {
     ///             ::std::task::Poll::Ready(result) => break result,
-    ///             ::std::task::Poll::Pending => {},
+    ///             ::std::task::Poll::Pending => {}
     ///         }
     ///         yield ();
     ///     }
@@ -549,20 +548,11 @@ impl LoweringContext<'_> {
             self.allow_gen_future.clone(),
         );
 
-        // let mut pinned = <expr>;
-        let expr = P(self.lower_expr(expr));
         let pinned_ident = Ident::with_dummy_span(sym::pinned);
         let (pinned_pat, pinned_pat_hid) = self.pat_ident_binding_mode(
             span,
             pinned_ident,
             hir::BindingAnnotation::Mutable,
-        );
-        let pinned_let = self.stmt_let_pat(
-            ThinVec::new(),
-            span,
-            Some(expr),
-            pinned_pat,
-            hir::LocalSource::AwaitDesugar,
         );
 
         // ::std::future::poll_with_tls_context(unsafe {
@@ -621,7 +611,7 @@ impl LoweringContext<'_> {
             self.arm(hir_vec![pending_pat], empty_block)
         };
 
-        let match_stmt = {
+        let inner_match_stmt = {
             let match_expr = self.expr_match(
                 span,
                 poll_expr,
@@ -643,10 +633,11 @@ impl LoweringContext<'_> {
 
         let loop_block = P(self.block_all(
             span,
-            hir_vec![match_stmt, yield_stmt],
+            hir_vec![inner_match_stmt, yield_stmt],
             None,
         ));
 
+        // loop { .. }
         let loop_expr = P(hir::Expr {
             hir_id: loop_hir_id,
             node: hir::ExprKind::Loop(
@@ -658,10 +649,14 @@ impl LoweringContext<'_> {
             attrs: ThinVec::new(),
         });
 
-        hir::ExprKind::Block(
-            P(self.block_all(span, hir_vec![pinned_let], Some(loop_expr))),
-            None,
-        )
+        // mut pinned => loop { ... }
+        let pinned_arm = self.arm(hir_vec![pinned_pat], loop_expr);
+
+        // match <expr> {
+        //     mut pinned => loop { .. }
+        // }
+        let expr = P(self.lower_expr(expr));
+        hir::ExprKind::Match(expr, hir_vec![pinned_arm], hir::MatchSource::AwaitDesugar)
     }
 
     fn lower_expr_closure(
