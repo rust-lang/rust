@@ -1347,6 +1347,39 @@ struct Foo<T: 'static> {
 ```
 "##,
 
+E0312: r##"
+Reference's lifetime of borrowed content doesn't match the expected lifetime.
+
+Erroneous code example:
+
+```compile_fail,E0312
+pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'static str {
+    if maybestr.is_none() {
+        "(none)"
+    } else {
+        let s: &'a str = maybestr.as_ref().unwrap();
+        s  // Invalid lifetime!
+    }
+}
+```
+
+To fix this error, either lessen the expected lifetime or find a way to not have
+to use this reference outside of its current scope (by running the code directly
+in the same block for example?):
+
+```
+// In this case, we can fix the issue by switching from "static" lifetime to 'a
+pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
+    if maybestr.is_none() {
+        "(none)"
+    } else {
+        let s: &'a str = maybestr.as_ref().unwrap();
+        s  // Ok!
+    }
+}
+```
+"##,
+
 E0317: r##"
 This error occurs when an `if` expression without an `else` block is used in a
 context where a type other than `()` is expected, for example a `let`
@@ -2202,7 +2235,6 @@ static X: u32 = 42;
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
     E0311, // thing may not live long enough
-    E0312, // lifetime of reference outlives lifetime of borrowed content
     E0313, // lifetime of borrowed pointer outlives lifetime of captured
            // variable
     E0314, // closure outlives stack frame
