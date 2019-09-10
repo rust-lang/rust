@@ -657,7 +657,6 @@ fn test_expr() {
 }
 
 #[test]
-#[ignore]
 fn test_expr_order() {
     let rules = create_rules(
         r#"
@@ -668,9 +667,9 @@ fn test_expr_order() {
         }
 "#,
     );
-
+    let dump = format!("{:#?}", expand_to_items(&rules, "foo! { 1 + 1  }").syntax());
     assert_eq_text!(
-        &format!("{:#?}", expand_to_items(&rules, "foo! { 1 + 1  }").syntax()),
+        dump.trim(),
         r#"MACRO_ITEMS@[0; 15)
   FN_DEF@[0; 15)
     FN_KW@[0; 2) "fn"
