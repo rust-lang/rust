@@ -21,8 +21,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
     let subcommand = subcommand.unwrap();
-    let mut args: Vec<_> = std::env::args_os().collect();
-    let mut matches = Arguments::from_vec(args.drain(2..).collect());
+    let mut matches = Arguments::from_vec(std::env::args_os().skip(2).collect());
 
     match &*subcommand.to_string_lossy() {
         "parse" => {
