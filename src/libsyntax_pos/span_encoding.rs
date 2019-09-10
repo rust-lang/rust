@@ -27,12 +27,12 @@ use rustc_data_structures::fx::FxHashMap;
 /// Inline (compressed) format:
 /// - `span.base_or_index == span_data.lo`
 /// - `span.len_or_tag == len == span_data.hi - span_data.lo` (must be `<= MAX_LEN`)
-/// - `span.ctxt == span_data.ctxt` (must be `<= MAX_CTXT`)
+/// - `span.ctxt_or_zero == span_data.ctxt` (may be 0, must be `<= MAX_CTXT`)
 ///
 /// Interned format:
 /// - `span.base_or_index == index` (indexes into the interner table)
 /// - `span.len_or_tag == LEN_TAG` (high bit set, all other bits are zero)
-/// - `span.ctxt == 0`
+/// - `span.ctxt_or_zero == 0`
 ///
 /// The inline form uses 0 for the tag value (rather than 1) so that we don't
 /// need to mask out the tag bit when getting the length, and so that the
