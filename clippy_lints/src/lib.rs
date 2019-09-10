@@ -1,6 +1,5 @@
 // error-pattern:cargo-clippy
 
-#![feature(bind_by_move_pattern_guards)] // proposed to be stabilized in Rust v1.39
 #![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(never_type)]
