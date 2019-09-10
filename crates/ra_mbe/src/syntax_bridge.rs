@@ -46,25 +46,6 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
 // * TraitItems(SmallVec<[ast::TraitItem; 1]>)
 // * ImplItems(SmallVec<[ast::ImplItem; 1]>)
 // * ForeignItems(SmallVec<[ast::ForeignItem; 1]>
-//
-//
-
-fn token_tree_to_syntax_node<F>(tt: &tt::Subtree, f: F) -> Result<Parse<SyntaxNode>, ExpandError>
-where
-    F: Fn(&mut dyn ra_parser::TokenSource, &mut dyn ra_parser::TreeSink),
-{
-    let tokens = [tt.clone().into()];
-    let buffer = TokenBuffer::new(&tokens);
-    let mut token_source = SubtreeTokenSource::new(&buffer);
-    let mut tree_sink = TtTreeSink::new(buffer.begin());
-    f(&mut token_source, &mut tree_sink);
-    if tree_sink.roots.len() != 1 {
-        return Err(ExpandError::ConversionError);
-    }
-    //FIXME: would be cool to report errors
-    let parse = tree_sink.inner.finish();
-    Ok(parse)
-}
 
 fn fragment_to_syntax_node(
     tt: &tt::Subtree,
@@ -115,15 +96,9 @@ pub fn token_tree_to_macro_stmts(tt: &tt::Subtree) -> Result<Parse<ast::MacroStm
 }
 
 /// Parses the token tree (result of macro expansion) as a sequence of items
-pub fn token_tree_to_macro_items(tt: &tt::Subtree) -> Result<Parse<ast::MacroItems>, ExpandError> {
+pub fn token_tree_to_items(tt: &tt::Subtree) -> Result<Parse<ast::MacroItems>, ExpandError> {
     let parse = fragment_to_syntax_node(tt, Items)?;
     parse.cast().ok_or_else(|| crate::ExpandError::ConversionError)
-}
-
-/// Parses the token tree (result of macro expansion) as a sequence of items
-pub fn token_tree_to_ast_item_list(tt: &tt::Subtree) -> Parse<ast::SourceFile> {
-    let parse = token_tree_to_syntax_node(tt, ra_parser::parse).unwrap();
-    parse.cast().unwrap()
 }
 
 impl TokenMap {
