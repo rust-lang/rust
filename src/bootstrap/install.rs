@@ -67,7 +67,6 @@ fn install_sh(
     let sysconfdir_default = PathBuf::from("/etc");
     let datadir_default = PathBuf::from("share");
     let docdir_default = datadir_default.join("doc/rust");
-    let bindir_default = PathBuf::from("bin");
     let libdir_default = PathBuf::from("lib");
     let mandir_default = datadir_default.join("man");
     let prefix = builder.config.prefix.as_ref().map_or(prefix_default, |p| {
@@ -76,7 +75,7 @@ fn install_sh(
     let sysconfdir = builder.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
     let datadir = builder.config.datadir.as_ref().unwrap_or(&datadir_default);
     let docdir = builder.config.docdir.as_ref().unwrap_or(&docdir_default);
-    let bindir = builder.config.bindir.as_ref().unwrap_or(&bindir_default);
+    let bindir = &builder.config.bindir;
     let libdir = builder.config.libdir.as_ref().unwrap_or(&libdir_default);
     let mandir = builder.config.mandir.as_ref().unwrap_or(&mandir_default);
 
