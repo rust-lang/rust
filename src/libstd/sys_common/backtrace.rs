@@ -117,6 +117,12 @@ where
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
 pub fn log_enabled() -> Option<PrintFmt> {
+    // Setting environment variables for Fuchsia components isn't a standard
+    // or easily supported workflow. For now, always display backtraces.
+    if cfg!(target_os = "fuchsia") {
+        return Some(PrintFmt::Full);
+    }
+
     static ENABLED: atomic::AtomicIsize = atomic::AtomicIsize::new(0);
     match ENABLED.load(Ordering::SeqCst) {
         0 => {}
