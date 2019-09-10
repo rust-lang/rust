@@ -6,12 +6,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.eliminate_frame_pointer = false;
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
-    if let Some(sysroot) = super::apple_base::sysroot("macosx")? {
-        base.pre_link_args.insert(
-            LinkerFlavor::Gcc,
-            vec!["-isysroot".to_string(), sysroot.clone(), "-Wl,-syslibroot".to_string(), sysroot],
-        );
-    }
+    base.link_env.extend(super::apple_base::macos_link_env());
     base.stack_probes = true;
 
     // Clang automatically chooses a more specific target based on
