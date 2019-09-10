@@ -208,13 +208,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                         let sugg_span = span.with_lo(
                             span.lo() + BytePos(u32::try_from(dot).unwrap())
                         );
+                        let mut app = Applicability::MaybeIncorrect;
+                        let mut call_snip = &snip[dot + 1..];
+                        if call_snip.ends_with("()") {
+                            call_snip = call_snip[..call_snip.len()-2].trim();
+                            if call_snip.as_bytes().iter().all(|b| b.is_ascii_alphabetic() || *b == b'_') {
+                                app = Applicability::MachineApplicable;
+                            }
+                        }
 
                         span_lint_hir_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |db| {
                             db.span_suggestion(
                                 sugg_span,
                                 "remove this",
                                 String::new(),
-                                Applicability::MaybeIncorrect,
+                                app,
                             );
                             db.span_note(
                                 span.with_hi(span.lo() + BytePos(u32::try_from(dot).unwrap())),
