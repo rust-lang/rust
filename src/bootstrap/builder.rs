@@ -1079,12 +1079,9 @@ impl<'a> Builder<'a> {
             }
         }
 
-        match mode {
-            Mode::Rustc | Mode::Codegen => {
-                rustflags.arg("-Zunstable-options");
-                rustflags.arg("-Wrustc::internal");
-            }
-            _ => {}
+        if let Mode::Rustc | Mode::Codegen = mode {
+            rustflags.arg("-Zunstable-options");
+            rustflags.arg("-Wrustc::internal");
         }
 
         // Throughout the build Cargo can execute a number of build scripts
@@ -1230,11 +1227,8 @@ impl<'a> Builder<'a> {
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.
-        match mode {
-            Mode::Std | Mode::Rustc | Mode::Codegen => {
-                rustflags.arg("-Cprefer-dynamic");
-            }
-            _ => {}
+        if let Mode::Std | Mode::Rustc | Mode::Codegen = mode {
+            rustflags.arg("-Cprefer-dynamic");
         }
 
         Cargo {
@@ -1348,7 +1342,7 @@ impl Rustflags {
     fn new(target: &str, cmd: &mut Command) -> Rustflags {
         let mut ret = Rustflags(String::new());
 
-        // Inherit `RUSTFLAGS` by default
+        // Inherit `RUSTFLAGS` by default ...
         ret.env("RUSTFLAGS");
 
         // ... and also handle target-specific env RUSTFLAGS if they're
@@ -1358,7 +1352,7 @@ impl Rustflags {
         ret.env(&target_specific);
         cmd.env_remove(&target_specific);
 
-        return ret;
+        ret
     }
 
     fn env(&mut self, env: &str) {
