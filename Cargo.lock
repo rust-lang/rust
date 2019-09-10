@@ -70,7 +70,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "cranelift"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-codegen 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-frontend 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -79,7 +79,7 @@ dependencies = [
 [[package]]
 name = "cranelift-bforest"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-entity 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
 ]
@@ -87,7 +87,7 @@ dependencies = [
 [[package]]
 name = "cranelift-codegen"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-bforest 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-codegen-meta 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -95,13 +95,14 @@ dependencies = [
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "target-lexicon 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "cranelift-codegen-meta"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-entity 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
 ]
@@ -109,12 +110,12 @@ dependencies = [
 [[package]]
 name = "cranelift-entity"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 
 [[package]]
 name = "cranelift-faerie"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-codegen 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -127,17 +128,18 @@ dependencies = [
 [[package]]
 name = "cranelift-frontend"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-codegen 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "target-lexicon 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "cranelift-module"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-codegen 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-entity 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -148,7 +150,7 @@ dependencies = [
 [[package]]
 name = "cranelift-native"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-codegen 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "raw-cpuid 6.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -158,7 +160,7 @@ dependencies = [
 [[package]]
 name = "cranelift-simplejit"
 version = "0.42.0"
-source = "git+https://github.com/CraneStation/cranelift.git#08475219ca1aa1d23c80e89534f35fbc99fbe0d7"
+source = "git+https://github.com/CraneStation/cranelift.git#302bcf3fbbf61bb404d8cfc206fd8e6d776bf126"
 dependencies = [
  "cranelift-codegen 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.42.0 (git+https://github.com/CraneStation/cranelift.git)",
@@ -563,6 +565,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "smallvec"
+version = "0.6.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -730,6 +737,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 "checksum serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)" = "fec2851eb56d010dc9a21b89ca53ee75e6528bab60c11e89d38390904982da9f"
 "checksum serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)" = "051c49229f282f7c6f3813f8286cc1e3323e8051823fce42c7ea80fe13521704"
+"checksum smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)" = "ab606a9c5e214920bb66c458cd7be8ef094f813f20fe77a54cc7dbfff220d4b7"
 "checksum stable_deref_trait 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "dba1a27d3efae4351c8051072d619e3ade2820635c3958d826bfea39d59b54c8"
 "checksum string-interner 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)" = "fd710eadff449a1531351b0e43eb81ea404336fa2f56c777427ab0e32a4cf183"
 "checksum syn 0.15.44 (registry+https://github.com/rust-lang/crates.io-index)" = "9ca4b3b69a77cbe1ffc9e198781b7acb0c7365a883670e8f1c1bc66fba79a5c5"
