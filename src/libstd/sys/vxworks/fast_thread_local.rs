@@ -1,5 +1,3 @@
-// Copyright (c) 2019 Wind River Systems, Inc.
-
 #![cfg(target_thread_local)]
 #![unstable(feature = "thread_local_internals", issue = "0")]
 
