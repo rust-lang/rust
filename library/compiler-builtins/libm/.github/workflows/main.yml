@@ -1,0 +1,67 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  docker:
+    name: Docker
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+        - aarch64-unknown-linux-gnu
+        - arm-unknown-linux-gnueabi
+        - arm-unknown-linux-gnueabihf
+        - armv7-unknown-linux-gnueabihf
+        - i686-unknown-linux-gnu
+        - mips-unknown-linux-gnu
+        - mips64-unknown-linux-gnuabi64
+        - mips64el-unknown-linux-gnuabi64
+        - powerpc-unknown-linux-gnu
+        - powerpc64-unknown-linux-gnu
+        - powerpc64le-unknown-linux-gnu
+        - x86_64-unknown-linux-gnu
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: rustup target add ${{ matrix.target }}
+    - run: rustup target add x86_64-unknown-linux-musl
+    - run: cargo generate-lockfile
+    - run: ./ci/run-docker.sh ${{ matrix.target }}
+
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update stable && rustup default stable && rustup component add rustfmt
+    - run: cargo fmt -- --check
+
+  wasm:
+    name: WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: rustup target add wasm32-unknown-unknown
+    - run: cargo build --target wasm32-unknown-unknown
+
+  cb:
+    name: "The compiler-builtins crate works"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: cargo build -p cb
+
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly
+    - run: cargo bench --all
