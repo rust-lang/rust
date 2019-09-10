@@ -339,21 +339,13 @@ fn expand_subtree(
     template: &crate::Subtree,
     ctx: &mut ExpandCtx,
 ) -> Result<tt::Subtree, ExpandError> {
-    let token_trees = template
-        .token_trees
-        .iter()
-        .map(|it| expand_tt(it, ctx))
-        .filter(|it| {
-            // Filter empty subtree
-            if let Ok(tt::TokenTree::Subtree(subtree)) = it {
-                subtree.delimiter != tt::Delimiter::None || !subtree.token_trees.is_empty()
-            } else {
-                true
-            }
-        })
-        .collect::<Result<Vec<_>, ExpandError>>()?;
+    let mut buf: Vec<tt::TokenTree> = Vec::new();
+    for tt in template.token_trees.iter() {
+        let tt = expand_tt(tt, ctx)?;
+        push_tt(&mut buf, tt);
+    }
 
-    Ok(tt::Subtree { token_trees, delimiter: template.delimiter })
+    Ok(tt::Subtree { delimiter: template.delimiter, token_trees: buf })
 }
 
 /// Reduce single token subtree to single token
@@ -377,7 +369,7 @@ fn expand_tt(
     let res: tt::TokenTree = match template {
         crate::TokenTree::Subtree(subtree) => expand_subtree(subtree, ctx)?.into(),
         crate::TokenTree::Repeat(repeat) => {
-            let mut token_trees: Vec<tt::TokenTree> = Vec::new();
+            let mut buf: Vec<tt::TokenTree> = Vec::new();
             ctx.nesting.push(0);
             // Dirty hack to make macro-expansion terminate.
             // This should be replaced by a propper macro-by-example implementation
@@ -418,23 +410,23 @@ fn expand_tt(
 
                 let idx = ctx.nesting.pop().unwrap();
                 ctx.nesting.push(idx + 1);
-                token_trees.push(reduce_single_token(t));
+                push_subtree(&mut buf, t);
 
                 if let Some(ref sep) = repeat.separator {
                     match sep {
                         crate::Separator::Ident(ident) => {
                             has_seps = 1;
-                            token_trees.push(tt::Leaf::from(ident.clone()).into());
+                            buf.push(tt::Leaf::from(ident.clone()).into());
                         }
                         crate::Separator::Literal(lit) => {
                             has_seps = 1;
-                            token_trees.push(tt::Leaf::from(lit.clone()).into());
+                            buf.push(tt::Leaf::from(lit.clone()).into());
                         }
 
                         crate::Separator::Puncts(puncts) => {
                             has_seps = puncts.len();
                             for punct in puncts {
-                                token_trees.push(tt::Leaf::from(*punct).into());
+                                buf.push(tt::Leaf::from(*punct).into());
                             }
                         }
                     }
@@ -450,16 +442,16 @@ fn expand_tt(
 
             ctx.nesting.pop().unwrap();
             for _ in 0..has_seps {
-                token_trees.pop();
+                buf.pop();
             }
 
             if crate::RepeatKind::OneOrMore == repeat.kind && counter == 0 {
                 return Err(ExpandError::UnexpectedToken);
             }
 
-            // Check if it is a singel token subtree without any delimiter
+            // Check if it is a single token subtree without any delimiter
             // e.g {Delimiter:None> ['>'] /Delimiter:None>}
-            reduce_single_token(tt::Subtree { token_trees, delimiter: tt::Delimiter::None })
+            reduce_single_token(tt::Subtree { delimiter: tt::Delimiter::None, token_trees: buf })
         }
         crate::TokenTree::Leaf(leaf) => match leaf {
             crate::Leaf::Ident(ident) => {
@@ -584,5 +576,19 @@ mod tests {
             ast_to_token_tree(&macro_invocation.token_tree().unwrap()).unwrap();
 
         expand_rule(&rules.rules[0], &invocation_tt)
+    }
+}
+
+fn push_tt(buf: &mut Vec<tt::TokenTree>, tt: tt::TokenTree) {
+    match tt {
+        tt::TokenTree::Subtree(tt) => push_subtree(buf, tt),
+        _ => buf.push(tt),
+    }
+}
+
+fn push_subtree(buf: &mut Vec<tt::TokenTree>, tt: tt::Subtree) {
+    match tt.delimiter {
+        tt::Delimiter::None => buf.extend(tt.token_trees),
+        _ => buf.push(tt.into()),
     }
 }

@@ -34,17 +34,20 @@ pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
         //         200 .. 301=> (),
         //     }
         // }
-        if p.at(T![...]) || p.at(T![..=]) || p.at(T![..]) {
-            let m = lhs.precede(p);
-            p.bump_any();
-            atom_pat(p, recovery_set);
-            m.complete(p, RANGE_PAT);
+        for &range_op in [T![...], T![..=], T![..]].iter() {
+            if p.at(range_op) {
+                let m = lhs.precede(p);
+                p.bump(range_op);
+                atom_pat(p, recovery_set);
+                m.complete(p, RANGE_PAT);
+                return;
+            }
         }
         // test marco_pat
         // fn main() {
         //     let m!(x) = 0;
         // }
-        else if lhs.kind() == PATH_PAT && p.at(T![!]) {
+        if lhs.kind() == PATH_PAT && p.at(T![!]) {
             let m = lhs.precede(p);
             items::macro_call_after_excl(p);
             m.complete(p, MACRO_CALL);
@@ -56,14 +59,16 @@ const PAT_RECOVERY_SET: TokenSet =
     token_set![LET_KW, IF_KW, WHILE_KW, LOOP_KW, MATCH_KW, R_PAREN, COMMA];
 
 fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
-    // Checks the token after an IDENT to see if a pattern is a path (Struct { .. }) or macro
-    // (T![x]).
-    let is_path_or_macro_pat =
-        |la1| la1 == T![::] || la1 == T!['('] || la1 == T!['{'] || la1 == T![!];
-
     let m = match p.nth(0) {
         T![box] => box_pat(p),
-        T![ref] | T![mut] | IDENT if !is_path_or_macro_pat(p.nth(1)) => bind_pat(p, true),
+        T![ref] | T![mut] => bind_pat(p, true),
+        IDENT => match p.nth(1) {
+            // Checks the token after an IDENT to see if a pattern is a path (Struct { .. }) or macro
+            // (T![x]).
+            T!['('] | T!['{'] | T![!] => path_pat(p),
+            T![:] if p.nth_at(1, T![::]) => path_pat(p),
+            _ => bind_pat(p, true),
+        },
 
         _ if paths::is_use_path_start(p) => path_pat(p),
         _ if is_literal_pat_start(p) => literal_pat(p),
@@ -158,7 +163,7 @@ fn record_field_pat_list(p: &mut Parser) {
     p.bump_any();
     while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
-            T![..] => p.bump_any(),
+            T![.] if p.at(T![..]) => p.bump(T![..]),
             IDENT if p.nth(1) == T![:] => record_field_pat(p),
             T!['{'] => error_block(p, "expected ident"),
             T![box] => {
@@ -237,7 +242,7 @@ fn slice_pat(p: &mut Parser) -> CompletedMarker {
 fn pat_list(p: &mut Parser, ket: SyntaxKind) {
     while !p.at(EOF) && !p.at(ket) {
         match p.current() {
-            T![..] => p.bump_any(),
+            T![.] if p.at(T![..]) => p.bump(T![..]),
             _ => {
                 if !p.at_ts(PATTERN_FIRST) {
                     p.error("expected a pattern");

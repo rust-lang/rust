@@ -1051,6 +1051,7 @@ dependencies = [
  "ra_tt 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec 0.6.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "test_utils 0.1.0",
 ]
 
 [[package]]

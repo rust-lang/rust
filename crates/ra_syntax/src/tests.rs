@@ -16,6 +16,18 @@ fn lexer_tests() {
 }
 
 #[test]
+fn parse_smoke_test() {
+    let code = r##"
+fn main() {
+    println!("Hello, world!")
+}
+    "##;
+
+    let parse = SourceFile::parse(code);
+    assert!(parse.ok().is_ok());
+}
+
+#[test]
 fn parser_tests() {
     dir_tests(&test_data_dir(), &["parser/inline/ok", "parser/ok"], |text, path| {
         let parse = SourceFile::parse(text);
@@ -75,7 +87,9 @@ fn self_hosting_parsing() {
     {
         count += 1;
         let text = read_text(entry.path());
-        SourceFile::parse(&text).ok().expect("There should be no errors in the file");
+        if let Err(errors) = SourceFile::parse(&text).ok() {
+            panic!("Parsing errors:\n{:?}\n{}\n", errors, entry.path().display());
+        }
     }
     assert!(
         count > 30,

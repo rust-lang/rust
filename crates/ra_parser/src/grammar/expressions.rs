@@ -212,52 +212,48 @@ struct Restrictions {
     prefer_stmt: bool,
 }
 
-enum Op {
-    Simple,
-    Composite(SyntaxKind, u8),
-}
+/// Binding powers of operators for a Pratt parser.
+///
+/// See https://www.oilshell.org/blog/2016/11/03.html
+#[rustfmt::skip]
+fn current_op(p: &Parser) -> (u8, SyntaxKind) {
+    const NOT_AN_OP: (u8, SyntaxKind) = (0, T![@]);
+    match p.current() {
+        T![|] if p.at(T![||])  => (3,  T![||]),
+        T![|] if p.at(T![|=])  => (1,  T![|=]),
+        T![|]                  => (6,  T![|]),
+        T![>] if p.at(T![>>=]) => (1,  T![>>=]),
+        T![>] if p.at(T![>>])  => (9,  T![>>]),
+        T![>] if p.at(T![>=])  => (5,  T![>=]),
+        T![>]                  => (5,  T![>]),
+        T![=] if p.at(T![=>])  => NOT_AN_OP,
+        T![=] if p.at(T![==])  => (5,  T![==]),
+        T![=]                  => (1,  T![=]),
+        T![<] if p.at(T![<=])  => (5,  T![<=]),
+        T![<] if p.at(T![<<=]) => (1,  T![<<=]),
+        T![<] if p.at(T![<<])  => (9,  T![<<]),
+        T![<]                  => (5,  T![<]),
+        T![+] if p.at(T![+=])  => (1,  T![+=]),
+        T![+]                  => (10, T![+]),
+        T![^] if p.at(T![^=])  => (1,  T![^=]),
+        T![^]                  => (7,  T![^]),
+        T![%] if p.at(T![%=])  => (1,  T![%=]),
+        T![%]                  => (11, T![%]),
+        T![&] if p.at(T![&=])  => (1,  T![&=]),
+        T![&] if p.at(T![&&])  => (4,  T![&&]),
+        T![&]                  => (8,  T![&]),
+        T![/] if p.at(T![/=])  => (1,  T![/=]),
+        T![/]                  => (11, T![/]),
+        T![*] if p.at(T![*=])  => (1,  T![*=]),
+        T![*]                  => (11, T![*]),
+        T![.] if p.at(T![..=]) => (2,  T![..=]),
+        T![.] if p.at(T![..])  => (2,  T![..]),
+        T![!] if p.at(T![!=])  => (5,  T![!=]),
+        T![-] if p.at(T![-=])  => (1,  T![-=]),
+        T![-]                  => (10, T![-]),
 
-fn current_op(p: &Parser) -> (u8, Op) {
-    if let Some(t) = p.current3() {
-        match t {
-            (T![<], T![<], T![=]) => return (1, Op::Composite(T![<<=], 3)),
-            (T![>], T![>], T![=]) => return (1, Op::Composite(T![>>=], 3)),
-            _ => (),
-        }
+        _                      => NOT_AN_OP
     }
-
-    if let Some(t) = p.current2() {
-        match t {
-            (T![+], T![=]) => return (1, Op::Composite(T![+=], 2)),
-            (T![-], T![=]) => return (1, Op::Composite(T![-=], 2)),
-            (T![*], T![=]) => return (1, Op::Composite(T![*=], 2)),
-            (T![%], T![=]) => return (1, Op::Composite(T![%=], 2)),
-            (T![/], T![=]) => return (1, Op::Composite(T![/=], 2)),
-            (T![|], T![=]) => return (1, Op::Composite(T![|=], 2)),
-            (T![&], T![=]) => return (1, Op::Composite(T![&=], 2)),
-            (T![^], T![=]) => return (1, Op::Composite(T![^=], 2)),
-            (T![|], T![|]) => return (3, Op::Composite(T![||], 2)),
-            (T![&], T![&]) => return (4, Op::Composite(T![&&], 2)),
-            (T![<], T![=]) => return (5, Op::Composite(T![<=], 2)),
-            (T![>], T![=]) => return (5, Op::Composite(T![>=], 2)),
-            (T![<], T![<]) => return (9, Op::Composite(T![<<], 2)),
-            (T![>], T![>]) => return (9, Op::Composite(T![>>], 2)),
-            _ => (),
-        }
-    }
-
-    let bp = match p.current() {
-        T![=] => 1,
-        T![..] | T![..=] => 2,
-        T![==] | T![!=] | T![<] | T![>] => 5,
-        T![|] => 6,
-        T![^] => 7,
-        T![&] => 8,
-        T![-] | T![+] => 10,
-        T![*] | T![/] | T![%] => 11,
-        _ => 0,
-    };
-    (bp, Op::Simple)
 }
 
 // Parses expression with binding power of at least bp.
@@ -308,12 +304,7 @@ fn expr_bp(
             break;
         }
         let m = lhs.precede(p);
-        match op {
-            Op::Simple => p.bump_any(),
-            Op::Composite(kind, n) => {
-                p.bump_compound(kind, n);
-            }
-        }
+        p.bump(op);
 
         expr_bp(p, r, op_bp + 1, dollar_lvl);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
@@ -321,8 +312,7 @@ fn expr_bp(
     (Some(lhs), BlockLike::NotBlock)
 }
 
-const LHS_FIRST: TokenSet =
-    atom::ATOM_EXPR_FIRST.union(token_set![AMP, STAR, EXCL, DOTDOT, DOTDOTEQ, MINUS]);
+const LHS_FIRST: TokenSet = atom::ATOM_EXPR_FIRST.union(token_set![AMP, STAR, EXCL, DOT, MINUS]);
 
 fn lhs(
     p: &mut Parser,
@@ -353,17 +343,20 @@ fn lhs(
             p.bump_any();
             PREFIX_EXPR
         }
-        // test full_range_expr
-        // fn foo() { xs[..]; }
-        T![..] | T![..=] => {
-            m = p.start();
-            p.bump_any();
-            if p.at_ts(EXPR_FIRST) {
-                expr_bp(p, r, 2, dollar_lvl);
-            }
-            return Some((m.complete(p, RANGE_EXPR), BlockLike::NotBlock));
-        }
         _ => {
+            // test full_range_expr
+            // fn foo() { xs[..]; }
+            for &op in [T![..=], T![..]].iter() {
+                if p.at(op) {
+                    m = p.start();
+                    p.bump(op);
+                    if p.at_ts(EXPR_FIRST) {
+                        expr_bp(p, r, 2, dollar_lvl);
+                    }
+                    return Some((m.complete(p, RANGE_EXPR), BlockLike::NotBlock));
+                }
+            }
+
             // test expression_after_block
             // fn foo() {
             //    let mut p = F{x: 5};
@@ -399,29 +392,13 @@ fn postfix_expr(
             // }
             T!['('] if allow_calls => call_expr(p, lhs),
             T!['['] if allow_calls => index_expr(p, lhs),
-            T![.] if p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth(2) == T![::]) => {
-                method_call_expr(p, lhs)
-            }
-            T![.] if p.nth(1) == AWAIT_KW => {
-                // test await_expr
-                // fn foo() {
-                //     x.await;
-                //     x.0.await;
-                //     x.0().await?.hello();
-                // }
-                let m = lhs.precede(p);
-                p.bump_any();
-                p.bump_any();
-                m.complete(p, AWAIT_EXPR)
-            }
-            T![.] => field_expr(p, lhs),
-            // test postfix_range
-            // fn foo() { let x = 1..; }
-            T![..] | T![..=] if !EXPR_FIRST.contains(p.nth(1)) => {
-                let m = lhs.precede(p);
-                p.bump_any();
-                m.complete(p, RANGE_EXPR)
-            }
+            T![.] => match postfix_dot_expr(p, lhs) {
+                Ok(it) => it,
+                Err(it) => {
+                    lhs = it;
+                    break;
+                }
+            },
             T![?] => try_expr(p, lhs),
             T![as] => cast_expr(p, lhs),
             _ => break,
@@ -429,7 +406,46 @@ fn postfix_expr(
         allow_calls = true;
         block_like = BlockLike::NotBlock;
     }
-    (lhs, block_like)
+    return (lhs, block_like);
+
+    fn postfix_dot_expr(
+        p: &mut Parser,
+        lhs: CompletedMarker,
+    ) -> Result<CompletedMarker, CompletedMarker> {
+        assert!(p.at(T![.]));
+        if p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])) {
+            return Ok(method_call_expr(p, lhs));
+        }
+
+        // test await_expr
+        // fn foo() {
+        //     x.await;
+        //     x.0.await;
+        //     x.0().await?.hello();
+        // }
+        if p.nth(1) == T![await] {
+            let m = lhs.precede(p);
+            p.bump(T![.]);
+            p.bump(T![await]);
+            return Ok(m.complete(p, AWAIT_EXPR));
+        }
+
+        // test postfix_range
+        // fn foo() { let x = 1..; }
+        for &(op, la) in [(T![..=], 3), (T![..], 2)].iter() {
+            if p.at(op) {
+                return if EXPR_FIRST.contains(p.nth(la)) {
+                    Err(lhs)
+                } else {
+                    let m = lhs.precede(p);
+                    p.bump(op);
+                    Ok(m.complete(p, RANGE_EXPR))
+                };
+            }
+        }
+
+        Ok(field_expr(p, lhs))
+    }
 }
 
 // test call_expr
@@ -465,7 +481,7 @@ fn index_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 //     y.bar::<T>(1, 2,);
 // }
 fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
-    assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth(2) == T![::]));
+    assert!(p.at(T![.]) && p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])));
     let m = lhs.precede(p);
     p.bump_any();
     name_ref(p);
@@ -567,7 +583,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
             record_field_list(p);
             (m.complete(p, RECORD_LIT), BlockLike::NotBlock)
         }
-        T![!] => {
+        T![!] if !p.at(T![!=]) => {
             let block_like = items::macro_call_after_excl(p);
             (m.complete(p, MACRO_CALL), block_like)
         }
@@ -601,8 +617,8 @@ pub(crate) fn record_field_list(p: &mut Parser) {
                 }
                 m.complete(p, RECORD_FIELD);
             }
-            T![..] => {
-                p.bump_any();
+            T![.] if p.at(T![..]) => {
+                p.bump(T![..]);
                 expr(p);
             }
             T!['{'] => error_block(p, "expected a field"),

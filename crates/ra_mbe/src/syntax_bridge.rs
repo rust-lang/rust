@@ -70,7 +70,14 @@ fn fragment_to_syntax_node(
     tt: &tt::Subtree,
     fragment_kind: FragmentKind,
 ) -> Result<Parse<SyntaxNode>, ExpandError> {
-    let tokens = [tt.clone().into()];
+    let tmp;
+    let tokens = match tt {
+        tt::Subtree { delimiter: tt::Delimiter::None, token_trees } => token_trees.as_slice(),
+        _ => {
+            tmp = [tt.clone().into()];
+            &tmp[..]
+        }
+    };
     let buffer = TokenBuffer::new(&tokens);
     let mut token_source = SubtreeTokenSource::new(&buffer);
     let mut tree_sink = TtTreeSink::new(buffer.begin());
